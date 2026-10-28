@@ -4899,6 +4899,7 @@ class Translations$settings$radio$en {
 	late final Translations$settings$radio$enterSends$en enterSends = Translations$settings$radio$enterSends$en.internal(_root);
 	late final Translations$settings$radio$keyerSpeed$en keyerSpeed = Translations$settings$radio$keyerSpeed$en.internal(_root);
 	late final Translations$settings$radio$cwMessages$en cwMessages = Translations$settings$radio$cwMessages$en.internal(_root);
+	late final Translations$settings$radio$keyerControl$en keyerControl = Translations$settings$radio$keyerControl$en.internal(_root);
 	late final Translations$settings$radio$voiceMessages$en voiceMessages = Translations$settings$radio$voiceMessages$en.internal(_root);
 	late final Translations$settings$radio$avoidZeroBeat$en avoidZeroBeat = Translations$settings$radio$avoidZeroBeat$en.internal(_root);
 	late final Translations$settings$radio$zeroBeatRange$en zeroBeatRange = Translations$settings$radio$zeroBeatRange$en.internal(_root);
@@ -6100,8 +6101,29 @@ class Translations$settings$station$en {
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
 
-	/// en: 'Key in Use'
-	String get keyInUse => 'Key in Use';
+	/// en: 'CW Keying'
+	String get keyInUse => 'CW Keying';
+
+	/// en: 'Phone Keying'
+	String get phoneKeying => 'Phone Keying';
+
+	/// en: 'None'
+	String get phoneKeyingNone => 'None';
+
+	/// en: 'Memories in ${radio}'
+	String phoneKeyingRadio({required Object radio}) => 'Memories in ${radio}';
+
+	/// en: 'Audio in this computer'
+	String get phoneKeyingComputer => 'Audio in this computer';
+
+	/// en: 'Phone keying is off'
+	String get phoneKeyingOff => 'Phone keying is off';
+
+	/// en: 'Computer Audio'
+	String get computerVoiceSettings => 'Computer Audio';
+
+	/// en: 'CW Keying Options'
+	String get cwKeyingOptions => 'CW Keying Options';
 
 	/// en: 'None'
 	String get noneSelected => 'None';
@@ -6208,14 +6230,11 @@ class Translations$settings$station$en {
 	/// en: 'Not supported by this radio'
 	String get notSupportedByThisRadio => 'Not supported by this radio';
 
-	/// en: 'Keyer'
-	String get keyerRowLabel => 'Keyer';
+	/// en: 'CW Messages'
+	String get cwMessagesButton => 'CW Messages';
 
-	/// en: 'CW'
-	String get cwMessagesButton => 'CW';
-
-	/// en: 'Phone'
-	String get voiceMessagesButton => 'Phone';
+	/// en: 'Phone Messages'
+	String get voiceMessagesButton => 'Phone Messages';
 
 	/// en: 'Voice keyer: $count memories in the radio'
 	String voiceKeyerAvailable({required Object count}) => 'Voice keyer: ${count} memories in the radio';
@@ -6262,9 +6281,6 @@ class Translations$settings$station$en {
 
 	/// en: 'Key on $device'
 	String keyOnDevice({required Object device}) => 'Key on ${device}';
-
-	/// en: 'Keyer area'
-	String get cwKeyerArea => 'Keyer area';
 
 	/// en: 'Track Station Info for each QSO'
 	String get trackStationInfo => 'Track Station Info for each QSO';
@@ -8560,11 +8576,11 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Current radio does not support CW keying'
 	String get notSupported => 'Current radio does not support CW keying';
 
-	/// en: 'F$n'
-	String key({required Object n}) => 'F${n}';
+	/// en: 'M$n'
+	String key({required Object n}) => 'M${n}';
 
-	/// en: 'Message ($n)'
-	String messageTitle({required Object n}) => 'Message (${n})';
+	/// en: 'Message $n'
+	String messageTitle({required Object n}) => 'Message ${n}';
 
 	/// en: 'Label'
 	String get labelField => 'Label';
@@ -8605,14 +8621,17 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'My Messages'
 	String get setSaved => 'My Messages';
 
-	/// en: 'Repeat Message #1'
-	String get repeat => 'Repeat Message #1';
+	/// en: 'Repeat Message 1'
+	String get repeat => 'Repeat Message 1';
 
-	/// en: 'No'
-	String get repeatOff => 'No';
+	/// en: 'Repeat M1'
+	String get repeatShort => 'Repeat M1';
 
-	/// en: 'After $n seconds'
-	String repeatAfter({required Object n}) => 'After ${n} seconds';
+	/// en: 'Cooldown before repeat'
+	String get cooldown => 'Cooldown before repeat';
+
+	/// en: '$n seconds'
+	String cooldownSeconds({required Object n}) => '${n} seconds';
 
 	/// en: 'Repeating'
 	String get repeatWait => 'Repeating';
@@ -8622,9 +8641,6 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'Type to send'
 	String get keyboardField => 'Type to send';
-
-	/// en: 'Close the keyer area'
-	String get closeArea => 'Close the keyer area';
 
 	/// en: 'Help'
 	String get help => 'Help';
@@ -8708,6 +8724,27 @@ class Translations$settings$radio$cwMessages$en {
 	String get helpEsmStackThanks => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU';
 }
 
+// Path: settings.radio.keyerControl
+class Translations$settings$radio$keyerControl$en {
+	Translations$settings$radio$keyerControl$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Keyer'
+	String get label => 'Keyer';
+
+	/// en: 'WPM'
+	String get cw => 'WPM';
+
+	/// en: '${wpm} WPM'
+	String cwSpeed({required Object wpm}) => '${wpm} WPM';
+
+	/// en: 'Voice'
+	String get voice => 'Voice';
+}
+
 // Path: settings.radio.voiceMessages
 class Translations$settings$radio$voiceMessages$en {
 	Translations$settings$radio$voiceMessages$en.internal(this._root);
@@ -8722,14 +8759,11 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Current radio does not support Phone messages'
 	String get notSupported => 'Current radio does not support Phone messages';
 
-	/// en: 'This uses the radio's voice memories'
-	String get description => 'This uses the radio\'s voice memories';
-
 	/// en: 'M$n'
 	String key({required Object n}) => 'M${n}';
 
-	/// en: 'Voice memory ($n)'
-	String messageTitle({required Object n}) => 'Voice memory (${n})';
+	/// en: 'Voice memory $n'
+	String messageTitle({required Object n}) => 'Voice memory ${n}';
 
 	/// en: 'Label'
 	String get labelField => 'Label';
@@ -8755,14 +8789,8 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Stop'
 	String get stopButton => 'Stop';
 
-	/// en: 'Repeat Message #1'
-	String get repeat => 'Repeat Message #1';
-
-	/// en: 'No'
-	String get repeatOff => 'No';
-
-	/// en: 'After $n seconds'
-	String repeatAfter({required Object n}) => 'After ${n} seconds';
+	/// en: 'Repeat Message 1'
+	String get repeat => 'Repeat Message 1';
 
 	/// en: '$model Notes:'
 	String recordHelpTitle({required Object model}) => '${model} Notes:';
@@ -8811,6 +8839,87 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'You have to record the memories on the radio itself.'
 	String get recordOnRadio => 'You have to record the memories on the radio itself.';
+
+	/// en: 'Message Set'
+	String get sets => 'Message Set';
+
+	/// en: 'Sound files on this computer'
+	String get soundFilesSet => 'Sound files on this computer';
+
+	/// en: 'Open File'
+	String get openFileButton => 'Open File';
+
+	/// en: 'New Set'
+	String get newSet => 'New Set';
+
+	/// en: 'Rename Set'
+	String get renameSet => 'Rename Set';
+
+	/// en: 'Delete Set'
+	String get deleteSet => 'Delete Set';
+
+	/// en: 'Name'
+	String get newSetName => 'Name';
+
+	/// en: 'Delete $name and its recordings? This cannot be undone.'
+	String deleteSetConfirm({required Object name}) => 'Delete ${name} and its recordings? This cannot be undone.';
+
+	/// en: 'Send audio to'
+	String get output => 'Send audio to';
+
+	/// en: 'Record from'
+	String get input => 'Record from';
+
+	/// en: 'Directly to the radio'
+	String get outputRadio => 'Directly to the radio';
+
+	/// en: 'System default'
+	String get inputDefault => 'System default';
+
+	/// en: 'Choose a sound device'
+	String get pickDevice => 'Choose a sound device';
+
+	/// en: '$name (not connected)'
+	String deviceMissing({required Object name}) => '${name} (not connected)';
+
+	/// en: 'Key-up delay'
+	String get lead => 'Key-up delay';
+
+	/// en: 'Unkey delay'
+	String get tail => 'Unkey delay';
+
+	/// en: '$n ms'
+	String millis({required Object n}) => '${n} ms';
+
+	/// en: 'Listen'
+	String get listenButton => 'Listen';
+
+	/// en: 'Not recorded'
+	String get notRecorded => 'Not recorded';
+
+	/// en: 'Choose the sound device that feeds the radio before playing a message.'
+	String get problemNoOutput => 'Choose the sound device that feeds the radio before playing a message.';
+
+	/// en: 'The sound device that feeds the radio is not connected.'
+	String get problemOutputMissing => 'The sound device that feeds the radio is not connected.';
+
+	/// en: 'The recording device is not connected.'
+	String get problemInputMissing => 'The recording device is not connected.';
+
+	/// en: 'The sound device would not open.'
+	String get problemDeviceFailed => 'The sound device would not open.';
+
+	/// en: 'That message has no recording yet.'
+	String get problemNotRecorded => 'That message has no recording yet.';
+
+	/// en: 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.'
+	String get problemRecordingSilent => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.';
+
+	/// en: 'The radio is not taking audio from the app right now. It needs a network connection to the radio.'
+	String get problemRadioAudioUnavailable => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.';
+
+	/// en: 'This radio can't be keyed over CAT, so the computer can't play messages into it.'
+	String get problemCannotKey => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -10667,8 +10776,8 @@ extension on Translations {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CW Keyer Messages',
 			'settings.radio.cwMessages.notSupported' => 'Current radio does not support CW keying',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message ${n}',
 			'settings.radio.cwMessages.labelField' => 'Label',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} label',
 			'settings.radio.cwMessages.details' => 'Details',
@@ -10682,13 +10791,13 @@ extension on Translations {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Messages',
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
-			'settings.radio.cwMessages.repeat' => 'Repeat Message #1',
-			'settings.radio.cwMessages.repeatOff' => 'No',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
+			'settings.radio.cwMessages.repeat' => 'Repeat Message 1',
+			'settings.radio.cwMessages.repeatShort' => 'Repeat M1',
+			'settings.radio.cwMessages.cooldown' => 'Cooldown before repeat',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
 			'settings.radio.cwMessages.keyboardField' => 'Type to send',
-			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
@@ -10716,11 +10825,14 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Asks again when nothing of their exchange was copied',
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
+			'settings.radio.keyerControl.label' => 'Keyer',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Voice',
 			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
 			'settings.radio.voiceMessages.notSupported' => 'Current radio does not support Phone messages',
-			'settings.radio.voiceMessages.description' => 'This uses the radio\'s voice memories',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
@@ -10729,9 +10841,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.playButton' => 'Play',
 			'settings.radio.voiceMessages.recordButton' => 'Record',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
-			'settings.radio.voiceMessages.repeat' => 'Repeat Message #1',
-			'settings.radio.voiceMessages.repeatOff' => 'No',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
+			'settings.radio.voiceMessages.repeat' => 'Repeat Message 1',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'These memories are in ${device}\'s radio. Their names and lengths belong to that device.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Saved in the radio, where its other clients see it too.',
@@ -10748,6 +10858,33 @@ extension on Translations {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'You have to record the memories on the radio itself.',
+			'settings.radio.voiceMessages.sets' => 'Message Set',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Sound files on this computer',
+			'settings.radio.voiceMessages.openFileButton' => 'Open File',
+			'settings.radio.voiceMessages.newSet' => 'New Set',
+			'settings.radio.voiceMessages.renameSet' => 'Rename Set',
+			'settings.radio.voiceMessages.deleteSet' => 'Delete Set',
+			'settings.radio.voiceMessages.newSetName' => 'Name',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Delete ${name} and its recordings? This cannot be undone.',
+			'settings.radio.voiceMessages.output' => 'Send audio to',
+			'settings.radio.voiceMessages.input' => 'Record from',
+			'settings.radio.voiceMessages.outputRadio' => 'Directly to the radio',
+			'settings.radio.voiceMessages.inputDefault' => 'System default',
+			'settings.radio.voiceMessages.pickDevice' => 'Choose a sound device',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',
+			'settings.radio.voiceMessages.lead' => 'Key-up delay',
+			'settings.radio.voiceMessages.tail' => 'Unkey delay',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Listen',
+			'settings.radio.voiceMessages.notRecorded' => 'Not recorded',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Choose the sound device that feeds the radio before playing a message.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'The sound device that feeds the radio is not connected.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'The recording device is not connected.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'The sound device would not open.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'That message has no recording yet.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
@@ -10870,6 +11007,8 @@ extension on Translations {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
@@ -10898,8 +11037,6 @@ extension on Translations {
 			'settings.accounts.title' => 'Accounts, Services & Data Sources',
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.connected' => 'Connected',
 			'settings.accounts.cancelLogin' => 'Cancel sign-in',
 			'settings.accounts.openInBrowser' => 'Open in Browser',
@@ -11206,7 +11343,14 @@ extension on Translations {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
-			'settings.station.keyInUse' => 'Key in Use',
+			'settings.station.keyInUse' => 'CW Keying',
+			'settings.station.phoneKeying' => 'Phone Keying',
+			'settings.station.phoneKeyingNone' => 'None',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
+			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
+			'settings.station.phoneKeyingOff' => 'Phone keying is off',
+			'settings.station.computerVoiceSettings' => 'Computer Audio',
+			'settings.station.cwKeyingOptions' => 'CW Keying Options',
 			'settings.station.noneSelected' => 'None',
 			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
@@ -11242,9 +11386,8 @@ extension on Translations {
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
-			'settings.station.keyerRowLabel' => 'Keyer',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Phone',
+			'settings.station.cwMessagesButton' => 'CW Messages',
+			'settings.station.voiceMessagesButton' => 'Phone Messages',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
@@ -11273,7 +11416,6 @@ extension on Translations {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
-			'settings.station.cwKeyerArea' => 'Keyer area',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',
@@ -11379,6 +11521,8 @@ extension on Translations {
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search preferences',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.showIdleMetrics' => 'Show idle metrics',
@@ -11412,8 +11556,6 @@ extension on Translations {
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnect' => 'Connect',
 			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			'settings.developer.extDevServerConnecting' => 'Connecting…',

@@ -53,6 +53,7 @@ const ts590sgModel = EquipmentModel(
         KenwoodDriver.voiceDialectKey: '',
         KenwoodDriver.voiceMemoriesKey: 0,
         KenwoodDriver.dataModeKey: true,
+        KenwoodDriver.dataSendKey: true,
         KenwoodDriver.passbandDialectKey: 'ts590sg',
         KenwoodDriver.antennaDialectKey: 'ts590',
       },

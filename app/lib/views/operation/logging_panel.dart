@@ -305,7 +305,6 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
   /// Enter Sends Messages, on top of the keyer. Kept in sync by
   /// _onSettingsChanged like _keyerEnabled.
-  @override
   late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
 
   // Whether the Radio control's icon should read as CAT-configured.
@@ -1148,10 +1147,21 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         },
       ),
       strip: ControlStripSettings(
-        aboveEntryRow: _keyerEnabled ? _keyerArea(radio, editingHere: editingHere) : null,
+        infoAreaFooter: _keyerEnabled ? _keyerArea(radio, editingHere: editingHere) : null,
         controlOrder: _controlOrder,
         hiddenControlKeys: _hiddenControls,
         spottingAfterReferences: widget.scope == LoggingScope.chase,
+        hostControls: [
+          if (_keyerEnabled && radio == 'A')
+            keyerHostControl(
+              services: widget.services,
+              phone: widget.keyingPhone,
+              onSendMessage: widget.onSendCwMessage,
+              templateContext: widget.cwTemplateContext,
+              enterSends: _esmEnabled,
+              esmFacts: _esmFacts,
+            ),
+        ],
         onControlsSettingsChanged: _handleControlsSettingsChanged,
       ),
       spotting: SpottingHooks(

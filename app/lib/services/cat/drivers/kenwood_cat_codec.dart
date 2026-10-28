@@ -430,6 +430,11 @@ bool? parseKenwoodInfoTransmittingBeforeMode(String params, int modeOffset) {
 /// and KX references give.
 String buildKenwoodSetTxCommand(bool on) => on ? 'TX;' : 'RX;';
 
+/// `TX1;` — DATA SEND on the TS-590/890/990: transmit with the audio the
+/// radio's data menu routes from ACC2 or USB, the computer's, instead of the
+/// mic. Unkeyed with the same `RX;`.
+const kenwoodDataSendCommand = 'TX1;';
+
 /// Kenwood's Auto-Information has two levels, and the difference matters:
 /// `AI1` reports only what the radio itself changed, `AI2` also reports what
 /// the host changed. `AI2` is the one that reflects a dial turn promptly on

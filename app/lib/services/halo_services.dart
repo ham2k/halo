@@ -55,6 +55,8 @@ import 'geoshape_service.dart';
 import 'outline_grid_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'app_storage.dart' show appDataDirectory;
+import 'cat/computer_voice_keyer.dart' show HaloVoiceAudio;
 import 'cat/cat_traffic_log.dart';
 import 'cat/cat_traffic_recording.dart';
 import 'cat/transports/ble_serial_transport.dart' show BleSerialTransport;
@@ -410,8 +412,16 @@ class HaLoServices with _TimeTravel {
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.
   final CatService? _catOverride;
-  late final CatService cat = (_catOverride ?? (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio))
-    ..trafficLog = catTrafficLog;
+  late final CatService cat =
+      (_catOverride ??
+            (CatService(
+              settings,
+              radio: radio,
+              onTrack: track,
+              voiceAudio: HaloVoiceAudio(),
+              voiceMessagesDirectory: () async => '${(await appDataDirectory()).path}/voice-messages',
+            )..onRadioProven = reportWorkingRadio))
+        ..trafficLog = catTrafficLog;
 
   /// DEVLOGCAT's recorder. Injectable so a test can record into memory
   /// instead of the data folder.

@@ -15,6 +15,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_audio/halo_audio.dart' show AudioPlayback;
 import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -26,8 +27,10 @@ import '../settings_service.dart';
 import 'auto_connect_guard.dart';
 import 'cat_keying.dart';
 import 'cat_ptt.dart';
+import 'computer_voice_keyer.dart';
 import 'cat_traffic_log.dart';
 import 'connect_failure.dart';
+import 'cw_live_typing.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'spectrum.dart';
@@ -341,6 +344,8 @@ class CatService extends ChangeNotifier
     this.idleRetryFirst = _idleRetryFirst,
     this.staleAfter = catStaleAfter,
     this.silentDropAfter = _silentDropAfter,
+    VoiceAudio? voiceAudio,
+    Future<String> Function()? voiceMessagesDirectory,
   }) : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
        assert(sdrRetryDelay > Duration.zero, 'a zero delay retries an absent SDR in a tight loop'),
        registry = registry ?? EquipmentRegistry() {
@@ -359,6 +364,18 @@ class CatService extends ChangeNotifier
     _radio?.addListener(_onVfoChanged);
     _startSo2r();
     _ptt.held.addListener(_restartSilentDrops);
+    // The computer's voice keyer, where this device can run one.
+    if (voiceAudio != null && voiceAudio.isSupported && voiceMessagesDirectory != null) {
+      _keying
+        ..voiceAudio = voiceAudio
+        ..voiceMessagesDirectory = voiceMessagesDirectory
+        ..onComputerVoiceChanged = () {
+          if (!_disposed) notifyListeners();
+        };
+      // Every change that makes or unmakes one — a session opened, the
+      // directory found, a set picked — is one this service announces.
+      addListener(_keying.syncComputerKeyers);
+    }
   }
 
   @override
@@ -806,8 +823,9 @@ class CatService extends ChangeNotifier
     // is what already knows the difference, and a gate that fails closed on
     // an answer known to be out of date, with nothing on screen to say why,
     // is worse than one that reopens.
-    if (state.stale) return _ptt.heldOn(connectedSession(uuid));
-    return state.telemetry.isTransmitting || _ptt.heldOn(connectedSession(uuid));
+    final keyed = _ptt.heldOn(connectedSession(uuid)) || _keying.computerKeyed(uuid);
+    if (state.stale) return keyed;
+    return state.telemetry.isTransmitting || keyed;
   }
 
   /// The type handling [node], or null if it isn't in the catalogue — a
@@ -1376,6 +1394,8 @@ class CatService extends ChangeNotifier
     }
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
+    // Before the notifiers they report into are disposed.
+    _keying.disposeComputerKeyers();
     for (final keyer in _keyers.values) {
       keyer.chain.cancel();
       keyer.dispose();

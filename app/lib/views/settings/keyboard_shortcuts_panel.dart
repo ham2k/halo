@@ -74,6 +74,63 @@ List<({List<String> chords, List<String> labels, String Function(Translations t)
   (chords: ['mod+Z'], labels: const [], what: (t) => t.keyboardShortcuts.fixed.undo),
 ];
 
+/// Opens the editor for [id]'s keys, titled [title], and stores what it
+/// answers — taking a chord off any other command it is moved from.
+Future<void> editKeyCommand(BuildContext context, KeyBindingsService service, String id, String title) async {
+  final overrides = service.overrides;
+  final bindings = overrides.resolve();
+  final result = await showHaloDialog<_EditResult>(
+    context: context,
+    builder: (_) => _ShortcutEditor(id: id, title: title, chords: bindings.chordsFor(id), bindings: bindings),
+  );
+  if (result == null) return;
+  if (result.remove) {
+    await service.setOverrides(overrides.withoutText(id.substring(textCommandPrefix.length)));
+    return;
+  }
+  var next = _withChords(overrides, id, result.chords);
+  for (final chord in result.take) {
+    final current = next.resolve();
+    for (final other in current.othersOn(chord, id: id)) {
+      next = _withChords(next, other, [
+        for (final c in current.chordsFor(other))
+          if (!c.samePressAs(chord)) c,
+      ]);
+    }
+  }
+  await service.setOverrides(next);
+}
+
+KeyBindingOverrides _withChords(KeyBindingOverrides overrides, String id, List<KeyChord> chords) =>
+    id.startsWith(textCommandPrefix) ? overrides.withText(id.substring(textCommandPrefix.length), chords) : overrides.withCommand(id, chords);
+
+/// Keyer message [n]'s keys as caps, for the message editors' rows. With
+/// Keyboard Shortcuts on they open the editor for those keys: the row is
+/// where an operator looks for which key sends the message, so it is where
+/// changing it is found.
+class KeyerMessageKeys extends StatelessWidget {
+  final HaLoServices services;
+  final int n;
+
+  const KeyerMessageKeys({super.key, required this.services, required this.n});
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<KeyBindings>(
+    valueListenable: keyBindings,
+    builder: (context, bindings, _) {
+      final id = 'keyer.message$n';
+      final caps = _KeyCaps(chords: bindings.chordsFor(id));
+      final service = services.keyBindingsService;
+      if (!service.enabled) return caps;
+      return InkWell(
+        borderRadius: BorderRadius.circular(4),
+        onTap: () => editKeyCommand(context, service, id, keyCommandTitle(context.t, id)),
+        child: Padding(padding: const EdgeInsets.all(Space.xs), child: caps),
+      );
+    },
+  );
+}
+
 class KeyboardShortcutsPanel extends StatefulWidget {
   final HaLoServices services;
 
@@ -114,33 +171,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         chords.any((c) => c.label().toLowerCase().contains(query) || '$c'.toLowerCase().contains(query));
   }
 
-  Future<void> _edit(String id, String title) async {
-    final overrides = _service.overrides;
-    final bindings = overrides.resolve();
-    final result = await showHaloDialog<_EditResult>(
-      context: context,
-      builder: (_) => _ShortcutEditor(id: id, title: title, chords: bindings.chordsFor(id), bindings: bindings),
-    );
-    if (result == null) return;
-    if (result.remove) {
-      await _service.setOverrides(overrides.withoutText(id.substring(textCommandPrefix.length)));
-      return;
-    }
-    var next = _withChords(overrides, id, result.chords);
-    for (final chord in result.take) {
-      final current = next.resolve();
-      for (final other in current.othersOn(chord, id: id)) {
-        next = _withChords(next, other, [
-          for (final c in current.chordsFor(other))
-            if (!c.samePressAs(chord)) c,
-        ]);
-      }
-    }
-    await _service.setOverrides(next);
-  }
-
-  KeyBindingOverrides _withChords(KeyBindingOverrides overrides, String id, List<KeyChord> chords) =>
-      id.startsWith(textCommandPrefix) ? overrides.withText(id.substring(textCommandPrefix.length), chords) : overrides.withCommand(id, chords);
+  Future<void> _edit(String id, String title) => editKeyCommand(context, _service, id, title);
 
   Future<void> _addCommand() async {
     final text = await showHaloDialog<String>(

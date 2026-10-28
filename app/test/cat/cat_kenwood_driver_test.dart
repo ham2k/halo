@@ -276,6 +276,47 @@ void main() {
         expect(sink.sent.first, 'RX;');
       });
 
+      // A TS-590SG set up for its mic sends the mic on a bare `TX;`, so a
+      // recording played into its USB audio would never go out. And `TX1;`
+      // on a radio whose reference nobody read might mean anything.
+      test("with the computer's audio: DATA SEND where the entry says the radio has it, a bare TX; elsewhere", () {
+        final ts590 = KenwoodSession(sink, dataSend: true);
+        expect(ts590.switchesToComputerAudio, isTrue);
+        ts590.setPttWithComputerAudio(true);
+        ts590.setPttWithComputerAudio(false);
+        expect(sink.sent, ['TX1;', 'RX;']);
+
+        sink.sent.clear();
+        expect(session.switchesToComputerAudio, isFalse);
+        session.setPttWithComputerAudio(true);
+        session.setPttWithComputerAudio(false);
+        expect(sink.sent, ['TX;', 'RX;']);
+      });
+
+      test('a radio keyed with DATA SEND is unkeyed at teardown', () {
+        final ts590 = KenwoodSession(sink, dataSend: true)..startUpdates();
+        ts590.setPttWithComputerAudio(true);
+        sink.sent.clear();
+        ts590.teardown();
+        expect(sink.sent.first, 'RX;');
+      });
+
+      test('only the TS-590SG entry says its TX1; is DATA SEND', () {
+        final direct = [
+          for (final variant in ts590sgModel.variants)
+            if (variant.driver is KenwoodDriver) variant,
+        ];
+        expect(direct, isNotEmpty, reason: 'sanity');
+        for (final variant in direct) {
+          expect(variant.overrides[KenwoodDriver.dataSendKey], isTrue);
+        }
+        for (final model in [ts480Model, kenwoodGenericModel, elecraftGenericModel, kx2Model, kx3Model]) {
+          for (final variant in model.variants) {
+            expect(variant.overrides[KenwoodDriver.dataSendKey], isNull, reason: '${model.key} has no confirmed DATA SEND');
+          }
+        }
+      });
+
       test('teardown sends no RX; on a radio the app never keyed', () {
         // An unkey from a session that never keyed would cut off the operator
         // transmitting from the radio's own mic.

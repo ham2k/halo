@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart' show catStaleAfter;
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
+import 'package:ham2k_logger/services/cat/drivers/flex_dax_switch.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/transports/flex_meter_socket.dart';
@@ -115,6 +116,12 @@ class _FakeSink implements EquipmentSink, TunerSink, PassbandSink, RadioAntennaS
 class _FakeMeterSocket implements FlexMeterSocket {
   @override
   int get port => 4993;
+
+  /// What was sent to the radio, as (port, bytes).
+  final sent = <(int, List<int>)>[];
+
+  @override
+  void send(List<int> data, int toPort) => sent.add((toPort, data));
   @override
   void close() {}
 }
@@ -141,6 +148,7 @@ void main() {
   late FlexRadioSession session;
 
   setUp(() {
+    FlexDaxSwitch.forgetOwed();
     sink = _FakeSink();
     session = FlexRadioSession(sink);
   });
@@ -1094,6 +1102,236 @@ void main() {
         sink.sent.clear();
         session.teardown();
         expect(commands().first, 'xmit 0');
+        async.flushTimers();
+      });
+    });
+
+    // With dax=0 a Flex transmits its mic input and drops the DAX audio: a
+    // recording played into DAX goes out as the speech processor's hiss.
+    test("with the computer's audio, DAX goes on for the message and back off after", () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit freq=14.175000 dax=0 mic_selection=MIC\n');
+        sink.sent.clear();
+        expect(session.switchesToComputerAudio, isTrue);
+        session.setPttWithComputerAudio(true);
+        session.setPttWithComputerAudio(false);
+        expect(commands(), ['transmit set dax=1', 'xmit 1', 'xmit 0', 'transmit set dax=0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Sent while the radio is still unkeying, `transmit set dax=0` is
+    // answered with success and not applied: a FLEX-6600 left DAX on after
+    // every message that way, and the operator's mic dead after it.
+    test('DAX goes back off only once the radio reports it is back to receive', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        sink.sent.clear();
+        session.setPttWithComputerAudio(false);
+        expect(commands(), ['xmit 0'], reason: 'not while the radio is unkeying');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=UNKEY_REQUESTED\n');
+        expect(commands(), ['xmit 0']);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), ['xmit 0', 'transmit set dax=0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A sequence or the next F-key keys again before the radio has reported
+    // the last message's unkey: the restore waiting on that READY must not
+    // fire under the new message, which would then go out as mic hiss.
+    test('keyed again before the radio is back to receive, DAX stays on until the last message ends', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S40000001|transmit dax=1\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        session.setPttWithComputerAudio(true);
+        sink.sent.clear();
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), isNot(contains('transmit set dax=0')), reason: 'the second message is keyed');
+
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), contains('transmit set dax=0'), reason: 'and back off after it');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Escape during the lead: the radio has not yet said it keyed, and the
+    // last thing it said was "receiving". Sent then, the restore lands while
+    // the radio is keying and is not applied — DAX on, the mic dead after.
+    test('an unkey before the radio says it keyed still waits for it to come back to receive', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        session.setPttWithComputerAudio(true);
+        sink.sent.clear();
+        session.setPttWithComputerAudio(false);
+        expect(commands(), ['xmit 0'], reason: 'the radio is about to key, whatever it last said');
+        // A restatement of the old state (a subscription refresh) is not the
+        // radio coming back from this key.
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), ['xmit 0']);
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=PTT_REQUESTED source=SW\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=UNKEY_REQUESTED\n');
+        expect(commands(), ['xmit 0']);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), ['xmit 0', 'transmit set dax=0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A key the radio never took is never followed by a receive report: the
+    // restore must not wait for one forever.
+    test('with no word from the radio after the unkey, DAX goes back off a moment later', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        session.setPttWithComputerAudio(true);
+        sink.sent.clear();
+        session.setPttWithComputerAudio(false);
+        async.elapse(const Duration(seconds: 3));
+        expect(commands(), ['xmit 0', 'transmit set dax=0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The radio answers a restore with success and may still not apply it:
+    // its own report is what says it took.
+    test('a restore the radio reports did not take is sent again, a few times, then reported', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S40000001|transmit dax=1\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        sink.sent.clear();
+        for (var i = 0; i < 5; i++) {
+          session.feed('S40000001|transmit dax=1\n');
+        }
+        expect(commands().where((c) => c == 'transmit set dax=0'), hasLength(2), reason: 'three in all, the first before');
+        expect(sink.diagnostics.last, contains('DAX left on'));
+
+        sink.sent.clear();
+        session.feed('S40000001|transmit dax=1\n');
+        expect(commands(), isEmpty, reason: 'given up on, once reported');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The link dropping mid-message takes the session that owed the restore
+    // with it: the next session to the same radio settles it, or DAX stays on
+    // and the operator's mic dead for good.
+    test('a DAX owed when the link dropped is put back by the next session, once the radio is receiving', () {
+      fakeAsync((async) {
+        final first = FlexRadioSession(sink, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
+        first.feed('${_handshakeLines.join('\n')}\n');
+        first.feed('S40000001|transmit dax=0\n');
+        first.setPttWithComputerAudio(true);
+        first.feed('S40000001|transmit dax=1\n');
+        first.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        first.teardown();
+
+        sink.sent.clear();
+        final next = FlexRadioSession(sink, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
+        next.feed('${_handshakeLines.join('\n')}\n');
+        next.feed('S40000001|transmit dax=1\n');
+        expect(commands(), isNot(contains('transmit set dax=0')), reason: 'not before the radio is known to be receiving');
+        next.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), contains('transmit set dax=0'));
+        next.feed('S40000001|transmit dax=0\n');
+
+        sink.sent.clear();
+        final after = FlexRadioSession(sink, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
+        after.feed('${_handshakeLines.join('\n')}\n');
+        after.feed('S40000001|transmit dax=1\n');
+        after.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), isNot(contains('transmit set dax=0')), reason: "settled: DAX on now is the operator's");
+        next.teardown();
+        after.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // The operator who runs DAX for digital modes and voice alike would have
+    // it turned off under them by every message.
+    test('DAX already on is left on', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=1\n');
+        sink.sent.clear();
+        session.setPttWithComputerAudio(true);
+        session.setPttWithComputerAudio(false);
+        expect(commands(), ['xmit 1', 'xmit 0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // DAX put back before the unkey would put the idle mic on the air for
+    // the moment between them.
+    test('teardown mid-message unkeys first, then puts DAX back', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        sink.sent.clear();
+        session.teardown();
+        expect(commands().take(2), ['xmit 0', 'transmit set dax=0']);
+        async.flushTimers();
+      });
+    });
+
+    // The recording goes to the radio on the socket its meters arrive on —
+    // the one `client udpport` registered, which a dax_tx stream needs.
+    test('a recording played to the radio goes out as DAX packets on the meter socket, and goes with it', () {
+      fakeAsync((async) {
+        final socket = _FakeMeterSocket();
+        session = FlexRadioSession(sink, meterHost: '10.0.0.5', openMeterSocket: (host, onData, onError) async => socket);
+        expect(session.openTransmitAudio((path, {required rate, required channels}) => Float32List(0)), isNull, reason: 'no socket yet');
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        async.flushMicrotasks();
+        final output = session.openTransmitAudio((path, {required rate, required channels}) => Float32List(rate * channels))!;
+        final create = sink.sent.lastWhere((line) => line.trim().endsWith('stream create type=dax_tx'));
+        session.feed('R${create.substring(1, create.indexOf('|'))}|0|84000002\n');
+        output.play('/v/1.wav');
+        expect(commands().last, 'stream set 0x84000002 tx=1');
+        async.elapse(const Duration(milliseconds: 50));
+        expect(socket.sent, isNotEmpty);
+        expect(socket.sent.every((packet) => packet.$1 == 4991), isTrue);
+        var gone = false;
+        output.gone.then((_) => gone = true);
+        session.stopUpdates();
+        async.flushMicrotasks();
+        expect(gone, isTrue, reason: 'its socket is closed');
+        session.teardown();
         async.flushTimers();
       });
     });

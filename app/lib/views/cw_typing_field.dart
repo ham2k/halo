@@ -103,11 +103,14 @@ class _CwTypingFieldState extends State<CwTypingField> {
           enableSuggestions: false,
           textInputAction: TextInputAction.send,
           inputFormatters: [TextInputFormatter.withFunction(_format)],
+          // As tall as the room it is given — the keyer control's panel
+          // gives it the message buttons' — with the text centred in it.
+          textAlignVertical: TextAlignVertical.center,
           // Outlined like the message buttons, with their corners and
           // colour.
           decoration: InputDecoration(
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
+            contentPadding: const EdgeInsets.symmetric(horizontal: Space.md),
             border: border,
             enabledBorder: border,
             focusedBorder: border.copyWith(borderSide: BorderSide(color: theme.colorScheme.tertiary, width: 2)),

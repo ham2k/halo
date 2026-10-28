@@ -89,7 +89,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  Finder typingField() => find.descendant(of: find.byType(KeyerArea), matching: find.byType(TextField));
+  // Keyboard mode's field is in the keyer control's panel, which ⌥K opens.
+  Finder typingField() => find.descendant(of: find.byType(KeyerControls), matching: find.byType(TextField));
 
   testWidgets('⌥1-⌥8 key the message the matching function key would', (tester) async {
     await pumpOperation(tester);
@@ -125,7 +126,7 @@ void main() {
     await pumpOperation(tester);
     await chord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyK);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(typingField(), findsOneWidget, reason: 'the strip comes out for it, and the field takes the keyboard');
+    expect(typingField(), findsOneWidget, reason: 'the keyer control opens for it, and the field takes the keyboard');
     await chord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyK);
     await tester.pump(const Duration(milliseconds: 300));
     expect(typingField(), findsNothing);

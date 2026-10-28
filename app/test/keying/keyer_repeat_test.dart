@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/cat/keyer_repeat.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 
 import '../support/fake_clock.dart';
 import '../support/halo_test_support.dart';
@@ -264,7 +265,9 @@ void main() {
         cat.stopVoice();
         await pumpEventQueue();
 
-        await services.settings.setVoiceRepeatDelay(3);
+        await services.settings.setVoiceRepeat(true);
+
+        await services.settings.setVoiceRepeatCooldown(3);
         cat.playVoiceMemory(1);
         await pumpEventQueue();
         expect(cat.keyerRepeating, isTrue);
@@ -381,7 +384,8 @@ void main() {
       'memory 1 repeats when the setting says so; the rest end a chain',
       () => runOnFakeClock((_) async {
         await connectPlaceholder();
-        await services.settings.setVoiceRepeatDelay(3);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(3);
 
         cat.playVoiceMemory(1);
         expect(cat.keyerRepeating, isTrue);
@@ -408,7 +412,8 @@ void main() {
       'the editor auditions a memory: Play there never starts a chain',
       () => runOnFakeClock((_) async {
         await connectPlaceholder();
-        await services.settings.setVoiceRepeatDelay(3);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(3);
         // A CQ that started repeating from inside a settings dialog would be
         // one nobody was watching the air for.
         cat.playVoiceMemory(1, repeat: false);
@@ -421,7 +426,8 @@ void main() {
       'the wait carries the MEMORY, so the strip names it by its own label',
       () => runOnFakeClock((_) async {
         await connectPlaceholder();
-        await services.settings.setVoiceRepeatDelay(2);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(2);
         cat.playVoiceMemory(1);
         // The placeholder's pretend playback ends on its own, which is what
         // starts the wait — the voice counterpart of the CW queue draining.
@@ -437,7 +443,8 @@ void main() {
       'a stop ends a voice chain the same way it ends a CW one',
       () => runOnFakeClock((_) async {
         await connectPlaceholder();
-        await services.settings.setVoiceRepeatDelay(3);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(3);
         cat.playVoiceMemory(1);
         expect(cat.keyerRepeating, isTrue);
         cat.stopVoice();
@@ -487,7 +494,8 @@ void main() {
       'a voice repeat survives 300 Hz, and ends past it',
       () => runOnFakeClock((_) async {
         await connectPlaceholder();
-        await services.settings.setVoiceRepeatDelay(3);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(3);
         tuneTo(14250.0);
         cat.playVoiceMemory(1);
 

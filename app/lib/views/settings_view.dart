@@ -195,6 +195,15 @@ class _SettingsViewState extends State<SettingsView> {
   void initState() {
     super.initState();
     _selectedPanel = widget.initialPanel ?? 'settings';
+    // On a narrow screen a selection shows nothing: the panel is a screen
+    // pushed over the list, so the one asked for is opened rather than only
+    // picked. Once the first frame knows the screen's size.
+    if (widget.initialPanel case final key?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || ShirtSize.of(context).isTwoPane) return;
+        if (_buildPanelEntries(widget.services.settings, context.t).any((p) => p.key == key)) _openPanel(key);
+      });
+    }
     widget.services.track('screen_viewed', {'screen': 'settings'});
     _panels = PanelUseTracker(track: widget.services.track, screen: 'settings');
     _loadExtensionPanels();

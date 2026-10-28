@@ -1088,11 +1088,12 @@ keyers on it would stop each other's: Radio B's picker leaves radio A's key out 
 refuses it, radio A taking Radio B's key leaves Radio B with None, and a pick that collides anyway
 (radio1 switched to a rig whose own pick is Radio B's key) reads as None for Radio B
 (`designatedFor`). The service's own keying API — what the function keys, the WPM command
-and the Station dialog's keyer row use — answers for the set the operator is in, which the logging
-panel reports (`noteOperatorRadio`); outside SO2R that is radio1's. Each set's keyer area is its
-radio's: its buttons, speed, message, countdown and what waits; the CW and Phone Keyer dialogs it
-opens are that radio's too. The CW messages, their sets and labels, and the repeat delay are the
-radios' both; the keyer speed is each key's own, and the voice memories, their names and lengths
+and the keyer control use — answers for the set the operator is in, which the logging panel
+reports (`noteOperatorRadio`); outside SO2R that is radio1's. Each set's keyer line is its radio's:
+its message, countdown and what waits. The keyer control is one for both sets, in the shared strip,
+and is the operator's set's radio's: its buttons, Run or S&P, keyboard mode, and the CW and Phone
+Keyer dialogs it opens. The CW messages, their sets and labels, and the repeat are the radios'
+both; the keyer speed is each key's own, and the voice memories, their names and lengths
 each rig's — the audio is in the radio (a future app-played audio keyer could share them). A panel
 keys the radio it names, radio1 or Radio B. Set B with no Radio B keys nothing at all rather than
 falling back to radio A, and says so in the status bar. `isTransmitting` says which radio is on
@@ -1119,7 +1120,7 @@ What a keyer sends — a message, a memory, a sequence — first asks for its tu
   is the operator keying it, queued messages or not: it takes the other radio off the air
   through that radio's own keyer, and the other's repeat resumes after it too.
 
-What waits shows in its keyer area under an indeterminate bar (`CatKeying.waiting`), in place of a
+What waits shows in its radio's keyer line under an indeterminate bar (`CatKeying.waiting`), in place of a
 repeat's countdown: how long the other radio has left is not something this one can know. The
 oldest waiting send goes first. Escape stops both radios, their repeats and everything waiting —
 except, with messages queued, while anything but a repeat waits: then only what is on the air
@@ -1447,11 +1448,11 @@ writing it:
 ## CW keying
 
 A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
-view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's keyer row
-picks the speed and opens the editor, and `20WPM` typed into the call field sets the speed the way
-`5W` sets power. The editor is the **CW Keyer** dialog — the message sets, saved together on Save, and message 1's
-repeat and Enter Sends Messages, which apply as they change — reached from that row, the keyer area
-and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
+view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's CW Keying
+line picks the key and the speed and opens the editor, and `20WPM` typed into the call field sets the
+speed the way `5W` sets power. The editor is the **CW Keyer** dialog — the key, the message sets, saved
+together on Save, and message 1's repeat and Enter Sends Messages, which apply as they change —
+reached from that line, the keyer control and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
 (`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`).
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
@@ -1462,7 +1463,7 @@ must never look like "the text was empty" — and a keyer of its own (a K1EL Win
 
 **What keys is the key in use** — and it can be on another device, once a peer's radio fills radio1
 (§ Keying a peer's radio); everything below is about a key of this station's own. The Station
-dialog's "Key in Use" pick offers the plain keys, the
+dialog's "CW Keying" pick offers the plain keys, the
 keyers, — as "via ‹radio›" — every radio whose driver says `canKeyCw`, and, while a peer's radio
 fills radio1 and its station keys, that peer as "Key on ‹device›"; `CatService.canKeyCw` is
 that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
@@ -1473,11 +1474,15 @@ the WPM command exist only while `canKeyCw` holds; `setKeyerSpeed` returns wheth
 take the value, so the WPM command fails out loud ("No connected radio can key CW") instead of
 confirming a change nothing heard.
 
-The Station dialog's **keyer row is laid out from CAPABILITY, never from the link**: it shows
-whenever either side could carry a message (`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories`
-for voice — the session-free counterpart, off `EquipmentDriver.voiceMemoryCountWith`), a peer's
-radio answering both of those from its OFFER, since there is no entry here to ask. Both message
-buttons are always present, and each is disabled only where its own side cannot send at all. A
+The Station dialog's **keying lines are laid out from CAPABILITY, never from the link**: CW Keying
+with its speed, options and CW Messages button, and Phone Keying with its source
+(`VoiceKeyingSource`: none, the radio's memories, or recordings on this computer) and Phone Messages
+button. Each messages button is disabled only where its own side cannot send at all
+(`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories` for voice — the session-free counterpart,
+off `EquipmentDriver.voiceMemoryCountWith`), a peer's radio answering both of those from its OFFER,
+since there is no entry here to ask; Phone Keying set to None says so ("Phone keying is off") rather
+than blaming the radio. The two message dialogs open with the same picker as their first row
+(keying_pickers.dart). A
 control that came and went with the connection would move under the operator every time the radio
 blinked, and "this rig has no voice memories" must not look like "the rig is unplugged". A disabled
 button says why in `Semantics` or nowhere — the app has no hover tooltips
@@ -1577,7 +1582,7 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   never a field). Host mode is opened with serial echoback on, so the keyer echoes each character as
   it keys it and its status byte says when it is busy and when its buffer is nearly full — the only
   keyer here with real feedback. Progress is therefore what it reports
-  (`CwSendProgress.sentCount`, which the keyer area shows in place of the estimate), the send is
+  (`CwSendProgress.sentCount`, which the keyer line shows in place of the estimate), the send is
   throttled by its XOFF rather than by arithmetic, and `stopCw` clears its buffer. The speed pot
   reports as it moves; a set is reported as taken since the keyer does not echo it. Host mode is
   closed on teardown so the paddle keys standalone again. From the host-interface documents alone.
@@ -1625,25 +1630,26 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
   the last, so the four most people fill first survive), and whatever the operator had there is
   gone. The FT-450 (three memories of forty) and the FT-710 (`KY0n;`) pin their own, see §Serial. There is no stop: `Ft891Session.stopCw` only empties the queue, and the piece already
-  playing plays out — reported to its estimated end, so the keyer area does not claim it stopped. `KS;` is the speed, 4-60. The session polls the keyer's status every ten seconds (`0x15`) because a keyer in host mode
+  playing plays out — reported to its estimated end, so the keyer line does not claim it stopped. `KS;` is the speed, 4-60. The session polls the keyer's status every ten seconds (`0x15`) because a keyer in host mode
   pushes nothing while idle, and the reply restates the speed so the node never reads as stale; a
   port that answers nothing within three seconds of host open is reported as having no keyer on it,
   and a message whose echoes stop arriving is given up on past its own timeline plus a grace, with
   the queue cleared and a problem shown until the keyer speaks again.
 
-**What is going out is shown** in a strip between the logging panel's call-info area and its entry
-row — the keyer area (`KeyerArea`, through `ControlStripSettings.aboveEntryRow`): the message with its sent characters
-set apart, a bar pacing through it, and what waits behind it, behind a pill with the keyer speed
-that opens a quick speed dialog. The strip slides down with the first message; a message leaves it
-the moment it ends (or is stopped), and the strip itself STAYS — it goes away when the operator
-sends it away (the X, `KEYER`, the Station dialog's switch), never on a timer, since the buttons on
-it are what the next message is sent from and a strip that vanished mid-QSO is one the operator has
-to summon back before they can key at all. That switch is a setting (`keyerAreaShown`), so the strip
-an operator opened is there at the next launch. The pill's dialog also takes a free-text message.
-While nothing is keying the area offers a button per message — the function keys for a mouse — and
-`KEYER` (or `MACROS`) in the call field, like the Station dialog's toggle, brings the area up without
-sending anything; the Station dialog's keyer row carries a switch bound to the same `keyerAreaShown`
-flag. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
+**The keyer is one of the logging panel's secondary controls** (`keyerHostControl`, handed to the
+strip as a `ControlStripSettings.hostControls` entry and placed after Radio; the operator can hide
+it). Its chip reads the speed ("25 WPM", key icon) or "Voice" (microphone), or what is going out
+while something is. Its panel holds what starts a message: Enter Sends Messages, a button per
+message up to the last one with anything in it — one with nothing to send disabled, "M1".."M8" for
+one with no label — then keyboard mode, the repeat switch and the way to the message dialog.
+`KEYER` (or `MACROS`) in the call field opens it without sending anything.
+
+**What is going out is shown** at the bottom of the logging panel's info area, under the stats or
+the call info (`KeyerArea`, through `ControlStripSettings.infoAreaFooter` — outside the area's
+cross-fade, so a keystroke in the call field does not remount it): the keyer's icon, the message
+with its sent characters set apart, a bar pacing through it, and what waits behind it. The line
+shows while something is going out — a message, a voice memory, the wait in a repeat, keyboard
+mode's field — and slides away once nothing is. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
 `CatService.cwProgress`) with a per-character timeline from the same PARIS arithmetic the pacing
 uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
 to the extent the pacing is, and a paddle-stop at the rig is invisible to it.
@@ -1666,15 +1672,16 @@ answers a caller in one key, is not laid out for. It is added once, ever: a set 
 renamed or deleted stays that way when the experiment comes back.
 
 **Message 1 can repeat**, and only message 1: it is the CQ, and a repeating exchange would key over
-the contact it is answering. `cwRepeatDelay` (and `voiceRepeatDelay` for the memories) is the wait
-between the message ENDING and it going again — from the end, not from the keypress, or a chain
+the contact it is answering. A switch (`cwRepeat`, `voiceRepeat`) says whether it does, and a
+cooldown of one to ten seconds (`cwRepeatDelay`, `voiceRepeatDelay`) is the wait between the message
+ENDING and it going again — from the end, not from the keypress, or a chain
 would key over its own message. One engine serves both keyers (`CatService.armKeyerRepeat`): the
 send is supplied by whoever armed it, since rendering a template against the draft is the operation
-view's job while a voice memory needs nothing prepared. The keyer area shows the wait as a bar that
-EMPTIES, with the buttons down for the whole chain — including the render-long gap between a wait
+view's job while a voice memory needs nothing prepared. The keyer line shows the wait as a bar that
+EMPTIES, for the whole chain — including the render-long gap between a wait
 ending and the next message reaching the radio, which is why `keyerRepeatActive` is a notifier and
 not a getter. A chain ends on Escape or a stop, on a tap of the countdown, on another message, on a
-call entered, on the setting going to No, and in any case after five minutes — an unattended CQ that
+call entered, on the switch going off, and in any case after five minutes — an unattended CQ that
 keys forever is a transmitter nobody is watching. A keypress by itself stops nothing.
 
 **A chain also ends when the VFO leaves its frequency**: more than 50 Hz for CW, 300 Hz for voice,
@@ -1695,7 +1702,7 @@ What stops is decided by what the operator did, the same for CW and voice:
   The operation view's key handler does the stopping; the logging fields, which hear the same
   keystroke after it, read its answer (`escapeStoppedKeying`) rather than asking again, since asked
   again the stop just made reads as nothing running and the Escape also ends a QSO edit.
-- **A tap** on the keyer area's message line stops that keyer's message and everything behind it; a
+- **A tap** on the keyer line's message stops that keyer's message and everything behind it; a
   tap on the countdown ends the repeat.
 - **A call entered** — any operator input into the callsign field: a key, the on-screen keyboard, a
   paste, the numbers row (`LoggingSession.onCallTyped`, which hears none of the panel's own writes,
@@ -1922,7 +1929,7 @@ and a refused tune is worse than a late one.
 ## Voice keying
 
 The same eight keys, in a Phone mode: while the DRAFT contact's mode is Phone (`superModeForMode`
-— SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer area's buttons play the radio's own
+— SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer control's buttons play the radio's own
 voice memories, Escape stops one, and the **Phone Keyer** dialog names each memory and — on a radio
 whose CAT can — records into it, beside memory 1's repeat and Enter Sends Messages, which apply as
 they change. Under the same `keyer` experiment (renamed "Keying"; `VOICE` is an
@@ -1983,7 +1990,7 @@ the question mark away (a radio can need more than a second to key up), and the 
 sends the stop too — a stop to an idle radio costs nothing, and a memory on the air behind a cleared
 strip would be one the operator cannot stop. A ceiling stop leaves a developer diagnostic on the
 node, since a memory that keeps ending at fifteen seconds is an entry missing its length.
-The keyer area paces a memory with a bar once it knows how long it runs, and an INDETERMINATE bar
+The keyer line paces a memory with a bar once it knows how long it runs, and an INDETERMINATE bar
 until then: a bar pacing a duration the app guessed would be a guess dressed as a measurement.
 It learns the duration by timing an ordinary play — the command out, the radio's own end signal in
 (`voiceMessageDurationMs1..8`, milliseconds because a length rounded to the second finishes visibly
@@ -2059,6 +2066,172 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   its row. Until any of these has said, the memories are offered.
 - The **placeholder radio** "plays" for four seconds and records until stopped, so the surfaces run
   on a web build.
+
+## The computer's voice keyer
+
+**The messages can be recordings on this computer instead** (computer_voice_keyer.dart, desktop
+only, under the same `keyer` experiment). Where phone messages come from is **Phone Keying**
+(`VoiceKeyingSource`, `voiceKeying` in the Radio settings group): None, the radio's own memories
+(offered where the radio has some), or audio on this computer (offered where this device can play
+it), picked on the Station panel's Phone Keying line and atop the Phone Keyer pane. It is radio1's:
+under SO2R, Radio B plays its own memories whatever is picked (`CatKeying.ownsVoiceSource`), and
+None says so ("Phone keying is off") rather than blaming the radio. The recordings are kept in
+**sets** the way CW messages are. With the computer picked, the Phone Keyer pane's **Message Set**
+picker, the last row above the messages, lists **Sound files on this computer** — the default set,
+always there, neither renamed nor deleted, its name from the translations — then the operator's
+sets (`voiceMessageSets`: an id, a name and eight labels each), and the pick (`voiceMessageSet`)
+is one for the app, like CW's: a recording is the operator's voice and not a rig's, so swapping
+radios keeps the CQ. A stored pick whose set is gone means the default set, never another of the
+operator's. The sets are named and recorded with no radio connected at all. A set's recordings
+are `<app data>/voice-messages/<set id>/<n>.wav` — under the id, so a rename moves nothing. A new
+set copies the set in use, recordings and labels, as a new CW set copies the one on screen. A
+message's dialog has **Open File**, which opens the
+folder its file is in — made first if needed, the file selected where the system can (`open -R`,
+`explorer /select`; Linux's `xdg-open` only opens the folder) — rather than the file, which the
+system would play. Unlike CW's, nothing in the pane is a draft: a recording is
+written as it ends, so a Cancel could not undo it, and deleting a set — which deletes its
+recordings — asks first. The sound devices and the two delays stay on the radio's equipment node,
+because they describe this shack's wiring — which sound card feeds which radio — and equipment is
+device-local, never synced; they are edited in their own dialog, behind the button beside Phone
+Keying's pick.
+
+**A `VoiceKeyer` like the radio's own.** `VoiceKeyerSession` is the radio's memories;
+`ComputerVoiceKeyer` is the other implementation of the same interface, built by
+`CatKeying.voiceKeyerFor` while the computer is Phone Keying's pick, for radio1 when its session is a `PttSession` — the
+only way it can key. Radio1 only: SO2R's Radio B, or a radio this device only offers a peer, plays its own
+memories, since a keyer for it would take its sound device or DAX source and play this desk's
+recordings into it. A radio whose session cannot key plays nothing while the computer is picked: never its
+own memories in their place, and the pane says why. Recording keys nothing, so with no radio1 to key — none
+picked, or one not connected over a session that can — a `ComputerVoiceKeyer` with no `PttSession`
+records the messages (`CatKeying._recorder`), from the system default input until a radio's entry picks
+one, and plays nothing. The radio's own keyer takes over as it connects, ending a recording running
+there, which is kept. A keyer dropped mid-message — its radio going — ends a repeat of that message
+rather than starting its wait. While the computer is picked the radio's own list of
+memories (a FlexRadio's DVK names) is not read at all, or a label typed for a recording would rename
+a slot on the radio. `CatKeying.syncComputerKeyers` builds and drops the keyers on the service's own
+notifications (the source or a set picked, a session opened or closed), never inside a getter: dropping one stops its message, and a report of that from inside a
+widget's build would rebuild others mid-build. Every surface reaches it the way it reaches a radio's
+memories: F1-F8, the keyer control, the dialog, repeat, Enter Sends Messages, one transmitter at a
+time, a peer's request. Eight memories, always; recording always works, from the picked input or
+the system default; and a message's length is its file's, read before it has ever played, so
+nothing is measured (a timed play would add the delays to it). Lengths are cached by path and
+modification time: the surfaces ask for every message's length on every rebuild.
+
+**The radio's transmit audio is switched to the computer where CAT can do it.** Keyed plainly, a
+radio set up for its microphone transmits the microphone, and the recording never goes out — a Flex
+with `dax=0` sends its idle mic input through the speech processor, which comes out as hiss. So a
+session that can switch implements `ComputerAudioPttSession`, and the keyer keys through it. A Flex
+(flex_dax_switch.dart) sends `transmit set dax=1` before `xmit 1` and `transmit set dax=0` after `xmit 0`, unless its
+status already said `dax=1`, which is left alone. The `dax=0` waits for the interlock to report the
+radio back to receive: sent while it is still unkeying, it is answered with success and not
+applied, which on a FLEX-6600 left DAX on, and the operator's mic dead, after every message. A
+`dax=0` that the next status still answers with `dax=1` is sent again, up to three times, then
+reported (`FlexDaxLeftOn`). A teardown while keyed sends it straight after its unkey, never before
+(the mic would go out between them), and cannot wait, so there it may not take: the debt is kept
+by the radio's address, and the next session to that radio sends it once the radio reports
+receive with DAX still on. A TS-590SG keys with `TX1;` (DATA SEND,
+the audio its data menu routes from ACC2 or USB) and unkeys with the same `RX;`; the entry pins it
+(`dataSend`), because the Kenwood driver serves rigs whose `TX` takes no parameter. Everything else
+keys plainly, and the pane asks the operator to set the radio's transmit audio themselves.
+
+**A Flex takes the recording over the network, with no sound device** (flex_dax_tx.dart). A
+session that can carry the audio itself implements `NetworkTransmitAudioSession`, and its output is
+offered first in the picker as **Directly to the radio** — and is what plays when no output is
+picked. The Flex session creates its own `dax_tx` stream (`stream create type=dax_tx`, owned by this
+client, `tx=0`), claims it as the radio's DAX source with `stream set <id> tx=1` only as a message starts — the
+stream is made as the radio connects, and claimed then it would take a digital-mode program's DAX
+transmit audio on the same radio — and again for each message, since another client can claim it
+back — and sends the recording on the UDP socket its
+meters arrive on, to port 4991. The packet is what the radio's own DAX audio carries (class
+`0x534C03E3`, 128 frames of 24 kHz stereo float32, big-endian, UTC seconds and a sample count) but
+VITA type 1, IF data with a stream id: as type 3, the type the radio's own packets carry, a
+FLEX-6600 transmits nothing. Packets are paced against a monotonic clock, four ahead; nothing goes
+out before the radio grants the stream, and the message waits for the grant rather than losing its
+start. A radio keyed with nothing arriving on its DAX transmits noise, so the output is fed silence
+whenever the radio may be on the air: from just before the key (`SilenceFedOutput.startSilence`,
+which the keyer calls, and which decodes the recording there, before the key — decoded as it
+plays, the feed would stop for as long as that takes; a file that will not decode is refused
+unkeyed), through the key-up delay, into the message on the same clock, and for a
+second after it ends or stops, while the radio unkeys. The output goes with the session's
+socket, and closing it removes the stream. It is also gone — the keyer told the radio is not taking
+its audio, and the CAT recording why — when the radio refuses the stream or the claim, does not
+answer `stream create` within two seconds, or a packet will not send. A GUI client's virtual sound device (AetherSDR's "TX")
+is the other route, and on that FLEX-6600 no audio played into it reached the transmitter, with
+DAX on or off.
+
+**A play keys, waits, plays, waits, unkeys.** The radio is keyed over CAT, the audio starts after
+the **key-up delay** (250 ms unless changed: a radio, and an amplifier behind it, switch to
+transmit before the first syllable can go out), and the radio is unkeyed after the **unkey delay**
+past the end (150 ms: the end is reported when miniaudio has handed the device the last of the
+file, and the device's own buffer is still sounding — which is why the device is never closed at
+the end of a file). Any stop — Escape, another message, a disconnect, picking another set — stops the audio
+and unkeys; a recording keeps to the set it started in. `'` stops it too and then keys for the operator's own voice,
+as it does over a radio's memory (§ PTT): the radio drops and comes back in one press. A radio that said
+it was transmitting and then says it is not has dropped the key itself (its time-out timer) and the
+message stops with it, the rule `CatPtt` follows (§ PTT). A play whose end never comes is stopped at
+its own length plus the delays plus two seconds. A play that fails once keyed — the device fails
+as the audio starts, goes away, or the radio stops taking its audio — unkeys and ends doubtful, as
+a refusal does, and a doubtful end stops a repeat: played again it would fail again, keying the
+radio for its key-up delay each time. While it holds the key, the radio reads as on the
+air (`computerKeyed`), the same as for the app's PTT key, for a radio that cannot report TX.
+
+**The radio's sound device is held open.** Opening a device costs ~10 ms on macOS (more the first
+time, and unmeasured elsewhere), which inside a message would come out of the key-up delay. So
+`halo_audio`'s `AudioOutput` opens the device and keeps it running, silent between files; a play
+is a file open and a decoder swap. The keyer opens it as it is built, closes it after **five
+minutes** with nothing played (`computerVoiceIdleRelease`), and opens it again before keying the
+next message. A device that goes away under it — unplugged — stops a message going into it and is
+looked for again on the next play. The device list is read once and again only when a stored
+device is not on it or will not open.
+
+**Nothing is keyed until the audio has somewhere to go.** The output device is matched before the
+radio is keyed — by id, then by name when the id changed, never by a name two devices share — and a
+message with no recording, no device picked, or its device unplugged is refused the way a radio
+refuses a memory: shown doubtful for a second, the radio never keyed, and the reason on the Phone
+Keyer dialog. **The system default is never a stand-in for the output**: it is the laptop's speakers
+far more often than the radio, and a CQ played into them while the radio transmits silence is worse
+than no CQ.
+
+**A recording does not replace a message until it is done.** It records off the air (nothing is
+keyed) into `<n>.wav.recording`, 16-bit mono 48 kHz, and is moved over the message only when it
+stops with a readable file of at least 300 ms whose loudest sample rose above about -60 dBFS — a
+Record pressed and stopped by mistake, or a muted input or a refused microphone permission (which
+macOS answers with silence, not an error), replaces nothing, and the silent one says so. A kept
+recording is **trimmed and normalized** first (`halo_audio_normalize`). A recording runs from
+Record to Stop, and the room before and after the voice, raised with it, is quiet through the
+computer's speakers and hiss on the air once a radio's speech processor lifts it. So it is cut to
+the sound in it: 10 ms stretches whose RMS is 12 dB above its noise floor (the quietest tenth of
+them), or within 20 dB of its loudest stretch when that is the lower bar — a recording with little
+room in it keeps its soft speech — joined across gaps of up to 150 ms, and counted only where that
+spans 40 ms. The join keeps a soft word that dips under the line between its parts; the 40 ms drops
+the click of Record or Stop, which a mouse beside the mic puts at an end of every recording, and
+which would otherwise hold in all the room between it and the voice. The last 100 ms is dropped
+before anything is measured, because Stop is pressed there and its click can run past 40 ms. 100 ms
+is kept before the sound and 200 ms after, faded in and out. The line is set from the room, not the voice's peak: a
+laptop mic's room comes within 30 dB of the voice, and a line set from the peak kept 0.6 s of room
+before it. Then it is rewritten with the loudest sample of what is kept at
+-1 dBFS — a click trimmed away setting the gain would leave the voice as quiet as before — raised by at most +20 dB and never lowered. A laptop mic at its default gain records a voice
+peaking around -15 dBFS, which sounds fine through speakers turned up and barely moves a radio's
+transmit audio, which nothing turns up; the cap keeps a faint recording from going out as room
+noise. A recording that will not normalize is kept as recorded. Sound files put in a set's folder by
+hand play as they are. It stops by itself at a minute. **Listen** in a message's dialog plays it
+on the computer's default output, unkeyed, so the operator hears what they recorded without putting
+it on the air.
+
+**Elsewhere, the radio must take its transmit audio from the sound device.** Where the session
+cannot switch it (above), a CAT key does not say where the audio comes from: an Icom in SSB
+transmits its microphone unless DATA OFF MOD includes USB, and a Yaesu needs its SSB mod source on
+REAR/USB — both from the manuals, neither yet met on hardware. The pane says so; per-brand notes
+and further switching sessions follow hardware time.
+
+**halo_audio** (`packages/halo_audio`) is miniaudio compiled into the plugin through a flat C shim,
+arranged like halo_quickjs ([js-engine.md](js-engine.md) § 7): statically linked into the macOS app,
+a plugin library on Windows and Linux, a host build for `flutter test`, and nothing on the web or
+mobile (`HaloAudio.isSupported`). On Apple it links CoreAudio rather than dlopening it, which
+notarization refuses. A device is named by its miniaudio id written as hex, stable across reboots on
+CoreAudio and WASAPI, not on every Linux backend — which is why the name is stored beside it.
+Recording needs the macOS `device.audio-input` entitlement and a microphone usage string; playing
+needs nothing.
 
 ## PTT
 
@@ -2151,14 +2324,12 @@ radio that refused the key (TX inhibit) likewise reads as on the air until `'`, 
 — the cost of reading nothing into silence. The antenna lock and Smart VFO Snap read it (§ The alert,
 and the two things TX state is allowed to stop), so neither acts on a transmitter the app just keyed.
 The indicators read it too, and ALSO light for a key the app holds on any other radio — one left behind
-when Main VFO moved is still the operator's to drop: the Radio chip's glyph becomes a red dot and the
-keyer area's Voice pill reads "TX" beside one, at the width "Voice" gives it, so the strip does not
-shift each time the operator keys.
+when Main VFO moved is still the operator's to drop: the Radio chip's glyph becomes a red dot.
 
 ## Keying a peer's radio
 
 A remote radio picked as Main VFO (§ A paired device's panel, over the peer link) is keyed as well
-as tuned (HALO-585): F1-F8, the keyer area, `WPM`, Escape and both message dialogs work against it
+as tuned (HALO-585): F1-F8, the keyer control, `WPM`, Escape and both message dialogs work against it
 exactly as against a rig on this desk, because every one of them reads nothing but `CatService` —
 `canKeyCw`, `sendCw`, `cwProgress`, `canPlayVoice`, `playVoiceMemory` — and that is where the one
 decision about which side keys is made (`app/lib/services/cat/cat_keying.dart`, with the far side's
@@ -2181,7 +2352,7 @@ device's names and will not edit them (`CatService.voiceMessagesAreLocal`).
 **A peer's key is a default, not a designation.** The key in use is stored per radio in use
 (§ The picks belong to the radio), and a peer's keying is no node of this station to name — so
 `peerKeyIsInUse` answers "nothing was chosen for this radio, and the peer says it keys". An explicit
-None still means None, and a local key chosen for that radio still wins; the Key in Use picker
+None still means None, and a local key chosen for that radio still wins; the CW Keying picker
 lists the peer as `Key on ‹device›` so the choice can be undone. This is also why an ANSWER is
 stored even when it matches the default it replaces (`setDesignated`): "nothing chosen" and "chose
 None" resolve alike today and decide differently tomorrow.

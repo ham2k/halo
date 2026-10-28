@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The frame around the logging panel's information area: the room it
-// reserves, how its content grows and cross-fades, where the strip above the
-// entry row goes, and where the panel's second action button sits. The panel
+// reserves, how its content grows and cross-fades, where the host's footer
+// goes, and where the panel's second action button sits. The panel
 // decides WHAT the area shows and WHICH action the button is; this widget
 // only decides where they go and how they get there.
 
 import 'package:flutter/material.dart';
 
-import 'logging_controls_metrics.dart';
 import 'semantic_id.dart';
 import 'spacing.dart';
 
@@ -26,7 +25,7 @@ class LoggingInfoFrame extends StatefulWidget {
     required this.buttonDiameter,
     required this.leftieMode,
     required this.signature,
-    required this.strip,
+    this.footer,
     required this.actionButton,
     required this.child,
     this.entryRowAbove = false,
@@ -45,23 +44,23 @@ class LoggingInfoFrame extends StatefulWidget {
   /// 1 Hz tick). Only a change here cross-fades — see [_LoggingInfoFrameState].
   final String signature;
 
-  /// Whatever the host wants directly above the entry row, under the area —
-  /// it pads itself inside its own slide, so nothing is spent while it is
-  /// not showing.
-  final Widget? strip;
+  /// Whatever the host wants under the content, inside the area's own room —
+  /// the app's keyer line. Outside the cross-fade: a change of content is
+  /// not a change of what the host shows, and a footer remounted with every
+  /// call-field keystroke would lose its state each time. It pads itself
+  /// inside its own slide, so nothing is spent while it is not showing.
+  final Widget? footer;
 
-  /// The panel's second action button, pinned to the bottom of the area AND
-  /// the strip together — directly over the log button — rather than
-  /// floating above the strip.
+  /// The panel's second action button, pinned to the bottom of the area —
+  /// directly over the log button.
   final Widget actionButton;
 
   /// The area's content.
   final Widget child;
 
   /// The entry row is ABOVE this frame rather than below it — a panel drawn
-  /// above its QSO list. The strip still sits against the entry row, so it
-  /// comes first, and the action button pins to the top edge, still directly
-  /// beside the log button.
+  /// above its QSO list. The action button pins to the top edge, still
+  /// directly beside the log button; the footer stays under the content.
   final bool entryRowAbove;
 
   @override
@@ -110,23 +109,23 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
                     duration: const Duration(milliseconds: 120),
                     curve: Curves.easeOut,
                     alignment: Alignment.topLeft,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 120),
-                      layoutBuilder: (currentChild, previousChildren) => Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
-                      child: KeyedSubtree(key: ValueKey(_generation), child: widget.child),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 120),
+                          layoutBuilder: (currentChild, previousChildren) =>
+                              Stack(alignment: Alignment.topLeft, children: [...previousChildren, ?currentChild]),
+                          child: KeyedSubtree(key: ValueKey(_generation), child: widget.child),
+                        ),
+                        ?widget.footer,
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-            // Kept off the log button's column: the strip ends over the
-            // rightmost field (its close button sits there). Same reserve the
-            // entry row makes — the button's diameter plus gap.
-            if (widget.strip case final strip?)
-              Padding(
-                padding: EdgeInsets.only(right: widget.leftieMode ? 0 : reserve + logButtonGap, left: widget.leftieMode ? reserve + logButtonGap : 0),
-                child: strip,
-              ),
           ],
         ),
         Positioned(

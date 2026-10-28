@@ -42,28 +42,28 @@ void main() {
     expect((await services.handleCommandAction('setKeyerSpeed', {'wpm': 20}))?.text, contains('EXP KEYER'));
     expect(services.cat.canKeyCw, isFalse, reason: 'without the experiment nothing is even the key in use');
     expect((await services.handleCommandAction('showKeyer'))?.text, contains('EXP KEYER'));
-    expect(services.cat.keyerAreaShown.value, isFalse);
+    expect(services.cat.keyerOpenRequests.value, 0);
   });
 
-  test('showKeyer fails out loud with nothing that can key, and bumps the area request otherwise', () async {
+  test('showKeyer fails out loud with nothing that can key, and asks the panel to open the keyer otherwise', () async {
     final services = await buildServices();
     await services.settings.setExperimentEnabled('keyer', true);
     expect((await services.handleCommandAction('showKeyer'))?.failed, isTrue);
     final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
-    expect(services.cat.keyerAreaShown.value, isFalse);
-    // From Home there is no logging panel to hold the area: refused, not
+    expect(services.cat.keyerOpenRequests.value, 0);
+    // From Home there is no logging panel to open the keyer in: refused, not
     // confirmed.
     expect((await services.handleCommandAction('showKeyer'))?.text, 'Open an operation to use the CW keyer');
-    expect(services.cat.keyerAreaShown.value, isFalse);
+    expect(services.cat.keyerOpenRequests.value, 0);
 
     final context = services.openOperationContext('op-1');
     addTearDown(() => services.closeOperationContext(context));
     // The view fills this in once its operation loads; here that is the test.
     context.operation = {'uuid': 'op-1'};
     expect(await services.handleCommandAction('showKeyer'), isNull);
-    expect(services.cat.keyerAreaShown.value, isTrue);
+    expect(services.cat.keyerOpenRequests.value, 1);
   });
 
   test('with a keyer-capable radio connected, the speed reaches it and the hook\'s confirm stands', () async {

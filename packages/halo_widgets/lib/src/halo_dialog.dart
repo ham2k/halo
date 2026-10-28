@@ -237,7 +237,15 @@ Widget haloDialogFooterRow({Widget? cancel, Widget? destructive, Widget? help, W
 /// A pane that carries this is closed BY it (`showModalPane`'s
 /// `closeButton: false` takes the header's X away), so the way out is one
 /// button in the place every dialog puts it rather than two in two places.
-Widget haloDialogFooterBand(BuildContext context, {Widget? cancel, Widget? destructive, Widget? secondary, List<Widget> actions = const [], Widget? tools}) {
+Widget haloDialogFooterBand(
+  BuildContext context, {
+  Widget? cancel,
+  Widget? destructive,
+  Widget? help,
+  Widget? secondary,
+  List<Widget> actions = const [],
+  Widget? tools,
+}) {
   final theme = Theme.of(context);
   return Container(
     decoration: BoxDecoration(
@@ -251,7 +259,7 @@ Widget haloDialogFooterBand(BuildContext context, {Widget? cancel, Widget? destr
       top: false,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
-        child: haloDialogFooterRow(cancel: cancel, destructive: destructive, secondary: secondary, actions: actions, tools: tools),
+        child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions, tools: tools),
       ),
     ),
   );

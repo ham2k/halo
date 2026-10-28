@@ -739,6 +739,9 @@ class DesignationDropdown extends StatelessWidget {
   /// from its own list is one that cannot be re-chosen.
   final List<({String value, String label})> extras;
 
+  /// On a dialog's band, where a field takes the surface as its fill.
+  final bool filled;
+
   const DesignationDropdown({
     super.key,
     required this.label,
@@ -748,16 +751,18 @@ class DesignationDropdown extends StatelessWidget {
     required this.noneLabel,
     required this.onChanged,
     this.extras = const [],
+    this.filled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final known = nodes.any((n) => n.uuid == selected) || extras.any((e) => e.value == selected);
+    final decoration = poloFieldDecoration(context, label);
     return DropdownButtonFormField<String?>(
       isExpanded: true,
       initialValue: known ? selected : null,
       icon: dropdownTrailingIcon,
-      decoration: poloFieldDecoration(context, label),
+      decoration: filled ? decoration.copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface) : decoration,
       menuMaxHeight: dropdownMenuMaxHeight(context),
       items: [
         DropdownMenuItem<String?>(value: null, child: Text(noneLabel)),

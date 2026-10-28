@@ -7,23 +7,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/src/logging_controls_info_frame.dart';
-import 'package:halo_widgets/src/logging_controls_metrics.dart';
+import 'package:halo_widgets/src/spacing.dart';
 
-const _stripKey = ValueKey('strip');
+const _footerKey = ValueKey('footer');
 const _buttonKey = ValueKey('button');
 
-Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withStrip = false}) => MaterialApp(
+Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withFooter = false}) => MaterialApp(
   home: Scaffold(
     body: LoggingInfoFrame(
       buttonDiameter: diameter,
       leftieMode: leftieMode,
       signature: signature,
-      strip: withStrip ? const SizedBox(key: _stripKey, height: 10) : null,
+      footer: withFooter ? const _Footer(key: _footerKey) : null,
       actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
       child: const Text('content'),
     ),
   ),
 );
+
+/// A footer with state of its own, as the keyer line has.
+class _Footer extends StatefulWidget {
+  const _Footer({super.key});
+
+  @override
+  State<_Footer> createState() => _FooterState();
+}
+
+class _FooterState extends State<_Footer> {
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 10);
+}
 
 /// The switcher's CURRENT child, keyed by the generation — the last one in
 /// its stack, since an outgoing child is still there mid-fade.
@@ -49,21 +62,30 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('the area is at least the button tall, keeps clear of its column, and so does the strip', (tester) async {
-    await tester.pumpWidget(_host(diameter: 60, withStrip: true));
+  testWidgets('the area is at least the button tall, and its content and footer keep clear of its column', (tester) async {
+    await tester.pumpWidget(_host(diameter: 60, withFooter: true));
     expect(tester.getSize(find.byType(ConstrainedBox).first).height, greaterThanOrEqualTo(60));
     final frame = tester.getRect(find.byType(LoggingInfoFrame));
     expect(tester.getTopRight(find.byKey(_buttonKey)).dx, frame.right, reason: 'pinned to the trailing edge');
-    expect(tester.getBottomRight(find.byKey(_buttonKey)).dy, frame.bottom, reason: 'pinned under the strip too');
-    expect(
-      tester.getTopRight(find.byKey(_stripKey)).dx,
-      frame.right - 60 - logButtonGap,
-      reason: 'the strip ends over the rightmost field, off the button\'s column',
-    );
+    expect(tester.getBottomRight(find.byKey(_buttonKey)).dy, frame.bottom, reason: 'pinned to the bottom edge');
+    expect(tester.getTopRight(find.byKey(_footerKey)).dx, frame.right - 60 - Space.md, reason: 'the footer stops short of the button, as the content does');
+    expect(tester.getTopLeft(find.byKey(_footerKey)).dy, greaterThanOrEqualTo(tester.getBottomLeft(find.text('content')).dy), reason: 'under the content');
 
-    await tester.pumpWidget(_host(diameter: 60, withStrip: true, leftieMode: true));
+    await tester.pumpWidget(_host(diameter: 60, withFooter: true, leftieMode: true));
     expect(tester.getTopLeft(find.byKey(_buttonKey)).dx, frame.left);
-    expect(tester.getTopLeft(find.byKey(_stripKey)).dx, frame.left + 60 + logButtonGap);
+    expect(tester.getTopLeft(find.byKey(_footerKey)).dx, frame.left + 60 + Space.md);
+  });
+
+  // The keyer line is the footer: inside the cross-fade it would be torn down
+  // and slide in again with every call-field keystroke, and keyboard mode
+  // with it.
+  testWidgets('the footer keeps its state when the content changes', (tester) async {
+    await tester.pumpWidget(_host(signature: 'stats', withFooter: true));
+    final before = tester.state(find.byKey(_footerKey));
+    await tester.pumpWidget(_host(signature: 'call:W1AW', withFooter: true));
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byKey(_footerKey)), same(before));
+    expect(find.byKey(_footerKey), findsOneWidget, reason: 'not one per fading copy');
   });
 
   testWidgets('the action button takes the diameter it is given, and a null callback disables it', (tester) async {

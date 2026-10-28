@@ -2409,7 +2409,6 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get statusError => 'A ligação falhou';
 	@override String get currentRadioSettings => 'Configurações atuais do rádio';
 	@override String get notSupportedByThisRadio => 'Não suportado por este rádio';
-	@override String get keyerRowLabel => 'Manipulador';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Voz';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memórias no rádio';
@@ -2428,7 +2427,6 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get newKeyer => 'WinKeyer (K1EL ou compatível)';
 	@override String keyViaRadio({required Object radio}) => 'Manipulador CAT em ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Chave em ${device}';
-	@override String get cwKeyerArea => 'Área do manipulador';
 	@override String get trackStationInfo => 'Guardar Info da Estação em cada QSO';
 	@override String get includeStationInfoInAdif => 'Incluir nas exportações ADIF';
 	@override String get whatToTrack => 'O que guardar?';
@@ -3285,12 +3283,9 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	@override String get setEsm => 'Mensagens ESM';
 	@override String get setSaved => 'As Minhas Mensagens';
 	@override String get repeat => 'Repetir Mensagem #1';
-	@override String get repeatOff => 'Não';
-	@override String repeatAfter({required Object n}) => 'Após ${n} segundos';
 	@override String get repeatWait => 'A repetir';
 	@override String get keyboard => 'Escrever para enviar';
 	@override String get keyboardField => 'Escrever para enviar';
-	@override String get closeArea => 'Fechar a área do manipulador';
 	@override String get help => 'Ajuda';
 	@override String get helpTitle => 'Escrever Mensagens CW';
 	@override String get helpIntro => 'As mensagens podem usar modelos com os seguintes valores:';
@@ -3329,7 +3324,6 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	// Translations
 	@override String get title => 'Mensagens de Voz';
 	@override String get notSupported => 'O rádio atual não suporta mensagens de voz';
-	@override String get description => 'Usa as memórias de voz do rádio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memória de voz (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -3341,8 +3335,6 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	@override String get recordButton => 'Gravar';
 	@override String get stopButton => 'Parar';
 	@override String get repeat => 'Repetir Mensagem #1';
-	@override String get repeatOff => 'Não';
-	@override String repeatAfter({required Object n}) => 'Após ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas sobre o ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Estas memórias estão no rádio de ${device}. Os nomes e durações pertencem a esse dispositivo.';
 	@override String get namedOnRadio => 'Guardado no rádio, onde os outros clientes também o veem.';
@@ -4668,12 +4660,9 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.setEsm' => 'Mensagens ESM',
 			'settings.radio.cwMessages.setSaved' => 'As Minhas Mensagens',
 			'settings.radio.cwMessages.repeat' => 'Repetir Mensagem #1',
-			'settings.radio.cwMessages.repeatOff' => 'Não',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Após ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'A repetir',
 			'settings.radio.cwMessages.keyboard' => 'Escrever para enviar',
 			'settings.radio.cwMessages.keyboardField' => 'Escrever para enviar',
-			'settings.radio.cwMessages.closeArea' => 'Fechar a área do manipulador',
 			'settings.radio.cwMessages.help' => 'Ajuda',
 			'settings.radio.cwMessages.helpTitle' => 'Escrever Mensagens CW',
 			'settings.radio.cwMessages.helpIntro' => 'As mensagens podem usar modelos com os seguintes valores:',
@@ -4703,7 +4692,6 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilhas //: o TU sai depois de o contacto ser registado, por isso agradece, depois chama a próxima estação da pilha e envia o seu câmbio, ou pede de volta um parcial (TU KR?); sem nada na pilha, só TU',
 			'settings.radio.voiceMessages.title' => 'Mensagens de Voz',
 			'settings.radio.voiceMessages.notSupported' => 'O rádio atual não suporta mensagens de voz',
-			'settings.radio.voiceMessages.description' => 'Usa as memórias de voz do rádio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memória de voz (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
@@ -4715,8 +4703,6 @@ extension on TranslationsPt {
 			'settings.radio.voiceMessages.recordButton' => 'Gravar',
 			'settings.radio.voiceMessages.stopButton' => 'Parar',
 			'settings.radio.voiceMessages.repeat' => 'Repetir Mensagem #1',
-			'settings.radio.voiceMessages.repeatOff' => 'Não',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Após ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas sobre o ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Estas memórias estão no rádio de ${device}. Os nomes e durações pertencem a esse dispositivo.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Guardado no rádio, onde os outros clientes também o veem.',
@@ -5125,18 +5111,17 @@ extension on TranslationsPt {
 			'settings.station.n3fjpTroubleshooting' => 'Isto liga a **um programa de registo N3FJP a correr no seu computador**, não diretamente ao rádio — é o N3FJP que fala com o rádio.\n\n- **A API do programa tem de estar ligada**: Settings → Application Program Interface, assinale **TCP API Enabled**.\n- **A porta** é 1100, a menos que a tenha alterado aí.\n- **O N3FJP tem de ter uma interface de rádio configurada** para seguir ou sintonizar o rádio. Sem ela, só reporta o que é escrito na sua janela de entrada.\n- O N3FJP só reporta banda, modo e frequência: nem potência, nem estado de transmissão.\n\nEsta entrada foi escrita a partir da API publicada do N3FJP e ainda não foi testada com o N3FJP. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.commanderTroubleshootingTitle' => 'Se a app não conseguir ligar',
 			'settings.station.commanderTroubleshooting' => 'Isto liga ao **DXLab Commander, a correr no seu computador**, não diretamente ao rádio — é o Commander que fala com o rádio.\n\n- **O Commander já tem de estar a correr** e ligado ao rádio.\n- **O serviço de rede dele tem de estar ligado**: o botão **Net Serv** no painel Radio da janela Configuration do Commander.\n- **A porta** é 52002, a terceira porta do bloco que começa na **Base Port** do Net Serv (52000, a menos que a tenha alterado).\n- **A partir de outra máquina**, garanta que a firewall deixa passar a ligação.\n\nEsta entrada foi escrita a partir das mensagens TCP publicadas do Commander e ainda não foi testada com o Commander. Se funcionar só em parte, vale a pena reportar.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Se o rádio nunca responder',
 			'settings.station.ic705Troubleshooting' => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **palavra-passe errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a palavra-passe.',
 			'settings.station.statusStale' => 'Não responde',
 			'settings.station.statusDisconnected' => 'Não ligado',
 			'settings.station.statusConnecting' => 'A ligar…',
 			'settings.station.statusDisconnecting' => 'A desligar…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'A ligação falhou',
 			'settings.station.currentRadioSettings' => 'Configurações atuais do rádio',
 			'settings.station.notSupportedByThisRadio' => 'Não suportado por este rádio',
-			'settings.station.keyerRowLabel' => 'Manipulador',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Voz',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memórias no rádio',
@@ -5167,7 +5152,6 @@ extension on TranslationsPt {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL ou compatível)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Chave em ${device}',
-			'settings.station.cwKeyerArea' => 'Área do manipulador',
 			'settings.station.trackStationInfo' => 'Guardar Info da Estação em cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir nas exportações ADIF',
 			'settings.station.whatToTrack' => 'O que guardar?',

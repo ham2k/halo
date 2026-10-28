@@ -71,7 +71,15 @@ const kenwoodAntennaReadEvery = 5;
 
 class KenwoodSession
     with _Lab599
-    implements ReadBackSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
+    implements
+        ReadBackSession,
+        CwKeyerSession,
+        VoiceKeyerSession,
+        ComputerAudioPttSession,
+        AntennaTunerSession,
+        PassbandSession,
+        RadioAntennaSession,
+        RawCommandSession {
   @override
   final EquipmentSink _sink;
   final bool isK4;
@@ -221,6 +229,7 @@ class KenwoodSession
     this._voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     this.dataMode = false,
+    this.dataSend = false,
     this.passbandDialect,
     this.antennaDialect,
     this.modeDialect,
@@ -235,6 +244,9 @@ class KenwoodSession
 
   /// See [KenwoodDriver.dataModeKey].
   final bool dataMode;
+
+  /// See [KenwoodDriver.dataSendKey].
+  final bool dataSend;
 
   /// See [KenwoodDriver.modeDialectKey].
   @override
@@ -1191,6 +1203,18 @@ class KenwoodSession
     _keyedByUs |= on;
     _send(buildKenwoodSetTxCommand(on));
     _keyedByUs = on;
+  }
+
+  @override
+  bool get switchesToComputerAudio => dataSend;
+
+  /// DATA SEND for the message; `RX;` ends either kind of transmit, so the
+  /// radio's source needs no putting back.
+  @override
+  void setPttWithComputerAudio(bool on) {
+    if (!on || !dataSend) return setPtt(on);
+    _keyedByUs = true;
+    _send(kenwoodDataSendCommand);
   }
 
   @override

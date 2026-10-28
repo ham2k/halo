@@ -2409,7 +2409,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get statusError => '接続に失敗しました';
 	@override String get currentRadioSettings => '現在の無線機の設定';
 	@override String get notSupportedByThisRadio => 'この無線機では未対応';
-	@override String get keyerRowLabel => 'キーヤー';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => '電話';
 	@override String voiceKeyerAvailable({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer（K1ELまたは互換機）';
 	@override String keyViaRadio({required Object radio}) => '${radio}のCATキーヤー';
 	@override String keyOnDevice({required Object device}) => '${device}のキー';
-	@override String get cwKeyerArea => 'キーヤーエリア';
 	@override String get trackStationInfo => 'QSOごとにステーション情報を記録';
 	@override String get includeStationInfoInAdif => 'ADIFエクスポートに含める';
 	@override String get whatToTrack => '記録する項目';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$ja extends Translations$settings$r
 	@override String get setEsm => 'ESMメッセージ';
 	@override String get setSaved => 'マイメッセージ';
 	@override String get repeat => 'メッセージ#1を繰り返す';
-	@override String get repeatOff => 'しない';
-	@override String repeatAfter({required Object n}) => '${n}秒後';
 	@override String get repeatWait => '繰り返し中';
 	@override String get keyboard => '入力して送信';
 	@override String get keyboardField => '入力して送信';
-	@override String get closeArea => 'キーヤーエリアを閉じる';
 	@override String get help => 'ヘルプ';
 	@override String get helpTitle => 'CWメッセージの書き方';
 	@override String get helpIntro => 'メッセージでは次の値をテンプレートとして使えます：';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	// Translations
 	@override String get title => '電話キーヤーメッセージ';
 	@override String get notSupported => '現在の無線機は電話メッセージに対応していません';
-	@override String get description => '無線機のボイスメモリーを使用します';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'ボイスメモリー（${n}）';
 	@override String get labelField => 'ラベル';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String get recordButton => '録音';
 	@override String get stopButton => '停止';
 	@override String get repeat => 'メッセージ#1を繰り返す';
-	@override String get repeatOff => 'しない';
-	@override String repeatAfter({required Object n}) => '${n}秒後';
 	@override String recordHelpTitle({required Object model}) => '${model}の注意事項：';
 	@override String namedOnDevice({required Object device}) => 'これらのメモリーは${device}の無線機にあります。名前と長さはそのデバイスのものです。';
 	@override String get namedOnRadio => '無線機に保存され、他のクライアントからも見えます。';
@@ -4668,12 +4660,9 @@ extension on TranslationsJa {
 			'settings.radio.cwMessages.setEsm' => 'ESMメッセージ',
 			'settings.radio.cwMessages.setSaved' => 'マイメッセージ',
 			'settings.radio.cwMessages.repeat' => 'メッセージ#1を繰り返す',
-			'settings.radio.cwMessages.repeatOff' => 'しない',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => '${n}秒後',
 			'settings.radio.cwMessages.repeatWait' => '繰り返し中',
 			'settings.radio.cwMessages.keyboard' => '入力して送信',
 			'settings.radio.cwMessages.keyboardField' => '入力して送信',
-			'settings.radio.cwMessages.closeArea' => 'キーヤーエリアを閉じる',
 			'settings.radio.cwMessages.help' => 'ヘルプ',
 			'settings.radio.cwMessages.helpTitle' => 'CWメッセージの書き方',
 			'settings.radio.cwMessages.helpIntro' => 'メッセージでは次の値をテンプレートとして使えます：',
@@ -4703,7 +4692,6 @@ extension on TranslationsJa {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '//スタック用の推奨F3：TUはコンタクトの記録後に送信されるため、お礼の後、スタックの次の局を呼んでエクスチェンジを送るか、部分コールを聞き返します（TU KR?）。残りがなければTUのみ',
 			'settings.radio.voiceMessages.title' => '電話キーヤーメッセージ',
 			'settings.radio.voiceMessages.notSupported' => '現在の無線機は電話メッセージに対応していません',
-			'settings.radio.voiceMessages.description' => '無線機のボイスメモリーを使用します',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'ボイスメモリー（${n}）',
 			'settings.radio.voiceMessages.labelField' => 'ラベル',
@@ -4715,8 +4703,6 @@ extension on TranslationsJa {
 			'settings.radio.voiceMessages.recordButton' => '録音',
 			'settings.radio.voiceMessages.stopButton' => '停止',
 			'settings.radio.voiceMessages.repeat' => 'メッセージ#1を繰り返す',
-			'settings.radio.voiceMessages.repeatOff' => 'しない',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => '${n}秒後',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model}の注意事項：',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'これらのメモリーは${device}の無線機にあります。名前と長さはそのデバイスのものです。',
 			'settings.radio.voiceMessages.namedOnRadio' => '無線機に保存され、他のクライアントからも見えます。',
@@ -5125,18 +5111,17 @@ extension on TranslationsJa {
 			'settings.station.n3fjpTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のN3FJPロギングプログラム**に接続します。N3FJPが無線機と通信します。\n\n- **プログラムのAPIをオンにする必要があります**：Settings → Application Program Interface で **TCP API Enabled** にチェックします。\n- **ポート** は、そこで変更していない限り1100です。\n- 無線機に追従またはチューニングするには、**N3FJPに無線機インターフェースが設定されている必要があります**。設定がない場合、入力ウィンドウに入力された内容のみを報告します。\n- N3FJPが報告するのはバンド、モード、周波数のみで、出力や送信状態は報告しません。\n\nこのエントリーは公開されているN3FJPのAPIをもとに作成されており、N3FJPの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => '無線機がまったく応答しない場合',
 			'settings.station.ic705Troubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。',
 			'settings.station.statusStale' => '応答なし',
 			'settings.station.statusDisconnected' => '未接続',
 			'settings.station.statusConnecting' => '接続中…',
 			'settings.station.statusDisconnecting' => '切断中…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => '接続に失敗しました',
 			'settings.station.currentRadioSettings' => '現在の無線機の設定',
 			'settings.station.notSupportedByThisRadio' => 'この無線機では未対応',
-			'settings.station.keyerRowLabel' => 'キーヤー',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '電話',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件',
@@ -5167,7 +5152,6 @@ extension on TranslationsJa {
 			'settings.station.newKeyer' => 'WinKeyer（K1ELまたは互換機）',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}のキー',
-			'settings.station.cwKeyerArea' => 'キーヤーエリア',
 			'settings.station.trackStationInfo' => 'QSOごとにステーション情報を記録',
 			'settings.station.includeStationInfoInAdif' => 'ADIFエクスポートに含める',
 			'settings.station.whatToTrack' => '記録する項目',

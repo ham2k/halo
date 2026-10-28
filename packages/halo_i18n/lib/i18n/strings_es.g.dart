@@ -2471,7 +2471,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get notSupportedByThisRadio => 'No compatible con esta radio';
-	@override String get keyerRowLabel => 'Manipulador';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Fonía';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio';
@@ -2538,7 +2537,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL o compatible)';
 	@override String keyViaRadio({required Object radio}) => 'Manipulador CAT en ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Manipulador en ${device}';
-	@override String get cwKeyerArea => 'Área del manipulador';
 	@override String get trackStationInfo => 'Registrar datos de la estación en cada QSO';
 	@override String get includeStationInfoInAdif => 'Incluir en las exportaciones ADIF';
 	@override String get whatToTrack => '¿Qué registrar?';
@@ -3353,12 +3351,9 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get setEsm => 'Mensajes ESM';
 	@override String get setSaved => 'Mis mensajes';
 	@override String get repeat => 'Repetir mensaje #1';
-	@override String get repeatOff => 'No';
-	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String get repeatWait => 'Repitiendo';
 	@override String get keyboard => 'Escribir para transmitir';
 	@override String get keyboardField => 'Escribe para transmitir';
-	@override String get closeArea => 'Cerrar el área del manipulador';
 	@override String get help => 'Ayuda';
 	@override String get helpTitle => 'Cómo escribir mensajes de CW';
 	@override String get helpIntro => 'Los mensajes pueden usar plantillas con los siguientes valores:';
@@ -3397,7 +3392,6 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	// Translations
 	@override String get title => 'Mensajes del manipulador de fonía';
 	@override String get notSupported => 'La radio actual no admite mensajes de Fonía';
-	@override String get description => 'Esto usa las memorias de voz de la radio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memoria de voz (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -3409,8 +3403,6 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get recordButton => 'Grabar';
 	@override String get stopButton => 'Detener';
 	@override String get repeat => 'Repetir mensaje #1';
-	@override String get repeatOff => 'No';
-	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.';
 	@override String get namedOnRadio => 'Se guarda en la radio, donde también lo ven sus otros clientes.';
@@ -4764,12 +4756,9 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.setEsm' => 'Mensajes ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
 			'settings.radio.cwMessages.repeat' => 'Repetir mensaje #1',
-			'settings.radio.cwMessages.repeatOff' => 'No',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
 			'settings.radio.cwMessages.keyboardField' => 'Escribe para transmitir',
-			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.cwMessages.help' => 'Ayuda',
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
 			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
@@ -4799,7 +4788,6 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilas //: TU sale tras registrar el contacto, así que da las gracias, llama a la siguiente estación de la pila y envía tu intercambio, o pide repetir un parcial (TU KR?); si no queda nada, solo TU',
 			'settings.radio.voiceMessages.title' => 'Mensajes del manipulador de fonía',
 			'settings.radio.voiceMessages.notSupported' => 'La radio actual no admite mensajes de Fonía',
-			'settings.radio.voiceMessages.description' => 'Esto usa las memorias de voz de la radio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memoria de voz (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
@@ -4811,8 +4799,6 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.recordButton' => 'Grabar',
 			'settings.radio.voiceMessages.stopButton' => 'Detener',
 			'settings.radio.voiceMessages.repeat' => 'Repetir mensaje #1',
-			'settings.radio.voiceMessages.repeatOff' => 'No',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Se guarda en la radio, donde también lo ven sus otros clientes.',
@@ -5193,14 +5179,14 @@ extension on TranslationsEs {
 			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} antena', other: '${count} antenas', ), 
 			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} otro equipo', other: '${count} otros equipos', ), 
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.equipmentInUse' => 'Controles de la radio',
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerRadioNotAvailable' => 'No disponible',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'En ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} está en otro dispositivo',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Esta radio está conectada a ${device}. Su conexión y ajustes se configuran en ese dispositivo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom, entre ellas la IC-705, presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso: el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
@@ -5228,7 +5214,6 @@ extension on TranslationsEs {
 			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.notSupportedByThisRadio' => 'No compatible con esta radio',
-			'settings.station.keyerRowLabel' => 'Manipulador',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonía',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio',
@@ -5295,7 +5280,6 @@ extension on TranslationsEs {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
-			'settings.station.cwKeyerArea' => 'Área del manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
 			'settings.station.whatToTrack' => '¿Qué registrar?',
@@ -5707,8 +5691,6 @@ extension on TranslationsEs {
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',
@@ -5717,6 +5699,8 @@ extension on TranslationsEs {
 			'exportSettings.type' => 'Tipo de exportación',
 			'exportSettings.defaults' => 'Valores predeterminados',
 			'exportSettings.includeLookupData' => 'Incluir datos de consultas',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.customTemplates' => 'Plantillas personalizadas',
 			'exportSettings.filenameTemplate' => 'Plantilla del nombre de archivo',
 			'exportSettings.compactFilenameTemplate' => 'Plantilla del nombre compacto',

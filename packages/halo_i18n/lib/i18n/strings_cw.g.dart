@@ -2299,6 +2299,7 @@ class _Translations$settings$radio$cw extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$cw enterSends = _Translations$settings$radio$enterSends$cw._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$cw keyerSpeed = _Translations$settings$radio$keyerSpeed$cw._(_root);
 	@override late final _Translations$settings$radio$cwMessages$cw cwMessages = _Translations$settings$radio$cwMessages$cw._(_root);
+	@override late final _Translations$settings$radio$keyerControl$cw keyerControl = _Translations$settings$radio$keyerControl$cw._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$cw voiceMessages = _Translations$settings$radio$voiceMessages$cw._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$cw avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$cw._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$cw zeroBeatRange = _Translations$settings$radio$zeroBeatRange$cw._(_root);
@@ -2778,7 +2779,14 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·';
 	@override String peerRadioElsewhereMessage({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—';
 	@override String get antennaInUse => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·';
-	@override String get keyInUse => '—·— · —·—— / ·· —· / ··— ··· ·';
+	@override String get keyInUse => '—·—· ·—— / —·— · —·—— ·· —· ——·';
+	@override String get phoneKeying => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·';
+	@override String get phoneKeyingNone => '—· ——— —· ·';
+	@override String phoneKeyingRadio({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}';
+	@override String get phoneKeyingComputer => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
+	@override String get phoneKeyingOff => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—·';
+	@override String get computerVoiceSettings => '—·—· ——— —— ·——· ··— — · ·—· / ·— ··— —·· ·· ———';
+	@override String get cwKeyingOptions => '—·—· ·—— / —·— · —·—— ·· —· ——· / ——— ·——· — ·· ——— —· ···';
 	@override String get noneSelected => '—· ——— —· ·';
 	@override String get moreSettings => '—— ——— ·—· · / ··· · — — ·· —· ——· ···';
 	@override String get icomCivTroubleshootingTitle => '·· ··—· / — ·—— ——— / ··· · ·—· ·· ·— ·—·· / ·——· ——— ·—· — ··· / ··· ···· ——— ·—— / ··— ·——· / ··—· ——— ·—· / — ···· · / ··· ·— —— · / ·—· ·— —·· ·· ———';
@@ -2814,9 +2822,8 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get statusError => '—·—· ——— —· —· · —·—· — ·· ——— —· / ··—· ·— ·· ·—·· · —··';
 	@override String get currentRadioSettings => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / ··· · — — ·· —· ——· ···';
 	@override String get notSupportedByThisRadio => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / — ···· ·· ··· / ·—· ·— —·· ·· ———';
-	@override String get keyerRowLabel => '—·— · —·—— · ·—·';
-	@override String get cwMessagesButton => '—·—· ·——';
-	@override String get voiceMessagesButton => '·——· ···· ——— —· ·';
+	@override String get cwMessagesButton => '—·—· ·—— / —— · ··· ··· ·— ——· · ···';
+	@override String get voiceMessagesButton => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · ···';
 	@override String voiceKeyerAvailable({required Object count}) => '···— ——— ·· —·—· · / —·— · —·—— · ·—· ———··· / ${count} / —— · —— ——— ·—· ·· · ··· / ·· —· / — ···· · / ·—· ·— —·· ·· ———';
 	@override String get antennaBands => '—··· ·— —· —·· ···';
 	@override String get antennaType => '·— —· — · —· —· ·— / — —·—— ·——· ·';
@@ -2833,7 +2840,6 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get newKeyer => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—';
 	@override String keyViaRadio({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}';
 	@override String keyOnDevice({required Object device}) => '—·— · —·—— / ——— —· / ${device}';
-	@override String get cwKeyerArea => '—·— · —·—— · ·—· / ·— ·—· · ·—';
 	@override String get trackStationInfo => '— ·—· ·— —·—· —·— / ··· — ·— — ·· ——— —· / ·· —· ··—· ——— / ··—· ——— ·—· / · ·— —·—· ···· / ——·— ··· ———';
 	@override String get includeStationInfoInAdif => '·· —· —·—· ·—·· ··— —·· · / ·· —· / ·— —·· ·· ··—· / · —··— ·——· ——— ·—· — ···';
 	@override String get whatToTrack => '·—— ···· ·— — / — ——— / — ·—· ·— —·—· —·— ··——··';
@@ -3945,8 +3951,8 @@ class _Translations$settings$radio$cwMessages$cw extends Translations$settings$r
 	// Translations
 	@override String get title => '—·—· ·—— / —·— · —·—— · ·—· / —— · ··· ··· ·— ——· · ···';
 	@override String get notSupported => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / —·· ——— · ··· / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·—· ·—— / —·— · —·—— ·· —· ——·';
-	@override String key({required Object n}) => '··—· ${n}';
-	@override String messageTitle({required Object n}) => '—— · ··· ··· ·— ——· · / —·——· ${n} —·——·—';
+	@override String key({required Object n}) => '—— ${n}';
+	@override String messageTitle({required Object n}) => '—— · ··· ··· ·— ——· · / ${n}';
 	@override String get labelField => '·—·· ·— —··· · ·—··';
 	@override String labelKey({required Object n}) => '··—· ${n} / ·—·· ·— —··· · ·—··';
 	@override String get details => '—·· · — ·— ·· ·—·· ···';
@@ -3960,13 +3966,13 @@ class _Translations$settings$radio$cwMessages$cw extends Translations$settings$r
 	@override String get setPota => '·——· ——— — ·—';
 	@override String get setEsm => '· ··· —— / —— · ··· ··· ·— ——· · ···';
 	@override String get setSaved => '—— —·—— / —— · ··· ··· ·— ——· · ···';
-	@override String get repeat => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / # ·————';
-	@override String get repeatOff => '—· ———';
-	@override String repeatAfter({required Object n}) => '·— ··—· — · ·—· / ${n} / ··· · —·—· ——— —· —·· ···';
+	@override String get repeat => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / ·————';
+	@override String get repeatShort => '·—· · ·——· · ·— — / —— ·————';
+	@override String get cooldown => '—·—· ——— ——— ·—·· —·· ——— ·—— —· / —··· · ··—· ——— ·—· · / ·—· · ·——· · ·— —';
+	@override String cooldownSeconds({required Object n}) => '${n} / ··· · —·—· ——— —· —·· ···';
 	@override String get repeatWait => '·—· · ·——· · ·— — ·· —· ——·';
 	@override String get keyboard => '— —·—— ·——· · / — ——— / ··· · —· —··';
 	@override String get keyboardField => '— —·—— ·——· · / — ——— / ··· · —· —··';
-	@override String get closeArea => '—·—· ·—·· ——— ··· · / — ···· · / —·— · —·—— · ·—· / ·— ·—· · ·—';
 	@override String get help => '···· · ·—·· ·——·';
 	@override String get helpTitle => '·—— ·—· ·· — ·· —· ——· / —·—· ·—— / —— · ··· ··· ·— ——· · ···';
 	@override String get helpIntro => '—— · ··· ··· ·— ——· · ··· / —·—· ·— —· / ··— ··· · / — · —— ·——· ·—·· ·— — · ··· / ·—— ·· — ···· / — ···· · / ··—· ——— ·—·· ·—·· ——— ·—— ·· —· ——· / ···— ·— ·—·· ··— · ··· ———···';
@@ -3996,6 +4002,19 @@ class _Translations$settings$radio$cwMessages$cw extends Translations$settings$r
 	@override String get helpEsmStackThanks => '··· ··— ——· ——· · ··· — · —·· / ··—· ···—— / ··—· ——— ·—· / —··—· —··—· / ··· — ·— —·—· —·— ··· ———··· / ·· — / — ···· ·— —· —·— ··· ——··—— / — ···· · —· / —·—· ·— ·—·· ·—·· ··· / — ···· · / —· · —··— — / ··· — ·— —·—· —·— · —·· / ··· — ·— — ·· ——— —· / ·— —· —·· / ··· · —· —·· ··· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ——··—— / ——— ·—· / ·— ··· —·— ··· / ·— / ·——· ·— ·—· — ·· ·— ·—·· / —··· ·— —·—· —·— / —·——· — ··— / —·— ·—· ··——·· —·——·— —·—·—· / ·—— ·· — ···· / —· ——— — ···· ·· —· ——· / ·—·· · ··—· — ——··—— / ·——— ··— ··· — / — ··—';
 }
 
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$cw extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => '—·— · —·—— · ·—·';
+	@override String get cw => '·—— ·——· ——';
+	@override String cwSpeed({required Object wpm}) => '${wpm} / ·—— ·——· ——';
+	@override String get voice => '···— ——— ·· —·—· ·';
+}
+
 // Path: settings.radio.voiceMessages
 class _Translations$settings$radio$voiceMessages$cw extends Translations$settings$radio$voiceMessages$en {
 	_Translations$settings$radio$voiceMessages$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -4005,9 +4024,8 @@ class _Translations$settings$radio$voiceMessages$cw extends Translations$setting
 	// Translations
 	@override String get title => '·——· ···· ——— —· · / —·— · —·—— · ·—· / —— · ··· ··· ·— ——· · ···';
 	@override String get notSupported => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / —·· ——— · ··· / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / ·——· ···· ——— —· · / —— · ··· ··· ·— ——· · ···';
-	@override String get description => '— ···· ·· ··· / ··— ··· · ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···';
 	@override String key({required Object n}) => '—— ${n}';
-	@override String messageTitle({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / —·——· ${n} —·——·—';
+	@override String messageTitle({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n}';
 	@override String get labelField => '·—·· ·— —··· · ·—··';
 	@override String labelKey({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n} / ·—·· ·— —··· · ·—··';
 	@override String durationSeconds({required Object n}) => '${n} / ···';
@@ -4016,9 +4034,7 @@ class _Translations$settings$radio$voiceMessages$cw extends Translations$setting
 	@override String get playButton => '·——· ·—·· ·— —·——';
 	@override String get recordButton => '·—· · —·—· ——— ·—· —··';
 	@override String get stopButton => '··· — ——— ·——·';
-	@override String get repeat => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / # ·————';
-	@override String get repeatOff => '—· ———';
-	@override String repeatAfter({required Object n}) => '·— ··—· — · ·—· / ${n} / ··· · —·—· ——— —· —·· ···';
+	@override String get repeat => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / ·————';
 	@override String recordHelpTitle({required Object model}) => '${model} / —· ——— — · ··· ———···';
 	@override String namedOnDevice({required Object device}) => '— ···· · ··· · / —— · —— ——— ·—· ·· · ··· / ·— ·—· · / ·· —· / ${device} ·————· ··· / ·—· ·— —·· ·· ——— ·—·—·— / — ···· · ·· ·—· / —· ·— —— · ··· / ·— —· —·· / ·—·· · —· ——· — ···· ··· / —··· · ·—·· ——— —· ——· / — ——— / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—';
 	@override String get namedOnRadio => '··· ·— ···— · —·· / ·· —· / — ···· · / ·—· ·— —·· ·· ——— ——··—— / ·—— ···· · ·—· · / ·· — ··· / ——— — ···· · ·—· / —·—· ·—·· ·· · —· — ··· / ··· · · / ·· — / — ——— ——— ·—·—·—';
@@ -4035,6 +4051,33 @@ class _Translations$settings$radio$voiceMessages$cw extends Translations$setting
 	@override String recordingMemory({required Object label}) => '·—· · —·—· ——— ·—· —·· ·· —· ——· / ${label}';
 	@override String get doubtful => '—·· ·· —·· / — ···· · / ·—· ·— —·· ·· ——— / ·——· ·—·· ·— —·—— / ·· — ··——·· / ·· — / ··· ·— ·· —·· / ·· — / ·—— ·— ··· / ·· —·· ·—·· · / ·—· ·· ——· ···· — / ·— ·—— ·— —·—— ·—·—·—';
 	@override String get recordOnRadio => '—·—— ——— ··— / ···· ·— ···— · / — ——— / ·—· · —·—· ——— ·—· —·· / — ···· · / —— · —— ——— ·—· ·· · ··· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· · ·—·· ··—· ·—·—·—';
+	@override String get sets => '—— · ··· ··· ·— ——· · / ··· · —';
+	@override String get soundFilesSet => '··· ——— ··— —· —·· / ··—· ·· ·—·· · ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
+	@override String get openFileButton => '——— ·——· · —· / ··—· ·· ·—·· ·';
+	@override String get newSet => '—· · ·—— / ··· · —';
+	@override String get renameSet => '·—· · —· ·— —— · / ··· · —';
+	@override String get deleteSet => '—·· · ·—·· · — · / ··· · —';
+	@override String get newSetName => '—· ·— —— ·';
+	@override String deleteSetConfirm({required Object name}) => '—·· · ·—·· · — · / ${name} / ·— —· —·· / ·· — ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ··· ··——·· / — ···· ·· ··· / —·—· ·— —· —· ——— — / —··· · / ··— —· —·· ——— —· · ·—·—·—';
+	@override String get output => '··· · —· —·· / ·— ··— —·· ·· ——— / — ———';
+	@override String get input => '·—· · —·—· ——— ·—· —·· / ··—· ·—· ——— ——';
+	@override String get outputRadio => '—·· ·· ·—· · —·—· — ·—·· —·—— / — ——— / — ···· · / ·—· ·— —·· ·· ———';
+	@override String get inputDefault => '··· —·—— ··· — · —— / —·· · ··—· ·— ··— ·—·· —';
+	@override String get pickDevice => '—·—· ···· ——— ——— ··· · / ·— / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· ·';
+	@override String deviceMissing({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—';
+	@override String get lead => '—·— · —·—— —····— ··— ·——· / —·· · ·—·· ·— —·——';
+	@override String get tail => '··— —· —·— · —·—— / —·· · ·—·· ·— —·——';
+	@override String millis({required Object n}) => '${n} / —— ···';
+	@override String get listenButton => '·—·· ·· ··· — · —·';
+	@override String get notRecorded => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —··';
+	@override String get problemNoOutput => '—·—· ···· ——— ——— ··· · / — ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / — ···· ·— — / ··—· · · —·· ··· / — ···· · / ·—· ·— —·· ·· ——— / —··· · ··—· ——— ·—· · / ·——· ·—·· ·— —·—— ·· —· ——· / ·— / —— · ··· ··· ·— ——· · ·—·—·—';
+	@override String get problemOutputMissing => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / — ···· ·— — / ··—· · · —·· ··· / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—';
+	@override String get problemInputMissing => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—';
+	@override String get problemDeviceFailed => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· ·—·—·—';
+	@override String get problemNotRecorded => '— ···· ·— — / —— · ··· ··· ·— ——· · / ···· ·— ··· / —· ——— / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—— · — ·—·—·—';
+	@override String get problemRecordingSilent => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ··—· ·—· ——— —— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· · / ·· —· ·——· ··— — ——··—— / ·— —· —·· / — ···· ·— — / — ···· · / ·— ·——· ·——· / ·· ··· / ·— ·—·· ·—·· ——— ·—— · —·· / — ——— / ··— ··· · / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · ·—·—·—';
+	@override String get problemRadioAudioUnavailable => '— ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / — ·— —·— ·· —· ——· / ·— ··— —·· ·· ——— / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / ·· — / —· · · —·· ··· / ·— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—';
+	@override String get problemCannotKey => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —·—· ·— —· ·————· — / —··· · / —·— · —·—— · —·· / ——— ···— · ·—· / —·—· ·— — ——··—— / ··· ——— / — ···· · / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· ·————· — / ·——· ·—·· ·— —·—— / —— · ··· ··· ·— ——· · ··· / ·· —· — ——— / ·· — ·—·—·—';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -5611,8 +5654,8 @@ extension on TranslationsCw {
 			'settings.radio.keyerSpeed.pillUnknown' => '– / ·—— ·——· ——',
 			'settings.radio.cwMessages.title' => '—·—· ·—— / —·— · —·—— · ·—· / —— · ··· ··· ·— ——· · ···',
 			'settings.radio.cwMessages.notSupported' => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / —·· ——— · ··· / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·—· ·—— / —·— · —·—— ·· —· ——·',
-			'settings.radio.cwMessages.key' => ({required Object n}) => '··—· ${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => '—— · ··· ··· ·— ——· · / —·——· ${n} —·——·—',
+			'settings.radio.cwMessages.key' => ({required Object n}) => '—— ${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => '—— · ··· ··· ·— ——· · / ${n}',
 			'settings.radio.cwMessages.labelField' => '·—·· ·— —··· · ·—··',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => '··—· ${n} / ·—·· ·— —··· · ·—··',
 			'settings.radio.cwMessages.details' => '—·· · — ·— ·· ·—·· ···',
@@ -5626,13 +5669,13 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.setPota' => '·——· ——— — ·—',
 			'settings.radio.cwMessages.setEsm' => '· ··· —— / —— · ··· ··· ·— ——· · ···',
 			'settings.radio.cwMessages.setSaved' => '—— —·—— / —— · ··· ··· ·— ——· · ···',
-			'settings.radio.cwMessages.repeat' => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / # ·————',
-			'settings.radio.cwMessages.repeatOff' => '—· ———',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => '·— ··—· — · ·—· / ${n} / ··· · —·—· ——— —· —·· ···',
+			'settings.radio.cwMessages.repeat' => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / ·————',
+			'settings.radio.cwMessages.repeatShort' => '·—· · ·——· · ·— — / —— ·————',
+			'settings.radio.cwMessages.cooldown' => '—·—· ——— ——— ·—·· —·· ——— ·—— —· / —··· · ··—· ——— ·—· · / ·—· · ·——· · ·— —',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} / ··· · —·—· ——— —· —·· ···',
 			'settings.radio.cwMessages.repeatWait' => '·—· · ·——· · ·— — ·· —· ——·',
 			'settings.radio.cwMessages.keyboard' => '— —·—— ·——· · / — ——— / ··· · —· —··',
 			'settings.radio.cwMessages.keyboardField' => '— —·—— ·——· · / — ——— / ··· · —· —··',
-			'settings.radio.cwMessages.closeArea' => '—·—· ·—·· ——— ··· · / — ···· · / —·— · —·—— · ·—· / ·— ·—· · ·—',
 			'settings.radio.cwMessages.help' => '···· · ·—·· ·——·',
 			'settings.radio.cwMessages.helpTitle' => '·—— ·—· ·· — ·· —· ——· / —·—· ·—— / —— · ··· ··· ·— ——· · ···',
 			'settings.radio.cwMessages.helpIntro' => '—— · ··· ··· ·— ——· · ··· / —·—· ·— —· / ··— ··· · / — · —— ·——· ·—·· ·— — · ··· / ·—— ·· — ···· / — ···· · / ··—· ——— ·—·· ·—·· ——— ·—— ·· —· ——· / ···— ·— ·—·· ··— · ··· ———···',
@@ -5660,11 +5703,14 @@ extension on TranslationsCw {
 			'settings.radio.cwMessages.helpEsmHisCall' => '·—· ··— —· —· ·· —· ——· ——··—— / — ···· · ·· ·—· / —·—· ·— ·—·· ·—·· / ·— ···· · ·— —·· / ——— ··—· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· ·',
 			'settings.radio.cwMessages.helpEsmAgain' => '·— ··· —·— ··· / ·— ——· ·— ·· —· / ·—— ···· · —· / —· ——— — ···· ·· —· ——· / ——— ··—· / — ···· · ·· ·—· / · —··— —·—· ···· ·— —· ——· · / ·—— ·— ··· / —·—· ——— ·——· ·· · —··',
 			'settings.radio.cwMessages.helpEsmStackThanks' => '··· ··— ——· ——· · ··· — · —·· / ··—· ···—— / ··—· ——— ·—· / —··—· —··—· / ··· — ·— —·—· —·— ··· ———··· / ·· — / — ···· ·— —· —·— ··· ——··—— / — ···· · —· / —·—· ·— ·—·· ·—·· ··· / — ···· · / —· · —··— — / ··· — ·— —·—· —·— · —·· / ··· — ·— — ·· ——— —· / ·— —· —·· / ··· · —· —·· ··· / —·—— ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · ——··—— / ——— ·—· / ·— ··· —·— ··· / ·— / ·——· ·— ·—· — ·· ·— ·—·· / —··· ·— —·—· —·— / —·——· — ··— / —·— ·—· ··——·· —·——·— —·—·—· / ·—— ·· — ···· / —· ——— — ···· ·· —· ——· / ·—·· · ··—· — ——··—— / ·——— ··— ··· — / — ··—',
+			'settings.radio.keyerControl.label' => '—·— · —·—— · ·—·',
+			'settings.radio.keyerControl.cw' => '·—— ·——· ——',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} / ·—— ·——· ——',
+			'settings.radio.keyerControl.voice' => '···— ——— ·· —·—· ·',
 			'settings.radio.voiceMessages.title' => '·——· ···· ——— —· · / —·— · —·—— · ·—· / —— · ··· ··· ·— ——· · ···',
 			'settings.radio.voiceMessages.notSupported' => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / —·· ——— · ··· / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / ·——· ···· ——— —· · / —— · ··· ··· ·— ——· · ···',
-			'settings.radio.voiceMessages.description' => '— ···· ·· ··· / ··— ··· · ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => '—— ${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / —·——· ${n} —·——·—',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n}',
 			'settings.radio.voiceMessages.labelField' => '·—·· ·— —··· · ·—··',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => '···— ——— ·· —·—· · / —— · —— ——— ·—· —·—— / ${n} / ·—·· ·— —··· · ·—··',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} / ···',
@@ -5673,9 +5719,7 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.playButton' => '·——· ·—·· ·— —·——',
 			'settings.radio.voiceMessages.recordButton' => '·—· · —·—· ——— ·—· —··',
 			'settings.radio.voiceMessages.stopButton' => '··· — ——— ·——·',
-			'settings.radio.voiceMessages.repeat' => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / # ·————',
-			'settings.radio.voiceMessages.repeatOff' => '—· ———',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => '·— ··—· — · ·—· / ${n} / ··· · —·—· ——— —· —·· ···',
+			'settings.radio.voiceMessages.repeat' => '·—· · ·——· · ·— — / —— · ··· ··· ·— ——· · / ·————',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} / —· ——— — · ··· ———···',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => '— ···· · ··· · / —— · —— ——— ·—· ·· · ··· / ·— ·—· · / ·· —· / ${device} ·————· ··· / ·—· ·— —·· ·· ——— ·—·—·— / — ···· · ·· ·—· / —· ·— —— · ··· / ·— —· —·· / ·—·· · —· ——· — ···· ··· / —··· · ·—·· ——— —· ——· / — ——— / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.radio.voiceMessages.namedOnRadio' => '··· ·— ···— · —·· / ·· —· / — ···· · / ·—· ·— —·· ·· ——— ——··—— / ·—— ···· · ·—· · / ·· — ··· / ——— — ···· · ·—· / —·—· ·—·· ·· · —· — ··· / ··· · · / ·· — / — ——— ——— ·—·—·—',
@@ -5692,6 +5736,33 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '·—· · —·—· ——— ·—· —·· ·· —· ——· / ${label}',
 			'settings.radio.voiceMessages.doubtful' => '—·· ·· —·· / — ···· · / ·—· ·— —·· ·· ——— / ·——· ·—·· ·— —·—— / ·· — ··——·· / ·· — / ··· ·— ·· —·· / ·· — / ·—— ·— ··· / ·· —·· ·—·· · / ·—· ·· ——· ···· — / ·— ·—— ·— —·—— ·—·—·—',
 			'settings.radio.voiceMessages.recordOnRadio' => '—·—— ——— ··— / ···· ·— ···— · / — ——— / ·—· · —·—· ——— ·—· —·· / — ···· · / —— · —— ——— ·—· ·· · ··· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· · ·—·· ··—· ·—·—·—',
+			'settings.radio.voiceMessages.sets' => '—— · ··· ··· ·— ——· · / ··· · —',
+			'settings.radio.voiceMessages.soundFilesSet' => '··· ——— ··— —· —·· / ··—· ·· ·—·· · ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
+			'settings.radio.voiceMessages.openFileButton' => '——— ·——· · —· / ··—· ·· ·—·· ·',
+			'settings.radio.voiceMessages.newSet' => '—· · ·—— / ··· · —',
+			'settings.radio.voiceMessages.renameSet' => '·—· · —· ·— —— · / ··· · —',
+			'settings.radio.voiceMessages.deleteSet' => '—·· · ·—·· · — · / ··· · —',
+			'settings.radio.voiceMessages.newSetName' => '—· ·— —— ·',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '—·· · ·—·· · — · / ${name} / ·— —· —·· / ·· — ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ··· ··——·· / — ···· ·· ··· / —·—· ·— —· —· ——— — / —··· · / ··— —· —·· ——— —· · ·—·—·—',
+			'settings.radio.voiceMessages.output' => '··· · —· —·· / ·— ··— —·· ·· ——— / — ———',
+			'settings.radio.voiceMessages.input' => '·—· · —·—· ——— ·—· —·· / ··—· ·—· ——— ——',
+			'settings.radio.voiceMessages.outputRadio' => '—·· ·· ·—· · —·—· — ·—·· —·—— / — ——— / — ···· · / ·—· ·— —·· ·· ———',
+			'settings.radio.voiceMessages.inputDefault' => '··· —·—— ··· — · —— / —·· · ··—· ·— ··— ·—·· —',
+			'settings.radio.voiceMessages.pickDevice' => '—·—· ···· ——— ——— ··· · / ·— / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· ·',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',
+			'settings.radio.voiceMessages.lead' => '—·— · —·—— —····— ··— ·——· / —·· · ·—·· ·— —·——',
+			'settings.radio.voiceMessages.tail' => '··— —· —·— · —·—— / —·· · ·—·· ·— —·——',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} / —— ···',
+			'settings.radio.voiceMessages.listenButton' => '·—·· ·· ··· — · —·',
+			'settings.radio.voiceMessages.notRecorded' => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —··',
+			'settings.radio.voiceMessages.problemNoOutput' => '—·—· ···· ——— ——— ··· · / — ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / — ···· ·— — / ··—· · · —·· ··· / — ···· · / ·—· ·— —·· ·· ——— / —··· · ··—· ——— ·—· · / ·——· ·—·· ·— —·—— ·· —· ——· / ·— / —— · ··· ··· ·— ——· · ·—·—·—',
+			'settings.radio.voiceMessages.problemOutputMissing' => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / — ···· ·— — / ··—· · · —·· ··· / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
+			'settings.radio.voiceMessages.problemInputMissing' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
+			'settings.radio.voiceMessages.problemDeviceFailed' => '— ···· · / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· · / ·—— ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· ·—·—·—',
+			'settings.radio.voiceMessages.problemNotRecorded' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ···· ·— ··· / —· ——— / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—— · — ·—·—·—',
+			'settings.radio.voiceMessages.problemRecordingSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ··—· ·—· ——— —— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· · / ·· —· ·——· ··— — ——··—— / ·— —· —·· / — ···· ·— — / — ···· · / ·— ·——· ·——· / ·· ··· / ·— ·—·· ·—·· ——— ·—— · —·· / — ——— / ··— ··· · / — ···· · / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · ·—·—·—',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => '— ···· · / ·—· ·— —·· ·· ——— / ·· ··· / —· ——— — / — ·— —·— ·· —· ——· / ·— ··— —·· ·· ——— / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / ·· — / —· · · —·· ··· / ·— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—',
+			'settings.radio.voiceMessages.problemCannotKey' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —·—· ·— —· ·————· — / —··· · / —·— · —·—— · —·· / ——— ···— · ·—· / —·—· ·— — ——··—— / ··· ——— / — ···· · / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· ·————· — / ·——· ·—·· ·— —·—— / —— · ··· ··· ·— ——· · ··· / ·· —· — ——— / ·· — ·—·—·—',
 			'settings.radio.avoidZeroBeat.title' => '·— ···— ——— ·· —·· / ——·· · ·—· ——— —····— —··· · ·— — ·· —· ——· / ——— —· / ··· ·——· ——— — ···',
 			'settings.radio.avoidZeroBeat.descriptionOn' => '·—— ·· — ···· / ·— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —·· ——··—— / — ··— —· ·· —· ——· / ·— / ··—· · ·—— / ···· ——·· / ——— ··—· ··—· / ·— / —·—· ·—— / ··· ·——· ——— — ——··—— / ··· ——— / · ···— · ·—· —·—— ——— —· · / ·— —· ··· ·—— · ·—· ·· —· ——· / ·· — / ·· ··· —· ’ — / —·—· ·— ·—·· ·—·· ·· —· ——· / ——— —· / — ···· · / ··· ·— —— · / —· ——— — · ·—·—·—',
 			'settings.radio.avoidZeroBeat.descriptionOff' => '— ··— —· ·· —· ——· / · —··— ·— —·—· — ·—·· —·—— / — ——— / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— ·—·—·—',
@@ -5814,6 +5885,8 @@ extension on TranslationsCw {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·— / —·· · ···— ·· —·—· · / ·· ··· / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', other: '${n} / —·· · ···— ·· —·—· · ··· / ·— ·—· · / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', ), 
 			'settings.syncPanel.accountEmailTitle' => '·— —·—· —·—· ——— ··— —· — / · —— ·— ·· ·—··',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => '—·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / ··· · —· — / — ——— / ${email} ·—·—·— / ——— ·——· · —· / — ···· · / ·—·· ·· —· —·— / — ···· · ·—· · / — ——— / ··—· ·· —· ·· ··· ···· / — ···· · / —·—· ···· ·— —· ——· · ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => '·—· · ··· · —· —·· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / · —— ·— ·· ·—··',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => '·—— ·— ·· — ·· —· ——· / ——— —· / ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => '··· · —· — / ·— ——· ·— ·· —· / — ——— / ${email} ·—·—·—',
@@ -5842,8 +5915,6 @@ extension on TranslationsCw {
 			'settings.accounts.title' => '·— —·—· —·—· ——— ··— —· — ··· ——··—— / ··· · ·—· ···— ·· —·—· · ··· / ·—··· / —·· ·— — ·— / ··· ——— ··— ·—· —·—· · ···',
 			'settings.accounts.none' => '—· ——— / ·— —·—· — ·· ···— · / · —··— — · —· ··· ·· ——— —· ··· / ·—— ·· — ···· / ·— —·—· —·—· ——— ··— —· — ···',
 			'settings.accounts.notConfigured' => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.connected' => '—·—· ——— —· —· · —·—· — · —··',
 			'settings.accounts.cancelLogin' => '—·—· ·— —· —·—· · ·—·· / ··· ·· ——· —· —····— ·· —·',
 			'settings.accounts.openInBrowser' => '——— ·——· · —· / ·· —· / —··· ·—· ——— ·—— ··· · ·—·',
@@ -6150,7 +6221,14 @@ extension on TranslationsCw {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
-			'settings.station.keyInUse' => '—·— · —·—— / ·· —· / ··— ··· ·',
+			'settings.station.keyInUse' => '—·—· ·—— / —·— · —·—— ·· —· ——·',
+			'settings.station.phoneKeying' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·',
+			'settings.station.phoneKeyingNone' => '—· ——— —· ·',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}',
+			'settings.station.phoneKeyingComputer' => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
+			'settings.station.phoneKeyingOff' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—·',
+			'settings.station.computerVoiceSettings' => '—·—· ——— —— ·——· ··— — · ·—· / ·— ··— —·· ·· ———',
+			'settings.station.cwKeyingOptions' => '—·—· ·—— / —·— · —·—— ·· —· ——· / ——— ·——· — ·· ——— —· ···',
 			'settings.station.noneSelected' => '—· ——— —· ·',
 			'settings.station.moreSettings' => '—— ——— ·—· · / ··· · — — ·· —· ——· ···',
 			'settings.station.icomCivTroubleshootingTitle' => '·· ··—· / — ·—— ——— / ··· · ·—· ·· ·— ·—·· / ·——· ——— ·—· — ··· / ··· ···· ——— ·—— / ··— ·——· / ··—· ——— ·—· / — ···· · / ··· ·— —— · / ·—· ·— —·· ·· ———',
@@ -6186,9 +6264,8 @@ extension on TranslationsCw {
 			'settings.station.statusError' => '—·—· ——— —· —· · —·—· — ·· ——— —· / ··—· ·— ·· ·—·· · —··',
 			'settings.station.currentRadioSettings' => '—·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ——— / ··· · — — ·· —· ——· ···',
 			'settings.station.notSupportedByThisRadio' => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / — ···· ·· ··· / ·—· ·— —·· ·· ———',
-			'settings.station.keyerRowLabel' => '—·— · —·—— · ·—·',
-			'settings.station.cwMessagesButton' => '—·—· ·——',
-			'settings.station.voiceMessagesButton' => '·——· ···· ——— —· ·',
+			'settings.station.cwMessagesButton' => '—·—· ·—— / —— · ··· ··· ·— ——· · ···',
+			'settings.station.voiceMessagesButton' => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · ···',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '···— ——— ·· —·—· · / —·— · —·—— · ·—· ———··· / ${count} / —— · —— ——— ·—· ·· · ··· / ·· —· / — ···· · / ·—· ·— —·· ·· ———',
 			'settings.station.antennaBands' => '—··· ·— —· —·· ···',
 			'settings.station.antennaType' => '·— —· — · —· —· ·— / — —·—— ·——· ·',
@@ -6217,7 +6294,6 @@ extension on TranslationsCw {
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => '—·— · —·—— / ——— —· / ${device}',
-			'settings.station.cwKeyerArea' => '—·— · —·—— · ·—· / ·— ·—· · ·—',
 			'settings.station.trackStationInfo' => '— ·—· ·— —·—· —·— / ··· — ·— — ·· ——— —· / ·· —· ··—· ——— / ··—· ——— ·—· / · ·— —·—· ···· / ——·— ··· ———',
 			'settings.station.includeStationInfoInAdif' => '·· —· —·—· ·—·· ··— —·· · / ·· —· / ·— —·· ·· ··—· / · —··— ·——· ——— ·—· — ···',
 			'settings.station.whatToTrack' => '·—— ···· ·— — / — ——— / — ·—· ·— —·—· —·— ··——··',
@@ -6323,6 +6399,8 @@ extension on TranslationsCw {
 			'settings.profiles.section' => '··· · —·—· — ·· ——— —·',
 			'settings.search.clear' => '—·—· ·—·· · ·— ·—·',
 			'settings.search.hint' => '··· · ·— ·—· —·—· ···· / ·——· ·—· · ··—· · ·—· · —· —·—· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => '· —· ·— —··· ·—·· · / —·· · ···— · ·—·· ——— ·——· · ·—· / ·—— ·— ·—· —· ·· —· ——· ··· ——··—— / —·· · —··· ··— ——· / ·—·· ——— ——· ··· ——··—— / ·— —· —·· / — ——— ——— ·—·· ··· ·—·—·—',
 			'settings.developer.experiments' => '· —··— ·——· · ·—· ·· —— · —· — ···',
 			'settings.developer.showIdleMetrics' => '··· ···· ——— ·—— / ·· —·· ·—·· · / —— · — ·—· ·· —·—· ···',
@@ -6356,8 +6434,6 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerDescription' => '·—·· ——— ·— —·· / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·—· ——— —— / ·— / —·· · ···— / ··· · ·—· ···— · ·—· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— / ·· —· ··· — · ·— —·· / ——— ··—· / — ···· · / ——— —· · ··· / —··· ··— ·· ·—·· — / ·· —· — ——— / — ···· · / ·— ·——· ·——· ——··—— / ·— —· —·· / ·—· · ·—·· ——— ·— —·· / — ···· · —— / ·— ··· / —·—— ——— ··— / ··· ·— ···— · ·—·—·—',
 			'settings.developer.extDevServerAddress' => '··· · ·—· ···— · ·—· / ·— —·· —·· ·—· · ··· ···',
 			'settings.developer.extDevServerHint' => '·———— ————· ··——— ·—·—·— ·———— —···· ———·· ·—·—·— ·———— ·—·—·— ··——— ————— ———··· ———·· ——··· ———·· ——···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnect' => '—·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerDisconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerConnecting' => '—·—· ——— —· —· · —·—· — ·· —· ——· …',

@@ -132,12 +132,14 @@ void main() {
     /// The CW messages live in this group too, but under their own dialog
     /// (`cw-messages`) — they are not tuning knobs. Kept out of the knob
     /// tests, and tested on their own.
-    /// The repeat delays belong here too: they are keyer settings under the
-    /// message dialogs' own targets, not tuning knobs.
-    bool isCwMessageElement(Map<String, dynamic> el) => (el['key'] as String? ?? '').startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
+    /// The repeats belong here too — the switch and its cooldown: they are
+    /// keyer settings under the message dialogs' own targets, not tuning knobs.
+    bool isCwMessageElement(Map<String, dynamic> el) =>
+        (el['key'] as String? ?? '').startsWith('cwMessage') || const {'cwRepeat', 'cwRepeatDelay'}.contains(el['key']);
 
     /// The voice memory labels, the same way, under `voice-messages`.
-    bool isVoiceMessageElement(Map<String, dynamic> el) => (el['key'] as String? ?? '').startsWith('voiceMessage') || el['key'] == 'voiceRepeatDelay';
+    bool isVoiceMessageElement(Map<String, dynamic> el) =>
+        (el['key'] as String? ?? '').startsWith('voiceMessage') || const {'voiceRepeat', 'voiceRepeatDelay'}.contains(el['key']);
 
     /// The two rows that open the keyer dialogs — part of the keyer, not knobs.
     bool isKeyerRow(Map<String, dynamic> el) => el['key'] == cwKeyerActionKey || el['key'] == phoneKeyerActionKey;
@@ -293,9 +295,10 @@ void main() {
         for (final el in all)
           if (isCwMessageElement(el) && !elementMatchesTarget(el, 'voice-messages')) el,
       ];
-      // Eight messages, their eight labels and the repeat delay. No note: the
-      // placeholders are explained by the CW Keyer dialog's own Help.
-      expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2 + 1));
+      // Eight messages, their eight labels, and the repeat's switch and
+      // cooldown. No note: the placeholders are explained by the CW Keyer
+      // dialog's own Help.
+      expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2 + 2));
       expect(messages.where((el) => el['type'] == 'markdown'), isEmpty);
       for (final el in messages) {
         expect(elementMatchesTarget(el, 'cw-messages'), isTrue, reason: '${el['key']} belongs to the messages dialog');
@@ -311,6 +314,7 @@ void main() {
           if (elementMatchesTarget(el, 'voice-messages')) el,
       ];
       expect(voice.where((el) => el['type'] == 'field').map((el) => el['key']), [
+        'voiceRepeat',
         'voiceRepeatDelay',
         for (var n = 1; n <= SettingsService.voiceMessageCount; n++) 'voiceMessageLabel$n',
       ]);
@@ -330,12 +334,17 @@ void main() {
       expect(settings.cwMessage(3), '', reason: 'a message the seeds left alone is empty, and sends nothing');
 
       // Both repeats are settings, so SET and Settings reach them.
-      final repeats = all.where((el) => el['key'] == 'cwRepeatDelay' || el['key'] == 'voiceRepeatDelay');
-      expect(repeats, hasLength(2));
-      expect(elementMatchesTarget(repeats.first, 'cw-messages'), isTrue);
-      expect(elementMatchesTarget(repeats.last, 'voice-messages'), isTrue);
+      final repeats = [
+        for (final el in all)
+          if (const {'cwRepeat', 'cwRepeatDelay', 'voiceRepeat', 'voiceRepeatDelay'}.contains(el['key'])) el,
+      ];
+      expect(repeats, hasLength(4));
+      expect(repeats.take(2).every((el) => elementMatchesTarget(el, 'cw-messages')), isTrue);
+      expect(repeats.skip(2).every((el) => elementMatchesTarget(el, 'voice-messages')), isTrue);
+      await group.commit('cwRepeat', true);
       await group.commit('cwRepeatDelay', '5');
       expect(settings.cwRepeatDelay, const Duration(seconds: 5));
+      await group.commit('voiceRepeat', true);
       await group.commit('voiceRepeatDelay', '3');
       expect(settings.voiceRepeatDelay, const Duration(seconds: 3));
       // Keyer off: the radio's own toggles, none of the messages.

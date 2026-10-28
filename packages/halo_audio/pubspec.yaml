@@ -1,0 +1,29 @@
+name: halo_audio
+description: "Direct dart:ffi binding to miniaudio, compiled into the plugin — sound devices, playback and recording for HaLo's voice keyer."
+version: 0.0.1
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# Desktop only (docs/design/cat.md § The computer's voice keyer).
+flutter:
+  plugin:
+    platforms:
+      linux:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true

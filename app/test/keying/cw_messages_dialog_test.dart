@@ -9,6 +9,7 @@ import 'package:halo_widgets/halo_widgets.dart' show HaloDialog;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/cw_messages_dialog.dart';
+import 'package:ham2k_logger/views/settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 
 import '../support/halo_test_support.dart';
 
@@ -45,7 +46,28 @@ void main() {
     expect(notice, findsOneWidget);
     expect(top(notice), lessThan(top(find.text('Keyer speed'))));
     expect(top(find.text('Keyer speed')), lessThan(top(find.text('Message Set'))));
-    expect(top(find.text('Repeat Message #1')), lessThan(top(find.text('Message Set'))));
+    expect(top(find.text('Repeat M1')), lessThan(top(find.text('Message Set'))));
+  });
+
+  // The row is where an operator looks for which key sends a message, so it
+  // is where changing that key is found — once Keyboard Shortcuts is on;
+  // without it the keys are fixed, and the caps only say which they are.
+  testWidgets("a row's keys open the shortcut editor for its message, with Keyboard Shortcuts on", (tester) async {
+    Finder caps() => find.descendant(of: find.byType(KeyerMessageKeys).first, matching: find.byType(InkWell));
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.byType(KeyerMessageKeys), findsNWidgets(SettingsService.cwMessageCount));
+    expect(caps(), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await services.settings.setExperimentEnabled('kb', true);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(caps());
+    await tester.pumpAndSettle();
+    expect(find.text('Send message 1'), findsOneWidget, reason: "the editor, titled by the message's command");
   });
 
   testWidgets('one row per key, labelled where a label exists, the message underneath', (tester) async {
@@ -81,10 +103,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
-    expect(find.text('Message (3)'), findsOneWidget);
+    expect(find.widgetWithText(HaloDialog, 'Message 3'), findsOneWidget);
     expect(find.text('Details'), findsOneWidget);
 
-    await tester.enterText(find.widgetWithText(TextField, 'F3'), '{{ qso.call }} 5NN TU');
+    await tester.enterText(find.widgetWithText(TextField, 'M3'), '{{ qso.call }} 5NN TU');
     await tester.enterText(find.widgetWithText(TextField, 'Label'), 'Exchange');
     // The row's own Save — the dialog behind it has one too.
     await tester.tap(find.text('Save').last);
@@ -93,7 +115,7 @@ void main() {
     // The row's Save hands its two values UP; the dialog behind it holds
     // them as a draft, which is why nothing is stored yet.
     expect(services.settings.cwMessage(3), isNot('{{ qso.call }} 5NN TU'));
-    expect(find.text('Message (3)'), findsNothing, reason: 'closed on Save');
+    expect(find.widgetWithText(HaloDialog, 'Message 3'), findsNothing, reason: 'closed on Save');
     expect(find.textContaining('Exchange'), findsOneWidget);
     expect(find.text('{{ qso.call }} 5NN TU'), findsOneWidget);
 
@@ -120,7 +142,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'F3'), '{{ qso.call }} {{ qso.serial | pad: 3 }}');
+    await tester.enterText(find.widgetWithText(TextField, 'M3'), '{{ qso.call }} {{ qso.serial | pad: 3 }}');
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
 
@@ -181,7 +203,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'F3'), 'NEVER STORED');
+    await tester.enterText(find.widgetWithText(TextField, 'M3'), 'NEVER STORED');
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
     // The trap: a dialog that stored as it went would leave this behind,
@@ -200,9 +222,11 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Repeat Message #1'));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('After 5 seconds').last);
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Cooldown before repeat'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('5 seconds').last);
     await tester.pumpAndSettle();
     expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
 

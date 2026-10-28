@@ -21,16 +21,20 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_audio/halo_audio.dart' show AudioPlayback, HaloAudioException;
 import 'package:halo_core/halo_core.dart';
 
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
+import 'computer_voice_keyer.dart';
 import 'driver.dart';
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'keyer_repeat.dart';
 import 'peer_keying.dart';
+
+part 'cat_keying_computer_voice.dart';
 
 /// What keying needs of the station it runs on — the equipment half of
 /// `CatService`, which is where sessions, nodes and the picks live.
@@ -261,39 +265,14 @@ class CatKeying {
   /// silence.
   final cwStops = ValueNotifier<int>(0);
 
-  /// Whether the keyer area is shown — the logging panel's strip follows
-  /// it, the Station dialog's toggle and the KEYER command set it, and the
-  /// area's own X and its linger clear it.
-  late final keyerAreaShown = ValueNotifier<bool>(settings.keyerAreaShown);
+  /// Bumped by KEYER: the logging panel opens its keyer control.
+  final keyerOpenRequests = ValueNotifier<int>(0);
 
-  /// Bumped by every [showKeyerArea], shown already or not: the area's
-  /// linger has to end on an explicit ask even when the flag does not move.
-  final keyerShowRequests = ValueNotifier<int>(0);
-
-  /// Bumped by ⌥K / Alt+K: the keyer area turns keyboard mode on or off
-  /// (cw_live_typing.dart). A request rather than a flag, since the mode is
-  /// the area's own — it ends by itself on Enter, a pause, Escape or the key
-  /// going away.
+  /// Bumped as keyboard mode starts: the logging panel opens its keyer
+  /// control, where the mode's field is.
   final keyboardModeRequests = ValueNotifier<int>(0);
 
-  void toggleKeyboardMode() => keyboardModeRequests.value++;
-
-  void showKeyerArea() {
-    // Only when it MOVES: a message starting shows the area, so an
-    // unconditional write would re-encode the whole radio group — the
-    // message sets included — and rebuild every settings listener on each
-    // press of a function key.
-    final moved = !keyerAreaShown.value;
-    keyerAreaShown.value = true;
-    keyerShowRequests.value++;
-    if (moved) unawaited(settings.setKeyerAreaShown(true));
-  }
-
-  void hideKeyerArea() {
-    if (!keyerAreaShown.value) return;
-    keyerAreaShown.value = false;
-    unawaited(settings.setKeyerAreaShown(false));
-  }
+  void openKeyerControl() => keyerOpenRequests.value++;
 
   /// Enter Sends Messages, and Run versus S&P — the keyer area's pill and the
   /// ESM/RUN/SP commands set it, the logging panel reads it.
@@ -634,6 +613,39 @@ class CatKeying {
     }
   }
 
+  /// Whether the Phone Keying pick (`VoiceKeyingSource`) is this keyer's —
+  /// radio1's. Radio B plays its own memories whatever is picked: the pick
+  /// is about radio1 and this desk's sound devices.
+  bool ownsVoiceSource = false;
+
+  /// The Phone Keying pick as it applies to this keyer.
+  VoiceKeyingSource get voiceSource => ownsVoiceSource ? settings.voiceKeyingSource : VoiceKeyingSource.radio;
+
+  /// The sound system the computer's voice keyer plays through, and the
+  /// directory its recordings live in — both null where it cannot run (the
+  /// web, mobile, and tests that do not ask for it; CatService sets it only
+  /// where it is supported), and the directory null until the app's data
+  /// directory has been resolved.
+  VoiceAudio? voiceAudio;
+  String? voiceMessagesDir;
+
+  /// Resolves [voiceMessagesDir], asked for only once something needs it: a
+  /// set of recordings in use, or the dialog that makes one.
+  Future<String> Function()? voiceMessagesDirectory;
+
+  /// Announces a change the computer's voice keyer depends on — the
+  /// directory found, the set in use picked — as the service's own, which is
+  /// what [syncComputerKeyers] runs on.
+  void Function()? onComputerVoiceChanged;
+  bool _directoryAsked = false;
+
+  /// The computer's voice keyer for each radio that plays from it, built
+  /// against the session it keys and rebuilt when that session changes.
+  final Map<String, ComputerVoiceKeyer> _computerKeyers = {};
+
+  /// See [ComputerVoiceKeying._deskRecorder].
+  ComputerVoiceKeyer? _recorder;
+
   /// [radio1]'s session, when it is connected and has voice memories to
   /// play. Radio1 and not the key in use: the memories are audio held by
   /// the transceiver itself, so there is nothing to designate — a WinKeyer
@@ -641,7 +653,7 @@ class CatKeying {
   /// surface (the Phone-mode message buttons, F1-F8 in a Phone mode, the
   /// Phone Keyer dialog's Play and Record) exists only while this is
   /// non-null.
-  VoiceKeyerSession? get _voiceKeyer {
+  VoiceKeyer? get _voiceKeyer {
     final uuid = station.localKeyingRadio;
     if (uuid == null) return null;
     return voiceKeyerFor(uuid);
@@ -651,7 +663,12 @@ class CatKeying {
   /// the per-node form of [_voiceKeyer], which asks only about radio1. A
   /// radio this device merely OFFERS plays its own memories: the audio is in
   /// that rig, so radio1 cannot answer for it.
-  VoiceKeyerSession? voiceKeyerFor(String uuid) {
+  VoiceKeyer? voiceKeyerFor(String uuid) {
+    // Never the radio's own memories in its place: the operator picked the
+    // computer, and a radio it cannot key plays nothing rather than
+    // something else (computerVoiceProblem says why).
+    if (_playsFromComputer(uuid)) return _computerKeyers[uuid];
+    if (voiceSource != VoiceKeyingSource.radio) return null;
     final session = station.connectedSession(uuid);
     if (session is! VoiceKeyerSession || session.voiceMemoryCount <= 0) return null;
     return session;
@@ -677,6 +694,15 @@ class CatKeying {
   bool get radio1HasVoiceMemories {
     if (playsVoiceOverPeer) return true;
     final uuid = station.localKeyingRadio;
+    if (_playsFromComputer(uuid)) return true;
+    if (uuid == null) return false;
+    return voiceSource == VoiceKeyingSource.radio && radio1OffersVoiceMemories;
+  }
+
+  /// Whether radio1's entry holds voice memories of its own, whichever source
+  /// is picked — what decides whether the radio is offered as one.
+  bool get radio1OffersVoiceMemories {
+    final uuid = station.localKeyingRadio;
     if (uuid == null) return false;
     final node = station.nodeFor(uuid);
     if (node == null) return false;
@@ -691,7 +717,7 @@ class CatKeying {
 
   /// Whether radio1's CAT can also record a memory (docs/design/cat.md
   /// § Voice keying lists which can).
-  bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? (playsVoiceOverPeer && peer.recordsVoice);
+  bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? (playsVoiceOverPeer ? peer.recordsVoice : _deskRecorder != null);
 
   /// What the memories are CALLED, and how long each was measured to run.
   ///
@@ -716,8 +742,13 @@ class CatKeying {
   /// connected and has said so. Where it is not empty it is the whole
   /// answer: the settings' labels and measured lengths are for radios that
   /// keep neither, and one shown over the radio's own would name audio by a
-  /// label no other client of that radio sees.
-  List<VoiceMemory> _radioHeldMemories(String? uuid) => uuid == null ? const [] : station.stateFor(uuid).voiceMemories ?? const [];
+  /// label no other client of that radio sees. Empty too while the computer
+  /// plays the messages: the radio's memories are then not what plays, and a
+  /// label typed for a recording here would rename one of them instead.
+  List<VoiceMemory> _radioHeldMemories(String? uuid) {
+    if (uuid == null || _playsFromComputer(uuid)) return const [];
+    return station.stateFor(uuid).voiceMemories ?? const [];
+  }
 
   /// [uuid]'s own account of memory [n]: null when it keeps none, so the
   /// settings answer, and an empty memory when it keeps them but not this one.
@@ -727,21 +758,37 @@ class CatKeying {
     return held.where((m) => m.memory == n).firstOrNull ?? VoiceMemory(memory: n);
   }
 
-  String _localVoiceLabel(String? uuid, int n) => _radioHeldMemory(uuid, n)?.name ?? settings.voiceMessageLabel(n, radio: _settingsRadio(uuid));
+  String _localVoiceLabel(String? uuid, int n) {
+    if (_playsFromComputer(uuid)) return settings.activeVoiceMessageSet.label(n);
+    return _radioHeldMemory(uuid, n)?.name ?? settings.voiceMessageLabel(n, radio: _settingsRadio(uuid));
+  }
 
-  int _localVoiceDuration(String? uuid, int n) => _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n, radio: _settingsRadio(uuid));
+  int _localVoiceDuration(String? uuid, int n) {
+    // A recording's length is read off the file: exact, and known before the
+    // first play.
+    if (_playsFromComputer(uuid)) return voiceAudio!.lengthOf(_voiceFile(n))?.inMilliseconds ?? 0;
+    return _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n, radio: _settingsRadio(uuid));
+  }
 
   /// Which radio's labels and lengths the settings keep for [uuid]: Radio
   /// B's for radio2, radio1's for any other — an offered radio's included,
   /// whatever set this operator is in.
   String _settingsRadio(String? uuid) => uuid != null && uuid == station.radio2 ? 'B' : 'A';
 
-  /// Names memory [n] — on the radio when radio1 holds its own names, in
-  /// the settings otherwise. Nothing for a peer's memory: the name is that
-  /// device's ([voiceMessagesAreLocal]).
+  /// Names memory [n] — in the set in use when it is recordings, on the
+  /// radio when radio1 holds its own names, in the settings otherwise.
+  /// Nothing for a peer's memory: the name is that device's
+  /// ([voiceMessagesAreLocal]).
   Future<void> setVoiceMessageLabel(int n, String label) async {
     if (!voiceMessagesAreLocal) return;
     final uuid = station.localKeyingRadio;
+    if (_playsFromComputer(uuid)) {
+      final id = settings.voiceMessageSetId;
+      final sets = [for (final set in settings.voiceMessageSets) set.id == id ? set.withLabel(n, label) : set];
+      await settings.setVoiceMessageSets(sets, active: id);
+      onKeyingChanged();
+      return;
+    }
     final session = uuid == null ? null : station.connectedSession(uuid);
     if (session is RadioNamedVoiceMemories && _radioHeldMemories(uuid).isNotEmpty) {
       session.renameVoiceMemory(n, label);
@@ -765,7 +812,7 @@ class CatKeying {
   /// with it: the note is about one rig's front panel, and the operator has
   /// to know which rig is being described.
   ({String model, String text})? get voiceRecordingHelp {
-    if (_voiceKeyer?.canRecordVoice != true) return null;
+    if (_voiceKeyer?.canRecordVoice != true || _voiceKeyer is ComputerVoiceKeyer) return null;
     // The LOCAL node: a peer's rig has a front panel nobody here can reach.
     final uuid = station.localKeyingRadio;
     if (uuid == null) return null;
@@ -840,7 +887,9 @@ class CatKeying {
       // ends a chain: the operator has moved on.
       if (!chaining) chain.cancel();
       station.yieldTransmitter(station.localKeyingRadio);
-      _startMeasurement(n);
+      // A recording's length is its file's; timing a play would add the
+      // lead and tail to it.
+      if (session is! ComputerVoiceKeyer) _startMeasurement(n);
       _awaitVoiceStart();
       session.playVoiceMemory(n);
       _voiceMessageOne = n == 1;
@@ -862,6 +911,7 @@ class CatKeying {
       if (peer.recordsVoice) requestPeerKey(PeerKeyOp.record, memory: n);
       return;
     }
+    if (_voiceKeyer == null) return _recordWithoutRadio(n);
     recordVoiceLocally(station.localKeyingRadio, n);
   }
 
@@ -892,7 +942,7 @@ class CatKeying {
       // lengths it stores — a second offered radio's memories are timed by
       // whoever has it as their radio1.
       station.yieldTransmitter(uuid);
-      if (uuid == station.localKeyingRadio) _startMeasurement(n);
+      if (uuid == station.localKeyingRadio && session is! ComputerVoiceKeyer) _startMeasurement(n);
       session.playVoiceMemory(n);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
@@ -1095,7 +1145,7 @@ class CatKeying {
       requestPeerKey(PeerKeyOp.stopVoice);
       return;
     }
-    final session = _voiceKeyer;
+    final session = _voiceKeyer ?? _recorder;
     if (session == null) return;
     try {
       session.stopVoice();
@@ -1308,25 +1358,37 @@ class CatKeying {
     // The LOCAL radio1: a peer's arrive as that peer's status instead.
     if (uuid != station.localKeyingRadio) return;
     _voiceFromPeer = false;
+    final ending = voiceActivity.value;
     voiceActivity.value = activity;
     // After the activity is in place, so keying never reads idle between.
     if (activity != null) _voiceStarted();
-    if (_playMemory == null) return;
     // These same reports time the play: a doubtful one is the radio never
-    // confirming, and the end is what the clock stops at.
-    if (activity == null) {
-      unawaited(_endMeasurement());
-    } else if (activity.doubtful) {
-      // The radio said "not going" before it ever said "going": a refused
-      // memory, whose "length" would be the doubt linger rather than any
-      // audio. Watched rather than asked about, because a confirmed play
-      // reports nothing new to see (the tracker only re-reports an activity
-      // whose doubt it is WITHDRAWING).
-      _playDoubted = true;
+    // confirming, and the end is what the clock stops at. Only around the
+    // timing — a computer recording is not timed, and its end must still
+    // start the repeat below.
+    if (_playMemory != null) {
+      if (activity == null) {
+        unawaited(_endMeasurement());
+      } else if (activity.doubtful) {
+        // The radio said "not going" before it ever said "going": a refused
+        // memory, whose "length" would be the doubt linger rather than any
+        // audio. Watched rather than asked about, because a confirmed play
+        // reports nothing new to see (the tracker only re-reports an activity
+        // whose doubt it is WITHDRAWING).
+        _playDoubted = true;
+      }
     }
     // The memory ending is where a voice repeat's wait begins — the
-    // counterpart of cwProgress going null for a message.
-    if (activity == null && chain.memory != null) chain.startWait();
+    // counterpart of cwProgress going null for a message. One that ends
+    // doubtful was refused or failed: repeated, it would only fail again,
+    // and a computer keyer keys the radio for its lead each time.
+    if (activity == null && chain.memory != null) {
+      if (ending?.doubtful ?? false) {
+        chain.cancel();
+      } else {
+        chain.startWait();
+      }
+    }
   }
 
   /// A node's link went down, or the key in use moved off it: whatever it was
@@ -1339,6 +1401,8 @@ class CatKeying {
       _voiceStarted();
       voiceActivity.value = null;
     }
+    // The session is closing, and its own teardown unkeys the radio.
+    _dropComputerKeyer(uuid, sessionClosing: true);
     // A radio that is gone is playing nothing. Left behind, its last
     // activity would be reported to a peer forever — the radio is no longer
     // offered, but the memory of it playing would outlive the offer.
@@ -1364,7 +1428,8 @@ class CatKeying {
           if (node.uuid == _cwKeyerUuid && chain.memory == null) chain.cancel();
           session.stopCw();
         }
-        if (session is VoiceKeyerSession && _voiceActivityByNode.containsKey(node.uuid)) {
+        final voice = voiceKeyerFor(node.uuid);
+        if (voice != null && _voiceActivityByNode.containsKey(node.uuid)) {
           if (node.uuid == station.localKeyingRadio) {
             if (chain.memory != null) chain.cancel();
             cancelVoiceSequence();
@@ -1373,7 +1438,7 @@ class CatKeying {
             _playStart = null;
             _playDoubted = false;
           }
-          session.stopVoice();
+          voice.stopVoice();
         }
       } catch (e, st) {
         ErrorReportingService.report(e, st, context: 'cat:quiet-others');
@@ -1409,9 +1474,8 @@ class CatKeying {
     cwProgress.dispose();
     cwStops.dispose();
     voiceActivity.dispose();
-    keyerAreaShown.dispose();
     enterSends.dispose();
-    keyerShowRequests.dispose();
+    keyerOpenRequests.dispose();
     keyboardModeRequests.dispose();
   }
 }

@@ -17,6 +17,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:halo_audio/halo_audio.dart' show AudioOutput;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../discovery.dart';
@@ -29,6 +30,8 @@ import 'line_framer.dart';
 import 'flex_meter_codec.dart';
 import 'voice_activity_tracker.dart';
 import 'flex_spectrum.dart';
+import 'flex_dax_switch.dart';
+import 'flex_dax_tx.dart';
 import '../transports/flex_meter_socket.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
@@ -283,7 +286,7 @@ class FlexRadioSession
     implements
         TransceiverSession,
         CwKeyerSession,
-        PttSession,
+        NetworkTransmitAudioSession,
         RadioNamedVoiceMemories,
         SpectrumSession,
         AntennaTunerSession,
@@ -380,6 +383,9 @@ class FlexRadioSession
   }
 
   void _stopMeters() {
+    // The DAX audio goes out on the same socket.
+    _daxOutput?.lost();
+    _daxOutput = null;
     _meterGeneration++;
     _openingMeters = false;
     _metersUnavailable = false;
@@ -736,8 +742,10 @@ class FlexRadioSession
     // nothing about transmitting rather than saying "receiving".
     if (state == null) return;
     final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
-    if (_transmitting == transmitting) return;
+    final changed = _transmitting != transmitting;
     _transmitting = transmitting;
+    _daxSwitch.interlock(transmitting: transmitting);
+    if (!changed) return;
     _sink.reportTransmitting(transmitting);
   }
 
@@ -926,6 +934,7 @@ class FlexRadioSession
     final fields = _parseFields(match.group(1)!);
     // The transmit object carries the keyer speed as `speed=` alongside
     // the CWX subscription's `wpm=`; either is the same knob.
+    if (fields['dax'] case final dax?) _daxSwitch.daxReported(dax == '1');
     final speed = int.tryParse(fields['speed'] ?? '');
     if (speed != null) _reportKeyerSpeed(speed);
     final rfpower = fields['rfpower'];
@@ -1025,6 +1034,50 @@ class FlexRadioSession
     _keyedByUs |= on;
     _sendCommand('xmit ${on ? 1 : 0}');
     _keyedByUs = on;
+  }
+
+  late final _daxSwitch = FlexDaxSwitch(
+    host: () => meterHost,
+    send: _sendCommand,
+    transmitting: () => _transmitting,
+    keyedByUs: () => _keyedByUs,
+    diagnose: _sink.reportDiagnostic,
+  );
+
+  @override
+  bool get switchesToComputerAudio => true;
+
+  /// The DAX transmit stream this session opened, if any — lost with the
+  /// socket it is sent on.
+  FlexDaxOutput? _daxOutput;
+
+  @override
+  bool get sendsTransmitAudio => meterHost != null;
+
+  @override
+  AudioOutput? openTransmitAudio(PcmDecoder decode) {
+    final socket = _meterSocket;
+    if (socket == null || !_handshakeDone) return null;
+    _daxOutput?.close();
+    return _daxOutput = FlexDaxOutput(
+      send: (command, {onReply}) => _sendCommand(command, onReply: onReply),
+      sendPacket: (packet) => socket.send(packet, flexDaxPort),
+      decode: decode,
+      diagnose: (what) => _sink.reportDiagnostic('Flex DAX $what'),
+    );
+  }
+
+  /// DAX on for the message and off again after, unless the operator had it
+  /// on already (flex_dax_switch.dart).
+  @override
+  void setPttWithComputerAudio(bool on) {
+    if (on) {
+      _daxSwitch.beforeKey();
+      setPtt(true);
+    } else {
+      setPtt(false);
+      _daxSwitch.afterUnkey();
+    }
   }
 
   // ------------------------------------------------------- voice keyer (DVK)
@@ -1287,6 +1340,7 @@ class FlexRadioSession
       _keyedByUs = false;
       _sendCommand('xmit 0');
     }
+    _daxSwitch.teardown();
     // A memory transmits, and nothing else will stop it once this client
     // is gone.
     stopVoice();

@@ -433,7 +433,8 @@ void main() {
       // before re-arming each repeat restarted it, so an unattended CQ keyed
       // forever — over the link, somebody else's transmitter.
       await followPeerRadio();
-      await settings.setVoiceRepeatDelay(5);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(5);
 
       cat.playVoiceMemory(1);
       expect(cat.keyerRepeating, isTrue);
@@ -481,7 +482,8 @@ void main() {
       // playing — and if that peer returns inside the five minutes its first
       // idle status keys its transmitter again.
       await followPeerRadio();
-      await settings.setVoiceRepeatDelay(5);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(5);
       cat.playVoiceMemory(1);
       expect(cat.keyerRepeating, isTrue);
 
@@ -495,7 +497,8 @@ void main() {
       // with no router under it. A chain armed there waits for an end nothing
       // will ever report.
       await followPeerRadio();
-      await settings.setVoiceRepeatDelay(5);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(5);
       cat.sendPeerKeyRequest = null;
 
       cat.playVoiceMemory(1);
@@ -633,7 +636,8 @@ void main() {
       // and a repeat armed here would key this station's transmitter after
       // the asker had stopped.
       final node = await connectPlaceholder();
-      await settings.setVoiceRepeatDelay(5);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(5);
 
       cat.handleKeyRequest(PeerKeyRequestPayload(radioId: node.uuid, op: PeerKeyOp.voice, memory: 1));
 

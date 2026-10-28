@@ -2409,7 +2409,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get statusError => 'Verbindung fehlgeschlagen';
 	@override String get currentRadioSettings => 'Aktuelle Funkgeräteeinstellungen';
 	@override String get notSupportedByThisRadio => 'Von diesem Funkgerät nicht unterstützt';
-	@override String get keyerRowLabel => 'Keyer';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Phone';
 	@override String voiceKeyerAvailable({required Object count}) => 'Sprach-Keyer: ${count} Speicher im Funkgerät';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL oder kompatibel)';
 	@override String keyViaRadio({required Object radio}) => 'CAT-Keyer in ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Taste an ${device}';
-	@override String get cwKeyerArea => 'Keyer-Bereich';
 	@override String get trackStationInfo => 'Stationsinfo für jedes QSO erfassen';
 	@override String get includeStationInfoInAdif => 'In ADIF-Exporte aufnehmen';
 	@override String get whatToTrack => 'Was erfassen?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$de extends Translations$settings$r
 	@override String get setEsm => 'ESM-Nachrichten';
 	@override String get setSaved => 'Meine Nachrichten';
 	@override String get repeat => 'Nachricht #1 wiederholen';
-	@override String get repeatOff => 'Nein';
-	@override String repeatAfter({required Object n}) => 'Nach ${n} Sekunden';
 	@override String get repeatWait => 'Wiederholt';
 	@override String get keyboard => 'Tippen zum Senden';
 	@override String get keyboardField => 'Tippen zum Senden';
-	@override String get closeArea => 'Keyer-Bereich schließen';
 	@override String get help => 'Hilfe';
 	@override String get helpTitle => 'CW-Nachrichten schreiben';
 	@override String get helpIntro => 'Nachrichten können Vorlagen mit folgenden Werten verwenden:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$de extends Translations$setting
 	// Translations
 	@override String get title => 'Phone-Keyer-Nachrichten';
 	@override String get notSupported => 'Das aktuelle Funkgerät unterstützt keine Phone-Nachrichten';
-	@override String get description => 'Dies nutzt die Sprachspeicher des Funkgeräts';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Sprachspeicher (${n})';
 	@override String get labelField => 'Beschriftung';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$de extends Translations$setting
 	@override String get recordButton => 'Aufnehmen';
 	@override String get stopButton => 'Stopp';
 	@override String get repeat => 'Nachricht #1 wiederholen';
-	@override String get repeatOff => 'Nein';
-	@override String repeatAfter({required Object n}) => 'Nach ${n} Sekunden';
 	@override String recordHelpTitle({required Object model}) => 'Hinweise zum ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Diese Speicher sind im Funkgerät von ${device}. Ihre Namen und Längen gehören zu diesem Gerät.';
 	@override String get namedOnRadio => 'Im Funkgerät gespeichert, wo auch seine anderen Clients es sehen.';
@@ -4668,12 +4660,9 @@ extension on TranslationsDe {
 			'settings.radio.cwMessages.setEsm' => 'ESM-Nachrichten',
 			'settings.radio.cwMessages.setSaved' => 'Meine Nachrichten',
 			'settings.radio.cwMessages.repeat' => 'Nachricht #1 wiederholen',
-			'settings.radio.cwMessages.repeatOff' => 'Nein',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Nach ${n} Sekunden',
 			'settings.radio.cwMessages.repeatWait' => 'Wiederholt',
 			'settings.radio.cwMessages.keyboard' => 'Tippen zum Senden',
 			'settings.radio.cwMessages.keyboardField' => 'Tippen zum Senden',
-			'settings.radio.cwMessages.closeArea' => 'Keyer-Bereich schließen',
 			'settings.radio.cwMessages.help' => 'Hilfe',
 			'settings.radio.cwMessages.helpTitle' => 'CW-Nachrichten schreiben',
 			'settings.radio.cwMessages.helpIntro' => 'Nachrichten können Vorlagen mit folgenden Werten verwenden:',
@@ -4703,7 +4692,6 @@ extension on TranslationsDe {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Vorschlag für F3 bei //-Stapeln: TU geht raus, nachdem der Kontakt geloggt ist, also bedankt es sich, ruft dann die nächste gestapelte Station und sendet deinen Austausch oder fragt ein Teilrufzeichen zurück (TU KR?); ist nichts mehr übrig, nur TU',
 			'settings.radio.voiceMessages.title' => 'Phone-Keyer-Nachrichten',
 			'settings.radio.voiceMessages.notSupported' => 'Das aktuelle Funkgerät unterstützt keine Phone-Nachrichten',
-			'settings.radio.voiceMessages.description' => 'Dies nutzt die Sprachspeicher des Funkgeräts',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Sprachspeicher (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Beschriftung',
@@ -4715,8 +4703,6 @@ extension on TranslationsDe {
 			'settings.radio.voiceMessages.recordButton' => 'Aufnehmen',
 			'settings.radio.voiceMessages.stopButton' => 'Stopp',
 			'settings.radio.voiceMessages.repeat' => 'Nachricht #1 wiederholen',
-			'settings.radio.voiceMessages.repeatOff' => 'Nein',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Nach ${n} Sekunden',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Hinweise zum ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Diese Speicher sind im Funkgerät von ${device}. Ihre Namen und Längen gehören zu diesem Gerät.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Im Funkgerät gespeichert, wo auch seine anderen Clients es sehen.',
@@ -5125,18 +5111,17 @@ extension on TranslationsDe {
 			'settings.station.n3fjpTroubleshooting' => 'Dies verbindet sich mit **einem N3FJP-Logprogramm auf deinem Computer**, nicht direkt mit dem Funkgerät — N3FJP spricht mit dem Funkgerät.\n\n- **Die API des Programms muss eingeschaltet sein**: Settings → Application Program Interface, **TCP API Enabled** aktivieren.\n- **Port** ist 1100, außer du hast ihn dort geändert.\n- **In N3FJP muss eine Funkgeräteschnittstelle eingerichtet sein**, um dem Funkgerät zu folgen oder es abzustimmen. Ohne sie meldet es nur, was in sein Eingabefenster getippt wird.\n- N3FJP meldet nur Band, Modus und Frequenz: keine Leistung, keinen Sendezustand.\n\nDieser Eintrag wurde anhand der veröffentlichten API von N3FJP geschrieben und noch nicht mit N3FJP getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
 			'settings.station.commanderTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			'settings.station.commanderTroubleshooting' => 'Dies verbindet sich mit **DXLab Commander auf deinem Computer**, nicht direkt mit dem Funkgerät — Commander spricht mit dem Funkgerät.\n\n- **Commander muss bereits laufen** und mit dem Funkgerät verbunden sein.\n- **Sein Netzwerkdienst muss eingeschaltet sein**: der Button **Net Serv** im Radio-Bereich des Configuration-Fensters von Commander.\n- **Port** ist 52002, der dritte Port des Blocks ab dem **Base Port** von Net Serv (52000, außer du hast ihn geändert).\n- **Von einem anderen Rechner aus** stelle sicher, dass deine Firewall die Verbindung durchlässt.\n\nDieser Eintrag wurde anhand der veröffentlichten TCP-Nachrichten von Commander geschrieben und noch nicht mit Commander getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Wenn das Funkgerät nie reagiert',
 			'settings.station.ic705Troubleshooting' => 'Das Funkgerät hat eine **einzige** Fernsteuerungssitzung. Wird die Anmeldung ignoriert, nutzt fast immer etwas anderes sie.\n\n- **Schließe alle anderen Clients.** wfview oder RS-BA1, mit demselben Funkgerät verbunden, belegen diese eine Sitzung, und die Anmeldung hier wird solange einfach ignoriert.\n- **Prüfe die Netzwerkeinstellungen des Funkgeräts.** WLAN muss an sein, das Funkgerät muss im selben Netzwerk sein und seine Fernsteuerungsfunktion (Network) muss aktiviert sein.\n- **Schalte das WLAN des Funkgeräts aus und wieder ein**, wenn es hängen bleibt. Das löst zuverlässig eine auf dem Funkgerät hängende Sitzung.\n\nEin **falsches Passwort wird ausdrücklich abgelehnt**, nicht mit Schweigen beantwortet. Wenn du hier gelandet bist statt bei einer Meldung „abgelehnt“, ist das Passwort nicht das Problem.',
 			'settings.station.statusStale' => 'Reagiert nicht',
 			'settings.station.statusDisconnected' => 'Nicht verbunden',
 			'settings.station.statusConnecting' => 'Verbinde…',
 			'settings.station.statusDisconnecting' => 'Trenne…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Verbindung fehlgeschlagen',
 			'settings.station.currentRadioSettings' => 'Aktuelle Funkgeräteeinstellungen',
 			'settings.station.notSupportedByThisRadio' => 'Von diesem Funkgerät nicht unterstützt',
-			'settings.station.keyerRowLabel' => 'Keyer',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Phone',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Sprach-Keyer: ${count} Speicher im Funkgerät',
@@ -5167,7 +5152,6 @@ extension on TranslationsDe {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL oder kompatibel)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Taste an ${device}',
-			'settings.station.cwKeyerArea' => 'Keyer-Bereich',
 			'settings.station.trackStationInfo' => 'Stationsinfo für jedes QSO erfassen',
 			'settings.station.includeStationInfoInAdif' => 'In ADIF-Exporte aufnehmen',
 			'settings.station.whatToTrack' => 'Was erfassen?',

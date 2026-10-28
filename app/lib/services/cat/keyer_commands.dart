@@ -27,17 +27,17 @@ CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, M
       }
       return services.cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
     case 'showKeyer':
-      // KEYER / MACROS: the keyer area listens for this. With the
-      // experiment off no area is mounted to hear it; with nothing that can
+      // KEYER / MACROS: the logging panel opens its keyer control. With the
+      // experiment off there is no control to open; with nothing that can
       // key there is nothing for it to do — say so rather than confirm.
       if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) {
         return (text: t.commands.keyerExperimentOff, failed: true);
       }
       if (!services.cat.canKeyCw && !services.cat.canPlayVoice) return (text: t.commands.noKeyer, failed: true);
-      // The area lives in an operation's logging panel; from Home there is
-      // nothing to show, and confirming would be a lie.
+      // The control lives in an operation's logging panel; from Home there
+      // is nothing to open, and confirming would be a lie.
       if (services.currentOperationContext == null) return (text: t.commands.keyerNeedsOperation, failed: true);
-      services.cat.showKeyerArea();
+      services.cat.openKeyerControl();
       return null;
     case 'setEnterSends':
       // ESM / RUN / SP. Written whether or not anything can key right now —

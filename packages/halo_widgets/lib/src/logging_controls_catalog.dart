@@ -75,6 +75,10 @@ typedef ControlCatalogConfig = ({
   /// Spotting after the activity references rather than before them — see
   /// [ControlStripSettings.spottingAfterReferences].
   bool spottingAfterReferences,
+
+  /// The app's own controls ([ControlStripSettings.hostControls]), placed
+  /// right after Radio.
+  List<ControlDescriptor> hostControls,
 });
 
 /// The strip's catalog. See the file comment.
@@ -93,6 +97,7 @@ class SecondaryControlCatalog {
   List<ControlDescriptor> _descriptors(ControlCatalogConfig config) => [
     ControlDescriptor(key: 'time', icon: timeChipIcon, label: t.loggingControls.timeControl, mandatory: true),
     ControlDescriptor(key: 'radio', icon: config.radioIcon, label: t.loggingControls.radioControl, mandatory: true),
+    ...config.hostControls,
     if (config.hasPowerStore) ControlDescriptor(key: 'power', icon: powerChipIcon, label: t.loggingControls.powerControl, defaultHidden: true),
     if (config.canSpot && !config.spottingAfterReferences) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
     for (final control in config.activityControls)

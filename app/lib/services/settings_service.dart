@@ -31,6 +31,8 @@ import 'onboarding_flows.dart';
 // take one.
 export 'onboarding_flows.dart';
 export 'cw_message_set.dart';
+export 'voice_message_set.dart';
+export 'keyer_repeat_settings.dart';
 
 /// The theme mode the light/dark toggle (⌘⇧D) switches to: always the opposite
 /// of what's currently on screen, resolving [ThemeMode.system] against the
@@ -1078,19 +1080,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     return setCwMessageSets(sets, active: name);
   }
 
-  /// The delays message 1 may repeat at, in seconds — `'0'` being off.
-  /// Strings, like every other option list here, so a stored value names an
-  /// item of the picker that set it.
-  static const cwRepeatDelayOptions = ['0', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-
-  /// How long after message 1 finishes keying before it goes again, or
-  /// [Duration.zero] for no repeat. Only message 1 repeats: it is the CQ,
-  /// and a repeating exchange or report would key over the contact it is
-  /// answering (docs/design/cat.md § CW keying).
-  Duration get cwRepeatDelay => Duration(seconds: int.tryParse((settingValue(radioGroup, 'cwRepeatDelay') as String?) ?? '') ?? 0);
-
-  Future<void> setCwRepeatDelay(int seconds) => setSettingValue(radioGroup, 'cwRepeatDelay', '$seconds');
-
   /// How many voice memory labels there are: one per function key, like
   /// the CW messages — the most any radio here has (an Icom's T1-T8). A
   /// radio with fewer shows fewer; the labels past its count keep.
@@ -1120,14 +1109,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   Future<void> setVoiceMessageDuration(int n, int millis, {String radio = 'A'}) =>
       setSettingValue(radioGroup, voiceMessageDurationKey(n, radio: radio), millis);
 
-  /// Whether the logging panel's keyer area is showing. A setting rather
-  /// than session state: an operator who opened the strip wants it there
-  /// tomorrow too, and one who closed it does not want it back at the next
-  /// launch.
-  bool get keyerAreaShown => settingValue(radioGroup, 'keyerAreaShown') == true;
-
-  Future<void> setKeyerAreaShown(bool value) => setSettingValue(radioGroup, 'keyerAreaShown', value);
-
   /// Enter Sends Messages (docs/design/logging-fields.md § Enter Sends
   /// Messages): whether Enter keys the exchange's messages, and whether the
   /// operator is running (the default — ESM's home ground) or searching and
@@ -1149,12 +1130,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// docs/design/cat.md § Radio B, for SO2R.
   bool get so2rQueueMessages => settingValue(radioGroup, 'so2rQueueMessages') == true;
   Future<void> setSo2rQueueMessages(bool queue) => setSettingValue(radioGroup, 'so2rQueueMessages', queue);
-
-  /// The voice counterpart of [cwRepeatDelay], and the same rule: only
-  /// memory 1 repeats, because it is the CQ.
-  Duration get voiceRepeatDelay => Duration(seconds: int.tryParse((settingValue(radioGroup, 'voiceRepeatDelay') as String?) ?? '') ?? 0);
-
-  Future<void> setVoiceRepeatDelay(int seconds) => setSettingValue(radioGroup, 'voiceRepeatDelay', '$seconds');
 
   /// Smart VFO Snap's feel, as four numbers the operator can turn.
   ///

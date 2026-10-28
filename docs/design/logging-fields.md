@@ -579,10 +579,10 @@ asked once.
 
 **With ESM on, Enter keys the exchange as well as logging it** — N1MM's
 Enter Sends Messages, so a contest can be run from the call field without
-reaching for a function key. It is an operator's switch (the keyer area's
+reaching for a function key. It is an operator's switch (the keyer control's
 `ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages field in
 the CW Keyer and Phone Keyer dialogs) and a side of the pileup (the same
-pill, `RUN` and `SP`, the same field), device-wide like the keyer area, and exists only
+pill, `RUN` and `SP`, the same field), device-wide like the keyer control, and exists only
 behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
 apart from keying because it changes what Enter does. The panel asks for it at every Enter
 (`LoggingSession.enterSends`) and gets nothing back while no key could send
@@ -661,13 +661,13 @@ depends on where the contact stands**, decided by `esmStep`:
   `{{ qso.serial }}` sends the logged contact's number. Voice keeps one
   sequence at the Enter: a memory renders nothing, and a second sequence
   would cut the first off.
-- **The keyer area shows what the next Enter keys.** Its buttons for that
+- **The keyer control shows what the next Enter keys.** Its buttons for that
   step's messages get a faint wash of the accent and a heavier outline. On
   a step that also logs, the last of those buttons carries the submit
   button's upload icon. The panel publishes the facts `esmStep` reads
   (`LoggingSession.onEsmFacts`) each time one changes, read once the
   change has settled, since a populate writes the call before the exchange.
-  The keyer area combines them with the pill's side of the pileup. Enter
+  The keyer control combines them with the ESM pill's side of the pileup. Enter
   reads the same getter, so the tint and the keying cannot disagree.
   Nothing is tinted when the Enter would stop before ESM (a locked form,
   an edit, a command in the call field, the band-or-frequency refusal) or
@@ -1259,11 +1259,12 @@ picking it from the log loads it into that set — set A for one logged
 without SO2R.
 
 **Each set keys its own radio**, and the two take turns on the air — see
-[cat.md](cat.md) § Radio B, for SO2R. Each set has a keyer area of its own,
-above its fields: its radio's speed or voice pill, Run or S&P, buttons, the
-message going out, its repeat's countdown, and what waits for the other radio
-under an indeterminate bar. Its ESM highlight is that set's own: each set
-publishes its ESM facts, and its area reads them on its radio's Run or S&P.
+[cat.md](cat.md) § Radio B, for SO2R. Each set's info area has its radio's
+keyer line: the message going out, its repeat's countdown, and what waits for
+the other radio under an indeterminate bar. The keyer control, one for both
+sets in the shared strip, is the radio of the set the operator is in: its
+Run or S&P, buttons and ESM highlight. Each set publishes its ESM facts, and
+the control reads the operator's set's, on that radio's Run or S&P.
 Each set's call field stops only its own radio's message as a call is typed
 over it, and the pill and rule of the radio on the air are red, whichever set
 has the keyboard.

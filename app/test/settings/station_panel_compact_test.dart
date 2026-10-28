@@ -16,8 +16,10 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
 
+import '../support/fake_voice_audio.dart';
 import '../support/halo_test_support.dart';
 
 void main() {
@@ -132,7 +134,7 @@ void main() {
       expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.trashCanOutline)), findsNothing);
     });
 
-    testWidgets('the Key in Use row names the peer that keys, and the dialog builds', (tester) async {
+    testWidgets('the CW Keying row names the peer that keys, and the dialog builds', (tester) async {
       // The row exists for a peer's key even on a device with no key
       // inventory of its own — the phone this feature is for — or its
       // operator can neither set the speed nor step off the peer's key. And
@@ -145,7 +147,7 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(find.text('Key in Use'), findsOneWidget);
+      expect(find.text('CW Keying'), findsOneWidget);
       expect(find.text("Key on VE1SK's iPad"), findsOneWidget);
       expect(find.text('None selected'), findsNothing);
     });
@@ -157,8 +159,23 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(find.text('Key in Use'), findsNothing, reason: 'a bare row with nothing selectable in it');
+      expect(find.text('CW Keying'), findsNothing, reason: 'a bare row with nothing selectable in it');
     });
+  });
+
+  // Recordings on this computer are recorded before the rig is on the desk:
+  // a Phone Keying line that waits for a radio leaves nowhere to record them.
+  testWidgets('with no radio, Phone Keying offers the computer, and its messages open', (tester) async {
+    final audio = FakeVoiceAudio();
+    services = (await makeHaLoServices(
+      cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
+    )).services;
+    await services.settings.setExperimentEnabled('keyer', true);
+    await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Audio in this computer'), findsOneWidget);
+    expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNotNull);
   });
 
   group('CW keyer row', () {
@@ -191,16 +208,16 @@ void main() {
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
       expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed,
         isNotNull,
         reason: 'the messages are settings, editable without a radio',
       );
       expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone')).onPressed,
+        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed,
         isNotNull,
         reason: 'the rig holds memories whether or not it is plugged in',
       );
-      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNotNull, reason: 'the keyer area is worth showing for a rig that can key');
+      expect(find.text('Memories in Bench Rig'), findsOneWidget, reason: "Phone Keying offers the rig's own memories");
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
     });
 
@@ -222,10 +239,21 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW')).onPressed, isNotNull);
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone')).onPressed, isNull);
-      expect(find.bySemanticsLabel('Phone. Not supported by this radio'), findsOneWidget);
-      expect(find.bySemanticsLabel('CW. Not supported by this radio'), findsNothing, reason: 'a button that works must not carry a reason it does not');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull);
+      expect(
+        find.bySemanticsLabel('CW Messages. Not supported by this radio'),
+        findsNothing,
+        reason: 'a button that works must not carry a reason it does not',
+      );
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNull);
+      expect(find.bySemanticsLabel('Phone Messages. Not supported by this radio'), findsOneWidget);
+
+      // A key that cannot key: the CW Messages button stays, disabled, and
+      // says why to a screen reader.
+      await services.cat.setDesignated(kCategoryKey, null);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNull);
+      expect(find.bySemanticsLabel('CW Messages. Not supported by this radio'), findsOneWidget);
       semantics.dispose();
     });
 

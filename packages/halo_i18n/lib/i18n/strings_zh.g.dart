@@ -2409,7 +2409,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get statusError => '连接失败';
 	@override String get currentRadioSettings => '当前电台设置';
 	@override String get notSupportedByThisRadio => '此电台不支持';
-	@override String get keyerRowLabel => '电键';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => '话音';
 	@override String voiceKeyerAvailable({required Object count}) => '语音电键：电台中有 ${count} 个存储';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer（K1EL 或兼容）';
 	@override String keyViaRadio({required Object radio}) => '${radio} 中的 CAT 电键器';
 	@override String keyOnDevice({required Object device}) => '${device} 上的电键';
-	@override String get cwKeyerArea => '电键区域';
 	@override String get trackStationInfo => '为每个 QSO 记录电台信息';
 	@override String get includeStationInfoInAdif => '包含在 ADIF 导出中';
 	@override String get whatToTrack => '记录哪些内容？';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	@override String get setEsm => 'ESM 消息';
 	@override String get setSaved => '我的消息';
 	@override String get repeat => '重复消息 #1';
-	@override String get repeatOff => '否';
-	@override String repeatAfter({required Object n}) => '${n} 秒后';
 	@override String get repeatWait => '重复中';
 	@override String get keyboard => '键入发送';
 	@override String get keyboardField => '键入发送';
-	@override String get closeArea => '关闭电键区域';
 	@override String get help => '帮助';
 	@override String get helpTitle => '编写 CW 消息';
 	@override String get helpIntro => '消息可以使用包含以下值的模板：';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	// Translations
 	@override String get title => '话音电键消息';
 	@override String get notSupported => '当前电台不支持话音消息';
-	@override String get description => '使用电台的语音存储';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => '语音存储 (${n})';
 	@override String get labelField => '标签';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	@override String get recordButton => '录制';
 	@override String get stopButton => '停止';
 	@override String get repeat => '重复消息 #1';
-	@override String get repeatOff => '否';
-	@override String repeatAfter({required Object n}) => '${n} 秒后';
 	@override String recordHelpTitle({required Object model}) => '${model} 说明：';
 	@override String namedOnDevice({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度归该设备所有。';
 	@override String get namedOnRadio => '保存在电台中，电台的其他客户端也能看到。';
@@ -4668,12 +4660,9 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.setEsm' => 'ESM 消息',
 			'settings.radio.cwMessages.setSaved' => '我的消息',
 			'settings.radio.cwMessages.repeat' => '重复消息 #1',
-			'settings.radio.cwMessages.repeatOff' => '否',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => '${n} 秒后',
 			'settings.radio.cwMessages.repeatWait' => '重复中',
 			'settings.radio.cwMessages.keyboard' => '键入发送',
 			'settings.radio.cwMessages.keyboardField' => '键入发送',
-			'settings.radio.cwMessages.closeArea' => '关闭电键区域',
 			'settings.radio.cwMessages.help' => '帮助',
 			'settings.radio.cwMessages.helpTitle' => '编写 CW 消息',
 			'settings.radio.cwMessages.helpIntro' => '消息可以使用包含以下值的模板：',
@@ -4703,7 +4692,6 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '建议用于 // 堆栈的 F3：TU 在通联记录后发出，因此先致谢，再呼叫堆栈中的下一个电台并发送您的交换信息，或回询部分呼号（TU KR?）；如果没有剩余，则只发 TU',
 			'settings.radio.voiceMessages.title' => '话音电键消息',
 			'settings.radio.voiceMessages.notSupported' => '当前电台不支持话音消息',
-			'settings.radio.voiceMessages.description' => '使用电台的语音存储',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '语音存储 (${n})',
 			'settings.radio.voiceMessages.labelField' => '标签',
@@ -4715,8 +4703,6 @@ extension on TranslationsZh {
 			'settings.radio.voiceMessages.recordButton' => '录制',
 			'settings.radio.voiceMessages.stopButton' => '停止',
 			'settings.radio.voiceMessages.repeat' => '重复消息 #1',
-			'settings.radio.voiceMessages.repeatOff' => '否',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => '${n} 秒后',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} 说明：',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度归该设备所有。',
 			'settings.radio.voiceMessages.namedOnRadio' => '保存在电台中，电台的其他客户端也能看到。',
@@ -5125,18 +5111,17 @@ extension on TranslationsZh {
 			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => '如果电台始终没有响应',
 			'settings.station.ic705Troubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。',
 			'settings.station.statusStale' => '无响应',
 			'settings.station.statusDisconnected' => '未连接',
 			'settings.station.statusConnecting' => '连接中…',
 			'settings.station.statusDisconnecting' => '正在断开…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => '连接失败',
 			'settings.station.currentRadioSettings' => '当前电台设置',
 			'settings.station.notSupportedByThisRadio' => '此电台不支持',
-			'settings.station.keyerRowLabel' => '电键',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '话音',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '语音电键：电台中有 ${count} 个存储',
@@ -5167,7 +5152,6 @@ extension on TranslationsZh {
 			'settings.station.newKeyer' => 'WinKeyer（K1EL 或兼容）',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 电键器',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} 上的电键',
-			'settings.station.cwKeyerArea' => '电键区域',
 			'settings.station.trackStationInfo' => '为每个 QSO 记录电台信息',
 			'settings.station.includeStationInfoInAdif' => '包含在 ADIF 导出中',
 			'settings.station.whatToTrack' => '记录哪些内容？',

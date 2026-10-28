@@ -2409,7 +2409,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get statusError => 'Bağlantı başarısız';
 	@override String get currentRadioSettings => 'Mevcut radyo ayarları';
 	@override String get notSupportedByThisRadio => 'Bu radyo desteklemiyor';
-	@override String get keyerRowLabel => 'Keyer';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Telefon';
 	@override String voiceKeyerAvailable({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL veya uyumlu)';
 	@override String keyViaRadio({required Object radio}) => '${radio} içindeki CAT Keyer';
 	@override String keyOnDevice({required Object device}) => '${device} üzerindeki anahtar';
-	@override String get cwKeyerArea => 'Keyer alanı';
 	@override String get trackStationInfo => 'Her QSO için İstasyon Bilgisini Kaydet';
 	@override String get includeStationInfoInAdif => 'ADIF dışa aktarımlarına dahil et';
 	@override String get whatToTrack => 'Neler kaydedilsin?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$tr extends Translations$settings$r
 	@override String get setEsm => 'ESM Mesajları';
 	@override String get setSaved => 'Mesajlarım';
 	@override String get repeat => '1 Numaralı Mesajı Tekrarla';
-	@override String get repeatOff => 'Hayır';
-	@override String repeatAfter({required Object n}) => '${n} saniye sonra';
 	@override String get repeatWait => 'Tekrarlanıyor';
 	@override String get keyboard => 'Göndermek için yazın';
 	@override String get keyboardField => 'Göndermek için yazın';
-	@override String get closeArea => 'Keyer alanını kapat';
 	@override String get help => 'Yardım';
 	@override String get helpTitle => 'CW Mesajları Yazma';
 	@override String get helpIntro => 'Mesajlar aşağıdaki değerlerle şablonlar kullanabilir:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	// Translations
 	@override String get title => 'Telefon Keyer Mesajları';
 	@override String get notSupported => 'Mevcut radyo Telefon mesajlarını desteklemiyor';
-	@override String get description => 'Bu, radyonun ses hafızalarını kullanır';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Ses hafızası (${n})';
 	@override String get labelField => 'Etiket';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String get recordButton => 'Kaydet';
 	@override String get stopButton => 'Durdur';
 	@override String get repeat => '1 Numaralı Mesajı Tekrarla';
-	@override String get repeatOff => 'Hayır';
-	@override String repeatAfter({required Object n}) => '${n} saniye sonra';
 	@override String recordHelpTitle({required Object model}) => '${model} Notları:';
 	@override String namedOnDevice({required Object device}) => 'Bu hafızalar ${device} cihazının radyosunda. İsimleri ve uzunlukları o cihaza aittir.';
 	@override String get namedOnRadio => 'Radyoda kayıtlı; radyonun diğer istemcileri de görür.';
@@ -4668,12 +4660,9 @@ extension on TranslationsTr {
 			'settings.radio.cwMessages.setEsm' => 'ESM Mesajları',
 			'settings.radio.cwMessages.setSaved' => 'Mesajlarım',
 			'settings.radio.cwMessages.repeat' => '1 Numaralı Mesajı Tekrarla',
-			'settings.radio.cwMessages.repeatOff' => 'Hayır',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => '${n} saniye sonra',
 			'settings.radio.cwMessages.repeatWait' => 'Tekrarlanıyor',
 			'settings.radio.cwMessages.keyboard' => 'Göndermek için yazın',
 			'settings.radio.cwMessages.keyboardField' => 'Göndermek için yazın',
-			'settings.radio.cwMessages.closeArea' => 'Keyer alanını kapat',
 			'settings.radio.cwMessages.help' => 'Yardım',
 			'settings.radio.cwMessages.helpTitle' => 'CW Mesajları Yazma',
 			'settings.radio.cwMessages.helpIntro' => 'Mesajlar aşağıdaki değerlerle şablonlar kullanabilir:',
@@ -4703,7 +4692,6 @@ extension on TranslationsTr {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '// yığınları için önerilen F3: TU, QSO kaydedildikten sonra gider; böylece teşekkür eder, ardından yığındaki sonraki istasyonu çağırıp değişiminizi gönderir ya da kısmi bir çağrıyı geri sorar (TU KR?); yığında kimse kalmadıysa yalnızca TU',
 			'settings.radio.voiceMessages.title' => 'Telefon Keyer Mesajları',
 			'settings.radio.voiceMessages.notSupported' => 'Mevcut radyo Telefon mesajlarını desteklemiyor',
-			'settings.radio.voiceMessages.description' => 'Bu, radyonun ses hafızalarını kullanır',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Ses hafızası (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiket',
@@ -4715,8 +4703,6 @@ extension on TranslationsTr {
 			'settings.radio.voiceMessages.recordButton' => 'Kaydet',
 			'settings.radio.voiceMessages.stopButton' => 'Durdur',
 			'settings.radio.voiceMessages.repeat' => '1 Numaralı Mesajı Tekrarla',
-			'settings.radio.voiceMessages.repeatOff' => 'Hayır',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => '${n} saniye sonra',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notları:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Bu hafızalar ${device} cihazının radyosunda. İsimleri ve uzunlukları o cihaza aittir.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Radyoda kayıtlı; radyonun diğer istemcileri de görür.',
@@ -5125,18 +5111,17 @@ extension on TranslationsTr {
 			'settings.station.n3fjpTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan bir N3FJP kayıt programına** bağlanır — N3FJP radyoyla konuşur.\n\n- **Programın API\'si açık olmalı**: Settings → Application Program Interface, **TCP API Enabled** seçeneğini işaretleyin.\n- Orada değiştirmediyseniz **port** 1100\'dür.\n- Radyoyu izlemek veya ayarlamak için **N3FJP\'de bir radyo arayüzü kurulu olmalı**. Arayüz olmadan yalnızca giriş penceresine yazılanları bildirir.\n- N3FJP yalnızca bant, mod ve frekans bildirir: güç ve yayın durumu yok.\n\nBu giriş N3FJP\'nin yayımlanmış API\'sinden yazıldı ve N3FJP üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
 			'settings.station.ic705Troubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.',
 			'settings.station.statusStale' => 'Yanıt vermiyor',
 			'settings.station.statusDisconnected' => 'Bağlı değil',
 			'settings.station.statusConnecting' => 'Bağlanıyor…',
 			'settings.station.statusDisconnecting' => 'Bağlantı kesiliyor…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Bağlantı başarısız',
 			'settings.station.currentRadioSettings' => 'Mevcut radyo ayarları',
 			'settings.station.notSupportedByThisRadio' => 'Bu radyo desteklemiyor',
-			'settings.station.keyerRowLabel' => 'Keyer',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Telefon',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza',
@@ -5167,7 +5152,6 @@ extension on TranslationsTr {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL veya uyumlu)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} üzerindeki anahtar',
-			'settings.station.cwKeyerArea' => 'Keyer alanı',
 			'settings.station.trackStationInfo' => 'Her QSO için İstasyon Bilgisini Kaydet',
 			'settings.station.includeStationInfoInAdif' => 'ADIF dışa aktarımlarına dahil et',
 			'settings.station.whatToTrack' => 'Neler kaydedilsin?',

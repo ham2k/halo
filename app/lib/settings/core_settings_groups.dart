@@ -762,7 +762,18 @@ class RadioSettingsGroup extends SettingsGroup {
             'key': cwKeyerActionKey,
             'label': s.cwMessages.title,
             'icon': 'message-bulleted',
-            'aliases': const ['cwMessages', 'cwMessageLabel', 'cwRepeatDelay', 'messages', 'macros', 'repeat', 'enterSendsMessages', 'esm'],
+            'aliases': const [
+              'cwMessages',
+              'cwMessageLabel',
+              'cwRepeat',
+              'cwRepeatDelay',
+              'cooldown',
+              'messages',
+              'macros',
+              'repeat',
+              'enterSendsMessages',
+              'esm',
+            ],
           },
           {
             'type': 'action',
@@ -770,7 +781,18 @@ class RadioSettingsGroup extends SettingsGroup {
             'key': phoneKeyerActionKey,
             'label': s.voiceMessages.title,
             'icon': 'account-voice',
-            'aliases': const ['voiceMessages', 'voiceMessageLabel', 'voiceRepeatDelay', 'voice memories', 'messages', 'repeat', 'enterSendsMessages', 'esm'],
+            'aliases': const [
+              'voiceMessages',
+              'voiceMessageLabel',
+              'voiceRepeat',
+              'voiceRepeatDelay',
+              'cooldown',
+              'voice memories',
+              'messages',
+              'repeat',
+              'enterSendsMessages',
+              'esm',
+            ],
           },
           for (final el in _keyerElements()) {...el, 'listed': false},
         ],
@@ -834,15 +856,13 @@ class RadioSettingsGroup extends SettingsGroup {
     return [
       // Message 1 only, which is what the circled 1 in the label says —
       // see SettingsService.cwRepeatDelay on why the others never repeat.
+      _toggle(key: 'cwRepeat', label: s.cwMessages.repeat, icon: 'repeat', value: settings.cwRepeat, target: 'cw-messages'),
       _select(
         key: 'cwRepeatDelay',
-        label: s.cwMessages.repeat,
-        icon: 'repeat',
-        value: '${settings.cwRepeatDelay.inSeconds}',
-        options: [
-          for (final option in SettingsService.cwRepeatDelayOptions)
-            (label: option == '0' ? s.cwMessages.repeatOff : s.cwMessages.repeatAfter(n: option), value: option),
-        ],
+        label: s.cwMessages.cooldown,
+        icon: 'timer-sand',
+        value: '${settings.cwRepeatCooldown.inSeconds}',
+        options: [for (final option in keyerRepeatCooldowns) (label: s.cwMessages.cooldownSeconds(n: option), value: option)],
         target: 'cw-messages',
       ),
       for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[
@@ -865,15 +885,13 @@ class RadioSettingsGroup extends SettingsGroup {
       // the audio is in the radio, so a label is all there is to edit.
       // The voice counterpart of the CW repeat, and the same rule: memory
       // 1 only, which is what the circled 1 in the label says.
+      _toggle(key: 'voiceRepeat', label: s.voiceMessages.repeat, icon: 'repeat', value: settings.voiceRepeat, target: 'voice-messages'),
       _select(
         key: 'voiceRepeatDelay',
-        label: s.voiceMessages.repeat,
-        icon: 'repeat',
-        value: '${settings.voiceRepeatDelay.inSeconds}',
-        options: [
-          for (final option in SettingsService.cwRepeatDelayOptions)
-            (label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option), value: option),
-        ],
+        label: s.cwMessages.cooldown,
+        icon: 'timer-sand',
+        value: '${settings.voiceRepeatCooldown.inSeconds}',
+        options: [for (final option in keyerRepeatCooldowns) (label: s.cwMessages.cooldownSeconds(n: option), value: option)],
         target: 'voice-messages',
       ),
       for (var n = 1; n <= SettingsService.voiceMessageCount; n++)

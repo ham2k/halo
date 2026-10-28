@@ -8,8 +8,9 @@
 
 part of 'logging_controls.dart';
 
-/// SO2R's strip: Time, the two radios and Spotting, and nothing else.
-const _so2rStripKeys = {'time', 'radio', 'spotting'};
+/// SO2R's strip: Time, the two radios, Spotting and the keyer, and nothing
+/// else.
+const _so2rStripKeys = {'time', 'radio', 'spotting', 'keyer'};
 
 extension _ControlStrip on _LoggingControlsState {
   /// The field a control expands *into* — what the operator opened it to type
@@ -163,7 +164,9 @@ extension _ControlStrip on _LoggingControlsState {
         case 'more':
           specs.add(moreControlSpec());
         default:
-          if (descriptor.activityControl case final control?) {
+          if (widget.strip.hostControls.where((host) => host.key == descriptor.key).firstOrNull case final host?) {
+            specs.add(host.spec());
+          } else if (descriptor.activityControl case final control?) {
             specs.add(activityControlSpec(_refs, control, onRefsChanged: _relookupForRefsChanged, decorate: widget.activities.decorateRef));
           }
       }

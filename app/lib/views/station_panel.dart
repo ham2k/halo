@@ -32,6 +32,7 @@ import '../services/settings_service.dart';
 import 'cw_messages_dialog.dart';
 import 'voice_messages_dialog.dart';
 import 'equipment_report.dart';
+import 'keying_pickers.dart';
 import 'station_rows.dart';
 import 'settings_view.dart' show settingsGroupRows;
 import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stationConfigurationSectionKey;
@@ -811,11 +812,12 @@ class StationPanel extends StatelessWidget {
         // a keyer, or a radio whose CAT can. One pick, because a station
         // with more than one has to say which one the messages go through.
         final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
-        final keys = [
-          for (final node in nodes)
-            if (_cat.typeFor(node)?.category == kCategoryKey) node,
-          if (keyerExperiment) ..._cat.keyerCandidates,
-        ];
+        final keys = keyNodes(services);
+        final offersKey = keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying);
+        // A peer's radio plays what its own station picked, so its line is
+        // there for the messages, not the pick. Recordings on this computer
+        // need no radio: they are recorded before the rig is on the desk.
+        final offersPhone = keyerExperiment && (!_cat.voiceMessagesAreLocal || _cat.radio1OffersVoiceMemories || _cat.computerVoiceAudio != null);
         // A peer's radio is picked from the same list as this device's own:
         // it drives the same one `vfoA`, so offering a second control for it
         // would be offering two answers to one question (HALO-416).
@@ -881,53 +883,57 @@ class StationPanel extends StatelessWidget {
               ),
               SectionHeader(st.configurationSection),
               // Which antenna and key a QSO's captured station info should
-              // credit, side by side — each only once there is something to
-              // choose between. The key row also offers a peer's key, though
-              // it is no node of this station: the phone this is for has no
-              // key inventory of its own, and without it its operator could
-              // not step off the peer's key.
-              if (antennas.isNotEmpty || keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))
+              // credit, each on its own line and only once there is
+              // something to choose between: the key with its speed, options
+              // and messages beside it, and under it what keys phone, with
+              // its own. The key row also offers a
+              // peer's key, though it is no node of this station: the phone
+              // this is for has no key inventory of its own, and without it
+              // its operator could not step off the peer's key.
+              if (antennas.isNotEmpty || offersKey || offersPhone)
                 Padding(
                   padding: EdgeInsets.fromLTRB(rowInset.left, Space.md, rowInset.right, Space.md),
-                  child: Row(
+                  child: Column(
+                    spacing: Space.md,
                     children: [
                       if (antennas.isNotEmpty)
-                        Expanded(
-                          child: DesignationDropdown(
-                            key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
-                            label: so2r ? st.so2rRadioName(radio: 'A', name: st.antennaInUse) : st.antennaInUse,
-                            nodes: antennas,
-                            selected: _cat.designatedFor(kCategoryAntenna),
-                            displayName: _displayName,
-                            noneLabel: st.noneSelected,
-                            onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
-                          ),
+                        DesignationDropdown(
+                          key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
+                          label: so2r ? st.so2rRadioName(radio: 'A', name: st.antennaInUse) : st.antennaInUse,
+                          nodes: antennas,
+                          selected: _cat.designatedFor(kCategoryAntenna),
+                          displayName: _displayName,
+                          noneLabel: st.noneSelected,
+                          onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
                         ),
-                      if (antennas.isNotEmpty && (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))) const SizedBox(width: Space.md),
-                      if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))
-                        Expanded(
-                          child: _keyPicker(
+                      if (offersKey)
+                        _keyingLine(
+                          picker: cwKeyPicker(
                             context,
+                            services,
                             keys: keys,
                             label: so2r ? st.so2rRadioName(radio: 'A', name: st.keyInUse) : st.keyInUse,
                           ),
+                          controls: [
+                            if (keyerExperiment && _cat.designatedKeyIsKeyer) _keyerSpeed(context),
+                            if (keyerExperiment) cwKeyingOptionsButton(context),
+                          ],
+                          messages: keyerExperiment
+                              ? MessagesButton(
+                                  label: st.cwMessagesButton,
+                                  enabled: _cat.designatedKeyIsKeyer,
+                                  disabledReason: st.notSupportedByThisRadio,
+                                  onPressed: () => showCwMessagesDialog(context, services),
+                                )
+                              : null,
                         ),
+                      if (offersPhone) _phoneKeyingLine(context),
                     ],
                   ),
                 ),
               if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
                 _radio2Picks(context, antennas: antennas, keys: keys, inset: rowInset),
               if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: rowInset),
-
-              // One keyer row for both keyers: the messages to edit, and the
-              // switch that shows the logging panel's strip. In BOTH layouts,
-              // unlike the Power field — they belong to the key picked
-              // directly above, so a full page that named the key and then had
-              // nothing to say about it would send the operator to the compact
-              // dialog to finish the job.
-              // Capability, not connection: see _keyerRow. With neither side
-              // able to carry a message there is nothing for the row to open.
-              if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.radio1HasVoiceMemories)) _keyerRow(context, inset: rowInset),
 
               // The same break between categories as before CAT Control Preferences.
               const SizedBox(height: Space.xl * 2),
@@ -1076,37 +1082,6 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// The key in use. NOT behind the keyer experiment: choosing which key a
-  /// contact is logged with is ordinary station info. Only the peer's key
-  /// among its choices, and the speed on the keyer row, are.
-  Widget _keyPicker(BuildContext context, {required List<EquipmentNode> keys, required String label}) {
-    final st = context.t.settings.station;
-    final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
-    // The peer whose radio drives the VFO, when one does: its own key is
-    // what keys for this operator unless they pick otherwise (HALO-585).
-    final peer = _cat.followedPeerRadio;
-    return DesignationDropdown(
-      key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyIsInUse}'),
-      label: label,
-      nodes: keys,
-      // The peer's key is a default, so nothing is stored for it — and a
-      // picker reading the stored value alone would say None while F1 keys
-      // over the link.
-      selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
-      // A radio in this list is its keyer, not the radio.
-      displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
-      noneLabel: st.noneSelected,
-      // The peer whose radio drives the VFO keys for this operator unless
-      // they say otherwise — offered here so saying otherwise can be undone.
-      // Only while it OFFERS keying: a device that keys nothing is not a key.
-      extras: [
-        if (keyerExperiment && peer != null && _cat.peerOffersCwKeying)
-          (value: peerRadioValue(peer), label: st.keyOnDevice(device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName)),
-      ],
-      onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
-    );
-  }
-
   /// How the two radios take the air (docs/design/cat.md § Radio B, for
   /// SO2R): a message keyed for one while the other is sending waits for it,
   /// or stops it.
@@ -1171,8 +1146,7 @@ class StationPanel extends StatelessWidget {
   }
 
   /// The speed the designated keyer sends at, sized to its value ("30 WPM")
-  /// rather than stretched across the row it shares with the keyer's
-  /// switch and message buttons.
+  /// rather than stretched across the row it shares with the key.
   Widget _keyerSpeed(BuildContext context) {
     final canKey = _cat.canKeyCw;
     final range = _cat.keyerSpeedRange;
@@ -1205,78 +1179,69 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// Both keyers on one line: the way into each message editor, and the
-  /// switch that shows the logging panel's keyer area.
+  /// A keying line: its picker, the controls that go with it, then the way
+  /// to its messages — on the line itself where there is room, on one of its
+  /// own under the controls where there is not.
   ///
-  /// One row rather than two, because an operator has ONE keyer area and the
-  /// switch that shows it cannot sensibly appear twice. Which editors are
-  /// offered still differs: CW messages are the app's own and need a key
-  /// that keys, while the voice memories are radio1's own.
+  /// The messages button is there whenever the line is, and disabled only
+  /// where that side cannot send at all — laid out from CAPABILITY, never
+  /// from the link: a control that came and went with the connection would
+  /// move under the operator every time the radio blinked, and "this rig has
+  /// no voice memories" must not look like "the rig is unplugged". No hover
+  /// tooltips (docs/design/user-interface.md), so a disabled button says why
+  /// in [Semantics] or nowhere.
   ///
-  /// Laid out from CAPABILITY, never from the link: the row shows whenever
-  /// either side could carry a message, both buttons are always present, and
-  /// each is disabled only where its own side cannot send at all. A control
-  /// that came and went with the connection would move under the operator
-  /// every time the radio blinked, and "this rig has no voice memories" must
-  /// not look like "the rig is unplugged".
-  ///
-  /// Icons, not labelled buttons: the row's own caption already says what
-  /// they are for. No hover tooltips (docs/design/user-interface.md), so a
-  /// disabled button says why in [Semantics] or nowhere.
-  Widget _keyerRow(BuildContext context, {required EdgeInsets inset}) {
-    final st = context.t.settings.station;
-    final canKey = _cat.designatedKeyIsKeyer;
-    final canVoice = _cat.radio1HasVoiceMemories;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
-      // A Wrap, not a Row: nothing here can shrink, and on a narrow pane the
-      // message buttons drop to a second line rather than overflow.
-      child: Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: Space.sm,
-        runSpacing: Space.sm,
+  /// On the line, both lines' buttons take the width of the wider and start
+  /// at its left, so their icons line up down the column.
+  Widget _keyingLine({required Widget picker, required List<Widget> controls, Widget? messages}) => LayoutBuilder(
+    builder: (context, constraints) {
+      final narrow = constraints.maxWidth < _keyingLineNarrow;
+      final row = Row(
         children: [
-          // Leading: the switch is what the row is FOR — the editors behind
-          // it are somewhere to go, not the state the row carries. Shows or
-          // hides the keyer area in the logging panel, the same switch KEYER
-          // and the area's X move, and it persists
-          // (SettingsService.keyerAreaShown). The name lives in Semantics,
-          // per docs/design/user-interface.md — never a tooltip.
-          // The switch and its label stay together on the first line.
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: _cat.keyerAreaShown,
-                builder: (context, shown, _) => Semantics(
-                  label: st.cwKeyerArea,
-                  child: Switch(value: shown, onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea()),
-                ),
-              ),
-              const SizedBox(width: Space.sm),
-              Text(st.keyerRowLabel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(width: Space.sm),
-            ],
-          ),
-          if (canKey) _keyerSpeed(context),
-          // The same icon on both: what they open is a list of messages
-          // either way, and the labels are what tell them apart. Both are
-          // always here — a side that cannot send is a fact about the
-          // station worth SEEING, and one that disappeared would leave a row
-          // indistinguishable from a rig whose memories have not loaded yet.
-          MessagesButton(
-            label: st.cwMessagesButton,
-            enabled: canKey,
-            disabledReason: st.notSupportedByThisRadio,
-            onPressed: () => showCwMessagesDialog(context, services),
-          ),
-          MessagesButton(
-            label: st.voiceMessagesButton,
-            enabled: canVoice,
-            disabledReason: st.notSupportedByThisRadio,
-            onPressed: () => showVoiceMessagesDialog(context, services),
-          ),
+          Expanded(child: picker),
+          for (final control in controls) ...[const SizedBox(width: Space.sm), control],
+          if (messages != null && !narrow) ...[
+            const SizedBox(width: Space.sm),
+            SizedBox(
+              width: _messagesButtonWidth(context),
+              child: Align(alignment: AlignmentDirectional.centerStart, child: messages),
+            ),
+          ],
         ],
+      );
+      if (messages == null || !narrow) return row;
+      return Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: Space.sm, children: [row, messages]);
+    },
+  );
+
+  /// The wider of the two messages buttons: its label, plus the icon and
+  /// padding a [TextButton.icon] puts around it.
+  double _messagesButtonWidth(BuildContext context) {
+    final st = context.t.settings.station;
+    final style = Theme.of(context).textTheme.labelLarge ?? const TextStyle();
+    final label = math.max(textWidth(context, st.cwMessagesButton, style), textWidth(context, st.voiceMessagesButton, style));
+    // 12 + 16 of padding, an 18 icon and the 8 between it and the label.
+    return label.ceilToDouble() + 12 + 18 + 8 + 16;
+  }
+
+  /// Below this, a keying line's messages button takes a line of its own:
+  /// beside the picker, the speed and the options it would leave the picker
+  /// too narrow to read.
+  static const _keyingLineNarrow = 520.0;
+
+  /// Where radio1's phone messages come from, and the way to its messages
+  /// ([phoneKeyingParts]).
+  Widget _phoneKeyingLine(BuildContext context) {
+    final st = context.t.settings.station;
+    final parts = phoneKeyingParts(context, services);
+    return _keyingLine(
+      picker: parts.picker,
+      controls: parts.controls,
+      messages: MessagesButton(
+        label: st.voiceMessagesButton,
+        enabled: _cat.radio1HasVoiceMemories,
+        disabledReason: _cat.phoneKeyingOff ? st.phoneKeyingOff : st.notSupportedByThisRadio,
+        onPressed: () => showVoiceMessagesDialog(context, services),
       ),
     );
   }

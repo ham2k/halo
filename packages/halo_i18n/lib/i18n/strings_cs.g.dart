@@ -2409,7 +2409,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get statusError => 'Připojení selhalo';
 	@override String get currentRadioSettings => 'Aktuální nastavení rádia';
 	@override String get notSupportedByThisRadio => 'Toto rádio nepodporuje';
-	@override String get keyerRowLabel => 'Klíčovač';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Fónie';
 	@override String voiceKeyerAvailable({required Object count}) => 'Hlasový klíčovač: paměti v rádiu: ${count}';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$cs extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL nebo kompatibilní)';
 	@override String keyViaRadio({required Object radio}) => 'CAT klíčovač v ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Klíč na ${device}';
-	@override String get cwKeyerArea => 'Oblast klíčovače';
 	@override String get trackStationInfo => 'Zaznamenávat informace o stanici u každého QSO';
 	@override String get includeStationInfoInAdif => 'Zahrnout do exportů ADIF';
 	@override String get whatToTrack => 'Co zaznamenávat?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$cs extends Translations$settings$r
 	@override String get setEsm => 'Zprávy ESM';
 	@override String get setSaved => 'Moje zprávy';
 	@override String get repeat => 'Opakovat zprávu č. 1';
-	@override String get repeatOff => 'Ne';
-	@override String repeatAfter({required Object n}) => 'Po ${n} sekundách';
 	@override String get repeatWait => 'Opakování';
 	@override String get keyboard => 'Pište a odesílejte';
 	@override String get keyboardField => 'Pište a odesílejte';
-	@override String get closeArea => 'Zavřít oblast klíčovače';
 	@override String get help => 'Nápověda';
 	@override String get helpTitle => 'Psaní CW zpráv';
 	@override String get helpIntro => 'Zprávy mohou používat šablony s těmito hodnotami:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$cs extends Translations$setting
 	// Translations
 	@override String get title => 'Zprávy hlasového klíčovače';
 	@override String get notSupported => 'Aktuální rádio nepodporuje hlasové zprávy';
-	@override String get description => 'Používá hlasové paměti rádia';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Hlasová paměť (${n})';
 	@override String get labelField => 'Popisek';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$cs extends Translations$setting
 	@override String get recordButton => 'Nahrát';
 	@override String get stopButton => 'Stop';
 	@override String get repeat => 'Opakovat zprávu č. 1';
-	@override String get repeatOff => 'Ne';
-	@override String repeatAfter({required Object n}) => 'Po ${n} sekundách';
 	@override String recordHelpTitle({required Object model}) => 'Poznámky k ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Tyto paměti jsou v rádiu zařízení ${device}. Jejich názvy a délky patří tomuto zařízení.';
 	@override String get namedOnRadio => 'Uloženo v rádiu, kde to vidí i jeho další klienti.';
@@ -4668,12 +4660,9 @@ extension on TranslationsCs {
 			'settings.radio.cwMessages.setEsm' => 'Zprávy ESM',
 			'settings.radio.cwMessages.setSaved' => 'Moje zprávy',
 			'settings.radio.cwMessages.repeat' => 'Opakovat zprávu č. 1',
-			'settings.radio.cwMessages.repeatOff' => 'Ne',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Po ${n} sekundách',
 			'settings.radio.cwMessages.repeatWait' => 'Opakování',
 			'settings.radio.cwMessages.keyboard' => 'Pište a odesílejte',
 			'settings.radio.cwMessages.keyboardField' => 'Pište a odesílejte',
-			'settings.radio.cwMessages.closeArea' => 'Zavřít oblast klíčovače',
 			'settings.radio.cwMessages.help' => 'Nápověda',
 			'settings.radio.cwMessages.helpTitle' => 'Psaní CW zpráv',
 			'settings.radio.cwMessages.helpIntro' => 'Zprávy mohou používat šablony s těmito hodnotami:',
@@ -4703,7 +4692,6 @@ extension on TranslationsCs {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Doporučené F3 pro zásobníky //: TU se vysílá po zalogování spojení, takže poděkuje, pak zavolá další stanici v zásobníku a odešle vaši výměnu, nebo se zeptá na částečnou značku (TU KR?); když už nic nezbývá, jen TU',
 			'settings.radio.voiceMessages.title' => 'Zprávy hlasového klíčovače',
 			'settings.radio.voiceMessages.notSupported' => 'Aktuální rádio nepodporuje hlasové zprávy',
-			'settings.radio.voiceMessages.description' => 'Používá hlasové paměti rádia',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Hlasová paměť (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Popisek',
@@ -4715,8 +4703,6 @@ extension on TranslationsCs {
 			'settings.radio.voiceMessages.recordButton' => 'Nahrát',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
 			'settings.radio.voiceMessages.repeat' => 'Opakovat zprávu č. 1',
-			'settings.radio.voiceMessages.repeatOff' => 'Ne',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Po ${n} sekundách',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Poznámky k ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Tyto paměti jsou v rádiu zařízení ${device}. Jejich názvy a délky patří tomuto zařízení.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Uloženo v rádiu, kde to vidí i jeho další klienti.',
@@ -5125,18 +5111,17 @@ extension on TranslationsCs {
 			'settings.station.n3fjpTroubleshooting' => 'Toto se připojuje k **logovacímu programu N3FJP běžícímu na vašem počítači**, ne přímo k rádiu — s rádiem komunikuje N3FJP.\n\n- **API programu musí být zapnuté**: Settings → Application Program Interface, zaškrtněte **TCP API Enabled**.\n- **Port** je 1100, pokud jste ho tam nezměnili.\n- **N3FJP musí mít nastavené rozhraní rádia**, aby mohl rádio sledovat nebo ladit. Bez něj hlásí jen to, co je zadáno v jeho vstupním okně.\n- N3FJP hlásí pouze pásmo, mód a frekvenci: žádný výkon, žádný stav vysílání.\n\nTato položka byla napsána podle publikovaného API N3FJP a s N3FJP zatím nebyla vyzkoušena. Pokud funguje jen napůl, stojí za to to nahlásit.',
 			'settings.station.commanderTroubleshootingTitle' => 'Pokud se aplikace nemůže připojit',
 			'settings.station.commanderTroubleshooting' => 'Toto se připojuje k **DXLab Commander, běžícímu na vašem počítači**, ne přímo k rádiu — s rádiem komunikuje Commander.\n\n- **Commander už musí běžet** a být připojený k rádiu.\n- **Jeho síťová služba musí být zapnutá**: tlačítko **Net Serv** v panelu Radio v okně Configuration programu Commander.\n- **Port** je 52002, třetí port bloku začínajícího na **Base Port** v Net Serv (52000, pokud jste ho nezměnili).\n- **Z jiného počítače** se ujistěte, že váš firewall spojení propustí.\n\nTato položka byla napsána podle publikovaných TCP zpráv Commanderu a s Commanderem zatím nebyla vyzkoušena. Pokud funguje jen napůl, stojí za to to nahlásit.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Pokud rádio nikdy neodpoví',
 			'settings.station.ic705Troubleshooting' => 'Rádio má **jedinou** relaci vzdáleného ovládání. Když je přihlášení ignorováno, téměř vždy ji používá něco jiného.\n\n- **Zavřete všechny ostatní klienty.** wfview nebo RS-BA1 připojené ke stejnému rádiu drží tuto jedinou relaci a přihlášení zde je po tu dobu prostě ignorováno.\n- **Zkontrolujte síťové nastavení rádia.** WLAN musí být zapnutá, rádio musí být ve stejné síti a jeho funkce vzdáleného ovládání (Network) musí být povolená.\n- **Vypněte a zapněte WLAN rádia**, pokud zůstává zaseknuté. To spolehlivě uvolní relaci zaseknutou v rádiu.\n\n**Špatné heslo je výslovně odmítnuto**, ne přejito mlčením. Pokud jste se dostali sem, a ne ke zprávě "odmítnuto", heslo problémem není.',
 			'settings.station.statusStale' => 'Neodpovídá',
 			'settings.station.statusDisconnected' => 'Nepřipojeno',
 			'settings.station.statusConnecting' => 'Připojování…',
 			'settings.station.statusDisconnecting' => 'Odpojování…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Připojení selhalo',
 			'settings.station.currentRadioSettings' => 'Aktuální nastavení rádia',
 			'settings.station.notSupportedByThisRadio' => 'Toto rádio nepodporuje',
-			'settings.station.keyerRowLabel' => 'Klíčovač',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fónie',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Hlasový klíčovač: paměti v rádiu: ${count}',
@@ -5167,7 +5152,6 @@ extension on TranslationsCs {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL nebo kompatibilní)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT klíčovač v ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Klíč na ${device}',
-			'settings.station.cwKeyerArea' => 'Oblast klíčovače',
 			'settings.station.trackStationInfo' => 'Zaznamenávat informace o stanici u každého QSO',
 			'settings.station.includeStationInfoInAdif' => 'Zahrnout do exportů ADIF',
 			'settings.station.whatToTrack' => 'Co zaznamenávat?',

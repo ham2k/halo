@@ -381,7 +381,8 @@ void main() {
   // finds the CQ still keying and holds it back must arm the chain again —
   // or the auto-CQ just stops, with nothing on screen to say so.
   testWidgets('a CQ held back as already keying keeps its repeat', (tester) async {
-    await services.settings.setCwRepeatDelay(5);
+    await services.settings.setCwRepeat(true);
+    await services.settings.setCwRepeatCooldown(5);
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
     final esm = enterSends(tester)!;
@@ -402,7 +403,8 @@ void main() {
   // an Escape, a tap, the VFO moving off the CQ — would otherwise key the CQ
   // anyway and arm a fresh chain, five minutes and all, behind it.
   testWidgets('a repeat whose chain ended while it rendered keys nothing', (tester) async {
-    await services.settings.setCwRepeatDelay(1);
+    await services.settings.setCwRepeat(true);
+    await services.settings.setCwRepeatCooldown(1);
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
     enterSends(tester)!.send([EsmMessage.cq], cwDraft);

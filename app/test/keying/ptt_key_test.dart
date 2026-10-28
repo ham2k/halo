@@ -246,7 +246,8 @@ void main() {
 
     testWidgets("['] ends a voice CQ repeat, and the memory playing, before it keys", (tester) async {
       final services = await pumpOperation(tester, radioMode: 'USB', memories: true);
-      await services.settings.setVoiceRepeatDelay(5);
+      await services.settings.setVoiceRepeat(true);
+      await services.settings.setVoiceRepeatCooldown(5);
       services.cat.playVoiceMemory(1);
       await tester.pump();
       expect(services.cat.keyerRepeatActive.value, isTrue, reason: 'sanity: a CQ is repeating');
@@ -417,7 +418,8 @@ void main() {
         final (:services, :a, :b) = await twoRadios(tester);
         await tester.runAsync(() => services.cat.setRadio1(LocalRadio(b)));
         await tester.runAsync(() => services.cat.setDesignated(kCategoryKey, a));
-        await services.settings.setVoiceRepeatDelay(5);
+        await services.settings.setVoiceRepeat(true);
+        await services.settings.setVoiceRepeatCooldown(5);
         final lengthBefore = services.cat.voiceMessageDuration(1);
         services.cat.playVoiceMemory(1);
         await tester.pump(const Duration(seconds: 1));

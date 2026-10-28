@@ -31,6 +31,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat/cat_service.dart';
 import '../services/halo_services.dart';
 import '../services/settings_service.dart';
+import 'keying_pickers.dart';
+import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 
 /// The glyph for message `n` (1-based): its key's number in a circle, the
 /// same one the settings fields declare by name. Consts, not names resolved
@@ -50,9 +52,15 @@ const cwMessageNumberIcons = [
 /// [radio] is the radio whose speed and Run / S&P the dialog shows, `A` or
 /// `B` — a keyer area's own; null for the operator's. The messages are the
 /// same for both radios.
-Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showHaloDialog<void>(
-  context: context,
-  builder: (context) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
+Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showModalPane<void>(
+  context,
+  title: context.t.settings.radio.cwMessages.title,
+  closeLabel: context.t.common.close,
+  // The rows scroll under a pinned picker and a pinned footer, whose Cancel
+  // and Save are the way out — so no X in the header (haloDialogFooterBand).
+  scrollable: false,
+  closeButton: false,
+  builder: (_) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
 );
 
 class _CwMessagesDialog extends StatefulWidget {
@@ -106,7 +114,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
     final m = context.t.settings.radio.cwMessages;
     final name = await showHaloDialog<String>(
       context: context,
-      builder: (context) => _NewSetDialog(title: m.newSet, field: m.newSetName),
+      builder: (context) => SetNameDialog(title: m.newSet, field: m.newSetName),
     );
     if (name == null || name.trim().isEmpty || !mounted) return;
     // A duplicate of what is on screen, not of what is stored: the operator
@@ -122,7 +130,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
     final m = context.t.settings.radio.cwMessages;
     final name = await showHaloDialog<String>(
       context: context,
-      builder: (context) => _NewSetDialog(title: m.renameSet, field: m.newSetName, initial: _selected),
+      builder: (context) => SetNameDialog(title: m.renameSet, field: m.newSetName, initial: _selected),
     );
     if (name == null || name.trim().isEmpty || !mounted || name.trim() == _selected) return;
     final index = _sets.indexWhere((set) => set.name == _selected);
@@ -156,181 +164,250 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
     final m = context.t.settings.radio.cwMessages;
     final theme = Theme.of(context);
     final set = _set;
-    return HaloDialog(
-      title: Text(m.title),
-      // The picker rides in the header slot, which does not scroll with the
-      // rows: which set is being edited has to stay readable at the eighth
-      // message as much as at the first. On the section band's ground and
-      // reaching the card's edges, so the title above it and the picker read
-      // as two things — the dialog's name, and the row that says what is in
-      // it — and the band lines up with the section bands the rows below
-      // sit under.
-      header: Container(
-        color: haloDialogBandColorAt(context),
-        padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Nothing to key CW with at all, connected or not: said first,
-            // because every control below does nothing until it changes.
-            ListenableBuilder(
-              listenable: widget.services.cat,
-              builder: (context, _) =>
-                  widget.services.cat.keyer(widget.radio).designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
-            ),
-            // How the messages go out first — speed, repeat, ESM — then which
-            // set of them is being edited. Message 1 only repeats
-            // (SettingsService.cwRepeatDelay).
-            Row(
-              children: [
-                // The speed messages go out at, first: it is what an
-                // operator adjusts most between contacts.
-                _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio)),
-                const SizedBox(width: Space.md),
-                Expanded(
-                  child: RepeatDelayField(
-                    value: '${widget.services.settings.cwRepeatDelay.inSeconds}',
-                    label: m.repeat,
-                    offLabel: m.repeatOff,
-                    afterLabel: (n) => m.repeatAfter(n: n),
-                    onChanged: (value) {
-                      // Off ends a chain already counting down — on either
-                      // radio, since the delay is theirs both.
-                      if (value == '0') {
-                        for (final radio in ['A', 'B']) {
-                          widget.services.cat.keyer(radio).cancelKeyerRepeat();
-                        }
-                      }
-                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
-                    },
-                  ),
-                ),
-                if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: EnterSendsField(
-                      value: (on: widget.services.cat.enterSends.value.on, running: widget.services.cat.isRunning(widget.radio)),
-                      onChanged: (value) {
-                        widget.services.cat.setEnterSends(on: value.on);
-                        widget.services.cat.setRunning(widget.radio, value.running);
-                      },
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: Space.md),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: set.name,
-                    icon: dropdownTrailingIcon,
-                    decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
-                    menuMaxHeight: dropdownMenuMaxHeight(context),
-                    items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
-                    onChanged: (name) => name == null ? null : setState(() => _selected = name),
-                  ),
-                ),
-                const SizedBox(width: Space.sm),
-                // The three things one does to a set, beside the picker that
-                // says which one. No hover tooltips (docs/design/user-interface.md),
-                // so the accessible name is the only place each is named.
-                IconButton(
-                  icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
-                  onPressed: _newSet,
-                ),
-                IconButton(
-                  icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
-                  onPressed: _rename,
-                ),
-                IconButton(
-                  icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
-                  onPressed: _canDelete ? _delete : null,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      // The rows ARE the dialog's content — to the card's edges, inset
-      // off the same SettingsList every other list in the app reads.
-      list: true,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var n = 1; n <= SettingsService.cwMessageCount; n++)
-            ListTile(
-              leading: Icon(cwMessageNumberIcons[n - 1]),
-              title: Text.rich(
-                TextSpan(
+    // As showFormPane's: min so the dialog card fits the rows, spaceBetween
+    // so full screen, where the pane IS the screen, the slack falls above the
+    // footer rather than under it.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Flexible(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // The picker is pinned above the rows: which set is being edited has
+              // to stay readable at the eighth message as much as at the first. On
+              // the section band's ground and reaching the pane's edges, so the
+              // title above it and the picker read as two things — the pane's name,
+              // and the row that says what is in it.
+              Container(
+                color: haloDialogBandColorAt(context),
+                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextSpan(
-                      text: m.key(n: n),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    // What keys the messages, as the Station panel picks it —
+                    // radio1's; Radio B's has its own row there.
+                    if (widget.radio == 'A')
+                      ListenableBuilder(
+                        listenable: Listenable.merge([widget.services.cat, widget.services.settings]),
+                        builder: (context, _) => Padding(
+                          padding: const EdgeInsets.only(bottom: Space.md),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: cwKeyPicker(
+                                  context,
+                                  widget.services,
+                                  keys: keyNodes(widget.services),
+                                  label: context.t.settings.station.keyInUse,
+                                  filled: true,
+                                ),
+                              ),
+                              const SizedBox(width: Space.sm),
+                              cwKeyingOptionsButton(context),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // Nothing to key CW with at all, connected or not: said
+                    // before the rest, because every control below does nothing
+                    // until it changes.
+                    ListenableBuilder(
+                      listenable: widget.services.cat,
+                      builder: (context, _) =>
+                          widget.services.cat.keyer(widget.radio).designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
                     ),
-                    if (set.label(n).trim().isNotEmpty) TextSpan(text: '  ${set.label(n).trim()}'),
+                    // How the messages go out first — speed and ESM, then message
+                    // 1's repeat on a row of its own, the switch and its cooldown
+                    // needing the width — then which set of them is being edited.
+                    Row(
+                      children: [
+                        // The speed messages go out at, first: it is what an
+                        // operator adjusts most between contacts.
+                        _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio)),
+                        if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                          const SizedBox(width: Space.md),
+                          Expanded(
+                            child: EnterSendsField(
+                              value: (on: widget.services.cat.enterSends.value.on, running: widget.services.cat.isRunning(widget.radio)),
+                              onChanged: (value) {
+                                widget.services.cat.setEnterSends(on: value.on);
+                                widget.services.cat.setRunning(widget.radio, value.running);
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: Space.md),
+                    ListenableBuilder(
+                      listenable: widget.services.settings,
+                      builder: (context, _) => RepeatFields(
+                        on: widget.services.settings.cwRepeat,
+                        cooldown: widget.services.settings.cwRepeatCooldown,
+                        onToggled: (on) {
+                          // Off ends a chain already counting down — on
+                          // either radio, since the repeat is theirs both.
+                          if (!on) {
+                            for (final radio in ['A', 'B']) {
+                              widget.services.cat.keyer(radio).cancelKeyerRepeat();
+                            }
+                          }
+                          unawaited(widget.services.settings.setCwRepeat(on));
+                        },
+                        onCooldown: (seconds) => unawaited(widget.services.settings.setCwRepeatCooldown(seconds)),
+                      ),
+                    ),
+                    const SizedBox(height: Space.md),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            initialValue: set.name,
+                            icon: dropdownTrailingIcon,
+                            decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
+                            menuMaxHeight: dropdownMenuMaxHeight(context),
+                            items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
+                            onChanged: (name) => name == null ? null : setState(() => _selected = name),
+                          ),
+                        ),
+                        const SizedBox(width: Space.sm),
+                        // The three things one does to a set, beside the picker that
+                        // says which one. No hover tooltips (docs/design/user-interface.md),
+                        // so the accessible name is the only place each is named.
+                        IconButton(
+                          icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
+                          onPressed: _newSet,
+                        ),
+                        IconButton(
+                          icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
+                          onPressed: _rename,
+                        ),
+                        IconButton(
+                          icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
+                          onPressed: _canDelete ? _delete : null,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              subtitle: Text(
-                set.message(n).trim().isEmpty ? m.empty : set.message(n),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(color: set.message(n).trim().isEmpty ? theme.colorScheme.onSurface.withValues(alpha: 0.5) : null),
+              // The rows ARE the pane's content — to its edges, inset off the same
+              // SettingsList every other list in the app reads.
+              Flexible(
+                child: SettingsList(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var n = 1; n <= SettingsService.cwMessageCount; n++)
+                          ListTile(
+                            leading: Icon(cwMessageNumberIcons[n - 1]),
+                            // The label, or the message's own title dimmed where it has
+                            // none; the keys that send it on the right.
+                            title: set.label(n).trim().isNotEmpty
+                                ? Text(set.label(n).trim())
+                                : Text(
+                                    m.messageTitle(n: n),
+                                    style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                                  ),
+                            trailing: KeyerMessageKeys(services: widget.services, n: n),
+                            subtitle: Text(
+                              set.message(n).trim().isEmpty ? m.empty : set.message(n),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: set.message(n).trim().isEmpty ? theme.colorScheme.onSurface.withValues(alpha: 0.5) : null,
+                              ),
+                            ),
+                            onTap: () async {
+                              final edited = await showHaloDialog<({String message, String label})>(
+                                context: context,
+                                builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
+                              );
+                              if (edited == null || !mounted) return;
+                              _replace(_set.withMessage(n, edited.message).withLabel(n, edited.label));
+                            },
+                            mouseCursor: SystemMouseCursors.click,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              onTap: () async {
-                final edited = await showHaloDialog<({String message, String label})>(
-                  context: context,
-                  builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
-                );
-                if (edited == null || !mounted) return;
-                _replace(_set.withMessage(n, edited.message).withLabel(n, edited.label));
-              },
-              mouseCursor: SystemMouseCursors.click,
-            ),
-        ],
-      ),
-      help: TextButton(
-        onPressed: () => showHaloDialog<void>(
-          context: context,
-          builder: (context) => _CwMessagesHelpDialog(esm: widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */),
+            ],
+          ),
         ),
-        child: Text(m.help),
-      ),
-      // Cancel, not Done: there are pending changes to abandon now that the
-      // rows edit a draft (dialog_footer_convention_test.dart).
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+        haloDialogFooterBand(
+          context,
+          help: TextButton(
+            onPressed: () => showHaloDialog<void>(
+              context: context,
+              builder: (context) => _CwMessagesHelpDialog(esm: widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */),
+            ),
+            child: Text(m.help),
+          ),
+          // Cancel, not Done: there are pending changes to abandon now that the
+          // rows edit a draft (dialog_footer_convention_test.dart).
+          cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.cancel)),
+          actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+        ),
+      ],
     );
   }
 }
 
-/// Message 1's repeat as a field, in either keyer dialog: Off, or after two
-/// to ten seconds (SettingsService.cwRepeatDelayOptions, shared by both).
-class RepeatDelayField extends StatelessWidget {
-  final String value;
-  final String label;
-  final String offLabel;
-  final String Function(String seconds) afterLabel;
-  final ValueChanged<String> onChanged;
+/// Message 1's repeat, in either keyer dialog: whether it repeats, and the
+/// cooldown before it goes again ([keyerRepeatCooldowns]). Both apply as
+/// they change, like the rest of the band they sit on.
+class RepeatFields extends StatelessWidget {
+  final bool on;
+  final Duration cooldown;
+  final ValueChanged<bool> onToggled;
+  final ValueChanged<int> onCooldown;
 
-  const RepeatDelayField({super.key, required this.value, required this.label, required this.offLabel, required this.afterLabel, required this.onChanged});
+  const RepeatFields({super.key, required this.on, required this.cooldown, required this.onToggled, required this.onCooldown});
 
   @override
-  Widget build(BuildContext context) => DropdownButtonFormField<String>(
-    isExpanded: true,
-    initialValue: value,
-    icon: dropdownTrailingIcon,
-    decoration: poloFieldDecoration(context, label).copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface),
-    menuMaxHeight: dropdownMenuMaxHeight(context),
-    items: [
-      for (final option in SettingsService.cwRepeatDelayOptions)
-        DropdownMenuItem<String>(value: option, child: Text(option == '0' ? offLabel : afterLabel(option))),
-    ],
-    onChanged: (choice) => choice == null ? null : onChanged(choice),
-  );
+  Widget build(BuildContext context) {
+    final m = context.t.settings.radio.cwMessages;
+    final seconds = '${cooldown.inSeconds}';
+    return Row(
+      children: [
+        // The name lives in Semantics, per docs/design/user-interface.md.
+        Semantics(
+          label: m.repeat,
+          child: Switch(value: on, onChanged: onToggled),
+        ),
+        const SizedBox(width: Space.xs),
+        Text(m.repeatShort, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(width: Space.md),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('cooldown:$seconds'),
+            isExpanded: true,
+            initialValue: seconds,
+            icon: dropdownTrailingIcon,
+            decoration: poloFieldDecoration(context, m.cooldown).copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface),
+            menuMaxHeight: dropdownMenuMaxHeight(context),
+            items: [
+              for (final option in keyerRepeatCooldowns)
+                DropdownMenuItem<String>(
+                  value: option,
+                  child: Text(m.cooldownSeconds(n: option)),
+                ),
+            ],
+            onChanged: (choice) => choice == null ? null : onCooldown(int.parse(choice)),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Enter Sends Messages as a field — Off, Run or S&P, the three states the
@@ -455,9 +532,10 @@ class _CwMessagesHelpDialog extends StatelessWidget {
   }
 }
 
-/// Names a new set. Nothing but a field and the two verbs: the set it will
-/// copy is already chosen, in the dialog behind this one.
-class _NewSetDialog extends StatefulWidget {
+/// Names a new set, or renames one — CW's or the voice messages'. Nothing
+/// but a field and the two verbs: the set it will copy is already chosen, in
+/// the pane behind this one.
+class SetNameDialog extends StatefulWidget {
   final String title;
   final String field;
 
@@ -465,13 +543,13 @@ class _NewSetDialog extends StatefulWidget {
   /// renaming, so a rename is an edit rather than a retype.
   final String initial;
 
-  const _NewSetDialog({required this.title, required this.field, this.initial = ''});
+  const SetNameDialog({super.key, required this.title, required this.field, this.initial = ''});
 
   @override
-  State<_NewSetDialog> createState() => _NewSetDialogState();
+  State<SetNameDialog> createState() => SetNameDialogState();
 }
 
-class _NewSetDialogState extends State<_NewSetDialog> {
+class SetNameDialogState extends State<SetNameDialog> {
   late final _name = TextEditingController(text: widget.initial);
 
   @override

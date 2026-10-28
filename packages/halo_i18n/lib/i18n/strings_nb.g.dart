@@ -2409,7 +2409,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get statusError => 'Tilkoblingen mislyktes';
 	@override String get currentRadioSettings => 'Gjeldende radioinnstillinger';
 	@override String get notSupportedByThisRadio => 'Støttes ikke av denne radioen';
-	@override String get keyerRowLabel => 'Keyer';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Telefoni';
 	@override String voiceKeyerAvailable({required Object count}) => 'Talekeyer: ${count} memorier i radioen';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL eller kompatibel)';
 	@override String keyViaRadio({required Object radio}) => 'CAT-keyer i ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Nøkkel på ${device}';
-	@override String get cwKeyerArea => 'Keyer-område';
 	@override String get trackStationInfo => 'Registrer stasjonsinfo for hver QSO';
 	@override String get includeStationInfoInAdif => 'Ta med i ADIF-eksport';
 	@override String get whatToTrack => 'Hva skal registreres?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$nb extends Translations$settings$r
 	@override String get setEsm => 'ESM-meldinger';
 	@override String get setSaved => 'Mine meldinger';
 	@override String get repeat => 'Gjenta melding #1';
-	@override String get repeatOff => 'Nei';
-	@override String repeatAfter({required Object n}) => 'Etter ${n} sekunder';
 	@override String get repeatWait => 'Gjentar';
 	@override String get keyboard => 'Skriv for å sende';
 	@override String get keyboardField => 'Skriv for å sende';
-	@override String get closeArea => 'Lukk keyer-området';
 	@override String get help => 'Hjelp';
 	@override String get helpTitle => 'Skrive CW-meldinger';
 	@override String get helpIntro => 'Meldinger kan bruke maler med følgende verdier:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$nb extends Translations$setting
 	// Translations
 	@override String get title => 'Talemeldinger';
 	@override String get notSupported => 'Gjeldende radio støtter ikke talemeldinger';
-	@override String get description => 'Dette bruker talememoriene i radioen';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Talememori (${n})';
 	@override String get labelField => 'Etikett';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$nb extends Translations$setting
 	@override String get recordButton => 'Ta opp';
 	@override String get stopButton => 'Stopp';
 	@override String get repeat => 'Gjenta melding #1';
-	@override String get repeatOff => 'Nei';
-	@override String repeatAfter({required Object n}) => 'Etter ${n} sekunder';
 	@override String recordHelpTitle({required Object model}) => 'Merknader for ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Disse memoriene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.';
 	@override String get namedOnRadio => 'Lagret i radioen, der de andre klientene også ser det.';
@@ -4668,12 +4660,9 @@ extension on TranslationsNb {
 			'settings.radio.cwMessages.setEsm' => 'ESM-meldinger',
 			'settings.radio.cwMessages.setSaved' => 'Mine meldinger',
 			'settings.radio.cwMessages.repeat' => 'Gjenta melding #1',
-			'settings.radio.cwMessages.repeatOff' => 'Nei',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Etter ${n} sekunder',
 			'settings.radio.cwMessages.repeatWait' => 'Gjentar',
 			'settings.radio.cwMessages.keyboard' => 'Skriv for å sende',
 			'settings.radio.cwMessages.keyboardField' => 'Skriv for å sende',
-			'settings.radio.cwMessages.closeArea' => 'Lukk keyer-området',
 			'settings.radio.cwMessages.help' => 'Hjelp',
 			'settings.radio.cwMessages.helpTitle' => 'Skrive CW-meldinger',
 			'settings.radio.cwMessages.helpIntro' => 'Meldinger kan bruke maler med følgende verdier:',
@@ -4703,7 +4692,6 @@ extension on TranslationsNb {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Foreslått F3 for //-stabler: TU sendes etter at kontakten er logget, så den takker, roper så neste stasjon i stabelen og sender utvekslingen din, eller spør tilbake etter et delvis kallesignal (TU KR?); når ingenting er igjen, bare TU',
 			'settings.radio.voiceMessages.title' => 'Talemeldinger',
 			'settings.radio.voiceMessages.notSupported' => 'Gjeldende radio støtter ikke talemeldinger',
-			'settings.radio.voiceMessages.description' => 'Dette bruker talememoriene i radioen',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Talememori (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etikett',
@@ -4715,8 +4703,6 @@ extension on TranslationsNb {
 			'settings.radio.voiceMessages.recordButton' => 'Ta opp',
 			'settings.radio.voiceMessages.stopButton' => 'Stopp',
 			'settings.radio.voiceMessages.repeat' => 'Gjenta melding #1',
-			'settings.radio.voiceMessages.repeatOff' => 'Nei',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Etter ${n} sekunder',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Merknader for ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Disse memoriene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Lagret i radioen, der de andre klientene også ser det.',
@@ -5125,18 +5111,17 @@ extension on TranslationsNb {
 			'settings.station.n3fjpTroubleshooting' => 'Dette kobler til **et N3FJP-loggeprogram som kjører på datamaskinen din**, ikke direkte til radioen — N3FJP snakker med radioen.\n\n- **Programmets API må være på**: Settings → Application Program Interface, kryss av for **TCP API Enabled**.\n- **Porten** er 1100 med mindre du har endret den der.\n- **N3FJP må ha et radiogrensesnitt satt opp** for å følge eller stille inn radioen. Uten det rapporterer den bare det som skrives inn i registreringsvinduet.\n- N3FJP rapporterer bare bånd, modus og frekvens: ingen effekt, ingen sendestatus.\n\nDenne oppføringen er skrevet etter N3FJPs publiserte API og har ikke blitt kjørt mot N3FJP. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Hvis radioen aldri svarer',
 			'settings.station.ic705Troubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.',
 			'settings.station.statusStale' => 'Svarer ikke',
 			'settings.station.statusDisconnected' => 'Ikke tilkoblet',
 			'settings.station.statusConnecting' => 'Kobler til…',
 			'settings.station.statusDisconnecting' => 'Kobler fra…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Tilkoblingen mislyktes',
 			'settings.station.currentRadioSettings' => 'Gjeldende radioinnstillinger',
 			'settings.station.notSupportedByThisRadio' => 'Støttes ikke av denne radioen',
-			'settings.station.keyerRowLabel' => 'Keyer',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Telefoni',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Talekeyer: ${count} memorier i radioen',
@@ -5167,7 +5152,6 @@ extension on TranslationsNb {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL eller kompatibel)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Nøkkel på ${device}',
-			'settings.station.cwKeyerArea' => 'Keyer-område',
 			'settings.station.trackStationInfo' => 'Registrer stasjonsinfo for hver QSO',
 			'settings.station.includeStationInfoInAdif' => 'Ta med i ADIF-eksport',
 			'settings.station.whatToTrack' => 'Hva skal registreres?',

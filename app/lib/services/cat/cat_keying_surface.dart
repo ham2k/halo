@@ -30,7 +30,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       settings: _settings,
       chain: KeyerRepeat(vfo: () => _radio?.vfoA),
       peer: _peerKeying,
-    ),
+    )..ownsVoiceSource = true,
     'B': CatKeying(
       station: _RadioBKeyingStation(this as CatService),
       settings: _settings,
@@ -82,12 +82,11 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   bool get cwSending => operatorKeyer.cwSending;
   ValueNotifier<CwSendProgress?> get cwProgress => operatorKeyer.cwProgress;
   ValueListenable<int> get cwStops => operatorKeyer.cwStops;
-  ValueNotifier<bool> get keyerAreaShown => _keying.keyerAreaShown;
-  ValueNotifier<int> get keyerShowRequests => _keying.keyerShowRequests;
+  ValueListenable<int> get keyerOpenRequests => _keying.keyerOpenRequests;
   ValueListenable<int> get keyboardModeRequests => operatorKeyer.keyboardModeRequests;
+  ValueNotifier<CwLiveTyping?> get cwTyping => operatorKeyer.cwTyping;
   void toggleKeyboardMode() => operatorKeyer.toggleKeyboardMode();
-  void showKeyerArea() => _keying.showKeyerArea();
-  void hideKeyerArea() => _keying.hideKeyerArea();
+  void openKeyerControl() => _keying.openKeyerControl();
   ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
 
   /// [running] is the operator's radio's under SO2R — see [setRunning].
@@ -107,6 +106,8 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
 
   bool get canPlayVoice => operatorKeyer.canPlayVoice;
   bool get radio1HasVoiceMemories => operatorKeyer.radio1HasVoiceMemories;
+  bool get radio1OffersVoiceMemories => _keying.radio1OffersVoiceMemories;
+  bool get phoneKeyingOff => _keying.phoneKeyingOff;
   int get voiceMemoryCount => operatorKeyer.voiceMemoryCount;
   bool get canRecordVoice => operatorKeyer.canRecordVoice;
   bool get voiceMessagesAreLocal => operatorKeyer.voiceMessagesAreLocal;
@@ -115,6 +116,48 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   int voiceMessageDuration(int n) => operatorKeyer.voiceMessageDuration(n);
   Future<void> setVoiceMessageLabel(int n, String label) => operatorKeyer.setVoiceMessageLabel(n, label);
   ({String model, String text})? get voiceRecordingHelp => operatorKeyer.voiceRecordingHelp;
+
+  // The computer's voice keyer is radio1's keyer's (docs/design/cat.md § The
+  // computer's voice keyer): its sound devices are on this desk, and Radio B
+  // keeps to its own memories.
+  bool get voiceMessagesFromComputer => _keying.voiceMessagesFromComputer;
+  AudioPlayback? listenToVoiceMessage(int n) => _keying.listenToVoiceMessage(n);
+  void revealVoiceMessage(int n) => _keying.revealVoiceMessage(n);
+  bool get computerVoiceSwitchesAudio => _keying.computerVoiceSwitchesAudio;
+  bool get voiceKeyingRadioTakesAudio => _keying.voiceKeyingRadioTakesAudio;
+  bool get computerVoicePlaysToRadio => _keying.computerVoicePlaysToRadio;
+  ComputerVoiceProblem? get computerVoiceProblem => _keying.computerVoiceProblem;
+
+  /// The sound system the computer's voice keyer plays through — null where
+  /// this device cannot run one.
+  VoiceAudio? get computerVoiceAudio => _keying.computerVoiceAudio;
+
+  /// The node the voice messages play on — the local keying radio — whose
+  /// config holds the computer's voice keyer settings.
+  EquipmentNode? get voiceKeyingNode => switch (localKeyingRadio) {
+    final String uuid => nodeFor(uuid),
+    null => null,
+  };
+
+  /// Where phone messages come from (CatKeying.selectVoiceKeyingSource).
+  Future<void> selectVoiceKeyingSource(VoiceKeyingSource source) => _keying.selectVoiceKeyingSource(source);
+
+  /// The sets of recorded voice messages, and the one in use.
+  Future<void> selectVoiceMessageSet(String id) => _keying.selectVoiceMessageSet(id);
+  Future<VoiceMessageSet?> addVoiceMessageSet(String name) => _keying.addVoiceMessageSet(name);
+  Future<void> renameVoiceMessageSet(String id, String name) => _keying.renameVoiceMessageSet(id, name);
+  Future<void> deleteVoiceMessageSet(String id) => _keying.deleteVoiceMessageSet(id);
+
+  /// Merges [changes] into [voiceKeyingNode]'s config; a null value removes
+  /// its key.
+  Future<void> updateVoiceKeyingConfig(Map<String, dynamic> changes) async {
+    final node = voiceKeyingNode;
+    if (node == null) return;
+    final config = {...node.config};
+    changes.forEach((key, value) => value == null ? config.remove(key) : config[key] = value);
+    await updateNode(node.copyWith(config: config));
+  }
+
   ValueNotifier<VoiceActivity?> get voiceActivity => operatorKeyer.voiceActivity;
   void playVoiceMemory(int n, {bool repeat = true}) => operatorKeyer.playVoiceMemory(n, repeat: repeat);
   void recordVoiceMemory(int n) => operatorKeyer.recordVoiceMemory(n);
@@ -303,6 +346,14 @@ class RadioKeyer {
   ({String model, String text})? get voiceRecordingHelp => _k.voiceRecordingHelp;
   ValueNotifier<VoiceActivity?> get voiceActivity => _k.voiceActivity;
 
+  /// The computer's voice keyer, as this radio has it — radio1's alone
+  /// (CatService's computer-voice members).
+  bool get voiceMessagesFromComputer => _k.voiceMessagesFromComputer;
+  ComputerVoiceProblem? get computerVoiceProblem => _k.computerVoiceProblem;
+  bool get phoneKeyingOff => _k.phoneKeyingOff;
+  AudioPlayback? listenToVoiceMessage(int n) => _k.listenToVoiceMessage(n);
+  void revealVoiceMessage(int n) => _k.revealVoiceMessage(n);
+
   /// A memory asked for and not yet heard starting — on the air for the app.
   ValueListenable<bool> get voiceStarting => _k.voiceStarting;
   void playVoiceMemory(int n, {bool repeat = true}) => _k.playVoiceMemory(n, repeat: repeat);
@@ -341,7 +392,38 @@ class RadioKeyer {
 
   bool get canPtt => _cat._pttSession(_uuid) != null;
 
-  /// ⌥K / Alt+K for this radio's keyer area — see [CatKeying.keyboardModeRequests].
+  /// Bumped as keyboard mode starts on this radio — see
+  /// [CatKeying.keyboardModeRequests].
   ValueListenable<int> get keyboardModeRequests => _k.keyboardModeRequests;
-  void toggleKeyboardMode() => _k.toggleKeyboardMode();
+
+  /// Keyboard mode on this radio, while it is on (cw_live_typing.dart): the
+  /// keyer control's field types into it, and the radio's keyer line shows
+  /// what it sends. It ends by itself on Enter, a pause, Escape or the key
+  /// going away.
+  final cwTyping = ValueNotifier<CwLiveTyping?>(null);
+
+  /// ⌥K / Alt+K, or the keyer control's keyboard button: keyboard mode on,
+  /// or off with what was typed still going out.
+  void toggleKeyboardMode() {
+    final typing = cwTyping.value;
+    if (typing != null) return typing.finish();
+    if (!canKeyCw) return;
+    // Typing is the operator moving on, the same as a message key: a CQ
+    // repeat left armed would restart its wait after every typed piece and
+    // key message 1 into the middle of the contact.
+    cancelKeyerRepeat();
+    late final CwLiveTyping started;
+    started = CwLiveTyping(
+      send: sendCw,
+      stop: stopCw,
+      busy: () => cwSending,
+      progress: cwProgress,
+      stops: cwStops,
+      onDone: () {
+        if (identical(cwTyping.value, started)) cwTyping.value = null;
+      },
+    );
+    cwTyping.value = started;
+    _k.keyboardModeRequests.value++;
+  }
 }

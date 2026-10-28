@@ -14,6 +14,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:halo_audio/halo_audio.dart' show AudioOutput;
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
@@ -463,17 +464,12 @@ Duration voiceCeilingFromConfig(Map<String, dynamic> config) {
 /// How long a doubtful activity shows its question mark before clearing.
 const voiceDoubtLinger = Duration(seconds: 1);
 
-/// A transceiver whose CAT can play — and sometimes record — the voice
-/// memories it holds itself. The counterpart of [CwKeyerSession] for Phone
-/// modes: the messages are audio in the radio, so the app keys a memory
-/// NUMBER, never text, and the only thing it stores is a label.
-///
-/// A capability, like the CW one, and for the same reasons: most protocols
-/// here have no such command, and "this radio has no voice memories" must
-/// never look like "the memory was empty". Unlike CW there is no break-in
-/// question — a voice memory transmits — which is why the surfaces that
-/// play one exist only in a Phone mode.
-abstract class VoiceKeyerSession implements EquipmentSession {
+/// Whatever plays a radio's voice messages: the radio's own memories
+/// ([VoiceKeyerSession]), or the computer playing recordings into the
+/// radio's sound device while keying it (computer_voice_keyer.dart). Every
+/// voice surface reaches one through `CatKeying.voiceKeyerFor` and cannot
+/// tell the two apart.
+abstract class VoiceKeyer {
   /// How many memories this radio has, 1-based up to here. Zero means
   /// none: a driver shared across a line (Kenwood CAT) creates sessions
   /// that implement this for rigs that have no voice keyer at all.
@@ -502,6 +498,18 @@ abstract class VoiceKeyerSession implements EquipmentSession {
   /// Stops whatever is playing or recording.
   void stopVoice();
 }
+
+/// A transceiver whose CAT can play — and sometimes record — the voice
+/// memories it holds itself. The counterpart of [CwKeyerSession] for Phone
+/// modes: the messages are audio in the radio, so the app keys a memory
+/// NUMBER, never text, and the only thing it stores is a label.
+///
+/// A capability, like the CW one, and for the same reasons: most protocols
+/// here have no such command, and "this radio has no voice memories" must
+/// never look like "the memory was empty". Unlike CW there is no break-in
+/// question — a voice memory transmits — which is why the surfaces that
+/// play one exist only in a Phone mode.
+abstract class VoiceKeyerSession implements EquipmentSession, VoiceKeyer {}
 
 /// A voice keyer whose memories carry their names and lengths ON THE RADIO
 /// — a FlexRadio's DVK — and report them through
@@ -533,6 +541,50 @@ abstract class RadioNamedVoiceMemories implements VoiceKeyerSession {
 abstract class PttSession implements EquipmentSession {
   /// Keys ([on]) or unkeys the transmitter.
   void setPtt(bool on);
+}
+
+/// A transceiver whose CAT can key it with its transmit audio taken from
+/// the computer rather than its microphone — what the computer's voice keyer
+/// keys with, so a radio set up for the operator's mic sends the recording
+/// rather than an idle mic (docs/design/cat.md § The computer's voice
+/// keyer).
+abstract class ComputerAudioPttSession implements PttSession {
+  /// Whether [setPttWithComputerAudio] switches the source at all — false
+  /// for a driver serving a model whose command for it nobody has confirmed,
+  /// whose operator sets the source on the radio instead.
+  bool get switchesToComputerAudio;
+
+  /// Keys with the transmit audio from the computer, or unkeys and puts the
+  /// source back to what it was. A session that switched it and is torn
+  /// down while keyed puts it back too, after its unkey.
+  void setPttWithComputerAudio(bool on);
+}
+
+/// An output the radio has to be fed for as long as it is keyed, silence
+/// included — a FlexRadio on DAX transmits noise when nothing arrives on it.
+abstract interface class SilenceFedOutput implements AudioOutput {
+  /// Starts sending silence, ahead of a key; the next play, of [next],
+  /// follows on. [next] is decoded here, before the key: decoded as it
+  /// plays, the feed stops for as long as that takes, and the radio
+  /// transmits noise. Throws `HaloAudioException` when it will not open.
+  void startSilence(String next);
+}
+
+/// An audio file as interleaved float samples at [rate] Hz and [channels]
+/// channels; throws `HaloAudioException` when it will not open.
+typedef PcmDecoder = Float32List Function(String path, {required int rate, required int channels});
+
+/// A transceiver that takes transmit audio over its own network link — a
+/// FlexRadio's DAX — so the computer's voice keyer plays a recording into
+/// the radio itself, with no sound device between them.
+abstract class NetworkTransmitAudioSession implements ComputerAudioPttSession {
+  /// Whether this connection can carry the audio at all — false where it
+  /// has no UDP link (the web).
+  bool get sendsTransmitAudio;
+
+  /// An output that plays files into the radio's transmit audio, decoding
+  /// each with [decode]. Null while the link it needs is not up.
+  AudioOutput? openTransmitAudio(PcmDecoder decode);
 }
 
 /// A session that takes an extension's raw commands (`host.sendRadioRaw`).

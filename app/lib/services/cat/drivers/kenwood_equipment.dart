@@ -62,6 +62,13 @@ class KenwoodDriver extends EquipmentDriver {
   /// would ask a question it refuses.
   static const dataModeKey = 'dataMode';
 
+  /// Whether `TX1;` is DATA SEND — transmit with the computer's audio — on
+  /// this radio, pinned per entry like the dialects below. Absent means it
+  /// is not: the Elecraft references give `TX;` alone, and an entry whose
+  /// radio's reference nobody has read must not send a command that might
+  /// mean something else.
+  static const dataSendKey = 'dataSend';
+
   /// Which receive-filter commands the radio answers
   /// ([KenwoodPassbandDialect] by name), pinned per entry like the dialects
   /// above. Absent means the passband is neither read nor set. The K4 needs
@@ -124,6 +131,7 @@ class KenwoodDriver extends EquipmentDriver {
     voiceMemoriesKey,
     voiceCeilingConfigKey,
     dataModeKey,
+    dataSendKey,
     passbandDialectKey,
     antennaDialectKey,
     modeDialectKey,
@@ -179,6 +187,7 @@ class KenwoodDriver extends EquipmentDriver {
       voiceMemories: voiceMemoriesFrom(config),
       voiceMemoryCeiling: voiceCeilingFromConfig(config),
       dataMode: !isK4 && config[dataModeKey] == true,
+      dataSend: !isK4 && config[dataSendKey] == true,
       passbandDialect: switch (passbandDialectFrom(config)) {
         _ when isK4 => KenwoodPassbandDialect.elecraft,
         // Without `DA` the session cannot tell SSB-DATA from SSB, and the

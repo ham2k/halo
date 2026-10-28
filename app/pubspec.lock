@@ -618,6 +618,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  halo_audio:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_audio"
+      relative: true
+    source: path
+    version: "0.0.1"
   halo_build_tools:
     dependency: "direct main"
     description:

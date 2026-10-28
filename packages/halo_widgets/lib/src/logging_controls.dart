@@ -484,6 +484,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // some unrelated rebuild happens to notice — and stays locked after the
     // clock comes back.
     ClockTravel.instance.addListener(_onClockTravelChanged);
+    _syncHostOpenRequests(const []);
     _radio.addListener(_onModelChanged);
     _lookup.addListener(_onModelChanged);
     _command.addListener(_onModelChanged);
@@ -658,6 +659,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncController(oldWidget);
     _syncSo2r(oldWidget);
     _syncRadioUpdates(oldWidget);
+    _syncHostOpenRequests(oldWidget.strip.hostControls);
     if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
     // An edit opening or closing, or a contest's exchange fields arriving —
     // none of them touches a field this hears otherwise.
@@ -835,6 +837,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   @override
   void dispose() {
+    for (final host in widget.strip.hostControls) {
+      host.openRequests?.removeListener(_hostOpenListeners[host.key] ?? () {});
+    }
     // Ahead of everything below: set A must stop drawing set B's Radio
     // control before it is disposed.
     _detachSo2r(widget.so2r);
@@ -900,8 +905,30 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       controlOrder: widget.strip.controlOrder,
       hiddenControlKeys: widget.strip.hiddenControlKeys,
       spottingAfterReferences: widget.strip.spottingAfterReferences,
+      hostControls: [for (final host in widget.strip.hostControls) ControlDescriptor(key: host.key, icon: host.icon, label: host.label)],
     ),
   );
+
+  /// Opens a host control when its [HostControl.openRequests] notifies — when
+  /// it is in the strip: one the operator hid, or SO2R left out, has nothing
+  /// to open into.
+  void _syncHostOpenRequests(List<HostControl> previous) {
+    for (final host in previous) {
+      host.openRequests?.removeListener(_hostOpenListeners.remove(host.key) ?? () {});
+    }
+    for (final host in widget.strip.hostControls) {
+      if (host.openRequests case final requests?) {
+        void open() {
+          if (_ladder.pillOrder.contains(host.key)) _onSelectControl(host.key);
+        }
+
+        _hostOpenListeners[host.key] = open;
+        requests.addListener(open);
+      }
+    }
+  }
+
+  final _hostOpenListeners = <String, VoidCallback>{};
 
   // ── Mobile numbers row (issue #27) ──────────────────────────────────────
 
@@ -1159,7 +1186,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             buttonDiameter: _editButtonDiameter ?? 44,
                             leftieMode: widget.prefs.leftieMode,
                             signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
-                            strip: widget.strip.aboveEntryRow,
+                            footer: widget.strip.infoAreaFooter,
                             actionButton: _buildWipeOrEditButton(accentTheme),
                             entryRowAbove: widget.prefs.aboveLog,
                             child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),

@@ -26,6 +26,8 @@ import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_voice_audio.dart';
+
 class _RadioLink implements EquipmentConnection {
   final _data = StreamController<Uint8List>();
   final _closed = Completer<void>();
@@ -76,6 +78,8 @@ void main() {
     cat = CatService(
       settings,
       radio: radio,
+      voiceAudio: FakeVoiceAudio(),
+      voiceMessagesDirectory: () async => '/v',
       registry: EquipmentRegistry(
         models: [
           EquipmentModel(
@@ -149,6 +153,24 @@ void main() {
     expect(cat.voiceMemoryCount, 0);
     expect(cat.stateFor(flex).problem, isNull);
     expect(cat.voiceMessageLabel(3), 'Old CQ', reason: 'holding none, it names none');
+  });
+
+  // The DVK keeps reporting its memories while the computer plays the
+  // messages; reading them then would label a recording by a DVK slot's
+  // name, and rename that slot when the operator names the recording.
+  test('while the computer plays the messages, the radio names none of them', () async {
+    await settings.setVoiceMessageSets([VoiceMessageSet.empty(id: 's1', name: 'CQ')], active: VoiceMessageSet.defaultId);
+    await cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
+    await cat.selectVoiceMessageSet('s1');
+    await pumpEventQueue();
+    expect(cat.voiceMessagesFromComputer, isTrue, reason: 'sanity');
+    expect(cat.stateFor(flex).voiceMemories, isNotEmpty, reason: 'sanity: the radio still reports them');
+    expect(cat.voiceMessagesNamedOnRadio, isFalse);
+    expect(cat.voiceMessageLabel(3), '', reason: "the set's own label, not the slot's name");
+    await cat.setVoiceMessageLabel(3, 'CQ POTA');
+    expect(transport.link.commands, isNot(contains(startsWith('dvk set_name'))));
+    expect(settings.activeVoiceMessageSet.label(3), 'CQ POTA');
+    expect(settings.voiceMessageLabel(3), 'Old CQ', reason: "the radio's own memories keep their labels");
   });
 
   test('once the radio is gone the settings answer again', () async {

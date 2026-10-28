@@ -2434,7 +2434,8 @@ void main() {
     });
 
     test("a memory keyed on B stops A's playing CQ, which plays again once B's memory ends", () async {
-      await settings.setVoiceRepeatDelay(10);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(10);
       final (a, b) = await twoRadios();
       cat.keyer('A').playVoiceMemory(1);
       a.sink.reportVoiceActivity(const VoiceActivity(memory: 1));
@@ -2566,7 +2567,8 @@ void main() {
       cat.togglePtt(cat.localRadio1!);
 
       // B calling CQ on a repeat instead: it plays again once A unkeys.
-      await settings.setVoiceRepeatDelay(10);
+      await settings.setVoiceRepeat(true);
+      await settings.setVoiceRepeatCooldown(10);
       keyer.playVoiceMemory(1);
       b.sink.reportVoiceActivity(const VoiceActivity(memory: 1));
       cat.togglePtt(cat.localRadio1!);

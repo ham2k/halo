@@ -17,6 +17,7 @@ class _Harness {
   List<String> controlOrder = const [];
   Set<String> hidden = const {};
   bool spottingAfterReferences = false;
+  List<ControlDescriptor> hostControls = const [];
 
   late final catalog = SecondaryControlCatalog(
     config: () => (
@@ -27,6 +28,7 @@ class _Harness {
       controlOrder: controlOrder,
       hiddenControlKeys: hidden,
       spottingAfterReferences: spottingAfterReferences,
+      hostControls: hostControls,
     ),
   );
 }
@@ -84,6 +86,20 @@ void main() {
     // A key whose earlier descriptors are all absent still goes last.
     h.controlOrder = const ['more'];
     expect(h.catalog.effectiveOrder(), ['more', 'time', 'radio', 'power', 'spotting', 'notes'], reason: 'a run of new keys keeps its own relative order');
+  });
+
+  // The app's keyer goes beside the radio it keys: anywhere else, an
+  // operator who saved the dialog before it existed would find it past More.
+  test("an app's own control sits right after Radio, by default and in a stored order that predates it", () {
+    const keyer = ControlDescriptor(key: 'keyer', icon: Icons.key, label: 'Keyer');
+    final h = _Harness()..hostControls = const [keyer];
+    expect(h.catalog.visibleKeys(), ['time', 'radio', 'keyer', 'spotting', 'more']);
+
+    h.controlOrder = const ['time', 'radio', 'spotting', 'more'];
+    expect(h.catalog.visibleKeys(), ['time', 'radio', 'keyer', 'spotting', 'more']);
+
+    h.hidden = const {'keyer'};
+    expect(h.catalog.visibleKeys(), isNot(contains('keyer')), reason: 'hidden like any control the operator can turn off');
   });
 
   test('a saved decision shows a default-hidden control, and the stored hidden set outranks everything', () {

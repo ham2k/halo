@@ -2409,7 +2409,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get statusError => 'La connexió ha fallat';
 	@override String get currentRadioSettings => 'Configuració actual de la ràdio';
 	@override String get notSupportedByThisRadio => 'Aquesta ràdio no ho admet';
-	@override String get keyerRowLabel => 'Manipulador';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Fonia';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de veu: ${count} memòries a la ràdio';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL o compatible)';
 	@override String keyViaRadio({required Object radio}) => 'Manipulador CAT a ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Manipulador a ${device}';
-	@override String get cwKeyerArea => 'Àrea del manipulador';
 	@override String get trackStationInfo => 'Registra la informació de l\'estació per a cada QSO';
 	@override String get includeStationInfoInAdif => 'Inclou-la a les exportacions ADIF';
 	@override String get whatToTrack => 'Què vols registrar?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$ca extends Translations$settings$r
 	@override String get setEsm => 'Missatges ESM';
 	@override String get setSaved => 'Els meus missatges';
 	@override String get repeat => 'Repeteix el missatge núm. 1';
-	@override String get repeatOff => 'No';
-	@override String repeatAfter({required Object n}) => 'Al cap de ${n} segons';
 	@override String get repeatWait => 'Repetint';
 	@override String get keyboard => 'Escriu per enviar';
 	@override String get keyboardField => 'Escriu per enviar';
-	@override String get closeArea => 'Tanca l\'àrea del manipulador';
 	@override String get help => 'Ajuda';
 	@override String get helpTitle => 'Com escriure missatges CW';
 	@override String get helpIntro => 'Els missatges poden fer servir plantilles amb els valors següents:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$ca extends Translations$setting
 	// Translations
 	@override String get title => 'Missatges del manipulador de fonia';
 	@override String get notSupported => 'La ràdio actual no admet missatges de fonia';
-	@override String get description => 'Fa servir les memòries de veu de la ràdio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memòria de veu (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$ca extends Translations$setting
 	@override String get recordButton => 'Grava';
 	@override String get stopButton => 'Atura';
 	@override String get repeat => 'Repeteix el missatge núm. 1';
-	@override String get repeatOff => 'No';
-	@override String repeatAfter({required Object n}) => 'Al cap de ${n} segons';
 	@override String recordHelpTitle({required Object model}) => 'Notes per a ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Aquestes memòries són a la ràdio de ${device}. Els seus noms i durades pertanyen a aquell dispositiu.';
 	@override String get namedOnRadio => 'Desat a la ràdio, on també el veuen els seus altres clients.';
@@ -4668,12 +4660,9 @@ extension on TranslationsCa {
 			'settings.radio.cwMessages.setEsm' => 'Missatges ESM',
 			'settings.radio.cwMessages.setSaved' => 'Els meus missatges',
 			'settings.radio.cwMessages.repeat' => 'Repeteix el missatge núm. 1',
-			'settings.radio.cwMessages.repeatOff' => 'No',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Al cap de ${n} segons',
 			'settings.radio.cwMessages.repeatWait' => 'Repetint',
 			'settings.radio.cwMessages.keyboard' => 'Escriu per enviar',
 			'settings.radio.cwMessages.keyboardField' => 'Escriu per enviar',
-			'settings.radio.cwMessages.closeArea' => 'Tanca l\'àrea del manipulador',
 			'settings.radio.cwMessages.help' => 'Ajuda',
 			'settings.radio.cwMessages.helpTitle' => 'Com escriure missatges CW',
 			'settings.radio.cwMessages.helpIntro' => 'Els missatges poden fer servir plantilles amb els valors següents:',
@@ -4703,7 +4692,6 @@ extension on TranslationsCa {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 suggerit per a piles //: el TU surt després de registrar el contacte, així que agraeix, després crida la següent estació de la pila i envia el teu intercanvi, o torna a demanar un parcial (TU KR?); si no en queda cap, només TU',
 			'settings.radio.voiceMessages.title' => 'Missatges del manipulador de fonia',
 			'settings.radio.voiceMessages.notSupported' => 'La ràdio actual no admet missatges de fonia',
-			'settings.radio.voiceMessages.description' => 'Fa servir les memòries de veu de la ràdio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memòria de veu (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
@@ -4715,8 +4703,6 @@ extension on TranslationsCa {
 			'settings.radio.voiceMessages.recordButton' => 'Grava',
 			'settings.radio.voiceMessages.stopButton' => 'Atura',
 			'settings.radio.voiceMessages.repeat' => 'Repeteix el missatge núm. 1',
-			'settings.radio.voiceMessages.repeatOff' => 'No',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Al cap de ${n} segons',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notes per a ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Aquestes memòries són a la ràdio de ${device}. Els seus noms i durades pertanyen a aquell dispositiu.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Desat a la ràdio, on també el veuen els seus altres clients.',
@@ -5125,18 +5111,17 @@ extension on TranslationsCa {
 			'settings.station.n3fjpTroubleshooting' => 'Això es connecta a **un programa de registre N3FJP que s\'executa al teu ordinador**, no directament a la ràdio: N3FJP parla amb la ràdio.\n\n- **L\'API del programa ha d\'estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El port** és el 1100, tret que l\'hagis canviat allà.\n- **N3FJP ha de tenir configurada una interfície de ràdio** per seguir o sintonitzar la ràdio. Sense, només informa del que s\'escriu a la seva finestra d\'entrada.\n- N3FJP només informa de banda, mode i freqüència: ni potència ni estat de transmissió.\n\nAquesta entrada s\'ha escrit a partir de l\'API publicada d\'N3FJP i no s\'ha provat amb N3FJP. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.commanderTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.commanderTroubleshooting' => 'Això es connecta a **DXLab Commander, que s\'executa al teu ordinador**, no directament a la ràdio: Commander parla amb la ràdio.\n\n- **Commander ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servei de xarxa ha d\'estar activat**: el botó **Net Serv** al panell Radio de la finestra Configuration de Commander.\n- **El port** és el 52002, el tercer port del bloc que comença al **Base Port** de Net Serv (52000 tret que l\'hagis canviat).\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir dels missatges TCP publicats de Commander i no s\'ha provat amb Commander. Si funciona a mitges, val la pena informar-ne.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la ràdio no respon mai',
 			'settings.station.ic705Troubleshooting' => 'La ràdio té una **única** sessió de control remot. Quan s\'ignora l\'inici de sessió, gairebé sempre és perquè alguna altra cosa l\'està fent servir.\n\n- **Tanca qualsevol altre client.** wfview o RS-BA1 connectats a la mateixa ràdio ocupen aquesta única sessió, i mentrestant l\'inici de sessió d\'aquí simplement s\'ignora.\n- **Comprova la configuració de xarxa de la ràdio.** La WLAN ha d\'estar activada, la ràdio ha de ser a la mateixa xarxa i la seva funció de control remot (Network) ha d\'estar activada.\n- **Apaga i torna a encendre la WLAN de la ràdio** si continua bloquejada. Això allibera de manera fiable una sessió encallada a la ràdio.\n\nUna **contrasenya incorrecta es rebutja explícitament**, no amb silenci. Si has arribat aquí en lloc de rebre un missatge de "rebutjat", el problema no és la contrasenya.',
 			'settings.station.statusStale' => 'No respon',
 			'settings.station.statusDisconnected' => 'No connectat',
 			'settings.station.statusConnecting' => 'Connectant…',
 			'settings.station.statusDisconnecting' => 'Desconnectant…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'La connexió ha fallat',
 			'settings.station.currentRadioSettings' => 'Configuració actual de la ràdio',
 			'settings.station.notSupportedByThisRadio' => 'Aquesta ràdio no ho admet',
-			'settings.station.keyerRowLabel' => 'Manipulador',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonia',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de veu: ${count} memòries a la ràdio',
@@ -5167,7 +5152,6 @@ extension on TranslationsCa {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT a ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador a ${device}',
-			'settings.station.cwKeyerArea' => 'Àrea del manipulador',
 			'settings.station.trackStationInfo' => 'Registra la informació de l\'estació per a cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Inclou-la a les exportacions ADIF',
 			'settings.station.whatToTrack' => 'Què vols registrar?',

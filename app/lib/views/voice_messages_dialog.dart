@@ -1,28 +1,36 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The voice memory editor: one row per memory the radio holds — the key, the
-// label beside it, and how long it plays for underneath — each row opening
-// its own dialog, where the label, the memory's length, PLAYING it and
-// RECORDING it live. The list names the memories; the dialog is where
-// anything happens to one. Reached from the Station dialog's keyer row, the
-// keyer area's voice pill and Settings → Radio's Phone Keyer row. Shaped like
-// the CW editor deliberately, minus what has no meaning here: there is no
-// speed, no message text, and no SETS — the audio is in the radio's five
-// memories, so a second set could only rename the same five.
+// The voice message editor: one row per message — the key, the label beside
+// it, and how long it plays for underneath — each row opening its own
+// dialog, where the label, the message's length, PLAYING it and RECORDING it
+// live. The list names the messages; the dialog is where anything happens to
+// one. Reached from the Station dialog's keyer row, the keyer area's voice
+// pill and Settings → Radio's Phone Keyer row. Shaped like the CW editor
+// deliberately, minus what has no meaning here: there is no speed and no
+// message text.
 //
-// The audio lives in the radio, which is what the app stores nothing of: a
-// label (`voiceMessageLabel1..8`) and a measured length
-// (`voiceMessageDuration1..8`, both in the Radio group) are the whole of it.
-// The length is MEASURED, never typed and never asked for: every play times
-// itself (CatService.playVoiceMemory, docs/design/cat.md § Voice keying), so
-// a memory is measured the first time it is used and cannot drift from the
-// audio the way a number someone typed would. A radio that names and times
-// its own memories (a FlexRadio's DVK) is the exception: its names and
-// lengths are the ones shown, and a label saved here is saved on the radio.
-// With no radio that can play, the rows
-// stay editable and the buttons are gone: a label is worth setting before the
-// rig is on the desk.
+// The messages are the radio's own memories, or a SET recorded on this
+// computer as CW's are; which of the two is the Station panel's Phone Keying
+// pick (VoiceKeyingSource). The radio's audio lives in the radio, and the app
+// stores only a label (`voiceMessageLabel1..8`) and a measured length
+// (`voiceMessageDuration1..8`, both in the Radio group). The length is
+// MEASURED, never typed and never asked for: every play times itself
+// (CatService.playVoiceMemory, docs/design/cat.md § Voice keying). A radio
+// that names and times its own memories (a FlexRadio's DVK) is the
+// exception: its names and lengths are the ones shown, and a label saved
+// here is saved on the radio. A set is recordings on this computer
+// (`VoiceMessageSet`, docs/design/cat.md § The computer's voice keyer), and
+// the sound devices and delays it plays with are in their own dialog
+// (showComputerVoiceSettingsDialog), reached from the same pick.
+//
+// Unlike the CW editor, nothing here is a draft: a recording is written the
+// moment it ends, so a Cancel that undid the set it went into could not undo
+// the recording. Every pick and edit applies as it is made, and deleting a
+// set — its recordings with it — asks first.
+//
+// With no radio that can play, the rows stay editable and the buttons are
+// gone: a label is worth setting before the rig is on the desk.
 
 import 'dart:async';
 
@@ -31,25 +39,85 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
+import 'package:halo_audio/halo_audio.dart';
+
 import '../services/cat/cat_service.dart';
+import '../services/cat/computer_voice_keyer.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
-import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatDelayField, cwMessageNumberIcons;
+import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
+import 'keying_pickers.dart' show phoneKeyingParts;
+import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatFields, SetNameDialog, cwMessageNumberIcons;
 import 'keyer_area.dart' show keyerOrSay;
 
 /// [radio] is the radio whose memories the dialog shows and plays, `A` or
 /// `B` — a keyer area's own; null for the operator's. The memories are audio
 /// in each rig, so each radio's are its own.
-Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showHaloDialog<void>(
-  context: context,
-  builder: (context) => _VoiceMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
+Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showModalPane<void>(
+  context,
+  title: context.t.settings.radio.voiceMessages.title,
+  closeLabel: context.t.common.close,
+  // The rows scroll under a pinned picker and a pinned footer, whose Done is
+  // the way out — so no X in the header (haloDialogFooterBand).
+  scrollable: false,
+  closeButton: false,
+  builder: (_) => _VoiceMessagesPane(services: services, radio: radio ?? services.cat.operatorRadio),
 );
 
-class _VoiceMessagesDialog extends StatelessWidget {
+class _VoiceMessagesPane extends StatelessWidget {
   final HaLoServices services;
   final String radio;
 
-  const _VoiceMessagesDialog({required this.services, required this.radio});
+  const _VoiceMessagesPane({required this.services, required this.radio});
+
+  /// A name no other set answers to: two rows of the same name could not be
+  /// told apart.
+  String _uniqueName(BuildContext context, String wanted) {
+    final taken = {for (final set in services.settings.voiceMessageSets) set.name};
+    var name = wanted;
+    var suffix = 2;
+    while (taken.contains(name)) {
+      name = '$wanted $suffix';
+      suffix++;
+    }
+    return name;
+  }
+
+  Future<void> _newSet(BuildContext context) async {
+    final m = context.t.settings.radio.voiceMessages;
+    final name = await showHaloDialog<String>(
+      context: context,
+      builder: (context) => SetNameDialog(title: m.newSet, field: m.newSetName),
+    );
+    if (name == null || name.trim().isEmpty || !context.mounted) return;
+    await services.cat.addVoiceMessageSet(_uniqueName(context, name.trim()));
+  }
+
+  Future<void> _rename(BuildContext context, VoiceMessageSet set) async {
+    final m = context.t.settings.radio.voiceMessages;
+    final name = await showHaloDialog<String>(
+      context: context,
+      builder: (context) => SetNameDialog(title: m.renameSet, field: m.newSetName, initial: set.name),
+    );
+    if (name == null || name.trim().isEmpty || name.trim() == set.name || !context.mounted) return;
+    await services.cat.renameVoiceMessageSet(set.id, _uniqueName(context, name.trim()));
+  }
+
+  /// Asks first: the recordings go with the set, and nothing brings them
+  /// back.
+  Future<void> _delete(BuildContext context, VoiceMessageSet set) async {
+    final m = context.t.settings.radio.voiceMessages;
+    final confirmed = await showHaloDialog<bool>(
+      context: context,
+      builder: (context) => HaloDialog(
+        title: Text(m.deleteSet),
+        content: Text(m.deleteSetConfirm(name: set.name)),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete))],
+      ),
+    );
+    if (confirmed == true) await services.cat.deleteVoiceMessageSet(set.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,103 +134,179 @@ class _VoiceMessagesDialog extends StatelessWidget {
         // so a memory the next radio has is not unnameable until it is on.
         final count = canPlay ? keyer.voiceMemoryCount : SettingsService.voiceMessageCount;
         final activity = keyer.voiceActivity.value;
-        return HaloDialog(
-          title: Text(m.title),
-          // The same band the CW editor's picker sits on, and the same rule
-          // it states: only memory 1 repeats. No Save here, so both fields
-          // apply as they change.
-          header: Container(
-            color: haloDialogBandColorAt(context),
-            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // A radio with no voice memories at all, connected or not.
-                if (!keyer.radio1HasVoiceMemories) KeyerUnsupportedNotice(text: m.notSupported),
-                Row(
-                  children: [
-                    Expanded(
-                      child: RepeatDelayField(
-                        value: '${settings.voiceRepeatDelay.inSeconds}',
-                        label: m.repeat,
-                        offLabel: m.repeatOff,
-                        afterLabel: (n) => m.repeatAfter(n: n),
-                        onChanged: (value) {
-                          // Off ends a chain already counting down.
-                          if (value == '0') {
-                            for (final radio in ['A', 'B']) {
-                              cat.keyer(radio).cancelKeyerRepeat();
-                            }
-                          }
-                          unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
-                        },
-                      ),
-                    ),
-                    if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                      const SizedBox(width: Space.md),
-                      Expanded(
-                        child: EnterSendsField(
-                          value: (on: cat.enterSends.value.on, running: cat.isRunning(radio)),
-                          onChanged: (value) {
-                            cat.setEnterSends(on: value.on);
-                            cat.setRunning(radio, value.running);
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          list: true,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var n = 1; n <= count; n++)
-                ListTile(
-                  leading: Icon(cwMessageNumberIcons[n - 1]),
-                  title: Text.rich(
-                    TextSpan(
+        final fromComputer = keyer.voiceMessagesFromComputer;
+        final active = settings.activeVoiceMessageSet;
+        // As showFormPane's: min so the dialog card fits the rows,
+        // spaceBetween so full screen, where the pane IS the screen, the
+        // slack falls above the footer rather than under it.
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Pinned above the rows, on the band the CW editor's picker sits
+                  // on, and stating the same rule: only message 1 repeats.
+                  Container(
+                    color: haloDialogBandColorAt(context),
+                    padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextSpan(
-                          text: m.key(n: n),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        // Where the messages come from, as the Station panel picks it —
+                        // radio1's: Radio B plays its own memories.
+                        if (radio == 'A')
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: Space.md),
+                            child: Builder(
+                              builder: (context) {
+                                final parts = phoneKeyingParts(context, services, filled: true);
+                                return Row(
+                                  children: [
+                                    Expanded(child: parts.picker),
+                                    for (final control in parts.controls) ...[const SizedBox(width: Space.sm), control],
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        // A radio with no voice memories at all, connected or not.
+                        if (!keyer.radio1HasVoiceMemories)
+                          KeyerUnsupportedNotice(text: keyer.phoneKeyingOff ? context.t.settings.station.phoneKeyingOff : m.notSupported),
+                        // ESM, then message 1's repeat on a row of its own: the
+                        // switch and its cooldown need the width.
+                        if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                          EnterSendsField(
+                            value: (on: cat.enterSends.value.on, running: cat.isRunning(radio)),
+                            onChanged: (value) {
+                              cat.setEnterSends(on: value.on);
+                              cat.setRunning(radio, value.running);
+                            },
+                          ),
+                          const SizedBox(height: Space.md),
+                        ],
+                        RepeatFields(
+                          on: settings.voiceRepeat,
+                          cooldown: settings.voiceRepeatCooldown,
+                          onToggled: (on) {
+                            // Off ends a chain already counting down — on
+                            // either radio, since the repeat is theirs both.
+                            if (!on) {
+                              for (final radio in ['A', 'B']) {
+                                cat.keyer(radio).cancelKeyerRepeat();
+                              }
+                            }
+                            unawaited(settings.setVoiceRepeat(on));
+                          },
+                          onCooldown: (seconds) => unawaited(settings.setVoiceRepeatCooldown(seconds)),
                         ),
-                        if (keyer.voiceMessageLabel(n).trim().isNotEmpty) TextSpan(text: '  ${keyer.voiceMessageLabel(n).trim()}'),
+                        if (fromComputer && keyer.computerVoiceProblem != null) ...[
+                          const SizedBox(height: Space.md),
+                          KeyerUnsupportedNotice(text: computerVoiceProblemText(context, keyer.computerVoiceProblem!)),
+                        ],
+                        // Last, right above the messages it picks.
+                        if (fromComputer) ...[
+                          const SizedBox(height: Space.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey('voiceSet:${active.id}'),
+                                  isExpanded: true,
+                                  initialValue: active.id,
+                                  icon: dropdownTrailingIcon,
+                                  decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
+                                  menuMaxHeight: dropdownMenuMaxHeight(context),
+                                  items: [
+                                    for (final set in settings.voiceMessageSets)
+                                      DropdownMenuItem(
+                                        value: set.id,
+                                        child: Text(set.name, overflow: TextOverflow.ellipsis),
+                                      ),
+                                  ],
+                                  onChanged: (id) => id == null ? null : unawaited(cat.selectVoiceMessageSet(id)),
+                                ),
+                              ),
+                              const SizedBox(width: Space.sm),
+                              // As in the CW editor. The default set is always
+                              // there: it is neither renamed nor deleted.
+                              IconButton(
+                                icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
+                                onPressed: () => _newSet(context),
+                              ),
+                              IconButton(
+                                icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
+                                onPressed: active.isDefault ? null : () => _rename(context, active),
+                              ),
+                              IconButton(
+                                icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: active.isDefault ? null : theme.colorScheme.error),
+                                onPressed: active.isDefault ? null : () => _delete(context, active),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  // What the memory IS — its measured length — unless the
-                  // radio is doing something with it right now, which is
-                  // the more urgent thing to say.
-                  subtitle: Text(
-                    activity?.memory == n
-                        ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
-                        : (keyer.voiceMessageDuration(n) > 0
-                              ? voiceDurationText(context, keyer.voiceMessageDuration(n))
-                              : voiceUnknownLengthText(context, keyer)),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: activity?.memory == n || keyer.voiceMessageDuration(n) > 0 ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  Flexible(
+                    child: SettingsList(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var n = 1; n <= count; n++)
+                              ListTile(
+                                leading: Icon(cwMessageNumberIcons[n - 1]),
+                                // The label, or the message's own title dimmed where it has
+                                // none; the keys that send it on the right.
+                                title: keyer.voiceMessageLabel(n).trim().isNotEmpty
+                                    ? Text(keyer.voiceMessageLabel(n).trim())
+                                    : Text(
+                                        m.messageTitle(n: n),
+                                        style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+                                      ),
+                                trailing: KeyerMessageKeys(services: services, n: n),
+                                // What the memory IS — its length — unless something
+                                // is being done with it right now, which is the more
+                                // urgent thing to say.
+                                subtitle: Text(
+                                  activity?.memory == n
+                                      ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
+                                      : (keyer.voiceMessageDuration(n) > 0
+                                            ? voiceDurationText(context, keyer.voiceMessageDuration(n))
+                                            : voiceUnknownLengthText(context, keyer)),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: activity?.memory == n || keyer.voiceMessageDuration(n) > 0
+                                        ? null
+                                        : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                onTap: () => showHaloDialog<void>(
+                                  context: context,
+                                  builder: (context) => _VoiceMessageDialog(services: services, radio: radio, n: n),
+                                ),
+                                mouseCursor: SystemMouseCursors.click,
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  onTap: () => showHaloDialog<void>(
-                    context: context,
-                    builder: (context) => _VoiceMessageDialog(services: services, radio: radio, n: n),
-                  ),
-                  mouseCursor: SystemMouseCursors.click,
-                ),
-              // Whose the audio is, since nothing else here says it is not
-              // the app's to edit.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.md),
-                child: Text(m.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                ],
               ),
-            ],
-          ),
-          // Done, not Close: the footer convention for a dialog with nothing
-          // to commit (dialog_footer_convention_test.dart).
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+            ),
+            // Done, not Close: the footer convention for a surface with
+            // nothing to commit (dialog_footer_convention_test.dart).
+            haloDialogFooterBand(
+              context,
+              cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
+            ),
+          ],
         );
       },
     );
@@ -188,6 +332,26 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   late final _opened = widget.services.cat.keyer(widget.radio).voiceMessageLabel(widget.n);
   late final _label = TextEditingController(text: _opened);
 
+  /// A recording played on the computer's own speakers, for the operator to
+  /// hear what they recorded without putting it on the air.
+  AudioPlayback? _listening;
+
+  void _listen() {
+    final playback = widget.services.cat.keyer(widget.radio).listenToVoiceMessage(widget.n);
+    if (playback == null) return;
+    setState(() => _listening = playback);
+    unawaited(
+      playback.done.then((_) {
+        if (mounted && identical(_listening, playback)) setState(() => _listening = null);
+      }),
+    );
+  }
+
+  void _stopListening() {
+    _listening?.stop();
+    setState(() => _listening = null);
+  }
+
   /// Whether the operator changed the label. A Save without a change writes
   /// nothing: on a radio that names its own memories the field may hold what
   /// was shown before the radio said otherwise, and saving that would rename
@@ -196,6 +360,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 
   @override
   void dispose() {
+    _listening?.stop();
     _label.dispose();
     super.dispose();
   }
@@ -308,6 +473,13 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                             : theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                       ),
                     ),
+                    if (keyer.voiceMessagesFromComputer && duration > 0) ...[
+                      if (_listening != null)
+                        FilledButton.tonalIcon(onPressed: _stopListening, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
+                      else
+                        FilledButton.tonalIcon(onPressed: busy ? null : _listen, icon: const Icon(MdiIcons.headphones), label: Text(m.listenButton)),
+                      const SizedBox(width: Space.md),
+                    ],
                     if (keyer.canPlayVoice)
                       if (playing)
                         FilledButton.tonalIcon(onPressed: keyer.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
@@ -356,6 +528,10 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                 ),
             ],
           ),
+          // The folder rather than the file: opening the file would play it
+          // on whatever the system plays sound files with, and the folder is
+          // where a sound file is put in or taken out.
+          secondary: keyer.voiceMessagesFromComputer ? TextButton(onPressed: () => keyer.revealVoiceMessage(widget.n), child: Text(m.openFileButton)) : null,
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
           actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
         );
@@ -373,7 +549,209 @@ String voiceDurationText(BuildContext context, int millis) => context.t.settings
 /// memories, no length is an empty memory, and playing it measures nothing.
 String voiceUnknownLengthText(BuildContext context, RadioKeyer keyer) {
   final m = context.t.settings.radio.voiceMessages;
+  if (keyer.voiceMessagesFromComputer) return m.notRecorded;
   return keyer.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
+}
+
+String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem problem) {
+  final m = context.t.settings.radio.voiceMessages;
+  return switch (problem) {
+    ComputerVoiceProblem.noOutput => m.problemNoOutput,
+    ComputerVoiceProblem.outputMissing => m.problemOutputMissing,
+    ComputerVoiceProblem.inputMissing => m.problemInputMissing,
+    ComputerVoiceProblem.deviceFailed => m.problemDeviceFailed,
+    ComputerVoiceProblem.notRecorded => m.problemNotRecorded,
+    ComputerVoiceProblem.recordingSilent => m.problemRecordingSilent,
+    ComputerVoiceProblem.cannotKey => m.problemCannotKey,
+    ComputerVoiceProblem.radioAudioUnavailable => m.problemRadioAudioUnavailable,
+  };
+}
+
+/// The computer's voice keyer settings for the keying radio, from the
+/// Station panel's Phone Keying pick. Done, not Save: like the fields in it,
+/// nothing here is a draft.
+Future<void> showComputerVoiceSettingsDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
+  context: context,
+  builder: (context) => HaloDialog(
+    title: Text(context.t.settings.station.computerVoiceSettings),
+    content: ListenableBuilder(
+      listenable: services.cat,
+      builder: (context, _) => _ComputerVoiceFields(cat: services.cat, audio: services.cat.computerVoiceAudio!),
+    ),
+    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+  ),
+);
+
+/// The computer's voice keyer settings, on the keying radio's node: the
+/// sound devices, and the delays around the audio. Per radio, unlike the set
+/// in use: the sound card is the rig's. They apply as they change.
+class _ComputerVoiceFields extends StatefulWidget {
+  final CatService cat;
+  final VoiceAudio audio;
+
+  const _ComputerVoiceFields({required this.cat, required this.audio});
+
+  @override
+  State<_ComputerVoiceFields> createState() => _ComputerVoiceFieldsState();
+}
+
+class _ComputerVoiceFieldsState extends State<_ComputerVoiceFields> {
+  static const _leadOptions = [0, 100, 150, 200, 250, 300, 400, 500, 750];
+  static const _tailOptions = [0, 50, 100, 150, 200, 300, 500];
+
+  /// Read once as the dialog opens: listing the devices is a call into the
+  /// system's audio layer, not something to repeat on every rebuild.
+  late List<AudioDevice> _outputs;
+  late List<AudioDevice> _inputs;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _outputs = widget.audio.outputs();
+      _inputs = widget.audio.inputs();
+    } on HaloAudioException {
+      _outputs = _inputs = const [];
+    }
+  }
+
+  void _set(Map<String, dynamic> changes) => unawaited(widget.cat.updateVoiceKeyingConfig(changes));
+
+  @override
+  Widget build(BuildContext context) {
+    final m = context.t.settings.radio.voiceMessages;
+    final config = widget.cat.voiceKeyingNode?.config ?? const {};
+    final decoration = poloFieldDecoration(context, '');
+    Widget dropdown<T>({required String label, required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T> onChanged}) =>
+        DropdownButtonFormField<T>(
+          key: ValueKey('$label:$value'),
+          isExpanded: true,
+          initialValue: value,
+          icon: dropdownTrailingIcon,
+          decoration: decoration.copyWith(labelText: label),
+          menuMaxHeight: dropdownMenuMaxHeight(context),
+          items: items,
+          onChanged: (choice) => choice == null ? null : onChanged(choice),
+        );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _deviceField(
+          label: m.output,
+          devices: _outputs,
+          stored: voiceDeviceFromConfig(config[voiceOutputConfigKey]),
+          // No default for the output: the system's default device is
+          // the computer's speakers far more often than the radio.
+          defaultLabel: null,
+          // First, and what nothing picked means, on a radio that takes its
+          // audio over the network: no sound device between them.
+          radioLabel: widget.cat.voiceKeyingRadioTakesAudio ? m.outputRadio : null,
+          radioPicked: config[voiceOutputConfigKey] == null || voiceOutputIsRadio(config[voiceOutputConfigKey]),
+          build: dropdown,
+          onChanged: (device) => _set({voiceOutputConfigKey: device == null ? null : voiceDeviceToConfig(device)}),
+          onRadio: () => _set({voiceOutputConfigKey: voiceOutputRadio}),
+        ),
+        const SizedBox(height: Space.md),
+        _deviceField(
+          label: m.input,
+          devices: _inputs,
+          stored: voiceDeviceFromConfig(config[voiceInputConfigKey]),
+          defaultLabel: m.inputDefault,
+          build: dropdown,
+          onChanged: (device) => _set({voiceInputConfigKey: device == null ? null : voiceDeviceToConfig(device)}),
+        ),
+        const SizedBox(height: Space.md),
+        Row(
+          children: [
+            Expanded(
+              child: dropdown<int>(
+                label: m.lead,
+                value: _option(config[voiceLeadConfigKey], defaultVoiceLead, _leadOptions),
+                items: [
+                  for (final ms in _leadOptions)
+                    DropdownMenuItem(
+                      value: ms,
+                      child: Text(m.millis(n: ms)),
+                    ),
+                ],
+                onChanged: (ms) => _set({voiceLeadConfigKey: ms}),
+              ),
+            ),
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: dropdown<int>(
+                label: m.tail,
+                value: _option(config[voiceTailConfigKey], defaultVoiceTail, _tailOptions),
+                items: [
+                  for (final ms in _tailOptions)
+                    DropdownMenuItem(
+                      value: ms,
+                      child: Text(m.millis(n: ms)),
+                    ),
+                ],
+                onChanged: (ms) => _set({voiceTailConfigKey: ms}),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// The stored delay as one of [options] — the nearest, for a value written
+  /// some other way.
+  int _option(Object? raw, Duration fallback, List<int> options) {
+    final ms = raw is num ? raw.round() : fallback.inMilliseconds;
+    return options.reduce((a, b) => (a - ms).abs() <= (b - ms).abs() ? a : b);
+  }
+
+  /// A device picker. The stored device stays pickable while it is not
+  /// connected — marked so — rather than vanishing and reading as unset.
+  Widget _deviceField({
+    required String label,
+    required List<AudioDevice> devices,
+    required ({String? id, String? name})? stored,
+    required String? defaultLabel,
+    required Widget Function<T>({required String label, required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T> onChanged}) build,
+    required ValueChanged<AudioDevice?> onChanged,
+    String? radioLabel,
+    bool radioPicked = false,
+    VoidCallback? onRadio,
+  }) {
+    final m = context.t.settings.radio.voiceMessages;
+    final current = stored == null ? null : matchAudioDevice(devices, id: stored.id, name: stored.name);
+    final missing = stored != null && current == null ? AudioDevice(id: stored.id ?? '', name: stored.name ?? '') : null;
+    final choices = [?missing, ...devices];
+    // By position, not by id: an id can be empty (the null backend, a
+    // stored device known only by name), and would collide with "none".
+    const none = -1, radio = -2;
+    final selected = radioLabel != null && radioPicked
+        ? radio
+        : current != null
+        ? choices.indexOf(current)
+        : (missing != null ? 0 : none);
+    return build<int>(
+      label: label,
+      value: selected,
+      items: [
+        if (radioLabel != null) DropdownMenuItem(value: radio, child: Text(radioLabel)),
+        if (defaultLabel != null || selected == none) DropdownMenuItem(value: none, child: Text(defaultLabel ?? m.pickDevice)),
+        for (final (i, device) in choices.indexed)
+          DropdownMenuItem(
+            value: i,
+            child: Text(identical(device, missing) ? m.deviceMissing(name: device.name) : device.name, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: (i) {
+        if (i == radio) return onRadio?.call();
+        // The unplugged device is shown, not chosen again: storing it back
+        // would replace its id with the placeholder this list made for it.
+        if (i != none && identical(choices[i], missing)) return;
+        onChanged(i == none ? null : choices[i]);
+      },
+    );
+  }
 }
 
 /// What to CALL the device holding the memories — its name, or its id when a

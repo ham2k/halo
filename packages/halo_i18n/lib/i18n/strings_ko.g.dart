@@ -2409,7 +2409,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get statusError => '연결 실패';
 	@override String get currentRadioSettings => '현재 무전기 설정';
 	@override String get notSupportedByThisRadio => '이 무전기에서 지원하지 않음';
-	@override String get keyerRowLabel => '키어';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => '보이스';
 	@override String voiceKeyerAvailable({required Object count}) => '보이스 키어: 무전기에 메모리 ${count}개';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL 또는 호환)';
 	@override String keyViaRadio({required Object radio}) => '${radio}의 CAT 키어';
 	@override String keyOnDevice({required Object device}) => '${device}의 키';
-	@override String get cwKeyerArea => '키어 영역';
 	@override String get trackStationInfo => 'QSO마다 무선국 정보 기록';
 	@override String get includeStationInfoInAdif => 'ADIF 내보내기에 포함';
 	@override String get whatToTrack => '무엇을 기록할까요?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$ko extends Translations$settings$r
 	@override String get setEsm => 'ESM 메시지';
 	@override String get setSaved => '내 메시지';
 	@override String get repeat => '메시지 #1 반복';
-	@override String get repeatOff => '안 함';
-	@override String repeatAfter({required Object n}) => '${n}초 후';
 	@override String get repeatWait => '반복 중';
 	@override String get keyboard => '입력하여 전송';
 	@override String get keyboardField => '입력하여 전송';
-	@override String get closeArea => '키어 영역 닫기';
 	@override String get help => '도움말';
 	@override String get helpTitle => 'CW 메시지 작성';
 	@override String get helpIntro => '메시지에 다음 값을 사용하는 템플릿을 쓸 수 있습니다:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$ko extends Translations$setting
 	// Translations
 	@override String get title => '보이스 키어 메시지';
 	@override String get notSupported => '현재 무전기는 보이스 메시지를 지원하지 않습니다';
-	@override String get description => '무전기의 보이스 메모리를 사용합니다';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => '보이스 메모리 (${n})';
 	@override String get labelField => '레이블';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$ko extends Translations$setting
 	@override String get recordButton => '녹음';
 	@override String get stopButton => '정지';
 	@override String get repeat => '메시지 #1 반복';
-	@override String get repeatOff => '안 함';
-	@override String repeatAfter({required Object n}) => '${n}초 후';
 	@override String recordHelpTitle({required Object model}) => '${model} 참고:';
 	@override String namedOnDevice({required Object device}) => '이 메모리는 ${device}의 무전기에 있습니다. 이름과 길이는 해당 기기에 속합니다.';
 	@override String get namedOnRadio => '무전기에 저장되어 다른 클라이언트에서도 볼 수 있습니다.';
@@ -4668,12 +4660,9 @@ extension on TranslationsKo {
 			'settings.radio.cwMessages.setEsm' => 'ESM 메시지',
 			'settings.radio.cwMessages.setSaved' => '내 메시지',
 			'settings.radio.cwMessages.repeat' => '메시지 #1 반복',
-			'settings.radio.cwMessages.repeatOff' => '안 함',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => '${n}초 후',
 			'settings.radio.cwMessages.repeatWait' => '반복 중',
 			'settings.radio.cwMessages.keyboard' => '입력하여 전송',
 			'settings.radio.cwMessages.keyboardField' => '입력하여 전송',
-			'settings.radio.cwMessages.closeArea' => '키어 영역 닫기',
 			'settings.radio.cwMessages.help' => '도움말',
 			'settings.radio.cwMessages.helpTitle' => 'CW 메시지 작성',
 			'settings.radio.cwMessages.helpIntro' => '메시지에 다음 값을 사용하는 템플릿을 쓸 수 있습니다:',
@@ -4703,7 +4692,6 @@ extension on TranslationsKo {
 			'settings.radio.cwMessages.helpEsmStackThanks' => '// 스택용 추천 F3: 교신이 로깅된 후 TU를 보내므로, 감사 인사 후 스택의 다음 무선국을 호출하고 교환 정보를 보내거나 부분 콜사인을 되묻습니다 (TU KR?). 남은 것이 없으면 TU만 보냅니다',
 			'settings.radio.voiceMessages.title' => '보이스 키어 메시지',
 			'settings.radio.voiceMessages.notSupported' => '현재 무전기는 보이스 메시지를 지원하지 않습니다',
-			'settings.radio.voiceMessages.description' => '무전기의 보이스 메모리를 사용합니다',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '보이스 메모리 (${n})',
 			'settings.radio.voiceMessages.labelField' => '레이블',
@@ -4715,8 +4703,6 @@ extension on TranslationsKo {
 			'settings.radio.voiceMessages.recordButton' => '녹음',
 			'settings.radio.voiceMessages.stopButton' => '정지',
 			'settings.radio.voiceMessages.repeat' => '메시지 #1 반복',
-			'settings.radio.voiceMessages.repeatOff' => '안 함',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => '${n}초 후',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} 참고:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => '이 메모리는 ${device}의 무전기에 있습니다. 이름과 길이는 해당 기기에 속합니다.',
 			'settings.radio.voiceMessages.namedOnRadio' => '무전기에 저장되어 다른 클라이언트에서도 볼 수 있습니다.',
@@ -5125,18 +5111,17 @@ extension on TranslationsKo {
 			'settings.station.n3fjpTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 N3FJP 로깅 프로그램**에 연결합니다. N3FJP가 무전기와 통신합니다.\n\n- **프로그램의 API가 켜져 있어야 합니다**: Settings → Application Program Interface에서 **TCP API Enabled**를 체크하세요.\n- **포트**는 그곳에서 변경하지 않았다면 1100입니다.\n- 무전기를 따라가거나 튜닝하려면 **N3FJP에 무전기 인터페이스가 설정되어 있어야 합니다.** 없으면 입력 창에 입력된 값만 보고합니다.\n- N3FJP는 밴드, 모드, 주파수만 보고합니다. 출력과 송신 상태는 보고하지 않습니다.\n\n이 항목은 N3FJP가 공개한 API를 바탕으로 작성되었으며 실제 N3FJP에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.commanderTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.commanderTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 DXLab Commander**에 연결합니다. Commander가 무전기와 통신합니다.\n\n- **Commander가 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **네트워크 서비스가 켜져 있어야 합니다**: Commander 구성 창의 Radio 패널에 있는 **Net Serv** 버튼.\n- **포트**는 52002이며, Net Serv의 **Base Port**(변경하지 않았다면 52000)부터 시작하는 블록의 세 번째 포트입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 Commander가 공개한 TCP 메시지를 바탕으로 작성되었으며 실제 Commander에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => '무전기가 전혀 응답하지 않는 경우',
 			'settings.station.ic705Troubleshooting' => '무전기는 원격 제어 세션을 **하나만** 지원합니다. 로그인이 무시된다면 거의 항상 다른 무언가가 세션을 사용 중입니다.\n\n- **다른 클라이언트를 모두 닫으세요.** 같은 무전기에 연결된 wfview나 RS-BA1이 그 세션을 점유하며, 그동안 여기서의 로그인은 그냥 무시됩니다.\n- **무전기의 네트워크 설정을 확인하세요.** WLAN이 켜져 있고, 무전기가 같은 네트워크에 있으며, 원격 제어(Network) 기능이 활성화되어 있어야 합니다.\n- 계속 멈춰 있다면 **무전기의 WLAN을 껐다 켜세요.** 무전기에 멈춰 있는 세션이 확실히 해제됩니다.\n\n**비밀번호가 틀리면 명시적으로 거부**되며, 응답이 없는 것이 아닙니다. "거부됨" 메시지 대신 이 화면이 나왔다면 비밀번호 문제가 아닙니다.',
 			'settings.station.statusStale' => '응답 없음',
 			'settings.station.statusDisconnected' => '연결 안 됨',
 			'settings.station.statusConnecting' => '연결 중…',
 			'settings.station.statusDisconnecting' => '연결 해제 중…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => '연결 실패',
 			'settings.station.currentRadioSettings' => '현재 무전기 설정',
 			'settings.station.notSupportedByThisRadio' => '이 무전기에서 지원하지 않음',
-			'settings.station.keyerRowLabel' => '키어',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '보이스',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '보이스 키어: 무전기에 메모리 ${count}개',
@@ -5167,7 +5152,6 @@ extension on TranslationsKo {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL 또는 호환)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}의 CAT 키어',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}의 키',
-			'settings.station.cwKeyerArea' => '키어 영역',
 			'settings.station.trackStationInfo' => 'QSO마다 무선국 정보 기록',
 			'settings.station.includeStationInfoInAdif' => 'ADIF 내보내기에 포함',
 			'settings.station.whatToTrack' => '무엇을 기록할까요?',

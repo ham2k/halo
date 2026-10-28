@@ -1,9 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
+// The keyer's two surfaces: the line in the info area (KeyerArea), which
+// shows what is going out while something is, and the keyer control's panel
+// (KeyerControls), which holds what starts a message.
+//
 // Against a real CatService with the placeholder radio (which keys nothing,
-// but runs the real send queue and reports a speed like a real rig), so
-// what the strip shows is what the queue reports, not a hand-built stand-in.
+// but runs the real send queue and reports a speed like a real rig), so what
+// the line shows is what the queue reports, not a hand-built stand-in.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,14 +21,15 @@ import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
+import 'package:ham2k_logger/views/cw_messages_dialog.dart' show cwMessageNumberIcons;
 import 'package:ham2k_logger/views/keyer_area.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 
 import '../support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
-/// `{{ qso.call }}` and `{{ keyer.msgN }}` are filled — the latter as the
-/// hook does, with message N itself rendered — which is all a label test
-/// needs.
+/// `{{ qso.call }}` and `{{ keyer.msgN }}` are filled, which is all a label
+/// test needs.
 class _TemplateExtensions extends ExtensionService {
   @override
   bool get ready => true;
@@ -83,10 +88,9 @@ void main() {
 
   setUp(() async {
     final harness = await makeHaLoServices(extensions: _TemplateExtensions());
-    final settings = harness.settings;
     services = harness.services;
     // A keying radio becomes the key in use only with the experiment on.
-    await settings.setExperimentEnabled('keyer', true);
+    await harness.settings.setExperimentEnabled('keyer', true);
   });
 
   Future<void> connectPlaceholder(WidgetTester tester) async {
@@ -96,35 +100,51 @@ void main() {
     expect(services.cat.canKeyCw, isTrue, reason: 'sanity');
   }
 
+  /// The CW messages, all eight, in place of the seeded set's.
+  Future<void> messages(Map<int, (String, String)> entries) async {
+    for (var n = 1; n <= 8; n++) {
+      await services.settings.setCwMessage(n, entries[n]?.$1 ?? '');
+      await services.settings.setCwMessageLabel(n, entries[n]?.$2 ?? '');
+    }
+  }
+
   final sent = <int>[];
+
+  /// The line, and under it the panel, as the logging panel lays them out.
   Widget host({
     bool suppressed = false,
     PanelRenderContext? templateContext,
     bool phone = false,
     bool enterSends = false,
     ValueNotifier<EsmFacts?>? esmFacts,
+    bool panel = true,
   }) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: Column(
           children: [
-            KeyerArea(
-              cat: services.cat,
-              services: services,
-              onSendMessage: sent.add,
-              suppressed: suppressed,
-              templateContext: templateContext,
-              phone: phone,
-              enterSends: enterSends,
-              esmFacts: esmFacts,
-            ),
+            KeyerArea(cat: services.cat, services: services, suppressed: suppressed, phone: phone),
+            if (panel)
+              KeyerControls(
+                services: services,
+                phone: phone,
+                onSendMessage: (n, radio) => sent.add(n),
+                templateContext: templateContext,
+                enterSends: enterSends,
+                esmFacts: esmFacts == null ? null : {'A': esmFacts},
+              ),
           ],
         ),
       ),
     ),
   );
 
-  final messageText = find.byWidgetPredicate((w) => w is Text && w.textSpan != null);
+  Finder inLine(Finder finder) => find.descendant(of: find.byType(KeyerArea), matching: finder);
+  Finder inPanel(Finder finder) => find.descendant(of: find.byType(KeyerControls), matching: finder);
+  Finder button(String label) => inPanel(find.widgetWithText(InkWell, label));
+  bool enabled(WidgetTester tester, Finder finder) => tester.widget<InkWell>(finder).onTap != null;
+
+  final messageText = inLine(find.byWidgetPredicate((w) => w is Text && w.textSpan != null));
 
   /// The rendered message's spans: (sent, pending).
   (String, String) spansOf(WidgetTester tester) {
@@ -133,630 +153,502 @@ void main() {
     return (spans[0].text!, spans[1].text!);
   }
 
-  double stripHeight(WidgetTester tester) => tester.getSize(find.byType(KeyerArea)).height;
+  double lineHeight(WidgetTester tester) => tester.getSize(find.byType(KeyerArea)).height;
 
-  testWidgets('the ESM pill is there only with its experiment, and steps Off, Run, S&P', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.showKeyerArea();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('ESM Off'), findsNothing, reason: 'Enter is not the keyer\'s without EXP ESM');
-
-    await tester.pumpWidget(host(enterSends: true));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('ESM Off'));
-    await tester.pump();
-    expect(services.cat.enterSends.value, (on: true, running: true));
-    await tester.tap(find.text('ESM Run'));
-    await tester.pump();
-    expect(services.cat.enterSends.value, (on: true, running: false));
-    await tester.tap(find.text('ESM S&P'));
-    await tester.pump();
-    // Off comes back as Run, so the next tap starts where a contest does.
-    expect(services.cat.enterSends.value, (on: false, running: true));
-  });
-
-  group('the next Enter', () {
-    const answering = (callEmpty: false, canLog: true, answered: false, hasExchange: true, exchangeCopied: false, callFocused: false, incompleteCall: false);
-
-    bool tinted(WidgetTester tester, String label) {
-      final button = find.ancestor(of: find.widgetWithText(InkWell, label), matching: find.byType(Material)).first;
-      return tester.widget<Material>(button).color != Colors.transparent;
+  /// Pumps until nothing is keying any more.
+  Future<void> pumpUntilIdle(WidgetTester tester) async {
+    for (var i = 0; i < 200 && (services.cat.cwProgress.value != null || services.cat.voiceActivity.value != null); i++) {
+      await tester.pump(const Duration(milliseconds: 50));
     }
+    expect(services.cat.cwProgress.value, isNull, reason: 'sanity: it ended');
+  }
 
-    // The tint is the operator's read of what Enter is about to key, so it
-    // must follow the same step table Enter does — the side of the pileup
-    // as much as the entry — and show nothing the Enter would not send.
-    testWidgets('tints the messages ESM would key, by the side of the pileup', (tester) async {
+  group('the line', () {
+    testWidgets('takes no room while nothing is going out', (tester) async {
       await connectPlaceholder(tester);
-      for (final (n, label) in [(1, 'CQ'), (2, 'EXCH'), (3, 'TU'), (4, 'MY'), (5, 'HIS'), (8, 'AGN')]) {
-        await services.settings.setCwMessage(n, label);
-        await services.settings.setCwMessageLabel(n, label);
+      await tester.pumpWidget(host(panel: false));
+      expect(lineHeight(tester), 0);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets("slides down with a message: the keyer's icon, then the message with sent characters set apart", (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('ET'); // at 22 WPM: E ends at 55 ms, T at 382 ms
+      await tester.pump();
+      final atStart = lineHeight(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      // The trap: showing the line at full size at once — the point of the
+      // slide is that what is under it moves down rather than jumps.
+      expect(lineHeight(tester), greaterThan(atStart));
+      expect(inLine(find.byIcon(MdiIcons.key)), findsOneWidget, reason: 'no pill: the icon says whose line this is');
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(spansOf(tester), ('E', 'T'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(spansOf(tester), ('ET', ''));
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // A radio reports a memory, and the queue a message, ended a little
+    // before the last of it is heard: a line gone at that moment reads as
+    // the message cut short.
+    testWidgets('stays a second after a message ends, showing it, then slides away', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('ET');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final full = lineHeight(tester);
+      await pumpUntilIdle(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(lineHeight(tester), full);
+      expect(messageText, findsOneWidget, reason: 'the message it last showed, not an empty line');
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(lineHeight(tester), 0);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('a message during that second keeps it up, showing the new one', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('E');
+      await tester.pump();
+      await pumpUntilIdle(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(spansOf(tester).$1, startsWith('CQ'), reason: 'the old linger must not take the new message away');
+      services.cat.stopCw();
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('a message stopped short leaves at once, not shown going on as if it had gone out', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(messageText, findsOneWidget);
+      services.cat.stopCw(); // Esc
+      await tester.pump();
+      expect(messageText, findsNothing);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(lineHeight(tester), 0, reason: 'no second of a stopped message');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('messages pressed while one is keying show behind it, without restarting it', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('ET');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(spansOf(tester), ('E', 'T'));
+
+      // The trap: re-keying on the report object, which restarts the bar
+      // from zero every time another key is pressed.
+      services.cat.sendCw('5NN');
+      services.cat.sendCw('TU');
+      await tester.pump();
+      expect(spansOf(tester), ('E', 'T'), reason: 'the same message keeps its place');
+      expect(find.text(' · 5NN'), findsOneWidget);
+      expect(find.text(' · TU'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('tapping the message keying stops it and the queue; tapping a queued one drops only it', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+      services.cat.sendCw('5NN');
+      services.cat.sendCw('TU');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.tap(find.text(' · 5NN'));
+      await tester.pump();
+      expect(find.text(' · 5NN'), findsNothing, reason: 'only that one');
+      expect(find.text(' · TU'), findsOneWidget);
+      expect(messageText, findsOneWidget, reason: 'the message keying is untouched');
+
+      await tester.tap(messageText);
+      await tester.pump();
+      expect(messageText, findsNothing);
+      expect(find.text(' · TU'), findsNothing, reason: 'everything behind it goes too');
+      expect(services.cat.cwSending, isFalse);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('editing a logged QSO hides it, and it comes back once editing ends', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      final full = lineHeight(tester);
+      expect(full, greaterThan(0));
+
+      await tester.pumpWidget(host(suppressed: true, panel: false));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(lineHeight(tester), 0, reason: 'a message being corrected is not one to key at');
+
+      await tester.pumpWidget(host(panel: false));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(lineHeight(tester), full, reason: 'still keying, so it returns');
+      services.cat.stopCw();
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('a memory playing brings it up by itself, under the microphone', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      expect(lineHeight(tester), 0);
+      services.cat.playVoiceMemory(3, repeat: false);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Playing M3'), findsOneWidget);
+      expect(inLine(find.byIcon(MdiIcons.microphone)), findsOneWidget);
+      // The placeholder's pretend playback ends on its own.
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pump(const Duration(seconds: 2)); // the second it stays
+      await tester.pump(const Duration(milliseconds: 300)); // and the slide away
+      expect(lineHeight(tester), 0, reason: 'gone once nothing is playing');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('a doubtful play reads like any other: no question mark mid-air', (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      // What a session reports when the radio said "not going" before ever
+      // saying "going" — the placeholder never polls, so it is set directly.
+      services.cat.voiceActivity.value = const VoiceActivity(memory: 2, doubtful: true);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      // Doubt is real and still stops a refused play; it is not something to
+      // ASK the operator about while audio may be going out, since they
+      // cannot answer it from here. The Phone Keyer dialog is where it is said.
+      expect(find.text('Playing CQ POTA'), findsOneWidget);
+      expect(find.text('Playing CQ POTA?'), findsNothing);
+      services.cat.voiceActivity.value = null;
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The trap: one radio's keyer shown for both sets — radio B's message
+    // waiting its turn with nothing on screen to say so, or shown in radio
+    // A's info area as if it were going out there.
+    testWidgets("under SO2R each radio's line is its own: what it plays, and what waits for the other", (tester) async {
+      await services.settings.setExperimentEnabled('so2r', true);
+      await services.settings.setSo2rQueueMessages(true);
+      final cat = services.cat;
+      Future<String> rig(String name) async {
+        final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+        await tester.runAsync(() => cat.connect(node.uuid));
+        addTearDown(() => cat.disconnect(node.uuid));
+        return node.uuid;
       }
-      final facts = ValueNotifier<EsmFacts?>(null);
-      addTearDown(facts.dispose);
-      services.cat.setEnterSends(on: true, running: true);
-      await tester.pumpWidget(host(enterSends: true, esmFacts: facts));
-      services.cat.showKeyerArea();
-      await tester.pump(const Duration(seconds: 1));
-      // A tinted label, and `+log` on the one carrying the submit button's
-      // icon: an Enter that logs must say so, and one that does not must not.
-      List<String> lit() => [
-        for (final label in ['CQ', 'EXCH', 'TU', 'MY', 'HIS', 'AGN'])
-          if (tinted(tester, label))
-            find.descendant(of: find.widgetWithText(InkWell, label), matching: find.byIcon(MdiIcons.upload)).evaluate().isEmpty ? label : '$label+log',
-      ];
 
-      expect(lit(), isEmpty, reason: 'nothing published: no Enter would reach ESM');
-
-      facts.value = (callEmpty: true, canLog: false, answered: false, hasExchange: true, exchangeCopied: false, callFocused: true, incompleteCall: false);
-      await tester.pump();
-      expect(lit(), ['CQ']);
-
-      facts.value = answering;
-      await tester.pump();
-      expect(lit(), ['EXCH', 'HIS']);
-
-      facts.value = (callEmpty: false, canLog: true, answered: true, hasExchange: true, exchangeCopied: true, callFocused: false, incompleteCall: false);
-      await tester.pump();
-      expect(lit(), ['TU+log']);
-
-      services.cat.setEnterSends(running: false);
-      await tester.pump();
-      expect(lit(), ['EXCH+log'], reason: 'S&P sends the exchange and logs');
-
-      facts.value = answering;
-      await tester.pump();
-      expect(lit(), ['MY'], reason: 'S&P calls with our call');
-
-      services.cat.setEnterSends(on: false);
-      await tester.pump();
-      expect(lit(), isEmpty, reason: 'with ESM off Enter only logs');
-    });
-
-    // Voice plays memories and the operator says the call: a memory tinted
-    // for their call would be one Enter does not play.
-    testWidgets('in a Phone mode, tints the memories but never their call', (tester) async {
-      await connectPlaceholder(tester);
-      final facts = ValueNotifier<EsmFacts?>(answering);
-      addTearDown(facts.dispose);
-      services.cat.setEnterSends(on: true, running: true);
-      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, enterSends: true, esmFacts: facts));
-      services.cat.showKeyerArea();
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
-
-      expect(tinted(tester, 'M2'), isTrue);
-      expect(tinted(tester, 'M5'), isFalse);
-      expect(tinted(tester, 'M1'), isFalse);
-    });
-  });
-
-  testWidgets('takes no room while nothing has been keyed', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    expect(find.text('22 wpm'), findsNothing);
-    expect(stripHeight(tester), 0);
-  });
-
-  testWidgets('slides down with a message: the speed pill, then the message with sent characters set apart', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('ET'); // at 22 WPM: E ends at 55 ms, T at 382 ms
-    await tester.pump();
-    final atStart = stripHeight(tester);
-    await tester.pump(const Duration(milliseconds: 100));
-    // The trap: showing the strip at full size at once — the point of the
-    // slide is that the fields move down rather than jump.
-    expect(stripHeight(tester), greaterThan(atStart));
-    expect(find.text('22 wpm'), findsOneWidget, reason: 'the placeholder rig comes up at 22 WPM');
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(spansOf(tester), ('E', 'T'));
-    await tester.pump(const Duration(milliseconds: 200));
-    expect(spansOf(tester), ('ET', ''));
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('a finished message leaves the strip, and the strip STAYS: only the operator sends it away', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('ET');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    final full = stripHeight(tester);
-    expect(messageText, findsNothing, reason: 'the queue drained (ET plus the trailing gap is under a second)');
-    expect(find.text('22 wpm'), findsOneWidget);
-
-    // The trap this test exists for: a timer taking the strip away. The
-    // buttons on it are what the NEXT message is sent from, so a strip that
-    // vanished while the operator read the screen is one they have to summon
-    // back before they can key at all.
-    await tester.pump(const Duration(minutes: 5));
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsOneWidget);
-    expect(stripHeight(tester), full);
-  });
-
-  testWidgets('a message during the linger cancels the hide', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('E');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(seconds: 58));
-
-    services.cat.sendCw('ET');
-    await tester.pump();
-    expect(spansOf(tester), ('', 'ET'));
-    await tester.pump(const Duration(seconds: 5));
-    expect(find.text('22 wpm'), findsOneWidget, reason: 'the old hide timer must not fire on the new message');
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('a message stopped short leaves the strip too', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(messageText, findsOneWidget);
-    services.cat.stopCw(); // Esc
-    await tester.pump();
-    expect(messageText, findsNothing, reason: 'what did not go out is not shown as if it had');
-    expect(find.text('22 wpm'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('messages pressed while one is keying show behind it, without restarting it', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('ET');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(spansOf(tester), ('E', 'T'));
-
-    // The trap: re-keying on the report object, which restarts the bar
-    // from zero every time another key is pressed.
-    services.cat.sendCw('5NN');
-    services.cat.sendCw('TU');
-    await tester.pump();
-    expect(spansOf(tester), ('E', 'T'), reason: 'the same message keeps its place');
-    expect(find.text(' · 5NN'), findsOneWidget);
-    expect(find.text(' · TU'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('tapping the pill opens the CW messages, whose speed field sets the radio within its range', (tester) async {
-    // The pill is where the messages are reached from the logging panel, as
-    // the voice pill reaches its memories; the speed rides in that dialog,
-    // offered only as far as the keyer goes, so nothing out of range can be
-    // asked for at all.
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('E');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-
-    await tester.tap(find.text('22 wpm'));
-    await tester.pumpAndSettle();
-    expect(find.text('CW Keyer Messages'), findsOneWidget);
-
-    final range = services.cat.keyerSpeedRange!;
-    final offered = [for (final item in tester.widget<DropdownButton<int>>(find.byType(DropdownButton<int>)).items!) item.value];
-    expect(offered.first, range.min);
-    expect(offered.last, range.max, reason: 'nothing past what the keyer takes');
-    await tester.tap(find.byType(DropdownButton<int>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('25 WPM').last);
-    await tester.pumpAndSettle();
-
-    expect(services.cat.keyerSpeed, 25, reason: 'the placeholder reported the set back, like a real rig');
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('tapping the message keying stops it and the queue; tapping a queued one drops only it', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
-    services.cat.sendCw('5NN');
-    services.cat.sendCw('TU');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.text(' · 5NN'), findsOneWidget);
-    expect(find.text(' · TU'), findsOneWidget);
-
-    await tester.tap(find.text(' · 5NN'));
-    await tester.pump();
-    expect(find.text(' · 5NN'), findsNothing, reason: 'only that one');
-    expect(find.text(' · TU'), findsOneWidget);
-    expect(messageText, findsOneWidget, reason: 'the message keying is untouched');
-
-    await tester.tap(messageText);
-    await tester.pump();
-    expect(messageText, findsNothing);
-    expect(find.text(' · TU'), findsNothing, reason: 'everything behind it goes too');
-    expect(services.cat.cwSending, isFalse);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('KEYER brings the area up idle: a button per message with text, sending through the host', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
-    await services.settings.setCwMessageLabel(1, 'CQ');
-    await services.settings.setCwMessage(3, '{{ qso.call }} 5NN TU');
-    await tester.pumpWidget(host());
-    expect(stripHeight(tester), 0);
-
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'CQ'), findsOneWidget, reason: 'labelled by its label');
-    expect(find.widgetWithText(InkWell, 'F3'), findsOneWidget, reason: 'or by its key');
-    expect(find.widgetWithText(InkWell, 'F2'), findsNothing, reason: 'only messages with text');
-
-    sent.clear();
-    await tester.tap(find.widgetWithText(InkWell, 'F3'));
-    expect(sent, [3]);
-
-    // Opened on purpose, it stays until sent from or closed — no linger.
-    await tester.pump(const Duration(seconds: 90));
-    expect(find.text('22 wpm'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    expect(stripHeight(tester), 0);
-  });
-
-  testWidgets('a label written as a template renders against the draft, debounced, and follows it', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, '{{ qso.call }} 5NN TU');
-    await services.settings.setCwMessageLabel(1, '{{ qso.call }} 5NN');
-    await services.settings.setCwMessage(2, 'TU');
-    await services.settings.setCwMessageLabel(2, 'Thanks');
-    await services.settings.setCwMessage(4, '{{ qso.call }} TU');
-    await services.settings.setCwMessageLabel(4, 'TU {{ qso.call }}');
-    await tester.pumpWidget(host(templateContext: contextFor('K1ABC')));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(find.text('{{ qso.call }} 5NN'), findsOneWidget, reason: 'as written until the render lands');
-    await tester.pump(cwLabelRenderDelay);
-    await tester.pump();
-    expect(find.text('K1ABC 5NN'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Thanks'), findsOneWidget, reason: 'a plain label never goes to the bridge');
-
-    // The draft moves: the label follows, after the delay, not per letter.
-    await tester.pumpWidget(host(templateContext: contextFor('W2XYZ')));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('K1ABC 5NN'), findsOneWidget, reason: 'the old text holds while the debounce runs');
-    await tester.pump(cwLabelRenderDelay);
-    await tester.pump();
-    expect(find.text('W2XYZ 5NN'), findsOneWidget);
-    expect((services.extensions as _TemplateExtensions).batches, 2, reason: 'one crossing per render, whatever the label count');
-    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
-    await tester.pump(const Duration(seconds: 1));
-  });
-
-  testWidgets('editing a logged QSO hides the area, and it comes back once editing ends', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV N0DEV N0DEV K');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    final full = stripHeight(tester);
-    expect(full, greaterThan(0));
-
-    await tester.pumpWidget(host(suppressed: true));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
-    expect(stripHeight(tester), 0, reason: 'a message being corrected is not one to key at');
-    services.cat.showKeyerArea();
-    await tester.pump(const Duration(seconds: 1));
-    expect(stripHeight(tester), 0, reason: 'nor does KEYER bring it up meanwhile');
-
-    await tester.pumpWidget(host());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(stripHeight(tester), full, reason: 'still keying, so it returns');
-    services.cat.stopCw();
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('the X slides the area away before the linger is up; the next message brings it back', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host());
-    services.cat.sendCw('E');
-    await tester.pump(); // the first frame starts the tickers; time passes from here
-    await tester.pump(const Duration(seconds: 1));
-    final full = stripHeight(tester);
-
-    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(stripHeight(tester), lessThan(full), reason: 'sliding up');
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsNothing);
-    expect(stripHeight(tester), 0);
-
-    services.cat.sendCw('ET');
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsOneWidget);
-    expect(stripHeight(tester), full);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('the close button follows the last control, not the far edge', (tester) async {
-    // At the far edge it reads as closing something bigger than the strip.
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ');
-    await tester.pumpWidget(host());
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    final close = find.byIcon(MdiIcons.close);
-    final stripRight = tester.getTopRight(find.byType(KeyerArea)).dx;
-    expect(tester.getTopRight(close).dx, lessThan(stripRight - 100), reason: 'right after the buttons, well short of the edge');
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('with nothing that can key CW, the strip says so where the buttons would be', (tester) async {
-    // A capability, not a connection: buttons that can never work are
-    // replaced by the reason, while a capable rig that is off keeps them.
-    await services.settings.setCwMessage(1, 'CQ');
-    await tester.pumpWidget(host());
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('Not supported by current radio'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'F1'), findsNothing);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('in a Phone mode the strip is the voice keyer\'s: a voice pill, a button per memory of the radio', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
-    await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(find.text('Voice'), findsOneWidget, reason: 'the pill says whose strip this is');
-    expect(find.text('22 wpm'), findsNothing, reason: 'a keyer speed means nothing to a voice memory');
-    // The RADIO's memories, every one, labelled where a label exists.
-    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'CQ POTA'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'M8'), findsOneWidget, reason: 'the placeholder has eight');
-    expect(find.widgetWithText(InkWell, 'F1'), findsNothing, reason: 'the CW message with text is not offered here');
-
-    // A button plays straight through CatService — no template, nothing to
-    // render — and the strip shows the memory in the message's place.
-    await tester.tap(find.widgetWithText(InkWell, 'CQ POTA'));
-    await tester.pump();
-    expect(services.cat.voiceActivity.value?.memory, 2);
-    expect(find.text('Playing CQ POTA'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'M1'), findsNothing, reason: 'the buttons wait under the message');
-    // Tapping it stops it (Esc's other form), and the buttons come back.
-    await tester.tap(find.text('Playing CQ POTA'));
-    await tester.pump();
-    expect(services.cat.voiceActivity.value, isNull);
-    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  testWidgets('while the radio transmits the voice pill reads TX, at the width it had', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    final pill = find.ancestor(of: find.text('Voice'), matching: find.byType(InkWell)).first;
-    final idle = tester.getSize(pill);
-    expect(find.text('TX').hitTestable(), findsNothing);
-
-    services.cat.togglePtt(services.cat.localRadio1!);
-    await tester.pump();
-    expect(find.text('TX').hitTestable(), findsOneWidget);
-    expect(find.text('Voice').hitTestable(), findsNothing);
-    // A pill that narrowed to "TX" would shift the strip each time the
-    // operator keys, and back on every unkey.
-    expect(tester.getSize(pill), idle);
-
-    services.cat.togglePtt(services.cat.localRadio1!);
-    await tester.pump();
-    expect(find.text('Voice').hitTestable(), findsOneWidget);
-    await tester.pump(const Duration(seconds: 62));
-  });
-
-  // The trap: one radio's keyer shown for both sets — set B's buttons
-  // playing radio A's memories, and radio B's message waiting its turn with
-  // nothing on screen to say so.
-  testWidgets("under SO2R each set's area is its radio's: its memories, what it plays, and what waits for the other", (tester) async {
-    await services.settings.setExperimentEnabled('so2r', true);
-    await services.settings.setSo2rQueueMessages(true);
-    final cat = services.cat;
-    Future<String> rig(String name) async {
-      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
-      await tester.runAsync(() => cat.connect(node.uuid));
-      addTearDown(() => cat.disconnect(node.uuid));
-      return node.uuid;
-    }
-
-    final left = await rig('Left Rig'), right = await rig('Right Rig');
-    await cat.setRadio1(LocalRadio(left));
-    await cat.setRadio2(right);
-    await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
-    await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
-    Widget area(String radio) => KeyerArea(key: ValueKey(radio), cat: cat, radio: radio, services: services, onSendMessage: sent.add, phone: true);
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          home: Scaffold(body: Column(children: [area('A'), area('B')])),
+      final left = await rig('Left Rig'), right = await rig('Right Rig');
+      await cat.setRadio1(LocalRadio(left));
+      await cat.setRadio2(right);
+      await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
+      await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
+      Widget line(String radio) => KeyerArea(key: ValueKey(radio), cat: cat, radio: radio, services: services, phone: true);
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: Column(children: [line('A'), line('B')])),
+          ),
         ),
-      ),
-    );
-    cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    Finder inArea(String radio, Finder finder) => find.descendant(of: find.byKey(ValueKey(radio)), matching: finder);
-    expect(inArea('B', find.widgetWithText(InkWell, 'QRZ RIGHT')), findsOneWidget, reason: "set B's buttons are Radio B's memories");
-    expect(inArea('B', find.widgetWithText(InkWell, 'CQ LEFT')), findsNothing);
+      );
+      Finder inRadio(String radio, Finder finder) => find.descendant(of: find.byKey(ValueKey(radio)), matching: finder);
 
-    cat.keyer('A').playVoiceMemory(2);
-    cat.keyer('B').playVoiceMemory(3);
-    await tester.pump();
-    expect(inArea('A', find.text('Playing CQ LEFT')), findsOneWidget);
-    expect(inArea('B', find.text('QRZ RIGHT')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
-    expect(inArea('B', find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'under a bar that cannot say how long');
-    await tester.pump(const Duration(seconds: 62));
+      cat.keyer('A').playVoiceMemory(2);
+      cat.keyer('B').playVoiceMemory(3);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(inRadio('A', find.text('Playing CQ LEFT')), findsOneWidget);
+      expect(inRadio('A', find.textContaining('RIGHT')), findsNothing);
+      expect(inRadio('B', find.text('QRZ RIGHT')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
+      expect(inRadio('B', find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'under a bar that cannot say how long');
+      cat.keyer('A').stopVoice();
+      cat.keyer('B').stopVoice();
+      await tester.pump(const Duration(seconds: 62));
+    });
   });
 
-  testWidgets('a memory playing brings the strip up by itself, and it stays after, like a CW message', (tester) async {
-    await connectPlaceholder(tester);
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
-    expect(stripHeight(tester), 0);
-    services.cat.playVoiceMemory(3); // F3
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Playing M3'), findsOneWidget);
-    // The placeholder's pretend playback ends on its own.
-    await tester.pump(const Duration(seconds: 5));
-    expect(find.text('Playing M3'), findsNothing);
-    await tester.pump(const Duration(minutes: 5));
-    expect(find.text('Voice'), findsOneWidget, reason: 'the strip stays until the operator closes it');
-  });
+  group('the panel', () {
+    testWidgets('the ESM pill is there only with its experiment, and steps Off, Run, S&P', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host());
+      expect(find.text('ESM Off'), findsNothing, reason: "Enter is not the keyer's without EXP ESM");
 
-  testWidgets('a doubtful play reads like any other on the strip: no question mark mid-air', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
-    // What a session reports when the radio said "not going" before ever
-    // saying "going" — the placeholder never polls, so it is set directly.
-    services.cat.voiceActivity.value = const VoiceActivity(memory: 2, doubtful: true);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    // Doubt is real and still stops a refused play; it is not something to
-    // ASK the operator about while audio may be going out, since they cannot
-    // answer it from here. The Phone Keyer dialog is where it is said.
-    expect(find.text('Playing CQ POTA'), findsOneWidget);
-    expect(find.text('Playing CQ POTA?'), findsNothing);
-    services.cat.voiceActivity.value = null;
-    await tester.pump();
-  });
+      await tester.pumpWidget(host(enterSends: true));
+      await tester.tap(find.text('ESM Off'));
+      await tester.pump();
+      expect(services.cat.enterSends.value, (on: true, running: true));
+      await tester.tap(find.text('ESM Run'));
+      await tester.pump();
+      expect(services.cat.enterSends.value, (on: true, running: false));
+      await tester.tap(find.text('ESM S&P'));
+      await tester.pump();
+      // Off comes back as Run, so the next tap starts where a contest does.
+      expect(services.cat.enterSends.value, (on: false, running: true));
+      await tester.pump(const Duration(seconds: 62));
+    });
 
-  // A blank label is the common case, and the key's number says nothing
-  // about what it sends. The template in a message has to come out RENDERED
-  // — "{{ qso.call }} 5NN" on a button is noise — and until that render
-  // lands the button must not show the `keyer.msgN` standing in for it.
-  testWidgets('a message with no label is labelled with the message itself, rendered', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ TEST');
-    await services.settings.setCwMessageLabel(1, '');
-    await services.settings.setCwMessage(3, '{{ qso.call }} 5NN');
-    await services.settings.setCwMessageLabel(3, '');
-    await tester.pumpWidget(host(templateContext: contextFor('W1AW')));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    expect(find.widgetWithText(InkWell, 'CQ TEST'), findsOneWidget, reason: 'plain text reads as itself at once');
-    expect(find.widgetWithText(InkWell, 'F3'), findsOneWidget, reason: 'a template reads as its key until rendered');
+    group('the next Enter', () {
+      const answering = (callEmpty: false, canLog: true, answered: false, hasExchange: true, exchangeCopied: false, callFocused: false, incompleteCall: false);
 
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(InkWell, 'W1AW 5NN'), findsOneWidget);
-    expect(find.textContaining('keyer'), findsNothing);
+      bool tinted(WidgetTester tester, String label) {
+        final material = find.ancestor(of: button(label), matching: find.byType(Material)).first;
+        return tester.widget<Material>(material).color != Colors.transparent;
+      }
 
-    // The label's template is `{{ keyer.msg3 }}` before and after the edit;
-    // cached on that alone, the key would go on reading the old message.
-    await services.settings.setCwMessage(3, '{{ qso.call }} TU');
-    await tester.pump();
-    expect(find.widgetWithText(InkWell, 'W1AW 5NN'), findsNothing, reason: 'the old message is not shown for the new one');
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(InkWell, 'W1AW TU'), findsOneWidget);
-  });
+      // The tint is the operator's read of what Enter is about to key, so it
+      // must follow the same step table Enter does — the side of the pileup
+      // as much as the entry — and show nothing the Enter would not send.
+      testWidgets('tints the messages ESM would key, by the side of the pileup', (tester) async {
+        await connectPlaceholder(tester);
+        await messages({1: ('CQ', 'CQ'), 2: ('EXCH', 'EXCH'), 3: ('TU', 'TU'), 4: ('MY', 'MY'), 5: ('HIS', 'HIS'), 8: ('AGN', 'AGN')});
+        final facts = ValueNotifier<EsmFacts?>(null);
+        addTearDown(facts.dispose);
+        services.cat.setEnterSends(on: true, running: true);
+        await tester.pumpWidget(host(enterSends: true, esmFacts: facts));
+        // A tinted label, and `+log` on the one carrying the submit button's
+        // icon: an Enter that logs must say so, and one that does not must not.
+        List<String> lit() => [
+          for (final label in ['CQ', 'EXCH', 'TU', 'MY', 'HIS', 'AGN'])
+            if (tinted(tester, label)) find.descendant(of: button(label), matching: find.byIcon(MdiIcons.upload)).evaluate().isEmpty ? label : '$label+log',
+        ];
 
-  testWidgets('a CW draft keeps the CW strip, whatever the radio can play', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ');
-    // The seeded Default set labels its first message; cleared here so the
-    // button reads as its message, not as a voice memory's label.
-    await services.settings.setCwMessageLabel(1, '');
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsOneWidget);
-    expect(find.text('Voice'), findsNothing);
-    expect(find.widgetWithText(InkWell, 'CQ'), findsOneWidget);
-    expect(find.widgetWithText(InkWell, 'M1'), findsNothing);
-  });
+        expect(lit(), isEmpty, reason: 'nothing published: no Enter would reach ESM');
 
-  testWidgets('the buttons stay down for a whole repeat chain, not only for its waits', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ');
-    await services.settings.setCwMessageLabel(1, '');
-    await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsOneWidget);
+        facts.value = (callEmpty: true, canLog: false, answered: false, hasExchange: true, exchangeCopied: false, callFocused: true, incompleteCall: false);
+        await tester.pump();
+        expect(lit(), ['CQ']);
 
-    // A chain armed with nothing keying and no wait yet: the GAP between a
-    // wait ending and the next message reaching the radio, which is a
-    // template render long. Buttons flashing back for it read as the
-    // repeats having stopped. (Hit-testable, because the row stays mounted
-    // behind a Visibility to keep its rendered labels.)
-    services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
-    await tester.pump();
-    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsNothing);
+        facts.value = answering;
+        await tester.pump();
+        expect(lit(), ['EXCH', 'HIS']);
 
-    services.cat.cancelKeyerRepeat();
-    await tester.pump();
-    expect(find.widgetWithText(InkWell, 'CQ').hitTestable(), findsOneWidget);
-  });
+        facts.value = (callEmpty: false, canLog: true, answered: true, hasExchange: true, exchangeCopied: true, callFocused: false, incompleteCall: false);
+        await tester.pump();
+        expect(lit(), ['TU+log']);
 
-  testWidgets('a mode flip keeps the CW buttons mounted, so their rendered labels survive it', (tester) async {
-    await connectPlaceholder(tester);
-    await services.settings.setCwMessage(1, 'CQ');
-    await services.settings.setCwMessageLabel(1, '{{ qso.call }} CQ');
-    final extensions = services.extensions as _TemplateExtensions;
-    // ONE context across the flips: a draft that did not move is the same
-    // object, which is what _MessageButtons compares.
-    final context = contextFor('N0CALL');
-    await tester.pumpWidget(host(templateContext: context));
-    services.cat.showKeyerArea();
-    await tester.pump();
-    await tester.pump(cwLabelRenderDelay);
-    await tester.pump();
-    expect(find.widgetWithText(InkWell, 'N0CALL CQ'), findsOneWidget);
-    final batches = extensions.batches;
+        services.cat.setEnterSends(running: false);
+        await tester.pump();
+        expect(lit(), ['EXCH+log'], reason: 'S&P sends the exchange and logs');
 
-    await tester.pumpWidget(host(templateContext: context, phone: true));
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
-    await tester.pumpWidget(host(templateContext: context));
-    await tester.pump();
-    // The trap: a slot that swaps widget types remounts _MessageButtons,
-    // which comes back showing the raw template and crosses the bridge
-    // again for a draft that has not moved.
-    expect(find.widgetWithText(InkWell, 'N0CALL CQ'), findsOneWidget);
-    expect(extensions.batches, batches, reason: 'no render for a draft that did not move');
-    await tester.pump(const Duration(seconds: 62));
+        facts.value = answering;
+        await tester.pump();
+        expect(lit(), ['MY'], reason: 'S&P calls with our call');
+
+        services.cat.setEnterSends(on: false);
+        await tester.pump();
+        expect(lit(), isEmpty, reason: 'with ESM off Enter only logs');
+        await tester.pump(const Duration(seconds: 62));
+      });
+
+      // Voice plays memories and the operator says the call: a memory tinted
+      // for their call would be one Enter does not play.
+      testWidgets('in a Phone mode, tints the memories but never their call', (tester) async {
+        await connectPlaceholder(tester);
+        final facts = ValueNotifier<EsmFacts?>(answering);
+        addTearDown(facts.dispose);
+        services.cat.setEnterSends(on: true, running: true);
+        await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, enterSends: true, esmFacts: facts));
+        await tester.pump();
+
+        expect(tinted(tester, 'M2'), isTrue);
+        expect(tinted(tester, 'M5'), isFalse);
+        expect(tinted(tester, 'M1'), isFalse);
+        await tester.pump(const Duration(seconds: 62));
+      });
+    });
+
+    // A row whose buttons came and went as messages were written would move
+    // every button after the one being edited; a row of eight with the last
+    // five empty is buttons nobody can use.
+    testWidgets('a button per message up to the last with anything in it; an empty one disabled, a label-less one by its key', (tester) async {
+      await connectPlaceholder(tester);
+      await messages({1: ('CQ CQ DE N0DEV K', 'CQ'), 3: ('5NN TU', '')});
+      await tester.pumpWidget(host());
+      await tester.pump();
+
+      expect(button('CQ'), findsOneWidget, reason: 'labelled by its label');
+      expect(button('M3'), findsOneWidget, reason: 'or by its key');
+      final second = find.ancestor(of: inPanel(find.byIcon(cwMessageNumberIcons[1])), matching: find.byType(InkWell)).first;
+      expect(enabled(tester, second), isFalse, reason: 'nothing to send');
+      expect(
+        find.descendant(of: second, matching: find.byType(Text)),
+        findsNothing,
+        reason: 'no message and no label: no label either',
+      );
+      expect(inPanel(find.byIcon(cwMessageNumberIcons[3])), findsNothing, reason: 'nothing past the last message');
+
+      sent.clear();
+      await tester.tap(button('M3'));
+      expect(sent, [3]);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // A template on a button reads as noise until it is rendered, and which
+    // buttons show and what they say waits on what the labels read.
+    testWidgets('a label written as a template is rendered before the buttons show, and follows the draft, debounced', (tester) async {
+      await connectPlaceholder(tester);
+      await messages({1: ('{{ qso.call }} 5NN TU', '{{ qso.call }} RST'), 2: ('TU', 'Thanks')});
+      final extensions = services.extensions as _TemplateExtensions;
+      await tester.pumpWidget(host(templateContext: contextFor('K1ABC')));
+      expect(button('{{ qso.call }} RST').hitTestable(), findsNothing, reason: 'hidden until the render lands');
+      await tester.pump();
+      await tester.pump();
+      expect(button('K1ABC RST').hitTestable(), findsOneWidget);
+      expect(button('Thanks').hitTestable(), findsOneWidget, reason: 'a plain label never goes to the bridge');
+      expect(extensions.batches, 1, reason: 'one crossing for every label');
+
+      // The draft moves: the label follows, after the delay, not per letter.
+      await tester.pumpWidget(host(templateContext: contextFor('W2XYZ')));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(button('K1ABC RST'), findsOneWidget, reason: 'the old text holds while the debounce runs');
+      await tester.pump(cwLabelRenderDelay);
+      await tester.pump();
+      expect(button('W2XYZ RST'), findsOneWidget);
+      expect(extensions.batches, 2);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The panel is mounted each time the keyer control opens: a render per
+    // open would cross the bridge again for a draft that has not moved, and
+    // show nothing until it came back.
+    testWidgets('opened again for the same draft, the labels show at once, rendered once', (tester) async {
+      await connectPlaceholder(tester);
+      await messages({1: ('CQ', '{{ qso.call }} AGAIN')});
+      final extensions = services.extensions as _TemplateExtensions;
+      final draft = contextFor('N0REP');
+      await tester.pumpWidget(host(templateContext: draft));
+      await tester.pump();
+      await tester.pump();
+      expect(button('N0REP AGAIN').hitTestable(), findsOneWidget);
+      final batches = extensions.batches;
+
+      await tester.pumpWidget(host(templateContext: draft, panel: false));
+      await tester.pumpWidget(host(templateContext: draft));
+      expect(button('N0REP AGAIN').hitTestable(), findsOneWidget, reason: 'the first frame, not after a render');
+      await tester.pump(const Duration(seconds: 1));
+      expect(extensions.batches, batches);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('with nothing that can key CW, it says so where the buttons would be', (tester) async {
+      // A capability, not a connection: buttons that can never work are
+      // replaced by the reason, while a capable rig that is off keeps them.
+      await messages({1: ('CQ', 'CQ')});
+      await tester.pumpWidget(host());
+      expect(find.text('Not supported by current radio'), findsOneWidget);
+      expect(button('CQ'), findsNothing);
+    });
+
+    testWidgets("in a Phone mode it is the voice keyer's: a button per memory, playing straight through the keyer", (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+
+      expect(button('M1'), findsOneWidget);
+      expect(button('CQ POTA'), findsOneWidget);
+      expect(button('M8'), findsOneWidget, reason: 'the placeholder has eight, and says nothing of which hold audio');
+      expect(inPanel(find.byIcon(MdiIcons.keyboardOutline)), findsNothing, reason: "keyboard mode is the CW keyer's");
+
+      await tester.tap(button('CQ POTA'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300)); // the line slides in
+      expect(services.cat.voiceActivity.value?.memory, 2);
+      expect(inLine(find.text('Playing CQ POTA')), findsOneWidget);
+      // Tapping it stops it (Esc's other form).
+      await tester.tap(inLine(find.text('Playing CQ POTA')));
+      await tester.pump();
+      expect(services.cat.voiceActivity.value, isNull);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('the repeat button turns message 1 repeating on and off, ending a chain counting down', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host());
+      expect(services.settings.cwRepeat, isFalse);
+      await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.repeatOff));
+      await tester.pump();
+      expect(services.settings.cwRepeat, isTrue);
+
+      services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+      await tester.tap(find.widgetWithIcon(IconButton, MdiIcons.repeat));
+      await tester.pump();
+      expect(services.settings.cwRepeat, isFalse);
+      expect(services.cat.keyerRepeatActive.value, isFalse, reason: 'off is a stop, not only a setting for the next CQ');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets('its settings button opens the CW messages, whose speed field sets the radio within its range', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host());
+      await tester.tap(find.bySemanticsLabel('CW Keyer Messages'));
+      await tester.pumpAndSettle();
+
+      final range = services.cat.keyerSpeedRange!;
+      final offered = [for (final item in tester.widget<DropdownButton<int>>(find.byType(DropdownButton<int>)).items!) item.value];
+      expect(offered.first, range.min);
+      expect(offered.last, range.max, reason: 'nothing past what the keyer takes');
+      await tester.tap(find.byType(DropdownButton<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('25 WPM').last);
+      await tester.pumpAndSettle();
+      expect(services.cat.keyerSpeed, 25, reason: 'the placeholder reported the set back, like a real rig');
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // One strip for both SO2R sets: a panel that stayed radio A's would key
+    // radio A from set B.
+    testWidgets("under SO2R it is the operator's set's radio's", (tester) async {
+      await services.settings.setExperimentEnabled('so2r', true);
+      final cat = services.cat;
+      Future<String> rig(String name) async {
+        final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+        await tester.runAsync(() => cat.connect(node.uuid));
+        addTearDown(() => cat.disconnect(node.uuid));
+        return node.uuid;
+      }
+
+      final left = await rig('Left Rig'), right = await rig('Right Rig');
+      await cat.setRadio1(LocalRadio(left));
+      await cat.setRadio2(right);
+      await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
+      await services.settings.setVoiceMessageLabel(2, 'CQ RIGHT', radio: 'B');
+      await tester.pumpWidget(host(phone: true));
+      expect(button('CQ LEFT'), findsOneWidget);
+
+      cat.noteOperatorRadio('B');
+      await tester.pump();
+      expect(button('CQ RIGHT'), findsOneWidget);
+      await tester.tap(button('CQ RIGHT'));
+      await tester.pump();
+      expect(cat.keyer('B').voiceActivity.value?.memory, 2);
+      expect(cat.keyer('A').voiceActivity.value, isNull);
+      cat.keyer('B').stopVoice();
+      await tester.pump(const Duration(seconds: 62));
+    });
   });
 
   group('keyboard mode', () {
     final callFocus = FocusNode();
     var advanced = 0;
 
-    /// What the logging panel puts around the strip: a call field holding
-    /// the focus, and Space bound panel-wide to advance to the next field.
+    /// What the logging panel puts around them: a call field holding the
+    /// focus, and Space bound panel-wide to advance to the next field.
     Widget panelHost() => TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
@@ -765,7 +657,8 @@ void main() {
             child: Column(
               children: [
                 TextField(focusNode: callFocus, autofocus: true),
-                KeyerArea(cat: services.cat, services: services, onSendMessage: sent.add),
+                KeyerArea(cat: services.cat, services: services),
+                KeyerControls(services: services, phone: false, onSendMessage: (n, radio) => sent.add(n)),
               ],
             ),
           ),
@@ -773,17 +666,15 @@ void main() {
       ),
     );
 
-    Finder field() => find.descendant(of: find.byType(KeyerArea), matching: find.byType(TextField));
+    Finder field() => inPanel(find.byType(TextField));
 
     Future<void> startTyping(WidgetTester tester) async {
       await connectPlaceholder(tester);
+      await messages({1: ('CQ CQ DE N0DEV K', 'CQ'), 2: ('5NN', '5NN')});
       await tester.pumpWidget(panelHost());
-      services.cat.showKeyerArea();
-      await tester.pump(); // the first frame starts the slide; time passes from here
-      await tester.pump(const Duration(seconds: 1));
       await tester.tap(find.byIcon(MdiIcons.keyboardOutline));
       await tester.pump();
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300)); // the line slides in
     }
 
     testWidgets('takes the keyboard from the call field', (tester) async {
@@ -795,7 +686,24 @@ void main() {
       await tester.pump(const Duration(seconds: 62));
     });
 
-    testWidgets('Space types a space, not the panel\'s next-field', (tester) async {
+    // The field takes the buttons' place: the buttons after it moving as the
+    // mode comes and goes would put the repeat under the pointer meant for
+    // the keyboard.
+    testWidgets("the field takes the message buttons' place at their width, and the buttons after them stay put", (tester) async {
+      await connectPlaceholder(tester);
+      await messages({1: ('CQ CQ DE N0DEV K', 'CQ'), 2: ('5NN', '5NN')});
+      await tester.pumpWidget(panelHost());
+      final repeatAt = tester.getTopLeft(find.byIcon(MdiIcons.repeatOff));
+      await tester.tap(find.byIcon(MdiIcons.keyboardOutline));
+      await tester.pump();
+      expect(field(), findsOneWidget);
+      expect(button('CQ').hitTestable(), findsNothing, reason: 'under the field');
+      expect(tester.getTopLeft(find.byIcon(MdiIcons.repeatOff)), repeatAt);
+      expect(tester.getSize(field()).height, tester.getSize(find.ancestor(of: button('CQ'), matching: find.byType(Material)).first).height);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    testWidgets("Space types a space, not the panel's next-field", (tester) async {
       await startTyping(tester);
       await tester.enterText(field(), 'k');
       await tester.sendKeyEvent(LogicalKeyboardKey.space);
@@ -805,7 +713,7 @@ void main() {
       await tester.pump(const Duration(seconds: 62));
     });
 
-    testWidgets('a keystroke never resets the keyboard\'s composing word', (tester) async {
+    testWidgets("a keystroke never resets the keyboard's composing word", (tester) async {
       await startTyping(tester);
       await tester.pump(); // the field's connection opens; what it sends then is not a keystroke's
       tester.testTextInput.log.clear();
@@ -817,11 +725,11 @@ void main() {
       // The trap: the field rewriting itself while its formatter runs, which
       // sends the platform a value with the composing word cleared — an
       // Android keyboard then repeats the letter.
-      final sent = [
+      final states = [
         for (final call in tester.testTextInput.log)
           if (call.method == 'TextInput.setEditingState') call.arguments as Map,
       ];
-      expect(sent.every((state) => state['composingBase'] == 3), isTrue, reason: '$sent');
+      expect(states.every((state) => state['composingBase'] == 3), isTrue, reason: '$states');
       await tester.pump(const Duration(seconds: 62));
     });
 
@@ -852,7 +760,7 @@ void main() {
       await tester.pump(const Duration(seconds: 62));
     });
 
-    testWidgets('Escape stopping the key first (the operation view\'s handler) keys nothing held', (tester) async {
+    testWidgets("Escape stopping the key first (the operation view's handler) keys nothing held", (tester) async {
       // The operation view hears Escape through HardwareKeyboard, ahead of
       // the focus tree, and stops the key before the field does.
       bool stopFirst(KeyEvent event) => event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape && services.cat.stopKeying();
@@ -885,7 +793,7 @@ void main() {
       await tester.enterText(field(), 'cq ');
       await tester.enterText(field(), 'cq de n0dev ');
       await tester.pump();
-      await tester.tap(find.text('CQ').first);
+      await tester.tap(messageText);
       await tester.pump();
       expect(services.cat.cwSending, isFalse, reason: 'DE N0DEV must not go out after the stop');
       expect(field(), findsOneWidget, reason: 'the mode stays, ready for a fresh message');
@@ -893,13 +801,16 @@ void main() {
       await tester.pump(const Duration(seconds: 62));
     });
 
-    testWidgets('the keyboard toggle shows the strip, starts the mode, and ends it', (tester) async {
+    testWidgets('⌥K starts it and asks for the keyer control, where its field is, and ends it', (tester) async {
       await connectPlaceholder(tester);
       await tester.pumpWidget(panelHost());
+      final requests = services.cat.keyer('A').keyboardModeRequests.value;
       services.cat.toggleKeyboardMode();
       await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
       expect(field(), findsOneWidget);
+      expect(services.cat.keyer('A').keyboardModeRequests.value, requests + 1, reason: 'what opens the keyer control');
+      await tester.pump(const Duration(seconds: 1));
+      expect(lineHeight(tester), greaterThan(0), reason: 'the line is up while the mode is on');
       services.cat.toggleKeyboardMode();
       await tester.pump();
       expect(field(), findsNothing);
@@ -909,9 +820,6 @@ void main() {
     testWidgets('starting it ends a CQ repeat', (tester) async {
       await connectPlaceholder(tester);
       await tester.pumpWidget(panelHost());
-      services.cat.showKeyerArea();
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
       services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
       await tester.pump();
       await tester.tap(find.byIcon(MdiIcons.keyboardOutline));
@@ -950,20 +858,10 @@ void main() {
       await tester.pump(cwLiveTypingIdle);
       expect(field(), findsNothing);
       expect(services.cat.cwProgress.value?.id, id, reason: 'nothing was queued again');
-      // The trap: a progress view that moves in the tree as the mode ends
-      // is a new one, whose bar starts over — the message reads as going
-      // out a second time.
+      // The trap: a progress view that is rebuilt as the mode ends is a new
+      // one, whose bar starts over — the message reads as going out again.
       await tester.pump(const Duration(milliseconds: 16));
       expect(spansOf(tester).$1.length, greaterThanOrEqualTo(before));
-      await tester.pump(const Duration(seconds: 62));
-    });
-
-    testWidgets('is the CW keyer\'s only: no keyboard in the Phone strip', (tester) async {
-      await connectPlaceholder(tester);
-      await tester.pumpWidget(host(phone: true));
-      services.cat.showKeyerArea();
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.byIcon(MdiIcons.keyboardOutline), findsNothing);
       await tester.pump(const Duration(seconds: 62));
     });
   });

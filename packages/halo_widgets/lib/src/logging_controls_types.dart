@@ -20,6 +20,7 @@ import 'logging_controls_controller.dart';
 import 'logging_controls_esm.dart';
 import 'qso_list_walk.dart';
 import 'ref_text_input.dart';
+import 'secondary_control_row.dart' show SecondaryControlSpec;
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
 /// the hardcoded callsign-annotation pre-step plus every registered
@@ -775,8 +776,9 @@ class ControlStripSettings {
     this.controlOrder = const [],
     this.hiddenControlKeys = const {},
     this.onControlsSettingsChanged,
-    this.aboveEntryRow,
+    this.infoAreaFooter,
     this.spottingAfterReferences = false,
+    this.hostControls = const [],
   });
 
   /// The user's preferred order for the secondary control chips, by key
@@ -796,18 +798,41 @@ class ControlStripSettings {
   /// `controlOrder`/`hiddenControlKeys` on the next build.
   final void Function(List<String> order, Set<String> hidden)? onControlsSettingsChanged;
 
-  /// Laid between the info area and the entry row — the app's keyer
-  /// area (docs/design/cat.md § CW keying), which halo_widgets has no CAT
-  /// types to build itself. The widget owns its own size and animation, and
-  /// takes no room at all while it has nothing to show, so the row above and
-  /// below sit exactly as they do with it null.
-  final Widget? aboveEntryRow;
+  /// Laid at the bottom of the info area, under whatever it shows and kept
+  /// across its changes ([LoggingInfoFrame.footer]) — the app's keyer line
+  /// (docs/design/cat.md § CW keying), which halo_widgets has no CAT types to
+  /// build itself. The widget owns its own size and animation, and takes no
+  /// room at all while it has nothing to show.
+  final Widget? infoAreaFooter;
 
   /// Where Spotting sits in the DEFAULT order: after every activity
   /// reference, just before Notes, rather than ahead of them. For a log made
   /// of chasing, where the reference is what each contact is about and the
   /// spot back comes after it. An order the operator saved still wins.
   final bool spottingAfterReferences;
+
+  /// Controls the app adds to the strip, in the default order right after
+  /// Radio. Listed, ordered and hidden in the strip's settings like the
+  /// built-in ones.
+  final List<HostControl> hostControls;
+}
+
+/// A secondary control the app builds itself — one halo_widgets has no
+/// types for, as the keyer's (docs/design/cat.md § CW keying).
+class HostControl {
+  const HostControl({required this.key, required this.icon, required this.label, required this.spec, this.openRequests});
+
+  final String key;
+  final IconData icon;
+
+  /// Its name in the strip's settings dialog.
+  final String label;
+
+  /// Built with the strip, every time the strip is.
+  final SecondaryControlSpec Function() spec;
+
+  /// Opens the control each time it notifies — a command asking for it.
+  final Listenable? openRequests;
 }
 
 /// The Spotting control's way out to the spotting networks.

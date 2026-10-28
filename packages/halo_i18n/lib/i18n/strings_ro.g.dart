@@ -2409,7 +2409,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get statusError => 'Conectarea a eșuat';
 	@override String get currentRadioSettings => 'Setările curente ale stației';
 	@override String get notSupportedByThisRadio => 'Nu este acceptat de această stație';
-	@override String get keyerRowLabel => 'Keyer';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Fonie';
 	@override String voiceKeyerAvailable({required Object count}) => 'Keyer vocal: ${count} memorii în stație';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL sau compatibil)';
 	@override String keyViaRadio({required Object radio}) => 'Keyer CAT în ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Manipulator pe ${device}';
-	@override String get cwKeyerArea => 'Zona keyer-ului';
 	@override String get trackStationInfo => 'Înregistrează informațiile stației la fiecare QSO';
 	@override String get includeStationInfoInAdif => 'Include în exporturile ADIF';
 	@override String get whatToTrack => 'Ce se înregistrează?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$ro extends Translations$settings$r
 	@override String get setEsm => 'Mesaje ESM';
 	@override String get setSaved => 'Mesajele mele';
 	@override String get repeat => 'Repetă mesajul #1';
-	@override String get repeatOff => 'Nu';
-	@override String repeatAfter({required Object n}) => 'După ${n} secunde';
 	@override String get repeatWait => 'Se repetă';
 	@override String get keyboard => 'Tastați pentru a trimite';
 	@override String get keyboardField => 'Tastați pentru a trimite';
-	@override String get closeArea => 'Închide zona keyer-ului';
 	@override String get help => 'Ajutor';
 	@override String get helpTitle => 'Scrierea mesajelor CW';
 	@override String get helpIntro => 'Mesajele pot folosi șabloane cu următoarele valori:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$ro extends Translations$setting
 	// Translations
 	@override String get title => 'Mesaje keyer fonie';
 	@override String get notSupported => 'Stația radio curentă nu acceptă mesaje de fonie';
-	@override String get description => 'Folosește memoriile vocale ale stației radio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Memorie vocală (${n})';
 	@override String get labelField => 'Etichetă';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$ro extends Translations$setting
 	@override String get recordButton => 'Înregistrează';
 	@override String get stopButton => 'Stop';
 	@override String get repeat => 'Repetă mesajul #1';
-	@override String get repeatOff => 'Nu';
-	@override String repeatAfter({required Object n}) => 'După ${n} secunde';
 	@override String recordHelpTitle({required Object model}) => 'Note ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Aceste memorii se află în stația radio a dispozitivului ${device}. Numele și duratele lor aparțin acelui dispozitiv.';
 	@override String get namedOnRadio => 'Salvat în stația radio, unde îl văd și ceilalți clienți ai ei.';
@@ -4668,12 +4660,9 @@ extension on TranslationsRo {
 			'settings.radio.cwMessages.setEsm' => 'Mesaje ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mesajele mele',
 			'settings.radio.cwMessages.repeat' => 'Repetă mesajul #1',
-			'settings.radio.cwMessages.repeatOff' => 'Nu',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'După ${n} secunde',
 			'settings.radio.cwMessages.repeatWait' => 'Se repetă',
 			'settings.radio.cwMessages.keyboard' => 'Tastați pentru a trimite',
 			'settings.radio.cwMessages.keyboardField' => 'Tastați pentru a trimite',
-			'settings.radio.cwMessages.closeArea' => 'Închide zona keyer-ului',
 			'settings.radio.cwMessages.help' => 'Ajutor',
 			'settings.radio.cwMessages.helpTitle' => 'Scrierea mesajelor CW',
 			'settings.radio.cwMessages.helpIntro' => 'Mesajele pot folosi șabloane cu următoarele valori:',
@@ -4703,7 +4692,6 @@ extension on TranslationsRo {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerat pentru stive //: TU pleacă după înregistrarea contactului, deci mulțumește, apoi cheamă următoarea stație din stivă și trimite schimbul dvs. sau cere înapoi un parțial (TU KR?); dacă nu mai rămâne nimic, doar TU',
 			'settings.radio.voiceMessages.title' => 'Mesaje keyer fonie',
 			'settings.radio.voiceMessages.notSupported' => 'Stația radio curentă nu acceptă mesaje de fonie',
-			'settings.radio.voiceMessages.description' => 'Folosește memoriile vocale ale stației radio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memorie vocală (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etichetă',
@@ -4715,8 +4703,6 @@ extension on TranslationsRo {
 			'settings.radio.voiceMessages.recordButton' => 'Înregistrează',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
 			'settings.radio.voiceMessages.repeat' => 'Repetă mesajul #1',
-			'settings.radio.voiceMessages.repeatOff' => 'Nu',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'După ${n} secunde',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Note ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Aceste memorii se află în stația radio a dispozitivului ${device}. Numele și duratele lor aparțin acelui dispozitiv.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Salvat în stația radio, unde îl văd și ceilalți clienți ai ei.',
@@ -5125,18 +5111,17 @@ extension on TranslationsRo {
 			'settings.station.n3fjpTroubleshooting' => 'Aceasta se conectează la **un program de log N3FJP care rulează pe calculatorul dvs.**, nu direct la stația radio — N3FJP comunică cu stația.\n\n- **API-ul programului trebuie să fie activ**: Settings → Application Program Interface, bifați **TCP API Enabled**.\n- **Portul** este 1100, dacă nu l-ați schimbat acolo.\n- **N3FJP trebuie să aibă configurată o interfață radio** pentru a urmări sau acorda stația. Fără una, raportează doar ce se tastează în fereastra de introducere.\n- N3FJP raportează doar banda, modul și frecvența: fără putere, fără starea de emisie.\n\nAceastă intrare a fost scrisă după API-ul publicat de N3FJP și nu a fost testată cu N3FJP. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.commanderTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.commanderTroubleshooting' => 'Aceasta se conectează la **DXLab Commander, care rulează pe calculatorul dvs.**, nu direct la stația radio — Commander comunică cu stația.\n\n- **Commander trebuie să ruleze deja** și să fie conectat la stație.\n- **Serviciul de rețea trebuie să fie activ**: butonul **Net Serv** din panoul Radio al ferestrei Configuration din Commander.\n- **Portul** este 52002, al treilea port din blocul care începe la **Base Port** din Net Serv (52000, dacă nu l-ați schimbat).\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după mesajele TCP publicate de Commander și nu a fost testată cu Commander. Dacă funcționează pe jumătate, merită raportat.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Dacă stația radio nu răspunde niciodată',
 			'settings.station.ic705Troubleshooting' => 'Stația are o **singură** sesiune de control la distanță. Când autentificarea este ignorată, aproape întotdeauna altceva o folosește.\n\n- **Închideți orice alt client.** wfview sau RS-BA1 conectat la aceeași stație ocupă acea sesiune, iar autentificarea de aici este pur și simplu ignorată cât timp o face.\n- **Verificați setările de rețea ale stației.** WLAN trebuie să fie activ, stația trebuie să fie în aceeași rețea, iar funcția de control la distanță (Network) trebuie să fie activată.\n- **Reporniți WLAN-ul stației** dacă rămâne blocată. Aceasta eliberează sigur o sesiune blocată pe stație.\n\nO **parolă greșită este refuzată explicit**, nu întâmpinată cu tăcere. Dacă ați ajuns aici în loc de un mesaj "respins", parola nu este problema.',
 			'settings.station.statusStale' => 'Nu răspunde',
 			'settings.station.statusDisconnected' => 'Neconectat',
 			'settings.station.statusConnecting' => 'Se conectează…',
 			'settings.station.statusDisconnecting' => 'Se deconectează…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Conectarea a eșuat',
 			'settings.station.currentRadioSettings' => 'Setările curente ale stației',
 			'settings.station.notSupportedByThisRadio' => 'Nu este acceptat de această stație',
-			'settings.station.keyerRowLabel' => 'Keyer',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonie',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Keyer vocal: ${count} memorii în stație',
@@ -5167,7 +5152,6 @@ extension on TranslationsRo {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL sau compatibil)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT în ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulator pe ${device}',
-			'settings.station.cwKeyerArea' => 'Zona keyer-ului',
 			'settings.station.trackStationInfo' => 'Înregistrează informațiile stației la fiecare QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include în exporturile ADIF',
 			'settings.station.whatToTrack' => 'Ce se înregistrează?',

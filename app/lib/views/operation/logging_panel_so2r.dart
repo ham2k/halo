@@ -15,7 +15,6 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   bool get _trackingPower;
   Future<void> _openStationConfigDialog(BuildContext context);
   LoggingControlsController get _loggingController;
-  bool get _esmEnabled;
 
   /// SO2R (docs/design/logging-fields.md § SO2R): one set of logging
   /// controls per radio. Kept in sync by _onSettingsChanged.
@@ -108,22 +107,10 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     for (final radio in ['A', 'B']) radio: ValueNotifier<EsmFacts?>(null),
   };
 
-  /// [radio]'s set's keyer area — its own radio's keyer: its messages going
+  /// [radio]'s set's keyer line — its own radio's keyer: its messages going
   /// out, its repeat, and what waits for the other radio.
-  KeyerArea _keyerArea(String radio, {required bool editingHere}) => KeyerArea(
-    cat: widget.services.cat,
-    radio: radio,
-    services: widget.services,
-    onSendMessage: switch (widget.onSendCwMessage) {
-      final send? => (n) => send(n, radio),
-      null => null,
-    },
-    templateContext: widget.cwTemplateContext,
-    phone: widget.keyingPhone,
-    enterSends: _esmEnabled,
-    esmFacts: _esmFacts[radio],
-    suppressed: editingHere && _selectedQso != null,
-  );
+  KeyerArea _keyerArea(String radio, {required bool editingHere}) =>
+      KeyerArea(cat: widget.services.cat, radio: radio, services: widget.services, phone: widget.keyingPhone, suppressed: editingHere && _selectedQso != null);
 
   void _disposeSo2r() {
     for (final facts in _esmFacts.values) {

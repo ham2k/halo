@@ -6,5 +6,6 @@ import 'dart:typed_data';
 class FlexMeterSocket {
   int get port => 0;
   static Future<FlexMeterSocket?> open(String host, void Function(Uint8List) onData, void Function(Object, StackTrace) onError) async => null;
+  void send(List<int> data, int toPort) {}
   void close() {}
 }

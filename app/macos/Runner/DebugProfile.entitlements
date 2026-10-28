@@ -27,6 +27,12 @@
 	     entitlement files — a Release-only miss is the documented trap. -->
 	<key>com.apple.security.device.bluetooth</key>
 	<true/>
+	<!-- Recording a voice message from a microphone or a radio's sound card
+	     (docs/design/cat.md § The computer's voice keyer). A sandbox
+	     relaxation like device.serial; must be in BOTH entitlement files.
+	     Playing audio needs no entitlement. -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 	<!-- DEBUG ONLY, and the one key here that must NOT be mirrored into
 	     Release.entitlements — the exact opposite of the device.serial and
 	     device.bluetooth trap above, so read that comment and then don't do

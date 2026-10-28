@@ -2409,7 +2409,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get statusError => 'Verbinding mislukt';
 	@override String get currentRadioSettings => 'Huidige radio-instellingen';
 	@override String get notSupportedByThisRadio => 'Niet ondersteund door deze radio';
-	@override String get keyerRowLabel => 'Keyer';
 	@override String get cwMessagesButton => 'CW';
 	@override String get voiceMessagesButton => 'Spraak';
 	@override String voiceKeyerAvailable({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio';
@@ -2428,7 +2427,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get newKeyer => 'WinKeyer (K1EL of compatibel)';
 	@override String keyViaRadio({required Object radio}) => 'CAT-keyer in ${radio}';
 	@override String keyOnDevice({required Object device}) => 'Seinsleutel op ${device}';
-	@override String get cwKeyerArea => 'Keyergebied';
 	@override String get trackStationInfo => 'Stationsinfo per QSO bijhouden';
 	@override String get includeStationInfoInAdif => 'Opnemen in ADIF-exports';
 	@override String get whatToTrack => 'Wat bijhouden?';
@@ -3285,12 +3283,9 @@ class _Translations$settings$radio$cwMessages$nl extends Translations$settings$r
 	@override String get setEsm => 'ESM-berichten';
 	@override String get setSaved => 'Mijn berichten';
 	@override String get repeat => 'Bericht #1 herhalen';
-	@override String get repeatOff => 'Nee';
-	@override String repeatAfter({required Object n}) => 'Na ${n} seconden';
 	@override String get repeatWait => 'Herhalen';
 	@override String get keyboard => 'Typ om te verzenden';
 	@override String get keyboardField => 'Typ om te verzenden';
-	@override String get closeArea => 'Keyergebied sluiten';
 	@override String get help => 'Help';
 	@override String get helpTitle => 'CW-berichten schrijven';
 	@override String get helpIntro => 'Berichten kunnen sjablonen met de volgende waarden gebruiken:';
@@ -3329,7 +3324,6 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	// Translations
 	@override String get title => 'Spraak-keyerberichten';
 	@override String get notSupported => 'De huidige radio ondersteunt geen spraakberichten';
-	@override String get description => 'Dit gebruikt de spraakgeheugens van de radio';
 	@override String key({required Object n}) => 'M${n}';
 	@override String messageTitle({required Object n}) => 'Spraakgeheugen (${n})';
 	@override String get labelField => 'Label';
@@ -3341,8 +3335,6 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String get recordButton => 'Opnemen';
 	@override String get stopButton => 'Stop';
 	@override String get repeat => 'Bericht #1 herhalen';
-	@override String get repeatOff => 'Nee';
-	@override String repeatAfter({required Object n}) => 'Na ${n} seconden';
 	@override String recordHelpTitle({required Object model}) => 'Opmerkingen bij ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Deze geheugens staan in de radio van ${device}. Hun namen en lengtes horen bij dat apparaat.';
 	@override String get namedOnRadio => 'Opgeslagen in de radio, waar ook de andere clients het zien.';
@@ -4668,12 +4660,9 @@ extension on TranslationsNl {
 			'settings.radio.cwMessages.setEsm' => 'ESM-berichten',
 			'settings.radio.cwMessages.setSaved' => 'Mijn berichten',
 			'settings.radio.cwMessages.repeat' => 'Bericht #1 herhalen',
-			'settings.radio.cwMessages.repeatOff' => 'Nee',
-			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Na ${n} seconden',
 			'settings.radio.cwMessages.repeatWait' => 'Herhalen',
 			'settings.radio.cwMessages.keyboard' => 'Typ om te verzenden',
 			'settings.radio.cwMessages.keyboardField' => 'Typ om te verzenden',
-			'settings.radio.cwMessages.closeArea' => 'Keyergebied sluiten',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'CW-berichten schrijven',
 			'settings.radio.cwMessages.helpIntro' => 'Berichten kunnen sjablonen met de volgende waarden gebruiken:',
@@ -4703,7 +4692,6 @@ extension on TranslationsNl {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Voorgestelde F3 voor //-stapels: TU gaat uit nadat het QSO gelogd is, dus het bedankt, roept dan het volgende gestapelde station en verstuurt je uitwisseling, of vraagt een gedeeltelijke roepnaam terug (TU KR?); als er niets over is, alleen TU',
 			'settings.radio.voiceMessages.title' => 'Spraak-keyerberichten',
 			'settings.radio.voiceMessages.notSupported' => 'De huidige radio ondersteunt geen spraakberichten',
-			'settings.radio.voiceMessages.description' => 'Dit gebruikt de spraakgeheugens van de radio',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Spraakgeheugen (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Label',
@@ -4715,8 +4703,6 @@ extension on TranslationsNl {
 			'settings.radio.voiceMessages.recordButton' => 'Opnemen',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
 			'settings.radio.voiceMessages.repeat' => 'Bericht #1 herhalen',
-			'settings.radio.voiceMessages.repeatOff' => 'Nee',
-			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Na ${n} seconden',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Opmerkingen bij ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Deze geheugens staan in de radio van ${device}. Hun namen en lengtes horen bij dat apparaat.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Opgeslagen in de radio, waar ook de andere clients het zien.',
@@ -5125,18 +5111,17 @@ extension on TranslationsNl {
 			'settings.station.n3fjpTroubleshooting' => 'Dit verbindt met **een N3FJP-logprogramma dat op je computer draait**, niet direct met de radio — N3FJP praat met de radio.\n\n- **De API van het programma moet aan staan**: Settings → Application Program Interface, vink **TCP API Enabled** aan.\n- **Poort** is 1100, tenzij je die daar hebt gewijzigd.\n- **N3FJP moet een radio-interface ingesteld hebben** om de radio te volgen of af te stemmen. Zonder interface meldt het alleen wat in het invoervenster wordt getypt.\n- N3FJP meldt alleen band, mode en frequentie: geen vermogen, geen zendstatus.\n\nDeze optie is geschreven op basis van de gepubliceerde API van N3FJP en is nog niet met N3FJP getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.commanderTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.commanderTroubleshooting' => 'Dit verbindt met **DXLab Commander, draaiend op je computer**, niet direct met de radio — Commander praat met de radio.\n\n- **Commander moet al draaien** en met de radio verbonden zijn.\n- **De netwerkdienst moet aan staan**: de knop **Net Serv** in het Radio-paneel van het Configuration-venster van Commander.\n- **Poort** is 52002, de derde poort van het blok dat begint bij de **Base Port** van Net Serv (52000, tenzij je die hebt gewijzigd).\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van de gepubliceerde TCP-berichten van Commander en is nog niet met Commander getest. Als hij half werkt, is dat het melden waard.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Als de radio nooit reageert',
 			'settings.station.ic705Troubleshooting' => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.',
 			'settings.station.statusStale' => 'Reageert niet',
 			'settings.station.statusDisconnected' => 'Niet verbonden',
 			'settings.station.statusConnecting' => 'Verbinden…',
 			'settings.station.statusDisconnecting' => 'Verbinding verbreken…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Verbinding mislukt',
 			'settings.station.currentRadioSettings' => 'Huidige radio-instellingen',
 			'settings.station.notSupportedByThisRadio' => 'Niet ondersteund door deze radio',
-			'settings.station.keyerRowLabel' => 'Keyer',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Spraak',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio',
@@ -5167,7 +5152,6 @@ extension on TranslationsNl {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL of compatibel)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Seinsleutel op ${device}',
-			'settings.station.cwKeyerArea' => 'Keyergebied',
 			'settings.station.trackStationInfo' => 'Stationsinfo per QSO bijhouden',
 			'settings.station.includeStationInfoInAdif' => 'Opnemen in ADIF-exports',
 			'settings.station.whatToTrack' => 'Wat bijhouden?',

@@ -21,6 +21,8 @@ dependencies:
     path: ../packages/halo_widgets
   halo_build_tools:
     path: ../packages/halo_build_tools
+  halo_audio:
+    path: ../packages/halo_audio
   # DeepCollectionEquality for the lookup queue's changed-result check;
   # version left to Flutter's own pin of this package.
   collection: any

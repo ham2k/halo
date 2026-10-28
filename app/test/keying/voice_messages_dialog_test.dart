@@ -12,13 +12,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/voice_messages_dialog.dart';
 
+import '../support/fake_voice_audio.dart';
 import '../support/halo_test_support.dart';
 
 void main() {
@@ -72,14 +73,13 @@ void main() {
     final notice = find.text('Current radio does not support Phone messages');
     expect(notice, findsOneWidget);
     expect(tester.getTopLeft(notice).dy, lessThan(tester.getTopLeft(find.byType(ListTile).first).dy));
-    expect(find.text("This uses the radio's voice memories"), findsOneWidget);
   });
 
   testWidgets('a row edits its label, and nothing else — the audio is in the radio', (tester) async {
     await open(tester);
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
-    expect(find.text('Voice memory (3)'), findsOneWidget);
+    expect(find.widgetWithText(HaloDialog, 'Voice memory 3'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget, reason: 'a label, and no message field beside it');
     await tester.enterText(find.byType(TextField), 'Exchange');
     await tester.tap(find.text('Save'));
@@ -231,5 +231,92 @@ void main() {
     // memory's length.
     expect(services.settings.voiceMessageDuration(2), 0);
     await tester.pump(const Duration(seconds: 31));
+  });
+
+  group('on a computer that can play recordings', () {
+    final cq = VoiceMessageSet.empty(id: 's1', name: 'CQ');
+    late FakeVoiceAudio audio;
+
+    setUp(() async {
+      audio = FakeVoiceAudio();
+      final harness = await makeHaLoServices(
+        cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
+      );
+      services = harness.services;
+      await harness.settings.setExperimentEnabled('keyer', true);
+      await harness.settings.setVoiceMessageSets([cq], active: VoiceMessageSet.defaultId);
+    });
+
+    /// The computer as Phone Keying's source, which is what offers the sets.
+    Future<void> fromComputer(WidgetTester tester) async {
+      await tester.runAsync(() => services.cat.selectVoiceKeyingSource(VoiceKeyingSource.computer));
+      await tester.runAsync(pumpEventQueue);
+    }
+
+    IconButton setButton(WidgetTester tester, String name) =>
+        tester.widget<IconButton>(find.ancestor(of: find.bySemanticsLabel(name), matching: find.byType(IconButton)));
+
+    // Sets are recordings on this computer: offered while the computer
+    // plays the messages, and never in the way of the radio's own memories,
+    // which Phone Keying picks rather than this list.
+    testWidgets('the sets are offered only while the computer plays the messages, the default first', (tester) async {
+      await open(tester);
+      expect(find.bySemanticsLabel('New Set'), findsNothing, reason: "the radio's own memories are not a set");
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      await fromComputer(tester);
+      await open(tester);
+      final picker = tester.widget<DropdownButton<String>>(find.byWidgetPredicate((widget) => widget is DropdownButton<String> && widget.items!.length == 2));
+      expect([for (final item in picker.items!) (item.child as Text).data], ['Sound files on this computer', 'CQ']);
+      expect(setButton(tester, 'New Set').onPressed, isNotNull);
+    });
+
+    // The default set is where sound files go before any set is made; gone,
+    // the picker would have nothing between the radio and the sets an
+    // operator has yet to make.
+    testWidgets('the default set is neither renamed nor deleted', (tester) async {
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(VoiceMessageSet.defaultId));
+      await open(tester);
+      expect(setButton(tester, 'Rename Set').onPressed, isNull);
+      expect(setButton(tester, 'Delete Set').onPressed, isNull);
+    });
+
+    // The folder, not the file: opening a .wav plays it in whatever the
+    // system opens sound files with, which is not what the button is for.
+    testWidgets("Open File shows the message's folder, and only for a set of sound files", (tester) async {
+      await connectPlaceholder(tester);
+      await open(tester);
+      await openMemory(tester, 2);
+      expect(find.text('Open File'), findsNothing, reason: "the radio's own memories have no file");
+
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await tester.runAsync(pumpEventQueue);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Open File'));
+      expect(audio.revealed, ['/v/s1/2.wav']);
+    });
+
+    // Deleting a set takes its recordings, and nothing is a draft here to
+    // Cancel back to.
+    testWidgets('deleting a set asks first', (tester) async {
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await open(tester);
+      await tester.tap(find.bySemanticsLabel('Delete Set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(services.settings.voiceMessageSets, hasLength(2));
+
+      await tester.tap(find.bySemanticsLabel('Delete Set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+      expect([for (final set in services.settings.voiceMessageSets) set.id], [VoiceMessageSet.defaultId]);
+      expect(services.settings.voiceMessageSetId, VoiceMessageSet.defaultId);
+    });
   });
 }
