@@ -306,7 +306,7 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 
 | Function | Purpose |
 |---|---|
-| `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. A plain `http://` URL is refused unless its host serves http only and `services.ham2k.net` fronts it (`servicesHttpOnlyHosts` in `halo_extension_host`'s `fetch_policy.dart` — the QSO Party Hub), in which case it goes out over https through that proxy on every build; `domains` still names the original host, and the bundle declares `"api": 4`, the first API that does this. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
+| `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. A plain `http://` URL is refused unless its host serves http only and `services.ham2k.net` fronts it (`servicesHttpOnlyHosts` in `halo_extension_host`'s `fetch_policy.dart` — the QSO Party Hub), in which case it goes out over https through that proxy on every build; `domains` still names the original host, and the bundle declares `"api": 4`, the first API that does this. A wildcard `domains` entry (`*`, `*.example.com`) never reaches the local network — loopback, the private ranges, link-local, IPv6 unique-local, `localhost` and `.local` names — which an extension reaches only by naming that host itself under `domains`, or while the app is in developer mode; natively the host also resolves each name itself and refuses one that answers with a local address. At most 8 fetches per bundle (shared by its sub-extensions) are in flight at once; a ninth is refused. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
 | `host.webSocket(url, options?)` | A live connection to a host the manifest's `webSockets` lists, shaped like the browser's `WebSocket`. See [WebSockets](#websockets). |
 | `host.clusterStatus()` / `host.clusterLines({after?, limit?})` / `host.clusterSubscribe()` / `host.clusterUnsubscribe()` / `host.clusterPostSpot({freq, call, comment?})` / `host.clusterSend(command)` | The app's one DX cluster connection, logged in as the operator; behind the `requiresClusterRead` / `requiresClusterSpot` / `requiresClusterCommand` grants and extension API 10. See the [`cluster` hook](spots.md#-cluster--the-dx-cluster-connection) and [docs/design/cluster.md](../design/cluster.md). |
 | `host.setTimeout(fn, ms, ...args)` / `host.setInterval(…)` / `host.clearTimeout(id)` / `host.clearInterval(id)` | Timers, shaped like the browser's, on real time and held to a budget. A bundle built for extension API 3 gets them as plain `setTimeout` and friends too. See [Timers](#timers). |
@@ -344,8 +344,11 @@ The rules, all enforced by the host:
   under `domains` gets no socket: consenting to requests is not consenting to a
   standing connection. The install screen names each entry.
 - **`wss://` to a listed host; plain `ws://` only to a local-network one** —
-  loopback, the private ranges, link-local, IPv6 unique-local, and `localhost`
-  or `.local` names. Gear in the shack rarely has a certificate; anything past
+  loopback, the private ranges, link-local, IPv6 unique-local, an IPv4 address
+  spelled for IPv6, the unspecified addresses (which reach the device itself),
+  and `localhost` or `.local` names: the one definition of the local network,
+  shared with the rule that keeps a wildcard `host.fetch` grant off it. Gear
+  in the shack rarely has a certificate; anything past
   the router has no such excuse. A name counts by its spelling, not by what it
   resolves to.
 - **`"local"` admits every local-network address**, over either scheme, for

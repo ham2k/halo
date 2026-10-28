@@ -122,7 +122,14 @@ host.log('…')                  // the app's console
 - **A panel returns content, not widgets.** `{ kind: "markdown", content }` and
   its siblings. There is no way to reach the app's UI toolkit, by design.
 - **`host.fetch` only reaches domains your manifest's `domains` lists**, over
-  https. An undeclared host is refused at the call, not at build.
+  https. An undeclared host is refused at the call, not at build. A wildcard
+  entry (`*`, `*.example.com`) never reaches the local network — loopback, the
+  private ranges, link-local, `localhost` and `.local` names — so gear in the
+  shack is reachable only by naming its host, or while the app is in developer
+  mode.
+- **At most eight `host.fetch` calls per bundle are in flight at once.** A
+  ninth is refused rather than queued, so a `Promise.all` over a long list of
+  URLs fails past the eighth — run them in batches.
 - **Using a shared library without declaring it fails the build.** The app
   carries `@ham2k/lib-*`, `i18next` and `liquidjs`; naming one in
   `sharedDependencies` rewrites your imports into lookups on the app's single

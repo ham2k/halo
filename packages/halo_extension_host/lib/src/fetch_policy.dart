@@ -74,6 +74,29 @@ const kMaxFetchBodyBytes = 16 * 1024 * 1024;
 /// the allowlist and to https as the first was.
 const kMaxFetchRedirects = 5;
 
+/// How many `host.fetch` calls one extension may have in flight at once. A
+/// feed or a lookup needs one or two; a loop that fires without awaiting
+/// would otherwise open connections until the server or the OS gives out,
+/// with every other extension's requests queued behind them. The ninth is
+/// refused rather than queued: a runaway loop fails where it runs.
+const kMaxFetchesInFlight = 8;
+
+/// Whether [allowlist] names [host] itself: an entry equal to it, not a
+/// wildcard that happens to match. The one form of consent that reaches the
+/// local network — `*` grants the internet and `*.local` grants nothing local
+/// — because a wildcard is written without knowing what it will match, and
+/// the install screen shows the operator the entry, not its reach. Equal as
+/// the allowlist match is: a `Uri.host` is lowercase, and so is an entry.
+bool allowlistNamesHost(List<String>? allowlist, String host) => allowlist?.contains(host) ?? false;
+
+/// Whether a hop goes out on the guarded transport, which resolves the name
+/// itself and refuses a local answer (fetch_client_io.dart). Every hop a
+/// wildcard admitted does. A host the extension named itself takes the plain
+/// transport wherever the name resolves: the name is the consent the install
+/// screen showed, and a self-hosted server behind split DNS is the case exact
+/// naming exists for. Developer mode opens everything.
+bool fetchHopGuarded({required bool developerMode, required bool namedHost}) => !developerMode && !namedHost;
+
 /// How long this phase of a fetch may still take: what remains of the
 /// caller's [requested] millisecond budget after [elapsed], capped at the
 /// host's [ceiling] for the phase.

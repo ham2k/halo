@@ -135,7 +135,22 @@ class ExtensionService
   ({String deviceKey, String operatorCall})? _lastSyncCredentials;
 
   @override
-  SettingsService? settings;
+  SettingsService? get settings => _settings;
+  SettingsService? _settings;
+
+  /// Wired AFTER [start] in production — bootstrap.dart kicks the runtime
+  /// off, extension_wiring.dart hands the settings over once the services
+  /// exist — so what the runtime is told from settings attaches here rather
+  /// than in [start], and is told at once: a runtime that booted before this
+  /// read developer mode as off.
+  set settings(SettingsService? value) {
+    if (identical(value, _settings)) return;
+    _settings?.removeListener(_pushDeveloperMode);
+    _settings = value;
+    value?.addListener(_pushDeveloperMode);
+    _pushDeveloperMode();
+  }
+
   LookupRepository? lookups;
   @override
   StatusBarService? statusBar;
@@ -246,6 +261,20 @@ class ExtensionService
       return;
     }
     host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
+  }
+
+  /// Developer mode as the runtime was last told it: the one state that lets
+  /// a wildcard `domains` grant reach the local network. A boot reads it for
+  /// itself ([_start]); this covers a change after that. Settings notify on
+  /// every write, so only a change crosses to the runtime.
+  bool _developerModeTold = false;
+
+  void _pushDeveloperMode() {
+    final host = _host;
+    final on = settings?.developerMode ?? false;
+    if (host == null || on == _developerModeTold) return;
+    host.setDeveloperMode(on);
+    _developerModeTold = on;
   }
 
   /// Whether the app is in view, as extensions were last told (their
@@ -445,6 +474,7 @@ class ExtensionService
       // a panel missing from an early read costs a placeholder that repairs
       // itself, while an extension's data purged on a partial one is gone.
       _activationIncomplete = true;
+      final developerModeAtBoot = settings?.developerMode ?? false;
       final host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
@@ -463,6 +493,7 @@ class ExtensionService
         // date while activating would bake in the real one. Covers restarts too
         // — _replaceRuntime routes back through here.
         clock: _clockTravelState(),
+        developerMode: developerModeAtBoot,
       );
       // The quit began while this boot was in flight: install it now and the
       // VM's teardown gets a live isolate — and the exit's own wait for this
@@ -536,6 +567,10 @@ class ExtensionService
       // into) and this runtime would stay on the pre-boot clock for good.
       // Idempotent and cheap.
       _pushClockTravel();
+      // The same for developer mode: this runtime knows what its boot read,
+      // whatever an earlier runtime was told since.
+      _developerModeTold = developerModeAtBoot;
+      _pushDeveloperMode();
       // After activation has settled, so an extension that activated while
       // the app was hidden hears its onHide.
       _host?.setAppVisible(_appVisible);

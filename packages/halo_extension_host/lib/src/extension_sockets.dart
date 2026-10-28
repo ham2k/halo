@@ -12,6 +12,7 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'engine_runtime.dart';
+import 'local_network.dart';
 import 'socket_connect.dart' if (dart.library.io) 'socket_connect_io.dart';
 
 /// How many sockets one extension may hold open at once. A feed needs one; a
@@ -31,33 +32,6 @@ const maxWebSocketFrameSize = 1024 * 1024;
 /// `ws://` or `wss://`: an extension for gear in the shack cannot know the
 /// operator's addresses, and `*` would grant the whole internet to reach them.
 const localNetworkEntry = 'local';
-
-/// Whether [host] (a `Uri.host`, so an IPv6 literal carries no brackets) is on
-/// the device itself or the local network: loopback, RFC 1918, link-local,
-/// IPv6 unique-local, and the `localhost` / mDNS `.local` names.
-///
-/// The one condition under which `host.webSocket` accepts plain `ws://`. Gear
-/// and servers in the shack rarely have a certificate; anything past the
-/// router has no such excuse. A NAME is judged by its spelling, not by what it
-/// resolves to — resolving it here would not bind the connection to that
-/// answer, and a browser offers no resolver at all.
-bool isLocalNetworkHost(String host) {
-  final name = host.toLowerCase();
-  if (name == 'localhost' || name.endsWith('.localhost') || name.endsWith('.local')) return true;
-  try {
-    final b = Uri.parseIPv4Address(name);
-    return b[0] == 127 || b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168) || (b[0] == 169 && b[1] == 254);
-  } on FormatException {
-    // Not an IPv4 literal.
-  }
-  try {
-    final b = Uri.parseIPv6Address(name);
-    final loopback = b.take(15).every((byte) => byte == 0) && b[15] == 1;
-    return loopback || (b[0] & 0xfe) == 0xfc || (b[0] == 0xfe && (b[1] & 0xc0) == 0x80);
-  } on FormatException {
-    return false;
-  }
-}
 
 /// Every socket one runtime's extensions hold, by the kernel-allocated id
 /// `host.webSocket` registered its listener under.

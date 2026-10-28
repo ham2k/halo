@@ -495,9 +495,27 @@ void main() {
         '172.31.255.255',
         '192.168.1.20',
         '169.254.1.1',
+        // Carrier NAT and overlay networks: the operator's tailnet peers.
+        '100.64.0.1',
+        '100.127.255.255',
+        // Reserved for local protocol use, and for benchmarking.
+        '192.0.0.1',
+        '198.18.0.1',
+        '198.19.255.255',
         '::1',
         'fd00::1',
         'fe80::1',
+        // The unspecified addresses reach the device itself as a destination.
+        '0.0.0.0',
+        '::',
+        // An IPv4 address spelled for an IPv6 socket is that address.
+        '::ffff:127.0.0.1',
+        '::ffff:192.168.1.1',
+        '::ffff:c0a8:101',
+        // A zone id, as a resolver spells it and as a URL carries it.
+        'fe80::1%en0',
+        'fe80::1%25en0',
+        '::1%lo0',
       ]) {
         expect(isLocalNetworkHost(host), isTrue, reason: host);
       }
@@ -505,8 +523,24 @@ void main() {
 
     test('refuses public addresses and names, including near misses', () {
       // 172.15 and 172.32 sit either side of RFC 1918's /12; a prefix test on
-      // "172." would admit both. `local.example.com` ends in neither suffix.
-      for (final host in ['example.com', 'local.example.com', '8.8.8.8', '172.15.0.1', '172.32.0.1', '192.169.1.1', '2001:db8::1', '::']) {
+      // "172." would admit both. `local.example.com` ends in neither suffix,
+      // and `::2` is one past loopback.
+      for (final host in [
+        'example.com',
+        'local.example.com',
+        '8.8.8.8',
+        '172.15.0.1',
+        '172.32.0.1',
+        '192.169.1.1',
+        '100.63.255.255',
+        '100.128.0.0',
+        '192.0.1.1',
+        '198.17.255.255',
+        '198.20.0.0',
+        '2001:db8::1',
+        '::2',
+        '::ffff:8.8.8.8',
+      ]) {
         expect(isLocalNetworkHost(host), isFalse, reason: host);
       }
     });

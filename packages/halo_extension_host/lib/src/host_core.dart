@@ -20,6 +20,9 @@ class _HostIsolateInit {
   final String? userAgent;
   final Set<String> userAgentOverrides;
 
+  /// Developer mode at boot — see [_HostCore.developerMode].
+  final bool developerMode;
+
   /// The app clock's travel state, as three sendable primitives — the isolate
   /// has its OWN memory, so nothing about the app's clock is visible there
   /// unless it crosses in this payload (docs/design/time.md §6).
@@ -36,6 +39,7 @@ class _HostIsolateInit {
     required this.secrets,
     required this.userAgent,
     required this.userAgentOverrides,
+    required this.developerMode,
     required this.clockAnchorRealMillis,
     required this.clockAnchorVirtualMillis,
     required this.clockSpeed,
@@ -53,6 +57,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
     secrets: init.secrets,
     userAgent: init.userAgent,
     userAgentOverrides: init.userAgentOverrides,
+    developerMode: init.developerMode,
   );
   try {
     final loadMillis = await core.init(
@@ -125,6 +130,20 @@ class _HostCore {
   /// timeouts — still runs for real. Replacing `_hostFetch` wholesale would
   /// test none of that.
   final http.Client _http;
+
+  /// The transport for a hop the local network is not the caller's to reach:
+  /// every hop but one developer mode, or an exact `domains` entry, admits
+  /// there. Natively it resolves the name itself and refuses a private
+  /// answer (fetch_client_io.dart); an injected client stands in for both.
+  final http.Client _httpGuarded;
+
+  /// Whether the app is in developer mode, as last told: the one state that
+  /// admits a wildcard grant to the local network, for a server of the
+  /// developer's own. Pushed by `setDeveloperMode` when it changes.
+  bool developerMode;
+
+  /// `host.fetch` calls in flight per extension, against [kMaxFetchesInFlight].
+  final Map<String, int> _fetchesInFlight = {};
 
   /// Only close what we opened: an injected client belongs to the caller and
   /// may outlive this host (or be shared between several).
@@ -203,9 +222,11 @@ class _HostCore {
     this.secrets = const {},
     this.userAgent,
     this.userAgentOverrides = const {},
+    this.developerMode = false,
     http.Client? httpClient,
   }) : fetchAllowlists = Map.of(fetchAllowlists),
        _http = httpClient ?? http.Client(),
+       _httpGuarded = httpClient ?? guardedFetchClient(),
        _ownsHttpClient = httpClient == null;
 
   String get engineDescription => _js.engineDescription;
@@ -322,6 +343,8 @@ class _HostCore {
         } catch (e) {
           emit({'type': 'log', 'message': 'ERROR setting app visibility: $e'});
         }
+      case 'setDeveloperMode':
+        developerMode = msg['on'] as bool;
       case 'setClockTravel':
         try {
           _js.setClockTravel(msg['anchorRealMillis'] as int, msg['anchorVirtualMillis'] as int, (msg['speed'] as num).toDouble());
@@ -547,14 +570,19 @@ class _HostCore {
 
   /// [extensionKey]'s entry in [allowlists], resolving a sub-extension to its
   /// bundle's declaration.
-  static List<String>? _allowlistFor(Map<String, List<String>> allowlists, String? extensionKey) {
-    if (extensionKey == null) return null;
-    final exact = allowlists[extensionKey];
-    if (exact != null) return exact;
-    for (final entry in allowlists.entries) {
-      if (_belongsTo(extensionKey, entry.key)) return entry.value;
+  static List<String>? _allowlistFor(Map<String, List<String>> allowlists, String? extensionKey) => allowlists[_bundleKeyFor(allowlists, extensionKey)];
+
+  /// The bundle [extensionKey] was loaded from, as [allowlists] knows it:
+  /// itself, or the one it is a sub-extension of. The one resolution behind
+  /// both a grant and the fetch slots, so a bundle's extensions share both. A
+  /// key no bundle claims counts for itself, which the map answers null for.
+  static String _bundleKeyFor(Map<String, List<String>> allowlists, String? extensionKey) {
+    if (extensionKey == null) return '';
+    if (allowlists.containsKey(extensionKey)) return extensionKey;
+    for (final key in allowlists.keys) {
+      if (_belongsTo(extensionKey, key)) return key;
     }
-    return null;
+    return extensionKey;
   }
 
   /// Whether [host] matches a declared allowlist: exact hosts, `*.example.com`
@@ -582,11 +610,32 @@ class _HostCore {
 
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
     final extensionKey = params['extensionKey'] as String?;
+    // Counted before anything is sent and released however the call ends,
+    // so a refused or failed fetch never keeps a slot.
+    final slot = _bundleKeyFor(fetchAllowlists, extensionKey);
+    final inFlight = _fetchesInFlight[slot] ?? 0;
+    if (inFlight >= kMaxFetchesInFlight) {
+      throw ExtensionHostException("fetch refused: '$slot' already has $inFlight requests in flight");
+    }
+    _fetchesInFlight[slot] = inFlight + 1;
+    try {
+      return await _fetch(extensionKey, params);
+    } finally {
+      final left = _fetchesInFlight[slot]! - 1;
+      if (left == 0) {
+        _fetchesInFlight.remove(slot);
+      } else {
+        _fetchesInFlight[slot] = left;
+      }
+    }
+  }
+
+  Future<Map<String, Object?>> _fetch(String? extensionKey, Map<String, dynamic> params) async {
     // The URL as the extension named it, before any proxy rewrite: the
     // allowlist is judged on it, and a redirect's relative Location resolves
     // against it.
     var target = Uri.parse(params['url'] as String);
-    var uri = _fetchTarget(extensionKey, target);
+    var route = _fetchTarget(extensionKey, target);
     var method = (params['method'] as String? ?? 'GET').toUpperCase();
     final headers = ((params['headers'] ?? const <String, dynamic>{}) as Map).cast<String, String>();
 
@@ -623,7 +672,7 @@ class _HostCore {
     // never reaches this loop.
     var hopHeaders = Map<String, String>.of(headers);
     for (var hop = 0; ; hop++) {
-      final streamed = await _sendOnce(method, uri, hopHeaders, effectiveUA, body, headerBudget);
+      final streamed = await _sendOnce(route.client, method, route.uri, hopHeaders, effectiveUA, body, headerBudget);
       final location = streamed.headers['location'];
       if (_redirectStatuses.contains(streamed.statusCode) && location != null) {
         // The body is dropped, and the socket with it; the next hop opens
@@ -635,7 +684,7 @@ class _HostCore {
         final next = target.resolve(location);
         final otherHost = next.host != target.host;
         target = next;
-        uri = _fetchTarget(extensionKey, target);
+        route = _fetchTarget(extensionKey, target);
         // Credentials were meant for the host they were sent to, as a
         // browser treats them on a cross-origin redirect.
         if (otherHost) hopHeaders = _withoutCredentials(hopHeaders);
@@ -686,21 +735,39 @@ class _HostCore {
     return http.Response.bytes(bytes.takeBytes(), streamed.statusCode, headers: streamed.headers, request: streamed.request).body;
   }
 
-  /// [target] as this hop must fetch it: checked against the extension's
-  /// allowlist, rewritten for this build (the proxy, on web or for an
-  /// http-only host), and held to https. Every hop of a fetch passes here.
-  Uri _fetchTarget(String? extensionKey, Uri target) {
-    _checkFetchAllowed(extensionKey, target.host);
+  /// [target] as this hop must fetch it, and the client to fetch it on:
+  /// checked against the extension's allowlist and the local-network rule,
+  /// rewritten for this build (the proxy, on web or for an http-only host),
+  /// and held to https. Every hop of a fetch passes here, and the one reading
+  /// of the host decides both the refusal and the transport.
+  ///
+  /// The local network is never reached on a wildcard. A `*` grant means the
+  /// internet, and the operator's router, printer and radio web UIs are not
+  /// that: an extension that talks to gear names it in `domains`, and a
+  /// developer reaching a server of their own turns developer mode on. Judged
+  /// by spelling here; natively the guarded client judges what the name
+  /// resolves to as well ([fetchHopGuarded]).
+  ({Uri uri, http.Client client}) _fetchTarget(String? extensionKey, Uri target) {
+    final host = target.host;
+    _checkFetchAllowed(extensionKey, host);
+    final local = isLocalNetworkHost(host);
+    final named = allowlistNamesHost(_allowlistFor(fetchAllowlists, extensionKey), host);
+    if (local && !developerMode && !named) {
+      throw ExtensionHostException(
+        "fetch refused: '$host' is on the local network, which extension '${extensionKey ?? 'unknown'}' reaches only by naming it in its declared domains, or in developer mode",
+      );
+    }
     final uri = extensionFetchUri(target, onWeb: runningOnWeb);
     if (uri.scheme != 'https') {
       throw ExtensionHostException("fetch refused: '$target' is not https");
     }
-    return uri;
+    return (uri: uri, client: fetchHopGuarded(developerMode: developerMode, namedHost: named) ? _httpGuarded : _http);
   }
 
   /// One hop of a fetch: the request sent once, with a single retry when
   /// the host's name failed to resolve.
   Future<http.StreamedResponse> _sendOnce(
+    http.Client client,
     String method,
     Uri uri,
     Map<String, String> headers,
@@ -718,7 +785,7 @@ class _HostCore {
       if (userAgent != null) request.headers['User-Agent'] = userAgent;
       if (body != null) request.body = body;
       try {
-        return await _http.send(request).timeout(headerBudget());
+        return await client.send(request).timeout(headerBudget());
       } on http.ClientException catch (e) {
         // A resolver hiccup during a network handover, sleep/wake or VPN
         // toggle surfaces as "Failed host lookup: '<host>'" (package:http's
@@ -744,7 +811,10 @@ class _HostCore {
     _load.dispose();
     _timers.dispose();
     _sockets.abandonAll();
-    if (_ownsHttpClient) _http.close();
+    if (_ownsHttpClient) {
+      _http.close();
+      _httpGuarded.close();
+    }
     _js.dispose();
   }
 }

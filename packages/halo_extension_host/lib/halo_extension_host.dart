@@ -43,11 +43,14 @@ import 'package:http/http.dart' as http;
 import 'src/engine_load.dart';
 import 'src/extension_sockets.dart';
 import 'src/extension_timers.dart';
+import 'src/fetch_client.dart' if (dart.library.io) 'src/fetch_client_io.dart';
 import 'src/fetch_policy.dart';
 import 'src/hook_call_stats.dart';
 import 'src/js_engine.dart';
+import 'src/local_network.dart';
 
-export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
+export 'src/extension_sockets.dart' show localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
+export 'src/local_network.dart' show isLocalNetworkHost;
 export 'src/engine_load.dart' show EngineLoadBucket, EngineLoadFeed, EngineLoadWindow, engineLoadBucketMicros;
 export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
@@ -214,6 +217,11 @@ class ExtensionHost {
     /// afterwards so extensions ACTIVATE on the app's clock — see
     /// [ClockTravelState] and [setClockTravel].
     ClockTravelState clock = const ClockTravelState.real(),
+
+    /// Whether the app is in developer mode at boot: the one state that lets
+    /// a wildcard `domains` grant reach the local network — see
+    /// [setDeveloperMode].
+    bool developerMode = false,
   }) async {
     // On web there are no Dart isolates — the "in-process" core runs a Web
     // Worker anyway, so extension work is still off the UI thread. Branching
@@ -224,7 +232,18 @@ class ExtensionHost {
     // silently ignoring it would leave them hitting the real one.
     if (useIsolate && !runningOnWeb && httpClient == null) {
       try {
-        return await _startInIsolate(kernelSource, extensions, onHostCall, fetchAllowlists, webSocketAllowlists, userAgent, userAgentOverrides, secrets, clock);
+        return await _startInIsolate(
+          kernelSource,
+          extensions,
+          onHostCall,
+          fetchAllowlists,
+          webSocketAllowlists,
+          userAgent,
+          userAgentOverrides,
+          secrets,
+          clock,
+          developerMode,
+        );
       } catch (e) {
         // Fall through to in-process mode; the spike wants to know when this
         // happens, so surface it loudly on the first log line.
@@ -239,6 +258,7 @@ class ExtensionHost {
           secrets,
           clock,
           httpClient,
+          developerMode,
         );
         host._log('WARN isolate mode failed ($e), running in-process');
         return host;
@@ -255,6 +275,7 @@ class ExtensionHost {
       secrets,
       clock,
       httpClient,
+      developerMode,
     );
   }
 
@@ -268,6 +289,7 @@ class ExtensionHost {
     Set<String> userAgentOverrides,
     Map<String, Map<String, String>> secrets,
     ClockTravelState clock,
+    bool developerMode,
   ) async {
     final fromIsolate = ReceivePort();
     final onError = ReceivePort();
@@ -311,6 +333,7 @@ class ExtensionHost {
         clockAnchorRealMillis: clock.anchorRealMillis,
         clockAnchorVirtualMillis: clock.anchorVirtualMillis,
         clockSpeed: clock.speed,
+        developerMode: developerMode,
       ),
       errorsAreFatal: true,
       onError: onError.sendPort,
@@ -367,6 +390,7 @@ class ExtensionHost {
     Map<String, Map<String, String>> secrets,
     ClockTravelState clock, [
     http.Client? httpClient,
+    bool developerMode = false,
   ]) async {
     final earlyMessages = <Map<String, dynamic>>[];
     ExtensionHost? host;
@@ -377,6 +401,7 @@ class ExtensionHost {
       httpClient: httpClient,
       userAgent: userAgent,
       userAgentOverrides: userAgentOverrides,
+      developerMode: developerMode,
       emit: (msg) {
         if (host == null) {
           earlyMessages.add(msg);
@@ -657,6 +682,12 @@ class ExtensionHost {
 
   /// Tells extensions the app was shown or hidden (`onShow`/`onHide`); send it after every boot too.
   void setAppVisible(bool visible) => _dispatch({'type': 'setAppVisible', 'visible': visible});
+
+  /// Tells the host whether the app is in developer mode: the one state that
+  /// lets a wildcard `domains` grant reach the local network, for a server of
+  /// the developer's own. Main-isolate state, so it is pushed — send it
+  /// whenever it changes; [start] takes it for the boot.
+  void setDeveloperMode(bool on) => _dispatch({'type': 'setDeveloperMode', 'on': on});
 
   void _onCoreMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
