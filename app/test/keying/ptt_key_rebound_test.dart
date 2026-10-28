@@ -20,7 +20,7 @@ void main() {
     final held = ValueNotifier(false);
     addTearDown(held.dispose);
     final keyed = <String>[];
-    final ptt = PttKeyboard(held: held, release: () => false, escape: () => false, toggle: keyed.add);
+    final ptt = PttKeyboard(held: held, release: () => false, escape: () => false, toggle: keyed.add, hold: () => false);
     addTearDown(ptt.dispose);
     ptt.addTarget(() => 'radio1');
 
@@ -38,7 +38,7 @@ void main() {
     final held = ValueNotifier(false);
     addTearDown(held.dispose);
     final keyed = <String>[];
-    final ptt = PttKeyboard(held: held, release: () => false, escape: () => false, toggle: keyed.add);
+    final ptt = PttKeyboard(held: held, release: () => false, escape: () => false, toggle: keyed.add, hold: () => false);
     addTearDown(ptt.dispose);
     ptt.addTarget(() => 'radio1');
 

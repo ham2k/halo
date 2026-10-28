@@ -175,15 +175,7 @@
     "hookScoring": "Puanlama",
     "hookSpots": "Spotlar",
     "hookHunting": "${program} avcılığı",
-    "hookActivating": "${program} aktivasyonu",
-    "moreInCategory": {
-      "one": "… ve ${count} uzantı daha",
-      "other": "… ve ${count} uzantı daha"
-    },
-    "availableInCategory": {
-      "one": "${count} uzantı mevcut",
-      "other": "${count} uzantı mevcut"
-    }
+    "hookActivating": "${program} aktivasyonu"
   },
   "home": {
     "title": "Taşınabilir Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "PTT'yi ['] ile kontrol et",
-        "descriptionOn": "Telefon modlarında ['] radyoyu yayına geçirir, tekrar ['] yayını keser. Bir dakika sonra kendiliğinden yayını keser.",
-        "descriptionOff": "['] tuşu radyoyu yayına geçirmez.",
         "pill": "TX",
         "transmitting": "Yayında"
       },

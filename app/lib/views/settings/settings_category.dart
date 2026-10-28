@@ -69,7 +69,10 @@ Widget settingsCategory(
             headerColor: haloCategoryBandColor(context),
             onHeaderColor: _accent(context),
             headerInset: _headerInset(context),
-            child: rows,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: _categoryEndGap),
+              child: rows,
+            ),
           ),
   );
 }
@@ -103,10 +106,20 @@ Widget settingsCategorySliver(
             headerColor: haloCategoryBandColor(context),
             onHeaderColor: _accent(context),
             headerInset: _headerInset(context),
-            sliver: rows,
+            sliver: SliverPadding(
+              padding: const EdgeInsets.only(bottom: _categoryEndGap),
+              sliver: rows,
+            ),
           ),
   );
 }
+
+/// Below a category's last row, about a fifth of a settings row: without
+/// it the next category's band butts against that row and reads as its
+/// footer. Inside the fold, so a shut category keeps the bands together.
+/// Not under a plain-headed group, whose rows run straight into the next
+/// group's heading inside one category.
+const _categoryEndGap = Space.xl;
 
 /// What the chevron and the title are drawn in — the section band's own
 /// accent, so the shelf and the headings on it agree.

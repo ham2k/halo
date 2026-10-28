@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => 'Jakter ${program}';
 	@override String hookActivating({required Object program}) => 'Aktiverer ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: '… og ${count} annen utvidelse',
-		other: '… og ${count} andre utvidelser',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: '${count} utvidelse tilgjengelig',
-		other: '${count} utvidelser tilgjengelig',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$nb extends Translations$settings$radio
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Styr PTT med [\']';
-	@override String get descriptionOn => 'I telefonimoduser nøkler [\'] radioen, og [\'] igjen slipper den. Den slipper av seg selv etter ett minutt.';
-	@override String get descriptionOff => '[\']-tasten nøkler ikke radioen.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Sender';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsNb {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Jakter ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Aktiverer ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '… og ${count} annen utvidelse', other: '… og ${count} andre utvidelser', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} utvidelse tilgjengelig', other: '${count} utvidelser tilgjengelig', ), 
 			'home.title' => 'Portabel logger',
 			'home.newOperation' => 'Ny operasjon',
 			'home.stationCallsign' => 'Stasjonskallesignal',
@@ -4089,10 +4076,10 @@ extension on TranslationsNb {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${count} samlet fil', other: 'Eksporter ${count} samlede filer', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${count} samlet fil', other: 'Last ned ${count} samlede filer', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Del ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Eksporter ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Last ned ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} fil i Stash', other: 'Legg ${count} filer i Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} samlet fil i Stash', other: 'Legg ${count} samlede filer i Stash', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsNb {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…',
 			'settings.radio.title' => 'CAT-styring',
 			'settings.radio.loggingAndCat' => 'Logging og CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Avstemming',
 			'settings.radio.keyerSection' => 'Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Tjenester',
 			'settings.radio.stationConfigurationSection' => 'Stasjonsoppsett',
 			'settings.radio.moreSettings' => 'Flere innstillinger for stasjonsoppsett',
@@ -4614,9 +4601,6 @@ extension on TranslationsNb {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Styr PTT med [\']',
-			'settings.radio.pttKey.descriptionOn' => 'I telefonimoduser nøkler [\'] radioen, og [\'] igjen slipper den. Den slipper av seg selv etter ett minutt.',
-			'settings.radio.pttKey.descriptionOff' => '[\']-tasten nøkler ikke radioen.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Sender',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO-avrunding',
@@ -5117,13 +5101,13 @@ extension on TranslationsNb {
 			'settings.station.statusDisconnected' => 'Ikke tilkoblet',
 			'settings.station.statusConnecting' => 'Kobler til…',
 			'settings.station.statusDisconnecting' => 'Kobler fra…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Tilkoblingen mislyktes',
 			'settings.station.currentRadioSettings' => 'Gjeldende radioinnstillinger',
 			'settings.station.notSupportedByThisRadio' => 'Støttes ikke av denne radioen',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Telefoni',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Talekeyer: ${count} memorier i radioen',
 			'settings.station.antennaBands' => 'Bånd',
 			'settings.station.antennaType' => 'Antennetype',

@@ -291,14 +291,6 @@ class _Translations$extensionsPanel$pt_BR extends Translations$extensionsPanel$p
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => 'Caçando ${program}';
 	@override String hookActivating({required Object program}) => 'Ativando ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
-		one: '… e mais ${count} extensão',
-		other: '… e mais ${count} extensões',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
-		one: '${count} extensão disponível',
-		other: '${count} extensões disponíveis',
-	);
 }
 
 // Path: home
@@ -3166,9 +3158,6 @@ class _Translations$settings$radio$pttKey$pt_BR extends Translations$settings$ra
 	final TranslationsPtBr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Controlar PTT com [\']';
-	@override String get descriptionOn => 'Nos modos de fonia, [\'] aciona o rádio e [\'] de novo o libera. Ele se libera sozinho depois de um minuto.';
-	@override String get descriptionOff => 'A tecla [\'] não aciona o rádio.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Transmitindo';
 }
@@ -3743,8 +3732,6 @@ extension on TranslationsPtBr {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Caçando ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Ativando ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '… e mais ${count} extensão', other: '… e mais ${count} extensões', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} extensão disponível', other: '${count} extensões disponíveis', ), 
 			'home.title' => 'Logger Portátil',
 			'home.newOperation' => 'Nova operação',
 			'home.stationCallsign' => 'Indicativo da estação',
@@ -4090,10 +4077,10 @@ extension on TranslationsPtBr {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Exportar ${count} arquivo combinado', other: 'Exportar ${count} arquivos combinados', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Baixar ${count} arquivo combinado', other: 'Baixar ${count} arquivos combinados', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Salvar ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Compartilhar ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Baixar ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Armazenar ${count} arquivo', other: 'Armazenar ${count} arquivos', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Armazenar ${count} arquivo combinado', other: 'Armazenar ${count} arquivos combinados', ), 
@@ -4604,10 +4591,10 @@ extension on TranslationsPtBr {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} parou de escutar na porta ${port}. Tentando novamente…',
 			'settings.radio.title' => 'Controle CAT',
 			'settings.radio.loggingAndCat' => 'Registro e CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Serviços',
 			'settings.radio.stationConfigurationSection' => 'Configuração da estação',
 			'settings.radio.moreSettings' => 'Mais configurações da estação',
@@ -4615,9 +4602,6 @@ extension on TranslationsPtBr {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Controlar PTT com [\']',
-			'settings.radio.pttKey.descriptionOn' => 'Nos modos de fonia, [\'] aciona o rádio e [\'] de novo o libera. Ele se libera sozinho depois de um minuto.',
-			'settings.radio.pttKey.descriptionOff' => 'A tecla [\'] não aciona o rádio.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Transmitindo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente do VFO',
@@ -5118,13 +5102,13 @@ extension on TranslationsPtBr {
 			'settings.station.statusDisconnected' => 'Não conectado',
 			'settings.station.statusConnecting' => 'Conectando…',
 			'settings.station.statusDisconnecting' => 'Desconectando…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Falha na conexão',
 			'settings.station.currentRadioSettings' => 'Configurações atuais do rádio',
 			'settings.station.notSupportedByThisRadio' => 'Não suportado por este rádio',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memórias no rádio',
 			'settings.station.antennaBands' => 'Bandas',
 			'settings.station.antennaType' => 'Tipo de antena',

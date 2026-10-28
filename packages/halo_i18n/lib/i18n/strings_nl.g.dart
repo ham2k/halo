@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => '${program} jagen';
 	@override String hookActivating({required Object program}) => '${program} activeren';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '… en ${count} andere extensie',
-		other: '… en ${count} andere extensies',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '${count} extensie beschikbaar',
-		other: '${count} extensies beschikbaar',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$nl extends Translations$settings$radio
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PTT bedienen met [\']';
-	@override String get descriptionOn => 'In spraakmodes zet [\'] de radio op zenden en [\'] nogmaals weer op ontvangen. Na een minuut gaat hij vanzelf terug op ontvangen.';
-	@override String get descriptionOff => 'De [\']-toets zet de radio niet op zenden.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Zenden';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsNl {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} jagen',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} activeren',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '… en ${count} andere extensie', other: '… en ${count} andere extensies', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} extensie beschikbaar', other: '${count} extensies beschikbaar', ), 
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'Nieuwe activatie',
 			'home.stationCallsign' => 'Station roepnaam',
@@ -4089,10 +4076,10 @@ extension on TranslationsNl {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand exporteren', other: '${count} gecombineerde bestanden exporteren', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand downloaden', other: '${count} gecombineerde bestanden downloaden', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} opslaan',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '${name} delen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exporteren',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} downloaden',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand naar Stash', other: '${count} bestanden naar Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand naar Stash', other: '${count} gecombineerde bestanden naar Stash', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsNl {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} is gestopt met luisteren op poort ${port}. Nieuwe poging…',
 			'settings.radio.title' => 'CAT-besturing',
 			'settings.radio.loggingAndCat' => 'Loggen & CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Afstemmen',
 			'settings.radio.keyerSection' => 'Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Diensten',
 			'settings.radio.stationConfigurationSection' => 'Stationsconfiguratie',
 			'settings.radio.moreSettings' => 'Meer instellingen voor stationsconfiguratie',
@@ -4614,9 +4601,6 @@ extension on TranslationsNl {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'PTT bedienen met [\']',
-			'settings.radio.pttKey.descriptionOn' => 'In spraakmodes zet [\'] de radio op zenden en [\'] nogmaals weer op ontvangen. Na een minuut gaat hij vanzelf terug op ontvangen.',
-			'settings.radio.pttKey.descriptionOff' => 'De [\']-toets zet de radio niet op zenden.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Zenden',
 			'settings.radio.smartVfoSnap.title' => 'Slimme VFO-afronding',
@@ -5117,13 +5101,13 @@ extension on TranslationsNl {
 			'settings.station.statusDisconnected' => 'Niet verbonden',
 			'settings.station.statusConnecting' => 'Verbinden…',
 			'settings.station.statusDisconnecting' => 'Verbinding verbreken…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Verbinding mislukt',
 			'settings.station.currentRadioSettings' => 'Huidige radio-instellingen',
 			'settings.station.notSupportedByThisRadio' => 'Niet ondersteund door deze radio',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Spraak',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio',
 			'settings.station.antennaBands' => 'Banden',
 			'settings.station.antennaType' => 'Antennetype',

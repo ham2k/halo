@@ -222,7 +222,7 @@ Future<CommandActionOutcome?> _runNavigate(HaLoServices services, String to) asy
   }
   if (to == 'cluster') {
     // CLUSTER (`spot-commands`): the console opens over what is on screen.
-    // Only where an extension uses the cluster, as the Settings section: a
+    // Only where an extension uses the cluster, as the DX Cluster settings: a
     // session there would have no Settings to pick its node or turn it off.
     final calls = services.extensions.clusterCalls;
     final cluster = calls.offered ? calls.cluster?.call() : null;

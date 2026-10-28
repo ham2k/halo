@@ -42,6 +42,10 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
   return showingDark ? ThemeMode.light : ThemeMode.dark;
 }
 
+/// How the PTT key keys the radio ([SettingsService.pttKeyMode]): not at
+/// all, a press to key and another to unkey, or keyed while it is held down.
+enum PttKeyMode { off, toggle, hold }
+
 class SettingsService extends ChangeNotifier with ExtensionStoreSettings, EngineLoadSettings, NetworkSettings implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _profilesKey = 'profiles';
@@ -989,9 +993,26 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   Future<void> setSmartVfoSnap(bool value) => setSettingValue(radioGroup, 'smartVfoSnap', value);
 
-  /// Whether ['] keys and unkeys radio1 in a Phone mode (cat_ptt.dart). Off
-  /// by default: it puts the operator's transmitter on the air.
-  bool get pttKey => (settingValue(radioGroup, 'pttKey') as bool?) ?? false;
+  /// How the PTT key keys radio1 in a Phone mode (cat_ptt.dart). Off by
+  /// default: it puts the operator's transmitter on the air.
+  ///
+  /// Stored as two keys the radio group syncs: the `pttKey` bool an older
+  /// build reads and writes says whether the key keys at all, and
+  /// `pttKeyMode` says how. Folding the mode into `pttKey` would throw where
+  /// an older build reads its bool; letting `pttKeyMode` alone decide would
+  /// leave an older device keying after the operator chose No here, or this
+  /// one keying after they switched it off there. A store from before the
+  /// choice has no mode, and on it toggled.
+  PttKeyMode get pttKeyMode {
+    if (settingValue(radioGroup, 'pttKey') != true) return PttKeyMode.off;
+    return switch (settingValue(radioGroup, 'pttKeyMode')) {
+      'hold' => PttKeyMode.hold,
+      _ => PttKeyMode.toggle,
+    };
+  }
+
+  /// Whether the PTT key keys at all.
+  bool get pttKey => pttKeyMode != PttKeyMode.off;
 
   /// How many CW messages there are: one per function key F1-F8.
   static const cwMessageCount = 8;

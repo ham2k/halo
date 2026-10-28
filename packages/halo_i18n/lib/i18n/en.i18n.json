@@ -203,14 +203,8 @@
     "hookSpots": "Spots",
     "hookHunting": "Hunting ${program}",
     "hookActivating": "Activating ${program}",
-    "moreInCategory": {
-      "one": "… and ${count} other extension",
-      "other": "… and ${count} other extensions"
-    },
-    "availableInCategory": {
-      "one": "${count} extension available",
-      "other": "${count} extensions available"
-    }
+    "suggestedSection": "Suggested",
+    "moreAvailableSection": "More available (${count})"
   },
   "home": {
     "title": "Portable Logger",
@@ -1547,9 +1541,18 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Control PTT with [']",
-        "descriptionOn": "In Phone modes, ['] keys the radio and ['] again unkeys it. It unkeys by itself after a minute.",
-        "descriptionOff": "The ['] key does not key the radio.",
+        "title": "Control PTT with Keyboard",
+        "modes": {
+          "off": "No",
+          "toggle": "Toggle",
+          "hold": "Hold"
+        },
+        "descriptions": {
+          "off": "The keyboard does not key the radio.",
+          "toggle": "In Phone modes, the PTT key keys the radio and pressing it again unkeys it. It unkeys by itself after a minute.",
+          "hold": "In Phone modes, the radio transmits while the PTT key is held down, for up to a minute."
+        },
+        "key": "PTT Key",
         "pill": "TX",
         "transmitting": "Transmitting"
       },

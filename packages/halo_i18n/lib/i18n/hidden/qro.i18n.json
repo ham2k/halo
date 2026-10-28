@@ -203,14 +203,8 @@
     "hookSpots": "SPOTS",
     "hookHunting": "HUNTING ${program}",
     "hookActivating": "ACTIVATING ${program}",
-    "moreInCategory": {
-      "one": "… AND ${count} OTHER EXTENSION",
-      "other": "… AND ${count} OTHER EXTENSIONS"
-    },
-    "availableInCategory": {
-      "one": "${count} EXTENSION AVAILABLE",
-      "other": "${count} EXTENSIONS AVAILABLE"
-    }
+    "suggestedSection": "SUGGESTED",
+    "moreAvailableSection": "MORE AVAILABLE (${count})"
   },
   "home": {
     "title": "PORTABLE LOGGER",
@@ -1547,9 +1541,18 @@
         "hz": "HZ"
       },
       "pttKey": {
-        "title": "CONTROL PTT WITH [']",
-        "descriptionOn": "IN PHONE MODES, ['] KEYS THE RADIO AND ['] AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.",
-        "descriptionOff": "THE ['] KEY DOES NOT KEY THE RADIO.",
+        "title": "CONTROL PTT WITH KEYBOARD",
+        "modes": {
+          "off": "NO",
+          "toggle": "TOGGLE",
+          "hold": "HOLD"
+        },
+        "descriptions": {
+          "off": "THE KEYBOARD DOES NOT KEY THE RADIO.",
+          "toggle": "IN PHONE MODES, THE PTT KEY KEYS THE RADIO AND PRESSING IT AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.",
+          "hold": "IN PHONE MODES, THE RADIO TRANSMITS WHILE THE PTT KEY IS HELD DOWN, FOR UP TO A MINUTE."
+        },
+        "key": "PTT KEY",
         "pill": "TX",
         "transmitting": "TRANSMITTING"
       },

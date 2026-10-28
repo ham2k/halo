@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "New: tuning the radio away from a contact being entered wipes it (Undo returns it)"
+    - "New: Settings sections fold, and stay the way you left them"
 
 "184":
   changes:

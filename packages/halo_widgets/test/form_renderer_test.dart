@@ -2844,7 +2844,11 @@ void main() {
       // keep the rows' own inset.
       final heading = find.ancestor(of: title, matching: find.byType(Container)).first;
       final form = find.byType(FormRenderer);
-      expect(tester.getTopLeft(heading).dx, tester.getTopLeft(title).dx);
+      // A section folds, so its caret leads inside that measure — never
+      // hanging in the margin as a category's does — and the title follows.
+      final caret = find.descendant(of: heading, matching: find.byType(DisclosureChevron));
+      expect(tester.getTopLeft(caret).dx, tester.getTopLeft(heading).dx);
+      expect(tester.getTopLeft(title).dx, greaterThan(tester.getTopRight(caret).dx));
       expect(
         tester.getTopRight(form).dx - tester.getTopRight(heading).dx,
         tester.getTopLeft(heading).dx - tester.getTopLeft(form).dx,
@@ -2897,7 +2901,8 @@ void main() {
         ),
       );
 
-      expect(tester.getTopLeft(find.text('Section Header')).dx, tester.getTopLeft(find.text('Plain Title')).dx);
+      final heading = find.ancestor(of: find.text('Section Header'), matching: find.byType(Container)).first;
+      expect(tester.getTopLeft(heading).dx, tester.getTopLeft(find.text('Plain Title')).dx);
     });
   });
 

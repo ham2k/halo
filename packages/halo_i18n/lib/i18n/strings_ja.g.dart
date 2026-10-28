@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'スポット';
 	@override String hookHunting({required Object program}) => '${program}のハンティング';
 	@override String hookActivating({required Object program}) => '${program}のアクティベーション';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '…他${count}件の拡張機能',
-		other: '…他${count}件の拡張機能',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件の拡張機能が利用可能',
-		other: '${count}件の拡張機能が利用可能',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$ja extends Translations$settings$radio
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '[\']でPTTを制御';
-	@override String get descriptionOn => '電話モードでは、[\']で無線機を送信状態にし、もう一度[\']で受信に戻します。1分経つと自動的に受信に戻ります。';
-	@override String get descriptionOff => '[\']キーで無線機を送信状態にしません。';
 	@override String get pill => 'TX';
 	@override String get transmitting => '送信中';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsJa {
 			'extensionsPanel.hookSpots' => 'スポット',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program}のハンティング',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program}のアクティベーション',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '…他${count}件の拡張機能', other: '…他${count}件の拡張機能', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の拡張機能が利用可能', other: '${count}件の拡張機能が利用可能', ), 
 			'home.title' => 'ポータブルロガー',
 			'home.newOperation' => '新しいオペレーション',
 			'home.stationCallsign' => 'ステーションコールサイン',
@@ -4089,10 +4076,10 @@ extension on TranslationsJa {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをエクスポート', other: '${count}件の結合ファイルをエクスポート', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをダウンロード', other: '${count}件の結合ファイルをダウンロード', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '${name}を共有',
 			'operation.export.exportOne' => ({required Object name}) => '${name}をエクスポート',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name}をダウンロード',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをスタッシュ', other: '${count}件のファイルをスタッシュ', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをスタッシュ', other: '${count}件の結合ファイルをスタッシュ', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsJa {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…',
 			'settings.radio.title' => 'CAT制御',
 			'settings.radio.loggingAndCat' => 'ロギングとCAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'チューニング',
 			'settings.radio.keyerSection' => 'キーヤー',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'サービス',
 			'settings.radio.stationConfigurationSection' => 'ステーション構成',
 			'settings.radio.moreSettings' => 'その他のステーション構成設定',
@@ -4614,9 +4601,6 @@ extension on TranslationsJa {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => '[\']でPTTを制御',
-			'settings.radio.pttKey.descriptionOn' => '電話モードでは、[\']で無線機を送信状態にし、もう一度[\']で受信に戻します。1分経つと自動的に受信に戻ります。',
-			'settings.radio.pttKey.descriptionOff' => '[\']キーで無線機を送信状態にしません。',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => '送信中',
 			'settings.radio.smartVfoSnap.title' => 'スマートVFOスナップ',
@@ -5117,13 +5101,13 @@ extension on TranslationsJa {
 			'settings.station.statusDisconnected' => '未接続',
 			'settings.station.statusConnecting' => '接続中…',
 			'settings.station.statusDisconnecting' => '切断中…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => '接続に失敗しました',
 			'settings.station.currentRadioSettings' => '現在の無線機の設定',
 			'settings.station.notSupportedByThisRadio' => 'この無線機では未対応',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '電話',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件',
 			'settings.station.antennaBands' => 'バンド',
 			'settings.station.antennaType' => 'アンテナの種類',

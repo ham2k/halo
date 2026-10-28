@@ -175,15 +175,7 @@
     "hookScoring": "Bodovanie",
     "hookSpots": "Spoty",
     "hookHunting": "Lov ${program}",
-    "hookActivating": "Aktivácia ${program}",
-    "moreInCategory": {
-      "one": "… a ${count} ďalšie rozšírenie",
-      "other": "… a ${count} ďalších rozšírení"
-    },
-    "availableInCategory": {
-      "one": "${count} dostupné rozšírenie",
-      "other": "${count} dostupných rozšírení"
-    }
+    "hookActivating": "Aktivácia ${program}"
   },
   "home": {
     "title": "Portable Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Ovládať PTT klávesom [']",
-        "descriptionOn": "Vo fóniových módoch ['] zaklúčuje rádiostanicu a ďalšie ['] ju odkľúčuje. Po minúte sa odkľúčuje sama.",
-        "descriptionOff": "Kláves ['] rádiostanicu nezaklúčuje.",
         "pill": "TX",
         "transmitting": "Vysiela sa"
       },

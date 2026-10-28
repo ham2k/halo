@@ -24,7 +24,7 @@ import '../services/panel_service.dart';
 import '../services/logging_scope.dart';
 import '../services/settings_service.dart';
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
-import '../settings/core_settings_groups.dart' show LoggingSettingsGroup;
+import '../settings/core_settings_groups.dart' show GeneralSettingsGroup, LoggingSettingsGroup;
 import '../settings/settings_scan.dart' show frontSettingsOverrides;
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
@@ -209,7 +209,11 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
 
   /// This view's own copy of the logging settings, standing in for the
   /// operation's wherever its logging pane offers them — see [LoggingScope].
-  late final _loggingSettings = {'logging': LoggingSettingsGroup(widget.services.settings, scope: LoggingScope.chase)};
+  /// The User Interface group too, which holds Show Deleted QSOs.
+  late final _loggingSettings = {
+    'logging': LoggingSettingsGroup(widget.services.settings, scope: LoggingScope.chase),
+    'general': GeneralSettingsGroup(widget.services.settings, widget.services.extensions, scope: LoggingScope.chase),
+  };
 
   bool _loggingDisplay(String key) => widget.services.settings.loggingDisplay(key, LoggingScope.chase);
 

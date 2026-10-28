@@ -117,7 +117,12 @@ class GeneralSettingsGroup extends SettingsGroup {
   final SettingsService settings;
   final ExtensionService extensions;
 
-  GeneralSettingsGroup(this.settings, this.extensions);
+  /// Whose Show Deleted QSOs this instance shows and writes — see
+  /// [LoggingSettingsGroup.scope], which the Chasing view overrides beside
+  /// this one.
+  final LoggingScope scope;
+
+  GeneralSettingsGroup(this.settings, this.extensions, {this.scope = LoggingScope.operation});
 
   @override
   String get key => 'general';
@@ -191,6 +196,24 @@ class GeneralSettingsGroup extends SettingsGroup {
         icon: settings.keepDeviceAwake ? 'lightbulb-on' : 'lightbulb-outline',
         description: settings.keepDeviceAwake ? t.settings.keepDeviceAwake.descriptionOn : t.settings.keepDeviceAwake.descriptionOff,
         value: settings.keepDeviceAwake,
+      ),
+      // Stored with the logging settings, and still offered by the logging
+      // panel's tune dialog, but what they change is what the lists show.
+      _toggle(
+        key: 'showDeletedQSOs',
+        aliases: const ['deletedQSOs'],
+        label: t.operation.menu.showDeletedQsos,
+        icon: 'delete',
+        value: settings.loggingDisplay('showDeletedQSOs', scope),
+        target: 'logging',
+      ),
+      _toggle(
+        key: 'showDeletedOps',
+        aliases: const ['deletedOps'],
+        label: t.operation.menu.showDeletedOps,
+        icon: 'delete',
+        value: settings.showDeletedOps,
+        target: 'logging-extended',
       ),
     ];
   }
@@ -269,6 +292,10 @@ class GeneralSettingsGroup extends SettingsGroup {
   Future<void> commit(String fieldKey, dynamic value) async {
     if (fieldKey == 'keepDeviceAwake') {
       if (value is bool) await settings.setKeepDeviceAwake(value);
+      return;
+    }
+    if (fieldKey == 'showDeletedQSOs' || fieldKey == 'showDeletedOps') {
+      if (value is bool) await settings.setSettingValue(loggingGroupFor(fieldKey, scope), fieldKey, value);
       return;
     }
     if (value is! String) return;
@@ -525,22 +552,6 @@ class LoggingSettingsGroup extends SettingsGroup {
         target: 'logging',
         value: settings.loggingDisplay('showQsoNumbers', scope),
       ),
-      _toggle(
-        key: 'showDeletedQSOs',
-        aliases: const ['deletedQSOs'],
-        label: t.operation.menu.showDeletedQsos,
-        icon: 'delete',
-        value: settings.loggingDisplay('showDeletedQSOs', scope),
-        target: 'logging',
-      ),
-      _toggle(
-        key: 'showDeletedOps',
-        aliases: const ['deletedOps'],
-        label: t.operation.menu.showDeletedOps,
-        icon: 'delete',
-        value: settings.showDeletedOps,
-        target: 'logging-extended',
-      ),
     ];
   }
 
@@ -580,6 +591,9 @@ const stationConfigurationSectionKey = 'stationConfigurationSection';
 const cwKeyerActionKey = 'cwKeyer';
 const phoneKeyerActionKey = 'phoneKeyer';
 
+/// The Radio group's row naming the PTT key.
+const pttKeyActionKey = 'pttKeyBinding';
+
 /// How the app behaves towards the radio it is driving — the settings the
 /// Station panel's tune icon collects under `target: 'current-radio'`.
 /// About the VFO the app follows, not about any one piece of equipment,
@@ -597,6 +611,10 @@ class RadioSettingsGroup extends SettingsGroup {
   final Future<void> Function(BuildContext context)? openCwKeyer;
   final Future<void> Function(BuildContext context)? openPhoneKeyer;
 
+  /// Opens the key editor behind [pttKeyActionKey] — or does nothing,
+  /// where keys cannot be rebound.
+  final Future<void> Function(BuildContext context)? openPttKey;
+
   /// Whether the station has a transceiver of its own. The CAT features are
   /// left out without one — they have nothing to act on — and [inventory]
   /// says when the answer may have changed. Null answers yes: a test's
@@ -604,7 +622,7 @@ class RadioSettingsGroup extends SettingsGroup {
   final bool Function()? hasTransceivers;
   final Listenable Function()? inventory;
 
-  RadioSettingsGroup(this.settings, {this.catServer, this.openCwKeyer, this.openPhoneKeyer, this.hasTransceivers, this.inventory});
+  RadioSettingsGroup(this.settings, {this.catServer, this.openCwKeyer, this.openPhoneKeyer, this.openPttKey, this.hasTransceivers, this.inventory});
 
   CatServerService? get _catServer => kIsWeb || !catServerExperimentEnabled(settings) ? null : catServer?.call();
 
@@ -639,6 +657,8 @@ class RadioSettingsGroup extends SettingsGroup {
         await openCwKeyer?.call(context);
       case phoneKeyerActionKey:
         await openPhoneKeyer?.call(context);
+      case pttKeyActionKey:
+        await openPttKey?.call(context);
     }
   }
 
@@ -653,18 +673,36 @@ class RadioSettingsGroup extends SettingsGroup {
       // no radio, so the settings screens leave out rows with nothing to act
       // on (the same `listed: false` the keyer's message fields use).
       for (final el in <Map<String, dynamic>>[
-        {'type': 'header', 'style': 'section', 'title': s.tuningSection},
+        {'type': 'header', 'style': 'section', 'key': 'tuning', 'title': s.tuningSection},
         // Behind the keyer experiment, beside the voice keyer it shares the
         // Phone-mode keys with.
-        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ )
-          _toggle(
-            key: 'pttKey',
+        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
+          _select(
+            key: 'pttKeyMode',
+            aliases: const ['pttKey', 'ptt'],
             label: s.pttKey.title,
             icon: 'microphone',
-            description: settings.pttKey ? s.pttKey.descriptionOn : s.pttKey.descriptionOff,
-            value: settings.pttKey,
+            description: t['settings.radio.pttKey.descriptions.${settings.pttKeyMode.name}'] as String,
+            value: settings.pttKeyMode.name,
+            options: [for (final mode in PttKeyMode.values) (label: t['settings.radio.pttKey.modes.${mode.name}'] as String, value: mode.name)],
             target: 'current-radio',
           ),
+          // Which key, as the Keyboard Shortcuts panel binds it — and opening
+          // that panel's editor for it, while that experiment is on.
+          if (settings.pttKey)
+            {
+              'type': 'action',
+              'style': 'row',
+              'key': pttKeyActionKey,
+              'label': s.pttKey.key,
+              'description': switch (keyBindings.value.chordsFor(pttCommandId)) {
+                final chords when chords.isEmpty => t.keyboardShortcuts.noKey,
+                final chords => chords.map((chord) => '[${chord.label()}]').join(' '),
+              },
+              'icon': 'keyboard-outline',
+              'target': 'current-radio',
+            },
+        ],
         _toggle(
           key: 'smartVfoSnap',
           label: s.smartVfoSnap.title,
@@ -755,7 +793,7 @@ class RadioSettingsGroup extends SettingsGroup {
         // Behind the keyer experiment as well as CAT — the surfaces that key
         // them are.
         if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) ...[
-          {'type': 'header', 'style': 'section', 'title': s.keyerSection},
+          {'type': 'header', 'style': 'section', 'key': 'keyer', 'title': s.keyerSection},
           {
             'type': 'action',
             'style': 'row',
@@ -797,7 +835,7 @@ class RadioSettingsGroup extends SettingsGroup {
           for (final el in _keyerElements()) {...el, 'listed': false},
         ],
         if (_catServer case final server?) ...[
-          {'type': 'header', 'style': 'section', 'title': s.servicesSection},
+          {'type': 'header', 'style': 'section', 'key': 'services', 'title': s.servicesSection},
           {
             'type': 'action',
             'style': 'row',
@@ -812,7 +850,7 @@ class RadioSettingsGroup extends SettingsGroup {
         ],
       ])
         radios ? el : {...el, 'listed': false},
-      {'type': 'header', 'style': 'section', 'title': s.loggingAndCat},
+      {'type': 'header', 'style': 'section', 'key': 'loggingAndCat', 'title': s.loggingAndCat},
       // What each QSO remembers about the station — shown with or without a
       // radio, since antenna and key are worth recording either way.
       _toggle(key: 'trackStationInfo', label: t.settings.station.trackStationInfo, icon: 'clipboard-text-outline', value: settings.trackStationInfo),
@@ -953,6 +991,15 @@ class RadioSettingsGroup extends SettingsGroup {
     // The station-info pair lives in its own settings group, not this one.
     if (fieldKey == 'trackStationInfo' && value is bool) return settings.setTrackStationInfo(value);
     if (fieldKey == 'stationInfoTrackedFields' && value is List) return settings.setStationInfoTrackedFields(value.whereType<String>().toSet());
+    if (fieldKey == 'pttKeyMode') {
+      final mode = value is String ? PttKeyMode.values.asNameMap()[value] : null;
+      if (mode == null) return;
+      // Both keys, as SettingsService.pttKeyMode reads them — the mode first,
+      // so turning it on never shows the previous mode for a moment.
+      if (mode != PttKeyMode.off) await settings.setSettingValue(SettingsService.radioGroup, fieldKey, mode.name);
+      await settings.setSettingValue(SettingsService.radioGroup, 'pttKey', mode != PttKeyMode.off);
+      return;
+    }
     // The toggle is a bool; every tuning knob is one of its own option
     // strings. Anything else is a build mismatch and is dropped rather than
     // stored for a later parse to fall back from.
@@ -970,8 +1017,9 @@ class RadioSettingsGroup extends SettingsGroup {
   }
 }
 
-/// The Radio section's changes: the settings always, and the CAT server's
-/// whenever there is one to offer. Which server that is follows the settings
+/// The Radio section's changes: the settings and the key bindings (the PTT
+/// Key row names the key) always, and the CAT server's whenever there is one
+/// to offer. Which server that is follows the settings
 /// — the experiment can come on or go off while Settings is open — and it is
 /// followed only while someone is listening, so an idle section keeps no
 /// service alive.
@@ -991,6 +1039,7 @@ class _RadioSectionChanges extends ChangeNotifier {
   void addListener(VoidCallback listener) {
     if (_listeners++ == 0) {
       settings.addListener(_onSettings);
+      keyBindings.addListener(notifyListeners);
       _follow(server());
       _inventory = inventory?.call()?..addListener(notifyListeners);
     }
@@ -1002,6 +1051,7 @@ class _RadioSectionChanges extends ChangeNotifier {
     super.removeListener(listener);
     if (--_listeners == 0) {
       settings.removeListener(_onSettings);
+      keyBindings.removeListener(notifyListeners);
       _follow(null);
       _inventory?.removeListener(notifyListeners);
       _inventory = null;

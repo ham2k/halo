@@ -319,14 +319,8 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get hookSpots => 'SPOTS';
 	@override String hookHunting({required Object program}) => 'HUNTING ${program}';
 	@override String hookActivating({required Object program}) => 'ACTIVATING ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
-		one: '… AND ${count} OTHER EXTENSION',
-		other: '… AND ${count} OTHER EXTENSIONS',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
-		one: '${count} EXTENSION AVAILABLE',
-		other: '${count} EXTENSIONS AVAILABLE',
-	);
+	@override String get suggestedSection => 'SUGGESTED';
+	@override String moreAvailableSection({required Object count}) => 'MORE AVAILABLE (${count})';
 }
 
 // Path: home
@@ -3850,9 +3844,10 @@ class _Translations$settings$radio$pttKey$qro extends Translations$settings$radi
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'CONTROL PTT WITH [\']';
-	@override String get descriptionOn => 'IN PHONE MODES, [\'] KEYS THE RADIO AND [\'] AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.';
-	@override String get descriptionOff => 'THE [\'] KEY DOES NOT KEY THE RADIO.';
+	@override String get title => 'CONTROL PTT WITH KEYBOARD';
+	@override late final _Translations$settings$radio$pttKey$modes$qro modes = _Translations$settings$radio$pttKey$modes$qro._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$qro descriptions = _Translations$settings$radio$pttKey$descriptions$qro._(_root);
+	@override String get key => 'PTT KEY';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'TRANSMITTING';
 }
@@ -4342,6 +4337,30 @@ class _Translations$operation$layout$panels$weatherConditions$qro extends Transl
 	@override String get thunderstormWithHail => 'THUNDERSTORM WITH HAIL';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$qro extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'NO';
+	@override String get toggle => 'TOGGLE';
+	@override String get hold => 'HOLD';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$qro extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'THE KEYBOARD DOES NOT KEY THE RADIO.';
+	@override String get toggle => 'IN PHONE MODES, THE PTT KEY KEYS THE RADIO AND PRESSING IT AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.';
+	@override String get hold => 'IN PHONE MODES, THE RADIO TRANSMITS WHILE THE PTT KEY IS HELD DOWN, FOR UP TO A MINUTE.';
+}
+
 /// The flat map containing all translations for locale <qro>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -4542,8 +4561,8 @@ extension on TranslationsQro {
 			'extensionsPanel.hookSpots' => 'SPOTS',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'HUNTING ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'ACTIVATING ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '… AND ${count} OTHER EXTENSION', other: '… AND ${count} OTHER EXTENSIONS', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION AVAILABLE', other: '${count} EXTENSIONS AVAILABLE', ), 
+			'extensionsPanel.suggestedSection' => 'SUGGESTED',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'MORE AVAILABLE (${count})',
 			'home.title' => 'PORTABLE LOGGER',
 			'home.newOperation' => 'NEW OPERATION',
 			'home.stationCallsign' => 'STATION CALLSIGN',
@@ -5630,9 +5649,14 @@ extension on TranslationsQro {
 			'settings.radio.units.kHz' => 'KHZ',
 			'settings.radio.units.kHzPerSecond' => 'KHZ/S',
 			'settings.radio.units.hz' => 'HZ',
-			'settings.radio.pttKey.title' => 'CONTROL PTT WITH [\']',
-			'settings.radio.pttKey.descriptionOn' => 'IN PHONE MODES, [\'] KEYS THE RADIO AND [\'] AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.',
-			'settings.radio.pttKey.descriptionOff' => 'THE [\'] KEY DOES NOT KEY THE RADIO.',
+			'settings.radio.pttKey.title' => 'CONTROL PTT WITH KEYBOARD',
+			'settings.radio.pttKey.modes.off' => 'NO',
+			'settings.radio.pttKey.modes.toggle' => 'TOGGLE',
+			'settings.radio.pttKey.modes.hold' => 'HOLD',
+			'settings.radio.pttKey.descriptions.off' => 'THE KEYBOARD DOES NOT KEY THE RADIO.',
+			'settings.radio.pttKey.descriptions.toggle' => 'IN PHONE MODES, THE PTT KEY KEYS THE RADIO AND PRESSING IT AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.',
+			'settings.radio.pttKey.descriptions.hold' => 'IN PHONE MODES, THE RADIO TRANSMITS WHILE THE PTT KEY IS HELD DOWN, FOR UP TO A MINUTE.',
+			'settings.radio.pttKey.key' => 'PTT KEY',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'TRANSMITTING',
 			'settings.radio.smartVfoSnap.title' => 'SMART VFO SNAP',
@@ -5885,13 +5909,13 @@ extension on TranslationsQro {
 			'settings.syncPanel.configuration' => 'SYNC CONFIGURATION',
 			'settings.syncPanel.enableTitle' => 'SYNC WITH HAM2K LOG FILER',
 			'settings.syncPanel.enabledDescription' => 'BACKING UP AND SYNCING YOUR LOG ACROSS DEVICES',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => 'OFF — STAYING ON THIS DEVICE ONLY',
 			'settings.syncPanel.syncing' => 'SYNCING',
 			'settings.syncPanel.account' => 'ACCOUNT',
 			'settings.syncPanel.refresh' => 'REFRESH',
 			'settings.syncPanel.switchAccounts' => 'SWITCH ACCOUNTS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccountsDescription' => 'LINK THIS DEVICE TO ANOTHER ACCOUNT WITH A QR CODE OR EMAIL',
 			'settings.syncPanel.connectionRequests' => 'CONNECTION REQUESTS',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'A DEVICE IS WAITING TO JOIN THIS ACCOUNT', other: '${n} DEVICES ARE WAITING TO JOIN THIS ACCOUNT', ), 
@@ -6399,13 +6423,13 @@ extension on TranslationsQro {
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'THE LAST DOWNLOAD HAD ONLY ${imported} OF ${existing} RECORDS AND WAS NOT USED. REFRESH TO ACCEPT IT.',
 			'settings.offlineData.extensionsSection' => 'EXTENSIONS',
 			'settings.profiles.notSet' => 'NOT SET',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.personalInfo' => 'PERSONAL INFO',
 			'settings.profiles.personalInfoNote' => 'THIS MIGHT BE INCLUDED IN GENERATED LOGS WHEN RELEVANT FOR SUBMISSIONS',
 			'settings.profiles.name' => 'NAME',
 			'settings.profiles.email' => 'EMAIL',
 			'settings.profiles.club' => 'CLUB',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.arrlSection' => 'ARRL SECTION',
 			'settings.profiles.racSection' => 'RAC SECTION',
 			'settings.profiles.section' => 'SECTION',

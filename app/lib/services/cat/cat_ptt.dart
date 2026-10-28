@@ -1,8 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The operator's ['] in a Phone mode: keys a radio over CAT, and ['] again,
-// Escape or a minute unkeys it (docs/design/cat.md § PTT).
+// The operator's ['] in a Phone mode: keys a radio over CAT, and ['] again
+// (or letting go of it, held), Escape or a minute unkeys it
+// (docs/design/cat.md § PTT).
 //
 // The key belongs to the RADIO it went to, not to the Main VFO role: a key
 // left behind when the role moved, or when another radio is added, is still
@@ -28,6 +29,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:halo_widgets/halo_widgets.dart' show keyBindings, pttCommandId;
 
 import '../error_reporting_service.dart';
@@ -153,6 +155,11 @@ typedef PttKeyTarget = String? Function();
 /// however many surfaces can key, so two of them never disagree about
 /// whether the key is held.
 ///
+/// Held ([hold]), the key transmits from its press to its release, and a
+/// press while a key is already held takes nothing and drops nothing. A
+/// release can be lost — the app losing focus with the key down never hears
+/// it — so a held key also drops when the app stops being in front.
+///
 /// While a key is held, Escape drops it from anywhere — another field, a
 /// dialog, Settings — because the transmitter is on and has to come off. The
 /// PTT key does too while the OPERATOR holds the key, being the key that put
@@ -160,7 +167,7 @@ typedef PttKeyTarget = String? Function();
 /// a client running FT8 transmits half of every minute, and would otherwise
 /// take every apostrophe typed into a note. Only keying asks the surfaces.
 class PttKeyboard {
-  PttKeyboard({required this.held, required this.release, required this.escape, required this.toggle});
+  PttKeyboard({required this.held, required this.release, required this.escape, required this.toggle, required this.hold});
 
   /// Whether a key is held, on any radio.
   final ValueListenable<bool> held;
@@ -175,8 +182,16 @@ class PttKeyboard {
   /// Keys or unkeys the radio a surface named.
   final void Function(String radio) toggle;
 
+  /// Whether the key transmits only while held down, rather than toggling.
+  final bool Function() hold;
+
   final _targets = <PttKeyTarget>[];
   bool _registered = false;
+  AppLifecycleListener? _lifecycle;
+
+  /// Whether the key down now ([_down]) is a hold that keyed, which its
+  /// release unkeys.
+  bool _holding = false;
 
   /// The physical key whose press went to PTT. Its auto-repeats and its
   /// release are swallowed with it: left to the focused field, holding [']
@@ -191,6 +206,14 @@ class PttKeyboard {
     if (_registered) return;
     _registered = true;
     HardwareKeyboard.instance.addHandler(handle);
+    _lifecycle = AppLifecycleListener(onInactive: _dropHold, onHide: _dropHold);
+  }
+
+  void _dropHold() {
+    if (!_holding) return;
+    _holding = false;
+    _down = null;
+    release();
   }
 
   void removeTarget(PttKeyTarget target) => _targets.remove(target);
@@ -199,7 +222,13 @@ class PttKeyboard {
   bool handle(KeyEvent event) {
     if (event is! KeyDownEvent) {
       if (event.physicalKey != _down) return false;
-      if (event is KeyUpEvent) _down = null;
+      if (event is KeyUpEvent) {
+        _down = null;
+        if (_holding) {
+          _holding = false;
+          release();
+        }
+      }
       return true;
     }
     final keyboard = HardwareKeyboard.instance;
@@ -214,19 +243,27 @@ class PttKeyboard {
     final bindings = keyBindings.value;
     final chord = bindings.match(pttCommandId, event);
     if (chord == null) return false;
-    if (!release()) {
-      // Where a field takes the character, the key types it instead.
-      if (bindings.yieldsToField(pttCommandId, chord, event)) return false;
-      final radio = _targets.map((target) => target()).nonNulls.firstOrNull;
-      if (radio == null) return false;
-      toggle(radio);
+    final holds = hold();
+    if (!holds && release()) {
+      _down = event.physicalKey;
+      return true;
     }
+    // Where a field takes the character, the key types it instead.
+    if (bindings.yieldsToField(pttCommandId, chord, event)) return false;
+    // A key someone else holds (a CAT client's) is not Hold's to take over,
+    // and the press goes on to whatever else it is bound to.
+    if (holds && held.value) return false;
+    final radio = _targets.map((target) => target()).nonNulls.firstOrNull;
+    if (radio == null) return false;
+    toggle(radio);
+    _holding = holds && held.value;
     _down = event.physicalKey;
     return true;
   }
 
   void dispose() {
     if (_registered) HardwareKeyboard.instance.removeHandler(handle);
+    _lifecycle?.dispose();
     _targets.clear();
   }
 }

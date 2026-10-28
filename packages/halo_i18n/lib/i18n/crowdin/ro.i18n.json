@@ -175,15 +175,7 @@
     "hookScoring": "Punctaj",
     "hookSpots": "Spoturi",
     "hookHunting": "Vânare ${program}",
-    "hookActivating": "Activare ${program}",
-    "moreInCategory": {
-      "one": "… și încă ${count} extensie",
-      "other": "… și încă ${count} extensii"
-    },
-    "availableInCategory": {
-      "one": "${count} extensie disponibilă",
-      "other": "${count} extensii disponibile"
-    }
+    "hookActivating": "Activare ${program}"
   },
   "home": {
     "title": "Jurnal Portabil",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Control PTT cu [']",
-        "descriptionOn": "În modurile de fonie, ['] trece stația pe emisie și ['] din nou o readuce pe recepție. Revine singură pe recepție după un minut.",
-        "descriptionOff": "Tasta ['] nu trece stația pe emisie.",
         "pill": "TX",
         "transmitting": "Emisie"
       },

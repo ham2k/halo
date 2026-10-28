@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spoty';
 	@override String hookHunting({required Object program}) => 'Lov ${program}';
 	@override String hookActivating({required Object program}) => 'Aktivácia ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
-		one: '… a ${count} ďalšie rozšírenie',
-		other: '… a ${count} ďalších rozšírení',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
-		one: '${count} dostupné rozšírenie',
-		other: '${count} dostupných rozšírení',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$sk extends Translations$settings$radio
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Ovládať PTT klávesom [\']';
-	@override String get descriptionOn => 'Vo fóniových módoch [\'] zaklúčuje rádiostanicu a ďalšie [\'] ju odkľúčuje. Po minúte sa odkľúčuje sama.';
-	@override String get descriptionOff => 'Kláves [\'] rádiostanicu nezaklúčuje.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Vysiela sa';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsSk {
 			'extensionsPanel.hookSpots' => 'Spoty',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Lov ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Aktivácia ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '… a ${count} ďalšie rozšírenie', other: '… a ${count} ďalších rozšírení', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} dostupné rozšírenie', other: '${count} dostupných rozšírení', ), 
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'Nová prevádzka',
 			'home.stationCallsign' => 'Volací znak stanice',
@@ -4089,10 +4076,10 @@ extension on TranslationsSk {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Exportovať ${count} zlúčený súbor', other: 'Exportovať ${count} zlúčených súborov', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Stiahnuť ${count} zlúčený súbor', other: 'Stiahnuť ${count} zlúčených súborov', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Uložiť ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Zdieľať ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportovať ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Stiahnuť ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Uschovať ${count} súbor', other: 'Uschovať ${count} súborov', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Uschovať ${count} zlúčený súbor', other: 'Uschovať ${count} zlúčených súborov', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsSk {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} prestal počúvať na porte ${port}. Skúša sa znova…',
 			'settings.radio.title' => 'Ovládanie CAT',
 			'settings.radio.loggingAndCat' => 'Logovanie a CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Ladenie',
 			'settings.radio.keyerSection' => 'Kľúčovač',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Služby',
 			'settings.radio.stationConfigurationSection' => 'Konfigurácia stanice',
 			'settings.radio.moreSettings' => 'Ďalšie nastavenia konfigurácie stanice',
@@ -4614,9 +4601,6 @@ extension on TranslationsSk {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Ovládať PTT klávesom [\']',
-			'settings.radio.pttKey.descriptionOn' => 'Vo fóniových módoch [\'] zaklúčuje rádiostanicu a ďalšie [\'] ju odkľúčuje. Po minúte sa odkľúčuje sama.',
-			'settings.radio.pttKey.descriptionOff' => 'Kláves [\'] rádiostanicu nezaklúčuje.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Vysiela sa',
 			'settings.radio.smartVfoSnap.title' => 'Inteligentné zaokrúhľovanie VFO',
@@ -5117,13 +5101,13 @@ extension on TranslationsSk {
 			'settings.station.statusDisconnected' => 'Nepripojené',
 			'settings.station.statusConnecting' => 'Pripája sa…',
 			'settings.station.statusDisconnecting' => 'Odpája sa…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Pripojenie zlyhalo',
 			'settings.station.currentRadioSettings' => 'Aktuálne nastavenia rádiostanice',
 			'settings.station.notSupportedByThisRadio' => 'Táto rádiostanica nepodporuje',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fónia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Hlasový kľúčovač: pamäte v rádiostanici (${count})',
 			'settings.station.antennaBands' => 'Pásma',
 			'settings.station.antennaType' => 'Typ antény',

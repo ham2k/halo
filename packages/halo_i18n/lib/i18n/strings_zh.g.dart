@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get hookSpots => '信号';
 	@override String hookHunting({required Object program}) => '猎取 ${program}';
 	@override String hookActivating({required Object program}) => '激活 ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '…还有 ${count} 个扩展',
-		other: '…还有 ${count} 个扩展',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '${count} 个可用扩展',
-		other: '${count} 个可用扩展',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$zh extends Translations$settings$radio
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '用 [\'] 控制 PTT';
-	@override String get descriptionOn => '在话音模式下，按 [\'] 让电台发射，再按一次 [\'] 停止发射。一分钟后会自动停止发射。';
-	@override String get descriptionOff => '[\'] 键不会让电台发射。';
 	@override String get pill => 'TX';
 	@override String get transmitting => '正在发射';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsZh {
 			'extensionsPanel.hookSpots' => '信号',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '猎取 ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '激活 ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '…还有 ${count} 个扩展', other: '…还有 ${count} 个扩展', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个可用扩展', other: '${count} 个可用扩展', ), 
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => '新操作',
 			'home.stationCallsign' => '电台呼号',
@@ -4089,10 +4076,10 @@ extension on TranslationsZh {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出合并的 ${count} 个文件', other: '导出合并的 ${count} 个文件', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载合并的 ${count} 个文件', other: '下载合并的 ${count} 个文件', ), 
 			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '分享 ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '导出 ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '下载 ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存 ${count} 个文件', other: '暂存 ${count} 个文件', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存合并的 ${count} 个文件', other: '暂存合并的 ${count} 个文件', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsZh {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…',
 			'settings.radio.title' => 'CAT 控制',
 			'settings.radio.loggingAndCat' => '记录与 CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => '调谐',
 			'settings.radio.keyerSection' => '电键',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => '服务',
 			'settings.radio.stationConfigurationSection' => '电台配置',
 			'settings.radio.moreSettings' => '更多电台配置设置',
@@ -4614,9 +4601,6 @@ extension on TranslationsZh {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => '用 [\'] 控制 PTT',
-			'settings.radio.pttKey.descriptionOn' => '在话音模式下，按 [\'] 让电台发射，再按一次 [\'] 停止发射。一分钟后会自动停止发射。',
-			'settings.radio.pttKey.descriptionOff' => '[\'] 键不会让电台发射。',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => '正在发射',
 			'settings.radio.smartVfoSnap.title' => '智能 VFO 吸附',
@@ -5117,13 +5101,13 @@ extension on TranslationsZh {
 			'settings.station.statusDisconnected' => '未连接',
 			'settings.station.statusConnecting' => '连接中…',
 			'settings.station.statusDisconnecting' => '正在断开…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => '连接失败',
 			'settings.station.currentRadioSettings' => '当前电台设置',
 			'settings.station.notSupportedByThisRadio' => '此电台不支持',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '话音',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '语音电键：电台中有 ${count} 个存储',
 			'settings.station.antennaBands' => '频段',
 			'settings.station.antennaType' => '天线类型',

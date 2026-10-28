@@ -20,6 +20,12 @@ mixin _Elements on State<FormRenderer> {
   bool _visibleWhenHolds(Map<String, dynamic> el);
   List<Widget> _elementRows(ThemeData theme, List<Map<String, dynamic>> elements);
   void _applyFieldUpdates(Map<String, dynamic> updates);
+  bool _sectionIsOpen(Map<String, dynamic> band);
+  void _toggleSection(Map<String, dynamic> band);
+
+  /// A `style: 'section'` header, folding the rows under it.
+  SectionHeader _sectionHeader(Map<String, dynamic> el, String title, {Color? color, Widget? subtitle}) =>
+      SectionHeader(title, color: color, subtitle: subtitle, expanded: _sectionIsOpen(el), onTap: () => _toggleSection(el));
 
   /// A header's second line, in the ordinary body face — null where the
   /// element declares none. Read by the pinned band too, which builds no
@@ -39,7 +45,11 @@ mixin _Elements on State<FormRenderer> {
   /// The band takes its own inset from the ambient ListTileTheme, which is
   /// the same one every row in this form reads, so the section branch skips
   /// [_rowContentPadding] rather than adding a second one on top.
-  Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
+  ///
+  /// A section folds only where it heads the form's own rows ([folds]); one
+  /// among a disclosure's members has no rows of its own to fold, and a caret
+  /// there would turn without hiding anything.
+  Widget _buildHeader(Map<String, dynamic> el, ThemeData theme, {bool folds = false}) {
     final title = el['title'] as String? ?? '';
     final devModeColor = _devModeColor(el);
     final isSection = el['style'] == 'section';
@@ -59,7 +69,9 @@ mixin _Elements on State<FormRenderer> {
     );
     if (el['style'] == 'category') return CategoryBand(title, color: devModeColor, subtitle: subtitleWidget);
     if (!isSection) return Padding(padding: _rowContentPadding, child: content);
-    return SectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
+    return folds
+        ? _sectionHeader(el, title, color: devModeColor, subtitle: subtitleWidget)
+        : SectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
   }
 
   Widget _buildDivider(Map<String, dynamic> el, ThemeData theme) {

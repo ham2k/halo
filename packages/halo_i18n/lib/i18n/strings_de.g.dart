@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$de extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => '${program} jagen';
 	@override String hookActivating({required Object program}) => '${program} aktivieren';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count,
-		one: '… und ${count} weitere Erweiterung',
-		other: '… und ${count} weitere Erweiterungen',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count,
-		one: '${count} Erweiterung verfügbar',
-		other: '${count} Erweiterungen verfügbar',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$de extends Translations$settings$radio
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PTT mit [\'] steuern';
-	@override String get descriptionOn => 'In Phone-Modi tastet [\'] das Funkgerät auf und [\'] erneut wieder ab. Nach einer Minute tastet es von selbst ab.';
-	@override String get descriptionOff => 'Die Taste [\'] tastet das Funkgerät nicht auf.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Sende';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsDe {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} jagen',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} aktivieren',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '… und ${count} weitere Erweiterung', other: '… und ${count} weitere Erweiterungen', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Erweiterung verfügbar', other: '${count} Erweiterungen verfügbar', ), 
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'Neuer Betrieb',
 			'home.stationCallsign' => 'Stationsrufzeichen',
@@ -4089,10 +4076,10 @@ extension on TranslationsDe {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei exportieren', other: '${count} kombinierte Dateien exportieren', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei herunterladen', other: '${count} kombinierte Dateien herunterladen', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} speichern',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '${name} teilen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exportieren',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} herunterladen',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Datei ablegen', other: '${count} Dateien ablegen', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei ablegen', other: '${count} kombinierte Dateien ablegen', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsDe {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} lauscht nicht mehr auf Port ${port}. Neuer Versuch…',
 			'settings.radio.title' => 'CAT-Steuerung',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Abstimmung',
 			'settings.radio.keyerSection' => 'Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Dienste',
 			'settings.radio.stationConfigurationSection' => 'Stationskonfiguration',
 			'settings.radio.moreSettings' => 'Weitere Einstellungen zur Stationskonfiguration',
@@ -4614,9 +4601,6 @@ extension on TranslationsDe {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'PTT mit [\'] steuern',
-			'settings.radio.pttKey.descriptionOn' => 'In Phone-Modi tastet [\'] das Funkgerät auf und [\'] erneut wieder ab. Nach einer Minute tastet es von selbst ab.',
-			'settings.radio.pttKey.descriptionOff' => 'Die Taste [\'] tastet das Funkgerät nicht auf.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Sende',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
@@ -5117,13 +5101,13 @@ extension on TranslationsDe {
 			'settings.station.statusDisconnected' => 'Nicht verbunden',
 			'settings.station.statusConnecting' => 'Verbinde…',
 			'settings.station.statusDisconnecting' => 'Trenne…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Verbindung fehlgeschlagen',
 			'settings.station.currentRadioSettings' => 'Aktuelle Funkgeräteeinstellungen',
 			'settings.station.notSupportedByThisRadio' => 'Von diesem Funkgerät nicht unterstützt',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Phone',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Sprach-Keyer: ${count} Speicher im Funkgerät',
 			'settings.station.antennaBands' => 'Bänder',
 			'settings.station.antennaType' => 'Antennentyp',

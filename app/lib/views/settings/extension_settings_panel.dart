@@ -14,6 +14,7 @@ import '../../services/halo_services.dart';
 import '../../services/link_opener.dart';
 import '../../settings/settings_catalog.dart' show elementSearchScore;
 import '../../settings/settings_registry.dart';
+import '../../settings/settings_section_folds.dart';
 
 import 'accounts_panel.dart';
 import 'settings_category.dart';
@@ -396,6 +397,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       },
       onManageAccount: _manageAccount,
       onOpenLink: openExternalUrl,
+      sectionFolds: SettingsSectionFolds(widget.services.settings.prefs, 'extension:$_hookKey/$_panelKey'),
       onSubmit: (_) {},
       onCancel: () {},
     );

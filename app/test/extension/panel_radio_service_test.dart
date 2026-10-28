@@ -178,6 +178,7 @@ class TestCat extends Fake implements CatService {
     },
     escape: () => false,
     toggle: (_) {},
+    hold: () => false,
   );
   @override
   bool get pttHeldOnRadio1 => pttOn != null && isRadio1(pttOn!);

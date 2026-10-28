@@ -9,6 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/logging_scope.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/settings/core_settings_groups.dart';
@@ -77,6 +78,22 @@ void main() {
 
     final elements = await chase.buildElements();
     expect(elements.firstWhere((e) => e['key'] == 'showStateField')['value'], isTrue, reason: 'and the dialog shows the Chasing value, not the operation one');
+  });
+
+  // Show Deleted QSOs is scoped but lives in the User Interface group, which
+  // the Chasing view has to override as well: without that, the toggle in
+  // its tune dialog would hide deleted QSOs in every operation instead.
+  test("the User Interface group's Chasing copy writes the Chasing Show Deleted QSOs, and the shared Show Deleted Operations", () async {
+    final settings = await _freshSettings();
+    final chase = GeneralSettingsGroup(settings, ExtensionService(), scope: LoggingScope.chase);
+
+    await chase.commit('showDeletedQSOs', true);
+    expect(settings.loggingDisplay('showDeletedQSOs', LoggingScope.chase), isTrue);
+    expect(settings.loggingDisplay('showDeletedQSOs', LoggingScope.operation), isFalse);
+    expect((await chase.buildElements()).firstWhere((e) => e['key'] == 'showDeletedQSOs')['value'], isTrue);
+
+    await chase.commit('showDeletedOps', true);
+    expect(settings.showDeletedOps, isTrue, reason: 'the Home list is one list, whichever view sets it');
   });
 
   // SET/SHOW/HIDE scan the registry with no overrides of their own. Without

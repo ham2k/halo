@@ -81,12 +81,12 @@ Map<String, Object?> _soon({int inDays = 3}) {
   };
 }
 
-/// The keys of the catalog OFFER rows actually built, top to bottom — not
-/// the "and N others" row, which is a category's own and named apart so a
-/// test about what is offered cannot pass on the row that hides the rest.
+/// The keys of the catalog OFFER rows the operator can reach, top to bottom.
+/// Hit-testable, not merely built: More available keeps its rows mounted
+/// while shut, and a test counting built rows would count what it hides.
 List<String> _catalogRowKeys(WidgetTester tester) => [
-  for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
-    if (tile.key case ValueKey<String>(value: final key) when key.startsWith('catalog-') && !key.startsWith('catalog-more-')) key,
+  for (final tile in tester.widgetList<ListTile>(find.byType(ListTile).hitTestable()))
+    if (tile.key case ValueKey<String>(value: final key) when key.startsWith('catalog-')) key,
 ];
 
 void main() {
@@ -418,11 +418,16 @@ void main() {
         // `k2hrc-llota` is installed at 1.0.0 against the catalog's 1.1.0, so
         // it heads the list in Pending Updates as well as carrying its badge.
         'pending:k2hrc-llota',
-        for (final key in _catalogRowKeys(tester)) 'catalog:${key.substring('catalog-'.length)}',
-        // The "and N others" row is a row too, and tapping it changes the set
-        // under it: left out of the key, the expansion would remount nothing
-        // and the clicks would land on the collapsed geometry.
-        'more:activity',
+        // Every offer, More available's shut ones included: Suggested, then
+        // the rest.
+        'catalog:aa-world',
+        'catalog:k-only',
+        'catalog:ce-only',
+        'catalog:zz-world',
+        // Which sections are open moves every row under them: left out of the
+        // key, a fold would remount nothing and the clicks would land on the
+        // old geometry.
+        'fold:activity:true:false',
       ]),
     );
 
@@ -581,9 +586,9 @@ void main() {
     // Five days out and three days past are inside the window; six months out
     // and four days past are not, and their K geography does not save them.
     expect(_catalogRowKeys(tester), ['catalog-tx-just-ran', 'catalog-tx-soon']);
-    // The two that are out of season are still THERE, behind the row that
-    // says so — held back from the suggestions, not hidden from the panel.
-    expect(find.byKey(const ValueKey('catalog-more-activity')), findsOneWidget);
+    // The two that are out of season are still THERE, under More available
+    // — held back from the suggestions, not hidden from the panel.
+    expect(find.text('More available (2)'), findsOneWidget);
   });
 
   testWidgets('a category shows five offers, or two once the operator has three of their own', (tester) async {
@@ -621,10 +626,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_catalogRowKeys(tester).length, 5, reason: 'two installed, so the full five');
-    expect(find.text('… and 3 other extensions'), findsOneWidget);
+    expect(find.text('More available (3)'), findsOneWidget);
   });
 
-  testWidgets('three of the operator\'s own cuts the offers to two, and the row opens the rest', (tester) async {
+  testWidgets('three of the operator\'s own cuts the offers to two, and More available opens the rest', (tester) async {
     // The same eight offers as above, under a heading the operator has
     // already settled: five suggestions under it is a sales pitch rather than
     // a panel.
@@ -662,14 +667,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_catalogRowKeys(tester).length, 2);
-    expect(find.text('… and 6 other extensions'), findsOneWidget);
+    expect(find.text('More available (6)'), findsOneWidget);
 
-    // And the row opens the category: everything the catalog has under it,
-    // suggested or not, and no row left saying there is more.
-    await tester.tap(find.byKey(const ValueKey('catalog-more-activity')));
+    // And More available opens on everything else the catalog has under the
+    // heading, suggested or not.
+    await tester.tap(find.text('More available (6)'));
     await tester.pumpAndSettle();
     expect(_catalogRowKeys(tester).length, 8);
-    expect(find.byKey(const ValueKey('catalog-more-activity')), findsNothing);
   });
 
   testWidgets('a category with nothing suggested counts what it has, rather than continuing a list', (tester) async {
@@ -703,15 +707,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // Nothing is suggested — worldwide and undated — and the whole category
-    // is the one row that says so, which is what makes the catalog reachable
-    // without guessing at a name in the search box.
+    // is More available, which is what makes the catalog reachable without
+    // guessing at a name in the search box.
     expect(_catalogRowKeys(tester), isEmpty);
-    // "… and 1 other" would continue a list that is not there.
-    expect(find.text('1 extension available'), findsOneWidget);
+    // A Suggested heading over nothing would read as a list that failed to load.
+    expect(find.text('Suggested'), findsNothing);
+    expect(find.text('More available (1)'), findsOneWidget);
   });
 
-  testWidgets('opening a category leaves the list where the operator was reading', (tester) async {
-    // The row that opens a category moves every row beneath it, so the scroll
+  testWidgets('opening More available leaves the list where the operator was reading', (tester) async {
+    // Opening a section moves every row beneath it, so the scroll
     // view is rebuilt from scratch — without that, a click on the web lands on
     // a neighbouring row (docs/quirks.md, listContentsKey). A fresh scroll
     // view starts at the top, which throws an operator reading the fourth
@@ -762,7 +767,7 @@ void main() {
     // extensions. The offset has to be well clear of zero or the assertion
     // below would pass on whatever the remount did with it.
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('catalog-more-activity')),
+      find.text('More available (6)'),
       200,
       scrollable: find.descendant(of: find.byType(SectionedListView), matching: find.byType(Scrollable)),
     );
@@ -770,13 +775,13 @@ void main() {
     final wasAt = offset();
     expect(wasAt, greaterThan(100), reason: 'the scroll has to actually move the list, or this proves nothing');
 
-    await tester.tap(find.byKey(const ValueKey('catalog-more-activity')));
+    final listKey = tester.widget<SectionedListView>(find.byType(SectionedListView)).key;
+    await tester.tap(find.text('More available (6)'));
     await tester.pumpAndSettle();
 
-    // The rows really were rebuilt — the row that opens the category is gone,
-    // which only happens once it is open — and the list is still where it was.
-    // Mutated to drop the carried offset, this reads 0.
-    expect(find.byKey(const ValueKey('catalog-more-activity')), findsNothing);
+    // The list really was rebuilt — a new row set, so a new key — and is
+    // still where it was. Mutated to drop the carried offset, this reads 0.
+    expect(tester.widget<SectionedListView>(find.byType(SectionedListView)).key, isNot(listKey));
     expect(offset(), wasAt);
   });
 
@@ -2066,6 +2071,119 @@ void main() {
       expect(settings.settingsGroup('extension_ki2d-my-clock'), {'format': '24h'});
       expect(services.catalogUpdateCheck.pendingRedirects, isEmpty);
       await tester.pump(StatusBarService.completedDismissDelay);
+    });
+  });
+
+  group('folding', () {
+    // One installed row and eight offers under one heading: five suggested,
+    // the rest under More available.
+    Future<HaLoServices> pumpPanel(WidgetTester tester, {Map<String, Object> prefs = const {}}) async {
+      tester.view.physicalSize = const Size(1000, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      SharedPreferences.setMockInitialValues(prefs);
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+      extensions.debugSetAvailableExtensions(const [
+        ExtensionInfo(key: 'mine', file: 'index.js', core: false, name: 'Mine', category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ]);
+      final catalog = _catalog(
+        (_) async => http.Response(
+          jsonEncode({
+            'extensions': [for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon())],
+          }),
+          200,
+        ),
+      );
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: ExtensionsPanel(services: services)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return services;
+    }
+
+    Finder mine() => find.byKey(const ValueKey('extension-mine')).hitTestable();
+
+    // The operator's own rows lead every category, open: a panel that opened
+    // on shut categories would hide the switches people come here for.
+    testWidgets('a category starts open, its own rows leading, More available shut', (tester) async {
+      await pumpPanel(tester);
+      expect(mine(), findsOneWidget);
+      expect(find.text('Suggested'), findsOneWidget);
+      expect(_catalogRowKeys(tester), hasLength(5));
+      expect(find.text('More available (3)'), findsOneWidget);
+    });
+
+    // A fold that came back open on the next visit would make folding a chore
+    // to repeat every time.
+    testWidgets('the operator\'s folds outlast the panel', (tester) async {
+      await pumpPanel(tester);
+      await tester.tap(find.text('More available (3)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Activities'));
+      await tester.pumpAndSettle();
+      expect(mine(), findsNothing);
+
+      final prefs = await SharedPreferences.getInstance();
+      await pumpPanel(tester, prefs: {for (final key in prefs.getKeys()) key: prefs.get(key)!});
+      expect(mine(), findsNothing, reason: 'the category stays shut');
+      await tester.tap(find.text('Activities'));
+      await tester.pumpAndSettle();
+      expect(_catalogRowKeys(tester), hasLength(8), reason: 'and More available stays open');
+    });
+
+    // A query answering from inside a shut section would say "no matches" for
+    // something that is right there.
+    testWidgets('a search opens every section with a match, and clearing it puts the folds back', (tester) async {
+      await pumpPanel(tester);
+      await tester.tap(find.text('Activities'));
+      await tester.pumpAndSettle();
+      expect(_catalogRowKeys(tester), isEmpty);
+
+      await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'offer');
+      await tester.pumpAndSettle();
+      expect(_catalogRowKeys(tester), hasLength(8));
+
+      await tester.enterText(find.byKey(const ValueKey('extensions-search')), '');
+      await tester.pumpAndSettle();
+      expect(_catalogRowKeys(tester), isEmpty);
+    });
+
+    // Searching opens More available; installing from there and clearing the
+    // box shuts it again. An installed row that kept its offer's place there
+    // would vanish from under the operator who just installed it.
+    testWidgets('an extension installed from a search stays in view when the search is cleared', (tester) async {
+      final services = await pumpPanel(tester);
+      final suggested = _catalogRowKeys(tester).toSet();
+      await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'offer');
+      await tester.pumpAndSettle();
+      final key = _catalogRowKeys(tester).firstWhere((row) => !suggested.contains(row)).substring('catalog-'.length);
+
+      (services.extensions as ExtensionServiceWithFakeHost).debugSetAvailableExtensions([
+        const ExtensionInfo(
+          key: 'mine',
+          file: 'index.js',
+          core: false,
+          name: 'Mine',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '1.0.0',
+        ),
+        ExtensionInfo(key: key, file: 'index.js', core: false, name: key, category: 'activity', source: ExtensionSource.installed, version: '1.0.0'),
+      ]);
+      await services.settings.setExtensionOverrides({key: true});
+      await tester.enterText(find.byKey(const ValueKey('extensions-search')), '');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(ValueKey('extension-$key')).hitTestable(), findsOneWidget);
+      expect(find.text('More available (2)'), findsOneWidget, reason: 'it counts what is still on offer');
     });
   });
 }

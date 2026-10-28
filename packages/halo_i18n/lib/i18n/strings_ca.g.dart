@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$ca extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Anuncis';
 	@override String hookHunting({required Object program}) => 'Caça de ${program}';
 	@override String hookActivating({required Object program}) => 'Activació de ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: '… i ${count} extensió més',
-		other: '… i ${count} extensions més',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: '${count} extensió disponible',
-		other: '${count} extensions disponibles',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$ca extends Translations$settings$radio
 	final TranslationsCa _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Controla el PTT amb [\']';
-	@override String get descriptionOn => 'En modes de fonia, [\'] posa la ràdio en transmissió i [\'] de nou la treu. Surt de transmissió tota sola al cap d\'un minut.';
-	@override String get descriptionOff => 'La tecla [\'] no posa la ràdio en transmissió.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Transmetent';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsCa {
 			'extensionsPanel.hookSpots' => 'Anuncis',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Caça de ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activació de ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '… i ${count} extensió més', other: '… i ${count} extensions més', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} extensió disponible', other: '${count} extensions disponibles', ), 
 			'home.title' => 'Registrador Portàtil',
 			'home.newOperation' => 'Nova operació',
 			'home.stationCallsign' => 'Indicatiu d\'estació',
@@ -4089,10 +4076,10 @@ extension on TranslationsCa {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${count} fitxer combinat', other: 'Exporta ${count} fitxers combinats', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${count} fitxer combinat', other: 'Descarrega ${count} fitxers combinats', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Comparteix ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exporta ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarrega ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer a l\'Stash', other: 'Desa ${count} fitxers a l\'Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Desa ${count} fitxer combinat a l\'Stash', other: 'Desa ${count} fitxers combinats a l\'Stash', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsCa {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha deixat d\'escoltar al port ${port}. Tornant-ho a provar…',
 			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Registre i CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Serveis',
 			'settings.radio.stationConfigurationSection' => 'Configuració de l\'estació',
 			'settings.radio.moreSettings' => 'Més opcions de configuració de l\'estació',
@@ -4614,9 +4601,6 @@ extension on TranslationsCa {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Controla el PTT amb [\']',
-			'settings.radio.pttKey.descriptionOn' => 'En modes de fonia, [\'] posa la ràdio en transmissió i [\'] de nou la treu. Surt de transmissió tota sola al cap d\'un minut.',
-			'settings.radio.pttKey.descriptionOff' => 'La tecla [\'] no posa la ràdio en transmissió.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Transmetent',
 			'settings.radio.smartVfoSnap.title' => 'Ajust intel·ligent del VFO',
@@ -5117,13 +5101,13 @@ extension on TranslationsCa {
 			'settings.station.statusDisconnected' => 'No connectat',
 			'settings.station.statusConnecting' => 'Connectant…',
 			'settings.station.statusDisconnecting' => 'Desconnectant…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'La connexió ha fallat',
 			'settings.station.currentRadioSettings' => 'Configuració actual de la ràdio',
 			'settings.station.notSupportedByThisRadio' => 'Aquesta ràdio no ho admet',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de veu: ${count} memòries a la ràdio',
 			'settings.station.antennaBands' => 'Bandes',
 			'settings.station.antennaType' => 'Tipus d\'antena',

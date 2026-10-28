@@ -175,15 +175,7 @@
     "hookScoring": "Punktewertung",
     "hookSpots": "Spots",
     "hookHunting": "${program} jagen",
-    "hookActivating": "${program} aktivieren",
-    "moreInCategory": {
-      "one": "… und ${count} weitere Erweiterung",
-      "other": "… und ${count} weitere Erweiterungen"
-    },
-    "availableInCategory": {
-      "one": "${count} Erweiterung verfügbar",
-      "other": "${count} Erweiterungen verfügbar"
-    }
+    "hookActivating": "${program} aktivieren"
   },
   "home": {
     "title": "Portable Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "PTT mit ['] steuern",
-        "descriptionOn": "In Phone-Modi tastet ['] das Funkgerät auf und ['] erneut wieder ab. Nach einer Minute tastet es von selbst ab.",
-        "descriptionOff": "Die Taste ['] tastet das Funkgerät nicht auf.",
         "pill": "TX",
         "transmitting": "Sende"
       },

@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spotlar';
 	@override String hookHunting({required Object program}) => '${program} avcılığı';
 	@override String hookActivating({required Object program}) => '${program} aktivasyonu';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '… ve ${count} uzantı daha',
-		other: '… ve ${count} uzantı daha',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '${count} uzantı mevcut',
-		other: '${count} uzantı mevcut',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$tr extends Translations$settings$radio
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'PTT\'yi [\'] ile kontrol et';
-	@override String get descriptionOn => 'Telefon modlarında [\'] radyoyu yayına geçirir, tekrar [\'] yayını keser. Bir dakika sonra kendiliğinden yayını keser.';
-	@override String get descriptionOff => '[\'] tuşu radyoyu yayına geçirmez.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Yayında';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsTr {
 			'extensionsPanel.hookSpots' => 'Spotlar',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} avcılığı',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} aktivasyonu',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '… ve ${count} uzantı daha', other: '… ve ${count} uzantı daha', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} uzantı mevcut', other: '${count} uzantı mevcut', ), 
 			'home.title' => 'Taşınabilir Logger',
 			'home.newOperation' => 'Yeni operasyon',
 			'home.stationCallsign' => 'İstasyon çağrı işareti',
@@ -4089,10 +4076,10 @@ extension on TranslationsTr {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı dışa aktar', other: 'Birleştirilmiş ${count} dosyayı dışa aktar', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı indir', other: 'Birleştirilmiş ${count} dosyayı indir', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '${name} dosyasını paylaş',
 			'operation.export.exportOne' => ({required Object name}) => '${name} dosyasını dışa aktar',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} dosyasını indir',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı Stash\'e kaydet', other: '${count} dosyayı Stash\'e kaydet', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', other: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsTr {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…',
 			'settings.radio.title' => 'CAT Kontrolü',
 			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Ayar',
 			'settings.radio.keyerSection' => 'Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Hizmetler',
 			'settings.radio.stationConfigurationSection' => 'İstasyon Yapılandırması',
 			'settings.radio.moreSettings' => 'Diğer istasyon yapılandırma ayarları',
@@ -4614,9 +4601,6 @@ extension on TranslationsTr {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'PTT\'yi [\'] ile kontrol et',
-			'settings.radio.pttKey.descriptionOn' => 'Telefon modlarında [\'] radyoyu yayına geçirir, tekrar [\'] yayını keser. Bir dakika sonra kendiliğinden yayını keser.',
-			'settings.radio.pttKey.descriptionOff' => '[\'] tuşu radyoyu yayına geçirmez.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Yayında',
 			'settings.radio.smartVfoSnap.title' => 'Akıllı VFO Yuvarlama',
@@ -5117,13 +5101,13 @@ extension on TranslationsTr {
 			'settings.station.statusDisconnected' => 'Bağlı değil',
 			'settings.station.statusConnecting' => 'Bağlanıyor…',
 			'settings.station.statusDisconnecting' => 'Bağlantı kesiliyor…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Bağlantı başarısız',
 			'settings.station.currentRadioSettings' => 'Mevcut radyo ayarları',
 			'settings.station.notSupportedByThisRadio' => 'Bu radyo desteklemiyor',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Telefon',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza',
 			'settings.station.antennaBands' => 'Bantlar',
 			'settings.station.antennaType' => 'Anten türü',

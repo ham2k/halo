@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'category_band.dart';
 import 'collapsible_section.dart';
+import 'collapsing_sliver.dart';
 import 'halo_dialog.dart';
 import 'halo_markdown.dart';
 import 'icon_resolver.dart';
@@ -42,6 +43,17 @@ typedef FormAction = Future<FormActionResult?> Function(String actionKey, String
 typedef FormManageAccount = void Function(String accountKey, String? subkey);
 typedef FormOpenLink = void Function(String url);
 typedef FormOpenPanel = void Function(String panelKey);
+
+/// Where a form's section folds outlast the form: the host keeps, per
+/// section, whether the operator last left it open. A section is named by
+/// its header's `key`, else by its title.
+abstract interface class FormSectionFolds {
+  /// Null for a section the operator has never folded or opened, which
+  /// then takes its header's declared default.
+  bool? isOpen(String section);
+
+  void remember(String section, bool open);
+}
 
 /// What a `type: 'action'` element's handler — or, same contract, a
 /// `select` option with `isAction: true` — can do: show the operator a
@@ -235,6 +247,10 @@ class FormRenderer extends StatefulWidget {
   /// with the rows.
   final bool sliver;
 
+  /// Keeps each `style: 'section'` header's fold past this form. Null, a
+  /// fold lasts as long as the form does.
+  final FormSectionFolds? sectionFolds;
+
   const FormRenderer({
     super.key,
     required this.formDefinition,
@@ -256,10 +272,25 @@ class FormRenderer extends StatefulWidget {
     this.settingsList = false,
     this.sliver = false,
     this.onOpenPanel,
+    this.sectionFolds,
   });
 
   @override
   State<FormRenderer> createState() => FormRendererState();
+
+  /// [elements] as one source's contribution to a list others add to: with a
+  /// `sectionEnd` after them when they leave a band open, so whatever is
+  /// appended next is not drawn under — and folded away with — their last
+  /// section.
+  static List<Map<String, dynamic>> closingSections(List<Map<String, dynamic>> elements) {
+    final open = elements.lastWhere((el) => FormRendererState._isBand(el) || el['type'] == 'sectionEnd', orElse: () => const {});
+    return FormRendererState._isBand(open)
+        ? [
+            ...elements,
+            {'type': 'sectionEnd'},
+          ]
+        : elements;
+  }
 }
 
 class FormRendererState extends State<FormRenderer> with _ListFields, _Elements, _RowFields, _TextFields, _ChoiceFields {
@@ -281,6 +312,12 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   /// touch, and opening it is the operator's call.
   @override
   final Set<String> _openDisclosures = {};
+
+  /// The sections opened or shut while this form is up, by
+  /// [_sectionName]. Ahead of [FormRenderer.sectionFolds], so a section
+  /// opened to show an error stays open without becoming the operator's
+  /// remembered choice.
+  final Map<String, bool> _openSections = {};
 
   /// Bumped after every action runs, and folded into every `select` field's
   /// widget key. `DropdownButtonFormField` tracks which item is selected
@@ -731,6 +768,12 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
               opened = _openDisclosures.add(el['key'] as String) || opened;
             }
           }
+          for (final (:band, :rows) in _sections(_visibleElements)) {
+            if (band == null || !_folds(band) || _sectionIsOpen(band)) continue;
+            if (rows.any((el) => errors.containsKey(el['key']) || (el['type'] == 'disclosure' && _members(el).any((m) => errors.containsKey(m['key']))))) {
+              _openSections[_sectionName(band)] = opened = true;
+            }
+          }
 
           // Scroll first error into view
           for (final field in _fields) {
@@ -774,7 +817,21 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [..._formTitle(context, theme), ..._elementRows(theme, elements), ..._formActions()],
+    children: [
+      ..._formTitle(context, theme),
+      for (final (index, (:band, :rows)) in _sections(elements).indexed) ...[
+        if (band == null && index > 0 && rows.isNotEmpty) const SizedBox(height: Space.xl),
+        if (band != null) _buildHeader(band, theme, folds: true),
+        if (band != null && _folds(band))
+          CollapsibleBody(
+            expanded: _sectionIsOpen(band),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, rows)),
+          )
+        else
+          ..._elementRows(theme, rows),
+      ],
+      ..._formActions(),
+    ],
   );
 
   /// The same form, as one sliver: every run of rows under a section band is
@@ -792,32 +849,33 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
       );
     }
 
-    var section = <Map<String, dynamic>>[];
-    Map<String, dynamic>? band;
-    void flush() {
-      if (section.isEmpty && band == null) return;
+    for (final (index, (:band, :rows)) in _sections(elements).indexed) {
+      if (band == null && rows.isEmpty) continue;
       // One box per section, not a SliverList: a lazy list builds only what
       // is on screen and DISPOSES what scrolls off it, and these rows own
       // the FocusNodes and TextEditingControllers the operator is typing
       // into — the Settings panel builds every category up front for
       // exactly that reason (settings_view.dart).
-      final rows = SliverToBoxAdapter(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, section)),
+      final body = SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (band == null && index > 0) const SizedBox(height: Space.xl),
+            ..._elementRows(theme, rows),
+          ],
+        ),
       );
-      slivers.add(band == null ? rows : SliverMainAxisGroup(slivers: [_pinnedBand(context, band!, theme), rows]));
-      section = [];
-      band = null;
+      slivers.add(
+        band == null
+            ? body
+            : SliverMainAxisGroup(
+                slivers: [
+                  _pinnedBand(context, band, theme),
+                  if (_folds(band)) CollapsingSliver(expanded: _sectionIsOpen(band), child: body) else body,
+                ],
+              ),
+      );
     }
-
-    for (final el in elements) {
-      if (_isBand(el)) {
-        flush();
-        band = el;
-      } else {
-        section.add(el);
-      }
-    }
-    flush();
 
     final actions = _formActions();
     if (actions.isNotEmpty) {
@@ -835,6 +893,51 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   /// must not silently close the gaps around it.
   static bool _isBand(Map<String, dynamic> el) => el['type'] == 'header' && (el['style'] == 'section' || el['style'] == 'category');
 
+  /// Whether band [el] folds the rows under it: a section does, and a
+  /// category — the top of its surface, with nothing above to fold into —
+  /// does not.
+  static bool _folds(Map<String, dynamic> el) => el['style'] == 'section';
+
+  /// [elements] cut at every band: the rows ahead of the first band, then
+  /// each band over the rows up to the next band or `sectionEnd` — which is
+  /// all a band ever owns, since the declaration is a flat list. Rows after a
+  /// `sectionEnd` belong to no band.
+  static List<({Map<String, dynamic>? band, List<Map<String, dynamic>> rows})> _sections(List<Map<String, dynamic>> elements) {
+    final sections = [(band: null as Map<String, dynamic>?, rows: <Map<String, dynamic>>[])];
+    for (final el in elements) {
+      if (_isBand(el)) {
+        sections.add((band: el, rows: []));
+      } else if (el['type'] == 'sectionEnd') {
+        sections.add((band: null, rows: []));
+      } else {
+        sections.last.rows.add(el);
+      }
+    }
+    return sections;
+  }
+
+  static String _sectionName(Map<String, dynamic> band) => switch (band) {
+    {'key': final String key} when key.isNotEmpty => key,
+    {'title': final String title} => title,
+    _ => '',
+  };
+
+  /// Open unless the operator shut it, or its header declares
+  /// `collapsed: true` and the operator has not opened it.
+  @override
+  bool _sectionIsOpen(Map<String, dynamic> band) {
+    final name = _sectionName(band);
+    return _openSections[name] ?? widget.sectionFolds?.isOpen(name) ?? band['collapsed'] != true;
+  }
+
+  @override
+  void _toggleSection(Map<String, dynamic> band) {
+    final name = _sectionName(band);
+    final open = !_sectionIsOpen(band);
+    setState(() => _openSections[name] = open);
+    widget.sectionFolds?.remember(name, open);
+  }
+
   /// [el]'s band, pinned over the rows that follow it.
   Widget _pinnedBand(BuildContext context, Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
@@ -842,7 +945,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     final subtitle = _headerSubtitle(el, theme);
     return el['style'] == 'category'
         ? CategoryBand(title, color: color, subtitle: subtitle).asPinnedSliver
-        : SectionHeader.pinned(context, title, color: color, subtitle: subtitle);
+        : _sectionHeader(el, title, color: color, subtitle: subtitle).asPinnedSliver(context);
   }
 
   List<Widget> _formTitle(BuildContext context, ThemeData theme) => [

@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$ko extends Translations$extensionsPanel$en {
 	@override String get hookSpots => '스팟';
 	@override String hookHunting({required Object program}) => '${program} 추적';
 	@override String hookActivating({required Object program}) => '${program} 활성화';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '… 외 확장 기능 ${count}개',
-		other: '… 외 확장 기능 ${count}개',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '확장 기능 ${count}개 사용 가능',
-		other: '확장 기능 ${count}개 사용 가능',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$ko extends Translations$settings$radio
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '[\']로 PTT 제어';
-	@override String get descriptionOn => '보이스 모드에서 [\']를 누르면 송신하고, 다시 누르면 송신을 멈춥니다. 1분이 지나면 자동으로 송신을 멈춥니다.';
-	@override String get descriptionOff => '[\'] 키로 송신하지 않습니다.';
 	@override String get pill => 'TX';
 	@override String get transmitting => '송신 중';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsKo {
 			'extensionsPanel.hookSpots' => '스팟',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} 추적',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} 활성화',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '… 외 확장 기능 ${count}개', other: '… 외 확장 기능 ${count}개', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '확장 기능 ${count}개 사용 가능', other: '확장 기능 ${count}개 사용 가능', ), 
 			'home.title' => '포터블 로거',
 			'home.newOperation' => '새로운 운용',
 			'home.stationCallsign' => '무선국 콜사인',
@@ -4089,10 +4076,10 @@ extension on TranslationsKo {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 내보내기', other: '통합 파일 ${count}개 내보내기', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 다운로드', other: '통합 파일 ${count}개 다운로드', ), 
 			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => '${name} 공유',
 			'operation.export.exportOne' => ({required Object name}) => '${name} 내보내기',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} 다운로드',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '파일 ${count}개 보관', other: '파일 ${count}개 보관', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 보관', other: '통합 파일 ${count}개 보관', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsKo {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기를 중지했습니다. 다시 시도 중…',
 			'settings.radio.title' => 'CAT 제어',
 			'settings.radio.loggingAndCat' => '로깅 및 CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => '튜닝',
 			'settings.radio.keyerSection' => '키어',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => '서비스',
 			'settings.radio.stationConfigurationSection' => '무선국 구성',
 			'settings.radio.moreSettings' => '추가 무선국 구성 설정',
@@ -4614,9 +4601,6 @@ extension on TranslationsKo {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => '[\']로 PTT 제어',
-			'settings.radio.pttKey.descriptionOn' => '보이스 모드에서 [\']를 누르면 송신하고, 다시 누르면 송신을 멈춥니다. 1분이 지나면 자동으로 송신을 멈춥니다.',
-			'settings.radio.pttKey.descriptionOff' => '[\'] 키로 송신하지 않습니다.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => '송신 중',
 			'settings.radio.smartVfoSnap.title' => '스마트 VFO 스냅',
@@ -5117,13 +5101,13 @@ extension on TranslationsKo {
 			'settings.station.statusDisconnected' => '연결 안 됨',
 			'settings.station.statusConnecting' => '연결 중…',
 			'settings.station.statusDisconnecting' => '연결 해제 중…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => '연결 실패',
 			'settings.station.currentRadioSettings' => '현재 무전기 설정',
 			'settings.station.notSupportedByThisRadio' => '이 무전기에서 지원하지 않음',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => '보이스',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '보이스 키어: 무전기에 메모리 ${count}개',
 			'settings.station.antennaBands' => '밴드',
 			'settings.station.antennaType' => '안테나 유형',

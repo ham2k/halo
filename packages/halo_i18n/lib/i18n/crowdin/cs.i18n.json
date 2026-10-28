@@ -175,15 +175,7 @@
     "hookScoring": "Bodování",
     "hookSpots": "Spoty",
     "hookHunting": "Lovení ${program}",
-    "hookActivating": "Aktivace ${program}",
-    "moreInCategory": {
-      "one": "… a ${count} další rozšíření",
-      "other": "… a ${count} dalších rozšíření"
-    },
-    "availableInCategory": {
-      "one": "${count} dostupné rozšíření",
-      "other": "${count} dostupných rozšíření"
-    }
+    "hookActivating": "Aktivace ${program}"
   },
   "home": {
     "title": "Portable Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Ovládat PTT klávesou [']",
-        "descriptionOn": "V módech fónie ['] zaklíčuje rádio a další ['] ho odklíčuje. Po minutě se odklíčuje samo.",
-        "descriptionOff": "Klávesa ['] rádio neklíčuje.",
         "pill": "TX",
         "transmitting": "Vysílání"
       },

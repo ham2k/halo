@@ -175,15 +175,7 @@
     "hookScoring": "Puntentelling",
     "hookSpots": "Spots",
     "hookHunting": "${program} jagen",
-    "hookActivating": "${program} activeren",
-    "moreInCategory": {
-      "one": "… en ${count} andere extensie",
-      "other": "… en ${count} andere extensies"
-    },
-    "availableInCategory": {
-      "one": "${count} extensie beschikbaar",
-      "other": "${count} extensies beschikbaar"
-    }
+    "hookActivating": "${program} activeren"
   },
   "home": {
     "title": "Portable Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "PTT bedienen met [']",
-        "descriptionOn": "In spraakmodes zet ['] de radio op zenden en ['] nogmaals weer op ontvangen. Na een minuut gaat hij vanzelf terug op ontvangen.",
-        "descriptionOff": "De [']-toets zet de radio niet op zenden.",
         "pill": "TX",
         "transmitting": "Zenden"
       },

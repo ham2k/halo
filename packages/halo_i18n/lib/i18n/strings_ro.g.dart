@@ -290,14 +290,6 @@ class _Translations$extensionsPanel$ro extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spoturi';
 	@override String hookHunting({required Object program}) => 'Vânare ${program}';
 	@override String hookActivating({required Object program}) => 'Activare ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '… și încă ${count} extensie',
-		other: '… și încă ${count} extensii',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '${count} extensie disponibilă',
-		other: '${count} extensii disponibile',
-	);
 }
 
 // Path: home
@@ -3165,9 +3157,6 @@ class _Translations$settings$radio$pttKey$ro extends Translations$settings$radio
 	final TranslationsRo _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Control PTT cu [\']';
-	@override String get descriptionOn => 'În modurile de fonie, [\'] trece stația pe emisie și [\'] din nou o readuce pe recepție. Revine singură pe recepție după un minut.';
-	@override String get descriptionOff => 'Tasta [\'] nu trece stația pe emisie.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Emisie';
 }
@@ -3742,8 +3731,6 @@ extension on TranslationsRo {
 			'extensionsPanel.hookSpots' => 'Spoturi',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Vânare ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activare ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '… și încă ${count} extensie', other: '… și încă ${count} extensii', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} extensie disponibilă', other: '${count} extensii disponibile', ), 
 			'home.title' => 'Jurnal Portabil',
 			'home.newOperation' => 'Operațiune nouă',
 			'home.stationCallsign' => 'Indicativul stației',
@@ -4089,10 +4076,10 @@ extension on TranslationsRo {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${count} fișier combinat', other: 'Exportă ${count} fișiere combinate', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${count} fișier combinat', other: 'Descarcă ${count} fișiere combinate', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Partajează ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportă ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarcă ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${count} fișier în Stash', other: 'Trimite ${count} fișiere în Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Trimite ${count} fișier combinat în Stash', other: 'Trimite ${count} fișiere combinate în Stash', ), 
@@ -4603,10 +4590,10 @@ extension on TranslationsRo {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} a oprit ascultarea pe portul ${port}. Se reîncearcă…',
 			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Înregistrare și CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.tuningSection' => 'Acord',
 			'settings.radio.keyerSection' => 'Keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Servicii',
 			'settings.radio.stationConfigurationSection' => 'Configurația stației',
 			'settings.radio.moreSettings' => 'Mai multe setări de configurare a stației',
@@ -4614,9 +4601,6 @@ extension on TranslationsRo {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Control PTT cu [\']',
-			'settings.radio.pttKey.descriptionOn' => 'În modurile de fonie, [\'] trece stația pe emisie și [\'] din nou o readuce pe recepție. Revine singură pe recepție după un minut.',
-			'settings.radio.pttKey.descriptionOff' => 'Tasta [\'] nu trece stația pe emisie.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Emisie',
 			'settings.radio.smartVfoSnap.title' => 'Rotunjire inteligentă VFO',
@@ -5117,13 +5101,13 @@ extension on TranslationsRo {
 			'settings.station.statusDisconnected' => 'Neconectat',
 			'settings.station.statusConnecting' => 'Se conectează…',
 			'settings.station.statusDisconnecting' => 'Se deconectează…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusError' => 'Conectarea a eșuat',
 			'settings.station.currentRadioSettings' => 'Setările curente ale stației',
 			'settings.station.notSupportedByThisRadio' => 'Nu este acceptat de această stație',
 			'settings.station.cwMessagesButton' => 'CW',
 			'settings.station.voiceMessagesButton' => 'Fonie',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Keyer vocal: ${count} memorii în stație',
 			'settings.station.antennaBands' => 'Benzi',
 			'settings.station.antennaType' => 'Tip de antenă',

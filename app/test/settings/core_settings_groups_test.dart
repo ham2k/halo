@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/settings/core_settings_groups.dart';
 import 'package:ham2k_logger/settings/settings_registry.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -25,10 +26,12 @@ void main() {
   group('LoggingSettingsGroup target tagging', () {
     const baseKeys = {'showRSTFields', 'showStateField', 'showGridField', 'showDeletedQSOs', 'showQsoNumbers'};
 
+    // Show Deleted QSOs is declared by the User Interface group, so the
+    // dialog's base set is gathered across both, as the dialog itself does.
     test('exactly the five legacy toggles are target: "logging"', () async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
-      final elements = await LoggingSettingsGroup(settings).buildElements();
+      final elements = [...await GeneralSettingsGroup(settings, ExtensionService()).buildElements(), ...await LoggingSettingsGroup(settings).buildElements()];
 
       final loggingKeys = {
         for (final el in elements)
@@ -37,16 +40,19 @@ void main() {
       expect(loggingKeys, baseKeys);
     });
 
-    // Preferences lists the group in declaration order, and the three "show"
-    // toggles about what a list holds read as one run: numbers, then the two
-    // kinds of deleted record.
-    test('Show QSO Numbers, Show deleted QSOs and Show deleted operations close the group, in that order', () async {
+    // What the lists show is a matter of the interface, not of logging: the
+    // two deleted-record toggles sit with the other display preferences, as
+    // one run, and only there — a key declared by two groups is two rows and
+    // an ambiguous SET.
+    test('Show deleted QSOs and Show deleted operations close the User Interface group, and only it', () async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
-      final elements = await LoggingSettingsGroup(settings).buildElements();
+      final general = [for (final el in await GeneralSettingsGroup(settings, ExtensionService()).buildElements()) el['key'] as String];
+      final logging = [for (final el in await LoggingSettingsGroup(settings).buildElements()) el['key'] as String];
 
-      final keys = [for (final el in elements) el['key'] as String];
-      expect(keys.sublist(keys.length - 3), ['showQsoNumbers', 'showDeletedQSOs', 'showDeletedOps']);
+      expect(general.sublist(general.length - 2), ['showDeletedQSOs', 'showDeletedOps']);
+      expect(logging, isNot(contains('showDeletedQSOs')));
+      expect(logging, isNot(contains('showDeletedOps')));
       expect(settings.showDeletedOps, isFalse, reason: 'off by default, as in app-polo');
     });
 
@@ -127,7 +133,7 @@ void main() {
 
     /// Everything except the feature toggles — i.e. the values that must
     /// stay out of the way until someone goes looking for them.
-    const toggles = {'pttKey', 'smartVfoSnap', 'avoidZeroBeat'};
+    const toggles = {'pttKeyMode', 'smartVfoSnap', 'avoidZeroBeat'};
 
     /// The CW messages live in this group too, but under their own dialog
     /// (`cw-messages`) — they are not tuning knobs. Kept out of the knob
@@ -191,14 +197,67 @@ void main() {
       expect(await keysFor(await settingsWith(zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
     });
 
-    test("['] PTT is offered only under the keyer experiment, off, and ahead of Smart VFO Snap", () async {
+    test('keyboard PTT is offered only under the keyer experiment, off, and ahead of Smart VFO Snap', () async {
       // Off by default because it puts the transmitter on the air; gated with
       // the voice keyer whose Phone-mode keys it shares.
       SharedPreferences.setMockInitialValues({});
-      expect(SettingsService(await SharedPreferences.getInstance()).pttKey, isFalse);
-      expect(await keysFor(await settingsWith(keyer: false)), isNot(contains('pttKey')));
+      expect(SettingsService(await SharedPreferences.getInstance()).pttKeyMode, PttKeyMode.off);
+      expect(await keysFor(await settingsWith(keyer: false)), isNot(contains('pttKeyMode')));
       final keys = [for (final el in await RadioSettingsGroup(await settingsWith()).buildElements()) el['key']];
-      expect(keys.indexOf('pttKey'), keys.indexOf('smartVfoSnap') - 1);
+      expect(keys.indexOf('pttKeyMode'), keys.indexOf('smartVfoSnap') - 1);
+    });
+
+    // Before the choice there was one toggle, and on it toggled. An operator
+    // who had it on must not find the key dead, nor holding where it toggled.
+    test('a store from before the choice keeps what it did', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings.radio': jsonEncode({'pttKey': true}),
+      });
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      expect(settings.pttKeyMode, PttKeyMode.toggle);
+      await RadioSettingsGroup(settings).commit('pttKeyMode', 'off');
+      expect(settings.pttKeyMode, PttKeyMode.off, reason: 'a choice made since outranks the old toggle');
+    });
+
+    // The radio group syncs, and an older build on another device reads and
+    // writes only `pttKey`. If the two keys could disagree, one device would
+    // put the transmitter on the air after the operator switched it off on
+    // the other.
+    test('an older build on a synced device agrees with the choice, both ways', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final group = RadioSettingsGroup(settings);
+      bool? olderBuildReads() => settings.settingValue(SettingsService.radioGroup, 'pttKey') as bool?;
+
+      await group.commit('pttKeyMode', 'hold');
+      expect(olderBuildReads(), isTrue);
+      await group.commit('pttKeyMode', 'off');
+      expect(olderBuildReads(), isFalse, reason: 'No here is off there');
+
+      await group.commit('pttKeyMode', 'hold');
+      await settings.setSettingValue(SettingsService.radioGroup, 'pttKey', false);
+      expect(settings.pttKeyMode, PttKeyMode.off, reason: 'off there is off here');
+      await settings.setSettingValue(SettingsService.radioGroup, 'pttKey', true);
+      expect(settings.pttKeyMode, PttKeyMode.hold, reason: 'back on there, it keys the way it was last chosen here');
+    });
+
+    test('a mode no build offers is not stored', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final group = RadioSettingsGroup(settings);
+      await group.commit('pttKeyMode', 'hold');
+      await group.commit('pttKeyMode', 'sometimes');
+      await group.commit('pttKeyMode', true);
+      expect(settings.pttKeyMode, PttKeyMode.hold);
+    });
+
+    // A PTT Key row with keyboard PTT off names a key that does nothing.
+    test('the PTT Key row shows only while the keyboard keys the radio, naming the bound key', () async {
+      final settings = await settingsWith();
+      Future<Map<String, dynamic>?> row() async => (await RadioSettingsGroup(settings).buildElements()).where((el) => el['key'] == pttKeyActionKey).firstOrNull;
+      expect(await row(), isNull);
+      await RadioSettingsGroup(settings).commit('pttKeyMode', 'hold');
+      expect((await row())?['description'], "[']");
     });
 
     test('both radio features are off out of the box', () async {

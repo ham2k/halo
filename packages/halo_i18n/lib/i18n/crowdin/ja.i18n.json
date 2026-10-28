@@ -175,15 +175,7 @@
     "hookScoring": "スコア計算",
     "hookSpots": "スポット",
     "hookHunting": "${program}のハンティング",
-    "hookActivating": "${program}のアクティベーション",
-    "moreInCategory": {
-      "one": "…他${count}件の拡張機能",
-      "other": "…他${count}件の拡張機能"
-    },
-    "availableInCategory": {
-      "one": "${count}件の拡張機能が利用可能",
-      "other": "${count}件の拡張機能が利用可能"
-    }
+    "hookActivating": "${program}のアクティベーション"
   },
   "home": {
     "title": "ポータブルロガー",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "[']でPTTを制御",
-        "descriptionOn": "電話モードでは、[']で無線機を送信状態にし、もう一度[']で受信に戻します。1分経つと自動的に受信に戻ります。",
-        "descriptionOff": "[']キーで無線機を送信状態にしません。",
         "pill": "TX",
         "transmitting": "送信中"
       },

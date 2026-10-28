@@ -15,9 +15,11 @@ import 'cluster_server_dialog.dart';
 import 'settings_registry.dart';
 
 /// The DX cluster connection: which node, its password, how much it keeps
-/// (docs/design/cluster.md). Empty — so Settings leaves the section out —
-/// until an extension declares a cluster capability: a node nothing posts to
-/// is a setting with nothing behind it.
+/// (docs/design/cluster.md). Not registered on its own: the Spotting group
+/// shows it as its DX Cluster section (`SpottingSettingsGroup.cluster`), so
+/// [key] and [order] place nothing. Empty — so Spotting leaves the section
+/// out — until an extension declares a cluster capability: a node nothing
+/// posts to is a setting with nothing behind it.
 class ClusterSettingsGroup extends SettingsGroup {
   ClusterSettingsGroup(this.settings, {required this.passwords, required this.cluster, required this.offered, required this.changes});
 

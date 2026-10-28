@@ -9,12 +9,14 @@ import 'dart:async';
 
 import '../settings/cluster_settings_group.dart';
 import '../settings/settings_command.dart';
+import '../settings/spotting_settings_group.dart';
 import '../views/settings/accounts_panel.dart';
 import 'cluster/cluster_service.dart';
 import 'cluster/cluster_settings.dart';
 import 'extensions/extension_catalog_migration.dart';
 import 'halo_services.dart';
 import 'spots_for_extensions.dart';
+import 'spotting_settings.dart';
 
 /// Hands [services]' extension service everything it reaches back through.
 ///
@@ -56,7 +58,7 @@ void wireExtensions(HaLoServices services) {
 }
 
 /// The DX cluster connection extensions post spots through
-/// (docs/design/cluster.md), and its Settings section. Built on first use;
+/// (docs/design/cluster.md), and its section of Settings' Spotting category. Built on first use;
 /// it connects only when an extension sends or subscribes.
 void _wireCluster(HaLoServices services) {
   final extensions = services.extensions;
@@ -73,13 +75,11 @@ void _wireCluster(HaLoServices services) {
     password: passwords.read,
   )..deliver = (subscriber, lines) => extensions.deliverClusterLines(subscriber, [for (final line in lines) line.toJson()]);
   extensions.clusterCalls.cluster = clusterService;
-  services.settingsRegistry.register(
-    ClusterSettingsGroup(
-      settings,
-      passwords: passwords,
-      cluster: clusterService,
-      offered: () => extensions.clusterCalls.offered,
-      changes: () => extensions.runtimeGeneration,
-    ),
+  (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup).cluster = ClusterSettingsGroup(
+    settings,
+    passwords: passwords,
+    cluster: clusterService,
+    offered: () => extensions.clusterCalls.offered,
+    changes: () => extensions.runtimeGeneration,
   );
 }

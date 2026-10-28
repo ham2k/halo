@@ -10,6 +10,7 @@ import '../services/error_reporting_service.dart';
 import '../services/extensions/extension_service.dart';
 import '../services/settings_service.dart';
 import 'settings_registry.dart';
+import 'settings_section_folds.dart';
 
 class ExportsSettingsGroup extends SettingsGroup {
   final SettingsService settings;
@@ -148,15 +149,15 @@ class ExportsSettingsGroup extends SettingsGroup {
           description: values['customTemplates'] == true ? labels.customTemplatesDescriptionOn : labels.customTemplatesDescriptionOff,
         ),
       if (id == 'default') ...[
-        {'type': 'header', 'style': 'section', 'title': labels.referenceActivities},
+        {'type': 'header', 'style': 'section', 'key': 'referenceActivities', 'title': labels.referenceActivities},
         field('referenceFilenameTemplate', labels.filenameTemplate, template: true),
         field('referenceCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
         field('referenceTitleTemplate', labels.titleTemplate, template: true),
-        {'type': 'header', 'style': 'section', 'title': labels.otherActivities},
+        {'type': 'header', 'style': 'section', 'key': 'otherActivities', 'title': labels.otherActivities},
         field('otherFilenameTemplate', labels.filenameTemplate, template: true),
         field('otherCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
         field('otherTitleTemplate', labels.titleTemplate, template: true),
-        {'type': 'header', 'style': 'section', 'title': labels.adifFields},
+        {'type': 'header', 'style': 'section', 'key': 'adifFields', 'title': labels.adifFields},
       ] else ...[
         field('filenameTemplate', labels.filenameTemplate, template: true),
         field('compactFilenameTemplate', labels.compactFilenameTemplate, template: true),
@@ -251,6 +252,7 @@ class _ExportTypeDialogState extends State<_ExportTypeDialog> {
           settingsList: true,
           showActions: false,
           showTitle: false,
+          sectionFolds: SettingsSectionFolds(widget.group.settings.prefs, '${widget.group.key}/${widget.type}'),
           onChange: (key, value, state) async {
             await widget.group.commit(key, value);
             return null;

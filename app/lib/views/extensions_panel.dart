@@ -28,6 +28,8 @@ import '../services/extensions/installed_extensions.dart';
 import '../services/deep_link_router.dart' show openInstallExtension;
 import '../services/deep_link_service.dart';
 import 'extension_install_flow.dart';
+import 'settings/settings_category.dart' show settingsCategorySliver;
+import '../settings/settings_section_folds.dart';
 import 'station_rows.dart' show StationPill;
 import '../services/halo_services.dart';
 
@@ -106,12 +108,48 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   /// panel is open — see [_orderFor].
   final _rowOrder = <String, List<String>>{};
 
-  /// The categories whose "and N others" row has been tapped, which then show
-  /// everything the catalog has under that heading.
-  ///
-  /// One-way for the life of the panel: opening a category is a question
-  /// being answered, and the row that opened it is gone once it is.
-  final _expandedCategories = <String>{};
+  /// The section of its category each row was last shown in — the
+  /// operator's own, Suggested or More available — so that an offer installed
+  /// from Suggested stays under Suggested for as long as the panel is open,
+  /// rather than jumping to the top of the category from under the pointer,
+  /// for the reason [_orderFor] holds the order ([_place]).
+  final _placed = <String, String>{};
+  static const _ownSection = 'own', _suggestedSection = 'suggested', _moreSection = 'more';
+
+  /// Which categories and More available sections the operator folded,
+  /// across visits: each category starts open and More available shut.
+  late final _folds = SettingsSectionFolds(widget.services.settings.prefs, 'extensions');
+
+  /// While a query stands every section with a match is open, and these are
+  /// the ones the operator has flipped since — forgotten when the query is
+  /// cleared, as Settings' own search does.
+  final _flippedWhileSearching = <String>{};
+
+  /// The section [key] is drawn in: [natural] for an offer, which goes
+  /// wherever the ranking puts it now — a callsign resolved since can promote
+  /// it — and for an installed row the section it was first shown in, which
+  /// is the offer's if the operator installed it from there.
+  String _place(String key, String natural, {required bool frozen}) {
+    if (!frozen) return natural;
+    if (natural == _ownSection) return _placed.putIfAbsent(key, () => natural);
+    return _placed[key] = natural;
+  }
+
+  bool get _searching => _searchController.text.trim().isNotEmpty;
+
+  bool _isOpen(String fold, {required bool byDefault}) => _searching ? !_flippedWhileSearching.contains(fold) : _folds.isOpen(fold) ?? byDefault;
+
+  void _toggleFold(String fold, {required bool byDefault}) => setState(() {
+    if (_searching) {
+      if (!_flippedWhileSearching.remove(fold)) _flippedWhileSearching.add(fold);
+    } else {
+      _folds.remember(fold, !_isOpen(fold, byDefault: byDefault));
+    }
+  });
+
+  void _queryChanged() => setState(() {
+    if (!_searching) _flippedWhileSearching.clear();
+  });
 
   /// The key the scroll view currently holds, and the controller that goes
   /// with it — see where they are refreshed, in [build].
@@ -416,7 +454,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   /// the same pasted as clicked. The field is cleared: the job is under way,
   /// and the address left in the box would offer it a second time.
   void _installFromLink(Uri link) {
-    setState(() => _searchController.clear());
+    _searchController.clear();
+    _queryChanged();
     openInstallExtension(widget.services, link);
   }
 
@@ -752,211 +791,244 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 if (byBand != 0) return byBand;
                 return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
               });
-          // A search is the operator asking, so it answers in full — and so
-          // does a category they have opened. Otherwise the head of the list
-          // is what is suggested, and only a few of it: a heading that
-          // already carries three of the operator's own extensions is a
-          // subject they have settled, and five more offers under it is a
-          // sales pitch rather than a panel.
-          final shown = query.isNotEmpty || _expandedCategories.contains(category)
-              ? offered
+          // The head of the offers is what is suggested, and only a few of it:
+          // a heading that already carries three of the operator's own
+          // extensions is a subject they have settled, and five more offers
+          // under it is a sales pitch rather than a panel. Everything else is
+          // under More available, shut until asked for. A search is the
+          // operator asking, so it suggests whatever the query matched.
+          final suggestedOffers = query.isNotEmpty
+              ? offered.where(isSuggested).toList()
               : offered.where(isSuggested).take(inCategory.length >= 3 ? 2 : 5).toList();
-          final hidden = offered.length - shown.length;
           if (inCategory.isEmpty && offered.isEmpty) continue;
-          rows.add(SectionHeader(extensionCategoryTitle(category)));
-          // One pass over the held order, and each key is drawn as whatever it
-          // is NOW: the extension the operator just installed keeps the place
-          // its offer had, and simply stops being an offer.
           final store = extensionService.installed;
           final installedByKey = {for (final info in inCategory) info.key: info};
-          final offersByKey = {for (final entry in shown) entry.key: entry};
-          final order = _orderFor(category, [...inCategory.map((info) => info.key), ...shown.map((entry) => entry.key)], frozen: query.isEmpty);
-          for (final orderedKey in order) {
-            final info = installedByKey[orderedKey];
-            final entry = offersByKey[orderedKey];
-            if (info == null && entry == null) continue;
-            if (info != null) {
-              final enabled = overrides[info.key] ?? info.enabledByDefault;
-              // The extension's own icon (build-index `icon`, mirroring its
-              // hooks) when it has one; the category icon otherwise, on the
-              // accent its manifest names.
-              final icon = ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category));
-              final title = _ChannelTitle(name: info.nameFor(locale), channel: info.isInstalled ? catalog.channelIn(records, info.key) : CatalogChannel.stable);
-              final description = info.descriptionFor(locale);
-              // Stable identity: without keys, list churn during the applying
-              // rebuilds re-creates row elements and their icons visibly flicker.
-              final rowKey = ValueKey('extension-${info.key}');
-              // NOT disabled while applying (onChanged: null would repaint every
-              // tile in disabled grey — the "icons fade to white" flicker); the
-              // IgnorePointer below blocks input instead, so the rows keep their
-              // exact appearance.
-              void toggle(bool value) => unawaited(_toggle(info.key, value));
+          final offersByKey = {for (final entry in offered) entry.key: entry};
+          // Which section each key is drawn in, and in what order — both held
+          // while the panel is open ([_placed], [_orderFor]); each key is
+          // drawn as whatever it is NOW, so the extension the operator just
+          // installed keeps the place its offer had and simply stops being an
+          // offer.
+          // An installed row is never left in a shut More available, though:
+          // one installed from a search would vanish from under the operator
+          // as the box is cleared and the section shuts again.
+          final categoryFold = category;
+          final moreFold = '$category/more';
+          final categoryOpen = _isOpen(categoryFold, byDefault: true);
+          final moreOpen = _isOpen(moreFold, byDefault: false);
+          final suggestedKeys = {for (final entry in suggestedOffers) entry.key};
+          final bySection = {_ownSection: <String>[], _suggestedSection: <String>[], _moreSection: <String>[]};
+          for (final (key, natural) in [
+            for (final info in inCategory) (info.key, _ownSection),
+            for (final entry in offered) (entry.key, suggestedKeys.contains(entry.key) ? _suggestedSection : _moreSection),
+          ]) {
+            var section = _place(key, natural, frozen: query.isEmpty);
+            if (section == _moreSection && !moreOpen && installedByKey.containsKey(key)) section = _placed[key] = _ownSection;
+            bySection[section]!.add(key);
+          }
+          final sectionRows = {for (final section in bySection.keys) section: <Widget>[]};
+          for (final MapEntry(key: section, value: keys) in bySection.entries) {
+            final rows = sectionRows[section]!;
+            for (final orderedKey in _orderFor('$category/$section', keys, frozen: query.isEmpty)) {
+              final info = installedByKey[orderedKey];
+              final entry = offersByKey[orderedKey];
+              if (info == null && entry == null) continue;
+              if (info != null) {
+                final enabled = overrides[info.key] ?? info.enabledByDefault;
+                // The extension's own icon (build-index `icon`, mirroring its
+                // hooks) when it has one; the category icon otherwise, on the
+                // accent its manifest names.
+                final icon = ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category));
+                final title = _ChannelTitle(
+                  name: info.nameFor(locale),
+                  channel: info.isInstalled ? catalog.channelIn(records, info.key) : CatalogChannel.stable,
+                );
+                final description = info.descriptionFor(locale);
+                // Stable identity: without keys, list churn during the applying
+                // rebuilds re-creates row elements and their icons visibly flicker.
+                final rowKey = ValueKey('extension-${info.key}');
+                // NOT disabled while applying (onChanged: null would repaint every
+                // tile in disabled grey — the "icons fade to white" flicker); the
+                // IgnorePointer below blocks input instead, so the rows keep their
+                // exact appearance.
+                void toggle(bool value) => unawaited(_toggle(info.key, value));
 
-              if (!info.isInstalled) {
-                // A ListTile with its own switch rather than a SwitchListTile,
-                // which has nowhere to put the line under the control: an
-                // extension the app ships is at whatever version the app is,
-                // which is nobody's to act on, so it says so where the others
-                // carry a version. The tap still toggles the whole row.
+                if (!info.isInstalled) {
+                  // A ListTile with its own switch rather than a SwitchListTile,
+                  // which has nowhere to put the line under the control: an
+                  // extension the app ships is at whatever version the app is,
+                  // which is nobody's to act on, so it says so where the others
+                  // carry a version. The tap still toggles the whole row.
+                  rows.add(
+                    ListTile(
+                      key: rowKey,
+                      leading: icon,
+                      title: title,
+                      subtitle: _DescriptionLine(description: description, onDetails: () => unawaited(_showDetails(info))),
+                      onTap: () => toggle(!enabled),
+                      mouseCursor: SystemMouseCursors.click,
+                      trailing: _TrailingWithCaption(
+                        caption: t.extensionsPanel.builtIn,
+                        control: _trailingSwitch(value: enabled, onChanged: toggle),
+                      ),
+                    ),
+                  );
+                  continue;
+                }
+
+                // An installed extension sits in its own category alongside the
+                // app's own — it is the same kind of thing, and splitting them
+                // would make "where is my extension" a question about where it
+                // came from. What it gets extra is a way to remove it, which a
+                // SwitchListTile has nowhere to put. A revoked release gets no
+                // switch at all: the catalog pulled it, and a switch that could
+                // not turn it on would only say the panel is broken. What is
+                // left is the catalog's note, an update if there is one, and
+                // the way out.
+                //
+                // The flags' force-disable is the same thing said by Ham2K
+                // rather than the catalog, and gets the same row.
+                final isRevoked = extensionService.isExtensionRevoked(info);
+                final isForceDisabled = extensionService.isExtensionForceDisabled(info);
+                final pulled = isRevoked || isForceDisabled;
+                final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : (extensionService.forceDisableOf(info)?.note ?? '');
+                // An update under way, from anywhere — this row, its details,
+                // Update all, the notice. The switch goes with it: the install
+                // restarts the runtime, and a toggle then is a restart racing it.
+                final busy = installer.isActive(info.key);
+                // A bundle the engine refused. Said on the row because the
+                // extension is installed, switched on, and doing nothing — and
+                // the one dialog that names it passes by once. It keeps its
+                // switch, unlike a revoked release: the operator turning it off
+                // is a choice that still means something once a later version
+                // lifts the refusal.
                 rows.add(
                   ListTile(
                     key: rowKey,
                     leading: icon,
                     title: title,
-                    subtitle: _DescriptionLine(description: description, onDetails: () => unawaited(_showDetails(info))),
-                    onTap: () => toggle(!enabled),
-                    mouseCursor: SystemMouseCursors.click,
+                    // The row toggles, as the built-in rows above it do. Boxing the
+                    // switch to [_trailingControlHeight] to make room for the
+                    // version under it takes its tap target below the 48 Material
+                    // asks for, and the row is what gives that back.
+                    onTap: pulled || busy ? null : () => toggle(!enabled),
+                    mouseCursor: pulled || busy ? null : SystemMouseCursors.click,
+                    // No "Installed" here any more: it sits under the same headings
+                    // as the app's own extensions, so saying so on every row said
+                    // nothing the section did not. What is left is what is
+                    // UNUSUAL about this one.
+                    subtitle: busy
+                        ? _InstallProgressLine(extensionKey: info.key, statusBar: widget.services.statusBar)
+                        : _DescriptionLine(
+                            description: [
+                              if (isRevoked) t.extensionsPanel.revokedBadge,
+                              if (isForceDisabled) t.extensionsPanel.forceDisabledBadge,
+                              if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
+                              if (_catalogEntryFor(info, records) != null) t.extensionsPanel.updateAvailableBadge,
+                              if (revokedNote.isNotEmpty) revokedNote,
+                              ?description,
+                            ].join(' · '),
+                            onDetails: () => unawaited(_showDetails(info)),
+                          ),
                     trailing: _TrailingWithCaption(
-                      caption: t.extensionsPanel.builtIn,
-                      control: _trailingSwitch(value: enabled, onChanged: toggle),
+                      // What is installed, not what the catalog offers: the offer
+                      // is on the catalog row below, and the two together are what
+                      // an update moves between.
+                      caption: info.version,
+                      // Removing lives in the details dialog now. It was a bin
+                      // beside the switch, one mis-aimed click from a toggle, and
+                      // the row it sat on could not say what would be removed.
+                      control: busy
+                          ? const _InstallSpinner()
+                          : pulled
+                          ? const SizedBox(height: _trailingControlHeight)
+                          : _trailingSwitch(value: enabled, onChanged: toggle),
                     ),
                   ),
                 );
                 continue;
               }
-
-              // An installed extension sits in its own category alongside the
-              // app's own — it is the same kind of thing, and splitting them
-              // would make "where is my extension" a question about where it
-              // came from. What it gets extra is a way to remove it, which a
-              // SwitchListTile has nowhere to put. A revoked release gets no
-              // switch at all: the catalog pulled it, and a switch that could
-              // not turn it on would only say the panel is broken. What is
-              // left is the catalog's note, an update if there is one, and
-              // the way out.
-              //
-              // The flags' force-disable is the same thing said by Ham2K
-              // rather than the catalog, and gets the same row.
-              final isRevoked = extensionService.isExtensionRevoked(info);
-              final isForceDisabled = extensionService.isExtensionForceDisabled(info);
-              final pulled = isRevoked || isForceDisabled;
-              final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : (extensionService.forceDisableOf(info)?.note ?? '');
-              // An update under way, from anywhere — this row, its details,
-              // Update all, the notice. The switch goes with it: the install
-              // restarts the runtime, and a toggle then is a restart racing it.
-              final busy = installer.isActive(info.key);
-              // A bundle the engine refused. Said on the row because the
-              // extension is installed, switched on, and doing nothing — and
-              // the one dialog that names it passes by once. It keeps its
-              // switch, unlike a revoked release: the operator turning it off
-              // is a choice that still means something once a later version
-              // lifts the refusal.
+              // The catalog's offer, under the same heading as what the operator
+              // already has. A separate "Catalog" section made finding a contest
+              // a question about where it came from.
+              shownOffers.add('catalog:${entry!.key}');
+              final description = entry.descriptionFor(locale);
+              final busy = installer.isActive(entry.key);
               rows.add(
                 ListTile(
-                  key: rowKey,
-                  leading: icon,
-                  title: title,
-                  // The row toggles, as the built-in rows above it do. Boxing the
-                  // switch to [_trailingControlHeight] to make room for the
-                  // version under it takes its tap target below the 48 Material
-                  // asks for, and the row is what gives that back.
-                  onTap: pulled || busy ? null : () => toggle(!enabled),
-                  mouseCursor: pulled || busy ? null : SystemMouseCursors.click,
-                  // No "Installed" here any more: it sits under the same headings
-                  // as the app's own extensions, so saying so on every row said
-                  // nothing the section did not. What is left is what is
-                  // UNUSUAL about this one.
+                  key: ValueKey('catalog-${entry.key}'),
+                  // The glyph in the accent rather than a solid tile of it, and
+                  // faded: this row is an offer, and at an installed row's weight
+                  // it claims a place in the panel that nothing has taken yet.
+                  leading: ExtensionIconTile(
+                    icon: entry.icon,
+                    accentColor: entry.accentColor,
+                    fallbackIcon: extensionCategoryIcon(entry.category),
+                    filled: false,
+                    opacity: kUninstalledIconOpacity,
+                  ),
+                  title: _ChannelTitle(name: entry.nameFor(locale), channel: entry.channel),
                   subtitle: busy
-                      ? _InstallProgressLine(extensionKey: info.key, statusBar: widget.services.statusBar)
-                      : _DescriptionLine(
-                          description: [
-                            if (isRevoked) t.extensionsPanel.revokedBadge,
-                            if (isForceDisabled) t.extensionsPanel.forceDisabledBadge,
-                            if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
-                            if (_catalogEntryFor(info, records) != null) t.extensionsPanel.updateAvailableBadge,
-                            if (revokedNote.isNotEmpty) revokedNote,
-                            ?description,
-                          ].join(' · '),
-                          onDetails: () => unawaited(_showDetails(info)),
-                        ),
+                      ? _InstallProgressLine(extensionKey: entry.key, statusBar: widget.services.statusBar)
+                      : description == null
+                      ? null
+                      : Text(description),
+                  // The offered version under the button, as an installed row
+                  // carries the version it holds.
                   trailing: _TrailingWithCaption(
-                    // What is installed, not what the catalog offers: the offer
-                    // is on the catalog row below, and the two together are what
-                    // an update moves between.
-                    caption: info.version,
-                    // Removing lives in the details dialog now. It was a bin
-                    // beside the switch, one mis-aimed click from a toggle, and
-                    // the row it sat on could not say what would be removed.
+                    caption: entry.version,
                     control: busy
                         ? const _InstallSpinner()
-                        : pulled
-                        ? const SizedBox(height: _trailingControlHeight)
-                        : _trailingSwitch(value: enabled, onChanged: toggle),
+                        : SizedBox(
+                            height: _trailingControlHeight,
+                            // Disabled until the store exists, like Install from file: a
+                            // press before then has nothing to install into. `_applying`
+                            // is the IgnorePointer's job, not a disabled button's.
+                            child: OutlinedButton(
+                              onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
+                              child: Text(t.extensionsPanel.installAction),
+                            ),
+                          ),
                   ),
                 ),
               );
-              continue;
             }
-            // The catalog's offer, under the same heading as what the operator
-            // already has. A separate "Catalog" section made finding a contest
-            // a question about where it came from.
-            shownOffers.add('catalog:${entry!.key}');
-            final description = entry.descriptionFor(locale);
-            final busy = installer.isActive(entry.key);
-            rows.add(
-              ListTile(
-                key: ValueKey('catalog-${entry.key}'),
-                // The glyph in the accent rather than a solid tile of it, and
-                // faded: this row is an offer, and at an installed row's weight
-                // it claims a place in the panel that nothing has taken yet.
-                leading: ExtensionIconTile(
-                  icon: entry.icon,
-                  accentColor: entry.accentColor,
-                  fallbackIcon: extensionCategoryIcon(entry.category),
-                  filled: false,
-                  opacity: kUninstalledIconOpacity,
-                ),
-                title: _ChannelTitle(name: entry.nameFor(locale), channel: entry.channel),
-                subtitle: busy
-                    ? _InstallProgressLine(extensionKey: entry.key, statusBar: widget.services.statusBar)
-                    : description == null
-                    ? null
-                    : Text(description),
-                // The offered version under the button, as an installed row
-                // carries the version it holds.
-                trailing: _TrailingWithCaption(
-                  caption: entry.version,
-                  control: busy
-                      ? const _InstallSpinner()
-                      : SizedBox(
-                          height: _trailingControlHeight,
-                          // Disabled until the store exists, like Install from file: a
-                          // press before then has nothing to install into. `_applying`
-                          // is the IgnorePointer's job, not a disabled button's.
-                          child: OutlinedButton(
-                            onPressed: store == null ? null : () => unawaited(_installFromCatalog(entry)),
-                            child: Text(t.extensionsPanel.installAction),
-                          ),
-                        ),
-                ),
-              ),
-            );
           }
 
-          // What the category holds beyond what is worth suggesting. Without
-          // it the rest of the catalog is reachable only by guessing at a
-          // name in the search box.
-          //
-          // "… and N other" continues the list above it, so a category with
-          // nothing suggested — where it continues nothing — counts what is
-          // there instead. Centered and bold because it is the one row that
-          // is not an extension: it reads as the end of the section rather
-          // than as another thing to install.
-          if (hidden > 0) {
-            shownOffers.add('more:$category');
-            final theme = Theme.of(context);
-            rows.add(
-              ListTile(
-                key: ValueKey('catalog-more-$category'),
-                title: Text(
-                  shown.isEmpty ? t.extensionsPanel.availableInCategory(count: hidden) : t.extensionsPanel.moreInCategory(count: hidden),
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+          shownOffers.add('fold:$category:$categoryOpen:$moreOpen');
+          final more = sectionRows[_moreSection]!;
+          final moreOffered = bySection[_moreSection]!.where((key) => !installedByKey.containsKey(key)).length;
+          rows.add(
+            SectionedSlivers(
+              slivers: [
+                settingsCategorySliver(
+                  context,
+                  title: extensionCategoryTitle(category),
+                  expanded: categoryOpen,
+                  onToggle: () => _toggleFold(categoryFold, byDefault: true),
+                  sliver: SliverMainAxisGroup(
+                    slivers: sectionSlivers(context, [
+                      ...sectionRows[_ownSection]!,
+                      if (sectionRows[_suggestedSection]!.isNotEmpty) ...[
+                        SectionHeader(t.extensionsPanel.suggestedSection),
+                        ...sectionRows[_suggestedSection]!,
+                      ],
+                      // Its count of offers in the heading, so a shut section
+                      // still says whether it is worth opening.
+                      if (more.isNotEmpty) ...[
+                        SectionHeader(
+                          t.extensionsPanel.moreAvailableSection(count: moreOffered),
+                          expanded: moreOpen,
+                          onTap: () => _toggleFold(moreFold, byDefault: false),
+                        ),
+                        ...more,
+                      ],
+                    ]),
+                  ),
                 ),
-                onTap: () => setState(() => _expandedCategories.add(category)),
-              ),
-            );
-          }
+              ],
+            ),
+          );
         }
 
         // The catalog's own state, once, under whatever it managed to say —
@@ -991,54 +1063,63 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: rowInset.add(const EdgeInsets.only(top: Space.lg, bottom: Space.xl)),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      selectAllOnFocus: false,
-                      key: const ValueKey('extensions-search'),
-                      controller: _searchController,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        // Filled, like the Settings search it sits a panel
-                        // away from: an unfilled field on a panel's own ground
-                        // is a rectangle of border with nothing saying it can
-                        // be typed in.
-                        filled: true,
-                        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-                        suffixIcon: query.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(MdiIcons.close, size: 18, semanticLabel: 'Clear'),
-                                onPressed: () => setState(() => _searchController.clear()),
-                              ),
-                        hintText: t.extensionsPanel.searchHint,
-                        border: searchBorder,
-                        focusedBorder: haloFocusedBorder(searchBorder, context),
+            // The Settings search strip's ground and field (settings_view.dart,
+            // which says why): the two panels sit side by side, and their
+            // search bars are the same control.
+            ColoredBox(
+              color: Color.lerp(Theme.of(context).colorScheme.surface, haloDialogBandColorAt(context), 0.5)!,
+              child: Padding(
+                padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.xl)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        selectAllOnFocus: false,
+                        key: const ValueKey('extensions-search'),
+                        controller: _searchController,
+                        onChanged: (_) => _queryChanged(),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          filled: true,
+                          fillColor: Theme.of(context).colorScheme.surface,
+                          prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                          suffixIcon: query.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(MdiIcons.close, size: 18, semanticLabel: 'Clear'),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _queryChanged();
+                                  },
+                                ),
+                          hintText: t.extensionsPanel.searchHint,
+                          border: searchBorder,
+                          focusedBorder: haloFocusedBorder(searchBorder, context),
+                        ),
                       ),
                     ),
-                  ),
-                  // An icon beside the search field rather than a labelled
-                  // button under the list. Hidden in a hook-filtered panel,
-                  // which is asking a narrower question than "what do I
-                  // have". The label survives as the icon's semantics — it is
-                  // the only name a screen reader has for it.
-                  if (widget.onlyHook == null) ...[
-                    const SizedBox(width: Space.md),
-                    IconButton(
-                      key: const ValueKey('extensions-install-from-file'),
-                      icon: Icon(MdiIcons.fileCogOutline, semanticLabel: t.extensionsPanel.installFromFile),
-                      // Disabled until the store exists — it is built on the
-                      // first loadAvailableExtensions, and a press before that
-                      // has nothing to install into.
-                      onPressed: _applying || extensionService.installed == null ? null : () => unawaited(_install()),
-                    ),
+                    // An icon beside the search field rather than a labelled
+                    // button under the list. Hidden in a hook-filtered panel,
+                    // which is asking a narrower question than "what do I
+                    // have". The label survives as the icon's semantics — it is
+                    // the only name a screen reader has for it.
+                    if (widget.onlyHook == null) ...[
+                      const SizedBox(width: Space.md),
+                      HoverLabel(
+                        label: t.extensionsPanel.installFromFile,
+                        namesChild: false,
+                        child: IconButton(
+                          key: const ValueKey('extensions-install-from-file'),
+                          icon: Icon(MdiIcons.fileCogOutline, semanticLabel: t.extensionsPanel.installFromFile),
+                          // Disabled until the store exists — it is built on the
+                          // first loadAvailableExtensions, and a press before that
+                          // has nothing to install into.
+                          onPressed: _applying || extensionService.installed == null ? null : () => unawaited(_install()),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             Expanded(

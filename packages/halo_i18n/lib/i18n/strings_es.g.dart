@@ -291,14 +291,6 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => 'Cazando ${program}';
 	@override String hookActivating({required Object program}) => 'Activando ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
-		one: '… y ${count} extensión más',
-		other: '… y ${count} extensiones más',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
-		one: '${count} extensión disponible',
-		other: '${count} extensiones disponibles',
-	);
 }
 
 // Path: home
@@ -3233,9 +3225,6 @@ class _Translations$settings$radio$pttKey$es extends Translations$settings$radio
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Controlar PTT con [\']';
-	@override String get descriptionOn => 'En modos de voz, [\'] pone la radio a transmitir y [\'] otra vez la detiene. Se detiene sola al minuto.';
-	@override String get descriptionOff => 'La tecla [\'] no pone la radio a transmitir.';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Transmitiendo';
 }
@@ -3811,8 +3800,6 @@ extension on TranslationsEs {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Cazando ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activando ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '… y ${count} extensión más', other: '… y ${count} extensiones más', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} extensión disponible', other: '${count} extensiones disponibles', ), 
 			'home.title' => 'Registrador Portátil',
 			'home.newOperation' => 'Nueva operación',
 			'home.stationCallsign' => 'Indicativo de la estación',
@@ -4157,10 +4144,10 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioSwr' => 'ROE',
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
 			'operation.export.title' => 'Exportaciones de la operación',
 			'operation.export.syncedOperation' => 'La operación está sincronizada',
@@ -4671,10 +4658,10 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
 			'settings.logging.bands' => 'Bandas Preferidas',
@@ -4710,9 +4697,6 @@ extension on TranslationsEs {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Controlar PTT con [\']',
-			'settings.radio.pttKey.descriptionOn' => 'En modos de voz, [\'] pone la radio a transmitir y [\'] otra vez la detiene. Se detiene sola al minuto.',
-			'settings.radio.pttKey.descriptionOff' => 'La tecla [\'] no pone la radio a transmitir.',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Transmitiendo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
@@ -5185,13 +5169,13 @@ extension on TranslationsEs {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'En ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} está en otro dispositivo',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Esta radio está conectada a ${device}. Su conexión y ajustes se configuran en ese dispositivo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom, entre ellas la IC-705, presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso: el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio (por USB, CI-V USB Baud Rate). Pon en la radio el mismo número que aquí, **no Auto**. En Auto algunas radios, entre ellas la IC-7300, conectan y dejan de responder al cabo de un minuto o así.\n- **Otra aplicación puede tener el puerto abierto**: WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.ic705PortNote' => '\n- El **IC-705** presenta dos puertos serie USB, ambos con el nombre de la radio. CI-V está en el **primero**, que el selector señala cuando puede distinguirlos.',
 			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
 			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta, y el que el selector señala.',
@@ -5699,13 +5683,13 @@ extension on TranslationsEs {
 			'exportSettings.type' => 'Tipo de exportación',
 			'exportSettings.defaults' => 'Valores predeterminados',
 			'exportSettings.includeLookupData' => 'Incluir datos de consultas',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.customTemplates' => 'Plantillas personalizadas',
 			'exportSettings.filenameTemplate' => 'Plantilla del nombre de archivo',
 			'exportSettings.compactFilenameTemplate' => 'Plantilla del nombre compacto',
 			'exportSettings.titleTemplate' => 'Plantilla del título',
 			'exportSettings.adifNotesTemplate' => 'Notas de QSO ADIF',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.adifCommentTemplate' => 'Comentarios de QSO ADIF',
 			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
 			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',

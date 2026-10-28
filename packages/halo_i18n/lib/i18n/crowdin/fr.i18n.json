@@ -175,15 +175,7 @@
     "hookScoring": "Calcul du score",
     "hookSpots": "Spots",
     "hookHunting": "Chasse ${program}",
-    "hookActivating": "Activation ${program}",
-    "moreInCategory": {
-      "one": "… et ${count} autre extension",
-      "other": "… et ${count} autres extensions"
-    },
-    "availableInCategory": {
-      "one": "${count} extension disponible",
-      "other": "${count} extensions disponibles"
-    }
+    "hookActivating": "Activation ${program}"
   },
   "home": {
     "title": "Logger portable",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Contrôler le PTT avec [']",
-        "descriptionOn": "En modes Phonie, ['] passe la radio en émission et ['] à nouveau la repasse en réception. Elle repasse d'elle-même en réception au bout d'une minute.",
-        "descriptionOff": "La touche ['] ne passe pas la radio en émission.",
         "pill": "TX",
         "transmitting": "Émission"
       },

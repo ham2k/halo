@@ -319,14 +319,8 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get hookSpots => 'spots';
 	@override String hookHunting({required Object program}) => 'hunting ${program}';
 	@override String hookActivating({required Object program}) => 'activating ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '… and ${count} other extension',
-		other: '… and ${count} other extensions',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '${count} extension available',
-		other: '${count} extensions available',
-	);
+	@override String get suggestedSection => 'suggested';
+	@override String moreAvailableSection({required Object count}) => 'more available (${count})';
 }
 
 // Path: home
@@ -3850,9 +3844,10 @@ class _Translations$settings$radio$pttKey$qrp extends Translations$settings$radi
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'control ptt with [\']';
-	@override String get descriptionOn => 'in phone modes, [\'] keys the radio and [\'] again unkeys it. it unkeys by itself after a minute.';
-	@override String get descriptionOff => 'the [\'] key does not key the radio.';
+	@override String get title => 'control ptt with keyboard';
+	@override late final _Translations$settings$radio$pttKey$modes$qrp modes = _Translations$settings$radio$pttKey$modes$qrp._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$qrp descriptions = _Translations$settings$radio$pttKey$descriptions$qrp._(_root);
+	@override String get key => 'ptt key';
 	@override String get pill => 'tx';
 	@override String get transmitting => 'transmitting';
 }
@@ -4342,6 +4337,30 @@ class _Translations$operation$layout$panels$weatherConditions$qrp extends Transl
 	@override String get thunderstormWithHail => 'thunderstorm with hail';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$qrp extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'no';
+	@override String get toggle => 'toggle';
+	@override String get hold => 'hold';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$qrp extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'the keyboard does not key the radio.';
+	@override String get toggle => 'in phone modes, the ptt key keys the radio and pressing it again unkeys it. it unkeys by itself after a minute.';
+	@override String get hold => 'in phone modes, the radio transmits while the ptt key is held down, for up to a minute.';
+}
+
 /// The flat map containing all translations for locale <qrp>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -4542,8 +4561,8 @@ extension on TranslationsQrp {
 			'extensionsPanel.hookSpots' => 'spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'hunting ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'activating ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '… and ${count} other extension', other: '… and ${count} other extensions', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension available', other: '${count} extensions available', ), 
+			'extensionsPanel.suggestedSection' => 'suggested',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'more available (${count})',
 			'home.title' => 'portable logger',
 			'home.newOperation' => 'new operation',
 			'home.stationCallsign' => 'station callsign',
@@ -5630,9 +5649,14 @@ extension on TranslationsQrp {
 			'settings.radio.units.kHz' => 'khz',
 			'settings.radio.units.kHzPerSecond' => 'khz/s',
 			'settings.radio.units.hz' => 'hz',
-			'settings.radio.pttKey.title' => 'control ptt with [\']',
-			'settings.radio.pttKey.descriptionOn' => 'in phone modes, [\'] keys the radio and [\'] again unkeys it. it unkeys by itself after a minute.',
-			'settings.radio.pttKey.descriptionOff' => 'the [\'] key does not key the radio.',
+			'settings.radio.pttKey.title' => 'control ptt with keyboard',
+			'settings.radio.pttKey.modes.off' => 'no',
+			'settings.radio.pttKey.modes.toggle' => 'toggle',
+			'settings.radio.pttKey.modes.hold' => 'hold',
+			'settings.radio.pttKey.descriptions.off' => 'the keyboard does not key the radio.',
+			'settings.radio.pttKey.descriptions.toggle' => 'in phone modes, the ptt key keys the radio and pressing it again unkeys it. it unkeys by itself after a minute.',
+			'settings.radio.pttKey.descriptions.hold' => 'in phone modes, the radio transmits while the ptt key is held down, for up to a minute.',
+			'settings.radio.pttKey.key' => 'ptt key',
 			'settings.radio.pttKey.pill' => 'tx',
 			'settings.radio.pttKey.transmitting' => 'transmitting',
 			'settings.radio.smartVfoSnap.title' => 'smart vfo snap',
@@ -5885,13 +5909,13 @@ extension on TranslationsQrp {
 			'settings.syncPanel.configuration' => 'sync configuration',
 			'settings.syncPanel.enableTitle' => 'sync with ham2k log filer',
 			'settings.syncPanel.enabledDescription' => 'backing up and syncing your log across devices',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => 'off — staying on this device only',
 			'settings.syncPanel.syncing' => 'syncing',
 			'settings.syncPanel.account' => 'account',
 			'settings.syncPanel.refresh' => 'refresh',
 			'settings.syncPanel.switchAccounts' => 'switch accounts',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccountsDescription' => 'link this device to another account with a qr code or email',
 			'settings.syncPanel.connectionRequests' => 'connection requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'a device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
@@ -6399,13 +6423,13 @@ extension on TranslationsQrp {
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'the last download had only ${imported} of ${existing} records and was not used. refresh to accept it.',
 			'settings.offlineData.extensionsSection' => 'extensions',
 			'settings.profiles.notSet' => 'not set',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.personalInfo' => 'personal info',
 			'settings.profiles.personalInfoNote' => 'this might be included in generated logs when relevant for submissions',
 			'settings.profiles.name' => 'name',
 			'settings.profiles.email' => 'email',
 			'settings.profiles.club' => 'club',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.arrlSection' => 'arrl section',
 			'settings.profiles.racSection' => 'rac section',
 			'settings.profiles.section' => 'section',

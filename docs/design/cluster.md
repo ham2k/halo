@@ -166,8 +166,9 @@ previous choice.
 A node that requires registration refuses an unregistered call's spot.
 Registration is per node and is the operator's to arrange with its sysop.
 
-The Settings section appears only when a loaded extension declares a cluster
-grant: a node nothing posts to is a setting with nothing behind it.
+These settings are the DX Cluster section of Settings' Spotting category. It
+appears only when a loaded extension declares a cluster grant: a node nothing
+posts to is a setting with nothing behind it.
 
 **Connect to cluster** (on by default) is the operator's way to keep the app
 off every node. Turned off, an open session closes at once, a connect under
@@ -177,7 +178,7 @@ the session comes back if anything is subscribed.
 ## Console
 
 The Cluster Console — Settings' Show Console row, or the `CLUSTER` command
-(`spot-commands`), where the Settings section shows — shows the session as it happens: every line the node
+(`spot-commands`), where the DX Cluster section shows — shows the session as it happens: every line the node
 sends, every line sent (the login call, commands typed there, extensions'
 commands and spots; never the password), each change of state, and each
 command sent again or given up on, with why. It keeps as many entries as the

@@ -177,7 +177,13 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
 
   /// ['] in a Phone mode (cat_ptt.dart) — this station's radios, never a peer's.
   late final _ptt = CatPtt()..held.addListener(notifyListeners);
-  late final pttKeys = PttKeyboard(held: _ptt.held, release: () => _ptt.owner == null && _ptt.release(), escape: stopKeying, toggle: togglePtt);
+  late final pttKeys = PttKeyboard(
+    held: _ptt.held,
+    release: () => _ptt.owner == null && _ptt.release(),
+    escape: stopKeying,
+    toggle: togglePtt,
+    hold: () => _settings.pttKeyMode == PttKeyMode.hold,
+  );
   PttSession? _pttSession(String? uuid) => switch (uuid == null ? null : connectedSession(uuid)) {
     final PttSession session => session,
     _ => null,

@@ -25,6 +25,7 @@ import 'home_navigation_rail.dart';
 import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
+import '../settings/settings_section_folds.dart';
 import 'extensions_panel.dart';
 import 'peers_panel.dart';
 import 'station_panel.dart';
@@ -886,7 +887,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     var elements = _elements;
     if (elements != null && widget.placedPanels.isNotEmpty) {
       elements = [
-        ...elements,
+        ...FormRenderer.closingSections(elements),
         for (final panel in widget.placedPanels)
           if (_placedRows[panel['panelKey']] case final row?)
             {
@@ -960,6 +961,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       },
       onOpenLink: openExternalUrl,
       onOpenPanel: widget.openPanel == null && widget.placedPanels.isEmpty ? null : _openPanel,
+      sectionFolds: SettingsSectionFolds(widget.services.settings.prefs, widget.group.key),
       onSubmit: (_) {},
       onCancel: () {},
     );

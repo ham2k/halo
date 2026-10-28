@@ -175,15 +175,7 @@
     "hookScoring": "计分",
     "hookSpots": "信号",
     "hookHunting": "猎取 ${program}",
-    "hookActivating": "激活 ${program}",
-    "moreInCategory": {
-      "one": "…还有 ${count} 个扩展",
-      "other": "…还有 ${count} 个扩展"
-    },
-    "availableInCategory": {
-      "one": "${count} 个可用扩展",
-      "other": "${count} 个可用扩展"
-    }
+    "hookActivating": "激活 ${program}"
   },
   "home": {
     "title": "Portable Logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "用 ['] 控制 PTT",
-        "descriptionOn": "在话音模式下，按 ['] 让电台发射，再按一次 ['] 停止发射。一分钟后会自动停止发射。",
-        "descriptionOff": "['] 键不会让电台发射。",
         "pill": "TX",
         "transmitting": "正在发射"
       },

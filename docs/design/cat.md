@@ -2260,9 +2260,17 @@ needs nothing.
 
 ## PTT
 
-**Control PTT with [']** (Radio settings, just before Smart VFO Snap; under the `keyer` experiment,
-off by default): in a Phone mode — the DRAFT's, as for the voice memories — `'` keys radio1 over CAT
-and `'` again unkeys it. Escape unkeys it too, alongside every message it stops. Not with ⌘, Ctrl or
+**Control PTT with Keyboard** (Radio settings, just before Smart VFO Snap; under the `keyer`
+experiment): No (the default), Toggle or Hold. In a Phone mode — the DRAFT's, as for the voice
+memories — Toggle keys radio1 over CAT on `'` and unkeys it on `'` again; Hold keys it while `'` is
+down and unkeys it as the key comes up. `'` is the PTT key unless rebound (`radio.ptt`); a PTT Key row
+under the setting names it, and opens its key editor while Keyboard Shortcuts is on. Stored as
+`pttKeyMode`, not as a string under the older `pttKey` — an older build reads that as a bool and would
+throw on a synced string; a store holding only `pttKey: true` reads as Toggle, which is what it did.
+Escape unkeys either one too, alongside every message it stops. A held key also drops when the app
+stops being in front (`AppLifecycleListener`): with the window's focus gone the key-up never arrives,
+and the transmitter would stay on until the timeout. A press in Hold over a key someone else holds —
+a CAT server client's — neither takes it nor drops it, and its release drops nothing. Not with ⌘, Ctrl or
 ⌥ held. The key is matched by the CHARACTER it typed (`event.character`), not by its name: US
 Shift+`'` types `"` and a German or Swiss layout types `'` with Shift, and the platforms disagree
 about which key name either one reports. The view tracks the draft whenever PTT is possible, not only

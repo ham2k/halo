@@ -2975,11 +2975,29 @@ export interface FormHeader {
   /// editor's). A settingsPanel is already inside a category, so its own
   /// headings take 'section'.
   style?: "default" | "section" | "category"
+  /// A 'section' header folds the rows under it, up to the next band or
+  /// `sectionEnd`; the
+  /// operator opens and shuts it, and the app remembers which way each was
+  /// left. `collapsed: true` starts it shut until the operator opens it;
+  /// omitted, it starts open. Ignored for any other style.
+  collapsed?: boolean
+  /// Names a 'section' for the fold the app remembers, unique within the
+  /// panel. Without it the title does, so the fold is forgotten when the
+  /// title changes — a new language, a reworded heading.
+  key?: string
   /// Settings-panel-only; see FormField.environment. Not `common` — a
   /// header is chrome for the rows under it, and the Common Preferences
   /// section shows flagged rows with no bands at all, so there is nothing
   /// for a header to opt into there.
   environment?: string | string[]
+}
+
+/// Ends the 'section' or 'category' band above it: the rows after it belong
+/// to no band, and do not fold with it. Settings joined to a list beside
+/// others get one after them whenever they leave a band open, so what
+/// follows is never drawn as part of their last section.
+export interface FormSectionEnd {
+  type: "sectionEnd"
 }
 
 export interface FormSectionDivider {
@@ -3049,7 +3067,7 @@ export interface FormLinkElement {
   environment?: string | string[]
 }
 
-export type FormElement = FormField | FormHeader | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
+export type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
 
 export interface FormDefinition {
   title?: string

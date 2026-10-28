@@ -319,14 +319,8 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get hookSpots => '··· ·——· ——— — ···';
 	@override String hookHunting({required Object program}) => '···· ··— —· — ·· —· ——· / ${program}';
 	@override String hookActivating({required Object program}) => '·— —·—· — ·· ···— ·— — ·· —· ——· / ${program}';
-	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
-		one: '… / ·— —· —·· / ${count} / ——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —·',
-		other: '… / ·— —· —·· / ${count} / ——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —· ···',
-	);
-	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
-		one: '${count} / · —··— — · —· ··· ·· ——— —· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-		other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-	);
+	@override String get suggestedSection => '··· ··— ——· ——· · ··· — · —··';
+	@override String moreAvailableSection({required Object count}) => '—— ——— ·—· · / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / —·——· ${count} —·——·—';
 }
 
 // Path: home
@@ -3850,9 +3844,10 @@ class _Translations$settings$radio$pttKey$cw extends Translations$settings$radio
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '—·—· ——— —· — ·—· ——— ·—·· / ·——· — — / ·—— ·· — ···· / [ ·————· ]';
-	@override String get descriptionOn => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / [ ·————· ] / —·— · —·—— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / [ ·————· ] / ·— ——· ·— ·· —· / ··— —· —·— · —·—— ··· / ·· — ·—·—·— / ·· — / ··— —· —·— · —·—— ··· / —··· —·—— / ·· — ··· · ·—·· ··—· / ·— ··—· — · ·—· / ·— / —— ·· —· ··— — · ·—·—·—';
-	@override String get descriptionOff => '— ···· · / [ ·————· ] / —·— · —·—— / —·· ——— · ··· / —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—';
+	@override String get title => '—·—· ——— —· — ·—· ——— ·—·· / ·——· — — / ·—— ·· — ···· / —·— · —·—— —··· ——— ·— ·—· —··';
+	@override late final _Translations$settings$radio$pttKey$modes$cw modes = _Translations$settings$radio$pttKey$modes$cw._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$cw descriptions = _Translations$settings$radio$pttKey$descriptions$cw._(_root);
+	@override String get key => '·——· — — / —·— · —·——';
 	@override String get pill => '— —··—';
 	@override String get transmitting => '— ·—· ·— —· ··· —— ·· — — ·· —· ——·';
 }
@@ -4342,6 +4337,30 @@ class _Translations$operation$layout$panels$weatherConditions$cw extends Transla
 	@override String get thunderstormWithHail => '— ···· ··— —· —·· · ·—· ··· — ——— ·—· —— / ·—— ·· — ···· / ···· ·— ·· ·—··';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$cw extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => '—· ———';
+	@override String get toggle => '— ——— ——· ——· ·—·· ·';
+	@override String get hold => '···· ——— ·—·· —··';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$cw extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => '— ···· · / —·— · —·—— —··· ——— ·— ·—· —·· / —·· ——— · ··· / —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—';
+	@override String get toggle => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·——· — — / —·— · —·—— / —·— · —·—— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / ·——· ·—· · ··· ··· ·· —· ——· / ·· — / ·— ——· ·— ·· —· / ··— —· —·— · —·—— ··· / ·· — ·—·—·— / ·· — / ··— —· —·— · —·—— ··· / —··· —·—— / ·· — ··· · ·—·· ··—· / ·— ··—· — · ·—· / ·— / —— ·· —· ··— — · ·—·—·—';
+	@override String get hold => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·—· ·— —·· ·· ——— / — ·—· ·— —· ··· —— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ·——· — — / —·— · —·—— / ·· ··· / ···· · ·—·· —·· / —·· ——— ·—— —· ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ·— / —— ·· —· ··— — · ·—·—·—';
+}
+
 /// The flat map containing all translations for locale <cw>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -4542,8 +4561,8 @@ extension on TranslationsCw {
 			'extensionsPanel.hookSpots' => '··· ·——· ——— — ···',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '···· ··— —· — ·· —· ——· / ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '·— —·—· — ·· ···— ·— — ·· —· ——· / ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '… / ·— —· —·· / ${count} / ——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —·', other: '… / ·— —· —·· / ${count} / ——— — ···· · ·—· / · —··— — · —· ··· ·· ——— —· ···', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·', ), 
+			'extensionsPanel.suggestedSection' => '··· ··— ——· ——· · ··· — · —··',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => '—— ——— ·—· · / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / —·——· ${count} —·——·—',
 			'home.title' => '·——· ——— ·—· — ·— —··· ·—·· · / ·—·· ——— ——· ——· · ·—·',
 			'home.newOperation' => '—· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'home.stationCallsign' => '··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·',
@@ -5630,9 +5649,14 @@ extension on TranslationsCw {
 			'settings.radio.units.kHz' => '—·— ···· ——··',
 			'settings.radio.units.kHzPerSecond' => '—·— ···· ——·· —··—· ···',
 			'settings.radio.units.hz' => '···· ——··',
-			'settings.radio.pttKey.title' => '—·—· ——— —· — ·—· ——— ·—·· / ·——· — — / ·—— ·· — ···· / [ ·————· ]',
-			'settings.radio.pttKey.descriptionOn' => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / [ ·————· ] / —·— · —·—— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / [ ·————· ] / ·— ——· ·— ·· —· / ··— —· —·— · —·—— ··· / ·· — ·—·—·— / ·· — / ··— —· —·— · —·—— ··· / —··· —·—— / ·· — ··· · ·—·· ··—· / ·— ··—· — · ·—· / ·— / —— ·· —· ··— — · ·—·—·—',
-			'settings.radio.pttKey.descriptionOff' => '— ···· · / [ ·————· ] / —·— · —·—— / —·· ——— · ··· / —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—',
+			'settings.radio.pttKey.title' => '—·—· ——— —· — ·—· ——— ·—·· / ·——· — — / ·—— ·· — ···· / —·— · —·—— —··· ——— ·— ·—· —··',
+			'settings.radio.pttKey.modes.off' => '—· ———',
+			'settings.radio.pttKey.modes.toggle' => '— ——— ——· ——· ·—·· ·',
+			'settings.radio.pttKey.modes.hold' => '···· ——— ·—·· —··',
+			'settings.radio.pttKey.descriptions.off' => '— ···· · / —·— · —·—— —··· ——— ·— ·—· —·· / —·· ——— · ··· / —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—',
+			'settings.radio.pttKey.descriptions.toggle' => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·——· — — / —·— · —·—— / —·— · —·—— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / ·——· ·—· · ··· ··· ·· —· ——· / ·· — / ·— ——· ·— ·· —· / ··— —· —·— · —·—— ··· / ·· — ·—·—·— / ·· — / ··— —· —·— · —·—— ··· / —··· —·—— / ·· — ··· · ·—·· ··—· / ·— ··—· — · ·—· / ·— / —— ·· —· ··— — · ·—·—·—',
+			'settings.radio.pttKey.descriptions.hold' => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·—· ·— —·· ·· ——— / — ·—· ·— —· ··· —— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ·——· — — / —·— · —·—— / ·· ··· / ···· · ·—·· —·· / —·· ——— ·—— —· ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ·— / —— ·· —· ··— — · ·—·—·—',
+			'settings.radio.pttKey.key' => '·——· — — / —·— · —·——',
 			'settings.radio.pttKey.pill' => '— —··—',
 			'settings.radio.pttKey.transmitting' => '— ·—· ·— —· ··· —— ·· — — ·· —· ——·',
 			'settings.radio.smartVfoSnap.title' => '··· —— ·— ·—· — / ···— ··—· ——— / ··· —· ·— ·——·',
@@ -5885,13 +5909,13 @@ extension on TranslationsCw {
 			'settings.syncPanel.configuration' => '··· —·—— —· —·—· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.syncPanel.enableTitle' => '··· —·—— —· —·—· / ·—— ·· — ···· / ···· ·— —— ··——— —·— / ·—·· ——— ——· / ··—· ·· ·—·· · ·—·',
 			'settings.syncPanel.enabledDescription' => '—··· ·— —·—· —·— ·· —· ——· / ··— ·——· / ·— —· —·· / ··· —·—— —· —·—· ·· —· ——· / —·—— ——— ··— ·—· / ·—·· ——— ——· / ·— —·—· ·—· ——— ··· ··· / —·· · ···— ·· —·—· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => '——— ··—· ··—· / — / ··· — ·— —·—— ·· —· ——· / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· · / ——— —· ·—·· —·——',
 			'settings.syncPanel.syncing' => '··· —·—— —· —·—· ·· —· ——·',
 			'settings.syncPanel.account' => '·— —·—· —·—· ——— ··— —· —',
 			'settings.syncPanel.refresh' => '·—· · ··—· ·—· · ··· ····',
 			'settings.syncPanel.switchAccounts' => '··· ·—— ·· — —·—· ···· / ·— —·—· —·—· ——— ··— —· — ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccountsDescription' => '·—·· ·· —· —·— / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — / ·—— ·· — ···· / ·— / ——·— ·—· / —·—· ——— —·· · / ——— ·—· / · —— ·— ·· ·—··',
 			'settings.syncPanel.connectionRequests' => '—·—· ——— —· —· · —·—· — ·· ——— —· / ·—· · ——·— ··— · ··· — ···',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·— / —·· · ···— ·· —·—· · / ·· ··· / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', other: '${n} / —·· · ···— ·· —·—· · ··· / ·— ·—· · / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', ), 
@@ -6399,13 +6423,13 @@ extension on TranslationsCw {
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => '— ···· · / ·—·· ·— ··· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ···· ·— —·· / ——— —· ·—·· —·—— / ${imported} / ——— ··—· / ${existing} / ·—· · —·—· ——— ·—· —·· ··· / ·— —· —·· / ·—— ·— ··· / —· ——— — / ··— ··· · —·· ·—·—·— / ·—· · ··—· ·—· · ··· ···· / — ——— / ·— —·—· —·—· · ·——· — / ·· — ·—·—·—',
 			'settings.offlineData.extensionsSection' => '· —··— — · —· ··· ·· ——— —· ···',
 			'settings.profiles.notSet' => '—· ——— — / ··· · —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.personalInfo' => '·——· · ·—· ··· ——— —· ·— ·—·· / ·· —· ··—· ———',
 			'settings.profiles.personalInfoNote' => '— ···· ·· ··· / —— ·· ——· ···· — / —··· · / ·· —· —·—· ·—·· ··— —·· · —·· / ·· —· / ——· · —· · ·—· ·— — · —·· / ·—·· ——— ——· ··· / ·—— ···· · —· / ·—· · ·—·· · ···— ·— —· — / ··—· ——— ·—· / ··· ··— —··· —— ·· ··· ··· ·· ——— —· ···',
 			'settings.profiles.name' => '—· ·— —— ·',
 			'settings.profiles.email' => '· —— ·— ·· ·—··',
 			'settings.profiles.club' => '—·—· ·—·· ··— —···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.arrlSection' => '·— ·—· ·—· ·—·· / ··· · —·—· — ·· ——— —·',
 			'settings.profiles.racSection' => '·—· ·— —·—· / ··· · —·—· — ·· ——— —·',
 			'settings.profiles.section' => '··· · —·—· — ·· ——— —·',

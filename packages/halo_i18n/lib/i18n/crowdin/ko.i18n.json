@@ -175,15 +175,7 @@
     "hookScoring": "점수 계산",
     "hookSpots": "스팟",
     "hookHunting": "${program} 추적",
-    "hookActivating": "${program} 활성화",
-    "moreInCategory": {
-      "one": "… 외 확장 기능 ${count}개",
-      "other": "… 외 확장 기능 ${count}개"
-    },
-    "availableInCategory": {
-      "one": "확장 기능 ${count}개 사용 가능",
-      "other": "확장 기능 ${count}개 사용 가능"
-    }
+    "hookActivating": "${program} 활성화"
   },
   "home": {
     "title": "포터블 로거",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "[']로 PTT 제어",
-        "descriptionOn": "보이스 모드에서 [']를 누르면 송신하고, 다시 누르면 송신을 멈춥니다. 1분이 지나면 자동으로 송신을 멈춥니다.",
-        "descriptionOff": "['] 키로 송신하지 않습니다.",
         "pill": "TX",
         "transmitting": "송신 중"
       },

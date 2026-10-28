@@ -183,7 +183,9 @@ void main() {
     // twice — once by the pane, once by the heading's own reading of the
     // row inset.
     final panel = find.byType(ExtensionSettingsPanel);
-    final heading = tester.getTopLeft(find.descendant(of: panel, matching: find.text('Built-in Notes'))).dx;
+    // The heading's own box, not its title: a section's fold caret leads it.
+    final title = find.descendant(of: panel, matching: find.text('Built-in Notes'));
+    final heading = tester.getTopLeft(find.ancestor(of: title, matching: find.byType(Container)).first).dx;
     // The Data Files list behind the pane has a row of this name too.
     final label = tester.getTopLeft(find.descendant(of: panel, matching: find.text("Ham2K's Hams of Note"))).dx;
     // Measured from the pane's surface, not the panel: a pane that pads its

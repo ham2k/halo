@@ -176,15 +176,7 @@
     "hookScoring": "Puntuación",
     "hookSpots": "Spots",
     "hookHunting": "Cazando ${program}",
-    "hookActivating": "Activando ${program}",
-    "moreInCategory": {
-      "one": "… y ${count} extensión más",
-      "other": "… y ${count} extensiones más"
-    },
-    "availableInCategory": {
-      "one": "${count} extensión disponible",
-      "other": "${count} extensiones disponibles"
-    }
+    "hookActivating": "Activando ${program}"
   },
   "home": {
     "title": "Registrador Portátil",
@@ -1306,9 +1298,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Controlar PTT con [']",
-        "descriptionOn": "En modos de voz, ['] pone la radio a transmitir y ['] otra vez la detiene. Se detiene sola al minuto.",
-        "descriptionOff": "La tecla ['] no pone la radio a transmitir.",
         "pill": "TX",
         "transmitting": "Transmitiendo"
       },

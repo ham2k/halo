@@ -706,17 +706,11 @@ class Translations$extensionsPanel$en {
 	/// en: 'Activating ${program}'
 	String hookActivating({required Object program}) => 'Activating ${program}';
 
-	/// en: '(one) {… and ${count} other extension} (other) {… and ${count} other extensions}'
-	String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
-		one: '… and ${count} other extension',
-		other: '… and ${count} other extensions',
-	);
+	/// en: 'Suggested'
+	String get suggestedSection => 'Suggested';
 
-	/// en: '(one) {${count} extension available} (other) {${count} extensions available}'
-	String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
-		one: '${count} extension available',
-		other: '${count} extensions available',
-	);
+	/// en: 'More available (${count})'
+	String moreAvailableSection({required Object count}) => 'More available (${count})';
 }
 
 // Path: home
@@ -8417,14 +8411,14 @@ class Translations$settings$radio$pttKey$en {
 
 	// Translations
 
-	/// en: 'Control PTT with [']'
-	String get title => 'Control PTT with [\']';
+	/// en: 'Control PTT with Keyboard'
+	String get title => 'Control PTT with Keyboard';
 
-	/// en: 'In Phone modes, ['] keys the radio and ['] again unkeys it. It unkeys by itself after a minute.'
-	String get descriptionOn => 'In Phone modes, [\'] keys the radio and [\'] again unkeys it. It unkeys by itself after a minute.';
+	late final Translations$settings$radio$pttKey$modes$en modes = Translations$settings$radio$pttKey$modes$en.internal(_root);
+	late final Translations$settings$radio$pttKey$descriptions$en descriptions = Translations$settings$radio$pttKey$descriptions$en.internal(_root);
 
-	/// en: 'The ['] key does not key the radio.'
-	String get descriptionOff => 'The [\'] key does not key the radio.';
+	/// en: 'PTT Key'
+	String get key => 'PTT Key';
 
 	/// en: 'TX'
 	String get pill => 'TX';
@@ -9474,6 +9468,42 @@ class Translations$operation$layout$panels$weatherConditions$en {
 	String get thunderstormWithHail => 'Thunderstorm With Hail';
 }
 
+// Path: settings.radio.pttKey.modes
+class Translations$settings$radio$pttKey$modes$en {
+	Translations$settings$radio$pttKey$modes$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'No'
+	String get off => 'No';
+
+	/// en: 'Toggle'
+	String get toggle => 'Toggle';
+
+	/// en: 'Hold'
+	String get hold => 'Hold';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class Translations$settings$radio$pttKey$descriptions$en {
+	Translations$settings$radio$pttKey$descriptions$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'The keyboard does not key the radio.'
+	String get off => 'The keyboard does not key the radio.';
+
+	/// en: 'In Phone modes, the PTT key keys the radio and pressing it again unkeys it. It unkeys by itself after a minute.'
+	String get toggle => 'In Phone modes, the PTT key keys the radio and pressing it again unkeys it. It unkeys by itself after a minute.';
+
+	/// en: 'In Phone modes, the radio transmits while the PTT key is held down, for up to a minute.'
+	String get hold => 'In Phone modes, the radio transmits while the PTT key is held down, for up to a minute.';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -9674,8 +9704,8 @@ extension on Translations {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Hunting ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activating ${program}',
-			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '… and ${count} other extension', other: '… and ${count} other extensions', ), 
-			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension available', other: '${count} extensions available', ), 
+			'extensionsPanel.suggestedSection' => 'Suggested',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'More available (${count})',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'New operation',
 			'home.stationCallsign' => 'Station callsign',
@@ -10762,9 +10792,14 @@ extension on Translations {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
-			'settings.radio.pttKey.title' => 'Control PTT with [\']',
-			'settings.radio.pttKey.descriptionOn' => 'In Phone modes, [\'] keys the radio and [\'] again unkeys it. It unkeys by itself after a minute.',
-			'settings.radio.pttKey.descriptionOff' => 'The [\'] key does not key the radio.',
+			'settings.radio.pttKey.title' => 'Control PTT with Keyboard',
+			'settings.radio.pttKey.modes.off' => 'No',
+			'settings.radio.pttKey.modes.toggle' => 'Toggle',
+			'settings.radio.pttKey.modes.hold' => 'Hold',
+			'settings.radio.pttKey.descriptions.off' => 'The keyboard does not key the radio.',
+			'settings.radio.pttKey.descriptions.toggle' => 'In Phone modes, the PTT key keys the radio and pressing it again unkeys it. It unkeys by itself after a minute.',
+			'settings.radio.pttKey.descriptions.hold' => 'In Phone modes, the radio transmits while the PTT key is held down, for up to a minute.',
+			'settings.radio.pttKey.key' => 'PTT Key',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Transmitting',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
@@ -11017,13 +11052,13 @@ extension on Translations {
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
 			'settings.syncPanel.enabledDescription' => 'Backing up and syncing your log across devices',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => 'Off — staying on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
@@ -11531,13 +11566,13 @@ extension on Translations {
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.personalInfo' => 'Personal Info',
 			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
 			'settings.profiles.name' => 'Name',
 			'settings.profiles.email' => 'Email',
 			'settings.profiles.club' => 'Club',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.arrlSection' => 'ARRL Section',
 			'settings.profiles.racSection' => 'RAC Section',
 			'settings.profiles.section' => 'Section',

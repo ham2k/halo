@@ -175,15 +175,7 @@
     "hookScoring": "Poengberegning",
     "hookSpots": "Spots",
     "hookHunting": "Jakter ${program}",
-    "hookActivating": "Aktiverer ${program}",
-    "moreInCategory": {
-      "one": "… og ${count} annen utvidelse",
-      "other": "… og ${count} andre utvidelser"
-    },
-    "availableInCategory": {
-      "one": "${count} utvidelse tilgjengelig",
-      "other": "${count} utvidelser tilgjengelig"
-    }
+    "hookActivating": "Aktiverer ${program}"
   },
   "home": {
     "title": "Portabel logger",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Styr PTT med [']",
-        "descriptionOn": "I telefonimoduser nøkler ['] radioen, og ['] igjen slipper den. Den slipper av seg selv etter ett minutt.",
-        "descriptionOff": "[']-tasten nøkler ikke radioen.",
         "pill": "TX",
         "transmitting": "Sender"
       },

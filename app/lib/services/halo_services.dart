@@ -32,6 +32,7 @@ import '../views/operation/operation_location_screen.dart';
 import '../views/settings_view.dart';
 import '../views/cw_messages_dialog.dart';
 import '../views/voice_messages_dialog.dart';
+import '../views/settings/keyboard_shortcuts_panel.dart' show editKeyCommand, keyCommandTitle;
 import '../views/notice_actions.dart';
 import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
@@ -741,6 +742,9 @@ class HaLoServices with _TimeTravel {
         catServer: () => catServer,
         openCwKeyer: (context) => showCwMessagesDialog(context, this),
         openPhoneKeyer: (context) => showVoiceMessagesDialog(context, this),
+        openPttKey: (context) async {
+          if (keyBindingsService.enabled) await editKeyCommand(context, keyBindingsService, pttCommandId, keyCommandTitle(context.t, pttCommandId));
+        },
         // A peer's radio counts: it is listed with the station's own, and a
         // phone driving one uses every CAT and keyer setting there is.
         hasTransceivers: () =>

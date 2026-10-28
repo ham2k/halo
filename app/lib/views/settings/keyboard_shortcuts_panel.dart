@@ -411,17 +411,29 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                       ),
                     ),
                     const SizedBox(width: Space.sm),
-                    IconButton(
-                      onPressed: _import,
-                      icon: Icon(MdiIcons.fileImport, semanticLabel: t.import),
+                    HoverLabel(
+                      label: t.import,
+                      namesChild: false,
+                      child: IconButton(
+                        onPressed: _import,
+                        icon: Icon(MdiIcons.fileImport, semanticLabel: t.import),
+                      ),
                     ),
-                    IconButton(
-                      onPressed: _export,
-                      icon: Icon(MdiIcons.fileExport, semanticLabel: t.export),
+                    HoverLabel(
+                      label: t.export,
+                      namesChild: false,
+                      child: IconButton(
+                        onPressed: _export,
+                        icon: Icon(MdiIcons.fileExport, semanticLabel: t.export),
+                      ),
                     ),
-                    IconButton(
-                      onPressed: overrides.isEmpty ? null : _resetAll,
-                      icon: Icon(MdiIcons.restore, semanticLabel: t.resetAll),
+                    HoverLabel(
+                      label: t.resetAll,
+                      namesChild: false,
+                      child: IconButton(
+                        onPressed: overrides.isEmpty ? null : _resetAll,
+                        icon: Icon(MdiIcons.restore, semanticLabel: t.resetAll),
+                      ),
                     ),
                   ],
                 ),

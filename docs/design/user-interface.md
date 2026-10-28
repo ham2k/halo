@@ -359,7 +359,8 @@ it is not spacing.
 
 ### Buttons and hover labels
 
-**No tooltips.** Icon-only buttons do not get a hover label — never pass
+**No tooltips.** Icon-only buttons do not get a hover label, outside the
+toolbars and headers below — never pass
 `tooltip:` to an `IconButton` (or wrap a control in a `Tooltip`). A label that
 pops up over whatever is under the pointer is noise on desktop, and on touch
 it is unreachable anyway; an icon that needs a hover label to be understood
@@ -378,14 +379,23 @@ parameter to turn it off, so the app root wraps everything in
 enforces the rule; not setting `tooltip:` in our own code is the other half.
 Both halves are guarded by `app/test/guards/no_hover_tooltips_test.dart`.
 
-**One exception: `HoverLabel`.** A row of status icons with no other label —
-the Spotting control's source icons, which change with the extensions
-installed — names each one in a small popup while the mouse is over it. It is
-our own widget (`halo_widgets` `hover_label.dart`), not a `Tooltip`, and it
-also makes the name the icon's accessible label, which is what touch and
-screen readers get. Anything else that seems to need one still needs a
-better icon or a visible label; a second use is a decision to make here
-first.
+**The exception: `HoverLabel`.** Our own widget (`halo_widgets`
+`hover_label.dart`), not a `Tooltip`, which names a control in a small popup
+once the mouse has rested on it for 500 ms — a drift of a few pixels still
+counts as resting, so a pointer crossing a row of icons flashes nothing — in
+two places only:
+
+- **A row of status icons with no other label** — the Spotting control's
+  source icons, which change with the extensions installed. There the name is
+  also the icon's accessible label, which is what touch and screen readers get.
+- **An icon-only button in a toolbar or a header** — the buttons beside a
+  panel's search field (Extensions' Install from file; Keyboard Shortcuts'
+  Import, Export and Reset all). A run of bare glyphs there has no row text
+  to explain it. The button keeps its own semantics (`namesChild: false`):
+  its icon's `semanticLabel` still names it, and its tap stays reachable.
+
+Anything else that seems to need one still needs a better icon or a visible
+label; a further use is a decision to make here first.
 
 **Animated SWAPS stay out of the semantics tree.** A widget that keeps an
 outgoing subtree mounted beside its replacement and then destroys it —
@@ -1050,7 +1060,15 @@ behaves one way wherever the operator meets it:
     editor's docs);
   - a SECTION inside one folds on the unfilled heading — a `SectionHeader`
     given `expanded` and `onTap` inside a `SectionedListView`, which folds the
-    rows after it up to the next band (the Station panel's inventory);
+    rows after it up to the next band (the Station panel's inventory). Every
+    `FormRenderer` `style: 'section'` header folds this way, open unless it
+    declares `collapsed: true`; a host that passes `sectionFolds` keeps the
+    operator's choice across visits (every settings surface does, on this
+    device only, in `SettingsSectionFolds`). A `type: 'sectionEnd'` element
+    ends a section early, and `FormRenderer.closingSections` adds one after
+    a contribution that leaves a band open — the DX Cluster section in
+    Spotting, a category's own rows ahead of the extension panels placed in
+    it — so rows appended by someone else never fold away under it;
   - a fold INSIDE a form is a bold row in the form's inset —
     `CollapsibleSection.row`: a form's `type: 'disclosure'` element over its
     own `elements` (the equipment editor's Advanced settings), and

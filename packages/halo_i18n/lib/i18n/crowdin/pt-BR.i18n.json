@@ -175,15 +175,7 @@
     "hookScoring": "Pontuação",
     "hookSpots": "Spots",
     "hookHunting": "Caçando ${program}",
-    "hookActivating": "Ativando ${program}",
-    "moreInCategory": {
-      "one": "… e mais ${count} extensão",
-      "other": "… e mais ${count} extensões"
-    },
-    "availableInCategory": {
-      "one": "${count} extensão disponível",
-      "other": "${count} extensões disponíveis"
-    }
+    "hookActivating": "Ativando ${program}"
   },
   "home": {
     "title": "Logger Portátil",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Controlar PTT com [']",
-        "descriptionOn": "Nos modos de fonia, ['] aciona o rádio e ['] de novo o libera. Ele se libera sozinho depois de um minuto.",
-        "descriptionOff": "A tecla ['] não aciona o rádio.",
         "pill": "TX",
         "transmitting": "Transmitindo"
       },

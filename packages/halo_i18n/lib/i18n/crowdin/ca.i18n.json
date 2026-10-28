@@ -175,15 +175,7 @@
     "hookScoring": "Puntuació",
     "hookSpots": "Anuncis",
     "hookHunting": "Caça de ${program}",
-    "hookActivating": "Activació de ${program}",
-    "moreInCategory": {
-      "one": "… i ${count} extensió més",
-      "other": "… i ${count} extensions més"
-    },
-    "availableInCategory": {
-      "one": "${count} extensió disponible",
-      "other": "${count} extensions disponibles"
-    }
+    "hookActivating": "Activació de ${program}"
   },
   "home": {
     "title": "Registrador Portàtil",
@@ -1270,9 +1262,6 @@
         "hz": "Hz"
       },
       "pttKey": {
-        "title": "Controla el PTT amb [']",
-        "descriptionOn": "En modes de fonia, ['] posa la ràdio en transmissió i ['] de nou la treu. Surt de transmissió tota sola al cap d'un minut.",
-        "descriptionOff": "La tecla ['] no posa la ràdio en transmissió.",
         "pill": "TX",
         "transmitting": "Transmetent"
       },
