@@ -360,7 +360,14 @@ class RadioKeyer {
   bool get voiceMessagesFromComputer => _k.voiceMessagesFromComputer;
   bool voiceMessageUnplayable(int n) => _k.voiceMessageUnplayable(n);
   ComputerVoiceProblem? get computerVoiceProblem => _k.computerVoiceProblem;
+  String? get computerVoiceProblemDetail => _k.computerVoiceProblemDetail;
   bool get phoneKeyingOff => _k.phoneKeyingOff;
+
+  /// Voiced words (voiced_words.dart) — radio1's alone.
+  bool voiceMessageVoiced(int n) => _k.voiceMessageVoiced(n);
+  VoicedWords? get voicedWords => _k.voicedWords;
+  String voiceMessageTemplate(int n) => _k.settings.activeVoiceMessageSet.template(n);
+  Future<void> setVoiceMessageTemplate(int n, String template) => _k.setVoiceMessageTemplate(n, template);
   AudioPlayback? listenToVoiceMessage(int n) => _k.listenToVoiceMessage(n);
   void revealVoiceMessage(int n) => _k.revealVoiceMessage(n);
 

@@ -135,7 +135,7 @@ void main() {
     // Disabled, not absent: absent, recording reads as something the APP
     // does not do rather than something this RADIO does not.
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Record')).onPressed, isNull);
-    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Play')).onPressed, isNotNull);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Play on Radio')).onPressed, isNotNull);
   });
 
   testWidgets('the memory dialog plays it: Play becomes Stop, and the length is measured off the play', (tester) async {
@@ -145,7 +145,7 @@ void main() {
     // The row behind it says the same thing, hence findsWidgets.
     expect(find.text('Unknown length'), findsWidgets);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Play on Radio'));
     await tester.pump();
     expect(services.cat.voiceActivity.value, const VoiceActivity(memory: 3));
     expect(find.widgetWithText(FilledButton, 'Stop'), findsOneWidget);
@@ -192,7 +192,7 @@ void main() {
     expect(find.text('Playing…'), findsNothing, reason: "Radio B's memory 2 is not the one on the air");
 
     await openMemory(tester, 3);
-    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Play on Radio'));
     await tester.pump();
     expect(cat.keyer('B').voiceActivity.value?.memory, 3, reason: 'a Play from set B plays on Radio B');
     expect(cat.keyer('A').voiceActivity.value, isNull, reason: "and takes the air from radio A's CQ");
@@ -203,7 +203,7 @@ void main() {
     await connectPlaceholder(tester);
     await open(tester);
     await openMemory(tester, 3);
-    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Play on Radio'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.widgetWithText(FilledButton, 'Stop'));
@@ -316,6 +316,35 @@ void main() {
       await tester.pump();
       expect(audio.listens.single.stopped, isTrue);
       expect(audio.recordings.single.path, '/v/s1/2.wav.recording');
+      services.cat.stopVoice();
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    // Said with words, a message plays no recording of its own: one recorded
+    // with the words still stored would never be heard, and a Cancel after
+    // it must not leave them in its place.
+    testWidgets('with words entered there is no Record, and recording in their place clears them', (tester) async {
+      await services.settings.setExperimentEnabled('words', true);
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await tester.runAsync(() => services.cat.keyer('A').setVoiceMessageTemplate(2, '{{ qso.call }} 59'));
+      await tester.runAsync(pumpEventQueue);
+      await open(tester);
+      await openMemory(tester, 2);
+      expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Record')).onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Say with my words'), '');
+      await tester.pump();
+      await tester.runAsync(() async {
+        await tester.tap(find.widgetWithText(FilledButton, 'Record'));
+        await pumpEventQueue();
+      });
+      await tester.pump();
+      expect(services.cat.keyer('A').voiceMessageTemplate(2), '');
+      expect(audio.recordings.single.path, '/v/s1/2.wav.recording');
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      expect(services.cat.keyer('A').voiceMessageTemplate(2), '', reason: 'a Cancel does not undo what a recording did');
       services.cat.stopVoice();
       await tester.pump(const Duration(seconds: 2));
     });

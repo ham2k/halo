@@ -202,6 +202,7 @@ class FakeVoiceAudio implements VoiceAudio {
     if (failingReplace) throw FileSystemException('Cannot rename file', from);
     replaced.add((from, to));
     lengths[to] = lengths.remove(from)!;
+    if (samples.remove(from) case final decoded?) samples[to] = decoded;
   }
 
   @override
@@ -212,6 +213,15 @@ class FakeVoiceAudio implements VoiceAudio {
     } else {
       lengths[to] = lengths[from]!;
     }
+  }
+
+  /// Every sound file the app made, by path.
+  final written = <String, Uint8List>{};
+
+  @override
+  void write(String path, Uint8List bytes) {
+    written[path] = bytes;
+    lengths[path] = Duration(microseconds: (bytes.length - 44) ~/ 2 * 1000000 ~/ 48000);
   }
 
   @override
@@ -225,8 +235,17 @@ class FakeVoiceAudio implements VoiceAudio {
   @override
   void reveal(String path) => revealed.add(path);
 
+  /// What a file decodes to, where it matters what it says; silence of its
+  /// length otherwise.
+  final samples = <String, Float32List>{};
+
+  /// Files that are there and will not decode, as a damaged one does.
+  final failingDecodes = <String>{};
+
   @override
   Float32List decode(String path, {required int rate, required int channels}) {
+    if (failingDecodes.contains(path)) throw HaloAudioException('decode: not a sound file');
+    if (samples[path] case final decoded?) return decoded;
     final length = lengths[path];
     if (length == null) throw HaloAudioException('open file: no such file');
     return Float32List(length.inMicroseconds * rate ~/ 1000000 * channels);

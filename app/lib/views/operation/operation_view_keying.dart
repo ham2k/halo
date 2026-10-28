@@ -381,4 +381,64 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     }
     return;
   }
+
+  /// Renders a phone message's template for voiced words (voiced_words.dart):
+  /// against the draft, as a CW message is ([_sendCwMessages]). Held once so
+  /// detaching finds the same function attaching handed over.
+  late final VoiceTemplateRender _voiceRender = _renderVoiceTemplate;
+
+  Future<({String text, String operatorCall})> _renderVoiceTemplate(String template, int n) async {
+    final services = widget.services;
+    final ctx = panelRenderContext;
+    String? text;
+    try {
+      text = await services.extensions.renderTemplate(
+        template,
+        operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
+        qso: _latestDraftQso ?? ctx.qso,
+        qsoCount: ctx.qsoCount,
+        keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n},
+      );
+    } on TemplateError catch (e) {
+      throw VoicedMessageRefused(ComputerVoiceProblem.templateFailed, e.message);
+    } catch (e, st) {
+      // A hook timeout or a dead runtime: carried on the refusal, and
+      // reported where it is said — [_voiceRefused], or the message editor.
+      throw VoicedMessageRefused(ComputerVoiceProblem.templateFailed, ErrorReportingService.messageOf(e), e, st);
+    }
+    if (text == null) throw VoicedMessageRefused(ComputerVoiceProblem.templateFailed, t.commands.voiceMessageNotRendered);
+    return (text: text, operatorCall: _voiceOperatorCall());
+  }
+
+  /// Whose words this operation's messages are said in: its operator, else
+  /// its station.
+  String _voiceOperatorCall() {
+    final operation = panelRenderContext.operation;
+    if (operation == null) return '';
+    final operator = operatorCallFor(operation);
+    return operator.isNotEmpty ? operator : operation.stationCall;
+  }
+
+  void _voiceRefused(int n, VoicedMessageRefused refusal) {
+    if (!mounted) {
+      if (refusal.cause != null) ErrorReportingService.report(refusal.cause!, refusal.causeStack, context: 'voice:render-message');
+      return;
+    }
+    final key = 'voice-message-$n', icon = 'alert-circle-outline';
+    final text = context.t.commands.voiceMessageError(
+      n: n,
+      error: computerVoiceProblemText(context, refusal.problem, detail: refusal.detail),
+    );
+    if (refusal.cause != null) {
+      // The notice IS the report's: said once, in these words.
+      ErrorReportingService.report(
+        refusal.cause!,
+        refusal.causeStack,
+        context: 'voice:render-message',
+        notice: ErrorNotice(widget.services.statusBar, key: key, text: text, icon: icon, persist: false),
+      );
+    } else {
+      widget.services.statusBar.showNotice(key: key, icon: icon, text: text, persist: false);
+    }
+  }
 }

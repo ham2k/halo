@@ -12,6 +12,7 @@
 // message with it, and the sound device held open forever or reopened in the
 // middle of the key-up delay.
 
+import 'dart:async';
 import 'dart:io' show FileSystemException, OSError;
 import 'dart:typed_data';
 
@@ -178,6 +179,19 @@ void main() {
         expect(radio.sent, [true, false]);
         expect(reports.last, isNull);
         expect(keyer.keyed, isFalse);
+      });
+    });
+
+    test('a word recording started while a message plays ends the message where it is shown', () {
+      // Unshown, the keyer area keeps the message playing for good, and a
+      // repeat waiting for it to clear never comes back round.
+      fakeAsync((async) {
+        start();
+        keyer.playVoiceMemory(1);
+        async.elapse(lead);
+        expect(keyer.recordFile('/v/words/.reading.wav', ceiling: const Duration(seconds: 10), done: (_) {}), isTrue);
+        expect(reports.last, isNull);
+        expect(radio.sent, [true, false]);
       });
     });
 
@@ -870,6 +884,101 @@ void main() {
         expect(audio.recordings, isEmpty);
         expect(keyer.problem, ComputerVoiceProblem.inputMissing);
         expect(reports.single, const VoiceActivity(memory: 1, recording: true, doubtful: true));
+      });
+    });
+  });
+
+  // A message said from the operator's words is made as it is asked for
+  // (voiced_words.dart). The traps are a carrier keyed while it is still
+  // being made, a message that cannot be made keyed anyway, and one made
+  // after the operator stopped it — or pressed another — keyed late.
+  group('a message made as it plays', () {
+    late Completer<String> making;
+    setUp(() => audio.lengths['/v/made.wav'] = message);
+
+    /// Inside each test's fake time, the completer with it: one made outside
+    /// completes on the real microtask queue, which fake time never runs.
+    void startMaking() {
+      making = Completer<String>();
+      keyer = ComputerVoiceKeyer(
+        ptt: radio,
+        audio: audio,
+        config: () => config,
+        fileFor: (n) => '/v/$n.wav',
+        report: reports.add,
+        prepare: (n) => n == 2 ? making.future : null,
+      );
+    }
+
+    test('is made before the radio is keyed, and plays what was made', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        expect(radio.sent, isEmpty);
+        expect(reports, [const VoiceActivity(memory: 2)], reason: 'shown going out while it is made, so the key does not look dead');
+        making.complete('/v/made.wav');
+        async.flushMicrotasks();
+        expect(radio.sent, [true]);
+        async.elapse(lead);
+        expect(audio.plays.single.path, '/v/made.wav');
+      });
+    });
+
+    test('a failure making it is reported though the operator moved on, and a bug as a bug', () async {
+      // Dropped with the stale turn, a damaged take or a failed write goes
+      // nowhere; wrapped as a sound-system failure, a bug in the making is
+      // uploaded under the quiet rule meant for devices, with no notice.
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(backend: backend, () async {
+        fakeAsync((async) {
+          startMaking();
+          keyer.playVoiceMemory(2);
+          keyer.stopVoice();
+          making.completeError(StateError('a bug'));
+          async.flushMicrotasks();
+        });
+      });
+      expect(radio.sent, isEmpty);
+      expect([for (final e in backend.exceptions) e.error], [isA<StateError>()]);
+    });
+
+    test('one that cannot be made is refused without keying, and says what it lacks', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        making.completeError(const VoicedMessageRefused(ComputerVoiceProblem.wordsMissing, 'India'));
+        async.flushMicrotasks();
+        expect(radio.sent, isEmpty);
+        expect(keyer.problem, ComputerVoiceProblem.wordsMissing);
+        expect(keyer.problemDetail, 'India');
+        expect(reports.last, const VoiceActivity(memory: 2, doubtful: true));
+      });
+    });
+
+    test('stopped while it is made, it is never keyed', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        keyer.stopVoice();
+        making.complete('/v/made.wav');
+        async.flushMicrotasks();
+        async.elapse(lead);
+        expect(radio.sent, isEmpty);
+        expect(audio.plays, isEmpty);
+        expect(reports.last, isNull);
+      });
+    });
+
+    test('another message pressed while one is made plays alone', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        keyer.playVoiceMemory(1);
+        making.complete('/v/made.wav');
+        async.flushMicrotasks();
+        async.elapse(lead);
+        expect(radio.sent, [true]);
+        expect([for (final play in audio.plays) play.path], ['/v/1.wav']);
       });
     });
   });

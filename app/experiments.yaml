@@ -35,6 +35,15 @@ experiments:
   - key: esm
     name: Enter Sends Messages
     description: Enter keys the exchange's CW messages or voice memories as it moves through a contact.
+  # Voiced words (docs/design/cat.md § Voiced words): a phone message played
+  # from this computer can be a template, said from the operator's own
+  # recordings of each letter, digit and phrase. On top of Keying, with the
+  # computer as Phone Keying's source; private while the recordings and the
+  # way they are joined are tried out.
+  - key: words
+    name: Voiced Words
+    description: Phone messages that say the other station's call and your report from recordings of your own letters and digits.
+    private: true
   # The CAT server (docs/design/cat.md § CAT server): other apps control the
   # Main VFO radio through HaLo, which stands in for rigctld, flrig, Ham
   # Radio Deluxe or N3FJP. Gated because it opens a listening socket.

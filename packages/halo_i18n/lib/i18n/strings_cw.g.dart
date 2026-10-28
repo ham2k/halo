@@ -870,6 +870,8 @@ class _Translations$commands$cw extends Translations$commands$en {
 	@override String cwSending({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}';
 	@override String cwMessageNotRendered({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——';
+	@override String voiceMessageError({required Object n, required Object error}) => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · / —— ${n} ———··· / ${error}';
+	@override String get voiceMessageNotRendered => '— ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——';
 	@override String so2rRadioCannotKey({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —';
 	@override String get so2rNoRadioB => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —';
 	@override String settingNotStored({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·';
@@ -2296,6 +2298,7 @@ class _Translations$settings$radio$cw extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$cwMessages$cw cwMessages = _Translations$settings$radio$cwMessages$cw._(_root);
 	@override late final _Translations$settings$radio$keyerControl$cw keyerControl = _Translations$settings$radio$keyerControl$cw._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$cw voiceMessages = _Translations$settings$radio$voiceMessages$cw._(_root);
+	@override late final _Translations$settings$radio$voiceWords$cw voiceWords = _Translations$settings$radio$voiceWords$cw._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$cw avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$cw._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$cw zeroBeatRange = _Translations$settings$radio$zeroBeatRange$cw._(_root);
 }
@@ -4094,6 +4097,57 @@ class _Translations$settings$radio$voiceMessages$cw extends Translations$setting
 	@override String get problemUnplayable => '— ···· ·— — / —— · ··· ··· ·— ——· · ·————· ··· / ··—· ·· ·—·· · / ·· ··· —· ·————· — / ·— / ··· ——— ··— —· —·· / ··—· ·· ·—·· · / — ···· · / ·— ·——· ·——· / —·—· ·— —· / ·——· ·—·· ·— —·—— ·—·—·— / ··— ··· · / ·— / ·—— ·— ···— ——··—— / ··—· ·—·· ·— —·—· / ——— ·—· / —— ·——· ···—— / ··—· ·· ·—·· · ——··—— / ——— ·—· / ·—· · —·—· ——— ·—· —·· / ·· — / ·— ——· ·— ·· —· ·—·—·—';
 	@override String get problemRecordingFailed => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ·—— ·— ··· / —·—· ··— — / ··· ···· ——— ·—· — ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / ··· — ·· ·—·· ·—·· / —·—· ——— —· —· · —·—· — · —·· / ·— —· —·· / — ···· ·— — / — ···· · ·—· · / ·· ··· / ·—· ——— ——— —— / ——— —· / — ···· · / —·· ·· ··· —·— ·—·—·—';
 	@override String get problemFileFailed => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—· ——— ··— ·—·· —·· —· ·————· — / —··· · / ··· ·— ···— · —·· / ·· —· / — ···· · / —— · ··· ··· ·— ——· · ·————· ··· / ·——· ·—·· ·— —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·—';
+	@override String problemWordsMissing({required Object words}) => '— ···· ·— — / —— · ··· ··· ·— ——· · / —· · · —·· ··· / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ···· ·— ···— · —· ·————· — / ·—· · —·—· ——— ·—· —·· · —·· ———··· / ${words} ·—·—·—';
+	@override String problemTemplateFailed({required Object error}) => '— ···· ·— — / —— · ··· ··· ·— ——· · ·————· ··· / — · —— ·——· ·—·· ·— — · / ···· ·— ··· / ·— / ·——· ·—· ——— —··· ·—·· · —— ———··· / ${error}';
+	@override String get problemNoOperation => '—— · ··· ··· ·— ——· · ··· / ··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ··· / ·——· ·—·· ·— —·—— / ·· —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / ·—— ···· · ·—· · / — ···· · ·—· · / ·· ··· / ·— / —·—· ——— —· — ·— —·—· — / — ——— / ··· ·— —·—— / — ···· · —— / ··—· ——— ·—· ·—·—·—';
+	@override String get problemNothingSaid => '— ···· ·— — / —— · ··· ··· ·— ——· · / ··· ·— —·—— ··· / —· ——— — ···· ·· —· ——· / ··—· ——— ·—· / — ···· ·· ··· / —·—· ——— —· — ·— —·—· — ·—·—·—';
+	@override String get templateField => '··· ·— —·—— / ·—— ·· — ···· / —— —·—— / ·—— ——— ·—· —·· ···';
+	@override String get templateHelp => '·—·· · ·— ···— · / · —— ·——· — —·—— / — ——— / ·——· ·—·· ·— —·—— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·— / ——— — ···· · ·—· ·—— ·· ··· · / — ···· · / —— · ··· ··· ·— ——· · / ·· ··· / ··· ·— ·· —·· / ·—— ·· — ···· / — ···· · / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ·—· · —·—· ——— ·—· —·· · —·· ——··—— / ··—· ·· ·—·· ·—·· · —·· / ·· —· / ··—· ——— ·—· / · ·— —·—· ···· / —·—· ——— —· — ·— —·—· — ——··—— / ··— ··· ·· —· ——· / — ···· · ··· · / ···— ·— ·—·· ··— · ··· ———···';
+	@override String get help => '···· · ·—·· ·——·';
+	@override String get helpTitle => '··· ·— —·—— ·· —· ——· / —— · ··· ··· ·— ——· · ··· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···';
+	@override String get helpFullExample => '·— / ·—— ···· ——— ·—·· · / —— · ··· ··· ·— ——· · ———···';
+	@override String get helpExample => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—·· ——··—— / — ···· · ·· ·—· / ·—· · ·——· ——— ·—· — ——··—— / ·— —· —·· / —·—— ——— ··— ·—· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ——·— ··· ·—·· ··——·· ”';
+	@override String get playOnRadio => '·——· ·—·· ·— —·—— / ——— —· / ·—· ·— —·· ·· ———';
+	@override String get templateHelpCall => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—··';
+	@override String get templateHelpReport => '— ···· · / ·—· · ·——· ——— ·—· — / —·—— ——— ··— / ——· ·· ···— · / — ···· · ——';
+	@override String get templateHelpMessage => '—— · ··· ··· ·— ——· · / ··——— ·————· ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ——··—— / ·——· ·—·· ·— —·—— · —·· / ·— ··· / ·—· · —·—· ——— ·—· —·· · —··';
+	@override String get voiced => '··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···';
+	@override String willSay({required Object words}) => '··· ·— —·—— ··· ———··· / ${words}';
+	@override String willSayMissing({required Object words}) => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —·· / —·—— · — ———··· / ${words}';
+	@override String get previewNoOperation => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ·—— ·· ·—·· ·—·· / ··· ·— —·—— ·—·—·—';
+	@override String get wordsDescription => '··— ··· · / —·—— ——— ··— ·—· / ——— ·—— —· / ···— ——— ·· —·—· · / ··—· ——— ·—· / —·—· ·— ·—·· ·—·· ··· ——··—— / —· ··— —— —··· · ·—· ··· / ·— —· —·· / —— ——— ·—· · ·—·—·—';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$cw extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '·—— ——— ·—· —·· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ···';
+	@override String get callField => '·—— ——— ·—· —·· ··· / ··—· ——— ·—· / ——— ·——· · ·—· ·— — ——— ·—·';
+	@override String get intro => '·—· · —·—· ——— ·—· —·· / · ·— —·—· ···· / ·—— ——— ·—· —·· / ——— ·—· / —· ··— —— —··· · ·—· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· / ——·— ··— ·· —·—· —·— ·—·· —·—— ——··—— / — ···· · / ·—— ·— —·—— / —·—— ——— ··— / ··· ·— —·—— / ·· — / ··—· ——— ·—· / ·— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ·—·—·— / ·—·· ——— —· ——· · ·—· / ·——· ···· ·—· ·— ··· · ··· / ·— ·—· · / ·—· · —·—· ——— ·—· —·· · —·· / ——— —· ·—·· —·—— / ——— —· —·—· · ·—·—·—';
+	@override String get recordAll => '·—· · —·—· ——— ·—· —·· / ·— ·—·· ·—··';
+	@override String get recordAllGuide => '·—· · ·— —·· / · ·— —·—· ···· / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / ·— / ·——· ···· ·—· ·— ··· · / ——— ··—· / ··· · ···— · ·—· ·— ·—·· / ·—— ——— ·—· —·· ··· / ——— —· —·—· · ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—·· ·· —· · ··· ·—·—·— / ·——· ·—· · ··· ··· / ··· — ——— ·——· / ·— ··—· — · ·—· / — ···· · / ·—·· ·— ··· — / ——— —· · ·—·—·—';
+	@override String recordingOne({required Object word}) => '··· ·— —·—— / “ ${word} / ${word} / ${word} ” ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / ··· — ——— ·——· ·—·—·—';
+	@override String recordingOnce({required Object words}) => '··· ·— —·—— / “ ${words} ” ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / ··· — ——— ·——· ·—·—·—';
+	@override String get recorded => '·—· · —·—· ——— ·—· —·· · —··';
+	@override String get notRecorded => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —··';
+	@override String get addPhrase => '·— —·· —·· / ·——· ···· ·—· ·— ··· ·';
+	@override String get phraseField => '·——· ···· ·—· ·— ··· · ——··—— / ·— ··· / —·—— ——— ··— / ·—— ·—· ·· — · / ·· — / ·· —· / ·— / —— · ··· ··· ·— ——· ·';
+	@override String get deletePhrase => '—·· · ·—·· · — · / ·——· ···· ·—· ·— ··· ·';
+	@override String get tryField => '— ·—· —·—— / ··· ·— —·—— ·· —· ——·';
+	@override String get pauseLetters => '·——· ·— ··— ··· · / —··· · — ·—— · · —· / ·—·· · — — · ·—· ···';
+	@override String get pauseWords => '·——· ·— ··— ··· · / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ···';
+	@override String pauseValue({required Object ms}) => '${ms} / —— ···';
+	@override String get speed => '··· ·——· · · —··';
+	@override String speedValue({required Object speed}) => '${speed} ×';
+	@override String get advancedSettings => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···';
+	@override String get splitSilent => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ·· —· / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·—';
+	@override String get splitNotThreeTakes => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / — ···· ·—· · · / — ·— —·— · ··· ·—·—·— / ··· ·— —·—— / — ···· · / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—';
+	@override String get splitLineCount => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / · ···— · ·—· —·—— / ·—— ——— ·—· —·· / ·· —· / — ···· · / ·—· · ·— —·· ·· —· ——· ·—·—·— / ·—· · ·— —·· / · ·— —·—· ···· / ——— —· · / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—';
+	@override String get splitLinesTooClose => '—·—· ——— ··— ·—·· —·· —· ·————· — / — · ·—·· ·—·· / — ···· · / ·—— ——— ·—· —·· ··· / ·— ·——· ·— ·—· — ·—·—·— / ·—·· · ·— ···— · / ·— / ·—·· ——— —· ——· · ·—· / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -5814,6 +5868,48 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.problemUnplayable' => '— ···· ·— — / —— · ··· ··· ·— ——· · ·————· ··· / ··—· ·· ·—·· · / ·· ··· —· ·————· — / ·— / ··· ——— ··— —· —·· / ··—· ·· ·—·· · / — ···· · / ·— ·——· ·——· / —·—· ·— —· / ·——· ·—·· ·— —·—— ·—·—·— / ··— ··· · / ·— / ·—— ·— ···— ——··—— / ··—· ·—·· ·— —·—· / ——— ·—· / —— ·——· ···—— / ··—· ·· ·—·· · ——··—— / ——— ·—· / ·—· · —·—· ——— ·—· —·· / ·· — / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.radio.voiceMessages.problemRecordingFailed' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ·—— ·— ··· / —·—· ··— — / ··· ···· ——— ·—· — ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·· · ···— ·· —·—· · / ·· ··· / ··· — ·· ·—·· ·—·· / —·—· ——— —· —· · —·—· — · —·· / ·— —· —·· / — ···· ·— — / — ···· · ·—· · / ·· ··· / ·—· ——— ——— —— / ——— —· / — ···· · / —·· ·· ··· —·— ·—·—·—',
 			'settings.radio.voiceMessages.problemFileFailed' => '— ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· / —·—· ——— ··— ·—·· —·· —· ·————· — / —··· · / ··· ·— ···— · —·· / ·· —· / — ···· · / —— · ··· ··· ·— ——· · ·————· ··· / ·——· ·—·· ·— —·—· · ——··—— / ··· ——— / — ···· · / —— · ··· ··· ·— ——· · / ·—— ·— ··· / ·—·· · ··—· — / ·— ··· / ·· — / ·—— ·— ··· ·—·—·—',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => '— ···· ·— — / —— · ··· ··· ·— ——· · / —· · · —·· ··· / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ···· ·— ···— · —· ·————· — / ·—· · —·—· ——— ·—· —·· · —·· ———··· / ${words} ·—·—·—',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => '— ···· ·— — / —— · ··· ··· ·— ——· · ·————· ··· / — · —— ·——· ·—·· ·— — · / ···· ·— ··· / ·— / ·——· ·—· ——— —··· ·—·· · —— ———··· / ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => '—— · ··· ··· ·— ——· · ··· / ··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ··· / ·——· ·—·· ·— —·—— / ·· —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· ——··—— / ·—— ···· · ·—· · / — ···· · ·—· · / ·· ··· / ·— / —·—· ——— —· — ·— —·—· — / — ——— / ··· ·— —·—— / — ···· · —— / ··—· ——— ·—· ·—·—·—',
+			'settings.radio.voiceMessages.problemNothingSaid' => '— ···· ·— — / —— · ··· ··· ·— ——· · / ··· ·— —·—— ··· / —· ——— — ···· ·· —· ——· / ··—· ——— ·—· / — ···· ·· ··· / —·—· ——— —· — ·— —·—· — ·—·—·—',
+			'settings.radio.voiceMessages.templateField' => '··· ·— —·—— / ·—— ·· — ···· / —— —·—— / ·—— ——— ·—· —·· ···',
+			'settings.radio.voiceMessages.templateHelp' => '·—·· · ·— ···— · / · —— ·——· — —·—— / — ——— / ·——· ·—·· ·— —·—— / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·— / ——— — ···· · ·—· ·—— ·· ··· · / — ···· · / —— · ··· ··· ·— ——· · / ·· ··· / ··· ·— ·· —·· / ·—— ·· — ···· / — ···· · / ·—— ——— ·—· —·· ··· / —·—— ——— ··— / ·—· · —·—· ——— ·—· —·· · —·· ——··—— / ··—· ·· ·—·· ·—·· · —·· / ·· —· / ··—· ——— ·—· / · ·— —·—· ···· / —·—· ——— —· — ·— —·—· — ——··—— / ··— ··· ·· —· ——· / — ···· · ··· · / ···— ·— ·—·· ··— · ··· ———···',
+			'settings.radio.voiceMessages.help' => '···· · ·—·· ·——·',
+			'settings.radio.voiceMessages.helpTitle' => '··· ·— —·—— ·· —· ——· / —— · ··· ··· ·— ——· · ··· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
+			'settings.radio.voiceMessages.helpFullExample' => '·— / ·—— ···· ——— ·—·· · / —— · ··· ··· ·— ——· · ———···',
+			'settings.radio.voiceMessages.helpExample' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—·· ——··—— / — ···· · ·· ·—· / ·—· · ·——· ——— ·—· — ——··—— / ·— —· —·· / —·—— ——— ··— ·—· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ——·— ··· ·—·· ··——·· ”',
+			'settings.radio.voiceMessages.playOnRadio' => '·——· ·—·· ·— —·—— / ——— —· / ·—· ·— —·· ·· ———',
+			'settings.radio.voiceMessages.templateHelpCall' => '— ···· · ·· ·—· / —·—· ·— ·—·· ·—··',
+			'settings.radio.voiceMessages.templateHelpReport' => '— ···· · / ·—· · ·——· ——— ·—· — / —·—— ——— ··— / ——· ·· ···— · / — ···· · ——',
+			'settings.radio.voiceMessages.templateHelpMessage' => '—— · ··· ··· ·— ——· · / ··——— ·————· ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ——··—— / ·——· ·—·· ·— —·—— · —·· / ·— ··· / ·—· · —·—· ——— ·—· —·· · —··',
+			'settings.radio.voiceMessages.voiced' => '··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => '··· ·— —·—— ··· ———··· / ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —·· / —·—— · — ———··· / ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ·—— ·· ·—·· ·—·· / ··· ·— —·—— ·—·—·—',
+			'settings.radio.voiceMessages.wordsDescription' => '··— ··· · / —·—— ——— ··— ·—· / ——— ·—— —· / ···— ——— ·· —·—· · / ··—· ——— ·—· / —·—· ·— ·—·· ·—·· ··· ——··—— / —· ··— —— —··· · ·—· ··· / ·— —· —·· / —— ——— ·—· · ·—·—·—',
+			'settings.radio.voiceWords.title' => '·—— ——— ·—· —·· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ···',
+			'settings.radio.voiceWords.callField' => '·—— ——— ·—· —·· ··· / ··—· ——— ·—· / ——— ·——· · ·—· ·— — ——— ·—·',
+			'settings.radio.voiceWords.intro' => '·—· · —·—· ——— ·—· —·· / · ·— —·—· ···· / ·—— ——— ·—· —·· / ——— ·—· / —· ··— —— —··· · ·—· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· / ——·— ··— ·· —·—· —·— ·—·· —·—— ——··—— / — ···· · / ·—— ·— —·—— / —·—— ——— ··— / ··· ·— —·—— / ·· — / ··—· ——— ·—· / ·— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ·—·—·— / ·—·· ——— —· ——· · ·—· / ·——· ···· ·—· ·— ··· · ··· / ·— ·—· · / ·—· · —·—· ——— ·—· —·· · —·· / ——— —· ·—·· —·—— / ——— —· —·—· · ·—·—·—',
+			'settings.radio.voiceWords.recordAll' => '·—· · —·—· ——— ·—· —·· / ·— ·—·· ·—··',
+			'settings.radio.voiceWords.recordAllGuide' => '·—· · ·— —·· / · ·— —·—· ···· / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / ·— / ·——· ···· ·—· ·— ··· · / ——— ··—· / ··· · ···— · ·—· ·— ·—·· / ·—— ——— ·—· —·· ··· / ——— —· —·—· · ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—·· ·· —· · ··· ·—·—·— / ·——· ·—· · ··· ··· / ··· — ——— ·——· / ·— ··—· — · ·—· / — ···· · / ·—·· ·— ··· — / ——— —· · ·—·—·—',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '··· ·— —·—— / “ ${word} / ${word} / ${word} ” ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / ··· — ——— ·——· ·—·—·—',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '··· ·— —·—— / “ ${words} ” ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / ··· — ——— ·——· ·—·—·—',
+			'settings.radio.voiceWords.recorded' => '·—· · —·—· ——— ·—· —·· · —··',
+			'settings.radio.voiceWords.notRecorded' => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —··',
+			'settings.radio.voiceWords.addPhrase' => '·— —·· —·· / ·——· ···· ·—· ·— ··· ·',
+			'settings.radio.voiceWords.phraseField' => '·——· ···· ·—· ·— ··· · ——··—— / ·— ··· / —·—— ——— ··— / ·—— ·—· ·· — · / ·· — / ·· —· / ·— / —— · ··· ··· ·— ——· ·',
+			'settings.radio.voiceWords.deletePhrase' => '—·· · ·—·· · — · / ·——· ···· ·—· ·— ··· ·',
+			'settings.radio.voiceWords.tryField' => '— ·—· —·—— / ··· ·— —·—— ·· —· ——·',
+			'settings.radio.voiceWords.pauseLetters' => '·——· ·— ··— ··· · / —··· · — ·—— · · —· / ·—·· · — — · ·—· ···',
+			'settings.radio.voiceWords.pauseWords' => '·——· ·— ··— ··· · / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ···',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} / —— ···',
+			'settings.radio.voiceWords.speed' => '··· ·——· · · —··',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed} ×',
+			'settings.radio.voiceWords.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
+			'settings.radio.voiceWords.splitSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ·· —· / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·—',
+			'settings.radio.voiceWords.splitNotThreeTakes' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / — ···· ·—· · · / — ·— —·— · ··· ·—·—·— / ··· ·— —·—— / — ···· · / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
+			'settings.radio.voiceWords.splitLineCount' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / · ···— · ·—· —·—— / ·—— ——— ·—· —·· / ·· —· / — ···· · / ·—· · ·— —·· ·· —· ——· ·—·—·— / ·—· · ·— —·· / · ·— —·—· ···· / ——— —· · / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
+			'settings.radio.voiceWords.splitLinesTooClose' => '—·—· ——— ··— ·—·· —·· —· ·————· — / — · ·—·· ·—·· / — ···· · / ·—— ——— ·—· —·· ··· / ·— ·——· ·— ·—· — ·—·—·— / ·—·· · ·— ···— · / ·— / ·—·· ——— —· ——· · ·—· / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
 			'settings.radio.avoidZeroBeat.title' => '·— ···— ——— ·· —·· / ——·· · ·—· ——— —····— —··· · ·— — ·· —· ——· / ——— —· / ··· ·——· ——— — ···',
 			'settings.radio.avoidZeroBeat.descriptionOn' => '·—— ·· — ···· / ·— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —·· ——··—— / — ··— —· ·· —· ——· / ·— / ··—· · ·—— / ···· ——·· / ——— ··—· ··—· / ·— / —·—· ·—— / ··· ·——· ——— — ——··—— / ··· ——— / · ···— · ·—· —·—— ——— —· · / ·— —· ··· ·—— · ·—· ·· —· ——· / ·· — / ·· ··· —· ’ — / —·—· ·— ·—·· ·—·· ·· —· ——· / ——— —· / — ···· · / ··· ·— —— · / —· ——— — · ·—·—·—',
 			'settings.radio.avoidZeroBeat.descriptionOff' => '— ··— —· ·· —· ——· / · —··— ·— —·—· — ·—·· —·—— / — ——— / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— ·—·—·—',
@@ -5884,6 +5980,8 @@ extension on TranslationsCw {
 			'settings.peers.waitingForThem' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.peers.notConnected' => '—· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.peers.wantsToPair' => '·—— ·— —· — ··· / — ——— / ··· ···· ·— ·—· · / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.allow' => '·— ·—·· ·—·· ——— ·——',
 			'settings.peers.link' => '·—·· ·· —· —·—',
 			'settings.peers.reject' => '·—· · ·——— · —·—· —',
@@ -5926,8 +6024,6 @@ extension on TranslationsCw {
 			'settings.syncPanel.configuration' => '··· —·—— —· —·—· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.syncPanel.enableTitle' => '··· —·—— —· —·—· / ·—— ·· — ···· / ···· ·— —— ··——— —·— / ·—·· ——— ——· / ··—· ·· ·—·· · ·—·',
 			'settings.syncPanel.enabledDescription' => '—··· ·— —·—· —·— ·· —· ——· / ··— ·——· / ·— —· —·· / ··· —·—— —· —·—· ·· —· ——· / —·—— ——— ··— ·—· / ·—·· ——— ——· / ·— —·—· ·—· ——— ··· ··· / —·· · ···— ·· —·—· · ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => '——— ··—· ··—· / — / ··· — ·— —·—— ·· —· ——· / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· · / ——— —· ·—·· —·——',
 			'settings.syncPanel.syncing' => '··· —·—— —· —·—· ·· —· ——·',
 			'settings.syncPanel.account' => '·— —·—· —·—· ——— ··— —· —',
@@ -6398,6 +6494,8 @@ extension on TranslationsCw {
 			'settings.station.pollInterval' => '·· —·· ·—·· · / ·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ·— —·· ·· ——— / ··—· ——— ·—· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· · / ·—— ···· ·· ·—·· · / —· · ·· — ···· · ·—· / ·· ··· / —·—· ···· ·— —· ——· ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
 			'settings.station.placeholderSwr' => '··· ·—— ·—· / ·—· · ·— —·· ·· —· ——·',
 			'settings.station.placeholderSwrDescription' => '·—— ···· ·— — / — ···· ·· ··· / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / ——— —· / ·· — ··· / ··· ·—— ·—· / —— · — · ·—· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ·—·—·— / ·— —··· ——— ···— · / ·———— ·—·—·— ———·· / — ···· · / ·——· ·— —· · ·—·· / ·—— ·— ·—· —· ··· ·—·—·—',
@@ -6440,8 +6538,6 @@ extension on TranslationsCw {
 			'settings.station.switchPortInhibitedHint' => '— ·—· ·— —· ··· —— ·· — / ·· —· ···· ·· —··· ·· — · —··',
 			'settings.station.configUnreadable' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·— ···— · —·· / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ·—·—·— / ——— ·——· · —· / ·· — ··· / ··· · — — ·· —· ——· ··· / ·— —· —·· / · —· — · ·—· / — ···· · —— / ·— ——· ·— ·· —· ——··—— / ——— ·—· / ·—· · —— ——— ···— · / ·· — / ·— —· —·· / ·— —·· —·· / ·· — / —··· ·— —·—· —·— ·—·—·—',
 			'settings.station.autoConnectHeld' => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / —·—· ——— —· —· · —·—· — · —·· / — ——— / — ···· ·· ··· / ·—· ·— —·· ·· ——— ——··—— / ··· ——— / ·· — / —·· ·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / ——— —· / ·· — ··· / ——— ·—— —· / — ···· ·· ··· / — ·· —— · ·—·—·— / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / — ——— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.title' => '——— ··—· ··—· ·—·· ·· —· · / —·· ·— — ·—',
 			'settings.offlineData.noFiles' => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ···',
 			'settings.offlineData.noFilesDescription' => '· —· ·— —··· ·—·· · / ·— —·—· — ·· ···— ·· — —·—— / ——— ·—· / ·—·· ——— ——— —·— ··— ·——· / · —··— — · —· ··· ·· ——— —· ··· / — ——— / —·· ——— ·—— —· ·—·· ——— ·— —·· / — ···· · ·· ·—· / ——— ··—· ··—· ·—·· ·· —· · / —·· ·— — ·— / ···· · ·—· · ·—·—·—',
@@ -6597,6 +6693,8 @@ extension on TranslationsCw {
 			'commands.cwSending' => ({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · / —— ${n} ———··· / ${error}',
+			'commands.voiceMessageNotRendered' => '— ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —',
 			'commands.so2rNoRadioB' => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —',
 			'commands.settingNotStored' => ({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·',
@@ -6910,6 +7008,8 @@ extension on TranslationsCw {
 			'offline.noRoute' => '—· ——— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— — / ·— ·—·· ·—·· ·—·—·—',
 			'offline.unreachable' => '— ···· · / —· · — ·—— ——— ·—· —·— / ·· ··· / ··— ·——· ——··—— / —··· ··— — / —· ——— / ··· · ·—· ···— · ·—· / ·· ··· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — / ——— ··—· — · —· / ·— / ··· ·· ——· —· —····— ·· —· / ·——· ·— ——· · / ·—— ·— ·· — ·· —· ——· / ·· —· / ·— / —··· ·—· ——— ·—— ··· · ·—· ·—·—·—',
 			'offline.reachable' => '·— ·—·· ·—·· / ··· · ·—· ···— ·· —·—· · ··· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / ·— ··· / · —··— ·——· · —·—· — · —·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'offline.whatStops' => '·—·· ——— ——— —·— ··— ·——· ··· ——··—— / ··· ·——· ——— — ··· / ·— —· —·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· / ·— ·—· · / ·——· ·— ··— ··· · —·· ·—·—·— / ·—·· ——— ——· ——· ·· —· ——· / ·— —· —·· / —· · ·— ·—· —··· —·—— / ··· —·—— —· —·—· / ·— ·—· · / —· ——— — ·—·—·—',
 			'offline.servicesTitle' => '··· · ·—· ···— ·· —·—· · ···',
 			'offline.noServices' => '—· ——— / ··· · ·—· ···— ·· —·—· · / ···· ·— ··· / ·—· · ·——· ——— ·—· — · —·· / ·· —· / —·—— · — ·—·—·—',
@@ -6954,8 +7054,6 @@ extension on TranslationsCw {
 			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',
 			'templateEditor.previewLabel' => '·——· ·—· · ···— ·· · ·—— ———···',
 			'templateEditor.reset' => '·—· · ··· · —',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.docs' => '— · —— ·——· ·—·· ·— — ·· —· ——· / —·· ——— —·—· ···',
 			'templateEditor.preview' => '··· ·— —— ·——· ·—·· · / ·——· ·—· · ···— ·· · ·——',
 			'templateEditor.reference' => '— · —— ·——· ·—·· ·— — · / ·—· · ··—· · ·—· · —· —·—· ·',

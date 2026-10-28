@@ -2274,6 +2274,89 @@ CoreAudio and WASAPI, not on every Linux backend — which is why the name is st
 Recording needs the macOS `device.audio-input` entitlement and a microphone usage string; playing
 needs nothing.
 
+## Voiced words
+
+**A phone message played from the computer can be a template, said from the operator's own
+recordings of each letter, digit and phrase** (voice_words.dart, voiced_words.dart; under the
+private `words` experiment, `EXP WORDS`, on top of `keyer`). It is how a phone message says the
+other station's call and the report — what no recording made in advance can hold. A message's
+template is kept in its set beside its label (`VoiceMessageSet.templates`), and a message with one
+is said from it; empty, the message is its recording, as before. Only the computer's voice keyer
+says one: a radio's memories, Radio B's and a peer's radio play what they hold.
+
+**Each word is three takes.** The operator reads it three times run together, the way it is said in
+a call ("Kilo kilo kilo"), and the recording is kept as an opening, a middle and a closing take
+(`WordTake`). A word sounds different where it falls — the closing one drops, and is what makes a
+call end like a call rather than like a list — and words read one at a time, with a pause after
+each, sound like a list however they are trimmed: a trial against real recordings found that only
+words read run together joined into something that sounded said. The three takes keep one gain, so
+the closing take keeps the drop it was said with, brought to a common loudness across words
+(`wordTakes`). **A phrase of several words is recorded once** (`VoiceWord.once`): it carries its own
+rise and fall, and that one recording is its take wherever it falls.
+
+**Splitting a recording into takes.** A line read run together is cut at the pair of dips that
+splits it most evenly, deeper dips breaking near-ties (`splitReading`): the three takes are one
+word, about one length, and a pause's length alone takes the stop inside a word — the "sk" of
+Whiskey — for the gap between two. **Record All** reads every word, one line each with a breath
+between, and the lines are its longest gaps, as many as there are words less one: a breath between
+lines can be shorter than the stop in "eight, eight, eight", so no fixed pause length tells them
+apart, and lines no further apart than the pauses inside them are refused rather than guessed. A once
+phrase's line is kept whole, its own pauses inside it. Read with a pause after every word, the runs
+are one per take, and go to the words in order. A recording
+that does not split says why (`VoiceWordSplitProblem`) and changes nothing.
+
+**Whose words.** A word set is an operator's: the open operation's operator, else its station call
+(`operatorCallFor`), else the profile's — a club station's operators each say messages in their own
+voice. A set holds A-Z as the ITU phonetics, 0-9, "stroke", the phrases every set has
+(`fixedPhraseWords`: "/P", "/M", "QSL", "QSL?", "QRZ", "TU", "QRP" — spelled while not recorded,
+since they are there whether or not the operator says them), plus phrases the operator adds
+("CQ POTA", "de") — refused by name while not recorded — each with an id that names its files, so editing the text keeps the
+recording. The takes are `<voice messages>/words/<CALL>/<key>-{i,m,f}.wav` (a once phrase's one
+recording `<key>.wav`), the call with anything
+but letters and digits made `_`; the phrases are in the Radio group by call (`voicePhrases`). The
+**Word Recordings** pane, from a row under the Phone Keyer pane's messages, records, lists and
+plays them; Listen plays a word's
+three takes as they will be said.
+
+**Saying a message.** The template is rendered by the core `templates` hook against the operation
+and the draft, as a CW message is, at play time — so a repeat says the call as it is now — through a
+renderer the operation view attaches (`VoicedWords.attach`), which is also what says whose words to
+use. `{{ phone.msgN }}` is message N's own recording, played as recorded: it is replaced with a
+private-use mark before rendering (`markVoicedMessages`), which the renderer passes through as text,
+so the extension knows nothing of phone messages. A message N that is itself said with words is
+its template instead, one level deep — what it says, not a recording it may not have — so a message
+naming itself, or two naming each other, end at a mark. The text is then planned (`planVoicedText`):
+phrases first, longest first, on whole words — a phrase written with its punctuation ("QRZ?") is a
+recording of its own and matches only as written, one without matches whatever punctuation surrounds
+it where none matches as written; each word left is a part of its own — one with a
+letter and a digit is a call, said as its prefix through the digit, then its suffix, with
+"stroke" before what follows a slash, spelled — except a call's last slash part, which is a
+slashed phrase where the set has one ("/P" said as the operator says it, "portable"); anything else
+is spelled. No phrase is matched inside a word: KI2TU is a call, never "KI2" and "TU". A part starts
+on an opening take and ends on a closing one; a part of one word takes the opening take first in
+the message, the closing take last, and the middle one between. Each take's decay is cut where it
+falls 20 dB under its own peak, with a 30 ms fade (`cutWordTail`) — shallower and the cut takes real
+endings, the "t" of Eight and the "x" of Six — and the takes are laid down at the word set's spacing
+(`VoicedPacing`, set in the Word Recordings pane, stored by call as `voicePacing`; letters −100 to 100 ms,
+words 0 to 200): by default overlapping
+40 ms within a group and 150 ms between parts — longer, and a call sounds read from a list — with a
+call's prefix and suffix 80 ms further apart than its letters, and "stroke" or a slashed phrase 120 ms. Each word is
+said at the set's speed (0.5 to 1.5 times, `changeTempo`), stretched at its own pitch by WSOLA —
+resampled, the voice would rise with the speed. The pauses and the speed are folded under Advanced
+Settings in the Word Recordings pane, below the list and the Try saying field. A part is marked
+where it starts (`startsPart`), not told by its gap, which the operator may set either way round. The result is written as one file and played like any
+recording.
+
+**Made before anything is keyed.** `ComputerVoiceKeyer.prepare` makes the message as it is asked for,
+showing it going out meanwhile, and keys only once it is made. A template that does not render, a
+word not recorded or a character no word spells (named, every one), a `{{ phone.msgN }}` with no
+recording, or no operation open to render against, is refused the way a missing recording is —
+doubtful, unkeyed, the reason on the Phone Keyer pane — and on the status bar, since a key that keys
+nothing must not look like one that worked. A stop, or another message, while one is being made drops
+it when it is ready. The made files take turns among four names, so the one being written is never
+one a stopping play still holds open on Windows. The message editor shows what a template says for
+the draft as it is, and which of its words are not recorded yet.
+
 ## PTT
 
 **Control PTT with Keyboard** (Radio settings, just before Smart VFO Snap; under the `keyer`

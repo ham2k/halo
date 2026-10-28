@@ -770,9 +770,9 @@ class CatKeying {
   }
 
   int _localVoiceDuration(String? uuid, int n) {
-    // A recording's length is read off the file: exact, and known before the
-    // first play.
-    if (_playsFromComputer(uuid)) return voiceAudio!.lengthOf(_voiceFile(n))?.inMilliseconds ?? 0;
+    // A recording's length is read off the file, exact and known before the first play. A message said
+    // with words has none until it is made: the recording beside it is not what plays.
+    if (_playsFromComputer(uuid)) return voiceMessageVoiced(n) ? 0 : voiceAudio!.lengthOf(_voiceFile(n))?.inMilliseconds ?? 0;
     return _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n, radio: _settingsRadio(uuid));
   }
 

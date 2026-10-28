@@ -142,6 +142,21 @@ enum ComputerVoiceProblem {
   /// or broke off partway through playing.
   unplayable,
 
+  /// The message is a template, and says words the operator has not
+  /// recorded, or characters no word spells — named in the problem's detail.
+  wordsMissing,
+
+  /// The message is a template that does not render — the renderer's own
+  /// words in the detail.
+  templateFailed,
+
+  /// The message is a template, and there is no contact to render it
+  /// against: no operation open.
+  noOperation,
+
+  /// The message is a template that renders to nothing to say.
+  nothingSaid,
+
   /// The recording was cut short — the device went away, or the file could
   /// not be written or read back — and the message was left as it was.
   recordingFailed,
@@ -183,6 +198,9 @@ class VoiceAudioFailure implements Exception {
 final _voiceFailuresReported = <String>{};
 
 void reportVoiceFailure(String doing, Object cause, StackTrace stack) {
+  // Only the sound system's own failures are wrapped: the rule that keeps
+  // them off the screen (voice-audio-failure) must not hide a bug.
+  if (!isVoiceAudioFailure(cause)) return ErrorReportingService.report(cause, stack, context: 'voice:$doing');
   final failure = VoiceAudioFailure(doing, cause);
   if (_voiceFailuresReported.add('$failure')) {
     ErrorReportingService.report(failure, stack, context: 'voice:$doing');
@@ -191,9 +209,34 @@ void reportVoiceFailure(String doing, Object cause, StackTrace stack) {
   }
 }
 
+/// Whether [error] is the sound system's or the file system's — a device,
+/// a file — rather than a bug in the code around them.
+bool isVoiceAudioFailure(Object error) => error is HaloAudioException || error is FileSystemException;
+
 /// Forgets which reasons were uploaded: each test starts a session of its own.
 @visibleForTesting
 void forgetVoiceFailuresReported() => _voiceFailuresReported.clear();
+
+/// A message made at play time that cannot be made — see
+/// [ComputerVoiceKeyer.prepare]. Said to the operator, and not itself
+/// reported: it is their template or their recordings, not a bug.
+class VoicedMessageRefused implements Exception {
+  final ComputerVoiceProblem problem;
+
+  /// What it was: the words missing, the renderer's complaint.
+  final String? detail;
+
+  /// A failure behind the refusal — a hook timing out as the template
+  /// renders — reported where the refusal is shown, which is what says
+  /// whether the operator was told.
+  final Object? cause;
+  final StackTrace? causeStack;
+
+  const VoicedMessageRefused(this.problem, [this.detail, this.cause, this.causeStack]);
+
+  @override
+  String toString() => 'VoicedMessageRefused(${problem.name}${detail == null ? '' : ': $detail'})';
+}
 
 /// The sound system as the keyer uses it — [HaloVoiceAudio] in the app, a
 /// fake in the tests.
@@ -227,6 +270,10 @@ abstract class VoiceAudio {
 
   /// Copies [from] to [to], making [to]'s directory if needed.
   void copy(String from, String to);
+
+  /// Writes [bytes] — a sound file this app made — to [path], making its
+  /// directory if needed.
+  void write(String path, Uint8List bytes);
   void delete(String path);
 
   /// Deletes [path] and everything in it — a set's recordings.
@@ -357,6 +404,14 @@ class HaloVoiceAudio implements VoiceAudio {
   }
 
   @override
+  void write(String path, Uint8List bytes) {
+    File(path)
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(bytes, flush: true);
+    _lengths.remove(path);
+  }
+
+  @override
   void delete(String path) {
     final file = File(path);
     if (file.existsSync()) file.deleteSync();
@@ -393,12 +448,12 @@ class HaloVoiceAudio implements VoiceAudio {
   }
 }
 
-enum _Phase { idle, leadIn, playing, tail, recording }
+enum _Phase { idle, preparing, leadIn, playing, tail, recording }
 
 class ComputerVoiceKeyer implements VoiceKeyer {
   /// Opens the radio's sound device at once, so the first message does not
   /// wait for it either — unless there is no radio, when it only records.
-  ComputerVoiceKeyer({required this.ptt, required this.audio, required this.config, required this.fileFor, required this.report}) {
+  ComputerVoiceKeyer({required this.ptt, required this.audio, required this.config, required this.fileFor, required this.report, this.prepare}) {
     if (ptt == null) return;
     if (_toRadio) {
       _openRadio();
@@ -440,6 +495,13 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   /// Where memory [n]'s recording is kept.
   final String Function(int n) fileFor;
 
+  /// Memory [n] made at play time rather than recorded — a template voiced
+  /// from the operator's words (voice_words.dart): the file to play once it
+  /// is made, failing with [VoicedMessageRefused] when it cannot be. Null
+  /// for a memory that is its own recording. Made before anything is keyed,
+  /// so a message that cannot be made puts no carrier on the air.
+  final Future<String>? Function(int n)? prepare;
+
   /// What the keyer is doing, the way a radio's session reports its own
   /// memories (EquipmentSink.reportVoiceActivity).
   final void Function(VoiceActivity? activity) report;
@@ -476,6 +538,15 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   ComputerVoiceProblem? get problem => _problem;
   ComputerVoiceProblem? _problem;
 
+  /// What [problem] was about, where it says: the words a template needs and
+  /// has no recording of, a template's error.
+  String? get problemDetail => _problemDetail;
+  String? _problemDetail;
+
+  /// Counts every stop and every play, so a message still being made when
+  /// the operator moved on is dropped when it is ready rather than keyed.
+  int _turn = 0;
+
   /// Whether the radio's sound device is open right now.
   @visibleForTesting
   bool get outputOpen => _output != null;
@@ -494,10 +565,45 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     // Cleared before the quiet, which may end a recording with a problem of
     // its own: that one is what the operator needs to see.
     _problem = null;
+    _problemDetail = null;
     _quiet();
     _release?.cancel();
     if (ptt == null) return _refuse(n, ComputerVoiceProblem.cannotKey);
-    final path = fileFor(n);
+    final made = prepare?.call(n);
+    if (made == null) return _play(n, fileFor(n));
+    final turn = _turn;
+    _memory = n;
+    _phase = _Phase.preparing;
+    report(VoiceActivity(memory: n));
+    unawaited(
+      made.then(
+        (path) {
+          if (turn != _turn) return;
+          _phase = _Phase.idle;
+          try {
+            _play(n, path);
+          } catch (e, st) {
+            // What the key's own catch reports for a recording, out of its reach here.
+            ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
+          }
+        },
+        onError: (Object e, StackTrace st) {
+          // Reported whether or not the play it was for is still wanted: a
+          // failure is one either way.
+          if (e is! VoicedMessageRefused) reportVoiceFailure('voice', e, st);
+          if (turn != _turn) return;
+          _phase = _Phase.idle;
+          if (e is VoicedMessageRefused) {
+            _problemDetail = e.detail;
+            return _refuse(n, e.problem);
+          }
+          _refuse(n, ComputerVoiceProblem.unplayable);
+        },
+      ),
+    );
+  }
+
+  void _play(int n, String path) {
     final length = audio.lengthOf(path);
     if (length == null && audio.exists(path)) return _refuse(n, ComputerVoiceProblem.unplayable);
     if (length == null || length == Duration.zero) return _refuse(n, ComputerVoiceProblem.notRecorded);
@@ -596,31 +702,66 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   @override
   void recordVoiceMemory(int n) {
     _problem = null;
+    _problemDetail = null;
     _quiet();
+    final problem = _startRecording(fileFor(n), computerVoiceRecordingCeiling);
+    if (problem != null) return _refuse(n, problem, recording: true);
+    _memory = n;
+    report(VoiceActivity(memory: n, recording: true));
+  }
+
+  /// Records into [path] — a word of the operator's word set rather than a
+  /// message (voice_words.dart) — for at most [ceiling], then calls [done]
+  /// with the path once the recording is kept, or null when it was not (its
+  /// [problem] says why, where there is one). False when it could not start.
+  /// Reports no activity: no message is recording, and the pane that asked
+  /// follows it itself.
+  bool recordFile(String path, {required Duration ceiling, required void Function(String? kept) done}) {
+    _problem = null;
+    _problemDetail = null;
+    // stopVoice, not _quiet: a message shown playing or refused ends here,
+    // and must say so.
+    stopVoice();
+    final problem = _startRecording(path, ceiling);
+    if (problem != null) {
+      _problem = problem;
+      return false;
+    }
+    _done = done;
+    return true;
+  }
+
+  /// Whether a recording is running.
+  bool get recording => _phase == _Phase.recording;
+
+  /// Who hears a [recordFile] end.
+  void Function(String? kept)? _done;
+
+  /// Starts recording what will become [target], or says why it could not.
+  ComputerVoiceProblem? _startRecording(String target, Duration ceiling) {
     final wanted = voiceDeviceFromConfig(config()[voiceInputConfigKey]);
     String? deviceId;
     if (wanted != null) {
       final device = matchAudioDevice(audio.inputs(), id: wanted.id, name: wanted.name);
-      if (device == null) return _refuse(n, ComputerVoiceProblem.inputMissing, recording: true);
+      if (device == null) return ComputerVoiceProblem.inputMissing;
       deviceId = device.id;
     }
     // Into a file beside the memory's, moved over it only once it is done:
     // a recording that fails to start leaves the message it would have
     // replaced.
-    final to = '${fileFor(n)}$_recordingSuffix';
+    final to = '$target$_recordingSuffix';
     try {
       _recording = audio.record(to, deviceId: deviceId);
     } on HaloAudioException catch (e, st) {
       reportVoiceFailure('record', e, st);
-      return _refuse(n, ComputerVoiceProblem.deviceFailed, recording: true);
+      return ComputerVoiceProblem.deviceFailed;
     }
     _recordingTo = to;
-    _memory = n;
     _phase = _Phase.recording;
     _loudest = 0;
     _levels = Timer.periodic(_levelInterval, (_) => _readLevel());
-    report(VoiceActivity(memory: n, recording: true));
-    _ceiling = Timer(computerVoiceRecordingCeiling, stopVoice);
+    _ceiling = Timer(ceiling, stopVoice);
+    return null;
   }
 
   @override
@@ -749,6 +890,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   /// recording, if one was running, kept as the memory's when it heard
   /// something. The device stays open for the next message.
   void _quiet() {
+    _turn++;
     _timer?.cancel();
     _ceiling?.cancel();
     _levels?.cancel();
@@ -756,9 +898,10 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     _playback?.stop();
     _playback = null;
     _readLevel();
-    final recording = _recording, to = _recordingTo;
+    final recording = _recording, to = _recordingTo, done = _done;
     _recording = null;
     _recordingTo = null;
+    _done = null;
     _phase = _Phase.idle;
     _memory = null;
     if (recording != null) {
@@ -772,19 +915,22 @@ class ComputerVoiceKeyer implements VoiceKeyer {
         _problem = ComputerVoiceProblem.recordingFailed;
         whole = false;
       }
+      String? kept;
       if (to != null) {
         if (whole) {
-          _keep(to);
+          kept = _keep(to);
         } else {
           _discard(to);
         }
       }
+      done?.call(kept);
     }
     _scheduleRelease();
     _unkey();
   }
 
-  void _keep(String recorded) {
+  /// Where the recording was kept, or null when it was not.
+  String? _keep(String recorded) {
     try {
       final length = audio.lengthOf(recorded);
       if (length == null && audio.exists(recorded)) {
@@ -792,12 +938,17 @@ class ComputerVoiceKeyer implements VoiceKeyer {
         // Record pressed by mistake.
         reportVoiceFailure('keep', HaloAudioException('keep: the recording could not be read back'), StackTrace.current);
         _problem = ComputerVoiceProblem.recordingFailed;
-        return _discard(recorded);
+        _discard(recorded);
+        return null;
       }
-      if (length == null || length < computerVoiceShortestRecording) return _discard(recorded);
+      if (length == null || length < computerVoiceShortestRecording) {
+        _discard(recorded);
+        return null;
+      }
       if (_loudest < computerVoiceSilence) {
         _problem = ComputerVoiceProblem.recordingSilent;
-        return _discard(recorded);
+        _discard(recorded);
+        return null;
       }
       try {
         audio.normalize(recorded);
@@ -809,11 +960,14 @@ class ComputerVoiceKeyer implements VoiceKeyer {
       }
       // Where the recording started, not where [fileFor] points now: the set
       // in use can change while it runs.
-      audio.replace(recorded, recorded.substring(0, recorded.length - _recordingSuffix.length));
+      final kept = recorded.substring(0, recorded.length - _recordingSuffix.length);
+      audio.replace(recorded, kept);
+      return kept;
     } on FileSystemException catch (e, st) {
       reportVoiceFailure('keep', e, st);
       _problem = ComputerVoiceProblem.fileFailed;
       _discard(recorded);
+      return null;
     }
   }
 

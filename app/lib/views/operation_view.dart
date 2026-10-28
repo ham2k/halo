@@ -19,6 +19,8 @@ import '../services/command_actions.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
 import '../services/cat/cat_service.dart' show RadioKeyer;
+import '../services/cat/computer_voice_keyer.dart' show ComputerVoiceProblem, VoicedMessageRefused;
+import '../services/cat/voiced_words.dart' show VoiceTemplateRender;
 import '../services/cat/drivers/cw_send_queue.dart' show sanitizeCwText;
 import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
@@ -47,6 +49,7 @@ import 'operation/spots_panel.dart';
 import 'operation/summaries/operation_summaries_panel.dart';
 import 'operation/summaries/operation_summaries_settings.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
+import 'voice_messages_dialog.dart' show computerVoiceProblemText;
 import 'operation/positions_panel.dart';
 import 'operation/read_only_while_deleted.dart';
 import 'peers_panel.dart';
@@ -415,6 +418,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // main key handler (main.dart) only looks at modified chords.
     HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
     widget.services.cat.pttKeys.addTarget(_pttTarget);
+    widget.services.cat.keyer('A').voicedWords?.attach(_voiceRender, operatorCall: _voiceOperatorCall, refused: _voiceRefused);
     // Opening the view is the first activity on it; every key, pointer
     // press, scroll, call edit and logged QSO after that refreshes the hold
     // (see [_onWakeKeyEvent], the Listener around the Scaffold and
@@ -630,6 +634,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
     widget.services.cat.pttKeys.removeTarget(_pttTarget);
+    widget.services.cat.keyer('A').voicedWords?.detach(_voiceRender);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     _wakeHold.release();

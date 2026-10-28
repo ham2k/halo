@@ -870,6 +870,8 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'sending cw: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'cw message f${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'cw message f${n} was not sent: the extensions are not ready';
+	@override String voiceMessageError({required Object n, required Object error}) => 'phone message m${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'the extensions are not ready';
 	@override String so2rRadioCannotKey({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that';
 	@override String get so2rNoRadioB => 'nothing sent: pick a radio b in station configuration to key from this set';
 	@override String settingNotStored({required Object label}) => '“${label}” did not accept that value';
@@ -2296,6 +2298,7 @@ class _Translations$settings$radio$qrp extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$cwMessages$qrp cwMessages = _Translations$settings$radio$cwMessages$qrp._(_root);
 	@override late final _Translations$settings$radio$keyerControl$qrp keyerControl = _Translations$settings$radio$keyerControl$qrp._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$qrp voiceMessages = _Translations$settings$radio$voiceMessages$qrp._(_root);
+	@override late final _Translations$settings$radio$voiceWords$qrp voiceWords = _Translations$settings$radio$voiceWords$qrp._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$qrp avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$qrp._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$qrp zeroBeatRange = _Translations$settings$radio$zeroBeatRange$qrp._(_root);
 }
@@ -4094,6 +4097,57 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String get problemUnplayable => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.';
 	@override String get problemRecordingFailed => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.';
 	@override String get problemFileFailed => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.';
+	@override String problemWordsMissing({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'that message\'s template has a problem: ${error}';
+	@override String get problemNoOperation => 'messages said with your words play in an operation, where there is a contact to say them for.';
+	@override String get problemNothingSaid => 'that message says nothing for this contact.';
+	@override String get templateField => 'say with my words';
+	@override String get templateHelp => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:';
+	@override String get help => 'help';
+	@override String get helpTitle => 'saying messages with your words';
+	@override String get helpFullExample => 'a whole message:';
+	@override String get helpExample => 'their call, their report, and your recording of “qsl?”';
+	@override String get playOnRadio => 'play on radio';
+	@override String get templateHelpCall => 'their call';
+	@override String get templateHelpReport => 'the report you give them';
+	@override String get templateHelpMessage => 'message 2\'s recording, played as recorded';
+	@override String get voiced => 'said with your words';
+	@override String willSay({required Object words}) => 'says: ${words}';
+	@override String willSayMissing({required Object words}) => 'not recorded yet: ${words}';
+	@override String get previewNoOperation => 'open an operation to see what it will say.';
+	@override String get wordsDescription => 'use your own voice for calls, numbers and more.';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$qrp extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'word recordings';
+	@override String get callField => 'words for operator';
+	@override String get intro => 'record each word or number three times, run together quickly, the way you say it for a callsign. longer phrases are recorded only once.';
+	@override String get recordAll => 'record all';
+	@override String get recordAllGuide => 'read each word three times, run together, and a phrase of several words once, with a breath between lines. press stop after the last one.';
+	@override String recordingOne({required Object word}) => 'say “${word} ${word} ${word}”, then press stop.';
+	@override String recordingOnce({required Object words}) => 'say “${words}”, then press stop.';
+	@override String get recorded => 'recorded';
+	@override String get notRecorded => 'not recorded';
+	@override String get addPhrase => 'add phrase';
+	@override String get phraseField => 'phrase, as you write it in a message';
+	@override String get deletePhrase => 'delete phrase';
+	@override String get tryField => 'try saying';
+	@override String get pauseLetters => 'pause between letters';
+	@override String get pauseWords => 'pause between words';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'speed';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'advanced settings';
+	@override String get splitSilent => 'nothing was heard in the recording.';
+	@override String get splitNotThreeTakes => 'couldn\'t find three takes. say the word three times, run together, and try again.';
+	@override String get splitLineCount => 'couldn\'t find every word in the reading. read each one three times, with a breath between words.';
+	@override String get splitLinesTooClose => 'couldn\'t tell the words apart. leave a longer breath between words.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -5814,6 +5868,48 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'that message\'s template has a problem: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'messages said with your words play in an operation, where there is a contact to say them for.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
+			'settings.radio.voiceMessages.templateField' => 'say with my words',
+			'settings.radio.voiceMessages.templateHelp' => 'leave empty to play the recording. otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
+			'settings.radio.voiceMessages.help' => 'help',
+			'settings.radio.voiceMessages.helpTitle' => 'saying messages with your words',
+			'settings.radio.voiceMessages.helpFullExample' => 'a whole message:',
+			'settings.radio.voiceMessages.helpExample' => 'their call, their report, and your recording of “qsl?”',
+			'settings.radio.voiceMessages.playOnRadio' => 'play on radio',
+			'settings.radio.voiceMessages.templateHelpCall' => 'their call',
+			'settings.radio.voiceMessages.templateHelpReport' => 'the report you give them',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'message 2\'s recording, played as recorded',
+			'settings.radio.voiceMessages.voiced' => 'said with your words',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'says: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'not recorded yet: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'open an operation to see what it will say.',
+			'settings.radio.voiceMessages.wordsDescription' => 'use your own voice for calls, numbers and more.',
+			'settings.radio.voiceWords.title' => 'word recordings',
+			'settings.radio.voiceWords.callField' => 'words for operator',
+			'settings.radio.voiceWords.intro' => 'record each word or number three times, run together quickly, the way you say it for a callsign. longer phrases are recorded only once.',
+			'settings.radio.voiceWords.recordAll' => 'record all',
+			'settings.radio.voiceWords.recordAllGuide' => 'read each word three times, run together, and a phrase of several words once, with a breath between lines. press stop after the last one.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'say “${word} ${word} ${word}”, then press stop.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'say “${words}”, then press stop.',
+			'settings.radio.voiceWords.recorded' => 'recorded',
+			'settings.radio.voiceWords.notRecorded' => 'not recorded',
+			'settings.radio.voiceWords.addPhrase' => 'add phrase',
+			'settings.radio.voiceWords.phraseField' => 'phrase, as you write it in a message',
+			'settings.radio.voiceWords.deletePhrase' => 'delete phrase',
+			'settings.radio.voiceWords.tryField' => 'try saying',
+			'settings.radio.voiceWords.pauseLetters' => 'pause between letters',
+			'settings.radio.voiceWords.pauseWords' => 'pause between words',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'speed',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'advanced settings',
+			'settings.radio.voiceWords.splitSilent' => 'nothing was heard in the recording.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'couldn\'t find three takes. say the word three times, run together, and try again.',
+			'settings.radio.voiceWords.splitLineCount' => 'couldn\'t find every word in the reading. read each one three times, with a breath between words.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'couldn\'t tell the words apart. leave a longer breath between words.',
 			'settings.radio.avoidZeroBeat.title' => 'avoid zero-beating on spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'with a radio connected, tuning a few hz off a cw spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'tuning exactly to the spotted frequency.',
@@ -5884,6 +5980,8 @@ extension on TranslationsQrp {
 			'settings.peers.waitingForThem' => 'waiting for the other device',
 			'settings.peers.notConnected' => 'not connected',
 			'settings.peers.wantsToPair' => 'wants to share this operation',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.allow' => 'allow',
 			'settings.peers.link' => 'link',
 			'settings.peers.reject' => 'reject',
@@ -5926,8 +6024,6 @@ extension on TranslationsQrp {
 			'settings.syncPanel.configuration' => 'sync configuration',
 			'settings.syncPanel.enableTitle' => 'sync with ham2k log filer',
 			'settings.syncPanel.enabledDescription' => 'backing up and syncing your log across devices',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.disabledDescription' => 'off — staying on this device only',
 			'settings.syncPanel.syncing' => 'syncing',
 			'settings.syncPanel.account' => 'account',
@@ -6398,6 +6494,8 @@ extension on TranslationsQrp {
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.advancedSettings' => 'advanced settings',
 			'settings.station.placeholderSwr' => 'swr reading',
 			'settings.station.placeholderSwrDescription' => 'what this radio reports on its swr meter while transmitting. above 1.8 the panel warns.',
@@ -6440,8 +6538,6 @@ extension on TranslationsQrp {
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.configUnreadable' => 'this radio\'s saved settings could not be read. open its settings and enter them again, or remove it and add it back.',
 			'settings.station.autoConnectHeld' => 'halo stopped responding the last time it connected to this radio, so it did not connect on its own this time. press connect to try again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.title' => 'offline data',
 			'settings.offlineData.noFiles' => 'no data files',
 			'settings.offlineData.noFilesDescription' => 'enable activity or lookup extensions to download their offline data here.',
@@ -6597,6 +6693,8 @@ extension on TranslationsQrp {
 			'commands.cwSending' => ({required Object text}) => 'sending cw: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'cw message f${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'cw message f${n} was not sent: the extensions are not ready',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'phone message m${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
@@ -6910,6 +7008,8 @@ extension on TranslationsQrp {
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'all services responding as expected.',
+			_ => null,
+		} ?? switch (path) {
 			'offline.whatStops' => 'lookups, spots and data files are paused. logging and nearby sync are not.',
 			'offline.servicesTitle' => 'services',
 			'offline.noServices' => 'no service has reported in yet.',
@@ -6954,8 +7054,6 @@ extension on TranslationsQrp {
 			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'preview:',
 			'templateEditor.reset' => 'reset',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.docs' => 'templating docs',
 			'templateEditor.preview' => 'sample preview',
 			'templateEditor.reference' => 'template reference',

@@ -42,13 +42,16 @@ import '../services/halo_services.dart';
 import 'package:halo_audio/halo_audio.dart';
 
 import '../services/cat/cat_service.dart';
+import '../services/error_reporting_service.dart';
 import '../services/cat/computer_voice_keyer.dart';
+import '../services/cat/voice_words.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 import 'keying_pickers.dart' show phoneKeyingParts;
 import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatFields, SetNameDialog, cwMessageNumberIcons;
 import 'keyer_area.dart' show keyerOrSay;
+import 'voice_words_pane.dart';
 
 /// [radio] is the radio whose memories the dialog shows and plays, `A` or
 /// `B` — a keyer area's own; null for the operator's. The memories are audio
@@ -206,7 +209,9 @@ class _VoiceMessagesPane extends StatelessWidget {
                         ),
                         if (fromComputer && keyer.computerVoiceProblem != null) ...[
                           const SizedBox(height: Space.md),
-                          KeyerUnsupportedNotice(text: computerVoiceProblemText(context, keyer.computerVoiceProblem!)),
+                          KeyerUnsupportedNotice(
+                            text: computerVoiceProblemText(context, keyer.computerVoiceProblem!, detail: keyer.computerVoiceProblemDetail),
+                          ),
                         ],
                         // Last, right above the messages it picks.
                         if (fromComputer) ...[
@@ -292,6 +297,16 @@ class _VoiceMessagesPane extends StatelessWidget {
                                 ),
                                 mouseCursor: SystemMouseCursors.click,
                               ),
+                            // The recordings messages are said with — radio1's,
+                            // as the computer's recordings are.
+                            if (fromComputer && radio == 'A' && settings.experimentEnabled('words') /* stored key, see experiments.yaml */ )
+                              ListTile(
+                                leading: const Icon(MdiIcons.alphabetical),
+                                title: Text(context.t.settings.radio.voiceWords.title),
+                                subtitle: Text(m.wordsDescription, style: theme.textTheme.bodySmall),
+                                onTap: () => showVoiceWordsPane(context, services),
+                                mouseCursor: SystemMouseCursors.click,
+                              ),
                           ],
                         ),
                       ),
@@ -316,7 +331,10 @@ class _VoiceMessagesPane extends StatelessWidget {
 /// One memory: its label, how long it plays for, and the way to record it.
 /// The label is an edit, saved on Save; measuring and recording are things
 /// the RADIO does, so they happen as they are pressed and a Cancel does not
-/// undo them — there is nothing here to undo them to.
+/// undo them — there is nothing here to undo them to. "Say with my words"
+/// is saved on Save too, or as Play on Radio or Record acts on it: what
+/// goes on the air is what the field says, and a recording made in place of
+/// the words is the one that plays.
 class _VoiceMessageDialog extends StatefulWidget {
   final HaLoServices services;
   final String radio;
@@ -331,6 +349,64 @@ class _VoiceMessageDialog extends StatefulWidget {
 class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   late final _opened = widget.services.cat.keyer(widget.radio).voiceMessageLabel(widget.n);
   late final _label = TextEditingController(text: _opened);
+  late final _template = TextEditingController(text: widget.services.cat.keyer(widget.radio).voiceMessageTemplate(widget.n));
+
+  /// Whether this message can be said from the operator's words: radio1's
+  /// recordings on this computer, with voiced words on.
+  bool get _voiceable =>
+      widget.radio == 'A' &&
+      widget.services.cat.keyer('A').voiceMessagesFromComputer &&
+      widget.services.settings.experimentEnabled('words') /* stored key, see experiments.yaml */;
+
+  /// What the template says for the draft as it is, and what it needs that
+  /// is not recorded — or why it says nothing. Null before the first preview.
+  String? _says;
+  String? _missing;
+  Timer? _previewing;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_voiceable) unawaited(_preview());
+  }
+
+  void _templateChanged(String _) {
+    _previewing?.cancel();
+    _previewing = Timer(const Duration(milliseconds: 300), () => unawaited(_preview()));
+  }
+
+  /// Touches neither [context] nor [setState] before its first await: the
+  /// first preview starts in [initState].
+  Future<void> _preview() async {
+    final words = widget.services.cat.keyer('A').voicedWords;
+    final template = _template.text;
+    if (words == null || template.trim().isEmpty) {
+      if (_says != null || _missing != null) setState(() => _says = _missing = null);
+      return;
+    }
+    String? says, missing;
+    try {
+      final preview = await words.preview(template);
+      if (!mounted) return;
+      final m = context.t.settings.radio.voiceMessages;
+      if (preview == null) {
+        says = m.previewNoOperation;
+      } else {
+        says = m.willSay(words: spokenText(preview.plan));
+        final absent = [for (final word in preview.plan.unrecorded) word.spoken, ...preview.plan.unspeakable];
+        if (absent.isNotEmpty) missing = m.willSayMissing(words: absent.join(', '));
+      }
+    } on VoicedMessageRefused catch (e) {
+      reportRefusalCause(e, told: mounted);
+      if (!mounted) return;
+      says = computerVoiceProblemText(context, e.problem, detail: e.detail);
+    }
+    if (!mounted || template != _template.text) return;
+    setState(() {
+      _says = says;
+      _missing = missing;
+    });
+  }
 
   /// A recording played on the computer's own speakers, for the operator to
   /// hear what they recorded without putting it on the air.
@@ -352,6 +428,39 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     setState(() => _listening = null);
   }
 
+  /// The template said for the draft as it is, on the computer's own
+  /// speakers.
+  AudioPlayback? _listeningToWords;
+
+  Future<void> _listenToWords() async {
+    final words = widget.services.cat.keyer('A').voicedWords;
+    if (words == null) return;
+    _stopListeningToWords();
+    final AudioPlayback playback;
+    try {
+      playback = await words.listenToTemplate(widget.n, _template.text);
+    } on VoicedMessageRefused catch (e) {
+      reportRefusalCause(e, told: mounted);
+      if (mounted) setState(() => _missing = computerVoiceProblemText(context, e.problem, detail: e.detail));
+      return;
+    }
+    if (!mounted) {
+      playback.stop();
+      return;
+    }
+    setState(() => _listeningToWords = playback);
+    unawaited(
+      playback.done.then((_) {
+        if (mounted && identical(_listeningToWords, playback)) setState(() => _listeningToWords = null);
+      }),
+    );
+  }
+
+  void _stopListeningToWords() {
+    _listeningToWords?.stop();
+    if (_listeningToWords != null) setState(() => _listeningToWords = null);
+  }
+
   /// Whether the operator changed the label. A Save without a change writes
   /// nothing: on a radio that names its own memories the field may hold what
   /// was shown before the radio said otherwise, and saving that would rename
@@ -361,7 +470,10 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   @override
   void dispose() {
     _listening?.stop();
+    _listeningToWords?.stop();
+    _previewing?.cancel();
     _label.dispose();
+    _template.dispose();
     super.dispose();
   }
 
@@ -373,7 +485,61 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     if (_edited && widget.services.cat.keyer(widget.radio).voiceMessagesAreLocal) {
       await widget.services.cat.keyer(widget.radio).setVoiceMessageLabel(widget.n, _label.text.trim());
     }
+    await _keepTemplate();
     navigator.pop();
+  }
+
+  /// Writes the field's words as the message's, where they differ from what
+  /// is stored.
+  Future<void> _keepTemplate() async {
+    final keyer = widget.services.cat.keyer(widget.radio);
+    if (_voiceable && _template.text.trim() != keyer.voiceMessageTemplate(widget.n).trim()) {
+      await keyer.setVoiceMessageTemplate(widget.n, _template.text.trim());
+    }
+  }
+
+  /// The template a message is said with, and what it says now. What to
+  /// write in it is under Help.
+  Widget _templateFields(BuildContext context) {
+    final m = context.t.settings.radio.voiceMessages;
+    final theme = Theme.of(context);
+    final note = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _template,
+            minLines: 1,
+            maxLines: 3,
+            style: const TextStyle(fontFamily: 'RobotoMono'),
+            decoration: poloFieldDecoration(context, m.templateField).copyWith(
+              suffixIcon: _listeningToWords != null
+                  ? IconButton(
+                      icon: Icon(MdiIcons.stop, semanticLabel: m.stopButton),
+                      onPressed: _stopListeningToWords,
+                    )
+                  : IconButton(
+                      icon: Icon(MdiIcons.headphones, semanticLabel: m.listenButton),
+                      onPressed: _template.text.trim().isEmpty ? null : () => unawaited(_listenToWords()),
+                    ),
+            ),
+            onChanged: _templateChanged,
+          ),
+          if (_says != null)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.sm),
+              child: Text(_says!, style: note),
+            ),
+          if (_missing != null)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(_missing!, style: note?.copyWith(color: theme.colorScheme.error)),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -386,7 +552,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     // dialog's usual inset themselves (halo_dialog.dart's default).
     const rowInset = EdgeInsets.symmetric(horizontal: Space.xxl);
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, cat, keyer.voiceActivity]),
+      listenable: Listenable.merge([settings, cat, keyer.voiceActivity, _template]),
       builder: (context, _) {
         final theme = Theme.of(context);
         final activity = keyer.voiceActivity.value;
@@ -394,6 +560,9 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
         final playing = activity?.memory == widget.n && !activity!.recording;
         final busy = activity != null;
         final duration = keyer.voiceMessageDuration(widget.n);
+        // Said with the operator's words, the message plays no recording of
+        // its own: one recorded now would never be heard.
+        final saidWithWords = _voiceable && _template.text.trim().isNotEmpty;
         return HaloDialog(
           title: Text(m.messageTitle(n: widget.n)),
           contentPadding: EdgeInsets.zero,
@@ -416,6 +585,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                   onSubmitted: (_) => _save(),
                 ),
               ),
+              if (_voiceable) _templateFields(context),
               // Whose memories these are, when they are not this device's —
               // said once, above the buttons, because it explains both the
               // read-only label and the lengths beside it.
@@ -456,13 +626,16 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                       )
                     else
                       FilledButton.tonalIcon(
-                        onPressed: busy || !keyer.canRecordVoice
+                        onPressed: busy || !keyer.canRecordVoice || saidWithWords
                             ? null
-                            : () {
+                            : () async {
                                 if (!keyerOrSay(context, widget.services, keyer, () => keyer.canRecordVoice)) return;
                                 // A file being listened to is held open, and on
                                 // Windows the recording cannot then take its place.
                                 if (_listening != null) _stopListening();
+                                // The field is empty here: words still stored
+                                // would play instead of what is recorded.
+                                await _keepTemplate();
                                 keyer.recordVoiceMemory(widget.n);
                               },
                         icon: const Icon(MdiIcons.recordCircleOutline),
@@ -482,26 +655,34 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                         FilledButton.tonalIcon(onPressed: _stopListening, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
                       else
                         FilledButton.tonalIcon(onPressed: busy ? null : _listen, icon: const Icon(MdiIcons.headphones), label: Text(m.listenButton)),
-                      const SizedBox(width: Space.md),
                     ],
-                    if (keyer.canPlayVoice)
-                      if (playing)
-                        FilledButton.tonalIcon(onPressed: keyer.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
-                      else
-                        FilledButton.tonalIcon(
-                          // Once: this is the operator listening to the
-                          // memory, not calling CQ with it.
-                          onPressed: busy
-                              ? null
-                              : () {
-                                  if (keyerOrSay(context, widget.services, keyer, () => keyer.canPlayVoice)) keyer.playVoiceMemory(widget.n, repeat: false);
-                                },
-                          icon: const Icon(MdiIcons.play),
-                          label: Text(m.playButton),
-                        ),
                   ],
                 ),
               ),
+              // On a line of its own: this one goes out over the air, where
+              // Listen above stays on the computer.
+              if (keyer.canPlayVoice)
+                Padding(
+                  padding: rowInset.copyWith(bottom: Space.lg),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: playing
+                        ? FilledButton.tonalIcon(onPressed: keyer.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
+                        : FilledButton.tonalIcon(
+                            // Once: this is the operator listening to the
+                            // memory, not calling CQ with it.
+                            onPressed: busy
+                                ? null
+                                : () async {
+                                    if (!keyerOrSay(context, widget.services, keyer, () => keyer.canPlayVoice)) return;
+                                    await _keepTemplate();
+                                    keyer.playVoiceMemory(widget.n, repeat: false);
+                                  },
+                            icon: const Icon(MdiIcons.play),
+                            label: Text(m.playOnRadio),
+                          ),
+                  ),
+                ),
               // Why the button above is disabled, before anything about how
               // to use it: an operator who cannot record from here needs to
               // know that first.
@@ -536,6 +717,12 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
           // on whatever the system plays sound files with, and the folder is
           // where a sound file is put in or taken out.
           secondary: keyer.voiceMessagesFromComputer ? TextButton(onPressed: () => keyer.revealVoiceMessage(widget.n), child: Text(m.openFileButton)) : null,
+          help: _voiceable
+              ? TextButton(
+                  onPressed: () => showHaloDialog<void>(context: context, builder: (context) => const _VoiceTemplateHelpDialog()),
+                  child: Text(m.help),
+                )
+              : null,
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
           actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
         );
@@ -543,6 +730,57 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     );
   }
 }
+
+/// What to write in "Say with my words": the values a voiced message is
+/// made of, and one whole message. Only what the operator's words can say —
+/// a name or a state would be spelled letter by letter.
+class _VoiceTemplateHelpDialog extends StatelessWidget {
+  const _VoiceTemplateHelpDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final m = context.t.settings.radio.voiceMessages;
+    final theme = Theme.of(context);
+    // Templates are code, identical in every language; only what they mean
+    // is translated.
+    final rows = [('{{ qso.call }}', m.templateHelpCall), ('{{ qso.rst }}', m.templateHelpReport), ('{{ phone.msg2 }}', m.templateHelpMessage)];
+    Widget row(String template, String meaning) => ListTile(
+      visualDensity: VisualDensity.compact,
+      title: Text(template, style: theme.textTheme.bodyMedium?.copyWith(fontFamily: 'RobotoMono')),
+      subtitle: Text(meaning),
+    );
+    return HaloDialog(
+      title: Text(m.helpTitle),
+      list: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.templateHelp)),
+          for (final (template, meaning) in rows) row(template, meaning),
+          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, 0), child: Text(m.helpFullExample)),
+          row('{{ qso.call }} {{ qso.rst }} QSL?', m.helpExample),
+        ],
+      ),
+      // Done, not Cancel: nothing here can be changed.
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+    );
+  }
+}
+
+/// [plan]'s words as the operator reads them: a part's words with spaces,
+/// the parts apart, a message's recording by its key.
+String spokenText(VoicedPlan plan) => [
+  for (final (i, piece) in plan.pieces.indexed)
+    '${i > 0 && piece.startsPart
+        ? ' · '
+        : i > 0
+        ? ' '
+        : ''}${switch (piece) {
+      WordPiece(:final word) => word.spoken,
+      RecordingPiece(:final message) => 'M$message',
+    }}',
+].join();
 
 /// A measured length as seconds with one decimal — "4.2 s". The measurement
 /// has milliseconds in it (settings_service.dart), and a memory rounded to
@@ -554,11 +792,20 @@ String voiceDurationText(BuildContext context, int millis) => context.t.settings
 /// a recording on the computer may be a file it cannot play.
 String voiceUnknownLengthText(BuildContext context, RadioKeyer keyer, int n) {
   final m = context.t.settings.radio.voiceMessages;
+  if (keyer.voiceMessageVoiced(n)) return m.voiced;
   if (keyer.voiceMessagesFromComputer) return keyer.voiceMessageUnplayable(n) ? m.unplayable : m.notRecorded;
   return keyer.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
 }
 
-String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem problem) {
+/// Reports the failure behind [refusal], where there is one — [told] when
+/// the refusal is on the operator's screen, so no generic notice says it
+/// again.
+void reportRefusalCause(VoicedMessageRefused refusal, {required bool told}) {
+  final cause = refusal.cause;
+  if (cause != null) ErrorReportingService.report(cause, refusal.causeStack, context: 'voice:render-message', told: told);
+}
+
+String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem problem, {String? detail}) {
   final m = context.t.settings.radio.voiceMessages;
   return switch (problem) {
     ComputerVoiceProblem.noOutput => m.problemNoOutput,
@@ -572,6 +819,10 @@ String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem probl
     ComputerVoiceProblem.unplayable => m.problemUnplayable,
     ComputerVoiceProblem.recordingFailed => m.problemRecordingFailed,
     ComputerVoiceProblem.fileFailed => m.problemFileFailed,
+    ComputerVoiceProblem.wordsMissing => m.problemWordsMissing(words: detail ?? ''),
+    ComputerVoiceProblem.templateFailed => m.problemTemplateFailed(error: detail ?? ''),
+    ComputerVoiceProblem.noOperation => m.problemNoOperation,
+    ComputerVoiceProblem.nothingSaid => m.problemNothingSaid,
   };
 }
 

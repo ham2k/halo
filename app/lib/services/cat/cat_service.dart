@@ -50,6 +50,7 @@ import 'peer_keying.dart';
 import 'equipment_registry.dart';
 import 'transport.dart';
 import 'vfo_snap.dart';
+import 'voiced_words.dart';
 
 // The keyer area names a wait; it reads everything else about keying off
 // this service, so the type comes with it rather than through a second
@@ -382,6 +383,9 @@ class CatService extends ChangeNotifier
       // Every change that makes or unmakes one — a session opened, the
       // directory found, a set picked — is one this service announces.
       addListener(_keying.syncComputerKeyers);
+      // Made now rather than when first asked for: it is what makes a
+      // templated message, and a key can ask for one before any surface has.
+      _keying.voicedWords;
     }
   }
 

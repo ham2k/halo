@@ -866,8 +866,10 @@ class _RepeatButton extends StatelessWidget {
 
 /// Whether memory [n] holds audio, as far as the app can tell: a recording
 /// on this computer, or a memory the radio lists, has a length; a radio that
-/// says nothing about its memories may hold any of them.
-bool _voiceRecorded(RadioKeyer keyer, int n) => !(keyer.voiceMessagesFromComputer || keyer.voiceMessagesNamedOnRadio) || keyer.voiceMessageDuration(n) > 0;
+/// says nothing about its memories may hold any of them; a message said from
+/// the operator's words is made as it plays.
+bool _voiceRecorded(RadioKeyer keyer, int n) =>
+    !(keyer.voiceMessagesFromComputer || keyer.voiceMessagesNamedOnRadio) || keyer.voiceMessageDuration(n) > 0 || keyer.voiceMessageVoiced(n);
 
 /// Memory [n]'s label; [key] for one recorded with none; nothing for neither.
 String _voiceLabel(RadioKeyer keyer, int n, String key) {

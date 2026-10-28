@@ -167,6 +167,18 @@ void main() {
     expect(cat.voiceMessageDuration(2), 0);
   });
 
+  test('a message said with words has no length, whatever recording it still has', () async {
+    // The recording beside the words is not what plays: shown, it says the
+    // message is the recording, and the keyer area paces a 2.4 s bar
+    // against words that take one.
+    final cat = services.cat;
+    await connectRig();
+    await services.settings.setExperimentEnabled('words', true);
+    await cat.keyer('A').setVoiceMessageTemplate(1, '{{ qso.call }}');
+    expect(cat.voiceMessageDuration(1), 0);
+    expect(cat.keyer('A').voiceMessageVoiced(1), isTrue);
+  });
+
   test('without the setting, the radio plays its own memories as before', () async {
     final cat = services.cat;
     await connectRig(fromComputer: false);

@@ -3,6 +3,7 @@
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import 'cat/voice_words.dart';
 import 'settings_service.dart';
 
 /// One named set of voice messages recorded on this computer
@@ -20,7 +21,14 @@ class VoiceMessageSet {
   /// Always [SettingsService.voiceMessageCount] long.
   final List<String> labels;
 
-  const VoiceMessageSet({required this.id, required this.name, required this.labels});
+  /// What each message says when it is not a recording: a template voiced
+  /// from the operator's words (docs/design/cat.md § Voiced words), empty for
+  /// a message that is its recording. Always [SettingsService.voiceMessageCount] long.
+  final List<String> templates;
+
+  const VoiceMessageSet({required this.id, required this.name, required this.labels, this.templates = _noTemplates});
+
+  static const _noTemplates = ['', '', '', '', '', '', '', ''];
 
   /// The stored keys, in the Radio group: the sets, the id of the one in
   /// use, and where phone messages come from.
@@ -36,7 +44,7 @@ class VoiceMessageSet {
 
   bool get isDefault => id == defaultId;
 
-  VoiceMessageSet.empty({required this.id, required this.name}) : labels = List.filled(SettingsService.voiceMessageCount, '');
+  VoiceMessageSet.empty({required this.id, required this.name}) : labels = List.filled(SettingsService.voiceMessageCount, ''), templates = _noTemplates;
 
   /// Null for an entry with no id: without one there is no directory to read
   /// its recordings from.
@@ -44,24 +52,41 @@ class VoiceMessageSet {
     final id = json['id'];
     if (id is! String || id.isEmpty) return null;
     final name = json['name'];
-    final raw = json['labels'];
-    final list = raw is List ? [for (final entry in raw) entry is String ? entry : ''] : <String>[];
+    List<String> strings(Object? raw) {
+      final list = raw is List ? [for (final entry in raw) entry is String ? entry : ''] : <String>[];
+      return [for (var i = 0; i < SettingsService.voiceMessageCount; i++) i < list.length ? list[i] : ''];
+    }
+
     return VoiceMessageSet(
       id: id,
       name: name is String && name.trim().isNotEmpty ? name : '?',
-      labels: [for (var i = 0; i < SettingsService.voiceMessageCount; i++) i < list.length ? list[i] : ''],
+      labels: strings(json['labels']),
+      templates: strings(json['templates']),
     );
   }
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'labels': labels};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'labels': labels, if (templates.any((t) => t.isNotEmpty)) 'templates': templates};
 
   String label(int n) => n >= 1 && n <= labels.length ? labels[n - 1] : '';
 
-  VoiceMessageSet withLabel(int n, String value) =>
-      VoiceMessageSet(id: id, name: name, labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]]);
+  String template(int n) => n >= 1 && n <= templates.length ? templates[n - 1] : '';
 
-  VoiceMessageSet renamed(String name) => VoiceMessageSet(id: id, name: name, labels: labels);
+  VoiceMessageSet withLabel(int n, String value) =>
+      VoiceMessageSet(id: id, name: name, labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]], templates: templates);
+
+  VoiceMessageSet withTemplate(int n, String value) =>
+      VoiceMessageSet(id: id, name: name, labels: labels, templates: [for (var i = 0; i < templates.length; i++) i == n - 1 ? value : templates[i]]);
+
+  VoiceMessageSet renamed(String name) => VoiceMessageSet(id: id, name: name, labels: labels, templates: templates);
 }
+
+/// The Radio group key the word sets' phrases are kept under.
+const voicePhrasesKey = 'voicePhrases';
+const voicePacingKey = 'voicePacing';
+
+/// [call] as a word set is named by — its directory and its phrases' key:
+/// upper case, a slash (a portable call) made something a path can hold.
+String voiceWordSetCall(String call) => call.trim().toUpperCase().replaceAll(RegExp('[^A-Z0-9]'), '_');
 
 /// Where phone messages come from: nowhere, the radio's own memories, or the
 /// set in use on this computer. One pick for every radio, as the set is.
@@ -122,6 +147,37 @@ extension VoiceMessageSetSettings on SettingsService {
   VoiceMessageSet get activeVoiceMessageSet {
     final id = voiceMessageSetId;
     return voiceMessageSets.firstWhere((set) => set.id == id);
+  }
+
+  /// The phrases of each operator's word set (docs/design/cat.md § Voiced
+  /// words), by callsign as [voiceWordSetCall] spells it.
+  List<VoicePhrase> voicePhrases(String call) {
+    final raw = _voiceSettings.group[voicePhrasesKey];
+    final list = raw is Map ? raw[voiceWordSetCall(call)] : null;
+    return [
+      if (list is List)
+        for (final entry in list) ?VoicePhrase.fromJson(entry),
+    ];
+  }
+
+  Future<void> setVoicePhrases(String call, List<VoicePhrase> phrases) {
+    final raw = _voiceSettings.group[voicePhrasesKey];
+    final all = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    all[voiceWordSetCall(call)] = [for (final phrase in phrases) phrase.toJson()];
+    return updateSettingsGroup(SettingsService.radioGroup, {voicePhrasesKey: all});
+  }
+
+  /// How [call]'s words are spaced when a message is said with them.
+  VoicedPacing voicePacing(String call) {
+    final raw = _voiceSettings.group[voicePacingKey];
+    return VoicedPacing.fromJson(raw is Map ? raw[voiceWordSetCall(call)] : null);
+  }
+
+  Future<void> setVoicePacing(String call, VoicedPacing spacing) {
+    final raw = _voiceSettings.group[voicePacingKey];
+    final all = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+    all[voiceWordSetCall(call)] = spacing.toJson();
+    return updateSettingsGroup(SettingsService.radioGroup, {voicePacingKey: all});
   }
 
   /// Writes the sets and which one is in use, in one write.

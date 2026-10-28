@@ -11,7 +11,53 @@
 
 part of 'cat_keying.dart';
 
+/// What makes each keying's templated messages (voiced_words.dart) —
+/// beside it rather than a field of it, since cat_keying.dart is at its size
+/// budget.
+final _voiceMakers = Expando<Future<String> Function(int n, String template)>();
+
 extension ComputerVoiceKeying on CatKeying {
+  /// Makes message [n] from its [template] at play time — set by the
+  /// keying's voiced words (voiced_words.dart).
+  set voiceMaker(Future<String> Function(int n, String template) make) => _voiceMakers[this] = make;
+
+  /// Message [n] made from its template at play time, when it has one and
+  /// voiced words are on — see [ComputerVoiceKeyer.prepare].
+  Future<String>? _prepareVoice(int n) {
+    if (!settings.experimentEnabled('words') /* stored key, see experiments.yaml */ ) return null;
+    final template = settings.activeVoiceMessageSet.template(n);
+    final make = _voiceMakers[this];
+    if (template.trim().isEmpty || make == null) return null;
+    return make(n, template);
+  }
+
+  /// The voice messages' directory, asked for if it is not known yet.
+  String? get voiceMessagesRoot {
+    _askDirectory();
+    return voiceMessagesDir;
+  }
+
+  /// Where message [n] of the set in use is recorded.
+  String voiceMessageFile(int n) => _voiceFile(n);
+
+  /// What records on radio1's input: its own keyer, or the desk's with no radio.
+  ComputerVoiceKeyer? get voiceRecorder => _computerKeyers[station.localKeyingRadio] ?? _deskRecorder;
+
+  /// Whether message [n] is said from a template rather than recorded — a
+  /// message ready to play with no recording of its own.
+  bool voiceMessageVoiced(int n) =>
+      voiceMessagesFromComputer &&
+      settings.experimentEnabled('words') /* stored key, see experiments.yaml */ &&
+      settings.activeVoiceMessageSet.template(n).trim().isNotEmpty;
+
+  /// Sets message [n]'s template in the set in use; empty makes it its recording again.
+  Future<void> setVoiceMessageTemplate(int n, String template) async {
+    final id = settings.voiceMessageSetId;
+    final sets = [for (final set in settings.voiceMessageSets) set.id == id ? set.withTemplate(n, template) : set];
+    await settings.setVoiceMessageSets(sets, active: id);
+    onKeyingChanged();
+  }
+
   void _askDirectory() {
     final resolve = voiceMessagesDirectory;
     if (_directoryAsked || resolve == null) return;
@@ -87,7 +133,7 @@ extension ComputerVoiceKeying on CatKeying {
     if (audio == null || dir == null) return null;
     final from = settings.activeVoiceMessageSet;
     final id = uuidGenerator.v4();
-    final set = VoiceMessageSet(id: id, name: name, labels: from.labels);
+    final set = VoiceMessageSet(id: id, name: name, labels: from.labels, templates: from.templates);
     for (var n = 1; n <= SettingsService.voiceMessageCount; n++) {
       // A file this app cannot play is copied too: it is the operator's, and
       // a set that left it out would lose it without a word.
@@ -153,6 +199,7 @@ extension ComputerVoiceKeying on CatKeying {
         config: () => station.nodeFor(uuid)?.config ?? const {},
         fileFor: _voiceFile,
         report: (activity) => noteVoiceActivity(uuid, activity),
+        prepare: _prepareVoice,
       );
     }
     for (final uuid in _computerKeyers.keys.where((uuid) => !wanted.contains(uuid)).toList()) {
@@ -286,6 +333,10 @@ extension ComputerVoiceKeying on CatKeying {
 
   /// Whether radio1's messages are recordings on this computer.
   bool get voiceMessagesFromComputer => !playsVoiceOverPeer && _playsFromComputer(station.localKeyingRadio);
+
+  /// What [computerVoiceProblem] was about, where it says: the words a
+  /// template needs, a template's error.
+  String? get computerVoiceProblemDetail => voiceMessagesFromComputer ? _computerKeyers[station.localKeyingRadio]?.problemDetail : null;
 
   /// What last went wrong with radio1's computer voice keyer, for the Phone
   /// Keyer dialog.
