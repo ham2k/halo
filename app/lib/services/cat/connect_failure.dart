@@ -28,6 +28,11 @@ String connectFailureReason(Object error) {
   return 'other';
 }
 
+/// The USB ids of the adapter a serial failure was on, where the transport
+/// read them: a chip model, which identifies nobody, and the only way an
+/// adapter no driver claims can say which one it is.
+String? connectFailureUsbId(Object error) => error is SerialPortProblem ? error.usbId : null;
+
 /// What the equipment row shows for a failed connect. [reason] is
 /// [connectFailureReason]'s classification, reused rather than re-derived so
 /// there's one place deciding what counts as a network or timeout error.
@@ -53,6 +58,8 @@ String friendlyConnectError(String reason, Object error) {
       return t.settings.station.connectFailedDenied;
     case 'serial:lines':
       return t.settings.station.connectFailedLines;
+    case 'serial:unsupported':
+      return t.settings.station.connectFailedUnsupported;
     default:
       // 'serial:other' included: a cause the transport could not place
       // keeps its own words rather than being translated into a guess.
@@ -64,10 +71,12 @@ String friendlyConnectError(String reason, Object error) {
 /// [connectFailureReason]) and the exception's type, never its text — a serial
 /// open failure names the port, and the port carries the adapter's serial
 /// number. The OS's own words are kept: they are what tell a network that is
-/// gone ("Network is unreachable") from a radio that refused.
+/// gone ("Network is unreachable") from a radio that refused. So are the
+/// adapter's USB ids ([connectFailureUsbId]).
 String connectFailedNote(String reason, Object error) {
   final os = osErrorDetail(error);
-  return 'connect failed: $reason (${error.runtimeType}${os == null ? '' : ': $os'})';
+  final usb = connectFailureUsbId(error);
+  return 'connect failed: $reason (${error.runtimeType}${os == null ? '' : ': $os'})${usb == null ? '' : ' usb $usb'}';
 }
 
 /// The DEVLOGCAT line for a connection that closed on its own, with the

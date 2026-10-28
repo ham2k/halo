@@ -5650,6 +5650,9 @@ class Translations$settings$station$en {
 	/// en: 'Recently connected'
 	String get serialPortJustNow => 'Recently connected';
 
+	/// en: 'no driver'
+	String get serialPortNoDriver => 'no driver';
+
 	/// en: 'Add a USB device…'
 	String get serialDeviceRequest => 'Add a USB device…';
 
@@ -5703,6 +5706,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Only for a CAT interface that draws its power from DTR, such as some RS-232 cables for the FT-817. On many cables DTR keys CW or PTT, and holding it high transmits.'
 	String get serialDtrHighDescription => 'Only for a CAT interface that draws its power from DTR, such as some RS-232 cables for the FT-817. On many cables DTR keys CW or PTT, and holding it high transmits.';
+
+	/// en: 'USB chip driver'
+	String get serialUsbDriver => 'USB chip driver';
+
+	/// en: 'Automatic recognizes most adapters. Pick the chip only for one the port list says has no driver — its packaging or a USB device list names it.'
+	String get serialUsbDriverDescription => 'Automatic recognizes most adapters. Pick the chip only for one the port list says has no driver — its packaging or a USB device list names it.';
+
+	/// en: 'Automatic'
+	String get serialUsbDriverAuto => 'Automatic';
 
 	/// en: 'Radio CI-V address'
 	String get civAddress => 'Radio CI-V address';
@@ -5913,6 +5925,9 @@ class Translations$settings$station$en {
 
 	/// en: 'Device not found'
 	String get connectFailedDevice => 'Device not found';
+
+	/// en: 'No driver recognizes this USB adapter's chip. If you know which chip it is, choose it under USB chip driver in Advanced Settings.'
+	String get connectFailedUnsupported => 'No driver recognizes this USB adapter\'s chip. If you know which chip it is, choose it under USB chip driver in Advanced Settings.';
 
 	/// en: 'RTS/DTR could not be held as set, so the port was closed. Another program may have left hardware handshaking on — unplug and replug the cable.'
 	String get connectFailedLines => 'RTS/DTR could not be held as set, so the port was closed. Another program may have left hardware handshaking on — unplug and replug the cable.';
@@ -11180,6 +11195,7 @@ extension on Translations {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
 			'settings.station.serialPortSuggested' => 'suggested',
 			'settings.station.serialPortJustNow' => 'Recently connected',
+			'settings.station.serialPortNoDriver' => 'no driver',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.bleDevice' => 'Bluetooth LE device',
 			'settings.station.bleDeviceDescription' => 'The serial bridge your radio is connected through, such as a LiNK500MP in Mode 4 or a BLE serial adapter.',
@@ -11198,6 +11214,9 @@ extension on Translations {
 			'settings.station.serialRtsHighDescription' => 'Only for a radio that waits for RTS before responding, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.',
 			'settings.station.serialDtrHigh' => 'Hold DTR high',
 			'settings.station.serialDtrHighDescription' => 'Only for a CAT interface that draws its power from DTR, such as some RS-232 cables for the FT-817. On many cables DTR keys CW or PTT, and holding it high transmits.',
+			'settings.station.serialUsbDriver' => 'USB chip driver',
+			'settings.station.serialUsbDriverDescription' => 'Automatic recognizes most adapters. Pick the chip only for one the port list says has no driver — its packaging or a USB device list names it.',
+			'settings.station.serialUsbDriverAuto' => 'Automatic',
 			'settings.station.civAddress' => 'Radio CI-V address',
 			'settings.station.civAddressDescription' => 'Hex, as shown in the radio\'s CI-V menu. The IC-705 ships as A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V address is two hex digits, 01 to FF',
@@ -11268,6 +11287,7 @@ extension on Translations {
 			'settings.station.connectFailedBusy' => 'Device is in use',
 			'settings.station.connectFailedDenied' => 'Access denied',
 			'settings.station.connectFailedDevice' => 'Device not found',
+			'settings.station.connectFailedUnsupported' => 'No driver recognizes this USB adapter\'s chip. If you know which chip it is, choose it under USB chip driver in Advanced Settings.',
 			'settings.station.connectFailedLines' => 'RTS/DTR could not be held as set, so the port was closed. Another program may have left hardware handshaking on — unplug and replug the cable.',
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
@@ -11561,13 +11581,13 @@ extension on Translations {
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'Updated ${days}d ago',
 			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Updated ${days}d ${hours}h ago',
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.personalInfo' => 'Personal Info',
 			'settings.profiles.personalInfoNote' => 'This might be included in generated logs when relevant for submissions',
 			'settings.profiles.name' => 'Name',

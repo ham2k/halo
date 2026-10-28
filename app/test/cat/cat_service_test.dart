@@ -582,6 +582,35 @@ void main() {
       expect(only('radio_connect_failed').single['reason'], 'serial:lines');
     });
 
+    test('an adapter no driver claims reports which chip it is', () async {
+      // The USB ids are the only thing that says which chip to add support
+      // for; without them every such report reads the same.
+      await withTracking();
+      final node = await addRadio();
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.last.completer.completeError(const _FakeSerialProblem(SerialFailure.unsupported, usbId: '067b:23a3'));
+      await connecting;
+
+      final props = only('radio_connect_failed').single;
+      expect(props['reason'], 'serial:unsupported');
+      expect(props['usb'], '067b:23a3');
+      expect(cat.stateFor(node.uuid).error, t.settings.station.connectFailedUnsupported);
+    });
+
+    test('a failure with no USB ids sends no usb property', () async {
+      // Desktop and web serial set none; an empty or null property would read
+      // as "a USB failure with no ids" rather than "not a USB failure".
+      await withTracking();
+      final node = await addRadio();
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.last.completer.completeError(const _FakeSerialProblem(SerialFailure.busy));
+      await connecting;
+
+      expect(only('radio_connect_failed').single.containsKey('usb'), isFalse);
+    });
+
     test('radio_added records whether discovery or the form found it', () async {
       // The gap between added and connected is what says a pairing is
       // configurable but not usable — worthless if both paths look alike.
@@ -3756,7 +3785,10 @@ class _FakeSerialProblem implements SerialPortProblem {
   @override
   final SerialFailure failure;
 
-  const _FakeSerialProblem(this.failure);
+  @override
+  final String? usbId;
+
+  const _FakeSerialProblem(this.failure, {this.usbId});
 
   @override
   String toString() => 'Could not open /dev/cu.usbserial-FTB6SPL3: No such file or directory';

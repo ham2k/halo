@@ -166,7 +166,7 @@ extension _Connection on CatService {
       final raw = '$e';
       trafficLog?.note(_logLabel(uuid), connectFailedNote(reason, e));
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
-      _trackFailure(node, reason, extra: _baudExtra(config));
+      _trackFailure(node, reason, extra: {..._baudExtra(config), 'usb': ?connectFailureUsbId(e)});
       if (e is SerialPortProblem && e.failure == SerialFailure.lines) runtime.linesRefused = true;
       return _ConnectOutcome.failed;
     }

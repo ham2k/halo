@@ -34,6 +34,10 @@ class SerialPortOption {
   final int? portIndex;
   final int? portCount;
 
+  /// No serial driver claims the device (Android only): it opens only with
+  /// a USB chip driver picked for it.
+  final bool noDriver;
+
   const SerialPortOption({
     required this.name,
     this.description,
@@ -44,6 +48,7 @@ class SerialPortOption {
     this.productId,
     this.portIndex,
     this.portCount,
+    this.noDriver = false,
   });
 
   /// The whole port on ONE LINE — `CP2105 Dual USB to UART
@@ -87,6 +92,7 @@ class SerialPortOption {
     productId: productId,
     portIndex: index,
     portCount: count,
+    noDriver: noDriver,
   );
 
   /// What the descriptors say this is, with no device node — empty when they
@@ -128,9 +134,21 @@ class PortChoice {
   /// port is.
   final bool justNow;
 
-  const PortChoice({required this.name, required this.label, required this.hardware, required this.device, this.suggested = false, this.justNow = false});
+  /// See [SerialPortOption.noDriver].
+  final bool noDriver;
 
-  PortChoice withHardware(String hardware) => PortChoice(name: name, label: label, hardware: hardware, device: device, suggested: suggested, justNow: justNow);
+  const PortChoice({
+    required this.name,
+    required this.label,
+    required this.hardware,
+    required this.device,
+    this.suggested = false,
+    this.justNow = false,
+    this.noDriver = false,
+  });
+
+  PortChoice withHardware(String hardware) =>
+      PortChoice(name: name, label: label, hardware: hardware, device: device, suggested: suggested, justNow: justNow, noDriver: noDriver);
 
   /// Whether [pickerLabel] was made from the device node rather than read
   /// off the hardware — which is what says the node has nothing to add
@@ -166,7 +184,7 @@ class PortChoice {
   String get pickerIcon => justNow ? 'new-box' : 'usb';
 
   /// The short markers between the name and the device node.
-  List<String> get pickerTags => [if (suggested) t.settings.station.serialPortSuggested];
+  List<String> get pickerTags => [if (suggested) t.settings.station.serialPortSuggested, if (noDriver) t.settings.station.serialPortNoDriver];
 
   /// The line under the name, for a port that was not there a moment ago —
   /// a sentence rather than a pill, because it is the row's own news and not
@@ -194,6 +212,14 @@ const serialDtrHighConfigKey = 'dtrHigh';
 /// safe reading for any target that forgot to say.
 const serialNoControlLinesKey = 'noControlLines';
 
+/// Which chip protocol opens a USB adapter on Android: absent or `auto` lets
+/// the library match the adapter by its USB ids; anything else forces that
+/// driver, for a chip sold under ids the library does not list. The values
+/// are what `UsbSerialChannel.kt` takes.
+const serialUsbDriverConfigKey = 'usbDriver';
+
+const serialUsbDrivers = {'ftdi': 'FTDI', 'cp210x': 'Silicon Labs CP210x', 'ch34x': 'WCH CH340/CH341', 'pl2303': 'Prolific PL2303', 'cdc': 'CDC-ACM'};
+
 mixin SerialTransportConfig implements EquipmentTransport {
   /// Ports the app could open, enumerated fresh — a USB adapter can appear
   /// or vanish between one look and the next, so this must never be cached.
@@ -202,6 +228,10 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// Ports this transport ranks first on its own account, before any
   /// catalogue restriction has its say — see BluetoothSerialTransport.
   bool prefersPort(SerialPortOption port) => false;
+
+  /// Whether the editor offers [serialUsbDriverConfigKey]: only where the
+  /// app itself drives the USB chip, which is Android.
+  bool get offersUsbDriver => false;
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
@@ -256,6 +286,19 @@ mixin SerialTransportConfig implements EquipmentTransport {
         'label': t.settings.station.serialDtrHigh,
         'description': t.settings.station.serialDtrHighDescription,
         'advanced': true,
+      },
+    if (offersUsbDriver && !overrides.containsKey(serialUsbDriverConfigKey))
+      {
+        'type': 'field',
+        'fieldType': 'select',
+        'key': serialUsbDriverConfigKey,
+        'label': t.settings.station.serialUsbDriver,
+        'description': t.settings.station.serialUsbDriverDescription,
+        'advanced': true,
+        'options': [
+          {'value': 'auto', 'label': t.settings.station.serialUsbDriverAuto},
+          for (final MapEntry(:key, :value) in serialUsbDrivers.entries) {'value': key, 'label': value},
+        ],
       },
   ];
 
@@ -385,6 +428,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
           device: port.shortName,
           suggested: portSuggests(restriction, port) || prefersPort(port),
           justNow: markRecent && recent.contains(port.name),
+          noDriver: port.noDriver,
         ),
     ];
     choices.sort((a, b) {
@@ -542,7 +586,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// `stopBits` is never a field: a driver whose device needs two (the
   /// WinKeyer) pins it in its model's `overrides`.
   @override
-  Set<String> get recognizedConfigKeys => const {'port', 'baudRate', 'stopBits', serialRtsHighConfigKey, serialDtrHighConfigKey};
+  Set<String> get recognizedConfigKeys => const {'port', 'baudRate', 'stopBits', serialRtsHighConfigKey, serialDtrHighConfigKey, serialUsbDriverConfigKey};
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -557,6 +601,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
     'stopBits': serialStopBits(config),
     serialRtsHighConfigKey: config[serialRtsHighConfigKey] == true,
     serialDtrHighConfigKey: config[serialDtrHighConfigKey] == true,
+    if (serialUsbDrivers.containsKey(config[serialUsbDriverConfigKey])) serialUsbDriverConfigKey: config[serialUsbDriverConfigKey],
   };
 
   @override

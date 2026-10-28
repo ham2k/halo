@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "New: tuning the radio away from a contact being entered wipes it (Undo returns it)"
     - "New: Settings sections fold, and stay the way you left them"
+    - "Improved USB radio connections on Android: more adapter chips work (tell us how it behaves)"
 
 "184":
   changes:

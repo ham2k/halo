@@ -424,10 +424,14 @@ presses Connect. Left flow control lasts until the cable is replugged, and every
 port again, which raises RTS: a key-up per attempt for the rest of the session. libserialport opens
 with `HUPCL` cleared, so closing a refused port does not lower the lines either; the message sends the
 operator to replug, which does. Every equipment report states the levels the
-connection applies (`effectiveSettingLines`), whether or not the node stores them. Android's plugin
-cannot report a refused line change, and Web Serial's `setSignals` is best effort; on those two the
-lines are set without confirmation. The open itself still raises both lines for the few
-milliseconds before the configuration lands; nothing in libserialport can open a port with them held.
+connection applies (`effectiveSettingLines`), whether or not the node stores them. Android cannot
+read the lines back, and Web Serial's `setSignals` is best effort; on those two the lines are set
+without confirmation. Android does hear a refused write, and refuses the port (`serial:lines`) only
+when the line was asked high: every bridge driver in usb-serial-for-android writes both lines low as
+it opens, and its CDC driver leaves them where the device put them, so a refused low has been raised
+by nothing — and a radio's own CDC port that refuses line-state requests would otherwise be
+unusable. On desktop the open itself still raises both lines for the few milliseconds before the
+configuration lands; nothing in libserialport can open a port with them held.
 
 The lines and both cadences are fields most operators never touch, so the equipment editor folds
 every field a transport or driver marks `advanced` under an **Advanced Settings** disclosure,
@@ -531,9 +535,21 @@ Ten-Tec's other CAT radios, the Omni VII, Argonaut VI and Jupiter, speak other p
 covered.
 
 Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
-the same conditional-export barrel as TCP. Android goes through the `usb_serial` plugin instead
-(`UsbManager` over a MethodChannel, with a runtime permission flow), and iOS has no USB host API at
-all without MFi.
+the same conditional-export barrel as TCP. Android drives the USB chips itself, through
+[usb-serial-for-android](https://github.com/mik3y/usb-serial-for-android) behind our own
+`UsbSerialChannel.kt` (`UsbManager`, the runtime permission flow, and a byte pipe to Dart), and iOS
+has no USB host API at all without MFi.
+
+**On Android the chip is the app's problem.** No OS driver sits under the port: the library speaks
+each bridge's protocol itself and picks the driver by the device's USB ids, falling back to any
+device with a CDC-ACM interface pair. A chip it does not list — a bridge sold under ids of its own —
+gets no driver. Such a device is still listed, tagged **no driver**, and the **USB chip driver**
+advanced setting (Android only) forces one of the library's drivers onto it. Connecting one without
+that fails as `serial:unsupported`, checked before the permission request so an undrivable device
+never puts a dialog up, and the failure carries the device's `vvvv:pppp` ids into DEVLOGCAT and
+`radio_connect_failed`, so the next chip worth adding names itself. A radio's own CDC port may refuse
+a baud rate it has no use for; that refusal is logged, not fatal, while a real UART behind a bridge
+that refuses one fails the open.
 
 **Baud is the operator's to set.** app-polo hardcoded 4800 with no UI, which its own notes call out
 as a silent-failure mode — a radio whose CAT menu says 38400 answers with garbage and no error, and
@@ -545,13 +561,13 @@ to an empty list, because the port picker saying "no serial ports found" is far 
 equipment editor failing to open.
 
 **One picker entry per port, where the platform can tell them apart.** On desktop the OS names each
-port and nothing in the app knows two of them are siblings. Android is different: `usb_serial` hands
-over one *device*, and the felHR85/UsbSerial library under it opens the first interface unless told
-which — so a device carrying several serial ports (the X6100's two CDC ports, with CI-V on the
-second; a CP2105's or FT2232's two vendor-class ones) could only ever reach one. There
-`serial_transport_io.dart` asks its own `UsbInterfacesChannel` for the interface descriptors and
-splits such a device into `<device>#<interface>` entries labelled "port N of M" in descriptor order,
-passing the index through to `create()`. A radio that knows which port carries CAT declares it as a
+port and nothing in the app knows two of them are siblings. Android is different: it hands over one
+*device*, which may carry several serial ports (the X6100's two CDC ports, with CI-V on the second; a
+CP2105's or FT2232's two vendor-class ones). There `serial_transport_io.dart` asks its own
+`UsbInterfacesChannel` for the interface descriptors and splits such a device into
+`<device>#<interface>` entries labelled "port N of M" in descriptor order; the entry's position in
+that order is the port number the library opens. A CDC port's line coding and control lines go to
+that port's own control interface, found through its interface association. A radio that knows which port carries CAT declares it as a
 `port` restriction on its variant — `{'index': n}`, plus `'vendorId'` to confine it to one maker's
 bridges — and the picker then **points at** that port of a split device: it sorts first, renders bold
 and is tagged, with every sibling still listed under it.

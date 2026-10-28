@@ -106,6 +106,10 @@ android {
     }
 }
 
+dependencies {
+    implementation("com.github.mik3y:usb-serial-for-android:3.11.0")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

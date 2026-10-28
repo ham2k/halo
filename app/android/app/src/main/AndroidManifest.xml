@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false"/>
-    <!-- CAT over a USB-serial radio interface (usb_serial plugin). Not
+    <!-- CAT over a USB-serial radio interface (UsbSerialChannel.kt). Not
          `required` — a tablet/phone without USB host still installs, it
          just won't offer serial ports. -->
     <uses-feature android:name="android.hardware.usb.host" android:required="false"/>

@@ -32,6 +32,9 @@ class MainActivity : FlutterActivity() {
   // the CAT port picker needs it for radios that present more than one.
   private var usbInterfacesChannel: UsbInterfacesChannel? = null
 
+  // USB-serial CAT ports themselves (UsbSerialChannel).
+  private var usbSerialChannel: UsbSerialChannel? = null
+
   // The other Ham2K loggers on this device, for the link-across offer
   // (SiblingAppsChannel).
   private var siblingAppsChannel: SiblingAppsChannel? = null
@@ -64,6 +67,7 @@ class MainActivity : FlutterActivity() {
     fileSaveChannel = FileSaveChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     filePickChannel = FilePickChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     usbInterfacesChannel = UsbInterfacesChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+    usbSerialChannel = UsbSerialChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     siblingAppsChannel = SiblingAppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     imageClipboardChannel = ImageClipboardChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     openFileChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ham2k/open_file")
@@ -92,6 +96,8 @@ class MainActivity : FlutterActivity() {
     filePickChannel = null
     usbInterfacesChannel?.dispose()
     usbInterfacesChannel = null
+    usbSerialChannel?.dispose()
+    usbSerialChannel = null
     siblingAppsChannel?.dispose()
     siblingAppsChannel = null
     imageClipboardChannel?.dispose()

@@ -62,7 +62,7 @@ Names and property keys follow app-polo's set; HaLo-only additions marked *.
 | `sync_enabled` / `sync_disabled` * | `via` (`settings`, `onboarding`, `prompt`) | sync turned on/off: Sync settings toggle, the onboarding Cloud Sync step, or the one-time Cloud Sync prompt |
 | `radio_added` * | `radio`, `transport`, `driver`, `name`, `via` | equipment configured (`discovery`/`manual`) |
 | `radio_connected` * | `radio`, `transport`, `driver`, `name` | first successful connect, once per radio per session |
-| `radio_connect_failed` * | `radio`, `transport`, `driver`, `name`, `reason`, `baud` | first failed connect, once per radio per session |
+| `radio_connect_failed` * | `radio`, `transport`, `driver`, `name`, `reason`, `baud`, `usb` | first failed connect, once per radio per session |
 
 ### Screens and panels
 
@@ -116,7 +116,11 @@ hardware exists. `transport` and `driver` are their keys likewise.
 `port` embeds the adapter's device serial number on macOS, and the network
 transports hold addresses and passwords. The first exception is `baud` on a
 failed connect: a mismatch is the classic cause of a silent port, the set of
-rates is small and fixed, and it identifies nobody. The second is `name` —
+rates is small and fixed, and it identifies nobody. (`usb` beside it is not a
+config value but what the transport read off the adapter — its `vvvv:pppp`
+USB ids, sent only where the transport has them, which is Android. It names a
+chip model, never a unit, and it is what says which adapter no driver claims.)
+The second is `name` —
 sent on all three `radio_*` events despite being free text, because it is
 the only way to tell one radio behind a generic driver from another:
 `radio` alone collapses every Kenwood on `kenwood-generic` into one bucket.

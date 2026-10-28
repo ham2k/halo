@@ -213,6 +213,9 @@ class SerialPortUnavailable implements SerialPortProblem {
   const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other});
 
   @override
+  String? get usbId => null;
+
+  @override
   String toString() => 'Could not open $portName: $reason';
 }
 

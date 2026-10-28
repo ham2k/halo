@@ -8,11 +8,10 @@ import io.flutter.plugin.common.MethodChannel
 
 // The interface descriptors of one USB device, for the CAT serial port picker.
 //
-// usb_serial's device listing carries only an interface COUNT, and the library
-// under it (felHR85/UsbSerial) opens the FIRST CDC data interface unless told
-// which one. A composite device with two serial ports — the Xiegu X6100 puts
-// CI-V on the second — is unreachable unless the Dart side knows which
-// interface indexes are serial at all. Descriptors are readable without the
+// A stored port names its interface by index, and a composite device with two
+// serial ports — the Xiegu X6100 puts CI-V on the second — is reachable only
+// if the Dart side knows which interface indexes are serial at all; it turns
+// that index into the port number UsbSerialChannel opens. Descriptors are readable without the
 // USB permission, so this never puts a dialog up.
 class UsbInterfacesChannel(context: Context, messenger: BinaryMessenger) :
   MethodChannel.MethodCallHandler {
@@ -42,13 +41,13 @@ class UsbInterfacesChannel(context: Context, messenger: BinaryMessenger) :
       result.error("no_usb_service", "This device has no USB host service", null)
       return
     }
-    // Keyed by the same name usb_serial reports as deviceName.
+    // Keyed by the same name UsbSerialChannel reports as deviceName.
     val device = usbManager.deviceList[deviceName]
     if (device == null) {
       result.error("no_device", "No USB device named $deviceName", null)
       return
     }
-    // `index` is the argument usb_serial's create() takes as its interface.
+    // `index` is what a stored port name carries after its '#'.
     result.success(
       (0 until device.interfaceCount).map { i ->
         val iface = device.getInterface(i)

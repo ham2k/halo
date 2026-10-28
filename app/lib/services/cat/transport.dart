@@ -76,6 +76,11 @@ enum SerialFailure {
   /// on a Digirig that line is PTT.
   lines,
 
+  /// A USB device no serial driver claims — a chip the Android library does
+  /// not know by its USB ids, or not a serial device at all. Fixed by picking
+  /// a USB chip driver, not by checking the cable.
+  unsupported,
+
   /// Anything the transport could not place. Keeps its own words rather than
   /// being translated into a guess.
   other,
@@ -85,6 +90,10 @@ enum SerialFailure {
 /// was — see [SerialFailure]. Implemented by both serial transports.
 abstract class SerialPortProblem implements CatUnreachable {
   SerialFailure get failure;
+
+  /// The USB device's `vvvv:pppp` ids, where the transport read them. A chip
+  /// model, never a person — what says which adapter a failure was on.
+  String? get usbId;
 }
 
 /// A failed connect, tagged with the equipment type it was aimed at.

@@ -240,7 +240,6 @@ check_clock_discipline() {
   local vendored=(
     flutter_inappwebview_windows_patched
     flutter_inappwebview_macos_patched
-    usb_serial_patched
     universal_ble_patched
   )
   for d in "$ROOT_DIR"/packages/*/lib; do
@@ -721,11 +720,6 @@ changed_subset() {
       packages/flutter_inappwebview_linux_stub/*) groups="$groups platform" ;;
       packages/flutter_inappwebview_macos_patched/*) groups="$groups platform" ;;
       packages/flutter_inappwebview_windows_patched/*) groups="$groups platform" ;;
-      # Same reasoning, for the usb_serial override: app/test/platform/usb_serial_override_test
-      # checks the override resolves and that android/build.gradle still
-      # carries the AGP-9 fix. Nothing here runs Gradle, so that's a check on
-      # the SOURCE LINE — the build itself is never exercised.
-      packages/usb_serial_patched/*) groups="$groups platform" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)

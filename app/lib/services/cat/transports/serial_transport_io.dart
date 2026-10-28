@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Serial over libserialport (FFI, same shape as the halo_quickjs plugin) on
-// desktop, and over the usb_serial plugin (Android's UsbManager wrapped in a
-// MethodChannel) on Android — libserialport enumerates via Linux
-// /dev/sysfs nodes, which a sandboxed Android app can't read. iOS has no
+// desktop, and over usb-serial-for-android (`UsbSerialChannel.kt`, which
+// drives the USB chips itself through Android's UsbManager) on Android —
+// libserialport enumerates via Linux /dev/sysfs nodes, which a sandboxed
+// Android app can't read. iOS has no
 // USB host API at all without MFi, so it stays on the (non-functional)
 // libserialport path below like every other non-Android dart:io platform.
 //
@@ -15,8 +16,8 @@
 //     build, because Debug passes regardless.
 //   - Linux CI needs `libudev-dev` to build libserialport.
 //   - Android needs `<uses-feature android:name="android.hardware.usb.host"
-//     android:required="false" />` in AndroidManifest.xml. usb_serial pops
-//     the runtime USB-permission dialog itself, inside `UsbDevice.create()`.
+//     android:required="false" />` in AndroidManifest.xml. The channel puts
+//     the runtime USB-permission dialog up itself, inside `open`.
 
 import 'dart:async';
 import 'dart:ffi' as ffi;
@@ -26,10 +27,10 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:flutter/services.dart' show MethodChannel, MissingPluginException, PlatformException;
 import 'package:flutter_libserialport/flutter_libserialport.dart';
-import 'package:usb_serial/usb_serial.dart' as usb;
 
 import '../os_error_detail_io.dart';
 import '../transport.dart';
+import 'android_usb_serial.dart';
 import 'serial_transport_config.dart';
 
 /// `UsbConstants.USB_CLASS_CDC_DATA`: the interface class of each serial
@@ -89,10 +90,9 @@ Future<List<int>> androidSerialInterfaces(String deviceName, {required int? vend
 /// be offered as ports and fail to open as "permission denied". Everything
 /// else is a CDC/ACM device, whose ports are its CDC data interfaces —
 /// never the control interfaces (class 2) paired with them, which would
-/// list the X6100 as four. felHR85/UsbSerial addresses the chosen
-/// interface correctly for all three: CP210x control transfers carry the
-/// interface id, FTDI's carry the id plus one (port A is 1), and CDC's
-/// data endpoints belong to the interface itself.
+/// list the X6100 as four. A port's position in this list is the port
+/// number usb-serial-for-android opens: its bridge drivers number ports by
+/// interface, and its CDC driver by data interface in the same order.
 List<int> androidSerialInterfaceIndexes({required int? vendorId, required List<Map<dynamic, dynamic>> interfaces}) {
   final bridge = vendorId == _usbVendorFtdi || vendorId == _usbVendorSiliconLabs;
   final portClass = bridge ? _usbClassVendorSpecific : _usbClassCdcData;
@@ -109,11 +109,8 @@ List<int> androidSerialInterfaceIndexes({required int? vendorId, required List<M
 /// in descriptor order — the order Linux and Windows number them in, which
 /// is how the X6100's note can say CI-V is on the second, and which puts a
 /// CP2105's Enhanced port (CAT, on a Yaesu) first. Anything else is a
-/// single entry under the bare device name, opened with usb_serial's
-/// auto-detection — so every stored config predating the split still
-/// matches. The underlying felHR85/UsbSerial library opens the FIRST
-/// interface (or the first CDC data one) when not told which, so without
-/// the index the second port of any of these devices is unreachable.
+/// single entry under the bare device name, opened as the device's first
+/// port — so every stored config predating the split still matches.
 List<SerialPortOption> androidSerialPortOptions({
   required String deviceName,
   String? manufacturer,
@@ -121,6 +118,7 @@ List<SerialPortOption> androidSerialPortOptions({
   String? serialNumber,
   int? vendorId,
   int? productId,
+  bool noDriver = false,
   required List<int> serialInterfaces,
 }) {
   if (serialInterfaces.length < 2) {
@@ -132,6 +130,7 @@ List<SerialPortOption> androidSerialPortOptions({
         serialNumber: serialNumber,
         vendorId: vendorId,
         productId: productId,
+        noDriver: noDriver,
       ),
     ];
   }
@@ -146,12 +145,13 @@ List<SerialPortOption> androidSerialPortOptions({
         productId: productId,
         portIndex: i,
         portCount: serialInterfaces.length,
+        noDriver: noDriver,
       ),
   ];
 }
 
 /// The device path and interface index a stored Android port name carries.
-/// A name without an index is the auto-detect value usb_serial takes, -1.
+/// A name without an index carries -1: the device's first port.
 ({String deviceName, int iface}) androidPortTarget(String name) {
   final at = name.lastIndexOf(androidPortInterfaceSeparator);
   if (at < 0) return (deviceName: name, iface: -1);
@@ -217,7 +217,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   /// `serial_transport_web.dart`'s granted-ports cache being static rather
   /// than per-instance.
   static List<SerialPortOption> _cachedAndroidPortOptions = const [];
-  static Map<String, usb.UsbDevice> _androidDevicesByName = const {};
+  static Map<String, AndroidUsbDevice> _androidDevicesByName = const {};
 
   @override
   String get key => transportKey;
@@ -230,6 +230,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   bool get isSupportedOnThisPlatform => defaultTargetPlatform != TargetPlatform.iOS;
 
   @override
+  bool get offersUsbDriver => Platform.isAndroid;
+
+  @override
   List<SerialPortOption> get availablePorts => debugPortEnumerator?.call() ?? (Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts());
 
   /// Android's device list is a MethodChannel round-trip, unlike
@@ -240,9 +243,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   Future<void> prepareConfigElements() async {
     if (!Platform.isAndroid) return;
 
-    List<usb.UsbDevice> devices;
+    List<AndroidUsbDevice> devices;
     try {
-      devices = await usb.UsbSerial.listDevices();
+      devices = await AndroidUsbSerial.list();
     } catch (e) {
       debugPrint('[cat] android usb device enumeration unavailable: $e');
       _androidDevicesByName = const {};
@@ -250,19 +253,20 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
       return;
     }
 
-    final byName = <String, usb.UsbDevice>{};
+    final byName = <String, AndroidUsbDevice>{};
     final options = <SerialPortOption>[];
     for (final device in devices) {
       byName[device.deviceName] = device;
       options.addAll(
         androidSerialPortOptions(
           deviceName: device.deviceName,
-          manufacturer: device.manufacturerName,
-          productName: device.productName,
+          manufacturer: device.manufacturer,
+          productName: device.product,
           serialNumber: device.serial,
-          vendorId: device.vid,
-          productId: device.pid,
-          serialInterfaces: await androidSerialInterfaces(device.deviceName, vendorId: device.vid),
+          vendorId: device.vendorId,
+          productId: device.productId,
+          noDriver: device.driver == null,
+          serialInterfaces: await androidSerialInterfaces(device.deviceName, vendorId: device.vendorId),
         ),
       );
     }
@@ -386,12 +390,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
       // prepareConfigElements() — so the cache can still be at its empty
       // default here. Look the device up fresh rather than assuming gone.
       try {
-        for (final candidate in await usb.UsbSerial.listDevices()) {
-          if (candidate.deviceName == deviceName) {
-            device = candidate;
-            break;
-          }
-        }
+        device = (await AndroidUsbSerial.list()).where((candidate) => candidate.deviceName == deviceName).firstOrNull;
       } catch (e) {
         throw SerialPortUnavailable(name, '$e');
       }
@@ -399,93 +398,67 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     if (device == null) {
       throw SerialPortUnavailable(name, 'no longer plugged in', failure: SerialFailure.missing);
     }
+    final usbId = device.usbId;
+
     // A device path is reused by whatever is plugged in next, so a stored
-    // index can name an interface that is now audio, or nothing at all.
-    // Opening it anyway fails as "permission denied", which sends the
-    // operator to re-grant a permission that was never the problem.
+    // index can name an interface that is now audio, or nothing at all —
+    // and opening another port of the right device in its place could put
+    // the lines on a PTT port.
+    var port = 0;
     if (iface >= 0) {
-      final serialInterfaces = await androidSerialInterfaces(deviceName, vendorId: device.vid);
-      if (serialInterfaces.isNotEmpty && !serialInterfaces.contains(iface)) {
-        throw SerialPortUnavailable(name, 'not a serial port on this device — pick it again from the port list');
+      port = (await androidSerialInterfaces(deviceName, vendorId: device.vendorId)).indexOf(iface);
+      if (port < 0) {
+        throw SerialPortUnavailable(name, 'not a serial port on this device — pick it again from the port list', usbId: usbId);
       }
     }
 
-    // On a CDC device, line coding and DTR/RTS go to interface 0 whichever
-    // port this opens: felHR85/UsbSerial addresses every CDC control
-    // transfer to wIndex 0. Data flows through the chosen interface's own
-    // endpoints regardless; on a composite device the baud rate below
-    // reaches its port only if interface 0 happens to be that port's
-    // control interface. The FTDI and CP210x paths carry the interface in
-    // theirs, so a bridge's second port gets its own settings.
-    //
-    // device.create() awaits Android's system USB-permission dialog, which
-    // can block indefinitely on the operator — race it against cancellation
-    // the same way tcp_transport_io.dart races Socket.connect, so a
-    // superseded attempt doesn't leave the port claimed behind a newer one.
-    final createCompleter = Completer<usb.UsbPort?>();
+    // open() awaits Android's system USB-permission dialog, which can block
+    // indefinitely on the operator — race it against cancellation the same
+    // way tcp_transport_io.dart races Socket.connect, so a superseded attempt
+    // doesn't leave the port claimed behind a newer one.
+    final opening = Completer<int>();
     unawaited(
-      device
-          .create('', iface)
-          .then(
-            (port) {
-              if (createCompleter.isCompleted) {
-                unawaited(port?.close().catchError((Object _) => false));
-              } else {
-                createCompleter.complete(port);
-              }
-            },
-            onError: (Object error, StackTrace stackTrace) {
-              if (!createCompleter.isCompleted) createCompleter.completeError(error, stackTrace);
-            },
-          ),
+      AndroidUsbSerial.open(
+        deviceName: deviceName,
+        port: port,
+        driver: target[serialUsbDriverConfigKey] as String?,
+        baudRate: baudRate,
+        stopBits: stopBits,
+        // Explicitly, either way — see the desktop connect path above.
+        dtr: manageLines ? dtrHigh : null,
+        rts: manageLines ? rtsHigh : null,
+      ).then(
+        (handle) {
+          if (opening.isCompleted) {
+            // Nobody is waiting on this port, and a close that fails leaves
+            // nothing open: the native side drops the handle either way.
+            unawaited(AndroidUsbSerial.close(handle).catchError((Object _) {}));
+          } else {
+            opening.complete(handle);
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!opening.isCompleted) opening.completeError(error, stackTrace);
+        },
+      ),
     );
     unawaited(
       cancel.whenCancelled.then((_) {
-        if (!createCompleter.isCompleted) createCompleter.completeError(const CatCancelledException());
+        if (!opening.isCompleted) opening.completeError(const CatCancelledException());
       }),
     );
 
-    final usb.UsbPort? port;
+    final int handle;
     try {
-      port = await createCompleter.future;
+      handle = await opening.future;
     } on CatCancelledException {
       rethrow;
+    } on PlatformException catch (e) {
+      throw SerialPortUnavailable(name, e.message ?? e.code, failure: androidUsbFailure(e.code), usbId: usbId);
     } catch (e) {
-      throw SerialPortUnavailable(name, '$e');
+      throw SerialPortUnavailable(name, '$e', usbId: usbId);
     }
-    if (port == null) throw SerialPortUnavailable(name, 'could not open a serial connection to this device');
-
-    final bool opened;
-    try {
-      opened = await port.open();
-    } catch (e) {
-      throw SerialPortUnavailable(name, '$e');
-    }
-    // Android's open() gives no reason of its own; both causes end here, and
-    // "in use" is the one an operator is least likely to guess at.
-    if (!opened) throw SerialPortUnavailable(name, 'permission denied, or already in use', failure: SerialFailure.busy);
-
-    try {
-      await port.setPortParameters(baudRate, usb.UsbPort.DATABITS_8, stopBits == 2 ? usb.UsbPort.STOPBITS_2 : usb.UsbPort.STOPBITS_1, usb.UsbPort.PARITY_NONE);
-      await port.setFlowControl(usb.UsbPort.FLOW_CONTROL_OFF);
-      // Explicitly, either way — see the desktop connect path above. A CDC
-      // device that refuses the control transfer is not reported by the
-      // plugin, so this sets the lines without being able to confirm them.
-      if (manageLines) {
-        await port.setDTR(dtrHigh);
-        await port.setRTS(rtsHigh);
-      }
-    } catch (e) {
-      unawaited(port.close().catchError((Object _) => false));
-      throw SerialPortUnavailable(name, '$e');
-    }
-
-    if (cancel.isCancelled) {
-      unawaited(port.close().catchError((Object _) => false));
-      throw const CatCancelledException();
-    }
-
-    return _AndroidSerialConnection(port);
+    return _AndroidSerialConnection(handle);
   }
 }
 
@@ -507,7 +480,10 @@ class SerialPortUnavailable implements SerialPortProblem {
   @override
   final SerialFailure failure;
 
-  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other, this.osError});
+  @override
+  final String? usbId;
+
+  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other, this.osError, this.usbId});
 
   /// libserialport hands back the OS's own wording rather than a code, so the
   /// kind has to be read out of it. Matched case-insensitively on the
@@ -589,8 +565,8 @@ class _SerialConnection implements EquipmentConnection, ExplainsClose {
 }
 
 class _AndroidSerialConnection implements EquipmentConnection, ExplainsClose {
-  final usb.UsbPort _port;
-  StreamSubscription<Uint8List>? _sub;
+  final int _handle;
+  StreamSubscription<Map<dynamic, dynamic>>? _sub;
   final _dataController = StreamController<Uint8List>();
   final _closedCompleter = Completer<void>();
   bool _open = true;
@@ -598,19 +574,22 @@ class _AndroidSerialConnection implements EquipmentConnection, ExplainsClose {
   @override
   String? closeReason;
 
-  _AndroidSerialConnection(this._port) {
-    _sub = _port.inputStream?.listen(
-      _dataController.add,
-      // A USB-serial adapter unplugged mid-session surfaces here.
-      onError: (Object e) => unawaited(_markClosed('read error: ${osErrorDetail(e) ?? e.runtimeType}')),
-      onDone: () => unawaited(_markClosed('the USB port stopped reading')),
-      cancelOnError: true,
-    );
+  _AndroidSerialConnection(this._handle) {
+    _sub = AndroidUsbSerial.events.where((event) => event['handle'] == _handle).listen((event) {
+      final data = event['data'];
+      if (data is Uint8List) {
+        _dataController.add(data);
+      } else {
+        // A USB-serial adapter unplugged mid-session surfaces here; the
+        // native side has already released the port.
+        unawaited(_markClosed('read error: ${event['error']}'));
+      }
+    });
   }
 
   /// [closed] fires AFTER the native port is released, not before: `CatService`
   /// starts its own reconnect the moment [closed] fires, and reopening the
-  /// same still-claimed USB interface before `port.close()`'s MethodChannel
+  /// same still-claimed USB interface before `close`'s MethodChannel
   /// round-trip lands would lose that race — same reasoning as the web
   /// transport's `_markClosed`.
   Future<void> _markClosed([String? reason]) async {
@@ -620,9 +599,10 @@ class _AndroidSerialConnection implements EquipmentConnection, ExplainsClose {
     unawaited(_dataController.close());
     unawaited(_sub?.cancel());
     try {
-      await _port.close();
+      await AndroidUsbSerial.close(_handle);
     } catch (e) {
-      // Already gone — an unplugged adapter takes the handle with it.
+      // Only the channel itself can fail here: the native close of a handle
+      // it no longer holds is a no-op.
       debugPrint('[cat] android usb port teardown: $e');
     }
     if (!_closedCompleter.isCompleted) _closedCompleter.complete();
@@ -640,7 +620,7 @@ class _AndroidSerialConnection implements EquipmentConnection, ExplainsClose {
     // Drivers write from unguarded poll timers, so a write to a port that
     // has gone away must not throw into a timer callback.
     unawaited(
-      _port.write(Uint8List.fromList(bytes)).catchError((Object e) {
+      AndroidUsbSerial.write(_handle, Uint8List.fromList(bytes)).catchError((Object e) {
         debugPrint('[cat] android usb write failed: $e');
       }),
     );

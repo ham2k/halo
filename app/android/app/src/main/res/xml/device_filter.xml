@@ -6,8 +6,8 @@
      (0x10C4/0xEA70 is covered here by the CP210x entry).
 
      This is the dedicated bridge-chip families, NOT the set of devices HaLo
-     can use as a CAT interface — felHR85/UsbSerial (usb_serial's underlying
-     library) also drives generic CDC/ACM devices under any vendor id, and
+     can use as a CAT interface — usb-serial-for-android (UsbSerialChannel.kt)
+     also drives generic CDC/ACM devices under any vendor id, and
      serial_transport_io.dart offers every attached device with no filtering
      of its own. Those still work once the app is open; a vendor id outside
      this list just means Android won't offer HaLo in the chooser for it. -->

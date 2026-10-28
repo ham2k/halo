@@ -6,16 +6,28 @@
 // A Xiegu X6100 is one USB device carrying audio plus TWO CDC/ACM serial
 // ports, and CI-V lives on the second. A CP2105 (behind most Yaesu USB
 // interfaces) or an FT2232 is one device with two vendor-class ports, CAT
-// on one and PTT on the other. The library under usb_serial opens the
-// first interface unless handed an index, so a picker with one entry per
-// device can only ever reach one port — the operator sees the radio,
-// picks it, sets the baud, and nothing answers.
+// on one and PTT on the other. Android opens a port by its number on the
+// device, so a picker with one entry per device can only ever reach the
+// first — the operator sees the radio, picks it, sets the baud, and
+// nothing answers.
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/android_usb_serial.dart';
 // The io file directly, not the conditional export: the analyzer resolves
 // that export to the stub, where none of this exists.
+import 'package:ham2k_logger/services/cat/transports/serial_transport_config.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart';
+
+/// The io transport as it is on Android, from a test host that is not.
+class _AndroidSerialTransport extends SerialTransport {
+  const _AndroidSerialTransport();
+
+  @override
+  bool get offersUsbDriver => true;
+}
 
 /// Descriptors the way `UsbInterfacesChannel.kt` reports them, one per class.
 List<Map<String, int>> descriptors(List<int> classes) => [
@@ -153,12 +165,92 @@ void main() {
       expect(androidPortTarget(options[1].name), (deviceName: '/dev/bus/usb/001/004', iface: 6));
     });
 
-    test('a bare name asks usb_serial to auto-detect, which is -1', () {
+    test('a bare name carries -1, the device\'s first port', () {
       expect(androidPortTarget('/dev/bus/usb/001/002'), (deviceName: '/dev/bus/usb/001/002', iface: -1));
     });
 
     test('a suffix that is not a number is part of the name, not an index', () {
       expect(androidPortTarget('/dev/bus/usb/001/00#x'), (deviceName: '/dev/bus/usb/001/00#x', iface: -1));
     });
+  });
+
+  group('a device no driver claims', () {
+    tearDown(() => SerialTransport.debugPortEnumerator = null);
+
+    test('is still listed, and every one of its ports says it has no driver', () {
+      // Hidden, an adapter on an unlisted chip would simply be missing from
+      // the picker with nothing on screen saying why, and the USB chip driver
+      // setting that can open it would have no port to apply to.
+      final options = androidSerialPortOptions(deviceName: '/dev/bus/usb/001/007', noDriver: true, serialInterfaces: [0, 1]);
+      expect(options.map((o) => o.noDriver), [true, true]);
+
+      SerialTransport.debugPortEnumerator = () => options;
+      final port = const SerialTransport().configElements().firstWhere((e) => e['key'] == 'port');
+      for (final option in port['options'] as List) {
+        expect((option as Map)['tags'], contains(t.settings.station.serialPortNoDriver));
+      }
+    });
+
+    test('a driven device is not tagged', () {
+      SerialTransport.debugPortEnumerator = () => androidSerialPortOptions(deviceName: '/dev/bus/usb/001/002', serialInterfaces: [0]);
+      final port = const SerialTransport().configElements().firstWhere((e) => e['key'] == 'port');
+      expect(((port['options'] as List).single as Map)['tags'], isNot(contains(t.settings.station.serialPortNoDriver)));
+    });
+  });
+
+  group('USB chip driver', () {
+    tearDown(() => SerialTransport.debugPortEnumerator = null);
+
+    test('is offered on Android only, under Advanced Settings', () {
+      // Desktop and web have an OS driver under every port; the setting
+      // there would do nothing while looking like it might fix a mute radio.
+      SerialTransport.debugPortEnumerator = () => const [];
+      expect(const SerialTransport().configElements().where((e) => e['key'] == serialUsbDriverConfigKey), isEmpty);
+
+      final field = const _AndroidSerialTransport().configElements().singleWhere((e) => e['key'] == serialUsbDriverConfigKey);
+      expect(field['advanced'], isTrue);
+      expect([for (final option in field['options'] as List) (option as Map)['value']], ['auto', ...serialUsbDrivers.keys]);
+    });
+
+    test('reaches the connection only as a driver UsbSerialChannel.kt knows', () {
+      // Anything else would be forced onto the device as a driver name the
+      // channel does not recognise — which it reads as "probe as usual" —
+      // so it is dropped here rather than half-honoured there.
+      const transport = _AndroidSerialTransport();
+      expect(transport.targetFor({'port': 'p', serialUsbDriverConfigKey: 'pl2303'})[serialUsbDriverConfigKey], 'pl2303');
+      expect(transport.targetFor({'port': 'p', serialUsbDriverConfigKey: 'auto'}).containsKey(serialUsbDriverConfigKey), isFalse);
+      expect(transport.targetFor({'port': 'p', serialUsbDriverConfigKey: 'bogus'}).containsKey(serialUsbDriverConfigKey), isFalse);
+      expect(transport.targetFor({'port': 'p'}).containsKey(serialUsbDriverConfigKey), isFalse);
+    });
+
+    test('is a key a catalogue entry may pin', () {
+      // Catalogue overrides and restrictions are checked against these keys
+      // to catch typos; left out, a radio entry pinning the driver for a
+      // bridge the library does not list would be refused as one.
+      expect(const SerialTransport().recognizedConfigKeys, contains(serialUsbDriverConfigKey));
+    });
+  });
+
+  group('androidUsbFailure', () {
+    test('reads the channel\'s codes as the failure classes of the same name', () {
+      // The codes are shared with UsbSerialChannel.kt by name; a rename on
+      // either side would turn "no driver" into an unplaced "other" and the
+      // operator would lose the message that says what to do.
+      expect(androidUsbFailure('unsupported'), SerialFailure.unsupported);
+      expect(androidUsbFailure('denied'), SerialFailure.denied);
+      expect(androidUsbFailure('busy'), SerialFailure.busy);
+      expect(androidUsbFailure('missing'), SerialFailure.missing);
+      expect(androidUsbFailure('lines'), SerialFailure.lines);
+    });
+
+    test('an unknown code is an unplaced failure, not a crash', () {
+      expect(androidUsbFailure('bad_args'), SerialFailure.other);
+    });
+  });
+
+  test('a device\'s USB ids read the way lsusb writes them', () {
+    // Lowercase, zero-padded: the form every USB id list is searched in.
+    const device = AndroidUsbDevice(deviceName: 'd', vendorId: 0x067B, productId: 0x23A3);
+    expect(device.usbId, '067b:23a3');
   });
 }

@@ -2617,6 +2617,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'PORT ${n} OF ${total}';
 	@override String get serialPortSuggested => 'SUGGESTED';
 	@override String get serialPortJustNow => 'RECENTLY CONNECTED';
+	@override String get serialPortNoDriver => 'NO DRIVER';
 	@override String get serialDeviceRequest => 'ADD A USB DEVICE…';
 	@override String get bleDevice => 'BLUETOOTH LE DEVICE';
 	@override String get bleDeviceDescription => 'THE SERIAL BRIDGE YOUR RADIO IS CONNECTED THROUGH, SUCH AS A LINK500MP IN MODE 4 OR A BLE SERIAL ADAPTER.';
@@ -2635,6 +2636,9 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get serialRtsHighDescription => 'ONLY FOR A RADIO THAT WAITS FOR RTS BEFORE RESPONDING, SUCH AS A YAESU WITH CAT RTS TURNED ON. ON A DIGIRIG, SIGNALINK AND MOST HOME-MADE CABLES RTS IS PTT, AND HOLDING IT HIGH TRANSMITS.';
 	@override String get serialDtrHigh => 'HOLD DTR HIGH';
 	@override String get serialDtrHighDescription => 'ONLY FOR A CAT INTERFACE THAT DRAWS ITS POWER FROM DTR, SUCH AS SOME RS-232 CABLES FOR THE FT-817. ON MANY CABLES DTR KEYS CW OR PTT, AND HOLDING IT HIGH TRANSMITS.';
+	@override String get serialUsbDriver => 'USB CHIP DRIVER';
+	@override String get serialUsbDriverDescription => 'AUTOMATIC RECOGNIZES MOST ADAPTERS. PICK THE CHIP ONLY FOR ONE THE PORT LIST SAYS HAS NO DRIVER — ITS PACKAGING OR A USB DEVICE LIST NAMES IT.';
+	@override String get serialUsbDriverAuto => 'AUTOMATIC';
 	@override String get civAddress => 'RADIO CI-V ADDRESS';
 	@override String get civAddressDescription => 'HEX, AS SHOWN IN THE RADIO\'S CI-V MENU. THE IC-705 SHIPS AS A4.';
 	@override String get civAddressInvalid => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF';
@@ -2705,6 +2709,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get connectFailedBusy => 'DEVICE IS IN USE';
 	@override String get connectFailedDenied => 'ACCESS DENIED';
 	@override String get connectFailedDevice => 'DEVICE NOT FOUND';
+	@override String get connectFailedUnsupported => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.';
 	@override String get connectFailedLines => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.';
 	@override String get connectFailedNetwork => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.';
 	@override String get connectFailedTimeout => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.';
@@ -6037,6 +6042,7 @@ extension on TranslationsQro {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'PORT ${n} OF ${total}',
 			'settings.station.serialPortSuggested' => 'SUGGESTED',
 			'settings.station.serialPortJustNow' => 'RECENTLY CONNECTED',
+			'settings.station.serialPortNoDriver' => 'NO DRIVER',
 			'settings.station.serialDeviceRequest' => 'ADD A USB DEVICE…',
 			'settings.station.bleDevice' => 'BLUETOOTH LE DEVICE',
 			'settings.station.bleDeviceDescription' => 'THE SERIAL BRIDGE YOUR RADIO IS CONNECTED THROUGH, SUCH AS A LINK500MP IN MODE 4 OR A BLE SERIAL ADAPTER.',
@@ -6055,6 +6061,9 @@ extension on TranslationsQro {
 			'settings.station.serialRtsHighDescription' => 'ONLY FOR A RADIO THAT WAITS FOR RTS BEFORE RESPONDING, SUCH AS A YAESU WITH CAT RTS TURNED ON. ON A DIGIRIG, SIGNALINK AND MOST HOME-MADE CABLES RTS IS PTT, AND HOLDING IT HIGH TRANSMITS.',
 			'settings.station.serialDtrHigh' => 'HOLD DTR HIGH',
 			'settings.station.serialDtrHighDescription' => 'ONLY FOR A CAT INTERFACE THAT DRAWS ITS POWER FROM DTR, SUCH AS SOME RS-232 CABLES FOR THE FT-817. ON MANY CABLES DTR KEYS CW OR PTT, AND HOLDING IT HIGH TRANSMITS.',
+			'settings.station.serialUsbDriver' => 'USB CHIP DRIVER',
+			'settings.station.serialUsbDriverDescription' => 'AUTOMATIC RECOGNIZES MOST ADAPTERS. PICK THE CHIP ONLY FOR ONE THE PORT LIST SAYS HAS NO DRIVER — ITS PACKAGING OR A USB DEVICE LIST NAMES IT.',
+			'settings.station.serialUsbDriverAuto' => 'AUTOMATIC',
 			'settings.station.civAddress' => 'RADIO CI-V ADDRESS',
 			'settings.station.civAddressDescription' => 'HEX, AS SHOWN IN THE RADIO\'S CI-V MENU. THE IC-705 SHIPS AS A4.',
 			'settings.station.civAddressInvalid' => 'A CI-V ADDRESS IS TWO HEX DIGITS, 01 TO FF',
@@ -6125,6 +6134,7 @@ extension on TranslationsQro {
 			'settings.station.connectFailedBusy' => 'DEVICE IS IN USE',
 			'settings.station.connectFailedDenied' => 'ACCESS DENIED',
 			'settings.station.connectFailedDevice' => 'DEVICE NOT FOUND',
+			'settings.station.connectFailedUnsupported' => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.',
 			'settings.station.connectFailedLines' => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.',
 			'settings.station.connectFailedNetwork' => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.',
 			'settings.station.connectFailedTimeout' => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.',
@@ -6418,13 +6428,13 @@ extension on TranslationsQro {
 			'settings.offlineData.updatedDaysAgo' => ({required Object days}) => 'UPDATED ${days}D AGO',
 			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'UPDATED ${days}D ${hours}H AGO',
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'UPDATED ${hours}H AGO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'UPDATED ${hours}H ${minutes}M AGO',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'UPDATED ${minutes}M AGO',
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'THE LAST DOWNLOAD HAD ONLY ${imported} OF ${existing} RECORDS AND WAS NOT USED. REFRESH TO ACCEPT IT.',
 			'settings.offlineData.extensionsSection' => 'EXTENSIONS',
 			'settings.profiles.notSet' => 'NOT SET',
-			_ => null,
-		} ?? switch (path) {
 			'settings.profiles.personalInfo' => 'PERSONAL INFO',
 			'settings.profiles.personalInfoNote' => 'THIS MIGHT BE INCLUDED IN GENERATED LOGS WHEN RELEVANT FOR SUBMISSIONS',
 			'settings.profiles.name' => 'NAME',
