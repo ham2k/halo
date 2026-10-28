@@ -1,6 +1,6 @@
 {
   "name": "@ham2k/extension-sdk",
-  "version": "1.12.7",
+  "version": "1.12.8",
   "description": "Write extensions for the Ham2K Logger: typed hook contracts and the host API",
   "keywords": [
     "ham2k",
