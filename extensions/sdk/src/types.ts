@@ -2976,10 +2976,9 @@ export interface FormHeader {
   /// headings take 'section'.
   style?: "default" | "section" | "category"
   /// A 'section' header folds the rows under it, up to the next band or
-  /// `sectionEnd`; the
-  /// operator opens and shuts it, and the app remembers which way each was
-  /// left. `collapsed: true` starts it shut until the operator opens it;
-  /// omitted, it starts open. Ignored for any other style.
+  /// `sectionEnd`; the operator opens and shuts it, and the app remembers
+  /// which way each was left. `collapsed: true` starts it shut until the
+  /// operator opens it; omitted, it starts open. Ignored for any other style.
   collapsed?: boolean
   /// Names a 'section' for the fold the app remembers, unique within the
   /// panel. Without it the title does, so the fold is forgotten when the
