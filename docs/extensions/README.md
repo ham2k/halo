@@ -310,12 +310,21 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 | `host.webSocket(url, options?)` | A live connection to a host the manifest's `webSockets` lists, shaped like the browser's `WebSocket`. See [WebSockets](#websockets). |
 | `host.clusterStatus()` / `host.clusterLines({after?, limit?})` / `host.clusterSubscribe()` / `host.clusterUnsubscribe()` / `host.clusterPostSpot({freq, call, comment?})` / `host.clusterSend(command)` | The app's one DX cluster connection, logged in as the operator; behind the `requiresClusterRead` / `requiresClusterSpot` / `requiresClusterCommand` grants and extension API 10. See the [`cluster` hook](spots.md#-cluster--the-dx-cluster-connection) and [docs/design/cluster.md](../design/cluster.md). |
 | `host.setTimeout(fn, ms, ...args)` / `host.setInterval(…)` / `host.clearTimeout(id)` / `host.clearInterval(id)` | Timers, shaped like the browser's, on real time and held to a budget. A bundle built for extension API 3 gets them as plain `setTimeout` and friends too. See [Timers](#timers). |
-| `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
+| `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). A bundle holds at most 10 keys of its own, each entry — its key and its value — at most 4,096 characters of JSON; a `kvSet` past either throws, and setting `null` frees the key. |
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
 | `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. |
 | `host.getVersionInfo()` | Read-only build identity: platform, edition, version, versionName, buildNumber, gitSha. `buildNumber` is null on Dev, where the compiled-in number is the last release's rather than the running build's. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
+
+Every call is answered, and a bundle may have at most 32 awaiting an answer at
+once — a loop that fires `host.*` calls without awaiting them fails at the
+thirty-third — with 256 across every extension; `host.fetch` has its own eight
+in flight. A hook the app has timed out runs on regardless (the hanging-hook
+note above), and what it holds is released by that resource's own bound: a
+fetch slot when the fetch ends, within the `timeout` you gave it. Every budget
+here is refused at the call that would exceed it, never queued or quietly
+dropped, so a runaway loop fails where it runs and the error names the budget.
 
 ### WebSockets
 
@@ -357,6 +366,9 @@ The rules, all enforced by the host:
 - **At most four sockets per extension, and 1 MiB per frame** either way (UTF-16
   code units of text, bytes of binary). An oversized `send` throws; an oversized
   inbound frame closes the socket with 1009 rather than arriving cut short.
+- **At most twelve opens a minute per bundle.** A reconnect on a growing
+  backoff opens a few; a loop reconnecting straight from `onclose` against a
+  server that is down is refused at the thirteenth, as any refused socket is.
 - **A refused socket fails the way a browser's does** — `onerror`, then
   `onclose` with 1006 — never as a throw from `host.webSocket`. The `onerror`
   message says why.
@@ -367,8 +379,8 @@ The rules, all enforced by the host:
 
 Reconnect after a delay, and a growing one: `onclose` → `setTimeout(connect,
 backoff)`. Reconnecting straight from `onclose`, against a server that is
-down, is a loop, and the [timer budget](#timers) will not save you from it —
-there is no timer in it to charge.
+down, is a loop the [timer budget](#timers) cannot see — there is no timer in
+it to charge — and the opens-a-minute cap is what stops it.
 
 On the web build the browser sets the handshake's `User-Agent` (every native
 build sends HaLo's), and plain `ws://` to a LAN address is blocked outright as

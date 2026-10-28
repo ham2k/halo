@@ -149,6 +149,16 @@ class _HostCore {
   /// may outlive this host (or be shared between several).
   final bool _ownsHttpClient;
   final Map<String, Map<String, Object?>> _kv = {};
+
+  /// Keys the app seeded (`setKV`), by namespace: outside the bundle's quota,
+  /// which is for what an extension stores itself, however either rewrites
+  /// them later. Each is a key its namespace holds.
+  final Map<String, Set<String>> _kvSeeded = {};
+
+  /// Host calls awaiting an answer, per bundle and in all, against
+  /// [kMaxHostCallsPending] and [kMaxHostCallsPendingTotal].
+  final Map<String, int> _hostCallsPending = {};
+  int _hostCallsPendingTotal = 0;
   final Map<int, Completer<dynamic>> _pendingHostCalls = {};
   Timer? _pump;
   late final _timers = ExtensionTimerWake(runTimers: _runTimers, log: (message) => emit({'type': 'log', 'message': message}));
@@ -330,7 +340,9 @@ class _HostCore {
         // an entry per abandoned call over a long session.
         _queueMicros.remove(msg['id']);
       case 'kvSet':
-        _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
+        // The app's own seeding: counted, so the quota judges what the bundle
+        // then adds on top, but never refused.
+        _kvSet(msg['ns'] as String? ?? 'default', msg['key'] as String, msg['value'], budgeted: false);
       case 'invalidateContext':
         try {
           _js.invalidateContext();
@@ -497,7 +509,15 @@ class _HostCore {
     final chargedTo = _load.currentLabel ?? 'host:$method';
     Object? result;
     bool ok = true;
+    // Budgeted by the caller's bundle, as fetch slots are; a call the kernel
+    // did not attribute counts against the ceiling alone. Resolved inside the
+    // try: a call malformed here is answered, like one that fails anywhere.
+    var slot = '';
+    var admitted = false;
     try {
+      slot = _bundleOf(params['extensionKey'] as String?);
+      _admitHostCall(slot, method);
+      admitted = true;
       switch (method) {
         case 'fetch':
           result = await _hostFetch(params);
@@ -508,7 +528,12 @@ class _HostCore {
           // build without the value is a normal build.
           result = secrets[params['extensionKey'] as String?]?[params['name'] as String?];
         case 'webSocketOpen':
-          _sockets.open(params, allowlist: _allowlistFor(webSocketAllowlists, params['extensionKey'] as String?) ?? const [], matches: _hostAllowed);
+          _sockets.open(
+            params,
+            allowlist: _allowlistFor(webSocketAllowlists, params['extensionKey'] as String?) ?? const [],
+            matches: _hostAllowed,
+            bundle: slot,
+          );
         case 'webSocketSend':
           _sockets.send(params);
         case 'webSocketClose':
@@ -518,7 +543,7 @@ class _HostCore {
           // platform keychain when settings become persistent.
           result = _kv[params['ns'] ?? 'default']?[params['key']];
         case 'kvSet':
-          _kv.putIfAbsent(params['ns'] as String? ?? 'default', () => {})[params['key'] as String] = params['value'];
+          _kvSet(params['ns'] as String? ?? 'default', params['key'] as String, params['value'], budgeted: true);
         default:
           final completer = Completer<dynamic>();
           _pendingHostCalls[callId] = completer;
@@ -529,6 +554,7 @@ class _HostCore {
       ok = false;
       result = '$e';
     }
+    if (admitted) _releaseHostCall(slot);
 
     // Encode before deciding the response: if the app's handler returned
     // something JSON can't encode (a DateTime, a plain object), that must
@@ -572,10 +598,16 @@ class _HostCore {
   /// bundle's declaration.
   static List<String>? _allowlistFor(Map<String, List<String>> allowlists, String? extensionKey) => allowlists[_bundleKeyFor(allowlists, extensionKey)];
 
+  /// The bundle [extensionKey] belongs to, for everything the host holds a
+  /// bundle to: `fetchAllowlists` lists every loaded bundle, domains declared
+  /// or none, so it doubles as the registry [_bundleKeyFor] resolves against.
+  String _bundleOf(String? extensionKey) => _bundleKeyFor(fetchAllowlists, extensionKey);
+
   /// The bundle [extensionKey] was loaded from, as [allowlists] knows it:
-  /// itself, or the one it is a sub-extension of. The one resolution behind
-  /// both a grant and the fetch slots, so a bundle's extensions share both. A
-  /// key no bundle claims counts for itself, which the map answers null for.
+  /// itself, or the one it is a sub-extension of. The one resolution behind a
+  /// grant, the fetch slots and every budget a bundle is held to, so a
+  /// bundle's extensions share them all. A key no bundle claims counts for
+  /// itself, which the map answers null for.
   static String _bundleKeyFor(Map<String, List<String>> allowlists, String? extensionKey) {
     if (extensionKey == null) return '';
     if (allowlists.containsKey(extensionKey)) return extensionKey;
@@ -599,6 +631,76 @@ class _HostCore {
     return false;
   }
 
+  /// Admits one more host call from [slot], or refuses it: a bundle may have
+  /// [kMaxHostCallsPending] awaiting an answer, and all of them together
+  /// [kMaxHostCallsPendingTotal]. Refused rather than queued, so a loop that
+  /// fires without awaiting fails where it runs instead of parking a completer
+  /// here, and one in the kernel, for as long as the app takes to answer.
+  void _admitHostCall(String slot, String method) {
+    final pending = _hostCallsPending[slot] ?? 0;
+    if (slot.isNotEmpty && pending >= kMaxHostCallsPending) {
+      throw ExtensionHostException("host call refused: '$slot' already has $pending calls awaiting an answer ($method)");
+    }
+    if (_hostCallsPendingTotal >= kMaxHostCallsPendingTotal) {
+      throw ExtensionHostException('host call refused: $_hostCallsPendingTotal calls are awaiting an answer across every extension ($method)');
+    }
+    _hostCallsPending[slot] = pending + 1;
+    _hostCallsPendingTotal++;
+  }
+
+  void _releaseHostCall(String slot) {
+    final left = _hostCallsPending[slot]! - 1;
+    if (left == 0) {
+      _hostCallsPending.remove(slot);
+    } else {
+      _hostCallsPending[slot] = left;
+    }
+    _hostCallsPendingTotal--;
+  }
+
+  /// How many keys [slot]'s extensions store themselves, read from the store
+  /// so that a sub-extension's keys follow its bundle even when the bundle
+  /// registered after they were stored. `kvSet` is rare enough to pay for it.
+  int _kvKeysOf(String slot) {
+    var keys = 0;
+    for (final MapEntry(key: ns, value: space) in _kv.entries) {
+      if (_bundleOf(ns) != slot) continue;
+      final seeded = _kvSeeded[ns];
+      keys += seeded == null ? space.length : space.keys.where((key) => !seeded.contains(key)).length;
+    }
+    return keys;
+  }
+
+  /// Stores [value] under [key] in [ns], or frees the key for null. A seeded
+  /// write ([budgeted] false) is the app's own and never refused; an
+  /// extension's is held to its bundle's quota: [kMaxKvKeysPerBundle] keys of
+  /// its own, each entry — key and value — [kMaxKvEntryChars] of JSON.
+  /// Measured as JSON because that is what crossed the bridge, and what the
+  /// heap holds in its stead.
+  void _kvSet(String ns, String key, Object? value, {required bool budgeted}) {
+    final space = _kv.putIfAbsent(ns, () => {});
+    if (value == null) {
+      space.remove(key);
+      _kvSeeded[ns]?.remove(key);
+      return;
+    }
+    if (budgeted) {
+      final chars = key.length + jsonEncode(value).length;
+      if (chars > kMaxKvEntryChars) {
+        throw ExtensionHostException("kvSet refused: '$key' and its value are $chars characters of JSON, more than $kMaxKvEntryChars");
+      }
+      if (!space.containsKey(key)) {
+        final slot = _bundleOf(ns);
+        if (_kvKeysOf(slot) >= kMaxKvKeysPerBundle) {
+          throw ExtensionHostException("kvSet refused: '$slot' already holds $kMaxKvKeysPerBundle keys");
+        }
+      }
+    } else {
+      _kvSeeded.putIfAbsent(ns, () => {}).add(key);
+    }
+    space[key] = value;
+  }
+
   /// Enforces the manifest's declared network capability (DESIGN.md §3).
   /// `extensionKey` is kernel-derived (bound at activation), never supplied
   /// by extension code, so this really is "who is calling", and the check
@@ -612,7 +714,7 @@ class _HostCore {
     final extensionKey = params['extensionKey'] as String?;
     // Counted before anything is sent and released however the call ends,
     // so a refused or failed fetch never keeps a slot.
-    final slot = _bundleKeyFor(fetchAllowlists, extensionKey);
+    final slot = _bundleOf(extensionKey);
     final inFlight = _fetchesInFlight[slot] ?? 0;
     if (inFlight >= kMaxFetchesInFlight) {
       throw ExtensionHostException("fetch refused: '$slot' already has $inFlight requests in flight");

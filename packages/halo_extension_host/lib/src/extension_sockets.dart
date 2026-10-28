@@ -12,6 +12,7 @@ import 'dart:typed_data';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'engine_runtime.dart';
+import 'host_budgets.dart';
 import 'local_network.dart';
 import 'socket_connect.dart' if (dart.library.io) 'socket_connect_io.dart';
 
@@ -19,6 +20,12 @@ import 'socket_connect.dart' if (dart.library.io) 'socket_connect_io.dart';
 /// loop that reconnects without closing would otherwise pile up connections
 /// until something outside the app gives out.
 const maxWebSocketsPerExtension = 4;
+
+/// How many times one bundle's extensions may open a socket in a minute. A feed
+/// reconnecting on a growing backoff opens a few; a loop reconnecting straight
+/// from `onclose` against a server that is down would open hundreds, and no
+/// timer budget charges it: there is no timer in it.
+const maxWebSocketConnectsPerMinute = 12;
 
 /// The largest frame a socket carries either way: UTF-16 code units for text,
 /// bytes for binary. Every inbound frame crosses the bridge as JSON and is
@@ -44,6 +51,10 @@ class ExtensionSockets {
   final String? userAgent;
   final Map<int, _ExtensionSocket> _open = {};
 
+  /// Opens in the last minute, by bundle: the budget is the bundle's, as the
+  /// host's others are, while the live cap below stays each extension's.
+  final Map<String, RateWindow> _opens = {};
+
   ExtensionSockets({required this.deliver, this.userAgent});
 
   /// Opens the socket `host.webSocket` asked for, once the caller's
@@ -51,8 +62,14 @@ class ExtensionSockets {
   /// host.fetch to [allowlist], and [localNetworkEntry] admits local addresses
   /// besides. Returns once the request is accepted, not once connected:
   /// everything after — the open, each frame, the failure to connect —
-  /// arrives as a socket event, as it does in a browser.
-  void open(Map<String, dynamic> params, {required List<String> allowlist, required bool Function(List<String> allowlist, String host) matches}) {
+  /// arrives as a socket event, as it does in a browser. [bundle] is the
+  /// caller's bundle as the host resolves it, whose opens a minute this is.
+  void open(
+    Map<String, dynamic> params, {
+    required List<String> allowlist,
+    required bool Function(List<String> allowlist, String host) matches,
+    required String bundle,
+  }) {
     final extensionKey = params['extensionKey'] as String?;
     final socketId = params['socketId'];
     if (extensionKey == null || socketId is! int) throw ExtensionHostException('webSocket: malformed open request');
@@ -70,6 +87,10 @@ class ExtensionSockets {
     final held = _open.values.where((socket) => socket.extensionKey == extensionKey).length;
     if (held >= maxWebSocketsPerExtension) {
       throw ExtensionHostException('webSocket blocked: extension $extensionKey already has $held sockets open');
+    }
+    final opens = _opens.putIfAbsent(bundle, () => RateWindow(maxWebSocketConnectsPerMinute, const Duration(minutes: 1)));
+    if (!opens.admit()) {
+      throw ExtensionHostException('webSocket blocked: bundle $bundle has opened $maxWebSocketConnectsPerMinute sockets in the last minute');
     }
     _open[socketId] = _ExtensionSocket.connect(
       uri,

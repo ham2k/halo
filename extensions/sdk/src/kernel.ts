@@ -211,9 +211,12 @@ function apiOf(extensionKey: string): number {
   return (bundle ? bundleApi[bundle] : null) ?? Infinity
 }
 
+// Each read names the extension whose hook asked, so the host budgets it as
+// that bundle's call (host_budgets.dart), like the rest of what ctx does.
 const logCopies = createLogCopies({
-  changes: async (operationUuid, cursor) => (await dispatchHostCall("getQsoChanges", { operationUuid, cursor })) as LogChanges | null,
-  whole: async (operationUuid) => (await dispatchHostCall("getQsos", { operationUuid })) as Record<string, unknown>[] | null,
+  changes: async (operationUuid, cursor, extensionKey) =>
+    (await dispatchHostCall("getQsoChanges", { operationUuid, cursor, extensionKey })) as LogChanges | null,
+  whole: async (operationUuid, extensionKey) => (await dispatchHostCall("getQsos", { operationUuid, extensionKey })) as Record<string, unknown>[] | null,
 })
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
@@ -504,22 +507,32 @@ function dispatchHostCall(method: string, params: Record<string, unknown>): Prom
   })
 }
 
+/// What the host sees as the caller of every call made through the public
+/// surface: the host budgets what each caller has awaiting an answer, and a
+/// key the caller supplied would pick the slot — another bundle's, or a fresh
+/// one per call.
+const PUBLIC_CALLER = "__polo.hostCall"
+
 /// The public (`__polo.hostCall`) surface: identity-bearing methods are
 /// refused — extensions reach those through the activation-scoped
 /// `api.hostCall` their SDK copy captures (see activateExtension), whose
-/// identity params the kernel injects itself.
+/// identity params the kernel injects itself. The rest go out as the
+/// surface's own, whatever `extensionKey` they claim.
 function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   if (IDENTITY_HOST_METHODS.has(method)) {
     return Promise.reject(new Error(`host call '${method}' needs the calling extension's identity and is only available through the SDK host API`))
   }
-  return dispatchHostCall(method, params)
+  return dispatchHostCall(method, { ...params, extensionKey: PUBLIC_CALLER })
 }
 
 /// The privileged host-call function handed to one extension at activation:
 /// identity params are forced to the kernel's own record of who this is.
 function boundHostCallFor(extensionKey: string) {
   return (method: string, params: Record<string, unknown>): Promise<unknown> => {
-    if (!IDENTITY_HOST_METHODS.has(method)) return dispatchHostCall(method, params)
+    // Every call names its caller, identity-bearing or not: the host budgets
+    // what a bundle has awaiting an answer by it (halo_extension_host's
+    // host_budgets.dart). Only the identity methods get `ns` and the rest.
+    if (!IDENTITY_HOST_METHODS.has(method)) return dispatchHostCall(method, { ...params, extensionKey })
     const bound: Record<string, unknown> = { ...params, ns: extensionKey, extensionKey }
     if (method === "suggestQso") bound.duringPanelEvent = (panelEventsRunning.get(extensionKey) ?? 0) > 0
     if (method === "getAccount" || method === "setAccountSession") {
@@ -689,7 +702,7 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
     try {
       // Trusted kernel path (this is the kernel deriving identity itself,
       // not extension code claiming one) — bypasses the public gate.
-      return (await dispatchHostCall("getAccount", { ns: extensionKey, kvKey })) as unknown
+      return (await dispatchHostCall("getAccount", { ns: extensionKey, kvKey, extensionKey })) as unknown
     } catch (e) {
       return undefined
     }
@@ -751,17 +764,22 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // 3s-stale QSO list is exactly what a caller like SEED can't tolerate.
     // `getQsos` answers from the shared copy, which asks the host what
     // changed on every call (logCopy.ts), so it is never staler than that.
-    // Not identity-bearing (no ns/kvKey), so plain dispatchHostCall is fine.
-    getOperation: async (uuid: string) => ((await dispatchHostCall("getOperation", { uuid })) as Record<string, unknown> | null) ?? null,
+    // Not identity-bearing (no ns/kvKey), but stamped with the caller all the
+    // same: the host budgets a bundle's calls awaiting an answer by it.
+    getOperation: async (uuid: string) =>
+      ((await dispatchHostCall("getOperation", { uuid, extensionKey: record.extensionKey })) as Record<string, unknown> | null) ?? null,
     // Null (unknown operation / no log access) passes through untouched —
     // it means something different from [] (see HookContext.getQsos).
     getQsos: (operationUuid: string) =>
-      logCopies.read(operationUuid, { frozen: record.unattributed === true || apiOf(record.extensionKey) >= FROZEN_QSOS_API }),
+      logCopies.read(operationUuid, {
+        frozen: record.unattributed === true || apiOf(record.extensionKey) >= FROZEN_QSOS_API,
+        extensionKey: record.extensionKey,
+      }),
     // Reads the host's already-fetched spot cache; never triggers a fetch,
     // so it is cheap enough for the per-keystroke lookup pipeline (see
     // HookContext.getSpotsForCall).
     getSpotsForCall: async (call: string, maxAgeMinutes?: number) =>
-      ((await dispatchHostCall("getSpotsForCall", { call, maxAgeMinutes })) as Spot[] | null) ?? [],
+      ((await dispatchHostCall("getSpotsForCall", { call, maxAgeMinutes, extensionKey: record.extensionKey })) as Spot[] | null) ?? [],
     // The whole board, defaulting its operation to the one this hook was
     // handed so a panel's spots come back judged without asking — see
     // HookContext.getSpots. `annotate: false` asks for none, so none is sent.
@@ -769,11 +787,12 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
       ((await dispatchHostCall("getSpots", {
         ...options,
         operationUuid: options?.operationUuid ?? (options?.annotate === false ? undefined : operationUuidOf(args)),
+        extensionKey: record.extensionKey,
       })) as BoardSpot[] | null) ?? [],
     // Cross-operation log read, backing `call-history` — see
     // HookContext.getHistoryForCall.
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>
-      ((await dispatchHostCall("getHistoryForCall", { ...options, call })) as Record<string, unknown>[] | null) ?? [],
+      ((await dispatchHostCall("getHistoryForCall", { ...options, call, extensionKey: record.extensionKey })) as Record<string, unknown>[] | null) ?? [],
   }
   if (record.category !== "panel" || method !== "onEvent") return await member.call(record.hook, args, ctx)
   panelEventsRunning.set(record.extensionKey, (panelEventsRunning.get(record.extensionKey) ?? 0) + 1)
@@ -839,7 +858,7 @@ async function withLoggedQsos(record: HookRecord, args: unknown): Promise<unknow
   }
   if (!Array.isArray(qsoUuids)) return args
   const operationUuid = operationUuidOf(args)
-  const qsos = operationUuid ? await logCopies.pick(operationUuid, qsoUuids.map(String), { frozen }) : null
+  const qsos = operationUuid ? await logCopies.pick(operationUuid, qsoUuids.map(String), { frozen, extensionKey: record.extensionKey }) : null
   // A log the runtime cannot read is a failed pass, not an empty one: folded
   // as empty, its zero totals would replace the operation's cached score.
   if (qsos === null) throw new Error(`scoreQsos named contacts of an operation whose log cannot be read (${operationUuid ?? "no operation"})`)

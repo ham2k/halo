@@ -46,16 +46,18 @@ import 'src/extension_timers.dart';
 import 'src/fetch_client.dart' if (dart.library.io) 'src/fetch_client_io.dart';
 import 'src/fetch_policy.dart';
 import 'src/hook_call_stats.dart';
+import 'src/host_budgets.dart';
 import 'src/js_engine.dart';
 import 'src/local_network.dart';
 
-export 'src/extension_sockets.dart' show localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
+export 'src/extension_sockets.dart' show localNetworkEntry, maxWebSocketConnectsPerMinute, maxWebSocketFrameSize, maxWebSocketsPerExtension;
 export 'src/local_network.dart' show isLocalNetworkHost;
 export 'src/engine_load.dart' show EngineLoadBucket, EngineLoadFeed, EngineLoadWindow, engineLoadBucketMicros;
 export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
 export 'src/hook_call_stats.dart' show HookCallSample, HookLatencyStat, QueueWaitStat, batchLabel, summarizeLatencies;
+export 'src/host_budgets.dart' show RateWindow, kMaxHostCallsPending, kMaxHostCallsPendingTotal, kMaxKvEntryChars, kMaxKvKeysPerBundle;
 export 'src/hook_calls.dart' show HookCalls;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
@@ -659,6 +661,8 @@ class ExtensionHost {
   final Map<int, Completer<void>> _pendingReloads = {};
 
   /// Seeds a value into an extension's key-value namespace (e.g. credentials).
+  /// The app's own, so outside the extension's kv quota: never refused, and
+  /// never counted against it.
   void setKV(String extensionKey, String key, Object? value) {
     _dispatch({'type': 'kvSet', 'ns': extensionKey, 'key': key, 'value': value});
   }
@@ -815,7 +819,9 @@ class ExtensionHost {
   void _log(String message) {
     logLines.add(message);
     if (logLines.length > _maxLogLines) logLines.removeRange(0, logLines.length - _maxLogLines);
-    _logs.add(message);
+    // A line can still arrive after dispose: a host call the core was
+    // answering when the engine went away reports the undelivered answer here.
+    if (!_logs.isClosed) _logs.add(message);
   }
 
   Future<void> dispose() async {

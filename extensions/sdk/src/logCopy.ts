@@ -35,19 +35,21 @@ export type LogChanges = { cursor: string; reset: boolean; qsos: Qso[]; removed:
 const UNSUPPORTED = "Host call method getQsoChanges not implemented"
 
 export type LogSource = {
-  changes(operationUuid: string, cursor: string | undefined): Promise<LogChanges | null>
+  /// [extensionKey] names the extension whose hook is reading, for the host
+  /// to budget the call by; absent for a read the kernel makes on its own.
+  changes(operationUuid: string, cursor: string | undefined, extensionKey?: string): Promise<LogChanges | null>
   /// The whole log, for a host that does not answer `getQsoChanges`.
-  whole(operationUuid: string): Promise<Qso[] | null>
+  whole(operationUuid: string, extensionKey?: string): Promise<Qso[] | null>
 }
 
 export type LogCopies = {
   /// The operation's log, oldest first, as `ctx.getQsos` answers. [frozen]
   /// shares the copy's QSOs; otherwise each call gets QSOs of its own.
-  read(operationUuid: string, options: { frozen: boolean }): Promise<Qso[] | null>
+  read(operationUuid: string, options: { frozen: boolean; extensionKey?: string }): Promise<Qso[] | null>
   /// The contacts [uuids] name, in that order, from the same up-to-date copy
   /// — those of them it still holds. Picked from the copy's own index, and
   /// only those copied when not [frozen].
-  pick(operationUuid: string, uuids: string[], options: { frozen: boolean }): Promise<Qso[] | null>
+  pick(operationUuid: string, uuids: string[], options: { frozen: boolean; extensionKey?: string }): Promise<Qso[] | null>
 }
 
 type Copy = {
@@ -96,15 +98,15 @@ export function createLogCopies(source: LogSource, keep = KEEP): LogCopies {
   }
 
   /// Brings [copy] up to date; false when the host knows no such log.
-  async function sync(operationUuid: string, copy: Copy): Promise<boolean> {
-    let changes = await source.changes(operationUuid, copy.cursor)
+  async function sync(operationUuid: string, copy: Copy, extensionKey?: string): Promise<boolean> {
+    let changes = await source.changes(operationUuid, copy.cursor, extensionKey)
     if (changes === null) return false
     // A copy that ends up holding another number of contacts than the log has
     // missed a write the host's ledger never saw. Rather than keep a copy
     // known to be wrong, ask for the whole log once.
     const held = apply(copy, changes)
     if (!changes.reset && typeof changes.count === "number" && held !== changes.count) {
-      changes = await source.changes(operationUuid, undefined)
+      changes = await source.changes(operationUuid, undefined, extensionKey)
       if (changes === null) return false
       apply(copy, changes)
     }
@@ -127,10 +129,10 @@ export function createLogCopies(source: LogSource, keep = KEEP): LogCopies {
 
   /// [operationUuid]'s copy, brought up to date; null when the host knows no
   /// such log, [UNSUPPORTED] when the host is older than `getQsoChanges`.
-  async function synced(operationUuid: string): Promise<Copy | null | typeof UNSUPPORTED> {
+  async function synced(operationUuid: string, extensionKey?: string): Promise<Copy | null | typeof UNSUPPORTED> {
     if (unsupported) return UNSUPPORTED
     const copy = copyFor(operationUuid)
-    const run = copy.queue.then(() => sync(operationUuid, copy))
+    const run = copy.queue.then(() => sync(operationUuid, copy, extensionKey))
     copy.queue = run.catch(() => undefined)
     let known: boolean
     try {
@@ -149,18 +151,18 @@ export function createLogCopies(source: LogSource, keep = KEEP): LogCopies {
   }
 
   return {
-    async read(operationUuid, { frozen }) {
-      const copy = await synced(operationUuid)
-      if (copy === null || copy === UNSUPPORTED) return copy === null ? null : source.whole(operationUuid)
+    async read(operationUuid, { frozen, extensionKey }) {
+      const copy = await synced(operationUuid, extensionKey)
+      if (copy === null || copy === UNSUPPORTED) return copy === null ? null : source.whole(operationUuid, extensionKey)
       if (frozen) return copy.list.slice()
       copy.json ??= JSON.stringify(copy.list)
       return JSON.parse(copy.json) as Qso[]
     },
 
-    async pick(operationUuid, uuids, { frozen }) {
-      const copy = await synced(operationUuid)
+    async pick(operationUuid, uuids, { frozen, extensionKey }) {
+      const copy = await synced(operationUuid, extensionKey)
       if (copy === null) return null
-      const rows = copy === UNSUPPORTED ? new Map((await source.whole(operationUuid))?.map((qso) => [String(qso.uuid), qso]) ?? []) : copy.rows
+      const rows = copy === UNSUPPORTED ? new Map((await source.whole(operationUuid, extensionKey))?.map((qso) => [String(qso.uuid), qso]) ?? []) : copy.rows
       const picked = uuids.flatMap((uuid) => (rows.has(uuid) ? [rows.get(uuid)!] : []))
       return frozen || copy === UNSUPPORTED ? picked : (JSON.parse(JSON.stringify(picked)) as Qso[])
     },

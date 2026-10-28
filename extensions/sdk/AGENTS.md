@@ -130,6 +130,11 @@ host.log('…')                  // the app's console
 - **At most eight `host.fetch` calls per bundle are in flight at once.** A
   ninth is refused rather than queued, so a `Promise.all` over a long list of
   URLs fails past the eighth — run them in batches.
+- **Every host call is budgeted.** At most 32 of your bundle's calls may await
+  an answer at once, so a loop of un-awaited `host.*` calls fails at the
+  thirty-third; `kvSet` holds at most 10 keys per bundle, each key and its
+  value at most 4,096 characters of JSON — session state, not a cache; a
+  bundle may open a socket at most 12 times a minute.
 - **Using a shared library without declaring it fails the build.** The app
   carries `@ham2k/lib-*`, `i18next` and `liquidjs`; naming one in
   `sharedDependencies` rewrites your imports into lookups on the app's single

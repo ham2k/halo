@@ -291,6 +291,53 @@ void main() {
     expect(await call(host, 'socks', 'open', {'name': 'extra', 'url': server.url}), contains('already has $maxWebSocketsPerExtension sockets open'));
   });
 
+  /// Opens and lets go of [key]'s sockets in turns of four, waiting for each
+  /// turn's closes, so the live cap never bites: what is counted is the opening.
+  Future<void> openTwelve(ExtensionHost host, String key) async {
+    var closed = 0;
+    for (var i = 0; i < maxWebSocketConnectsPerMinute; i++) {
+      expect(await call(host, key, 'open', {'name': 's$i', 'url': server.url, 'closeAtOnce': true}), 'accepted');
+      if (i % maxWebSocketsPerExtension == maxWebSocketsPerExtension - 1) {
+        closed += maxWebSocketsPerExtension;
+        final want = closed;
+        await until(() async => (await events(host, key)).where((e) => e['type'] == 'close').length >= want, reason: '$want closes');
+      }
+    }
+  }
+
+  test('opening more than twelve sockets in a minute is refused, however few are open', () async {
+    final host = await hostWith(
+      [ExtensionBundle(key: 'socks', source: _socketExtension('socks'))],
+      webSockets: {
+        'socks': ['127.0.0.1'],
+      },
+    );
+    await openTwelve(host, 'socks');
+
+    expect(
+      await call(host, 'socks', 'open', {'name': 'extra', 'url': server.url}),
+      contains('has opened $maxWebSocketConnectsPerMinute sockets in the last minute'),
+    );
+  });
+
+  test("a sub-extension opens on its bundle's twelve a minute, not twelve of its own", () async {
+    // One bundle defining both; `domains` is the registry the host resolves
+    // bundles against, so the bundle is listed there with nothing declared.
+    final host = await hostWith(
+      [ExtensionBundle(key: 'socks', source: '${_socketExtension('socks')};${_socketExtension('socks-sub')}')],
+      domains: {'socks': []},
+      webSockets: {
+        'socks': ['127.0.0.1'],
+      },
+    );
+    await openTwelve(host, 'socks');
+
+    expect(
+      await call(host, 'socks-sub', 'open', {'name': 'extra', 'url': server.url}),
+      contains('bundle socks has opened $maxWebSocketConnectsPerMinute sockets in the last minute'),
+    );
+  });
+
   test('binary frames cross both ways as bytes', () async {
     final host = await hostWith(
       [ExtensionBundle(key: 'socks', source: _socketExtension('socks'))],
