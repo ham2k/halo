@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:halo_audio/halo_audio.dart' show AudioPlayback;
 import 'package:halo_core/halo_core.dart';
@@ -34,6 +35,9 @@ import 'cw_live_typing.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'spectrum.dart';
+import 'transports/k4_shared_connection.dart';
+import 'transports/k4_remote_transport.dart';
+import 'drivers/kenwood_driver.dart' show KenwoodDriver;
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
@@ -68,6 +72,8 @@ part 'cat_tracking.dart';
 part 'cat_peer_offers.dart';
 part 'cat_keying_surface.dart';
 part 'cat_so2r.dart';
+part 'cat_k4.dart';
+part 'cat_credentials.dart';
 
 /// Bump when the stored shape changes in a way a reader has to know about.
 ///
@@ -214,6 +220,7 @@ class CatService extends ChangeNotifier
   /// Live per-node connection state. Never persisted.
   @override
   final Map<String, _NodeRuntime> _runtimes = {};
+  late final _k4Connections = K4SharedConnectionPool(onSend: _logK4Sent, onReceive: _logK4Received);
 
   /// Set by [dispose]. The reconnect loop parks on an uncancellable delay,
   /// so it can outlive the service and must check before touching it again.
@@ -396,11 +403,14 @@ class CatService extends ChangeNotifier
 
   /// The nodes an automatic reconnect aims at: radio1 and radio2, and the key
   /// in use when it is a device of its own. All are what the app depends on,
-  /// and none should wait for a button.
+  /// and none should wait for a button. A K4 also restores the logical
+  /// receivers sharing either radio's physical connection.
   Set<String> get _autoConnectTargets {
     return {
       ?_localRadio1,
       ?radio2,
+      ..._k4SiblingIds(_localRadio1),
+      ..._k4SiblingIds(radio2),
       for (final keyer in {designatedFor(kCategoryKey), if (radio2 != null) designatedFor(kCategoryKey, radio: radio2)})
         if (keyer != null && _isKeyerDevice(keyer)) keyer,
     };
@@ -408,6 +418,15 @@ class CatService extends ChangeNotifier
 
   @override
   EquipmentNode? nodeFor(String uuid) => _nodes[uuid];
+
+  /// The physical radio shared by logical receiver nodes, when applicable.
+  @override
+  String? logicalDeviceIdFor(String uuid) {
+    final node = _nodes[uuid];
+    return node != null && _isK4Remote(node) ? _k4Identity(node) : null;
+  }
+
+  Map<String, String>? logicalChannelFor(String uuid) => _k4LogicalChannelFor(uuid);
 
   // ---------------------------------------------------------- main VFO
 
@@ -735,7 +754,7 @@ class CatService extends ChangeNotifier
   String? get localKeyingRadio => _localRadio1;
 
   @override
-  bool clearToSend({required bool repeat}) => _clearToSend('A', repeat: repeat);
+  bool clearToSend({required bool repeat, bool queuedCw = false}) => _clearToSend('A', repeat: repeat, queuedCw: queuedCw);
 
   @override
   void _setEnterSendsOf(bool running) => _keying.setEnterSends(running: running);
@@ -898,7 +917,7 @@ class CatService extends ChangeNotifier
       name: name.trim().isEmpty ? suggestedNameFor(typeKey) : name,
       config: config,
     );
-    final stored = await _stashSecrets(node);
+    final stored = await _stashSecrets(await _prepareK4Node(node));
     final category = registry.typeFor(stored.typeKey)?.category;
     // Taking the VFO moves the key in use with it, so the whole block is
     // wrapped: a rig added mid-message would otherwise leave the outgoing
@@ -913,7 +932,9 @@ class CatService extends ChangeNotifier
       // where `vfoA` comes from, and configuring a rig — which is not the same
       // as reaching for it — must not silently take the panel back off the
       // radio they are working through.
-      if (category == kCategoryTransceiver && _radio1 is! PeerRadio) _radio1 = LocalRadio(stored.uuid);
+      final sibling =
+          _isK4Remote(stored) && _nodes.values.any((other) => other.uuid != stored.uuid && _isK4Remote(other) && _k4Identity(other) == _k4Identity(stored));
+      if (category == kCategoryTransceiver && _radio1 is! PeerRadio && !sibling) _radio1 = LocalRadio(stored.uuid);
       // Same rule as radio1, for antenna/key, and for the radio in use: the
       // newest one designated, so adding the antenna this rig runs needs no
       // separate picker visit. Only this rig's, since the picks are per
@@ -942,6 +963,11 @@ class CatService extends ChangeNotifier
   Future<void> updateNode(EquipmentNode node) async {
     final previous = _nodes[node.uuid];
     if (previous == null) return;
+    if (_isK4Remote(node)) {
+      await _updateK4Node(previous, node);
+      notifyListeners();
+      return;
+    }
     // Re-typing a node — the operator switching the same radio from WiFi to
     // USB — replaces both its transport and its driver, and a live runtime
     // holds a session the OLD driver built over a connection the OLD
@@ -1001,7 +1027,7 @@ class CatService extends ChangeNotifier
     // right now. Reporting only the current pairing's shows an empty box
     // beside a password that is still in force.
     for (final field in registry.allSecretFields) {
-      final value = await _settings.equipmentSecret(uuid, field);
+      final value = await _settings.equipmentSecret(_k4Identity(node), field);
       if (value != null && value.isNotEmpty) stored.add(field);
     }
     return stored;
@@ -1013,8 +1039,12 @@ class CatService extends ChangeNotifier
     // and catalogue-wide, since a node re-typed away from the pairing that
     // stored a secret would otherwise leave it behind with nothing left that
     // could ever name it.
-    for (final field in registry.allSecretFields) {
-      await _settings.setEquipmentSecret(uuid, field, null);
+    final node = _nodes[uuid];
+    final owner = node == null ? uuid : _k4Identity(node);
+    if (!_nodes.values.any((other) => other.uuid != uuid && _k4Identity(other) == owner)) {
+      for (final field in registry.allSecretFields) {
+        await _settings.setEquipmentSecret(owner, field, null);
+      }
     }
     // A node re-added later can take the same uuid, and a mark left behind
     // would silence the report for the setup somebody just rebuilt by hand.
@@ -1392,6 +1422,7 @@ class CatService extends ChangeNotifier
       unawaited(_teardown(runtime));
       unawaited(runtime.spectrum?.close());
     }
+    unawaited(_k4Connections.dispose());
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     // Before the notifiers they report into are disposed.

@@ -1,7 +1,7 @@
 # Elecraft K4 CAT
 
-The K4 model has `k4-serial` and `k4-tcp` variants. Both use the K4
-configuration of `KenwoodDriver`, sharing framing, polling and keyer queues
+The K4 model has `k4-serial`, `k4-tcp` and `k4-remote` variants. They use the K4
+configuration of `KenwoodDriver`, sharing framing and keyer queues
 with the Kenwood family. K4 mode and power conversions live in `k4_codec.dart`.
 The default Kenwood driver and the KX2/KX3 definitions retain their behavior.
 
@@ -15,16 +15,21 @@ existing feature gate.
   at 38400; this is a configurable starting value, not auto-detection.
 - **Ethernet:** enter the K4's local-network hostname/IP and CAT port **9200**.
   The panadapter opens port **9201** on the same host while visible.
+- **Secure Network/WiFi:** enter the address, remote port (default **9204**)
+  and K4 network password. CAT and spectrum share one TLS connection;
+  see [K4 remote connection](k4-remote.md). Audio playback is not implemented.
 - The serial device path is stored as `port`; the TCP number as `tcpPort`.
   Both variants seed the same editor, so reusing `port` would overwrite one
   connection's settings when switching to the other. TCP still receives the
-  canonical `{host, port}` target after configuration is resolved.
+  canonical `{host, port}` target after configuration is resolved. The secure
+  variant uses its own `remotePort` field for the same reason.
 - Platform transport limits apply: browser builds cannot open raw TCP sockets;
   the existing iOS serial implementation does not provide USB CAT.
 
 ## Protocol choices
 
-Each connection starts with `K40;K31;` before enabling `AI2` and reading state.
+Each connection starts with `K40;K31;` before reading state. Local connections
+enable `AI2` and poll; remote connections use `RDY`/AI4 push updates.
 K40 clears K2 meta mode; K31 selects the documented IF layout with the DATA
 submode included. IF supplies frequency, mode/submode and transmit status in
 one snapshot. Separate MD/DT notifications trigger a fresh IF read instead
@@ -98,28 +103,30 @@ each connection:
 
 ### App integration
 
-The K4 Ethernet pairing exposes the existing `SpectrumSession` contract
-through a separate, demand-driven TCP 9201 connection. The connection runs
-only while a visible spectrum display listens, is cancelled on stop or CAT
-disconnect, and retries a failed or stalled stream independently of CAT.
+The K4 Ethernet pairing exposes the Main panadapter through a separate,
+demand-driven TCP 9201 connection. The connection runs while a visible
+spectrum display listens, closes when the last display stops or CAT
+disconnects, and retries a failed or stalled stream independently of CAT.
 USB and the other Kenwood-family radios retain their existing capabilities.
 
-The initial display uses main-pan `A` packets. Each packet's own center and
+Main uses `A` packets; Sub and mini-pan packets are ignored. Each packet's own center and
 sample rate place its bins; local zoom crops those bins without moving the
 radio or substituting the VFO frequency. Local reference adjustment and
 frame-rate limiting use the existing spectrum controls and noise-floor
 estimator. These are display controls, not claims about calibrated dBm or
 the K4's REF/SCALE settings. No spectrum CAT setters are sent.
 
-Verification covers the captured wire fixtures, crop coordinates, other-pan
-filtering, cancellation, reconnect and a stalled main stream. The panadapter
+Verification covers the captured wire fixtures, crop coordinates, cancellation,
+reconnect and a stalled Main stream. The panadapter
 and waterfall are available in radio panels. The `k2hrc-panafall` sample can
 also be packaged and installed; see its README for installation steps. Its
 local span choices track the stream's available width, and its reference
 control adjusts HaLo's display range.
 
-The display uses main pan `A` only. Physical link-loss recovery and absolute
-level calibration remain unverified. Capture provenance, observed frequency
+The separate [secure network pairing](k4-remote.md) exposes Main and Sub as
+logical radios with receiver-aware controls and independent spectra. Physical
+LAN link-loss recovery and absolute level calibration remain unverified.
+Capture provenance, observed frequency
 comparisons and validation procedures are recorded in the
 [spectrum fixture README](../../app/test/cat/fixtures/k4-spectrum/README.md).
 

@@ -95,6 +95,9 @@ class VoiceActivityTracker {
     _confirmed = false;
     _settled = false;
     report(activity);
+    // Reporting can synchronously end or replace this activity. Its old
+    // start must not arm timers after that receiver has gone away.
+    if (!identical(_activity, activity)) return;
     if (poll != null) {
       _poll = Timer.periodic(voiceActivityPollInterval, (_) {
         _settled = true;

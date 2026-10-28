@@ -13,7 +13,7 @@ import '../transports/tcp_transport.dart';
 import 'k4_spectrum_codec.dart';
 import 'k4_spectrum_presenter.dart';
 
-/// The K4's main panadapter over its dedicated LAN spectrum connection.
+/// The K4's Main panadapter over its dedicated LAN spectrum connection.
 ///
 /// The radio streams precomputed bins as soon as this socket opens. Every
 /// control here changes only their presentation; nothing is written to the
@@ -26,16 +26,15 @@ class K4Spectrum {
 
   K4Spectrum({required this.host, required this.sink, this.transport = const TcpTransport(), this.port = 9201});
 
-  // Doubles per failure: a port that refuses (older firmware, a firewall,
-  // another client holding the stream) is otherwise dialed every two
-  // seconds for as long as a display stays open.
   static const _firstRetryDelay = Duration(seconds: 2);
   static const _maxRetryDelay = Duration(seconds: 60);
+  // Doubles per failure so a closed spectrum port does not keep redialing.
+  Duration _retryDelay = _firstRetryDelay;
   static const _packetDeadline = Duration(seconds: 5);
 
-  Duration _retryDelay = _firstRetryDelay;
-  bool _wanted = false;
   bool _disposed = false;
+  bool _wanted = false;
+  String? _problem;
   int _epoch = 0;
   CatCancelToken? _cancel;
   EquipmentConnection? _connection;
@@ -44,17 +43,17 @@ class K4Spectrum {
   Timer? _watchdog;
   final _decoder = K4SpectrumDecoder();
   late final _presenter = K4SpectrumPresenter(sink: sink);
-  String? _problem;
 
   SpectrumCapabilities get capabilities => _presenter.capabilities;
 
   void start() {
-    if (_wanted || _disposed) return;
+    if (_disposed || _wanted) return;
     _wanted = true;
+    final epoch = _epoch;
     _retryDelay = _firstRetryDelay;
     _presenter.start();
-    _reportProblem(null);
-    unawaited(_open());
+    if (!_current(epoch)) return;
+    if (_retry == null) unawaited(_open());
   }
 
   void stop() {
@@ -125,8 +124,9 @@ class K4Spectrum {
   void _failed(int epoch) {
     if (!_current(epoch)) return;
     _release();
+    final releasedEpoch = _epoch;
     _reportProblem(t.settings.station.spectrumK4Unavailable);
-    if (!_wanted || _disposed) return;
+    if (!_current(releasedEpoch)) return;
     _retry = Timer(_retryDelay, () {
       _retry = null;
       unawaited(_open());
@@ -174,7 +174,7 @@ class K4Spectrum {
   }
 
   void _reportProblem(String? problem) {
-    if (problem == _problem) return;
+    if (_problem == problem) return;
     _problem = problem;
     sink?.reportSpectrumProblem(problem);
   }
