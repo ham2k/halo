@@ -78,8 +78,9 @@ fi
 step "extensions: npm ci, build bundles → app/assets/extensions/"
 (cd extensions && npm ci && npm run build)
 
-# 4. QuickJS needs an explicit host build for tests and diagnostic tools.
-#    halo_tls_psk builds its native asset automatically through a Dart hook.
+# 4. QuickJS and halo_audio need explicit host builds for tests and
+#    diagnostic tools. halo_tls_psk builds its native asset automatically
+#    through a Dart hook.
 step "halo_quickjs: build the host JS engine library"
 packages/halo_quickjs/tool/build_host.sh
 step "halo_audio: build the host audio library"
