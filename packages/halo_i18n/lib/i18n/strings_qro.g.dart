@@ -4070,6 +4070,7 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String millis({required Object n}) => '${n} MS';
 	@override String get listenButton => 'LISTEN';
 	@override String get notRecorded => 'NOT RECORDED';
+	@override String get unplayable => 'CAN\'T PLAY THIS FILE';
 	@override String get problemNoOutput => 'CHOOSE THE SOUND DEVICE THAT FEEDS THE RADIO BEFORE PLAYING A MESSAGE.';
 	@override String get problemOutputMissing => 'THE SOUND DEVICE THAT FEEDS THE RADIO IS NOT CONNECTED.';
 	@override String get problemInputMissing => 'THE RECORDING DEVICE IS NOT CONNECTED.';
@@ -4078,6 +4079,9 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get problemRecordingSilent => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.';
 	@override String get problemRadioAudioUnavailable => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.';
 	@override String get problemCannotKey => 'THIS RADIO CAN\'T BE KEYED OVER CAT, SO THE COMPUTER CAN\'T PLAY MESSAGES INTO IT.';
+	@override String get problemUnplayable => 'THAT MESSAGE\'S FILE ISN\'T A SOUND FILE THE APP CAN PLAY. USE A WAV, FLAC OR MP3 FILE, OR RECORD IT AGAIN.';
+	@override String get problemRecordingFailed => 'THE RECORDING WAS CUT SHORT, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THAT THE RECORDING DEVICE IS STILL CONNECTED AND THAT THERE IS ROOM ON THE DISK.';
+	@override String get problemFileFailed => 'THE RECORDING COULDN\'T BE SAVED IN THE MESSAGE\'S PLACE, SO THE MESSAGE WAS LEFT AS IT WAS.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -5755,6 +5759,7 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} MS',
 			'settings.radio.voiceMessages.listenButton' => 'LISTEN',
 			'settings.radio.voiceMessages.notRecorded' => 'NOT RECORDED',
+			'settings.radio.voiceMessages.unplayable' => 'CAN\'T PLAY THIS FILE',
 			'settings.radio.voiceMessages.problemNoOutput' => 'CHOOSE THE SOUND DEVICE THAT FEEDS THE RADIO BEFORE PLAYING A MESSAGE.',
 			'settings.radio.voiceMessages.problemOutputMissing' => 'THE SOUND DEVICE THAT FEEDS THE RADIO IS NOT CONNECTED.',
 			'settings.radio.voiceMessages.problemInputMissing' => 'THE RECORDING DEVICE IS NOT CONNECTED.',
@@ -5763,6 +5768,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'NOTHING WAS HEARD FROM THE RECORDING DEVICE, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THE INPUT, AND THAT THE APP IS ALLOWED TO USE THE MICROPHONE.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'THE RADIO IS NOT TAKING AUDIO FROM THE APP RIGHT NOW. IT NEEDS A NETWORK CONNECTION TO THE RADIO.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'THIS RADIO CAN\'T BE KEYED OVER CAT, SO THE COMPUTER CAN\'T PLAY MESSAGES INTO IT.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'THAT MESSAGE\'S FILE ISN\'T A SOUND FILE THE APP CAN PLAY. USE A WAV, FLAC OR MP3 FILE, OR RECORD IT AGAIN.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'THE RECORDING WAS CUT SHORT, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THAT THE RECORDING DEVICE IS STILL CONNECTED AND THAT THERE IS ROOM ON THE DISK.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'THE RECORDING COULDN\'T BE SAVED IN THE MESSAGE\'S PLACE, SO THE MESSAGE WAS LEFT AS IT WAS.',
 			'settings.radio.avoidZeroBeat.title' => 'AVOID ZERO-BEATING ON SPOTS',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'WITH A RADIO CONNECTED, TUNING A FEW HZ OFF A CW SPOT, SO EVERYONE ANSWERING IT ISN’T CALLING ON THE SAME NOTE.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
@@ -5881,12 +5889,12 @@ extension on TranslationsQro {
 			'settings.syncPanel.refresh' => 'REFRESH',
 			'settings.syncPanel.switchAccounts' => 'SWITCH ACCOUNTS',
 			'settings.syncPanel.switchAccountsDescription' => 'LINK THIS DEVICE TO ANOTHER ACCOUNT WITH A QR CODE OR EMAIL',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.connectionRequests' => 'CONNECTION REQUESTS',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'A DEVICE IS WAITING TO JOIN THIS ACCOUNT', other: '${n} DEVICES ARE WAITING TO JOIN THIS ACCOUNT', ), 
 			'settings.syncPanel.accountEmailTitle' => 'ACCOUNT EMAIL',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'CONFIRMATION SENT TO ${email}. OPEN THE LINK THERE TO FINISH THE CHANGE.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'RESEND CONFIRMATION EMAIL',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'WAITING ON ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'SENT AGAIN TO ${email}.',
@@ -6395,12 +6403,12 @@ extension on TranslationsQro {
 			'settings.profiles.email' => 'EMAIL',
 			'settings.profiles.club' => 'CLUB',
 			'settings.profiles.arrlSection' => 'ARRL SECTION',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.racSection' => 'RAC SECTION',
 			'settings.profiles.section' => 'SECTION',
 			'settings.search.clear' => 'CLEAR',
 			'settings.search.hint' => 'SEARCH PREFERENCES',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.',
 			'settings.developer.experiments' => 'EXPERIMENTS',
 			'settings.developer.showIdleMetrics' => 'SHOW IDLE METRICS',

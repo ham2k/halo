@@ -2114,8 +2114,11 @@ widget's build would rebuild others mid-build. Every surface reaches it the way 
 memories: F1-F8, the keyer control, the dialog, repeat, Enter Sends Messages, one transmitter at a
 time, a peer's request. Eight memories, always; recording always works, from the picked input or
 the system default; and a message's length is its file's, read before it has ever played, so
-nothing is measured (a timed play would add the delays to it). Lengths are cached by path and
-modification time: the surfaces ask for every message's length on every rebuild.
+nothing is measured (a timed play would add the delays to it). The surfaces ask for every message's
+length on every rebuild, so lengths are cached by path and modification time, and the disk is asked
+again at most once a second: the app's own writes (a recording kept, a set copied or deleted) show
+at once, and a file put in the folder by hand within that second. The sets, the set in use and the
+source are decoded once per write of the Radio group, for the same reason.
 
 **The radio's transmit audio is switched to the computer where CAT can do it.** Keyed plainly, a
 radio set up for its microphone transmits the microphone, and the recording never goes out — a Flex
@@ -2188,7 +2191,12 @@ device is not on it or will not open.
 radio is keyed — by id, then by name when the id changed, never by a name two devices share — and a
 message with no recording, no device picked, or its device unplugged is refused the way a radio
 refuses a memory: shown doubtful for a second, the radio never keyed, and the reason on the Phone
-Keyer dialog. **The system default is never a stand-in for the output**: it is the laptop's speakers
+Keyer dialog. A file that is there and will not decode (an .m4a renamed to .wav) is said to be one —
+"Can't play this file" on its row, and its own reason — rather than "Not recorded", which would send
+the operator to record over it; a new set copies it like any other. A file that breaks off partway
+through playing (`AudioPlayback.failed`, a read error rather than the end of the file — the C
+decoders end only on `MA_AT_END`, so a decode, a normalize and a DAX message fail rather than come
+out cut short) unkeys and ends doubtful with the same reason. **The system default is never a stand-in for the output**: it is the laptop's speakers
 far more often than the radio, and a CQ played into them while the radio transmits silence is worse
 than no CQ.
 
@@ -2196,7 +2204,15 @@ than no CQ.
 keyed) into `<n>.wav.recording`, 16-bit mono 48 kHz, and is moved over the message only when it
 stops with a readable file of at least 300 ms whose loudest sample rose above about -60 dBFS — a
 Record pressed and stopped by mistake, or a muted input or a refused microphone permission (which
-macOS answers with silence, not an error), replaces nothing, and the silent one says so. A kept
+macOS answers with silence, not an error), replaces nothing, and the silent one says so. So does a
+recording that failed, and each says why: one cut short — a write to the file failed, or the device
+is no longer running at Stop, having gone away mid-recording, which `AudioRecording.stop` throws
+for, since what was heard before it would pass the level check — or one written and not readable
+back. Running at Stop rather than any stop on the way: a default input the system moves to a new
+default is stopped and started again, recording on, and is no failure; and a
+recording that could not be renamed over the message (on Windows, a file held open by Listen, which
+Record therefore ends first) is a file failure, not the sound device's. None leaves its
+`.recording` behind. A kept
 recording is **trimmed and normalized** first (`halo_audio_normalize`). A recording runs from
 Record to Stop, and the room before and after the voice, raised with it, is quiet through the
 computer's speakers and hiss on the air once a radio's speech processor lifts it. So it is cut to
@@ -2213,7 +2229,16 @@ before it. Then it is rewritten with the loudest sample of what is kept at
 -1 dBFS — a click trimmed away setting the gain would leave the voice as quiet as before — raised by at most +20 dB and never lowered. A laptop mic at its default gain records a voice
 peaking around -15 dBFS, which sounds fine through speakers turned up and barely moves a radio's
 transmit audio, which nothing turns up; the cap keeps a faint recording from going out as room
-noise. A recording that will not normalize is kept as recorded. Sound files put in a set's folder by
+noise. A recording that will not normalize — or whose normalized copy will not take its place — is
+kept as recorded, its partial copy removed, and the failure reported, since every recording would otherwise go out untrimmed without anyone hearing of
+it. Every sound-system failure the keyer deals with — a device that would not list or open, a play,
+a recording or a Listen that failed — is reported with the reason the sound system gave, wrapped in
+`VoiceAudioFailure` so `ErrorPolicy` uploads it without the generic notice: the dialog has already
+said what happened in words the operator can act on (error-reporting.md, `voice-audio-failure`).
+The wrapper keeps the reason and drops the path a file or process error carries, which names the
+operator's OS account, and each reason goes up once a session: a device another program holds
+fails the same way on every key pressed.
+Sound files put in a set's folder by
 hand play as they are. It stops by itself at a minute. **Listen** in a message's dialog plays it
 on the computer's default output, unkeyed, so the operator hears what they recorded without putting
 it on the air.

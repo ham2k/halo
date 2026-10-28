@@ -42,6 +42,10 @@ typedef struct HaloAudioRecorder HaloAudioRecorder;
 /// output's device stopped without being asked to — unplugged.
 typedef void (*HaloAudioEndFn)(int64_t token);
 
+/// [HaloAudioEndFn] for a file played into an output, with [failed] 1 when
+/// the file stopped short because it could not be read further, else 0.
+typedef void (*HaloAudioPlayedFn)(int64_t token, int32_t failed);
+
 /// Selects miniaudio's null backend — real-time pacing, no hardware — for
 /// every call after it. Only before the first call that touches a device;
 /// the tests use it. Returns 0, or -1 when a context already exists.
@@ -89,10 +93,10 @@ HALO_AUDIO_API HaloAudioOutput* halo_audio_output_open(const char* device_id, Ha
 HALO_AUDIO_API int halo_audio_output_alive(HaloAudioOutput* out);
 
 /// Plays [path] into [out], replacing whatever it was playing. [on_end] is
-/// called with [token] when the file runs out; the device plays silence
-/// after it. 0, or -1 with the reason written to [err] when the file will
-/// not open.
-HALO_AUDIO_API int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioEndFn on_end, int64_t token, char* err, int err_len);
+/// called with [token] when the file runs out, or breaks off where it could
+/// not be read; the device plays silence after it. 0, or -1 with the reason
+/// written to [err] when the file will not open.
+HALO_AUDIO_API int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPlayedFn on_end, int64_t token, char* err, int err_len);
 
 /// Silences [out] at once, its device left running.
 HALO_AUDIO_API void halo_audio_output_stop(HaloAudioOutput* out);
@@ -109,8 +113,11 @@ HALO_AUDIO_API HaloAudioRecorder* halo_audio_record(const char* path, const char
 /// The loudest sample since the last call, 0..1 — what a level meter shows.
 HALO_AUDIO_API float halo_audio_recorder_take_peak(HaloAudioRecorder* recorder);
 
-/// Stops [recorder], finishes its file and frees it.
-HALO_AUDIO_API void halo_audio_recorder_free(HaloAudioRecorder* recorder);
+/// Stops [recorder], finishes its file and frees it. 0, or -1 with the
+/// reason written to [err] when the file holds only part of the recording:
+/// a write to it failed, or the device stopped without being asked to —
+/// unplugged.
+HALO_AUDIO_API int halo_audio_recorder_free(HaloAudioRecorder* recorder, char* err, int err_len);
 
 #ifdef __cplusplus
 }

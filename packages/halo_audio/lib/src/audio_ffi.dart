@@ -61,6 +61,7 @@ List<String> _hostCandidates() {
 }
 
 typedef _EndNative = Void Function(Int64);
+typedef _PlayedNative = Void Function(Int64, Int32);
 
 final DynamicLibrary _lib = _openLibrary();
 
@@ -89,8 +90,8 @@ final _outputOpen = _lib
 final _outputAlive = _lib.lookupFunction<Int32 Function(Pointer<Void>), int Function(Pointer<Void>)>('halo_audio_output_alive');
 final _outputPlay = _lib
     .lookupFunction<
-      Int32 Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_EndNative>>, Int64, Pointer<Utf8>, Int32),
-      int Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_EndNative>>, int, Pointer<Utf8>, int)
+      Int32 Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_PlayedNative>>, Int64, Pointer<Utf8>, Int32),
+      int Function(Pointer<Void>, Pointer<Utf8>, Pointer<NativeFunction<_PlayedNative>>, int, Pointer<Utf8>, int)
     >('halo_audio_output_play');
 final _outputStop = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_output_stop');
 final _outputClose = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_output_close');
@@ -100,7 +101,9 @@ final _record = _lib
       Pointer<Void> Function(Pointer<Utf8>, Pointer<Utf8>, Pointer<Utf8>, int)
     >('halo_audio_record');
 final _recorderTakePeak = _lib.lookupFunction<Float Function(Pointer<Void>), double Function(Pointer<Void>)>('halo_audio_recorder_take_peak');
-final _recorderFree = _lib.lookupFunction<Void Function(Pointer<Void>), void Function(Pointer<Void>)>('halo_audio_recorder_free');
+final _recorderFree = _lib.lookupFunction<Int32 Function(Pointer<Void>, Pointer<Utf8>, Int32), int Function(Pointer<Void>, Pointer<Utf8>, int)>(
+  'halo_audio_recorder_free',
+);
 
 const _errLen = 256;
 
@@ -113,7 +116,7 @@ var _nextToken = 1;
 /// One listener each for every output, kept for the process's life: the
 /// audio thread may call one up to the moment its output is closed, and a
 /// callable closed with an output would be one a late call could still reach.
-final _onEnd = NativeCallable<_EndNative>.listener((int token) => _playing.remove(token)?._finish());
+final _onEnd = NativeCallable<_PlayedNative>.listener((int token, int failed) => _playing.remove(token)?._finish(failed: failed != 0));
 final _onLost = NativeCallable<_EndNative>.listener((int token) => _open[token]?._goneNow());
 
 /// The whole binding: static, since there is one audio system per process.
@@ -333,8 +336,15 @@ class AudioPlayback {
 
   bool get isPlaying => !_done.isCompleted;
 
-  void _finish() {
-    if (!_done.isCompleted) _done.complete();
+  /// Whether the file broke off where it could not be read further, rather
+  /// than running out: [done] completes there all the same.
+  bool get failed => _failed;
+  bool _failed = false;
+
+  void _finish({bool failed = false}) {
+    if (_done.isCompleted) return;
+    _failed = failed;
+    _done.complete();
   }
 
   /// Silences the output now, leaving its device open. Safe to call more
@@ -353,10 +363,20 @@ class AudioRecording {
   /// The loudest sample since the last call, 0 to 1.
   double takePeak() => _handle == nullptr ? 0 : _recorderTakePeak(_handle);
 
-  /// Stops recording and finishes the file. Safe to call more than once.
+  /// Stops recording and finishes the file. Throws [HaloAudioException]
+  /// when the file holds only part of what was recorded — a write to it
+  /// failed, or the device went away mid-recording. Safe to call more than
+  /// once.
   void stop() {
     if (_handle == nullptr) return;
-    _recorderFree(_handle);
+    final handle = _handle;
     _handle = nullptr;
+    final err = malloc<Uint8>(_errLen);
+    err[0] = 0;
+    try {
+      if (_recorderFree(handle, err.cast(), _errLen) != 0) throw HaloAudioException(err.cast<Utf8>().toDartString());
+    } finally {
+      malloc.free(err);
+    }
   }
 }

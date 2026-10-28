@@ -49,6 +49,8 @@ class AudioPlayback {
 
   bool get isPlaying => false;
 
+  bool get failed => false;
+
   void stop() {}
 }
 

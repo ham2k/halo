@@ -4070,6 +4070,7 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String millis({required Object n}) => '${n} ms';
 	@override String get listenButton => 'listen';
 	@override String get notRecorded => 'not recorded';
+	@override String get unplayable => 'can\'t play this file';
 	@override String get problemNoOutput => 'choose the sound device that feeds the radio before playing a message.';
 	@override String get problemOutputMissing => 'the sound device that feeds the radio is not connected.';
 	@override String get problemInputMissing => 'the recording device is not connected.';
@@ -4078,6 +4079,9 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String get problemRecordingSilent => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.';
 	@override String get problemRadioAudioUnavailable => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.';
 	@override String get problemCannotKey => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.';
+	@override String get problemUnplayable => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.';
+	@override String get problemRecordingFailed => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.';
+	@override String get problemFileFailed => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -5755,6 +5759,7 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'listen',
 			'settings.radio.voiceMessages.notRecorded' => 'not recorded',
+			'settings.radio.voiceMessages.unplayable' => 'can\'t play this file',
 			'settings.radio.voiceMessages.problemNoOutput' => 'choose the sound device that feeds the radio before playing a message.',
 			'settings.radio.voiceMessages.problemOutputMissing' => 'the sound device that feeds the radio is not connected.',
 			'settings.radio.voiceMessages.problemInputMissing' => 'the recording device is not connected.',
@@ -5763,6 +5768,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.avoidZeroBeat.title' => 'avoid zero-beating on spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'with a radio connected, tuning a few hz off a cw spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'tuning exactly to the spotted frequency.',
@@ -5881,12 +5889,12 @@ extension on TranslationsQrp {
 			'settings.syncPanel.refresh' => 'refresh',
 			'settings.syncPanel.switchAccounts' => 'switch accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'link this device to another account with a qr code or email',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.connectionRequests' => 'connection requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'a device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'confirmation sent to ${email}. open the link there to finish the change.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'resend confirmation email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'sent again to ${email}.',
@@ -6395,12 +6403,12 @@ extension on TranslationsQrp {
 			'settings.profiles.email' => 'email',
 			'settings.profiles.club' => 'club',
 			'settings.profiles.arrlSection' => 'arrl section',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.racSection' => 'rac section',
 			'settings.profiles.section' => 'section',
 			'settings.search.clear' => 'clear',
 			'settings.search.hint' => 'search preferences',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'experiments',
 			'settings.developer.showIdleMetrics' => 'show idle metrics',

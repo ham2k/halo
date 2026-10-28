@@ -290,6 +290,11 @@ class _FlexDaxPlayback implements AudioPlayback {
   @override
   bool get isPlaying => !_done.isCompleted;
 
+  /// Never: the whole file is decoded before the message starts, and one
+  /// that will not decode is refused then.
+  @override
+  bool get failed => false;
+
   @override
   void stop() => _output._stop(this);
 }

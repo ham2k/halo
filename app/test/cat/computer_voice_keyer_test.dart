@@ -12,6 +12,7 @@
 // message with it, and the sound device held open forever or reopened in the
 // middle of the key-up delay.
 
+import 'dart:io' show FileSystemException, OSError;
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
@@ -20,6 +21,7 @@ import 'package:halo_audio/halo_audio.dart';
 import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 
+import '../support/error_reporting_fakes.dart';
 import '../support/fake_voice_audio.dart';
 
 class _FakePtt implements PttSession {
@@ -123,11 +125,23 @@ void main() {
       ..lengths['/v/1.wav'] = message;
     config = {voiceOutputConfigKey: voiceDeviceToConfig(codec), voiceLeadConfigKey: lead.inMilliseconds, voiceTailConfigKey: tail.inMilliseconds};
     reports = [];
+    forgetVoiceFailuresReported();
   });
 
   /// Built inside each test's fake time: the keyer starts its idle timer as
   /// it is made.
   void start() => keyer = ComputerVoiceKeyer(ptt: radio, audio: audio, config: () => config, fileFor: (n) => '/v/$n.wav', report: reports.add);
+
+  /// [body] in fake time, and what it reported as the keyer's failures —
+  /// what each was doing when it failed.
+  Future<List<String>> reporting(void Function(FakeAsync async) body) async {
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(backend: backend, () async => fakeAsync(body));
+    return [
+      for (final e in backend.exceptions)
+        if (e.error case VoiceAudioFailure(:final doing)) doing,
+    ];
+  }
 
   /// Plays message 1 through to its end, and the unkey after it.
   void playThrough(FakeAsync async) {
@@ -262,6 +276,24 @@ void main() {
       });
     });
 
+    // The trap: a file that breaks off partway ending as if it had finished
+    // — the rest of the message never sent, nothing said, and a repeat
+    // keying it cut short every cooldown.
+    test('a file that breaks off partway unkeys the radio, ends doubtful, and says why', () async {
+      final reported = await reporting((async) {
+        start();
+        keyer.playVoiceMemory(1);
+        async.elapse(lead);
+        audio.plays.single.breakOff();
+        async.flushMicrotasks();
+        expect(radio.sent, [true, false]);
+        expect(keyer.problem, ComputerVoiceProblem.unplayable);
+        expect(reports.last, const VoiceActivity(memory: 1, doubtful: true));
+        async.elapse(voiceDoubtLinger);
+      });
+      expect(reported, ['play']);
+    });
+
     test('closed with the keyer', () {
       fakeAsync((async) {
         start();
@@ -302,13 +334,16 @@ void main() {
       });
     });
 
-    test('with the picked device listed but refusing to open', () {
-      fakeAsync((async) {
+    // Reported for the sound system's reason, which "would not open" leaves
+    // out and a field report cannot be diagnosed without.
+    test('with the picked device listed but refusing to open', () async {
+      final reported = await reporting((async) {
         audio.failingOpens.add(codec.id);
         start();
         keyer.playVoiceMemory(1);
         expectRefused(async, ComputerVoiceProblem.deviceFailed);
       });
+      expect(reported, ['open']);
     });
 
     test('with no recording for the message, or an empty one', () {
@@ -317,6 +352,18 @@ void main() {
         start();
         keyer.playVoiceMemory(1);
         expectRefused(async, ComputerVoiceProblem.notRecorded);
+      });
+    });
+
+    // An .m4a renamed to .wav is a file the operator put there: "no
+    // recording yet" would send them to record over it.
+    test('with a file there that will not decode, saying so rather than "not recorded"', () {
+      fakeAsync((async) {
+        audio.lengths.remove('/v/1.wav');
+        audio.unreadable.add('/v/1.wav');
+        start();
+        keyer.playVoiceMemory(1);
+        expectRefused(async, ComputerVoiceProblem.unplayable);
       });
     });
 
@@ -565,6 +612,35 @@ void main() {
     });
   });
 
+  group('reporting', () {
+    // The trap: a file error's text names its path, and a path under the
+    // operator's home names their OS account — which goes out only behind
+    // the consent gate.
+    test('a reason goes up without the path a file error carries', () {
+      final failure = VoiceAudioFailure(
+        'keep',
+        const FileSystemException('Cannot rename file', r'C:\Users\Ada Lovelace\AppData\voice\1.wav', OSError('Access is denied', 5)),
+      );
+      expect(failure.reason, isNot(contains('Lovelace')));
+      expect(failure.reason, contains('Cannot rename file'));
+      expect(failure.reason, contains('Access is denied'));
+    });
+
+    // A device another program holds refuses every key pressed; the second
+    // upload of the same reason says nothing the first did not.
+    test('the same reason goes up once a session', () async {
+      final reported = await reporting((async) {
+        audio.failingOpens.add(codec.id);
+        start();
+        for (var i = 0; i < 3; i++) {
+          keyer.playVoiceMemory(1);
+          async.elapse(voiceDoubtLinger);
+        }
+      });
+      expect(reported, ['open']);
+    });
+  });
+
   group('recording', () {
     test('records off the air, beside the message, and keeps it on stop', () {
       fakeAsync((async) {
@@ -605,8 +681,11 @@ void main() {
     });
 
     // The level is a nicety; the recording is the operator's message.
-    test('a recording that will not normalize is kept as recorded', () {
-      fakeAsync((async) {
+    // Reported, though: kept untrimmed it goes out with the room's hiss
+    // around it, and a normalize failing everywhere would send every
+    // recording that way without anyone hearing of it.
+    test('a recording that will not normalize is kept as recorded, and reported', () async {
+      final reported = await reporting((async) {
         start();
         audio.failingNormalize = true;
         keyer.recordVoiceMemory(1);
@@ -617,9 +696,43 @@ void main() {
         expect(audio.replaced, [(recording.path, '/v/1.wav')]);
         expect(keyer.problem, isNull);
       });
+      expect(reported, ['normalize']);
     });
 
-    test('a recording that came out unreadable is thrown away, not kept over the old one', () {
+    test('a recording whose normalized copy will not take its place is kept as recorded', () async {
+      final reported = await reporting((async) {
+        start();
+        audio.failingNormalizeRename = true;
+        keyer.recordVoiceMemory(1);
+        final recording = audio.recordings.single;
+        async.elapse(const Duration(seconds: 2));
+        audio.lengths[recording.path] = const Duration(seconds: 2);
+        keyer.stopVoice();
+        expect(audio.replaced, [(recording.path, '/v/1.wav')], reason: 'a file error in the level is not one in the recording');
+        expect(keyer.problem, isNull);
+      });
+      expect(reported, ['normalize']);
+    });
+
+    // The trap: a delete failing inside the keep caught one level up — the
+    // reason the operator is shown replaced by "couldn't be saved", and the
+    // one failure uploaded several times over.
+    test('a recording not kept that will not delete keeps its own reason', () async {
+      final reported = await reporting((async) {
+        start();
+        audio.failingDelete = true;
+        keyer.recordVoiceMemory(1);
+        final recording = audio.recordings.single..peak = 0;
+        async.elapse(const Duration(seconds: 3));
+        audio.lengths[recording.path] = const Duration(seconds: 3);
+        keyer.stopVoice();
+        expect(keyer.problem, ComputerVoiceProblem.recordingSilent);
+        expect(audio.replaced, isEmpty);
+      });
+      expect(reported, ['discard']);
+    });
+
+    test('a recording that wrote nothing is thrown away, not kept over the old one', () {
       fakeAsync((async) {
         start();
         keyer.recordVoiceMemory(1);
@@ -628,6 +741,81 @@ void main() {
         expect(audio.replaced, isEmpty);
         expect(audio.deleted, [recording.path]);
         expect(audio.lengths['/v/1.wav'], message);
+      });
+    });
+
+    // The trap: a recording that failed treated as Record pressed by
+    // mistake — thrown away without a word, the operator believing the
+    // message was replaced.
+    test('a recording written and not readable back replaces nothing, and says so', () async {
+      final reported = await reporting((async) {
+        start();
+        keyer.recordVoiceMemory(1);
+        final recording = audio.recordings.single;
+        async.elapse(const Duration(seconds: 4));
+        audio.unreadable.add(recording.path);
+        keyer.stopVoice();
+        expect(audio.replaced, isEmpty);
+        expect(audio.deleted, [recording.path]);
+        expect(keyer.problem, ComputerVoiceProblem.recordingFailed);
+        expect(audio.lengths['/v/1.wav'], message);
+      });
+      expect(reported, ['keep']);
+    });
+
+    // The trap: the mic unplugged or the disk full mid-recording. What was
+    // heard before it already lifted the level past the silence check, so
+    // the truncated file would replace the operator's message.
+    test('a recording cut short replaces nothing, and says so', () async {
+      final reported = await reporting((async) {
+        start();
+        keyer.recordVoiceMemory(1);
+        final recording = audio.recordings.single..cutShort = true;
+        async.elapse(const Duration(seconds: 4));
+        audio.lengths[recording.path] = const Duration(seconds: 2);
+        keyer.stopVoice();
+        expect(audio.normalized, isEmpty);
+        expect(audio.replaced, isEmpty);
+        expect(audio.deleted, [recording.path], reason: 'no file left beside the message');
+        expect(keyer.problem, ComputerVoiceProblem.recordingFailed);
+        expect(audio.lengths['/v/1.wav'], message);
+      });
+      expect(reported, ['record']);
+    });
+
+    // A message file held open — on Windows, by Listen — cannot be renamed
+    // over. That is no sound device failing, and the recording left beside
+    // the message is a file nothing reads.
+    test('a recording that cannot take the message\'s place says so, and leaves no file behind', () async {
+      final reported = await reporting((async) {
+        start();
+        audio.failingReplace = true;
+        keyer.recordVoiceMemory(1);
+        final recording = audio.recordings.single;
+        async.elapse(const Duration(seconds: 2));
+        audio.lengths[recording.path] = const Duration(seconds: 2);
+        keyer.stopVoice();
+        expect(keyer.problem, ComputerVoiceProblem.fileFailed);
+        expect(audio.deleted, [recording.path]);
+        expect(audio.lengths['/v/1.wav'], message);
+      });
+      expect(reported, ['keep']);
+    });
+
+    // F1 pressed with a recording running ends the recording first: a
+    // problem that ending raised, cleared by the play that follows, is a
+    // recording thrown away without a word.
+    test("a message keyed during a recording keeps what went wrong with the recording", () {
+      fakeAsync((async) {
+        start();
+        keyer.recordVoiceMemory(2);
+        final recording = audio.recordings.single..peak = 0;
+        async.elapse(const Duration(seconds: 3));
+        audio.lengths[recording.path] = const Duration(seconds: 3);
+        keyer.playVoiceMemory(1);
+        expect(keyer.problem, ComputerVoiceProblem.recordingSilent);
+        expect(radio.sent, [true], reason: 'the message still plays');
+        keyer.stopVoice();
       });
     });
 

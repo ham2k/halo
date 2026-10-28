@@ -229,6 +229,21 @@ void main() {
       expect(cat.voiceMessageDuration(1), 2400);
     });
 
+    // The trap: a file this app cannot play reading as "Not recorded" — and
+    // left out of a copy as if it were not there, though it is the
+    // operator's, in the folder.
+    test("a file the computer cannot play is said to be one, and a new set copies it all the same", () async {
+      final cat = services.cat;
+      audio.unreadable.add('/v/s1/2.wav');
+      await connectRig();
+      expect(cat.voiceMessageDuration(2), 0);
+      expect(cat.keyer('A').voiceMessageUnplayable(2), isTrue);
+      expect(cat.keyer('A').voiceMessageUnplayable(3), isFalse, reason: 'not recorded is not unplayable');
+
+      final copy = await cat.addVoiceMessageSet('Copy');
+      expect(audio.copied, contains(('/v/s1/2.wav', '/v/${copy!.id}/2.wav')));
+    });
+
     test('deleting the set in use stops its message, removes its recordings, and puts the next set in use', () async {
       final cat = services.cat;
       await connectRig();

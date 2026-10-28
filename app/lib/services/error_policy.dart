@@ -37,6 +37,7 @@ import 'package:halo_core/halo_core.dart'
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
+import 'cat/computer_voice_keyer.dart' show VoiceAudioFailure;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
@@ -347,6 +348,17 @@ class ErrorPolicy {
           'keeps trying',
       disposition: ErrorDisposition.logOnly,
       matches: _isCatEquipmentUnreachable,
+    ),
+    ErrorRule(
+      id: 'voice-audio-failure',
+      reason:
+          "the computer's voice keyer met a sound-system or file failure and dealt with it — the "
+          'message refused or cut short, the recording left as it was — and says so in the Phone '
+          'Keyer dialog in words the operator can act on. The "Something went wrong" notice on top '
+          'would say less and spend the one notice a session has; uploaded for the reason the '
+          'sound system gave, which is what tells a device that would not open from a bug of ours',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is VoiceAudioFailure,
     ),
     ErrorRule(
       id: 'peer-media-unreachable',

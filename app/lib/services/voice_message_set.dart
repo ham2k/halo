@@ -67,18 +67,34 @@ class VoiceMessageSet {
 /// set in use on this computer. One pick for every radio, as the set is.
 enum VoiceKeyingSource { none, radio, computer }
 
+/// The Radio group as the getters below last decoded it, with the stored
+/// text it came from, per settings. Every message button asks for the
+/// source, the set in use and a label on every rebuild, several times a
+/// second; decoding the whole group for each of those reads is what this
+/// keeps from happening, until the group is written.
+final _decoded = Expando<({Object? stored, Map<String, dynamic> group, List<VoiceMessageSet> sets})>();
+
 /// The voice message sets as settings — beside the type rather than in
 /// settings_service.dart, which is over its size budget.
 extension VoiceMessageSetSettings on SettingsService {
-  /// The sets of voice messages recorded on this computer, the default one
-  /// first — always, whatever was stored, with only its labels read back.
-  List<VoiceMessageSet> get voiceMessageSets {
-    final raw = settingValue(SettingsService.radioGroup, VoiceMessageSet.setsKey);
-    final stored = [
+  ({Object? stored, Map<String, dynamic> group, List<VoiceMessageSet> sets}) get _voiceSettings {
+    final stored = storedSettingsGroup(SettingsService.radioGroup);
+    final memo = _decoded[this];
+    if (memo != null && identical(memo.stored, stored)) return memo;
+    final group = settingsGroup(SettingsService.radioGroup);
+    final raw = group[VoiceMessageSet.setsKey];
+    final sets = [
       if (raw is List)
         for (final entry in raw)
           if (entry is Map) ?VoiceMessageSet.fromJson(entry.cast<String, dynamic>()),
     ];
+    return _decoded[this] = (stored: stored, group: group, sets: sets);
+  }
+
+  /// The sets of voice messages recorded on this computer, the default one
+  /// first — always, whatever was stored, with only its labels read back.
+  List<VoiceMessageSet> get voiceMessageSets {
+    final stored = _voiceSettings.sets;
     final saved = stored.where((set) => set.isDefault).firstOrNull;
     final name = t.settings.radio.voiceMessages.soundFilesSet;
     return [
@@ -91,7 +107,7 @@ extension VoiceMessageSetSettings on SettingsService {
   /// The radio's own memories until the operator picks otherwise: they are
   /// what a radio that has them played before this app could play anything.
   VoiceKeyingSource get voiceKeyingSource {
-    final stored = settingValue(SettingsService.radioGroup, VoiceMessageSet.sourceKey);
+    final stored = _voiceSettings.group[VoiceMessageSet.sourceKey];
     return VoiceKeyingSource.values.where((source) => source.name == stored).firstOrNull ?? VoiceKeyingSource.radio;
   }
 
@@ -99,7 +115,7 @@ extension VoiceMessageSetSettings on SettingsService {
 
   /// The default set for a stored id whose set is gone, or none stored.
   String get voiceMessageSetId {
-    final stored = settingValue(SettingsService.radioGroup, VoiceMessageSet.activeKey);
+    final stored = _voiceSettings.group[VoiceMessageSet.activeKey];
     return stored is String && voiceMessageSets.any((set) => set.id == stored) ? stored : VoiceMessageSet.defaultId;
   }
 

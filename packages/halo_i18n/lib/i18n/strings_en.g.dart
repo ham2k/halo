@@ -8897,6 +8897,9 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Not recorded'
 	String get notRecorded => 'Not recorded';
 
+	/// en: 'Can't play this file'
+	String get unplayable => 'Can\'t play this file';
+
 	/// en: 'Choose the sound device that feeds the radio before playing a message.'
 	String get problemNoOutput => 'Choose the sound device that feeds the radio before playing a message.';
 
@@ -8920,6 +8923,15 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'This radio can't be keyed over CAT, so the computer can't play messages into it.'
 	String get problemCannotKey => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.';
+
+	/// en: 'That message's file isn't a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.'
+	String get problemUnplayable => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.';
+
+	/// en: 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.'
+	String get problemRecordingFailed => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.';
+
+	/// en: 'The recording couldn't be saved in the message's place, so the message was left as it was.'
+	String get problemFileFailed => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -10877,6 +10889,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
 			'settings.radio.voiceMessages.listenButton' => 'Listen',
 			'settings.radio.voiceMessages.notRecorded' => 'Not recorded',
+			'settings.radio.voiceMessages.unplayable' => 'Can\'t play this file',
 			'settings.radio.voiceMessages.problemNoOutput' => 'Choose the sound device that feeds the radio before playing a message.',
 			'settings.radio.voiceMessages.problemOutputMissing' => 'The sound device that feeds the radio is not connected.',
 			'settings.radio.voiceMessages.problemInputMissing' => 'The recording device is not connected.',
@@ -10885,6 +10898,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
@@ -11003,12 +11019,12 @@ extension on Translations {
 			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
@@ -11517,12 +11533,12 @@ extension on Translations {
 			'settings.profiles.email' => 'Email',
 			'settings.profiles.club' => 'Club',
 			'settings.profiles.arrlSection' => 'ARRL Section',
+			_ => null,
+		} ?? switch (path) {
 			'settings.profiles.racSection' => 'RAC Section',
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search preferences',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.showIdleMetrics' => 'Show idle metrics',

@@ -1697,6 +1697,7 @@
         "millis": "$n ms",
         "listenButton": "listen",
         "notRecorded": "not recorded",
+        "unplayable": "can't play this file",
         "problemNoOutput": "choose the sound device that feeds the radio before playing a message.",
         "problemOutputMissing": "the sound device that feeds the radio is not connected.",
         "problemInputMissing": "the recording device is not connected.",
@@ -1704,7 +1705,10 @@
         "problemNotRecorded": "that message has no recording yet.",
         "problemRecordingSilent": "nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.",
         "problemRadioAudioUnavailable": "the radio is not taking audio from the app right now. it needs a network connection to the radio.",
-        "problemCannotKey": "this radio can't be keyed over cat, so the computer can't play messages into it."
+        "problemCannotKey": "this radio can't be keyed over cat, so the computer can't play messages into it.",
+        "problemUnplayable": "that message's file isn't a sound file the app can play. use a wav, flac or mp3 file, or record it again.",
+        "problemRecordingFailed": "the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.",
+        "problemFileFailed": "the recording couldn't be saved in the message's place, so the message was left as it was."
       },
       "avoidZeroBeat": {
         "title": "avoid zero-beating on spots",

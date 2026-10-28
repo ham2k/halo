@@ -89,7 +89,9 @@ extension ComputerVoiceKeying on CatKeying {
     final id = uuidGenerator.v4();
     final set = VoiceMessageSet(id: id, name: name, labels: from.labels);
     for (var n = 1; n <= SettingsService.voiceMessageCount; n++) {
-      if (audio.lengthOf(_setFile(from.id, n)) != null) audio.copy(_setFile(from.id, n), _setFile(id, n));
+      // A file this app cannot play is copied too: it is the operator's, and
+      // a set that left it out would lose it without a word.
+      if (audio.exists(_setFile(from.id, n))) audio.copy(_setFile(from.id, n), _setFile(id, n));
     }
     await settings.setVoiceMessageSets([...settings.voiceMessageSets, set], active: id);
     _computerVoiceChanged();
@@ -245,9 +247,18 @@ extension ComputerVoiceKeying on CatKeying {
     if (voiceAudio!.lengthOf(path) == null) return null;
     try {
       return voiceAudio!.listen(path);
-    } on HaloAudioException {
+    } on HaloAudioException catch (e, st) {
+      reportVoiceFailure('listen', e, st);
       return null;
     }
+  }
+
+  /// Whether this radio's message [n] is a file the computer cannot play —
+  /// there, and not a sound file it can read — rather than not recorded.
+  bool voiceMessageUnplayable(int n) {
+    if (!voiceMessagesFromComputer) return false;
+    final path = _voiceFile(n);
+    return voiceAudio!.lengthOf(path) == null && voiceAudio!.exists(path);
   }
 
   /// Opens the folder radio1's message [n] is in, for the operator to put a

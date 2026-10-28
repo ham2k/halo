@@ -279,7 +279,7 @@ class _VoiceMessagesPane extends StatelessWidget {
                                       ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
                                       : (keyer.voiceMessageDuration(n) > 0
                                             ? voiceDurationText(context, keyer.voiceMessageDuration(n))
-                                            : voiceUnknownLengthText(context, keyer)),
+                                            : voiceUnknownLengthText(context, keyer, n)),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: activity?.memory == n || keyer.voiceMessageDuration(n) > 0
                                         ? null
@@ -459,14 +459,18 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                         onPressed: busy || !keyer.canRecordVoice
                             ? null
                             : () {
-                                if (keyerOrSay(context, widget.services, keyer, () => keyer.canRecordVoice)) keyer.recordVoiceMemory(widget.n);
+                                if (!keyerOrSay(context, widget.services, keyer, () => keyer.canRecordVoice)) return;
+                                // A file being listened to is held open, and on
+                                // Windows the recording cannot then take its place.
+                                if (_listening != null) _stopListening();
+                                keyer.recordVoiceMemory(widget.n);
                               },
                         icon: const Icon(MdiIcons.recordCircleOutline),
                         label: Text(m.recordButton),
                       ),
                     Expanded(
                       child: Text(
-                        duration > 0 ? voiceDurationText(context, duration) : voiceUnknownLengthText(context, keyer),
+                        duration > 0 ? voiceDurationText(context, duration) : voiceUnknownLengthText(context, keyer, widget.n),
                         textAlign: TextAlign.center,
                         style: duration > 0
                             ? theme.textTheme.bodyLarge
@@ -545,11 +549,12 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 /// the second reads as if the app guessed.
 String voiceDurationText(BuildContext context, int millis) => context.t.settings.radio.voiceMessages.durationSeconds(n: (millis / 1000).toStringAsFixed(1));
 
-/// What a memory with no length says: on a radio that times its own
-/// memories, no length is an empty memory, and playing it measures nothing.
-String voiceUnknownLengthText(BuildContext context, RadioKeyer keyer) {
+/// What memory [n] with no length says: on a radio that times its own
+/// memories, no length is an empty memory, and playing it measures nothing;
+/// a recording on the computer may be a file it cannot play.
+String voiceUnknownLengthText(BuildContext context, RadioKeyer keyer, int n) {
   final m = context.t.settings.radio.voiceMessages;
-  if (keyer.voiceMessagesFromComputer) return m.notRecorded;
+  if (keyer.voiceMessagesFromComputer) return keyer.voiceMessageUnplayable(n) ? m.unplayable : m.notRecorded;
   return keyer.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
 }
 
@@ -564,6 +569,9 @@ String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem probl
     ComputerVoiceProblem.recordingSilent => m.problemRecordingSilent,
     ComputerVoiceProblem.cannotKey => m.problemCannotKey,
     ComputerVoiceProblem.radioAudioUnavailable => m.problemRadioAudioUnavailable,
+    ComputerVoiceProblem.unplayable => m.problemUnplayable,
+    ComputerVoiceProblem.recordingFailed => m.problemRecordingFailed,
+    ComputerVoiceProblem.fileFailed => m.problemFileFailed,
   };
 }
 
@@ -610,7 +618,8 @@ class _ComputerVoiceFieldsState extends State<_ComputerVoiceFields> {
     try {
       _outputs = widget.audio.outputs();
       _inputs = widget.audio.inputs();
-    } on HaloAudioException {
+    } on HaloAudioException catch (e, st) {
+      reportVoiceFailure('devices', e, st);
       _outputs = _inputs = const [];
     }
   }

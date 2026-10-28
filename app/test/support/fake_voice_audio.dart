@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'dart:async';
+import 'dart:io' show FileSystemException;
 import 'dart:typed_data';
 
 import 'package:halo_audio/halo_audio.dart';
@@ -15,9 +16,18 @@ class FakePlayback implements AudioPlayback {
   final _done = Completer<void>();
   bool stopped = false;
 
+  @override
+  bool failed = false;
+
   /// The file ran out.
   void end() {
     if (!_done.isCompleted) _done.complete();
+  }
+
+  /// The file broke off partway, where it could not be read further.
+  void breakOff() {
+    failed = true;
+    end();
   }
 
   @override
@@ -88,6 +98,10 @@ class FakeRecording implements AudioRecording {
   /// the input heard nothing.
   double peak = 0.2;
 
+  /// The file was cut short — the device unplugged, or the disk full — and
+  /// stopping says so.
+  bool cutShort = false;
+
   @override
   bool get isRecording => !stopped;
 
@@ -95,7 +109,11 @@ class FakeRecording implements AudioRecording {
   double takePeak() => peak;
 
   @override
-  void stop() => stopped = true;
+  void stop() {
+    if (stopped) return;
+    stopped = true;
+    if (cutShort) throw HaloAudioException('record: device stopped');
+  }
 }
 
 /// The sound system for the computer's voice keyer: devices as listed,
@@ -105,6 +123,13 @@ class FakeVoiceAudio implements VoiceAudio {
   var outputDevices = <AudioDevice>[];
   var inputDevices = <AudioDevice>[];
   final lengths = <String, Duration>{};
+
+  /// Files that are there and do not decode: no length, and still a file.
+  final unreadable = <String>{};
+
+  /// Whether putting a recording in its message's place fails, as a file
+  /// held open does on Windows.
+  bool failingReplace = false;
   final opened = <FakeOutput>[];
   final listens = <FakePlayback>[];
   final recordings = <FakeRecording>[];
@@ -113,6 +138,12 @@ class FakeVoiceAudio implements VoiceAudio {
   final revealed = <String>[];
   final normalized = <String>[];
   bool failingNormalize = false;
+
+  /// The normalized copy is written and will not take the recording's place.
+  bool failingNormalizeRename = false;
+
+  /// Deleting fails, as a file held open does on Windows.
+  bool failingDelete = false;
   final deleted = <String>[];
 
   /// Device ids whose open fails, as a device that is listed but busy does.
@@ -140,6 +171,9 @@ class FakeVoiceAudio implements VoiceAudio {
   Duration? lengthOf(String path) => lengths[path];
 
   @override
+  bool exists(String path) => lengths.containsKey(path) || unreadable.contains(path);
+
+  @override
   AudioOutput openOutput({required String deviceId}) {
     if (failingOpens.contains(deviceId) || !outputDevices.any((d) => d.id == deviceId)) {
       throw HaloAudioException('open device: no such device');
@@ -165,6 +199,7 @@ class FakeVoiceAudio implements VoiceAudio {
 
   @override
   void replace(String from, String to) {
+    if (failingReplace) throw FileSystemException('Cannot rename file', from);
     replaced.add((from, to));
     lengths[to] = lengths.remove(from)!;
   }
@@ -172,13 +207,19 @@ class FakeVoiceAudio implements VoiceAudio {
   @override
   void copy(String from, String to) {
     copied.add((from, to));
-    lengths[to] = lengths[from]!;
+    if (unreadable.contains(from)) {
+      unreadable.add(to);
+    } else {
+      lengths[to] = lengths[from]!;
+    }
   }
 
   @override
   void delete(String path) {
+    if (failingDelete) throw FileSystemException('Cannot delete file', path);
     deleted.add(path);
     lengths.remove(path);
+    unreadable.remove(path);
   }
 
   @override
@@ -194,6 +235,7 @@ class FakeVoiceAudio implements VoiceAudio {
   @override
   void normalize(String path) {
     if (failingNormalize) throw HaloAudioException('normalize: no');
+    if (failingNormalizeRename) throw FileSystemException('Cannot rename file', '$path.normalized');
     normalized.add(path);
   }
 

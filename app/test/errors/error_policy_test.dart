@@ -19,6 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:http/http.dart' show ClientException;
 
+import 'package:halo_audio/halo_audio.dart' show HaloAudioException;
+import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show VoiceAudioFailure;
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
 import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
@@ -297,6 +299,23 @@ void main() {
       // alone would let a wrapper of ours ride along.
       expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
       expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
+    });
+  });
+
+  group("a failure the computer's voice keyer dealt with", () {
+    // The Phone Keyer dialog already says what went wrong in words the
+    // operator can act on; the generic notice on top would spend the
+    // session's one notice saying less.
+    test('reported, not noticed', () {
+      final decision = ErrorPolicy.decide(VoiceAudioFailure('open', HaloAudioException('open device: Device not available')));
+      expect(decision.disposition, ErrorDisposition.report);
+      expect(decision.rule?.id, 'voice-audio-failure');
+    });
+
+    // Scoped by the wrapper: one that escaped the keyer on its own is a bug,
+    // and stays loud.
+    test('a sound-system failure nothing dealt with stays loud', () {
+      expect(ErrorPolicy.decide(HaloAudioException('open device: Device not available')).disposition, ErrorDisposition.notify);
     });
   });
 

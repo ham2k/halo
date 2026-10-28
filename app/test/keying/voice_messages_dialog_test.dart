@@ -299,6 +299,39 @@ void main() {
       expect(audio.revealed, ['/v/s1/2.wav']);
     });
 
+    // On Windows a file being listened to is held open, and the recording
+    // cannot then be renamed over it: Record ends the listen first.
+    testWidgets('Record stops a Listen to the same message before it starts', (tester) async {
+      audio.lengths['/v/s1/2.wav'] = const Duration(seconds: 2);
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await tester.runAsync(pumpEventQueue);
+      await open(tester);
+      await openMemory(tester, 2);
+      await tester.tap(find.widgetWithText(FilledButton, 'Listen'));
+      await tester.pump();
+      expect(audio.listens.single.isPlaying, isTrue);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Record'));
+      await tester.pump();
+      expect(audio.listens.single.stopped, isTrue);
+      expect(audio.recordings.single.path, '/v/s1/2.wav.recording');
+      services.cat.stopVoice();
+      await tester.pump(const Duration(seconds: 2));
+    });
+
+    // An .m4a renamed to .wav reads as not recorded otherwise, and the
+    // operator records over the file they put there.
+    testWidgets("a file that will not play is said to be one, where its length would be", (tester) async {
+      audio.unreadable.add('/v/s1/3.wav');
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await tester.runAsync(pumpEventQueue);
+      await open(tester);
+      expect(find.text("Can't play this file"), findsOneWidget);
+      expect(find.text('Not recorded'), findsNWidgets(SettingsService.voiceMessageCount - 1));
+    });
+
     // Deleting a set takes its recordings, and nothing is a draft here to
     // Cancel back to.
     testWidgets('deleting a set asks first', (tester) async {

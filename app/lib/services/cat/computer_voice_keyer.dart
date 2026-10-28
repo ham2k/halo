@@ -13,7 +13,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:halo_audio/halo_audio.dart';
 
 import '../error_reporting_service.dart';
@@ -137,7 +137,63 @@ enum ComputerVoiceProblem {
   /// The radio takes the audio over its network link, and that link is not
   /// up — or the radio refused the stream.
   radioAudioUnavailable,
+
+  /// The memory's file is there, and not a sound file this app can read —
+  /// or broke off partway through playing.
+  unplayable,
+
+  /// The recording was cut short — the device went away, or the file could
+  /// not be written or read back — and the message was left as it was.
+  recordingFailed,
+
+  /// The recording could not be put in the message's place, and the message
+  /// was left as it was.
+  fileFailed,
 }
+
+/// A sound-system or file failure the keyer met and dealt with — the
+/// message refused or cut short, the recording kept as it was or not kept —
+/// and told the operator about through [ComputerVoiceProblem]. Reported for
+/// the reason underneath, which the problem's text leaves out
+/// (error_policy.dart's `voice-audio-failure`).
+///
+/// The reason only, never the failure itself: a file or process error names
+/// its path, and a path under the operator's home names their OS account,
+/// which goes out only behind the consent gate (error-reporting.md).
+class VoiceAudioFailure implements Exception {
+  /// What the keyer was doing: `play`, `record`, `keep`, `normalize`, ….
+  final String doing;
+  final String reason;
+
+  VoiceAudioFailure(this.doing, Object cause) : reason = _withoutPath(cause);
+
+  static String _withoutPath(Object cause) => switch (cause) {
+    FileSystemException(:final message, :final osError) => 'FileSystemException: $message${osError == null ? '' : ' ($osError)'}',
+    ProcessException(:final executable, :final message, :final errorCode) => 'ProcessException: $executable: $message (error $errorCode)',
+    _ => '$cause',
+  };
+
+  @override
+  String toString() => 'VoiceAudioFailure($doing): $reason';
+}
+
+/// Each reason already uploaded this session. A device another program
+/// holds fails the same way on every key pressed, and each upload after the
+/// first says nothing new; the console still has every one.
+final _voiceFailuresReported = <String>{};
+
+void reportVoiceFailure(String doing, Object cause, StackTrace stack) {
+  final failure = VoiceAudioFailure(doing, cause);
+  if (_voiceFailuresReported.add('$failure')) {
+    ErrorReportingService.report(failure, stack, context: 'voice:$doing');
+  } else {
+    debugPrint('[voice] again: $failure');
+  }
+}
+
+/// Forgets which reasons were uploaded: each test starts a session of its own.
+@visibleForTesting
+void forgetVoiceFailuresReported() => _voiceFailuresReported.clear();
 
 /// The sound system as the keyer uses it — [HaloVoiceAudio] in the app, a
 /// fake in the tests.
@@ -146,6 +202,10 @@ abstract class VoiceAudio {
   List<AudioDevice> outputs();
   List<AudioDevice> inputs();
   Duration? lengthOf(String path);
+
+  /// Whether there is a file at [path] at all: with [lengthOf] null, one
+  /// that cannot be decoded.
+  bool exists(String path);
   AudioOutput openOutput({required String deviceId});
 
   /// Plays [path] on the system's default output, never into a keyed radio:
@@ -179,10 +239,28 @@ abstract class VoiceAudio {
 }
 
 class HaloVoiceAudio implements VoiceAudio {
-  /// Each recording's length, by path, with the modification time it was
-  /// read at: the surfaces ask for every message's length on every rebuild,
-  /// and decoding a file each time would be dozens of file opens a second.
-  final _lengths = <String, (DateTime, Duration?)>{};
+  /// [elapsedMillis] is a steady clock: a test's fake one, else a stopwatch.
+  /// Never the wall clock, which a correction can step back, leaving every
+  /// entry unasked for as long as it stepped.
+  HaloVoiceAudio({@visibleForTesting int Function()? elapsedMillis}) : _elapsedMillis = elapsedMillis ?? _stopwatchMillis();
+
+  final int Function() _elapsedMillis;
+
+  static int Function() _stopwatchMillis() {
+    final watch = Stopwatch()..start();
+    return () => watch.elapsedMilliseconds;
+  }
+
+  /// Each recording's length, by path — null for no file — with the
+  /// modification time it was read at and when the disk was last asked. The
+  /// surfaces ask for every message's length on every rebuild, several times
+  /// a second, so the disk is asked again only [recheckAfter] later: this
+  /// app's own writes forget the entry at once, and a file the operator puts
+  /// in the folder by hand shows within it.
+  final _lengths = <String, ({int checkedAt, DateTime? modified, Duration? length})>{};
+
+  @visibleForTesting
+  static const recheckAfter = Duration(seconds: 1);
 
   @override
   bool get isSupported => HaloAudio.isSupported;
@@ -195,17 +273,24 @@ class HaloVoiceAudio implements VoiceAudio {
 
   @override
   Duration? lengthOf(String path) {
-    final file = File(path);
-    if (!file.existsSync()) {
-      _lengths.remove(path);
-      return null;
-    }
-    final modified = file.lastModifiedSync();
+    final now = _elapsedMillis();
     final cached = _lengths[path];
-    if (cached != null && cached.$1 == modified) return cached.$2;
-    final length = HaloAudio.fileLength(path);
-    _lengths[path] = (modified, length);
+    if (cached != null && now - cached.checkedAt < recheckAfter.inMilliseconds) return cached.length;
+    final file = File(path);
+    final modified = file.existsSync() ? file.lastModifiedSync() : null;
+    final length = switch (modified) {
+      null => null,
+      _ when modified == cached?.modified => cached!.length,
+      _ => HaloAudio.fileLength(path),
+    };
+    _lengths[path] = (checkedAt: now, modified: modified, length: length);
     return length;
+  }
+
+  @override
+  bool exists(String path) {
+    lengthOf(path);
+    return _lengths[path]?.modified != null;
   }
 
   @override
@@ -245,9 +330,23 @@ class HaloVoiceAudio implements VoiceAudio {
   @override
   void normalize(String path) {
     final scaled = '$path.normalized';
-    HaloAudio.normalize(path, scaled, peak: computerVoiceNormalizedPeak, maxGain: computerVoiceMaxBoost, trim: computerVoiceTrim);
-    File(scaled).renameSync(path);
-    _lengths.remove(path);
+    try {
+      HaloAudio.normalize(path, scaled, peak: computerVoiceNormalizedPeak, maxGain: computerVoiceMaxBoost, trim: computerVoiceTrim);
+      File(scaled).renameSync(path);
+    } on Object {
+      // A copy written partway, or one that would not take the recording's
+      // place, is no recording, and nothing else removes it.
+      try {
+        final partial = File(scaled);
+        if (partial.existsSync()) partial.deleteSync();
+      } on FileSystemException {
+        // Left behind: the failure rethrown below is the one the caller
+        // reports, and the recording itself is untouched.
+      }
+      rethrow;
+    } finally {
+      _lengths.remove(path);
+    }
   }
 
   @override
@@ -289,7 +388,7 @@ class HaloVoiceAudio implements VoiceAudio {
         command,
         arguments,
         mode: ProcessStartMode.detached,
-      ).then<void>((_) {}, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'voice:reveal')),
+      ).then<void>((_) {}, onError: (Object e, StackTrace st) => reportVoiceFailure('reveal', e, st)),
     );
   }
 }
@@ -392,12 +491,15 @@ class ComputerVoiceKeyer implements VoiceKeyer {
 
   @override
   void playVoiceMemory(int n) {
+    // Cleared before the quiet, which may end a recording with a problem of
+    // its own: that one is what the operator needs to see.
+    _problem = null;
     _quiet();
     _release?.cancel();
-    _problem = null;
     if (ptt == null) return _refuse(n, ComputerVoiceProblem.cannotKey);
     final path = fileFor(n);
     final length = audio.lengthOf(path);
+    if (length == null && audio.exists(path)) return _refuse(n, ComputerVoiceProblem.unplayable);
     if (length == null || length == Duration.zero) return _refuse(n, ComputerVoiceProblem.notRecorded);
     // The device is found and open BEFORE the radio is keyed: keyed with
     // nowhere to send the audio is a dead carrier, and the system default is
@@ -429,7 +531,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
       try {
         fed.startSilence(path);
       } on HaloAudioException catch (e, st) {
-        ErrorReportingService.report(e, st, context: 'voice:play');
+        reportVoiceFailure('play', e, st);
         return _refuse(n, ComputerVoiceProblem.deviceFailed);
       }
     }
@@ -458,6 +560,10 @@ class ComputerVoiceKeyer implements VoiceKeyer {
         unawaited(
           playback.done.then((_) {
             if (!identical(_playback, playback) || _phase != _Phase.playing) return;
+            if (playback.failed) {
+              reportVoiceFailure('play', HaloAudioException('play: the file broke off partway'), StackTrace.current);
+              return _fail(ComputerVoiceProblem.unplayable);
+            }
             // The device keeps sounding what it holds of the end, then
             // silence, while the unkey waits.
             _phase = _Phase.tail;
@@ -465,7 +571,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
           }),
         );
       } on HaloAudioException catch (e, st) {
-        ErrorReportingService.report(e, st, context: 'voice:play');
+        reportVoiceFailure('play', e, st);
         _fail(ComputerVoiceProblem.deviceFailed);
       }
     });
@@ -489,8 +595,8 @@ class ComputerVoiceKeyer implements VoiceKeyer {
 
   @override
   void recordVoiceMemory(int n) {
-    _quiet();
     _problem = null;
+    _quiet();
     final wanted = voiceDeviceFromConfig(config()[voiceInputConfigKey]);
     String? deviceId;
     if (wanted != null) {
@@ -504,7 +610,8 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     final to = '${fileFor(n)}$_recordingSuffix';
     try {
       _recording = audio.record(to, deviceId: deviceId);
-    } on HaloAudioException {
+    } on HaloAudioException catch (e, st) {
+      reportVoiceFailure('record', e, st);
       return _refuse(n, ComputerVoiceProblem.deviceFailed, recording: true);
     }
     _recordingTo = to;
@@ -551,7 +658,8 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     if (found != null) return found;
     try {
       _outputs = audio.outputs();
-    } on HaloAudioException {
+    } on HaloAudioException catch (e, st) {
+      reportVoiceFailure('devices', e, st);
       _outputs = const [];
     }
     return matchAudioDevice(_outputs!, id: wanted.id, name: wanted.name);
@@ -569,7 +677,8 @@ class ComputerVoiceKeyer implements VoiceKeyer {
       _outputId = device.id;
       unawaited(output.gone.then((_) => _outputGone(output)));
       return output;
-    } on HaloAudioException {
+    } on HaloAudioException catch (e, st) {
+      reportVoiceFailure('open', e, st);
       return null;
     }
   }
@@ -653,8 +762,23 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     _phase = _Phase.idle;
     _memory = null;
     if (recording != null) {
-      recording.stop();
-      if (to != null) _keep(to);
+      var whole = true;
+      try {
+        recording.stop();
+      } on HaloAudioException catch (e, st) {
+        // Cut short, the file holds a message with its end missing: the one
+        // it would replace is the better one to keep.
+        reportVoiceFailure('record', e, st);
+        _problem = ComputerVoiceProblem.recordingFailed;
+        whole = false;
+      }
+      if (to != null) {
+        if (whole) {
+          _keep(to);
+        } else {
+          _discard(to);
+        }
+      }
     }
     _scheduleRelease();
     _unkey();
@@ -663,22 +787,43 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   void _keep(String recorded) {
     try {
       final length = audio.lengthOf(recorded);
-      if (length == null || length < computerVoiceShortestRecording) return audio.delete(recorded);
+      if (length == null && audio.exists(recorded)) {
+        // Written, and not readable back: a recording that failed, not a
+        // Record pressed by mistake.
+        reportVoiceFailure('keep', HaloAudioException('keep: the recording could not be read back'), StackTrace.current);
+        _problem = ComputerVoiceProblem.recordingFailed;
+        return _discard(recorded);
+      }
+      if (length == null || length < computerVoiceShortestRecording) return _discard(recorded);
       if (_loudest < computerVoiceSilence) {
         _problem = ComputerVoiceProblem.recordingSilent;
-        return audio.delete(recorded);
+        return _discard(recorded);
       }
       try {
         audio.normalize(recorded);
-      } on HaloAudioException {
-        // Kept as recorded: quieter than the others, but the operator's
-        // message, where throwing it away would lose it for a level.
+      } on Exception catch (e, st) {
+        // Kept as recorded: quieter than the others, and untrimmed, but the
+        // operator's message, where throwing it away would lose it for a
+        // level. Reported, since every recording would go out this way.
+        reportVoiceFailure('normalize', e, st);
       }
       // Where the recording started, not where [fileFor] points now: the set
       // in use can change while it runs.
       audio.replace(recorded, recorded.substring(0, recorded.length - _recordingSuffix.length));
-    } on FileSystemException {
-      _problem = ComputerVoiceProblem.deviceFailed;
+    } on FileSystemException catch (e, st) {
+      reportVoiceFailure('keep', e, st);
+      _problem = ComputerVoiceProblem.fileFailed;
+      _discard(recorded);
+    }
+  }
+
+  /// A recording not kept, gone rather than left beside the message as a
+  /// file nothing reads.
+  void _discard(String recorded) {
+    try {
+      audio.delete(recorded);
+    } on FileSystemException catch (e, st) {
+      reportVoiceFailure('discard', e, st);
     }
   }
 

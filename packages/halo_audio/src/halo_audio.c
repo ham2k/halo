@@ -227,7 +227,15 @@ int64_t halo_audio_decode(const char* path, int rate, int channels, float** out,
     ma_uint64 read = 0;
     r = ma_decoder_read_pcm_frames(&decoder, samples + frames * (ma_uint64)channels, chunk, &read);
     frames += read;
-    if (r != MA_SUCCESS || read < chunk) break;
+    // Only the end of the file ends it: a read that failed partway is a
+    // message cut short, sent as if whole.
+    if (r != MA_SUCCESS && r != MA_AT_END) {
+      free(samples);
+      ma_decoder_uninit(&decoder);
+      set_error(err, err_len, "decode", r);
+      return -1;
+    }
+    if (read < chunk) break;
   }
   ma_decoder_uninit(&decoder);
   *out = samples;
@@ -275,7 +283,15 @@ int halo_audio_normalize(const char* from, const char* to, float peak, float max
     ma_uint64 read = 0;
     r = ma_decoder_read_pcm_frames(&decoder, samples + frames * channels, chunk, &read);
     frames += read;
-    if (r != MA_SUCCESS || read < chunk) break;
+    // As in halo_audio_decode: written over the recording, a read that
+    // failed partway would keep only what came before it.
+    if (r != MA_SUCCESS && r != MA_AT_END) {
+      free(samples);
+      ma_decoder_uninit(&decoder);
+      set_error(err, err_len, "normalize", r);
+      return -1;
+    }
+    if (read < chunk) break;
   }
   ma_decoder_uninit(&decoder);
 
@@ -437,7 +453,7 @@ struct HaloAudioOutput {
   ma_spinlock lock;
   ma_decoder* decoder;
   ma_bool32 ended;
-  HaloAudioEndFn on_end;
+  HaloAudioPlayedFn on_end;
   int64_t token;
   HaloAudioEndFn on_lost;
   int64_t lost_token;
@@ -447,22 +463,24 @@ struct HaloAudioOutput {
 static void output_callback(ma_device* device, void* output, const void* input, ma_uint32 frames) {
   (void)input;
   HaloAudioOutput* out = (HaloAudioOutput*)device->pUserData;
-  HaloAudioEndFn ended_fn = NULL;
+  HaloAudioPlayedFn ended_fn = NULL;
   int64_t ended_token = 0;
+  int32_t failed = 0;
   ma_spinlock_lock(&out->lock);
   if (out->decoder != NULL && !out->ended) {
     ma_uint64 read = 0;
-    ma_decoder_read_pcm_frames(out->decoder, output, frames, &read);
-    if (read < frames) {
+    ma_result r = ma_decoder_read_pcm_frames(out->decoder, output, frames, &read);
+    if (read < frames || (r != MA_SUCCESS && r != MA_AT_END)) {
       out->ended = MA_TRUE;
       ended_fn = out->on_end;
       ended_token = out->token;
+      failed = r != MA_SUCCESS && r != MA_AT_END;
     }
   }
   ma_spinlock_unlock(&out->lock);
   // Outside the lock: the binding's callback only posts a message, but it
   // is still not the audio thread's business to hold the lock through it.
-  if (ended_fn != NULL) ended_fn(ended_token);
+  if (ended_fn != NULL) ended_fn(ended_token, failed);
 }
 
 static void output_notification(const ma_device_notification* notification) {
@@ -528,7 +546,7 @@ static void decoder_free(ma_decoder* decoder) {
   free(decoder);
 }
 
-int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioEndFn on_end, int64_t token, char* err, int err_len) {
+int halo_audio_output_play(HaloAudioOutput* out, const char* path, HaloAudioPlayedFn on_end, int64_t token, char* err, int err_len) {
   ma_decoder* decoder = (ma_decoder*)calloc(1, sizeof(ma_decoder));
   if (decoder == NULL) {
     set_error(err, err_len, "play", MA_OUT_OF_MEMORY);
@@ -577,12 +595,17 @@ struct HaloAudioRecorder {
   ma_encoder encoder;
   ma_device device;
   volatile float peak;  // written by the audio thread, read and reset by the caller
+  // The result of a write to the file that failed, set by the audio thread;
+  // MA_SUCCESS while every write has gone in.
+  volatile ma_result failed;
 };
 
 static void record_callback(ma_device* device, void* output, const void* input, ma_uint32 frames) {
   (void)output;
   HaloAudioRecorder* recorder = (HaloAudioRecorder*)device->pUserData;
-  ma_encoder_write_pcm_frames(&recorder->encoder, input, frames, NULL);
+  ma_uint64 written = 0;
+  ma_result r = ma_encoder_write_pcm_frames(&recorder->encoder, input, frames, &written);
+  if (recorder->failed == MA_SUCCESS && (r != MA_SUCCESS || written < frames)) recorder->failed = r != MA_SUCCESS ? r : MA_IO_ERROR;
   const ma_int16* samples = (const ma_int16*)input;
   int loudest = 0;
   for (ma_uint32 i = 0; i < frames; i++) {
@@ -651,9 +674,20 @@ float halo_audio_recorder_take_peak(HaloAudioRecorder* recorder) {
   return peak;
 }
 
-void halo_audio_recorder_free(HaloAudioRecorder* recorder) {
-  if (recorder == NULL) return;
+int halo_audio_recorder_free(HaloAudioRecorder* recorder, char* err, int err_len) {
+  if (recorder == NULL) return 0;
+  // Read before this stop: a device not running now stopped by itself —
+  // unplugged — and what was said after it never reached the file. Not the
+  // stopped notification, which a default device also sends when the system
+  // moves it to a new default and starts it again, recording on.
+  ma_bool32 running = ma_device_get_state(&recorder->device) == ma_device_state_started;
   ma_device_uninit(&recorder->device);
   ma_encoder_uninit(&recorder->encoder);
+  // After the uninit, which waits out the last callback and its write.
+  ma_result failed = recorder->failed;
+  if (failed == MA_SUCCESS && !running) failed = MA_DEVICE_NOT_STARTED;
   free(recorder);
+  if (failed == MA_SUCCESS) return 0;
+  set_error(err, err_len, failed == MA_DEVICE_NOT_STARTED ? "record: device stopped" : "record: write", failed);
+  return -1;
 }

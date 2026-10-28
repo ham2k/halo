@@ -191,6 +191,11 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   dynamic settingValue(String group, String key) => settingsGroup(group)[key];
 
+  /// [group] as stored, undecoded — the same instance until the group is
+  /// written, so a reader on a hot path can keep what it decoded for as long
+  /// as this stays [identical].
+  Object? storedSettingsGroup(String group) => _prefs.get(_groupPrefsKey(group));
+
   Future<void> setSettingValue(String group, String key, dynamic value) async {
     await _prefs.setString(_groupPrefsKey(group), jsonEncode({...settingsGroup(group), key: value}));
     notifyListeners();

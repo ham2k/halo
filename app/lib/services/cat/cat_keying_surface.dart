@@ -349,6 +349,7 @@ class RadioKeyer {
   /// The computer's voice keyer, as this radio has it — radio1's alone
   /// (CatService's computer-voice members).
   bool get voiceMessagesFromComputer => _k.voiceMessagesFromComputer;
+  bool voiceMessageUnplayable(int n) => _k.voiceMessageUnplayable(n);
   ComputerVoiceProblem? get computerVoiceProblem => _k.computerVoiceProblem;
   bool get phoneKeyingOff => _k.phoneKeyingOff;
   AudioPlayback? listenToVoiceMessage(int n) => _k.listenToVoiceMessage(n);
