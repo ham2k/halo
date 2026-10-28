@@ -721,6 +721,9 @@ class DataFileManager {
           }
         } catch (e, stack) {
           debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
+          // A failure processDataFile raised is already reported, and this
+          // uploads it no second time; what this reports is the rest of the
+          // entry's handling.
           ErrorReportingService.report(e, stack, context: 'data-files:process-entry');
         }
       }),
@@ -778,6 +781,8 @@ class DataFileManager {
   Future<bool> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
+    // A manager with no status bar shows no notices, failures included.
+    final bar = statusBar;
 
     if (showProgress) statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
     final String? body;
@@ -791,22 +796,27 @@ class DataFileManager {
       final url = def['url'] as String;
       fetchType = def['fetchType'] as String;
       body = await downloadFile(key, url, force: force, encoding: def['encoding'] as String?);
-    } catch (e) {
+    } catch (e, stack) {
       statusBar?.clear(statusKey);
       debugPrint('[data-file] Failed to download $key: $e');
-      // A persistent notice, not the transient progress line above — every
-      // caller of processDataFile (a single Refresh tap, Update All, the
-      // background sync after adding a custom file) funnels through here,
-      // so this is the one place that needs to say so; callers that also
-      // catch this (e.g. syncAllDataFiles) still get to report/log it too.
-      if (notifyOnFailure) {
-        statusBar?.showNotice(
-          key: statusKey,
-          icon: 'alert-circle',
-          title: t.dataFiles.downloadFailedTitle(name: label),
-          text: friendlyDownloadError(e, isWeb: isWeb),
-        );
-      }
+      // Reported HERE, not by the callers: every caller of processDataFile
+      // (a single Refresh tap, Update All, the background sync after adding a
+      // custom file) funnels through here, so a Refresh tap and Update All
+      // say and upload the same thing. A caller that reports what reaches it
+      // (syncAllDataFiles) uploads this one no second time.
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'data-files:download',
+        notice: notifyOnFailure && bar != null
+            ? ErrorNotice(
+                bar,
+                key: statusKey,
+                title: t.dataFiles.downloadFailedTitle(name: label),
+                text: friendlyDownloadError(e, isWeb: isWeb),
+              )
+            : null,
+      );
       rethrow;
     }
     if (body == null) {
@@ -838,7 +848,7 @@ class DataFileManager {
       }
       await prefs.remove(_refusedKey(key));
       return true;
-    } catch (e) {
+    } catch (e, stack) {
       // Judged before any await below: a replacement landing during one would
       // otherwise mute a failure the runtime still in place raised.
       final cut = cutByRestart(e);
@@ -864,14 +874,21 @@ class DataFileManager {
       // again, so a notice per file would announce failures that fix
       // themselves seconds later — once per restart, and an extension update
       // is one.
-      if (notifyOnFailure && !cut) {
-        statusBar?.showNotice(
-          key: statusKey,
-          icon: 'alert-circle',
-          title: t.dataFiles.processingFailedTitle(name: label),
-          text: e is DataFileImportShrank ? t.dataFiles.importTooSmall(imported: e.imported, existing: e.existing) : e.toString(),
-        );
-      }
+      //
+      // Reported here for the same reason as a download failure above.
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'data-files:import',
+        notice: notifyOnFailure && !cut && bar != null
+            ? ErrorNotice(
+                bar,
+                key: statusKey,
+                title: t.dataFiles.processingFailedTitle(name: label),
+                text: e is DataFileImportShrank ? t.dataFiles.importTooSmall(imported: e.imported, existing: e.existing) : null,
+              )
+            : null,
+      );
       rethrow;
     }
   }

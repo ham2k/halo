@@ -125,9 +125,9 @@ Future<void> pickAndImportAdif(BuildContext context, {required HaLoServices serv
   try {
     file = await pickFile(acceptedTypeGroups: adifTypeGroups());
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'adifImport:picker');
+    ErrorReportingService.report(e, stack, context: 'adifImport:picker', told: context.mounted);
     if (context.mounted) {
-      await _showNotice(context, context.t.adifImport.failed(filename: '', error: e.toString()));
+      await _showNotice(context, context.t.adifImport.failed(filename: '', error: ErrorReportingService.messageOf(e)));
     }
     return;
   }
@@ -157,7 +157,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
     try {
       head = await readAdifHead(file);
     } catch (e, stack) {
-      _reportFailure(services, 'adifImport:sniff', e, stack, t.failed(filename: filename, error: '$e'));
+      _reportFailure(services, 'adifImport:sniff', e, stack, t.failed(filename: filename, error: ErrorReportingService.messageOf(e)));
       if (context.mounted) {
         await _showNotice(context, t.failed(filename: filename, error: e.toString()));
       }
@@ -186,7 +186,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
       bytes = await file.readAsBytes();
       recordCount = countAdifRecords(bytes, upTo: maxOperationImportRecords + 1);
     } catch (e, stack) {
-      _reportFailure(services, 'adifImport:read', e, stack, t.failed(filename: filename, error: '$e'));
+      _reportFailure(services, 'adifImport:read', e, stack, t.failed(filename: filename, error: ErrorReportingService.messageOf(e)));
       if (context.mounted) {
         await _showNotice(context, t.failed(filename: filename, error: e.toString()));
       }
@@ -224,7 +224,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
     try {
       plan = await _planFor(services, operation, bytes, filename);
     } catch (e, stack) {
-      _reportFailure(services, 'adifImport:plan', e, stack, t.failed(filename: filename, error: '$e'));
+      _reportFailure(services, 'adifImport:plan', e, stack, t.failed(filename: filename, error: ErrorReportingService.messageOf(e)));
       if (context.mounted) {
         await _showNotice(context, t.failed(filename: filename, error: e.toString()));
       }
@@ -248,7 +248,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
       // import", whose rational answer is to import again.
       written = await services.qsos.writeBatch(operationUuid: operation.uuid, inserts: plan.additions, updates: plan.merges, updateBases: plan.mergeBases);
     } catch (e, stack) {
-      _reportFailure(services, 'adifImport:write', e, stack, t.failed(filename: filename, error: '$e'));
+      _reportFailure(services, 'adifImport:write', e, stack, t.failed(filename: filename, error: ErrorReportingService.messageOf(e)));
       if (context.mounted) {
         await _showNotice(context, t.failed(filename: filename, error: e.toString()));
       }
@@ -301,8 +301,12 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
 /// not.
 void _reportFailure(HaLoServices services, String where, Object error, StackTrace stack, String message) {
   services.statusBar.clear('adifImport:status');
-  services.statusBar.showNotice(key: 'adifImport:failed', text: message);
-  ErrorReportingService.report(error, stack, context: where);
+  ErrorReportingService.report(
+    error,
+    stack,
+    context: where,
+    notice: ErrorNotice(services.statusBar, key: 'adifImport:failed', text: message),
+  );
 }
 
 /// Adds the activation the file recorded to the operation, keeping whatever it

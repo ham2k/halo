@@ -415,11 +415,16 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
       // Named, because the generic "Something went wrong" cannot say which
       // half landed — and here neither half has: the operation is written
       // below, and returning now leaves the whole edit undone.
-      services.statusBar.showNotice(
-        key: 'operationDetails:restampFailed',
-        text: t.restampFailed(error: '$e'),
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'operationDetails:restamp',
+        notice: ErrorNotice(
+          services.statusBar,
+          key: 'operationDetails:restampFailed',
+          text: t.restampFailed(error: ErrorReportingService.messageOf(e)),
+        ),
       );
-      ErrorReportingService.report(e, stack, context: 'operationDetails:restamp');
       return null;
     }
     // The repository counts rows actually affected, so a contact deleted

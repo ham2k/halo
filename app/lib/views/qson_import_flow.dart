@@ -41,8 +41,8 @@ Future<void> runQsonImport(BuildContext context, HaLoServices services, {XFile? 
   try {
     chosen = file ?? await pickFile(acceptedTypeGroups: qsonTypeGroups());
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'qsonImport:picker');
-    messenger?.showSnackBar(haloSnackBar(t.pickerFailed(error: '$e')));
+    ErrorReportingService.report(e, stack, context: 'qsonImport:picker', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.pickerFailed(error: ErrorReportingService.messageOf(e))));
     return;
   }
   if (chosen == null) return;
@@ -71,8 +71,8 @@ Future<void> runQsonImport(BuildContext context, HaLoServices services, {XFile? 
     messenger?.showSnackBar(haloSnackBar(message));
     return;
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'qsonImport');
-    messenger?.showSnackBar(haloSnackBar(t.failed(filename: filename, error: '$e')));
+    ErrorReportingService.report(e, stack, context: 'qsonImport', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.failed(filename: filename, error: ErrorReportingService.messageOf(e))));
     return;
   } finally {
     _qsonImportInFlight = false;

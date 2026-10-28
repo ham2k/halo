@@ -99,6 +99,7 @@ class _Translations$common$qro extends Translations$common$en {
 	@override String get callsign => 'CALLSIGN';
 	@override String get clear => 'CLEAR';
 	@override String get dismiss => 'DISMISS';
+	@override String get copyDetails => 'COPY DETAILS';
 	@override String get expand => 'EXPAND';
 	@override String get collapse => 'COLLAPSE';
 }
@@ -4360,6 +4361,7 @@ extension on TranslationsQro {
 			'common.callsign' => 'CALLSIGN',
 			'common.clear' => 'CLEAR',
 			'common.dismiss' => 'DISMISS',
+			'common.copyDetails' => 'COPY DETAILS',
 			'common.expand' => 'EXPAND',
 			'common.collapse' => 'COLLAPSE',
 			'onboarding.welcomeTitle' => 'WELCOME TO HAM2K PORTABLE LOGGER!',
@@ -4860,9 +4862,9 @@ extension on TranslationsQro {
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
 			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
 			'operation.layout.panels.summariesSections' => 'SECTIONS AND ORDER',
-			'operation.layout.panels.summariesDays' => 'EACH DAY',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.summariesDays' => 'EACH DAY',
 			'operation.layout.panels.summariesReset' => 'SHOW ALL',
 			'operation.layout.panels.summariesAllHidden' => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.',
 			'operation.layout.panels.clockDescription' => 'A CLOCK FACE, IN ANY TIME ZONE',
@@ -5374,9 +5376,9 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeNewSection' => 'NEW SECTION',
 			'loggingControls.info.noticeBonusStation' => 'BONUS STATION!',
 			'loggingControls.info.noticeMissingExchange' => 'NO EXCHANGE',
-			'loggingControls.info.noticeInvalidExchange' => 'BAD EXCHANGE',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeInvalidExchange' => 'BAD EXCHANGE',
 			'loggingControls.info.noticeUnknownEvent' => 'UNKNOWN EVENT',
 			'loggingControls.info.noticeIncompleteCall' => 'INCOMPLETE CALL — NOT SCORED',
 			'loggingControls.info.noticeOurGrid' => 'SET OUR GRID',
@@ -5888,9 +5890,9 @@ extension on TranslationsQro {
 			'settings.syncPanel.account' => 'ACCOUNT',
 			'settings.syncPanel.refresh' => 'REFRESH',
 			'settings.syncPanel.switchAccounts' => 'SWITCH ACCOUNTS',
-			'settings.syncPanel.switchAccountsDescription' => 'LINK THIS DEVICE TO ANOTHER ACCOUNT WITH A QR CODE OR EMAIL',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.switchAccountsDescription' => 'LINK THIS DEVICE TO ANOTHER ACCOUNT WITH A QR CODE OR EMAIL',
 			'settings.syncPanel.connectionRequests' => 'CONNECTION REQUESTS',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'A DEVICE IS WAITING TO JOIN THIS ACCOUNT', other: '${n} DEVICES ARE WAITING TO JOIN THIS ACCOUNT', ), 
 			'settings.syncPanel.accountEmailTitle' => 'ACCOUNT EMAIL',
@@ -6402,9 +6404,9 @@ extension on TranslationsQro {
 			'settings.profiles.name' => 'NAME',
 			'settings.profiles.email' => 'EMAIL',
 			'settings.profiles.club' => 'CLUB',
-			'settings.profiles.arrlSection' => 'ARRL SECTION',
 			_ => null,
 		} ?? switch (path) {
+			'settings.profiles.arrlSection' => 'ARRL SECTION',
 			'settings.profiles.racSection' => 'RAC SECTION',
 			'settings.profiles.section' => 'SECTION',
 			'settings.search.clear' => 'CLEAR',

@@ -62,7 +62,7 @@ Future<void> runChaseImport(
     name = chosen.name;
     outcome = await services.chase.importFile(program, importer, name: chosen.name, text: chaseImportText(await chosen.readAsBytes()), station: station);
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'chaseImport');
+    ErrorReportingService.report(e, stack, context: 'chaseImport', told: messenger != null);
     messenger?.showSnackBar(haloSnackBar(t.failed(program: program.label, file: name)));
     return;
   }

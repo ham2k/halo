@@ -27,9 +27,12 @@ matching rule can quieten one.
 The notice is the once-per-session *"Something went wrong"* StatusBar entry,
 with a **Copy details** action. One per session, however many errors follow —
 a session with a repeating error must not bury the operator's real notices.
-In Next and Regular builds its text is a reassurance; in a Dev build it is the
-error itself (cut to a few lines) and the innermost stack frame in our own
-code, since whoever runs Dev is whoever will fix it.
+In Next and Regular builds its text is a reassurance followed by the first
+line of the error's message (without an exception type an operator cannot
+read, and with any URL's query string cut, since that is where a request
+carries its key), so a support message can at least say which thing failed; in a Dev
+build it is the error itself (cut to a few lines) and the innermost stack
+frame in our own code, since whoever runs Dev is whoever will fix it.
 
 ### Current rules
 
@@ -114,7 +117,38 @@ each decision out to the console, the backend, and the StatusBar:
   ownership of startup.
 - **`ErrorReportingService.report(error, stack, context:)`** — an explicit
   catch. Also policy-gated, so a `try/catch` added later can't force known
-  noise into the backend.
+  noise into the backend. An error object uploads once however many catches
+  report it on its way up, so a catch that reports and rethrows under one
+  that reports what reaches it does not upload the failure twice. "The same
+  failure" is the same error object with the same trace object, which a
+  rethrow carries along: the object alone would merge every throw of a
+  `const` exception into the first.
+  - **`notice: ErrorNotice(…)`** is the caller's own words for a failure of
+    something the operator asked for — a Refresh tap, a save, a restamp. The
+    service shows it whatever the policy decides (its title, the error's
+    message without its type name unless the caller words the body itself,
+    and **Copy details** with the error and its trace), and the generic
+    notice skips that error: it would say strictly less, on top. The upload
+    is still the policy's alone. Unlike the generic notice it is kept in
+    history by default — its text names the failure, so it still says
+    something once **Copy details** is gone after a restart. It is shown at
+    once, after the upload, so a caller that awaits the failure finds it on
+    the bar and a bar that cannot take it never costs the upload; the generic
+    notice is posted from a microtask instead, since it runs inside the
+    framework's own error handler.
+  - **`told:`** is the same for a caller that told the operator its own way —
+    a snackbar, a dialog — so the generic notice skips it there too. Pass
+    what was actually shown (`messenger != null`, `context.mounted`), never a
+    bare `true` ahead of a message that may not appear: a told failure with
+    nothing on screen is silent.
+  - `ErrorReportingService.messageOf(error)` is the message those notices
+    and snackbars show: an `ExtensionHostException`'s own message, a plain
+    `Exception`'s without its `Exception: ` prefix.
+  - `DataFileManager.processDataFile` reports its own download and import
+    failures, with a notice when the pass is attended and the import was not
+    cut by a restart, so a Refresh tap and Update All/RELOAD say and upload
+    the same thing; the unattended boot and reconnect passes report without
+    one, and the generic notice speaks for an unclassified failure there.
 - **`ErrorReportingService.reportIfRepeated(key, error, stack)`** — a
   retried call that reports once it has failed three times running. It asks
   the policy *before* counting: a quiet failure neither advances the streak

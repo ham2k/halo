@@ -18,6 +18,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/app_storage.dart' show kDataFilesDirName;
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
@@ -662,6 +663,74 @@ REF-002,Summit Two,45.56,-122.78
 
     final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:flaky-file');
     expect(notice.title, t.dataFiles.downloadFailedTitle(name: 'Flaky File'));
+  });
+
+  group('an import an extension hook refused', () {
+    // A Refresh tap and Update All both run processDataFile. The trap is the
+    // two routes drifting apart: one where only the outer catch reports, and
+    // the operator gets "Something went wrong" on top of the file's own notice
+    // (and an upload) from one button but not the other.
+    const message = 'No Zombie Shuffle entry found on the N1MM listing. Previous data retained.';
+
+    late StatusBarService statusBar;
+    late FakeErrorReportingBackend backend;
+    late TestDataFileManager m;
+
+    setUp(() {
+      ErrorReportingService.resetForTesting();
+      statusBar = StatusBarService(prefs);
+      backend = FakeErrorReportingBackend(feedsNotice: true);
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'key': 'zombie',
+            'ok': true,
+            'value': {'key': 'zombie', 'name': 'Zombie Shuffle call history', 'url': 'https://example.com/zombie', 'maxAgeInDays': 7, 'fetchType': 'raw'},
+          },
+        ],
+        // A new exception per call, as a real hook throws: one object reused
+        // across routes would be recognised as already reported.
+        'dataFile:zombie:rawToJSONData': (_) => throw ExtensionHostException(message),
+      });
+      m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, statusBar: statusBar)..mockDownloadBody = '<html></html>';
+    });
+
+    Future<void> expectToldOnceAndUploadedOnce() async {
+      await Future<void>.delayed(Duration.zero); // the generic notice is posted from a microtask
+      expect(statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'), isEmpty, reason: 'the file already said what failed');
+      final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:zombie');
+      expect(notice.title, t.dataFiles.processingFailedTitle(name: 'Zombie Shuffle call history'));
+      expect(notice.text, message, reason: '"ExtensionHostException:" says nothing to an operator');
+      expect(notice.actions.map((a) => a.label), contains('Copy details'));
+      expect(backend.exceptions, hasLength(1));
+    }
+
+    test('from a Refresh tap', () async {
+      await withErrorHooks(() async {
+        ErrorReportingService.attachStatusBar(statusBar);
+        await expectLater(m.refreshDataFile('zombie'), throwsA(isA<ExtensionHostException>()));
+        await expectToldOnceAndUploadedOnce();
+      }, backend: backend);
+    });
+
+    test('from Update All', () async {
+      await withErrorHooks(() async {
+        ErrorReportingService.attachStatusBar(statusBar);
+        await m.syncAllDataFiles(force: true);
+        await expectToldOnceAndUploadedOnce();
+      }, backend: backend);
+    });
+
+    test('from the unattended boot pass, the generic notice is the one that says so', () async {
+      await withErrorHooks(() async {
+        ErrorReportingService.attachStatusBar(statusBar);
+        await m.syncAllDataFiles(notifyOnFailure: false);
+        await Future<void>.delayed(Duration.zero);
+        expect(statusBar.activeNotices.where((n) => n.key == 'dataFile:zombie'), isEmpty);
+        expect(statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error'), hasLength(1));
+        expect(backend.exceptions, hasLength(1));
+      }, backend: backend);
+    });
   });
 
   // The unattended sweeps (boot, reconnect) refresh files the device already

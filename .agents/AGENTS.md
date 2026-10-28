@@ -17,7 +17,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - A coordinate measures, a grid displays ([locations.md](../docs/design/locations.md)). Wherever a location is captured, capture the `lat`/`lon` too — and where a pair is present it OUTRANKS the grid, so **a writer that sets a grid without a coordinate must clear the pair in the same write**. Read locations.md before storing, resolving, or displaying a location.
 
-- What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](../docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead.
+- What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](../docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead. A catch that tells the operator about the failure itself says so to `ErrorReportingService.report` — `notice:` for a status-bar notice it words, `told:` for a snackbar or dialog it actually showed — never a notice beside a plain `report()`, which stacks the generic "Something went wrong" on top.
 
 - The extension system and hooks are defined under `docs/extensions/`.
 

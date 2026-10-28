@@ -90,13 +90,17 @@ class CatTrafficRecording {
       final text = _settings.consentAppData ? _send(carry.path, bytes) : 'Not sent, because sharing app data is off. The recording is at ${carry.path}';
       _statusBar.showNotice(key: 'devlogcat', icon: 'record-rec', title: 'Radio traffic recording ended', text: text, persist: false);
     } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'devlogcat:resume');
-      _statusBar.showNotice(
-        key: 'devlogcat',
-        icon: 'record-rec',
-        title: 'Radio traffic recording ended',
-        text: 'Could not pick the DEVLOGCAT recording back up or send it — it is at ${carry.path}',
-        persist: false,
+      ErrorReportingService.report(
+        e,
+        st,
+        context: 'devlogcat:resume',
+        notice: ErrorNotice(
+          _statusBar,
+          key: 'devlogcat',
+          icon: 'record-rec',
+          title: 'Radio traffic recording ended',
+          text: 'Could not pick the DEVLOGCAT recording back up or send it — it is at ${carry.path}',
+        ),
       );
       // Ended here, once: a file that cannot be opened or read now would
       // otherwise fail again at every launch after.

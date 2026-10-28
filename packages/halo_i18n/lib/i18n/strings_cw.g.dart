@@ -99,6 +99,7 @@ class _Translations$common$cw extends Translations$common$en {
 	@override String get callsign => '—·—· ·— ·—·· ·—·· ··· ·· ——· —·';
 	@override String get clear => '—·—· ·—·· · ·— ·—·';
 	@override String get dismiss => '—·· ·· ··· —— ·· ··· ···';
+	@override String get copyDetails => '—·—· ——— ·——· —·—— / —·· · — ·— ·· ·—·· ···';
 	@override String get expand => '· —··— ·——· ·— —· —··';
 	@override String get collapse => '—·—· ——— ·—·· ·—·· ·— ·——· ··· ·';
 }
@@ -4360,6 +4361,7 @@ extension on TranslationsCw {
 			'common.callsign' => '—·—· ·— ·—·· ·—·· ··· ·· ——· —·',
 			'common.clear' => '—·—· ·—·· · ·— ·—·',
 			'common.dismiss' => '—·· ·· ··· —— ·· ··· ···',
+			'common.copyDetails' => '—·—· ——— ·——· —·—— / —·· · — ·— ·· ·—·· ···',
 			'common.expand' => '· —··— ·——· ·— —· —··',
 			'common.collapse' => '—·—· ——— ·—·· ·—·· ·— ·——· ··· ·',
 			'onboarding.welcomeTitle' => '·—— · ·—·· —·—· ——— —— · / — ——— / ···· ·— —— ··——— —·— / ·——· ——— ·—· — ·— —··· ·—·· · / ·—·· ——— ——· ——· · ·—· —·—·——',
@@ -4860,9 +4862,9 @@ extension on TranslationsCw {
 			'operation.layout.panels.mapDescription' => '·—— ···· · ·—· · / — ···· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—· ·',
 			'operation.layout.panels.summariesDescription' => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ··· / ·— —· —·· / ··· —·—· ——— ·—· · ··· ——··—— / ·· —· / — ···· · / ··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—· / —·—— ——— ··— / ·——· ·· —·—· —·—',
 			'operation.layout.panels.summariesSections' => '··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—·',
-			'operation.layout.panels.summariesDays' => '· ·— —·—· ···· / —·· ·— —·——',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.summariesDays' => '· ·— —·—· ···· / —·· ·— —·——',
 			'operation.layout.panels.summariesReset' => '··· ···· ——— ·—— / ·— ·—·· ·—··',
 			'operation.layout.panels.summariesAllHidden' => '· ···— · ·—· —·—— / ··· · —·—· — ·· ——— —· / ·· ··· / ···· ·· —·· —·· · —· ·—·—·— / ·——· ·· —·—· —·— / — ···· · / ——— —· · ··· / — ——— / ··· ···· ——— ·—— / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'operation.layout.panels.clockDescription' => '·— / —·—· ·—·· ——— —·—· —·— / ··—· ·— —·—· · ——··—— / ·· —· / ·— —· —·—— / — ·· —— · / ——·· ——— —· ·',
@@ -5374,9 +5376,9 @@ extension on TranslationsCw {
 			'loggingControls.info.noticeNewSection' => '—· · ·—— / ··· · —·—· — ·· ——— —·',
 			'loggingControls.info.noticeBonusStation' => '—··· ——— —· ··— ··· / ··· — ·— — ·· ——— —· —·—·——',
 			'loggingControls.info.noticeMissingExchange' => '—· ——— / · —··— —·—· ···· ·— —· ——· ·',
-			'loggingControls.info.noticeInvalidExchange' => '—··· ·— —·· / · —··— —·—· ···· ·— —· ——· ·',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeInvalidExchange' => '—··· ·— —·· / · —··— —·—· ···· ·— —· ——· ·',
 			'loggingControls.info.noticeUnknownEvent' => '··— —· —·— —· ——— ·—— —· / · ···— · —· —',
 			'loggingControls.info.noticeIncompleteCall' => '·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / —· ——— — / ··· —·—· ——— ·—· · —··',
 			'loggingControls.info.noticeOurGrid' => '··· · — / ——— ··— ·—· / ——· ·—· ·· —··',
@@ -5888,9 +5890,9 @@ extension on TranslationsCw {
 			'settings.syncPanel.account' => '·— —·—· —·—· ——— ··— —· —',
 			'settings.syncPanel.refresh' => '·—· · ··—· ·—· · ··· ····',
 			'settings.syncPanel.switchAccounts' => '··· ·—— ·· — —·—· ···· / ·— —·—· —·—· ——— ··— —· — ···',
-			'settings.syncPanel.switchAccountsDescription' => '·—·· ·· —· —·— / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — / ·—— ·· — ···· / ·— / ——·— ·—· / —·—· ——— —·· · / ——— ·—· / · —— ·— ·· ·—··',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.switchAccountsDescription' => '·—·· ·· —· —·— / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — / ·—— ·· — ···· / ·— / ——·— ·—· / —·—· ——— —·· · / ——— ·—· / · —— ·— ·· ·—··',
 			'settings.syncPanel.connectionRequests' => '—·—· ——— —· —· · —·—· — ·· ——— —· / ·—· · ——·— ··— · ··· — ···',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·— / —·· · ···— ·· —·—· · / ·· ··· / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', other: '${n} / —·· · ···— ·· —·—· · ··· / ·— ·—· · / ·—— ·— ·· — ·· —· ——· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· —', ), 
 			'settings.syncPanel.accountEmailTitle' => '·— —·—· —·—· ——— ··— —· — / · —— ·— ·· ·—··',
@@ -6402,9 +6404,9 @@ extension on TranslationsCw {
 			'settings.profiles.name' => '—· ·— —— ·',
 			'settings.profiles.email' => '· —— ·— ·· ·—··',
 			'settings.profiles.club' => '—·—· ·—·· ··— —···',
-			'settings.profiles.arrlSection' => '·— ·—· ·—· ·—·· / ··· · —·—· — ·· ——— —·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.profiles.arrlSection' => '·— ·—· ·—· ·—·· / ··· · —·—· — ·· ——— —·',
 			'settings.profiles.racSection' => '·—· ·— —·—· / ··· · —·—· — ·· ——— —·',
 			'settings.profiles.section' => '··· · —·—· — ·· ——— —·',
 			'settings.search.clear' => '—·—· ·—·· · ·— ·—·',

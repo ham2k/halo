@@ -221,8 +221,8 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
     } catch (e, stack) {
       // An ExportException is the platform's answer to the save — a refusal
       // the operator is shown, not a fault to file.
-      if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'keys:export');
-      messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: '$e')));
+      if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'keys:export', told: messenger != null);
+      messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
     }
   }
 
@@ -244,8 +244,8 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         ],
       );
     } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'keys:import-picker');
-      messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: '$e')));
+      ErrorReportingService.report(e, stack, context: 'keys:import-picker', told: messenger != null);
+      messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: ErrorReportingService.messageOf(e))));
       return;
     }
     if (chosen == null) return;

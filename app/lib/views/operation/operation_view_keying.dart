@@ -295,8 +295,10 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
         // A hook timeout or a dead runtime — reported, and ALSO said here:
         // the operator pressed a key and nothing keyed, which the console
         // alone would leave them to discover on the air.
-        ErrorReportingService.report(e, st, context: 'cw:render-message');
-        failure = '$e';
+        // Told only while mounted: nothing awaits between here and the check
+        // below that returns before the notice when the view is gone.
+        ErrorReportingService.report(e, st, context: 'cw:render-message', told: mounted);
+        failure = ErrorReportingService.messageOf(e);
       }
       // Leaving the operation while the render was in flight is leaving the
       // message behind too — nothing goes on the air from a view that is gone.

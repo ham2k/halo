@@ -159,8 +159,8 @@ class _LayoutsSheetState extends State<_LayoutsSheet> {
       try {
         await _host.duplicateLayout(_host.viewLayouts.active, result.name);
       } catch (e, stack) {
-        ErrorReportingService.report(e, stack, context: 'layout:duplicate');
-        messenger?.showSnackBar(haloSnackBar(t.duplicateFailed(error: '$e')));
+        ErrorReportingService.report(e, stack, context: 'layout:duplicate', told: messenger != null);
+        messenger?.showSnackBar(haloSnackBar(t.duplicateFailed(error: ErrorReportingService.messageOf(e))));
       }
     } else {
       await _leave(() => _host.createLayout(result.name));
@@ -447,8 +447,8 @@ Future<void> runLayoutExport(BuildContext context, DockHost host) async {
   } catch (e, stack) {
     // An ExportException is the platform's answer to the save — a refusal the
     // operator is shown, not a fault to file.
-    if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'layout:export');
-    messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: '$e')));
+    if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'layout:export', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
   }
 }
 
@@ -526,8 +526,8 @@ Future<void> runLayoutImport(BuildContext context, DockHost host) async {
   try {
     chosen = await pickFile(acceptedTypeGroups: layoutFileTypeGroups());
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'layout:import-picker');
-    messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: '$e')));
+    ErrorReportingService.report(e, stack, context: 'layout:import-picker', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: ErrorReportingService.messageOf(e))));
     return;
   }
   if (chosen == null) return;
@@ -594,8 +594,8 @@ Future<void> runLayoutImport(BuildContext context, DockHost host) async {
       saveDraft: save,
     );
   } catch (e, stack) {
-    ErrorReportingService.report(e, stack, context: 'layout:import');
-    messenger?.showSnackBar(haloSnackBar(t.importFailed(error: '$e')));
+    ErrorReportingService.report(e, stack, context: 'layout:import', told: messenger != null);
+    messenger?.showSnackBar(haloSnackBar(t.importFailed(error: ErrorReportingService.messageOf(e))));
     return;
   }
   final (:skipped, :restored) = imported;

@@ -22,6 +22,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/version.dart' show Edition;
@@ -410,12 +411,147 @@ void main() {
       expect(text.length, lessThan(500));
     });
 
-    test('Next and Regular keep the reassurance, never the error itself', () {
+    test('Next and Regular keep the reassurance, with one line of what failed and never a stack frame', () {
       for (final edition in [Edition.next, Edition.prod]) {
-        final text = ErrorReportingService.noticeText(StateError('No element'), stack, edition: edition);
+        final text = ErrorReportingService.noticeText(StateError('No element\nmore detail'), stack, edition: edition);
         expect(text, startsWith('An unexpected error occurred'));
-        expect(text, isNot(contains('No element')), reason: 'an operator cannot act on a stack frame');
+        // Without it, a support message can only say "something went wrong",
+        // and the operator has nothing to tell one failure from the next.
+        expect(text, contains('No element'));
+        expect(text, isNot(contains('more detail')), reason: 'the rest is on "Copy details"');
+        expect(text, isNot(contains('qso_list.dart')), reason: 'an operator cannot act on a stack frame');
       }
+    });
+
+    test('Next and Regular cut a long message to a line that fits a card', () {
+      final text = ErrorReportingService.noticeText(FormatException('x' * 5000), null, edition: Edition.prod);
+      expect(text.length, lessThan(400));
+    });
+
+    test("Next and Regular add no line for a backend's own label of an event with no error behind it", () {
+      final text = ErrorReportingService.noticeText('Reported error', null, edition: Edition.prod);
+      expect(text, isNot(contains('Reported error')));
+    });
+
+    test('Next and Regular keep a query string off the footer, where a request carries its key', () {
+      final error = Exception('ClientException: Connection refused, uri=https://api.example.com/v1/lookup?key=s3cret&call=N0DEV');
+      final text = ErrorReportingService.noticeText(error, null, edition: Edition.prod);
+      expect(text, contains('https://api.example.com/v1/lookup?…'), reason: 'which host failed is the useful part');
+      expect(text, isNot(contains('s3cret')));
+    });
+  });
+
+  group('a failure the caller already told the operator about', () {
+    // The trap: the backend feeds every notify-tier error it captures into the
+    // generic "Something went wrong", so a catch that shows its own words and
+    // then reports gets both notices unless the service knows about the first.
+
+    Future<StatusBarService> attachedStatusBar() async {
+      final statusBar = StatusBarService(await SharedPreferences.getInstance());
+      ErrorReportingService.attachStatusBar(statusBar);
+      return statusBar;
+    }
+
+    Iterable<StatusBarNotice> generic(StatusBarService statusBar) => statusBar.activeNotices.where((n) => n.key == 'error-reporting:first-error');
+
+    test("shows the caller's notice in place of the generic one, and still uploads", () async {
+      final backend = FakeErrorReportingBackend(feedsNotice: true);
+      await withErrorHooks(() async {
+        final statusBar = await attachedStatusBar();
+        ErrorReportingService.report(
+          ExtensionHostException('No entry found on the listing.'),
+          StackTrace.current,
+          context: 'test',
+          notice: ErrorNotice(statusBar, key: 'test:failed', title: "Couldn't process it"),
+        );
+        await Future<void>.delayed(Duration.zero); // the generic notice is posted from a microtask
+
+        expect(generic(statusBar), isEmpty);
+        final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'test:failed');
+        expect(notice.title, "Couldn't process it");
+        expect(notice.text, 'No entry found on the listing.', reason: 'the type name says nothing to an operator');
+        expect(notice.actions.map((a) => a.label), contains('Copy details'), reason: 'the trace is what a support request needs');
+        expect(backend.exceptions, hasLength(1), reason: 'telling the operator is not a reason to keep the backend from the failure');
+      }, backend: backend);
+    });
+
+    test("the caller's notice stays in history across a restart, unlike the generic one", () async {
+      // Its text names the failure, so it still says something once its
+      // "Copy details" is gone; dropping it would leave an offline
+      // "Couldn't download" with no trace after the app restarts.
+      await withErrorHooks(() async {
+        final prefs = await SharedPreferences.getInstance();
+        final statusBar = StatusBarService(prefs);
+        ErrorReportingService.report(
+          StateError('offline'),
+          StackTrace.current,
+          notice: ErrorNotice(statusBar, key: 'test:download', title: "Couldn't download"),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(StatusBarService(prefs).history.map((n) => n.key), contains('test:download'));
+      });
+    });
+
+    test('told: true keeps the generic notice away without a notice of its own', () async {
+      final backend = FakeErrorReportingBackend(feedsNotice: true);
+      await withErrorHooks(() async {
+        final statusBar = await attachedStatusBar();
+        ErrorReportingService.report(StateError('picker failed'), StackTrace.current, told: true);
+        await Future<void>.delayed(Duration.zero);
+        expect(statusBar.activeNotices, isEmpty);
+        expect(backend.exceptions, hasLength(1));
+
+        // Only that error: the next one nobody told the operator about still says so.
+        ErrorReportingService.report(StateError('untold'), StackTrace.current);
+        await Future<void>.delayed(Duration.zero);
+        expect(generic(statusBar), hasLength(1));
+      }, backend: backend);
+    });
+
+    test('a failure reported on its way up through two catches uploads once', () async {
+      // A catch that reports and rethrows, under a catch that reports whatever
+      // reaches it: the same error AND the same trace arrive twice.
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        Future<void> inner() async {
+          try {
+            throw StateError('boom');
+          } catch (e, stack) {
+            ErrorReportingService.report(e, stack, context: 'inner');
+            rethrow;
+          }
+        }
+
+        try {
+          await inner();
+        } catch (e, stack) {
+          ErrorReportingService.report(e, stack, context: 'outer');
+        }
+        expect(backend.exceptions.map((e) => e.context), ['inner']);
+
+        // Identity, not equality of the text: a second failure that reads the same is a second failure.
+        ErrorReportingService.report(StateError('boom'), StackTrace.current, context: 'again');
+        expect(backend.exceptions, hasLength(2));
+      }, backend: backend);
+    });
+
+    test('a const exception thrown twice is two failures, and uploads twice', () async {
+      // The trap: a const exception is ONE object however often it is thrown,
+      // so matching on the object alone drops every report after the first
+      // for the rest of the session.
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        ErrorReportingService.report(const FormatException('unsupported'), StackTrace.current, context: 'first');
+        ErrorReportingService.report(const FormatException('unsupported'), StackTrace.current, context: 'second');
+        expect(backend.exceptions.map((e) => e.context), ['first', 'second']);
+      }, backend: backend);
+    });
+
+    test('messageOf drops the type an operator cannot read, and nothing else', () {
+      expect(ErrorReportingService.messageOf(ExtensionHostException('No entry.')), 'No entry.');
+      expect(ErrorReportingService.messageOf(HookTimeoutException('took too long')), 'took too long');
+      expect(ErrorReportingService.messageOf(Exception('plain')), 'plain');
+      expect(ErrorReportingService.messageOf(StateError('x')), 'Bad state: x', reason: 'a message of its own type keeps its wording');
     });
   });
 }

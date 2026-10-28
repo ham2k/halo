@@ -267,10 +267,15 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       // mergeConcurrentEdit).
       await widget.services.qsos.update(updated, basedOn: _loadedQso);
     } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'logsQsoEdit:save');
-      statusBar.showNotice(
-        key: 'logsQsoEdit:save',
-        text: t.loggingControls.saveFailed(error: e),
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'logsQsoEdit:save',
+        notice: ErrorNotice(
+          statusBar,
+          key: 'logsQsoEdit:save',
+          text: t.loggingControls.saveFailed(error: ErrorReportingService.messageOf(e)),
+        ),
       );
       return false;
     } finally {
@@ -287,10 +292,15 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     try {
       await widget.services.qsos.softDelete(widget.qso);
     } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'logsQsoEdit:delete');
-      statusBar.showNotice(
-        key: 'logsQsoEdit:delete',
-        text: t.loggingControls.deleteFailed(error: e),
+      ErrorReportingService.report(
+        e,
+        stack,
+        context: 'logsQsoEdit:delete',
+        notice: ErrorNotice(
+          statusBar,
+          key: 'logsQsoEdit:delete',
+          text: t.loggingControls.deleteFailed(error: ErrorReportingService.messageOf(e)),
+        ),
       );
       return false;
     } finally {

@@ -11,6 +11,7 @@
     "callsign": "CALLSIGN",
     "clear": "CLEAR",
     "dismiss": "DISMISS",
+    "copyDetails": "COPY DETAILS",
     "expand": "EXPAND",
     "collapse": "COLLAPSE"
   },

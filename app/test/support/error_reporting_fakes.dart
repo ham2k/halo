@@ -13,6 +13,7 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 
+import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/error_reporting_backend.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 
@@ -81,7 +82,12 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   /// not take the result down with it.
   final bool diagnosticThrows;
 
-  FakeErrorReportingBackend({this.failsToRun = false, this.breadcrumbThrows = false, this.diagnosticThrows = false});
+  /// Feeds every captured error the policy notifies on into the generic
+  /// notice, as the real backend's `beforeSend` does — the only path by which
+  /// a `report()`ed error ever reaches that notice.
+  final bool feedsNotice;
+
+  FakeErrorReportingBackend({this.failsToRun = false, this.breadcrumbThrows = false, this.diagnosticThrows = false, this.feedsNotice = false});
 
   @override
   Future<bool> run(FutureOr<void> Function() startBody) async {
@@ -93,6 +99,7 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   @override
   void captureException(Object error, StackTrace? stackTrace, {String? context}) {
     exceptions.add(RecordedException(error, stackTrace, context));
+    if (feedsNotice && ErrorPolicy.decide(error).disposition.notifies) ErrorReportingService.notify(error, stackTrace);
   }
 
   @override

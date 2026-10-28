@@ -99,6 +99,7 @@ class _Translations$common$qrp extends Translations$common$en {
 	@override String get callsign => 'callsign';
 	@override String get clear => 'clear';
 	@override String get dismiss => 'dismiss';
+	@override String get copyDetails => 'copy details';
 	@override String get expand => 'expand';
 	@override String get collapse => 'collapse';
 }
@@ -4360,6 +4361,7 @@ extension on TranslationsQrp {
 			'common.callsign' => 'callsign',
 			'common.clear' => 'clear',
 			'common.dismiss' => 'dismiss',
+			'common.copyDetails' => 'copy details',
 			'common.expand' => 'expand',
 			'common.collapse' => 'collapse',
 			'onboarding.welcomeTitle' => 'welcome to ham2k portable logger!',
@@ -4860,9 +4862,9 @@ extension on TranslationsQrp {
 			'operation.layout.panels.mapDescription' => 'where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'the operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'sections and order',
-			'operation.layout.panels.summariesDays' => 'each day',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.summariesDays' => 'each day',
 			'operation.layout.panels.summariesReset' => 'show all',
 			'operation.layout.panels.summariesAllHidden' => 'every section is hidden. pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'a clock face, in any time zone',
@@ -5374,9 +5376,9 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeNewSection' => 'new section',
 			'loggingControls.info.noticeBonusStation' => 'bonus station!',
 			'loggingControls.info.noticeMissingExchange' => 'no exchange',
-			'loggingControls.info.noticeInvalidExchange' => 'bad exchange',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeInvalidExchange' => 'bad exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'unknown event',
 			'loggingControls.info.noticeIncompleteCall' => 'incomplete call — not scored',
 			'loggingControls.info.noticeOurGrid' => 'set our grid',
@@ -5888,9 +5890,9 @@ extension on TranslationsQrp {
 			'settings.syncPanel.account' => 'account',
 			'settings.syncPanel.refresh' => 'refresh',
 			'settings.syncPanel.switchAccounts' => 'switch accounts',
-			'settings.syncPanel.switchAccountsDescription' => 'link this device to another account with a qr code or email',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.switchAccountsDescription' => 'link this device to another account with a qr code or email',
 			'settings.syncPanel.connectionRequests' => 'connection requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'a device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'account email',
@@ -6402,9 +6404,9 @@ extension on TranslationsQrp {
 			'settings.profiles.name' => 'name',
 			'settings.profiles.email' => 'email',
 			'settings.profiles.club' => 'club',
-			'settings.profiles.arrlSection' => 'arrl section',
 			_ => null,
 		} ?? switch (path) {
+			'settings.profiles.arrlSection' => 'arrl section',
 			'settings.profiles.racSection' => 'rac section',
 			'settings.profiles.section' => 'section',
 			'settings.search.clear' => 'clear',

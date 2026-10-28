@@ -35,6 +35,8 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException;
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/version.dart' show Edition, kEdition;
 import 'error_policy.dart';
@@ -103,7 +105,34 @@ class ErrorReportingService {
   /// already surfaced by BootErrorScreen). Always logs locally; uploads via
   /// the active backend unless [ErrorPolicy] classifies it as noise, so a
   /// known-harmless error stays out of the backend however it was caught.
-  static void report(Object error, StackTrace? stackTrace, {String? context}) {
+  ///
+  /// [notice] is the caller's own words for a failure of something the
+  /// operator asked for, shown whatever the policy decides; [told] says the
+  /// caller already told the operator its own way (a snackbar). Either one
+  /// keeps the generic [notify] notice off this error: it would say strictly
+  /// less, on top. Neither changes the upload, which is the policy's alone.
+  ///
+  /// A failure is uploaded once, however many catches report it on its way
+  /// up: a catch that reports and rethrows, under one that reports what
+  /// reaches it, would otherwise upload the same failure twice. "The same
+  /// failure" is the same error object WITH the same trace object, which a
+  /// rethrow carries along — the object alone is not enough, because a
+  /// `const` exception is one object however many times it is thrown.
+  static void report(Object error, StackTrace? stackTrace, {String? context, ErrorNotice? notice, bool told = false}) {
+    if (notice != null || told) _mark(_told, error);
+    _upload(error, stackTrace, context: context);
+    // After the upload, so a notice that cannot be shown never costs it.
+    if (notice != null) _showErrorNotice(notice, error, stackTrace);
+  }
+
+  static void _upload(Object error, StackTrace? stackTrace, {String? context}) {
+    if (_markable(error) && stackTrace != null) {
+      if (identical(_reported[error], stackTrace)) {
+        debugPrint('[error-reporting] ${context ?? 'caught'}: already reported: $error');
+        return;
+      }
+      _reported[error] = stackTrace;
+    }
     debugPrint('[error-reporting] ${context ?? 'caught'}: $error\n${stackTrace ?? ''}');
     if (error is WriteRefused) noticeWriteRefused(error);
     final decision = ErrorPolicy.decide(error);
@@ -325,48 +354,147 @@ class ErrorReportingService {
   /// so concurrent errors can't double-post.
   static void notify(Object error, StackTrace? stackTrace) {
     final statusBar = _statusBar;
-    if (statusBar == null || _noticeShown) return;
+    if (statusBar == null || _noticeShown || _isMarked(_told, error)) return;
     _noticeShown = true;
-    // Both strings are built now rather than in the microtask: a lazily
-    // described FlutterError can name elements that are unmounted by then.
+    // resolveIconName expects a Material Design Icons name (kebab-case) or an
+    // fa- prefixed FontAwesome one — a Flutter Icons constant name like
+    // 'error_outline' (a different set entirely) matches neither and silently
+    // falls back to the puzzle-piece placeholder.
+    //
+    // Not persisted: its whole point is the "Copy details" action, which
+    // can't survive a restart (a VoidCallback isn't serializable), and its
+    // text says nothing on its own — persisting it anyway just leaves a
+    // dead, button-less copy of a past error sitting in the footer
+    // indefinitely, with no way to act on it or learn what it even was.
+    _postErrorNotice(
+      statusBar,
+      key: 'error-reporting:first-error',
+      icon: 'alert-circle',
+      title: 'Something went wrong',
+      text: noticeText(error, stackTrace),
+      error: error,
+      stackTrace: stackTrace,
+      persist: false,
+      defer: true,
+    );
+  }
+
+  /// Shows [notice] for [error] — its own text, or the error's message. Kept
+  /// in history unless the caller says otherwise: unlike [notify]'s, its text
+  /// names the failure, which still says something once "Copy details" is
+  /// gone after a restart.
+  ///
+  /// Shown at once rather than deferred like [notify]'s: a caller that awaits
+  /// the failure and then reads the bar must find it there. A listener that
+  /// throws is the notifier's to catch; a bar already disposed is caught
+  /// here, so the caller's own catch still finishes.
+  static void _showErrorNotice(ErrorNotice notice, Object error, StackTrace? stackTrace) {
+    try {
+      _postErrorNotice(
+        notice.statusBar,
+        key: notice.key,
+        icon: notice.icon,
+        title: notice.title,
+        text: notice.text ?? messageOf(error),
+        error: error,
+        stackTrace: stackTrace,
+        persist: notice.persist,
+        defer: false,
+      );
+    } catch (e) {
+      debugPrint('[error-reporting] could not show ${notice.key}: $e');
+    }
+  }
+
+  /// Posts an error notice carrying "Copy details" for [error] and its trace.
+  ///
+  /// [defer] posts it from a microtask, as [notify] needs: it runs inside the
+  /// framework's error handler, mid build or layout. The details are built
+  /// now either way: a lazily described FlutterError can name elements that
+  /// are unmounted by the time a microtask runs.
+  static void _postErrorNotice(
+    StatusBarService statusBar, {
+    required String key,
+    required String icon,
+    required String? title,
+    required String text,
+    required Object error,
+    required StackTrace? stackTrace,
+    required bool persist,
+    required bool defer,
+  }) {
     final details = '$error\n\n${stackTrace ?? ''}';
-    final text = noticeText(error, stackTrace);
-    scheduleMicrotask(() {
+    void post() {
       statusBar.showNotice(
-        key: 'error-reporting:first-error',
-        // resolveIconName expects a Material Design Icons name (kebab-case)
-        // or an fa- prefixed FontAwesome one — a Flutter Icons constant
-        // name like 'error_outline' (a different set entirely) matches
-        // neither and silently falls back to the puzzle-piece placeholder.
-        icon: 'alert-circle',
-        title: 'Something went wrong',
+        key: key,
+        icon: icon,
+        title: title,
         text: text,
         actions: [
           StatusBarAction(
-            label: 'Copy details',
+            label: t.common.copyDetails,
             onTap: () => unawaited(Clipboard.setData(ClipboardData(text: details))),
           ),
         ],
-        // Its whole point is the "Copy details" action, which can't survive
-        // a restart (a VoidCallback isn't serializable) — persisting it
-        // anyway just leaves a dead, button-less copy of a past error
-        // sitting in the footer indefinitely, with no way to act on it or
-        // learn what it even was.
-        persist: false,
+        persist: persist,
       );
-    });
+    }
+
+    if (defer) {
+      scheduleMicrotask(post);
+    } else {
+      post();
+    }
   }
 
-  /// The body of the [notify] notice. An operator gets reassurance; a Dev
-  /// build gets the error itself and where it was raised, because the person
-  /// running one is the person who will fix it, and "Copy details" plus a
-  /// paste is a round trip for a line that fits on the card.
+  /// [error]'s message as an operator reads it: without the type name an
+  /// extension failure or a plain `Exception` puts in front of it, which says
+  /// nothing to anyone but whoever opens "Copy details".
+  static String messageOf(Object error) {
+    if (error is ExtensionHostException) return error.message;
+    final text = '$error';
+    return text.startsWith('Exception: ') ? text.substring('Exception: '.length) : text;
+  }
+
+  /// The trace each error was last uploaded with — see [report].
+  ///
+  /// Beside it, errors the operator was already told about by the caller.
+  /// That one is by the object alone: a backend hands [notify] a trace it
+  /// re-parsed, never the one reported. So a `const` exception a caller told
+  /// the operator about keeps the generic notice off its later throws too.
+  ///
+  /// An object an [Expando] cannot key (a string, a number) is never marked,
+  /// and simply reports each time.
+  static Expando<StackTrace> _reported = Expando();
+  static Expando<bool> _told = Expando();
+
+  static bool _markable(Object error) => error is! String && error is! num && error is! bool && error is! Record;
+  static void _mark(Expando<bool> marks, Object error) {
+    if (_markable(error)) marks[error] = true;
+  }
+
+  static bool _isMarked(Expando<bool> marks, Object error) => _markable(error) && marks[error] == true;
+
+  /// The body of the [notify] notice. An operator gets reassurance and the
+  /// first line of what failed — enough to say which thing went wrong in a
+  /// support message; a Dev build gets the error itself and where it was
+  /// raised, because the person running one is the person who will fix it,
+  /// and "Copy details" plus a paste is a round trip for a line that fits on
+  /// the card.
   @visibleForTesting
   static String noticeText(Object error, StackTrace? stackTrace, {Edition edition = kEdition}) {
     if (edition != Edition.dev) {
-      return reportingEnabled
+      final reassurance = reportingEnabled
           ? 'An unexpected error occurred and was reported. The app should keep working; restart if anything looks off.'
           : 'An unexpected error occurred. The app should keep working; restart if anything looks off.';
+      // A string is a backend's own label for an event with no error object
+      // behind it ("Reported error"), not a failure's message.
+      if (error is String) return reassurance;
+      // A query string is where a request carries its key or token, and an
+      // operator may screenshot the footer into a support thread.
+      var what = messageOf(error).trim().split('\n').first.replaceAllMapped(_queryString, (m) => '${m[1]}?…');
+      if (what.length > 160) what = '${what.substring(0, 160)}…';
+      return what.isEmpty ? reassurance : '$reassurance\n\n$what';
     }
     var message = '$error'.trim();
     // Framework errors can run to dozens of lines; the full text is one tap
@@ -377,6 +505,8 @@ class ErrorReportingService {
     final frame = _firstOwnFrame(stackTrace);
     return frame == null ? message : '$message\n\nat $frame';
   }
+
+  static final _queryString = RegExp(r'(\w+://[^\s?]+)\?[^\s,)]*');
 
   // `package:` on the VM, `packages/` in a web debug build's trace.
   static final _ownFrame = RegExp(r'packages?[:/](ham2k_logger|halo_\w+)/');
@@ -402,7 +532,28 @@ class ErrorReportingService {
   static void resetForTesting() {
     _statusBar = null;
     _noticeShown = false;
+    _reported = Expando();
+    _told = Expando();
     _backend = const NoopErrorReportingBackend();
     ErrorPolicy.resetForTesting();
   }
+}
+
+/// A caller's own notice for a failure it reports — see
+/// [ErrorReportingService.report]. Keyed, so a repeat replaces it.
+class ErrorNotice {
+  final StatusBarService statusBar;
+  final String key;
+  final String? title;
+
+  /// The body; the error's own message ([ErrorReportingService.messageOf])
+  /// when null.
+  final String? text;
+  final String icon;
+
+  /// Kept in the notice history, as [StatusBarService.showNotice] keeps one
+  /// by default; its "Copy details" action does not survive a restart.
+  final bool persist;
+
+  const ErrorNotice(this.statusBar, {required this.key, this.title, this.text, this.icon = 'alert-circle', this.persist = true});
 }

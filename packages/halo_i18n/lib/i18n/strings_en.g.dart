@@ -124,6 +124,9 @@ class Translations$common$en {
 	/// en: 'Dismiss'
 	String get dismiss => 'Dismiss';
 
+	/// en: 'Copy details'
+	String get copyDetails => 'Copy details';
+
 	/// en: 'Expand'
 	String get expand => 'Expand';
 
@@ -9490,6 +9493,7 @@ extension on Translations {
 			'common.callsign' => 'Callsign',
 			'common.clear' => 'Clear',
 			'common.dismiss' => 'Dismiss',
+			'common.copyDetails' => 'Copy details',
 			'common.expand' => 'Expand',
 			'common.collapse' => 'Collapse',
 			'onboarding.welcomeTitle' => 'Welcome to Ham2K Portable Logger!',
@@ -9990,9 +9994,9 @@ extension on Translations {
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'The operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'Sections and Order',
-			'operation.layout.panels.summariesDays' => 'Each day',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.summariesDays' => 'Each day',
 			'operation.layout.panels.summariesReset' => 'Show all',
 			'operation.layout.panels.summariesAllHidden' => 'Every section is hidden. Pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'A clock face, in any time zone',
@@ -10504,9 +10508,9 @@ extension on Translations {
 			'loggingControls.info.noticeNewSection' => 'New Section',
 			'loggingControls.info.noticeBonusStation' => 'Bonus Station!',
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
-			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
 			'loggingControls.info.noticeIncompleteCall' => 'Incomplete Call — Not Scored',
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
@@ -11018,9 +11022,9 @@ extension on Translations {
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Refresh',
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
-			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
@@ -11532,9 +11536,9 @@ extension on Translations {
 			'settings.profiles.name' => 'Name',
 			'settings.profiles.email' => 'Email',
 			'settings.profiles.club' => 'Club',
-			'settings.profiles.arrlSection' => 'ARRL Section',
 			_ => null,
 		} ?? switch (path) {
+			'settings.profiles.arrlSection' => 'ARRL Section',
 			'settings.profiles.racSection' => 'RAC Section',
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
