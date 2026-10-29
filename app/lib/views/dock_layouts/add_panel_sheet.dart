@@ -51,7 +51,7 @@ extension AddPanelSheet<T extends StatefulWidget> on DockHost<T> {
         closeLabel: context.t.common.close,
         // The header's layout controls, drawn by the route into the strip of
         // header it leaves uncovered — the view's own copies are suppressed
-        // while this is up (see [layoutHeaderControls]). Rebuilt on the same
+        // while this is up (see [LayoutControls.layoutHeaderControls]). Rebuilt on the same
         // revision the sheet body is, since Save Layout is one of them and
         // changes which of them there are.
         headerTrailing: ValueListenableBuilder<int>(
@@ -118,7 +118,7 @@ extension AddPanelSheet<T extends StatefulWidget> on DockHost<T> {
                     ),
               ],
               // Not a core one (always on), not one an experiment gates (enabling
-              // it could not load it) — the same rule [_hasPanelExtensions] uses.
+              // it could not load it) — the same rule [LayoutControls._hasPanelExtensions] uses.
               enableable: [
                 for (final info in extensions.availableExtensions)
                   if (!info.core && info.hooks.contains(HookCategories.panel) && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info))

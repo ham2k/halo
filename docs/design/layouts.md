@@ -1448,7 +1448,7 @@ not add it.
 | Persisted pane widths (`layoutDimension`) | `app/lib/services/settings_service.dart` |
 | Home's dock, panels and narrow fallback | `app/lib/views/home_view.dart` |
 | The navigation rail | `app/lib/views/home_navigation_rail.dart` |
-| The shared dock-hosting machinery | `app/lib/views/dock_host.dart` |
+| The shared dock-hosting machinery | `app/lib/views/dock_host.dart`, with its Add a Panel sheet, layout controls and shared dashboard panels as parts in `app/lib/views/dock_layouts/` |
 | Named layouts, layout files, the switcher and its dialogs | `app/lib/views/dock_layouts/` |
 | Operation tab/split layout | `app/lib/views/operation/operation_view_dock.dart` (part of `operation_view.dart`) |
 | Settings split | `app/lib/views/settings_view.dart` |

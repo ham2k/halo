@@ -172,7 +172,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
   /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
   /// settings through a target, not `formFields`, so
-  /// [DockHost.buildPanelSettingsButton] wouldn't find it either.
+  /// [LayoutControls.buildPanelSettingsButton] wouldn't find it either.
   Widget _buildMapSettingsButton({BuildContext? context}) =>
       buildTargetSettingsButton(context ?? this.context, target: 'map', title: (context ?? this.context).t.operation.menu.mapSettingsTitle);
 
@@ -332,7 +332,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       // What a pane offers while it is being USED. The dock hides all of it
       // while editing, where a tab is a grab handle — a panel's own settings
       // are reachable from the panel, and its LAYOUT options from its header
-      // (see `DockHost.paneEditControls`); the two are different questions and
+      // (see `LayoutControls.paneEditControls`); the two are different questions and
       // this is the one that belongs to the panel.
       tabActions: {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),

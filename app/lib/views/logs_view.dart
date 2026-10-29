@@ -1155,7 +1155,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// The Map panel's basemap picker, same target-scoped dialog the
   /// Operation view's own Map tab opens (see OperationView's own copy of
   /// this button) — Map is native and reached through a target rather than
-  /// through `formFields`, so [DockHost.buildPanelSettingsButton] wouldn't
+  /// through `formFields`, so [LayoutControls.buildPanelSettingsButton] wouldn't
   /// find it either.
   Widget _buildMapSettingsButton(BuildContext context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle);
 
