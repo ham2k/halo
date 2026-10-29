@@ -62,9 +62,9 @@
     },
     {
       "key": "ham2k-cwt",
-      "version": "0.2.6",
-      "file": "ham2k-cwt-0.2.6.h2kext",
-      "sha256": "cd4b124adcca61771dd68dcc85811e4d6fc7b0b2e04ac9ae0384fa7e39d89f25"
+      "version": "0.2.7",
+      "file": "ham2k-cwt-0.2.7.h2kext",
+      "sha256": "165d260738d1e3fe1ec896e490eafb87a322d15ed9eb747bcf2dbe00183431ad"
     },
     {
       "key": "ham2k-dxcc",
@@ -122,9 +122,9 @@
     },
     {
       "key": "ham2k-naqp",
-      "version": "0.2.7",
-      "file": "ham2k-naqp-0.2.7.h2kext",
-      "sha256": "6a25de3ea76ce106fb5f2985703308a27e71833459c9b0d5cfc74b49a7d02702"
+      "version": "0.2.8",
+      "file": "ham2k-naqp-0.2.8.h2kext",
+      "sha256": "db743abfe4368f90c4149860af3316677a1306c23b86a42f287904a998b69275"
     },
     {
       "key": "ham2k-nrrl-nfd",
@@ -146,9 +146,9 @@
     },
     {
       "key": "ham2k-pota",
-      "version": "0.2.13",
-      "file": "ham2k-pota-0.2.13.h2kext",
-      "sha256": "b186e62d8c4176b1db8a91ad5c84948c551cea7d2311a2ce4b6ac97b8046d969"
+      "version": "0.2.14",
+      "file": "ham2k-pota-0.2.14.h2kext",
+      "sha256": "e13d0d6d2d2497b21a8dd03b7a83b8bfff6a89798f794c75774d8891c2463644"
     },
     {
       "key": "ham2k-qrz",
