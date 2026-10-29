@@ -285,7 +285,7 @@ class PanelDefinition {
 /// in a descriptor doing nothing, so it is rejected at parse time WITH a
 /// line in the console — a panel that renders once and never again is
 /// otherwise indistinguishable from a panel that meant to.
-const knownPanelTriggers = {'operation', 'qso', 'qsoLogged', 'lookup', 'spots'};
+const knownPanelTriggers = {'operation', 'qso', 'qsoLogged', 'lookup', 'spots', 'radio'};
 
 bool isKnownPanelTrigger(String trigger) {
   if (knownPanelTriggers.contains(trigger)) return true;

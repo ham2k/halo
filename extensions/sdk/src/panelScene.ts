@@ -15,10 +15,11 @@ export interface PanelScene {
   /** Where rect-less native controls and the artwork go. Omitted, the artwork fills the panel. */
   layout?: PanelSceneLayoutNode
   /**
-   * Have the host feed a radio's live readings into `values` — the `PanelSceneRadioValue` names,
-   * updated as the radio reports them, with no render. `node` is a radio's id; omitted, the
-   * logging radio. Needs `requiresRadioRead` and extension API 7; without either, every reading
-   * is missing. A missing reading binds as the bottom of a binding's range and shows as `—`.
+   * Have the host feed a radio's live readings into `values` — the `PanelSceneRadioValue` names —
+   * and `strings` — the `PanelSceneRadioString` names — updated as the radio reports them, with no
+   * render. `node` is a radio's id; omitted, the logging radio. Needs `requiresRadioRead` and
+   * extension API 7 (the dial, API 13); without either, every reading is missing. A missing number
+   * binds as the bottom of a binding's range and shows as `—`; a missing string is empty.
    */
   radio?: { node?: string }
   /**
@@ -45,6 +46,48 @@ export type PanelSceneRadioValue =
   | "radio.swrAverage"
   /** 0 while transmitting, then counting up; a long time when there has been none. Extension API 7. */
   | "radio.secondsSinceTransmit"
+  /** The frequency, in Hz: the last the radio reported, kept while it is disconnected. Extension API 13. */
+  | "radio.frequencyHz"
+  /** The receive passband's edges and width, in Hz, while the radio is live. Extension API 13. */
+  | "radio.passbandLowHz"
+  | "radio.passbandHighHz"
+  | "radio.passbandWidthHz"
+  /** The power the radio is SET to, in watts, while live — `radio.powerOut` is what it measures. Extension API 13. */
+  | "radio.powerWatts"
+  /** 1 while the app holds the radio's PTT, else 0; given where `readRadio()` gives `keying`. `radio.transmitting` is the radio's own report. Extension API 13. */
+  | "radio.ptt"
+  /** 1 while the radio is connected and answering, else 0. Extension API 13. */
+  | "radio.connected"
+
+/**
+ * Host-fed words of a scene with `radio`, in `strings`; empty when the radio has not said.
+ * Reserved like the values. Extension API 13.
+ */
+export type PanelSceneRadioString =
+  /** The mode as the radio reports it (`USB`, `CW`, `DATA-USB`…); the last known, like the frequency. */
+  | "radio.mode"
+  /** `inline`, `bypassed`, `tuning` or `failed`, while live. */
+  | "radio.tuner"
+  /** The connection: `connected`, `connecting`, `disconnecting`, `disconnected` or `error`. */
+  | "radio.status"
+
+/**
+ * Shows a layer or control only while a value passes one test, checked by the host with no call
+ * to the extension: `is` one value, `in` a list of them, or within `min`…`max` (either may be
+ * omitted). `not` inverts it. `value` names a number or a string — the scene's own or a `radio.`
+ * one — and the test must suit it: words for a string, numbers for a number. Exactly one of `is`,
+ * a non-empty `in`, or a range; the host refuses a scene that gives two. A radio number not given
+ * fails the test before `not` inverts it; a radio word not given is empty. Hidden is as at opacity 0: not drawn, no clicks, no focus; a control
+ * placed by `layout` keeps its place. Extension API 13.
+ */
+export interface SceneCondition {
+  value: string
+  is?: string | number
+  in?: (string | number)[]
+  min?: number
+  max?: number
+  not?: boolean
+}
 
 /** A clamped, linear mapping. No expressions or extension code run per frame. */
 export interface SceneBinding {
@@ -117,6 +160,8 @@ export interface PanelSceneLayer {
   scaleX?: SceneBinding
   scaleY?: SceneBinding
   opacity?: SceneBinding
+  /** Drawn only while this holds. Extension API 13. */
+  when?: SceneCondition
   /** Rotation and scale origin as fractions of this layer's dimensions; default [0.5, 0.5]. */
   pivot?: [number, number]
   transitionMs?: number
@@ -424,6 +469,8 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
    * keyboard focus or screen-reader node. Anything between is only drawn fainter.
    */
   opacity?: number | SceneBinding
+  /** Shown only while this holds, hidden as at opacity 0. Extension API 13. */
+  when?: SceneCondition
   /** `nativeButton` only. Default `filled`. */
   variant?: "filled" | "tonal" | "outlined" | "text"
   /** `nativeButton` and `nativeChip`: a Material Design Icons name, such as `radio-tower`. */

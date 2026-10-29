@@ -96,6 +96,10 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     for (final name in sceneRadioValues) {
       _values[name] = readings[name.substring('radio.'.length)]?.toDouble() ?? double.negativeInfinity;
     }
+    final words = uuid == null ? const <String, String>{} : source!.readingStrings(uuid);
+    for (final name in sceneRadioStrings) {
+      _strings[name] = words[name.substring('radio.'.length)] ?? '';
+    }
     // Nothing notifies as time passes, so a scene shortly after a transmission reads again on its
     // own: a hold bound to the seconds since, ends on time.
     final since = _values['radio.secondsSinceTransmit'] ?? double.infinity;
@@ -257,7 +261,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         if (event['sequence'] == _sequence) {
           setState(() {
             for (final MapEntry(:key, :value) in patch.entries) {
-              if (_active.contains(key)) continue;
+              // The host's alone: a patch would show a dial the radio is not on until its next reading.
+              if (_active.contains(key) || sceneRadioValues.contains(key) || sceneRadioStrings.contains(key)) continue;
               if (value is double && _values.containsKey(key)) _values[key] = value;
               if (value is String && _strings.containsKey(key)) _strings[key] = value;
             }
@@ -316,7 +321,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   /// or focus, and Opacity drops its screen-reader node: unseen, it must not
   /// act on what is under it.
   Widget _faded(SceneControl control, Widget child) {
-    final opacity = control.opacityAt(_values);
+    final opacity = control.opacityAt(_values, _strings);
     final hidden = opacity <= 0;
     return ExcludeFocus(
       excluding: hidden,
@@ -361,7 +366,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       key: _spectrumKeys.putIfAbsent(control.id, GlobalKey.new),
       control: control,
       source: widget.spectrum,
-      awake: _appVisible && DockPaneVisibility.of(context) && control.opacityAt(_values) > 0,
+      awake: _appVisible && DockPaneVisibility.of(context) && control.opacityAt(_values, _strings) > 0,
       values: _values,
       onHover: spec.hoverHz == null && spec.hoverDb == null
           ? null
@@ -497,9 +502,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     final painted = _painted(button.fixed).toList();
     for (final piece in painted.sublist(0, painted.indexOf(button)).reversed) {
       switch (piece) {
-        case SceneLayer layer when layer.blocksPointer && layer.rect.contains(at) && (layer.bindings['opacity']?.evaluate(_values) ?? 1) > 0:
+        case SceneLayer layer when layer.blocksPointer && layer.rect.contains(at) && layer.opacityAt(_values, _strings) > 0:
           return null;
-        case SceneControl control when (control.rect?.contains(at) ?? false) && control.opacityAt(_values) > 0:
+        case SceneControl control when (control.rect?.contains(at) ?? false) && control.opacityAt(_values, _strings) > 0:
           if (control.kind == 'button') continue;
           return control.scrollThrough && !control.disabled ? control : null;
       }
@@ -640,8 +645,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       final value = scene.scroll?.value;
       _bound =
           value != null &&
-          (scene.layers.any((l) => l.text?['value'] == value || l.bindings.values.any((b) => b.value == value)) ||
-              scene.controls.any((c) => c.opacityBinding?.value == value));
+          (scene.layers.any((l) => l.text?['value'] == value || l.when?.value == value || l.bindings.values.any((b) => b.value == value)) ||
+              scene.controls.any((c) => c.opacityBinding?.value == value || c.when?.value == value));
     }
     return _bound;
   }

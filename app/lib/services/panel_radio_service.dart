@@ -10,6 +10,10 @@ import 'cat/equipment_registry.dart';
 import 'cat/spectrum.dart';
 import 'radio_service.dart';
 
+/// Whether a radio's report is current: connected, fresh and without a problem. What `readRadio` and
+/// a scene's `radio.` values give only while it holds, so the two never disagree.
+bool isLiveRadio(EquipmentState state) => state.status == EquipmentStatus.connected && !state.stale && state.problem == null;
+
 /// [state]'s meter readings still worth showing, by [RadioMeter] name — none
 /// unless it is [live]. The receive signal lingers two seconds, past the
 /// usual expiry: it pauses while the radio transmits.
@@ -62,7 +66,7 @@ class PanelRadioService {
     // keyer has no node here, and must not answer with that device's status,
     // problem text or frequency under a capability that reads radios.
     final state = node == null ? const EquipmentState() : cat.stateFor(node.uuid);
-    final live = node != null && state.status == EquipmentStatus.connected && !state.stale && state.problem == null;
+    final live = node != null && isLiveRadio(state);
     final telemetry = state.telemetry;
     final type = node == null ? null : cat.typeFor(node);
     final config = type?.driverConfig(node!.config);

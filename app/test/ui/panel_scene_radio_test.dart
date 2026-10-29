@@ -15,10 +15,12 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 
 class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   Map<String, num> live = {};
+  Map<String, String> words = {};
   final named = <String?>[];
 
-  void report(Map<String, num> next) {
+  void report(Map<String, num> next, [Map<String, String>? nextWords]) {
     live = next;
+    if (nextWords != null) words = nextWords;
     notifyListeners();
   }
 
@@ -30,6 +32,10 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
 
   @override
   Map<String, num> readings(String uuid) => live;
+  @override
+  Map<String, String> readingStrings(String uuid) => words;
+  @override
+  List<Object?> dialState() => [live['frequencyHz'], words['mode']];
   @override
   Listenable get readingChanges => this;
   @override
@@ -95,7 +101,7 @@ Map<String, dynamic> _doc({Map<String, dynamic>? radio = const {}, Map<String, d
   ],
 };
 
-Future<void> _show(WidgetTester tester, Map<String, dynamic> doc, SceneSpectrumSource? source) async {
+Future<void> _show(WidgetTester tester, Map<String, dynamic> doc, SceneSpectrumSource? source, {SceneEventHandler? onEvent}) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
@@ -105,7 +111,7 @@ Future<void> _show(WidgetTester tester, Map<String, dynamic> doc, SceneSpectrumS
             height: 40,
             child: DockPaneVisibility(
               visible: true,
-              child: PanelSceneView(scene: PanelScene(doc), spectrum: source),
+              child: PanelSceneView(scene: PanelScene(doc), spectrum: source, onEvent: onEvent),
             ),
           ),
         ),
@@ -245,5 +251,212 @@ void main() {
     expect(() => PanelScene(_doc(values: {'radio.signalDbm': -50})), throwsFormatException);
     expect(PanelScene(_doc()).hasRadio, isTrue);
     expect(sceneRadioValues, contains('radio.transmitting'));
+  });
+
+  group('the dial', () {
+    Map<String, dynamic> dialDoc({Map<String, dynamic>? radio = const {}, List<Map<String, dynamic>> extra = const []}) => {
+      'version': 1,
+      'width': 400,
+      'height': 40,
+      'values': <String, double>{},
+      'radio': ?radio,
+      'layers': [
+        {
+          'id': 'khz',
+          'x': 0,
+          'y': 0,
+          'width': 200,
+          'height': 20,
+          'text': {'value': 'radio.frequencyHz', 'scale': .001, 'truncate': true},
+        },
+        {
+          'id': 'mode',
+          'x': 200,
+          'y': 0,
+          'width': 200,
+          'height': 20,
+          'text': {'value': 'radio.mode'},
+        },
+        ...extra,
+      ],
+    };
+
+    testWidgets('a VFO move reaches the readout with no render: frequency and mode both', (tester) async {
+      // A readout that waits for a render trails the dial by up to a second, while the panadapter
+      // beside it follows at once.
+      final radio = _Radio()
+        ..live = {'frequencyHz': 14074000}
+        ..words = {'mode': 'USB'};
+      addTearDown(radio.dispose);
+      await _show(tester, dialDoc(), radio);
+      expect(find.text('14074'), findsOneWidget);
+      expect(find.text('USB'), findsOneWidget);
+
+      radio.report({'frequencyHz': 7030500}, {'mode': 'CW'});
+      await tester.pump();
+      expect(find.text('7030'), findsOneWidget);
+      expect(find.text('CW'), findsOneWidget);
+
+      // A mode the radio has not given is empty, never the last one it gave.
+      radio.report({'frequencyHz': 7030500}, {});
+      await tester.pump();
+      expect(find.text('CW'), findsNothing);
+    });
+
+    testWidgets('`when` shows a layer only for the modes it names, and a hidden control takes no clicks', (tester) async {
+      final radio = _Radio()..words = {'mode': 'USB'};
+      addTearDown(radio.dispose);
+      final events = <Map<String, dynamic>>[];
+      final doc = dialDoc(
+        extra: [
+          {
+            'id': 'phone',
+            'x': 0,
+            'y': 20,
+            'width': 100,
+            'height': 20,
+            'when': {
+              'value': 'radio.mode',
+              'in': ['USB', 'LSB'],
+            },
+            'text': {'literal': 'PHONE'},
+          },
+          {
+            'id': 'not-cw',
+            'x': 100,
+            'y': 20,
+            'width': 100,
+            'height': 20,
+            'when': {'value': 'radio.mode', 'is': 'CW', 'not': true},
+            'text': {'literal': 'NOT CW'},
+          },
+        ],
+      );
+      doc['controls'] = [
+        {
+          'id': 'keyer',
+          'kind': 'button',
+          'label': 'Keyer',
+          'event': 'keyer',
+          'x': 300,
+          'y': 20,
+          'width': 100,
+          'height': 20,
+          'when': {'value': 'radio.mode', 'is': 'CW'},
+        },
+      ];
+      await _show(
+        tester,
+        doc,
+        radio,
+        onEvent: (event) async {
+          events.add(event);
+          return const {};
+        },
+      );
+      expect(_opacity(tester, 'phone'), 1);
+      expect(_opacity(tester, 'not-cw'), 1);
+      await tester.tapAt(const Offset(350, 30));
+      await tester.pump();
+      expect(events, isEmpty, reason: 'hidden: a click on where it would be must not act');
+
+      radio.report({}, {'mode': 'CW'});
+      await tester.pump();
+      expect(_opacity(tester, 'phone'), 0);
+      expect(_opacity(tester, 'not-cw'), 0);
+      await tester.tapAt(const Offset(350, 30));
+      await tester.pump();
+      expect(events.map((e) => e['action']), ['keyer']);
+    });
+
+    testWidgets('a reading the radio has not given fails every `when`, even a `max` it would sit below', (tester) async {
+      // Negative infinity is below any max: without the guard a "low power" badge would show for a
+      // radio that has reported no power at all.
+      final radio = _Radio();
+      addTearDown(radio.dispose);
+      final doc = dialDoc(
+        extra: [
+          {
+            'id': 'qrp',
+            'x': 0,
+            'y': 20,
+            'width': 100,
+            'height': 20,
+            'when': {'value': 'radio.powerWatts', 'max': 10},
+            'text': {'literal': 'QRP'},
+          },
+        ],
+      );
+      await _show(tester, doc, radio);
+      expect(_opacity(tester, 'qrp'), 0);
+      radio.report({'powerWatts': 5});
+      await tester.pump();
+      expect(_opacity(tester, 'qrp'), 1);
+      radio.report({'powerWatts': 100});
+      await tester.pump();
+      expect(_opacity(tester, 'qrp'), 0);
+    });
+
+    testWidgets("an event's answer cannot set the dial: only the radio can", (tester) async {
+      // Patched, the readout would show a frequency the radio is not on until its next reading.
+      final radio = _Radio()
+        ..live = {'frequencyHz': 14074000}
+        ..words = {'mode': 'USB'};
+      addTearDown(radio.dispose);
+      final doc = dialDoc();
+      doc['controls'] = [
+        {'id': 'go', 'kind': 'button', 'label': 'Go', 'event': 'go', 'x': 0, 'y': 20, 'width': 100, 'height': 20},
+      ];
+      await _show(tester, doc, radio, onEvent: (_) async => {'radio.frequencyHz': 1000.0, 'radio.mode': 'AM'});
+      await tester.tapAt(const Offset(50, 30));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('14074'), findsOneWidget);
+      expect(find.text('USB'), findsOneWidget);
+    });
+
+    test('`when` is checked against what its value is, and the words are reserved like the numbers', () {
+      Map<String, dynamic> withWhen(Map<String, dynamic> when, {Map<String, dynamic>? radio = const {}}) => dialDoc(
+        radio: radio,
+        extra: [
+          {
+            'id': 'w',
+            'x': 0,
+            'y': 0,
+            'width': 10,
+            'height': 10,
+            'when': when,
+            'text': {'literal': 'x'},
+          },
+        ],
+      );
+      expect(PanelScene(withWhen({'value': 'radio.mode', 'is': 'USB'})).layers.last.when, isNotNull);
+      expect(PanelScene(withWhen({'value': 'radio.frequencyHz', 'min': 14e6, 'max': 14.35e6})).layers.last.when, isNotNull);
+      // A test of the wrong kind could never pass, hiding its layer for good: refused instead.
+      expect(() => PanelScene(withWhen({'value': 'radio.mode', 'min': 1})), throwsFormatException);
+      expect(() => PanelScene(withWhen({'value': 'radio.frequencyHz', 'is': 'USB'})), throwsFormatException);
+      expect(
+        () => PanelScene(
+          withWhen({
+            'value': 'radio.mode',
+            'in': ['USB', 1],
+          }),
+        ),
+        throwsFormatException,
+      );
+      // One test, and a value that exists.
+      expect(() => PanelScene(withWhen({'value': 'radio.mode'})), throwsFormatException);
+      expect(() => PanelScene(withWhen({'value': 'radio.mode', 'is': 'USB', 'min': 1})), throwsFormatException);
+      expect(() => PanelScene(withWhen({'value': 'nothing', 'is': 1})), throwsFormatException);
+      expect(() => PanelScene(withWhen({'value': 'radio.mode', 'is': 'USB'}, radio: null)), throwsFormatException);
+      // The host's words are its own.
+      expect(
+        () => PanelScene({
+          ...dialDoc(),
+          'strings': {'radio.mode': 'USB'},
+        }),
+        throwsFormatException,
+      );
+    });
   });
 }

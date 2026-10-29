@@ -3261,12 +3261,15 @@ export interface StatusBarNoticeParams {
 ///   'qsoLogged'  a QSO was logged, deleted or edited
 ///   'lookup'     a callsign lookup resolved
 ///   'spots'      the spots board changed (see HookContext.getSpots)
+///   'radio'      a radio's dial moved: frequency, mode, passband, transmit,
+///                PTT or connection — never a meter. Needs requiresRadioRead.
+///                Extension API 13.
 ///   'tick:<n>'   every <n> seconds while the panel is visible (min 1)
 ///
 /// A panel with no triggers renders once when it appears, and again only
 /// when its own config form changes — right for a panel showing static
 /// reference material.
-export type PanelTrigger = "operation" | "qso" | "qsoLogged" | "lookup" | "spots" | `tick:${number}`
+export type PanelTrigger = "operation" | "qso" | "qsoLogged" | "lookup" | "spots" | "radio" | `tick:${number}`
 
 /// One panel an extension contributes. Several may come from one extension,
 /// each with its own identity and config form; the host addresses them as

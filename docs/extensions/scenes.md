@@ -21,7 +21,10 @@ A plain scene that must reach those apps keeps `svgScene` and its lower API.
 **Extension API 7** adds the scene's host-fed `radio` values (*Radio values*
 below), `scaleX`/`scaleY` bindings, text `glow`, a knob's `menu` and second
 axis, and the spectrum control's `follow`, `span` and label `decimals`; a
-bundle using any of them declares `"api": 7`.
+bundle using any of them declares `"api": 7`. **Extension API 13** adds the
+radio's dial to those values — `radio.frequencyHz` and the rest of *Radio
+values* marked so, with `radio.mode`, `radio.tuner` and `radio.status` in
+`strings` — and `when` on layers and controls (*Conditions* below).
 
 ## Bindings, events and local formatting
 
@@ -139,6 +142,35 @@ covering the controls under it (keyboard focus still reaches them; mark them
 `disabled` too to shut them off). Only a pending action disables action
 controls; a value being sent does not. Any control can take an `opacity`, fixed or bound like a layer's;
 at 0 it takes no clicks, focus or screen-reader node.
+
+## Conditions
+
+A layer or a control may carry a **`when`** (extension API 13): it is shown only
+while one value passes one test, checked by the app as the value changes, with
+no call to the extension.
+
+```js
+{ id: 'ssb-filter', /* … */ when: { value: 'radio.mode', in: ['USB', 'LSB'] } }
+{ id: 'cw-keyer',   /* … */ when: { value: 'radio.mode', is: 'CW' } }
+{ id: 'qrp',        /* … */ when: { value: 'radio.powerWatts', max: 10 } }
+{ id: 'offline',    /* … */ when: { value: 'radio.connected', is: 1, not: true } }
+```
+
+`value` names a number or a string — the scene's own `values` or `strings`, or a
+`radio.` one — and the test is exactly one of `is` (one value), `in` (a list of
+up to 256) or a range, `min` and/or `max` inclusive; `not: true` inverts it. The
+test must suit the value: words for a string, numbers for a number, and no range
+on a string. A scene that mismatches them is refused when it arrives, since such
+a test could never pass. A radio number the radio has not given fails the test
+— `max: 10` does not show for a radio that has reported no power — before `not`
+inverts it, so `not` is how a scene says "while this is missing". A radio word
+it has not given is empty, so `is: ''` is the test for one.
+
+Hidden is the same as an opacity of 0: the layer is not drawn and a
+`blocksPointer` one lets clicks through; the control takes no clicks, focus or
+screen-reader node, and one placed by `layout` keeps its place. A `when` and an
+`opacity` combine: the opacity applies while the condition holds, and a layer's
+`transitionMs` fades it in and out.
 
 ## Events and the panel's config
 
@@ -403,7 +435,7 @@ stretches, rather than old signals being redrawn where they never were.
 
 A scene with a document-level `radio` block (extension API 7) is fed that
 radio's live readings by the host, into reserved values a binding, a text
-layer or a control's `opacity` can read like any other:
+layer, a control's `opacity` or a `when` can read like any other:
 
 | Value | |
 |---|---|
@@ -413,6 +445,29 @@ layer or a control's `opacity` can read like any other:
 | `radio.transmitting` | 1 or 0. |
 | `radio.swrAverage` | The SWR averaged over the transmission under way, or else over the last one — only readings taken with RF out count. |
 | `radio.secondsSinceTransmit` | 0 while transmitting, then counting up; a very large number when there has been no transmission. |
+| `radio.frequencyHz` | The frequency, in Hz. The last the radio reported: kept while it is disconnected or not answering, as the built-in Radio panel keeps it. API 13. |
+| `radio.passbandLowHz`, `radio.passbandHighHz`, `radio.passbandWidthHz` | The receive passband's edges, relative to the carrier, and its width, in Hz. API 13. |
+| `radio.powerWatts` | The power the radio is **set** to, in watts — `radio.powerOut` is what it measures on the air. API 13. |
+| `radio.ptt` | 1 while the app holds the radio's PTT, else 0 — given where `readRadio()` gives `keying`: the logging radio, connected, on a host with keying enabled. `radio.transmitting` is the radio's own report, and the two differ: a radio keyed from its own mic is transmitting with no PTT held. API 13. |
+| `radio.connected` | 1 while the radio is connected and answering, else 0. API 13. |
+
+And into reserved `strings` (API 13), which a text layer shows and a `when`
+tests; one the radio has not given is empty:
+
+| String | |
+|---|---|
+| `radio.mode` | The mode as the radio reports it — `USB`, `CW`, `DATA-USB`… Last known, like the frequency. |
+| `radio.tuner` | `inline`, `bypassed`, `tuning` or `failed`. |
+| `radio.status` | The connection: `connected`, `connecting`, `disconnecting`, `disconnected` or `error`. |
+
+Except where it says otherwise, a reading is given only while the radio is
+connected and answering — the same rule `readRadio()` keeps, so a scene and a
+render never disagree about the radio.
+
+A frequency readout binds its digit groups to `radio.frequencyHz` with the
+text layer's `scale`, `truncate`, `modulo` and `minIntegerDigits` (MHz:
+`scale: 1e-6, truncate: true`; kHz within it: `scale: 1e-3, truncate: true,
+modulo: 1000, minIntegerDigits: 3`), and follows the dial at the radio's rate.
 
 They change as the radio reports them — several times a second — with no
 render and no bridge call, so a meter needle moves at the radio's rate while

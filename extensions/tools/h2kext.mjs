@@ -50,8 +50,12 @@ import yazl from "yazl"
 /// controls' `hoverSet`, `icon` layers, room for 512 layers and 256 controls,
 /// knobs' `invertDrag` and scrolls passing through buttons to the knob beneath,
 /// scenes that scroll natively (`scroll`, with `fixed` layers and controls,
-/// and `zoom` strips), `getSpots`' `display`, and `host.suggestQso`.
-export const H2KEXT_API_VERSION = 12
+/// and `zoom` strips), `getSpots`' `display`, and `host.suggestQso`; 13 adds
+/// the radio's dial to a scene's live `radio.` values — frequency, passband,
+/// power, PTT, connection, and the words `radio.mode`, `radio.tuner` and
+/// `radio.status` — `when` on layers and controls, and the `radio` panel
+/// trigger.
+export const H2KEXT_API_VERSION = 13
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -180,6 +184,7 @@ SHARED_MODULES_BY_API[9] = SHARED_MODULES_BY_API[8]
 SHARED_MODULES_BY_API[10] = SHARED_MODULES_BY_API[9]
 SHARED_MODULES_BY_API[11] = SHARED_MODULES_BY_API[10]
 SHARED_MODULES_BY_API[12] = SHARED_MODULES_BY_API[11]
+SHARED_MODULES_BY_API[13] = SHARED_MODULES_BY_API[12]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

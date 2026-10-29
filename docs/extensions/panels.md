@@ -69,7 +69,7 @@ them, and [Radio control](radio.md) the radio calls a panel commanding a
 transceiver makes.
 
 **`on`** is a refresh budget, not a subscription: `'operation'`,
-`'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, or `` `tick:<seconds>` ``
+`'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, `'radio'`, or `` `tick:<seconds>` ``
 (one second is the fastest; anything below it is not a recognized trigger and
 is dropped with a line in the console, so the panel gets no tick at all). The host
 keeps at least 750ms of idle between one render FINISHING and the next
@@ -115,6 +115,17 @@ or times out. A panel keyed to it alone cannot tell "still looking"
 from "no answer coming", and will sit on whatever it last drew. A panel that
 needs to show either state wants `'qso'` too, and should read
 `qso.their.guess` to decide which it is looking at.
+
+`'radio'` (extension API 13) fires when any radio's dial moves — its
+frequency, mode, passband, transmit state, PTT or connection — and never for
+a meter, which moves several times a second with nothing a render needs to
+redraw. It goes through the same 750 ms gap as every other trigger, so it is
+for a panel that has to lay itself out again around the frequency, such as a
+band map; a readout that only shows the frequency binds a scene to
+`radio.frequencyHz` instead ([scenes.md](scenes.md#radio-values)) and
+follows the dial with no render at all. It needs `requiresRadioRead`: a
+panel without it is never woken for the radio. The render reads the radio
+with `readRadio()` as before.
 
 **`form`** declares the panel's own configuration in the same field schema
 a Tier 1 `settingsPanel` uses ([settings.md](./settings.md)), rendered by

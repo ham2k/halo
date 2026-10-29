@@ -804,6 +804,29 @@ void main() {
       expect(find.text('At 200'), findsNothing);
     });
 
+    // A scroll rebuilds only what reads its value; a `when` that reads it and is not counted would
+    // keep the layer as it was where the scroll began.
+    testWidgets('a layer shown on a condition over the scroll position follows the scroll', (tester) async {
+      final doc = long(event: null);
+      (doc['layers'] as List).add({
+        'id': 'near-top',
+        'x': 200,
+        'y': 0,
+        'width': 200,
+        'height': 20,
+        'fixed': true,
+        'when': {'value': 'pos', 'max': 250},
+        'text': {'literal': 'Near the top'},
+      });
+      await show(tester, doc);
+      await tester.pump();
+      double opacity() => tester.widget<Opacity>(find.descendant(of: find.byKey(const ValueKey('near-top')), matching: find.byType(Opacity)).first).opacity;
+      expect(opacity(), 1);
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(opacity(), 0);
+    });
+
     // Laid out at no width, the scene's scale is zero: its length infinite, its position not a number.
     testWidgets('a pane with no room draws nothing rather than failing', (tester) async {
       await show(tester, long(), width: 0);

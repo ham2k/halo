@@ -24,6 +24,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -275,6 +276,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     widget.panels.addListener(_onCatalogChanged);
     widget.panels.extensions.runtimeGeneration.addListener(_onSceneRuntimeChanged);
     _startTicker();
+    _watchRadio();
   }
 
   @override
@@ -333,12 +335,17 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       _sceneGeneration++;
       widget.panels.addListener(_onCatalogChanged);
     }
+    // An extension update replaces the definition under the same id, and may change what it declares.
+    final declared = old.panel.id == widget.panel.id && !listEquals(old.panel.triggers, widget.panel.triggers);
+    if (declared) _startTicker();
+    if (old.spectrum != widget.spectrum || declared) _watchRadio();
     if (old.panel.id != widget.panel.id) {
       _content = null;
       _error = null;
       _lastRefusal = null;
       _missedWhileHidden = false;
       _startTicker();
+      _watchRadio();
       if (_visible) {
         _render('initial');
       } else {
@@ -358,6 +365,38 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       return;
     }
     _requestRender(fired.first);
+  }
+
+  /// What this pane follows for a `radio` trigger, and the dial it last saw.
+  /// Null while it declares none or may not read the radio.
+  Listenable? _radioWatched;
+  List<Object?>? _dialSeen;
+  bool _saidUnread = false;
+
+  /// Only while the pane declares `radio`: the source fires at meter rate,
+  /// and a pane that did not ask must not pay for the comparison.
+  void _watchRadio() {
+    final asked = _triggers.contains('radio');
+    // The dock hands no source to a panel that may not read the radio.
+    if (asked && widget.spectrum == null && !_saidUnread) {
+      _saidUnread = true;
+      debugPrint('[panels] "${widget.panel.id}" asked for the radio trigger without requiresRadioRead; it will never fire');
+    }
+    final source = asked ? widget.spectrum : null;
+    final next = source?.readingChanges;
+    if (!identical(next, _radioWatched)) {
+      _radioWatched?.removeListener(_onRadio);
+      _radioWatched = next?..addListener(_onRadio);
+    }
+    _dialSeen = source?.dialState();
+  }
+
+  void _onRadio() {
+    final dial = widget.spectrum?.dialState();
+    if (!mounted || dial == null || listEquals(dial, _dialSeen)) return;
+    _dialSeen = dial;
+    // Behind a tab, [_render] remembers it for the reveal.
+    _requestRender('radio');
   }
 
   void _startTicker() {
@@ -547,7 +586,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // render that fails leaves the previous declaration standing: a panel
       // that throws has said nothing about what it needs, and dropping its
       // triggers would strand it on the error it just produced.
-      if (content != null && widget.panels.declareTriggers(panel.id, content.triggers)) _startTicker();
+      if (content != null && widget.panels.declareTriggers(panel.id, content.triggers)) {
+        _startTicker();
+        _watchRadio();
+      }
       // A render that answered ends a refusal: the next one is news again.
       _lastRefusal = null;
       final error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
@@ -641,6 +683,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     WidgetsBinding.instance.removeObserver(this);
     _throttle?.cancel();
     _tick?.cancel();
+    _radioWatched?.removeListener(_onRadio);
     if (!_environmentReady.isCompleted) _environmentReady.complete();
     super.dispose();
   }

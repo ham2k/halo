@@ -45,14 +45,25 @@ abstract class SceneSpectrumSource {
   String get noRadio;
   String get waiting;
 
-  /// [uuid]'s live readings, by `RadioMeter` name, and `transmitting` as 1 or
-  /// 0 — empty while it is not connected, and without any meter it has not
-  /// fresh.
+  /// [uuid]'s live numeric readings, by the `radio.` value's name less the
+  /// prefix: its meters (without any it has not fresh), its dial and its
+  /// transmit state — see [sceneRadioValues] for which are kept while it is
+  /// not connected.
   Map<String, num> readings(String uuid);
 
-  /// Fires when [readings] may have changed — at meter rate, so only what
-  /// draws them listens.
+  /// [uuid]'s live readings that are words, named as [readings]' are; see
+  /// [sceneRadioStrings].
+  Map<String, String> readingStrings(String uuid);
+
+  /// Fires when [readings] or [readingStrings] may have changed — at meter
+  /// rate, so only what draws them listens.
   Listenable get readingChanges;
+
+  /// Every radio's dial — frequency, mode, passband, transmitting, PTT and
+  /// connection, never a meter — as a list equal to an earlier answer exactly
+  /// when none of them moved: what a panel's `radio` trigger fires on. Read on
+  /// [readingChanges].
+  List<Object?> dialState();
 
   /// Moves [uuid]'s scope to centre on [centerHz], for a control that
   /// `follow`s the VFO. False where the radio's window is not the app's to

@@ -175,6 +175,17 @@ The public contract is in [panel scenes](../extensions/scenes.md) and
   make the control dead; `blocksPointer` is the opt-in for covering it, and only
   while the layer is visible. A control's `opacity` at 0 removes it from clicks,
   focus and semantics, so an unseen control cannot act.
+- **`when` is an opacity gate, not a second visibility.** A failing condition
+  reads as opacity 0 through `opacityAt`, so every path that already treats 0
+  as gone — hit-testing, `blocksPointer`, focus, a spectrum control's demand —
+  treats a hidden piece the same without learning a new rule. Its test is
+  checked against the value's kind when the scene is parsed, the one place that
+  knows whether a name is a number or a string.
+- **The radio's values are the host's alone.** An `onEvent` answer naming one
+  is ignored: patched, the readout would show a dial the radio is not on until
+  its next reading. The dial values follow `readRadio()`'s rules for what a
+  radio that is not live still shows, so a scene and the render beside it
+  never disagree.
 - **Only a pending action disables action controls.** On desktop, pressing a
   button blurs the text field before the click completes, and the field sends
   its text; if any event in flight disabled buttons, that commit would swallow

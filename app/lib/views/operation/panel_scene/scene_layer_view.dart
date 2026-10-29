@@ -77,7 +77,7 @@ class _SceneLayerView extends StatelessWidget {
       layer.bindings['rotation']?.evaluate(values) ?? 0,
       layer.bindings['translateX']?.evaluate(values) ?? 0,
       layer.bindings['translateY']?.evaluate(values) ?? 0,
-      (layer.bindings['opacity']?.evaluate(values) ?? 1).clamp(0, 1).toDouble(),
+      layer.opacityAt(values, strings),
       layer.bindings['scaleX']?.evaluate(values) ?? 1,
       layer.bindings['scaleY']?.evaluate(values) ?? 1,
     );

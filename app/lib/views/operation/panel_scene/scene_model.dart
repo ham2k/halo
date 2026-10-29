@@ -14,6 +14,11 @@ import '../panel_environment.dart';
 /// `radio.swrAverage` is the SWR averaged over the transmission under way, or else the last one;
 /// `radio.secondsSinceTransmit` is 0 while transmitting, then counts up — a long time when there
 /// has been none, so a hold bound to it is over rather than pending.
+///
+/// The dial follows `readRadio`: `radio.frequencyHz` is the last frequency reported, connected or
+/// not, so a readout holds it as the built-in Radio panel does; the passband and the power setting
+/// only while it is live, which `radio.connected` says as 1 or 0. `radio.ptt` (the app holding the
+/// radio's PTT, 1 or 0) only where `readRadio` gives `keying`.
 const sceneRadioValues = {
   'radio.signalDbm',
   'radio.powerOut',
@@ -23,7 +28,20 @@ const sceneRadioValues = {
   'radio.transmitting',
   'radio.swrAverage',
   'radio.secondsSinceTransmit',
+  'radio.frequencyHz',
+  'radio.passbandLowHz',
+  'radio.passbandHighHz',
+  'radio.passbandWidthHz',
+  'radio.powerWatts',
+  'radio.ptt',
+  'radio.connected',
 };
+
+/// The host-fed words, beside [sceneRadioValues] and reserved the same way: the mode as the
+/// radio reports it (`USB`, `CW`…), last known like the frequency; the tuner (`inline`, `bypassed`,
+/// `tuning`, `failed`) while live; the connection's status (`connected`, `connecting`,
+/// `disconnected`…). One the radio has not given is empty.
+const sceneRadioStrings = {'radio.mode', 'radio.tuner', 'radio.status'};
 
 /// Validate once at the document boundary, never in the frame callback.
 class PanelScene {
@@ -79,10 +97,22 @@ class PanelScene {
     // A layout places the artwork among native controls; a scroll would leave them stranded.
     if (json['scroll'] != null && (scroll == null || json['layout'] != null)) throw const FormatException('Invalid scene scroll');
     if (scroll case final s? when !values.containsKey(s.value)) throw const FormatException('Unknown scroll value');
-    if (values.keys.any(sceneRadioValues.contains) || strings.keys.any(sceneRadioValues.contains)) {
+    bool reserved(String name) => sceneRadioValues.contains(name) || sceneRadioStrings.contains(name);
+    if (values.keys.any(reserved) || strings.keys.any(reserved)) {
       throw const FormatException('A scene value uses a name the host reserves');
     }
     bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name));
+    bool knownString(String name) => strings.containsKey(name) || (hasRadio && sceneRadioStrings.contains(name));
+    // Checked here, the one place that knows whether a name is a number or a string: a test written
+    // for the other kind could never pass, and would hide its layer for good.
+    void checkWhen(SceneCondition? when, String where) {
+      if (when == null) return;
+      final fits = knownString(when.value)
+          ? when.matches != null && when.matches!.every((m) => m is String)
+          : known(when.value) && (when.matches?.every((m) => m is double) ?? true);
+      if (!fits) throw FormatException('Invalid when: $where');
+    }
+
     final artwork = layers.fold<int>(0, (n, l) => n + (l.svg?.length ?? 0) + (l.text?.toString().length ?? 0));
     if (artwork > kSceneArtworkMaxChars) {
       throw PanelContentRefusal(
@@ -101,9 +131,10 @@ class PanelScene {
           throw const FormatException('Unknown bound value');
         }
       }
-      if (layer.text?['value'] != null && !known(layer.text!['value'] as String) && !strings.containsKey(layer.text!['value'])) {
+      if (layer.text?['value'] != null && !known(layer.text!['value'] as String) && !knownString(layer.text!['value'] as String)) {
         throw const FormatException('Unknown text value');
       }
+      checkWhen(layer.when, layer.id);
     }
     for (final control in controls) {
       if (controlsById.putIfAbsent(control.id, () => control) != control) {
@@ -134,6 +165,7 @@ class PanelScene {
       if (control.opacityBinding != null && !known(control.opacityBinding!.value)) {
         throw FormatException('Unknown opacity value: ${control.id}');
       }
+      checkWhen(control.when, control.id);
       if (control.hoverSet case final hover? when !values.containsKey(hover.value)) {
         throw FormatException('Unknown hoverSet value: ${control.id}');
       }
@@ -280,6 +312,54 @@ class SceneBinding {
   }
 }
 
+/// A layer's or control's `when`: it is shown only while [value] passes the test — `is` one
+/// value, `in` a list of them, or within `min`…`max` — and with [not], only while it fails. A
+/// number or a string, the scene's or the host's; [PanelScene] checks the test against which.
+///
+/// A missing radio number (negative infinity) fails the test itself, before [not] inverts it: a
+/// `max` alone never shows a layer for a reading the radio has not given, and `not` shows one only
+/// while it is missing. A missing radio word is empty, and is tested as one.
+class SceneCondition {
+  final String value;
+  final List<Object>? matches;
+  final double? min, max;
+  final bool not;
+
+  SceneCondition(Map<dynamic, dynamic> json)
+    : value = string(json, 'value'),
+      matches = switch ((json['is'], json['in'])) {
+        (null, null) => null,
+        (final one?, null) => [_conditionOperand(one)],
+        (null, final List<dynamic> many) when many.isNotEmpty && many.length <= 256 => many.map(_conditionOperand).toList(),
+        _ => throw const FormatException('Invalid scene when: give one of is or in'),
+      },
+      min = json['min'] == null ? null : number(json, 'min'),
+      max = json['max'] == null ? null : number(json, 'max'),
+      not = json['not'] == true {
+    final ranged = min != null || max != null;
+    if ((matches == null) == !ranged) throw const FormatException('Invalid scene when: give is, in, or min and max');
+    if (min != null && max != null && min! > max!) throw const FormatException('Invalid scene when range');
+  }
+
+  /// Only [PanelScene] says which a value is, so a mismatch is caught there.
+  bool holdsOn(Map<String, double> values, Map<String, String> strings) {
+    final bool passes;
+    if (strings[value] case final text?) {
+      passes = matches?.contains(text) ?? false;
+    } else {
+      final n = values[value] ?? double.negativeInfinity;
+      passes = n != double.negativeInfinity && (matches?.contains(n) ?? ((min == null || n >= min!) && (max == null || n <= max!)));
+    }
+    return passes != not;
+  }
+}
+
+Object _conditionOperand(Object? v) => switch (v) {
+  final String s when s.length <= sceneStringMaxLength => s,
+  final num n when n.isFinite => n.toDouble(),
+  _ => throw const FormatException('Invalid scene when operand'),
+};
+
 /// Whether a spectrum's frequency rises left or up. Omitted, it rises the
 /// way `down` turned a quarter puts it: right for `down` and `up`, up for
 /// `right`, down for `left`.
@@ -329,6 +409,9 @@ class SceneLayer {
   /// background, or a line that runs the whole way.
   final bool stretch;
   final Map<String, SceneBinding> bindings;
+
+  /// Drawn only while this holds; see [SceneCondition].
+  final SceneCondition? when;
   final Alignment pivot;
   final int transitionMs;
   final Map<dynamic, dynamic>? pulse;
@@ -345,6 +428,7 @@ class SceneLayer {
         for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity'])
           if (json[key] != null) key: SceneBinding(json[key] as Map<dynamic, dynamic>),
       },
+      when = json['when'] == null ? null : SceneCondition(_map(json, 'when')),
       pivot = json['pivot'] == null ? Alignment.center : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
       transitionMs = number(json, 'transitionMs', fallback: 0, min: 0, max: 10000).round(),
       pulse = json['pulse'] as Map<dynamic, dynamic>? {
@@ -391,7 +475,15 @@ class SceneLayer {
       number(pulse!, 'minOpacity', min: 0, max: 1);
     }
   }
+
+  /// Its opacity, 0 while its [when] fails: a hidden layer is one at 0, so everything that
+  /// already treats 0 as gone — a `blocksPointer` letting clicks through — treats it so.
+  double opacityAt(Map<String, double> values, Map<String, String> strings) =>
+      (when?.holdsOn(values, strings) ?? true) ? (bindings['opacity']?.evaluate(values) ?? 1).clamp(0, 1).toDouble() : 0;
 }
+
+Map<dynamic, dynamic> _map(Map<dynamic, dynamic> json, String key) =>
+    json[key] is Map ? json[key] as Map<dynamic, dynamic> : throw FormatException('Invalid scene $key');
 
 ({String name, Color? color}) _layerIcon(Map<dynamic, dynamic> json) {
   final color = json['color'] == null ? null : string(json, 'color');
@@ -466,6 +558,10 @@ class SceneControl {
   final double opacity;
   final SceneBinding? opacityBinding;
 
+  /// Shown only while this holds; see [SceneCondition]. A control laid out by `layout` keeps its
+  /// place while hidden, as one at opacity 0 does.
+  final SceneCondition? when;
+
   /// Set on a `spectrum` control, and only on one.
   final SceneSpectrumSpec? spectrum;
 
@@ -504,6 +600,7 @@ class SceneControl {
           : null,
       opacity = json['opacity'] is Map ? 1 : number(json, 'opacity', fallback: 1, min: 0, max: 1),
       opacityBinding = json['opacity'] is Map ? SceneBinding(json['opacity'] as Map<dynamic, dynamic>) : null,
+      when = json['when'] == null ? null : SceneCondition(_map(json, 'when')),
       menu = json['menu'] == null ? null : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
       options = json['options'] == null ? null : items(json['options'], 64).map((m) => (label: string(m, 'label'), value: string(m, 'value'))).toList(),
       id = string(json, 'id'),
@@ -575,7 +672,9 @@ class SceneControl {
 
   bool get native => _nativeKinds.containsKey(kind);
 
-  double opacityAt(Map<String, double> values) => (opacityBinding?.evaluate(values) ?? opacity).clamp(0, 1).toDouble();
+  /// 0 while its [when] fails, which hides it the way opacity 0 does: no clicks, no focus.
+  double opacityAt(Map<String, double> values, Map<String, String> strings) =>
+      (when?.holdsOn(values, strings) ?? true) ? (opacityBinding?.evaluate(values) ?? opacity).clamp(0, 1).toDouble() : 0;
   SceneBinds get binding => _drawnKinds[kind] ?? _nativeKinds[kind]!;
 
   /// Whether using it is an action rather than setting a value: it sends
