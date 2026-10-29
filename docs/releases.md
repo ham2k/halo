@@ -732,8 +732,8 @@ Regular Windows workflow would need this gate revisited alongside the port.
 
 The three Regular workflows (`ios-prod-release`, `macos-prod-release`,
 `android-prod-release`) set it from the `hold_regular` anchor in
-`codemagic.yaml`. Making Regular public is that one anchor going to `"true"`,
-after which the next Regular build of each platform writes its entry.
+`codemagic.yaml`, which is `"true"`: Regular is public, and each Regular build
+writes its entry. Setting it to `"false"` holds the next ones back again.
 
 ---
 
