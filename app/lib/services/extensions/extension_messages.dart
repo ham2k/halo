@@ -85,10 +85,17 @@ VoidCallback? declarativeActionHandler(Map<String, dynamic> map, {required OpenA
   return null;
 }
 
-void showExtensionMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const [], required OpenAccount? onOpenAccount}) {
+/// Completes when the dialog closes, so a caller holding the dialog surface
+/// for it knows when it is free again.
+Future<void> showExtensionMarkdownDialog({
+  String? title,
+  required String text,
+  List<Map<String, dynamic>> actions = const [],
+  required OpenAccount? onOpenAccount,
+}) async {
   final context = navigatorKey.currentContext;
   if (context == null) return;
-  showHaloDialog<void>(
+  await showHaloDialog<void>(
     context: context,
     builder: (dialogContext) => HaloDialog(
       wide: true,
@@ -110,23 +117,41 @@ void showExtensionMarkdownDialog({String? title, required String text, List<Map<
   );
 }
 
-/// Presents a ResultMessage (the SDK type of the same name): `status` is a
-/// transient status-bar message, `dialog` a modal markdown dialog whose
-/// buttons are declarative NoticeActions. Reached from a hook result's
-/// `userMessage` or the imperative `showMessage` host call (hooks whose
-/// results can't carry one, e.g. lookups).
-void presentExtensionResultMessage(
+/// The footer key an extension's status result messages share: one line in
+/// the footer per extension, each replacing the last.
+String resultMessageKey(String ns) => '$ns:resultMessage';
+
+/// A status result message's landing, wired by the app to the footer under
+/// [resultMessageKey] through whatever holds that key's writes in order.
+typedef WriteResultMessage = void Function(String ns, {String? icon, String? title, required String text});
+
+/// A ResultMessage's fields (the SDK type of the same name), read before
+/// anything is awaited or held: a malformed message is the caller's error at
+/// the call, not in a future nobody holds.
+({bool dialog, String? icon, String? title, String text, List<Map<String, dynamic>> actions}) readResultMessage(Map<String, dynamic> message) => (
+  dialog: message['presentation'] == 'dialog',
+  icon: message['icon'] as String?,
+  title: message['title'] as String?,
+  text: message['text'] as String? ?? '',
+  actions: ((message['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList(),
+);
+
+/// Presents a hook result's `userMessage`: `status` is a transient
+/// status-bar message, landed through [writeStatus]; `dialog` a modal
+/// markdown dialog whose buttons are declarative NoticeActions. The
+/// imperative `showMessage` host call reads the same fields and goes through
+/// the app's dialog gate and footer budgets instead. Completes when a dialog
+/// closes, at once for a status message.
+Future<void> presentExtensionResultMessage(
   Map<String, dynamic> message, {
-  required StatusBarService? statusBar,
+  required WriteResultMessage writeStatus,
   required OpenAccount? onOpenAccount,
   String ns = 'extensions',
-}) {
-  final title = message['title'] as String?;
-  final text = message['text'] as String? ?? '';
-  if (message['presentation'] == 'dialog') {
-    final actions = ((message['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
-    showExtensionMarkdownDialog(title: title, text: text, actions: actions, onOpenAccount: onOpenAccount);
+}) async {
+  final fields = readResultMessage(message);
+  if (fields.dialog) {
+    await showExtensionMarkdownDialog(title: fields.title, text: fields.text, actions: fields.actions, onOpenAccount: onOpenAccount);
   } else {
-    statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);
+    writeStatus(ns, icon: fields.icon, title: fields.title, text: fields.text);
   }
 }

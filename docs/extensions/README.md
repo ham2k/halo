@@ -311,9 +311,9 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 | `host.clusterStatus()` / `host.clusterLines({after?, limit?})` / `host.clusterSubscribe()` / `host.clusterUnsubscribe()` / `host.clusterPostSpot({freq, call, comment?})` / `host.clusterSend(command)` | The app's one DX cluster connection, logged in as the operator; behind the `requiresClusterRead` / `requiresClusterSpot` / `requiresClusterCommand` grants and extension API 10. See the [`cluster` hook](spots.md#-cluster--the-dx-cluster-connection) and [docs/design/cluster.md](../design/cluster.md). |
 | `host.setTimeout(fn, ms, ...args)` / `host.setInterval(…)` / `host.clearTimeout(id)` / `host.clearInterval(id)` | Timers, shaped like the browser's, on real time and held to a budget. A bundle built for extension API 3 gets them as plain `setTimeout` and friends too. See [Timers](#timers). |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). A bundle holds at most 10 keys of its own, each entry — its key and its value — at most 4,096 characters of JSON; a `kvSet` past either throws, and setting `null` frees the key. |
-| `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
+| `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. An extension holds at most eight keys in the footer — its messages, progress bars and notices together — and every string in a call is at most 1,024 characters; past either the call throws. Its messages and progress reach the footer at most once every 100 ms, the latest under each key winning, so a download may post every chunk. |
 | `host.statusBar.clear(key)` | Removes a message/progress item you posted. |
-| `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. |
+| `host.statusBar.showNotice(params)` / `.dismissNotice(key)` | A richer, dismissible notice (markdown body, optional `link`/`dialog` action buttons) shown as a "post-it" over the footer and kept in the user's Settings → About → Recent Notices history. A notice's `text` may run to 16,384 characters; an extension posts at most ten a minute, and an eleventh throws. |
 | `host.getVersionInfo()` | Read-only build identity: platform, edition, version, versionName, buildNumber, gitSha. `buildNumber` is null on Dev, where the compiled-in number is the last release's rather than the running build's. |
 | `host.log(message)` | Log line, prefixed with your extension key, visible in the app console. |
 
@@ -322,9 +322,19 @@ once — a loop that fires `host.*` calls without awaiting them fails at the
 thirty-third — with 256 across every extension; `host.fetch` has its own eight
 in flight. A hook the app has timed out runs on regardless (the hanging-hook
 note above), and what it holds is released by that resource's own bound: a
-fetch slot when the fetch ends, within the `timeout` you gave it. Every budget
-here is refused at the call that would exceed it, never queued or quietly
+fetch slot when the fetch ends, within the `timeout` you gave it. Each of these
+budgets is refused at the call that would exceed it, never queued or quietly
 dropped, so a runaway loop fails where it runs and the error names the budget.
+
+A dialog — `host.showForm`, or `host.showMessage` with `presentation:
+'dialog'` — is one extension's at a time: while another extension's dialogs
+are up, yours waits for them to close. A `showForm` call completes with the
+form's answer; a `showMessage` call answers at once, its dialog opening when
+the surface is free, so a hook may await it. At most three of yours wait; you
+may have three open, one over the other, and open ten a minute. Past any of
+these the call throws. A bundle built with an SDK before 1.12.6 calls
+`host.showForm` without naming itself, and every such form shares one
+budget, as one extension's.
 
 ### WebSockets
 

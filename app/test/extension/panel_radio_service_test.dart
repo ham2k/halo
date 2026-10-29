@@ -15,6 +15,8 @@ import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 
+import '../support/fake_clock.dart';
+
 class TestDriver extends Fake implements EquipmentDriver {
   @override
   List<String> settableModes(Map<String, dynamic> config) => const ['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM', 'DATA-USB'];
@@ -343,6 +345,43 @@ void main() {
     expect((await waiting)['reason'], 'changed');
     expect(radio.calls, hasLength(2));
   });
+
+  // The queue is one for every caller, paced: an extension calling in a loop
+  // would otherwise hold every later command back, and a control dragged
+  // against a slow link would walk the radio through every position it passed.
+  test("an extension has at most four calls in the queue, the one being sent included, and its backlog is not another's", () {
+    runOnFakeClock((async) async {
+      final cat = TestCat(), radio = TestRadio(), bridge = PanelRadioService(cat, radio);
+      final waiting = [
+        for (var i = 0; i < PanelRadioService.setMaxWaiting; i++) bridge.set({'id': 'a', 'frequencyHz': 14075000 + i * 1000, 'extensionKey': 'x'}),
+      ];
+      expect((await bridge.set({'id': 'a', 'frequencyHz': 14080000, 'extensionKey': 'x'}))['reason'], 'busy');
+      final other = bridge.set({'id': 'a', 'frequencyHz': 14081000, 'extensionKey': 'y'});
+      expect((await Future.wait([...waiting, other])).map((answer) => answer['accepted']), everyElement(true));
+      expect(
+        (await bridge.set({'id': 'a', 'frequencyHz': 14082000, 'extensionKey': 'x'}))['accepted'],
+        true,
+        reason: 'the backlog drained, the extension is served again',
+      );
+      expect(radio.calls.map((call) => call.freq), [14075, 14076, 14077, 14078, 14081, 14082]);
+    });
+  });
+
+  test('a call that cannot go out within two seconds of being made is answered expired, and moves nothing', () {
+    runOnFakeClock((async) async {
+      final cat = TestCat(), radio = TestRadio(), bridge = PanelRadioService(cat, radio);
+      await bridge.set({'id': 'a', 'frequencyHz': 14000000, 'extensionKey': 'warm'});
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // Three extensions' full backlogs, a tenth of a second after the last command: paced 250 ms
+      // apart, the eighth goes out 1.9 s after it was asked for, and the ninth would at 2.15 s.
+      final answers = await Future.wait([
+        for (var i = 0; i < 12; i++) bridge.set({'id': 'a', 'frequencyHz': 14001000 + i * 1000, 'extensionKey': 'e${i ~/ 4}'}),
+      ]);
+      expect(answers.map((answer) => answer['reason']), [...List.filled(8, null), 'expired', 'expired', 'expired', 'expired']);
+      expect(radio.calls.map((call) => call.freq), [14000, for (var i = 0; i < 8; i++) 14001 + i]);
+    });
+  });
+
   test('pinned panels read and tune their radio without changing the logging designation', () async {
     final cat = TestCat(), radio = TestRadio(), bridge = PanelRadioService(cat, radio);
     expect(bridge.list().map((r) => r['id']), ['a', 'b']);

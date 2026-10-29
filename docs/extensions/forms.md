@@ -276,6 +276,12 @@ if (result) {
 }
 ```
 
+The dialog is one extension's at a time, and the call completes when it
+closes: while another extension's dialogs are up it waits for them, at most
+three of yours waiting; you may have three open, one over the other, and open
+ten a minute, past which the call throws (the budgets are listed in
+[README.md](README.md#the-host-api)).
+
 ### 2. View/Hook Flow (`form` category)
 
 Extensions can also contribute static/predefined forms by registering a hook in the `form` category. The host can query the form by key, validate fields, and transform them:

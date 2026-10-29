@@ -405,7 +405,10 @@ export interface PostResult {
 ///   'status' — transient status-bar message (`title`/`text`/`icon`)
 ///   'dialog' — modal dialog; `text` is markdown; `actions` adds buttons
 ///              next to the always-present Close (e.g. an `account` action
-///              to open the account dialog after an auth failure)
+///              to open the account dialog after an auth failure). From
+///              `host.showMessage`, one extension's at a time like
+///              `host.showForm`'s, under the same budget; the call answers
+///              at once and the dialog opens when the surface is free.
 export interface ResultMessage {
   presentation: "status" | "dialog"
   title?: string
@@ -3528,11 +3531,15 @@ export interface PanelRadioResult {
   accepted: boolean
   /**
    * `stopped`: a scope change while no display has the scope running — nothing was sent.
-   * `busy`: eight raw commands to this radio are already waiting (extension API 11).
+   * `busy`: eight raw commands to this radio (extension API 11), or four of this extension's
+   * `setRadio` calls, are already in the queue, the one being sent included — nothing was sent;
+   * a dragged control sends where it is again once an earlier call answers.
+   * `expired`: the call could not go out within two seconds of being made, behind other
+   * callers' commands, and nothing was sent.
    * `unsupported`: this radio, or the app's keying, cannot do it — keying calls on a radio that
    * is not the logging radio, or with the app's keying off.
    */
-  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported" | "busy"
+  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported" | "busy" | "expired"
   state: PanelRadioState | null
 }
 /** @deprecated `PanelRadioResult`'s name through extension API 6. */

@@ -49,6 +49,7 @@ mixin _ExtensionInstalls {
   ExtensionHost? get _host;
   SettingsService? get settings;
   StatusBarService? get statusBar;
+  void _dropHeldFor(Iterable<String> keys);
   CatalogService? get catalog;
   ValueNotifier<int> get runtimeGeneration;
   Set<String> get _loadedExtensionKeys;
@@ -467,6 +468,7 @@ mixin _ExtensionInstalls {
     }
     // The previous code's transient UI is nobody's to clear once its hooks are
     // gone — a progress bar it left behind would sit there for the session.
+    _dropHeldFor([key]);
     statusBar?.clearNamespace(key);
     await host.reloadBundle(
       ExtensionBundle(key: key, source: source, api: info.runtimeApi),

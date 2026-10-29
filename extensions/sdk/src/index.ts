@@ -453,7 +453,10 @@ export const host = {
 
   /// Presents a ResultMessage imperatively — for hooks whose results can't
   /// carry a `userMessage` (e.g. a lookup hitting an auth error). Hooks
-  /// that CAN return one (spots posting) should prefer that instead.
+  /// that CAN return one (spots posting) should prefer that instead. A
+  /// `dialog` shares the one dialog surface with `showForm` under the same
+  /// budget (AGENTS.md), opening when the surface is free; the call answers
+  /// at once, so a hook may await it.
   async showMessage(message: ResultMessage): Promise<void> {
     await hostCallFn()("showMessage", { ...message, ns: currentExtensionKey })
   },
@@ -545,7 +548,9 @@ export const host = {
   statusBar: {
     /// A transient single-line message, replacing any prior message under
     /// the same `key`. `key` is automatically namespaced to this extension —
-    /// other extensions can't see or clear it.
+    /// other extensions can't see or clear it. An extension holds at most
+    /// eight keys in the footer, and its messages and progress reach it once
+    /// every 100 ms, the latest under each key winning (AGENTS.md).
     async setMessage(params: StatusBarMessageParams): Promise<void> {
       await hostCallFn()("statusBarSetMessage", { ...params, ns: currentExtensionKey })
     },
@@ -562,7 +567,7 @@ export const host = {
 
     /// A richer, dismissible notice, replacing any prior undismissed notice
     /// under the same `key`. Stays in the user's notice history after
-    /// dismissal.
+    /// dismissal. At most ten a minute, its `text` at most 16,384 characters.
     async showNotice(params: StatusBarNoticeParams): Promise<void> {
       await hostCallFn()("statusBarShowNotice", { ...params, ns: currentExtensionKey })
     },

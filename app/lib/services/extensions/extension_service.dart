@@ -28,6 +28,7 @@ import 'extension_keychain.dart';
 import 'extension_force_disable.dart';
 import 'extension_refusals.dart';
 import 'extension_messages.dart';
+import 'extension_dialog_gate.dart';
 import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
 import 'extension_disabled_since.dart';
@@ -173,6 +174,10 @@ class ExtensionService
 
   /// The DX cluster host calls, behind their manifest capabilities.
   final clusterCalls = ClusterHostCalls();
+
+  /// The one dialog surface `showForm` and `showMessage` open on, one
+  /// extension at a time — see [ExtensionDialogGate].
+  final dialogs = ExtensionDialogGate();
 
   /// Backs the `getSpotsForCall` host call (HookContext.getSpotsForCall),
   /// which the `spot-history` lookup hook reads. Optional like the other
@@ -800,6 +805,8 @@ class ExtensionService
         // through a host call that would land after the sweep, re-creating the
         // orphan. What "returning" means is decided here, where the next
         // generation's set is known.
+        // Every runtime goes, so does what was posted under no extension's name.
+        _dropHeldFor({...dying, _ExtensionHostCalls.unattributedNamespace});
         clearGenerationStatus(
           statusBar: statusBar,
           dying: dying,
@@ -832,6 +839,16 @@ class ExtensionService
   /// [_ExtensionHostCalls].
   late final _hostCalls = _ExtensionHostCalls(this);
 
+  /// Forgets what the bridge holds for [keys], whose extensions are being
+  /// replaced — the footer writes held for a flush, the dialogs waiting their
+  /// turn — before their namespaces are swept: landed or opened afterwards,
+  /// each would be the old generation's, with nobody left to finish it.
+  @override
+  void _dropHeldFor(Iterable<String> keys) {
+    _hostCalls.dropStatusBarHeld(keys);
+    dialogs.drop(keys);
+  }
+
   /// [_ExtensionHostCalls.handle] for tests — the runtime credential path has
   /// no other seam, and it is the one that decides what an extension believes.
   @visibleForTesting
@@ -842,11 +859,12 @@ class ExtensionService
   /// actions (an extension's "reconnect your account" button).
   OpenAccount? onOpenAccount;
 
-  /// See [presentExtensionResultMessage] — wired to this service's status bar
-  /// and account opener, which its two callers here already have.
+  /// See [presentExtensionResultMessage] — wired to the bridge's footer write,
+  /// so a hook result's status message is held in order with the extension's
+  /// own, and to this service's account opener.
   @override
-  void presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) =>
-      presentExtensionResultMessage(message, statusBar: statusBar, onOpenAccount: onOpenAccount, ns: ns);
+  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) =>
+      presentExtensionResultMessage(message, writeStatus: _hostCalls.writeResultMessage, onOpenAccount: onOpenAccount, ns: ns);
 
   /// Set by the app shell: backs the `searchSettings` host call, resolving a
   /// SET/SHOW/HIDE query against the settings catalog

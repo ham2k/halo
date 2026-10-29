@@ -3,6 +3,11 @@
 //
 // The reverse API: the calls the extension runtime makes back into the app
 // (`host.*` in the SDK), answered against the service's own collaborators.
+//
+// What an extension may put on the app's own surfaces — its dialogs, through
+// extension_dialog_gate.dart, and its footer, here — is budgeted the way the
+// host budgets its calls (halo_extension_host's host_budgets.dart): refused at
+// the call that would exceed it, with the budget named.
 
 part of 'extension_service.dart';
 
@@ -518,98 +523,162 @@ class _ExtensionHostCalls {
     };
   }
 
+  /// Where a call that names no extension is filed — the public `host.showForm`
+  /// a bundle built with an SDK before 1.12.6 reaches, and any bundle still
+  /// may: one dialog budget and one footer key shared by all of them, since
+  /// the key such a call could claim is nobody's to verify.
+  static const unattributedNamespace = 'extensions';
+
   Future<dynamic> _showForm(Map<String, dynamic> params) async {
     final formId = params['formId'] as String;
     final formDef = (params['form'] as Map).cast<String, dynamic>();
     final state = (params['state'] as Map? ?? const {}).cast<String, dynamic>();
 
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      throw StateError('No active navigation context found');
-    }
-
-    final result = await showFormDialog(
-      context,
-      formDefinition: formDef,
-      initialState: state,
-      validator: (fieldKey, value, currentState) async {
-        try {
-          final res = await _service.host?.invoke(
-            Hooks.formValidateField,
-            key: formId,
-            args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
-          );
-          return res as String?;
-        } catch (e) {
-          return t.extensionService.validationError(error: e);
-        }
-      },
-      transformer: (fieldKey, value, currentState) async {
-        try {
-          final res = await _service.host?.invoke(
-            Hooks.formTransformField,
-            key: formId,
-            args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
-          );
-          return res;
-        } catch (_) {
-          return value;
-        }
-      },
-      onChange: (fieldKey, value, currentState) async {
-        try {
-          final res = await _service.host?.invoke(
-            Hooks.formOnChangeField,
-            key: formId,
-            args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
-          );
-          if (res is Map) {
-            return res.cast<String, dynamic>();
+    // The context is read when the form opens, which may be after a wait for
+    // another extension's dialogs, not when it was asked for.
+    return _service.dialogs.run(params['ns'] as String? ?? unattributedNamespace, () {
+      final context = navigatorKey.currentContext;
+      if (context == null) {
+        throw StateError('No active navigation context found');
+      }
+      return showFormDialog(
+        context,
+        formDefinition: formDef,
+        initialState: state,
+        validator: (fieldKey, value, currentState) async {
+          try {
+            final res = await _service.host?.invoke(
+              Hooks.formValidateField,
+              key: formId,
+              args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
+            );
+            return res as String?;
+          } catch (e) {
+            return t.extensionService.validationError(error: e);
           }
-          return null;
-        } catch (_) {
-          return null;
-        }
-      },
-      developerMode: _service.settings?.developerMode ?? false,
-    );
-    return result;
+        },
+        transformer: (fieldKey, value, currentState) async {
+          try {
+            final res = await _service.host?.invoke(
+              Hooks.formTransformField,
+              key: formId,
+              args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
+            );
+            return res;
+          } catch (_) {
+            return value;
+          }
+        },
+        onChange: (fieldKey, value, currentState) async {
+          try {
+            final res = await _service.host?.invoke(
+              Hooks.formOnChangeField,
+              key: formId,
+              args: {'formId': formId, 'fieldKey': fieldKey, 'value': value, 'state': currentState},
+            );
+            if (res is Map) {
+              return res.cast<String, dynamic>();
+            }
+            return null;
+          } catch (_) {
+            return null;
+          }
+        },
+        developerMode: _service.settings?.developerMode ?? false,
+      );
+    });
   }
 
+  /// A dialog is refused where there is no navigator to show it on, and the
+  /// call answers once it is admitted — the dialog opens when the surface is
+  /// free, which a hook awaiting the call could not wait for — while a status
+  /// message goes to the footer under the extension's one [resultMessageKey],
+  /// held to the footer's budgets like any other write to it.
   Future<dynamic> _showMessage(Map<String, dynamic> params) async {
-    _service.presentResultMessage(params, ns: params['ns'] as String? ?? 'extensions');
+    final ns = params['ns'] as String? ?? unattributedNamespace;
+    final message = readResultMessage(params);
+    if (message.dialog) {
+      _statusBarBounded(params, textChars: statusBarMaxNoticeChars);
+      if (navigatorKey.currentContext == null) throw StateError('No active navigation context found');
+      _service.dialogs.show(
+        ns,
+        () => showExtensionMarkdownDialog(title: message.title, text: message.text, actions: message.actions, onOpenAccount: _service.onOpenAccount),
+      );
+    } else {
+      _statusBarBounded(params, textChars: statusBarMaxTextChars);
+      _statusBarAdmitKey(ns, resultMessageKey(ns));
+      writeResultMessage(ns, icon: message.icon, title: message.title, text: message.text);
+    }
     return null;
   }
 
+  /// The footer line [ns]'s status result messages share — a hook result's
+  /// or a `showMessage` call's — held to the coalescing like its other
+  /// writes, so one held for the flush never lands over a newer one.
+  void writeResultMessage(String ns, {String? icon, String? title, required String text}) {
+    final key = resultMessageKey(ns);
+    _statusBarWrite(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
+  }
+
+  /// What one extension may put in the footer: at most this many keys at
+  /// once — its messages, progress bars and notices together — every string
+  /// of a call at most [statusBarMaxTextChars] long, a notice's markdown
+  /// [statusBarMaxNoticeChars], and at most [statusBarMaxNoticesPerMinute]
+  /// notices a minute, each of which rewrites the persisted history. The
+  /// footer's own caps are shared by everyone (status_bar_service.dart), so
+  /// one extension past them evicts the others' items.
+  static const statusBarMaxKeys = 8, statusBarMaxTextChars = 1024, statusBarMaxNoticeChars = 16384, statusBarMaxNoticesPerMinute = 10;
+
+  /// How often one extension's messages and progress reach the footer: a
+  /// write lands at once when none of its landed within this long, else the
+  /// latest under each key lands when the span ends. Every landing rebuilds
+  /// the footer, which a download posting each chunk would otherwise rebuild
+  /// as fast as the chunks come.
+  static const statusBarCoalesce = Duration(milliseconds: 100);
+
+  final Map<String, RateWindow> _noticesBy = {};
+
+  /// Each extension's writes held for its next flush, by key — present, empty
+  /// or not, while a flush is scheduled.
+  final Map<String, Map<String, void Function()>> _statusBarHeld = {};
+  final Map<String, Timer> _statusBarFlush = {};
+
   Future<dynamic> _statusBarSetMessage(Map<String, dynamic> params) async {
-    _service.statusBar?.setMessage(
-      key: _namespacedKey(params),
-      icon: params['icon'] as String?,
-      title: params['title'] as String?,
-      text: params['text'] as String?,
-    );
+    final ns = params['ns'] as String, key = _namespacedKey(params);
+    _statusBarBounded(params, textChars: statusBarMaxTextChars);
+    _statusBarAdmitKey(ns, key);
+    final icon = params['icon'] as String?, title = params['title'] as String?, text = params['text'] as String?;
+    _statusBarWrite(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
     return null;
   }
 
   Future<dynamic> _statusBarSetProgress(Map<String, dynamic> params) async {
-    _service.statusBar?.setProgress(
-      key: _namespacedKey(params),
-      icon: params['icon'] as String?,
-      title: params['title'] as String?,
-      text: params['text'] as String?,
-      value: (params['value'] as num?)?.toDouble(),
-    );
+    final ns = params['ns'] as String, key = _namespacedKey(params);
+    _statusBarBounded(params, textChars: statusBarMaxTextChars);
+    _statusBarAdmitKey(ns, key);
+    final icon = params['icon'] as String?, title = params['title'] as String?, text = params['text'] as String?, value = (params['value'] as num?)?.toDouble();
+    _statusBarWrite(ns, key, () => _service.statusBar?.setProgress(key: key, icon: icon, title: title, text: text, value: value));
     return null;
   }
 
   Future<dynamic> _statusBarClear(Map<String, dynamic> params) async {
-    _service.statusBar?.clear(_namespacedKey(params));
+    final key = _namespacedKey(params);
+    // A write held for the flush would bring the item back.
+    _statusBarHeld[params['ns'] as String]?.remove(key);
+    _service.statusBar?.clear(key);
     return null;
   }
 
   Future<dynamic> _statusBarShowNotice(Map<String, dynamic> params) async {
+    final ns = params['ns'] as String, key = _namespacedKey(params);
+    _statusBarBounded(params, textChars: statusBarMaxNoticeChars);
+    _statusBarAdmitKey(ns, key);
+    final notices = _noticesBy[ns] ??= RateWindow(statusBarMaxNoticesPerMinute, const Duration(minutes: 1));
+    if (!notices.admit()) {
+      throw ExtensionHostException("statusBar refused: extension '$ns' has posted $statusBarMaxNoticesPerMinute notices in the last minute");
+    }
     _service.statusBar?.showNotice(
-      key: _namespacedKey(params),
+      key: key,
       icon: params['icon'] as String?,
       title: params['title'] as String?,
       text: params['text'] as String? ?? '',
@@ -621,6 +690,90 @@ class _ExtensionHostCalls {
   Future<dynamic> _statusBarDismissNotice(Map<String, dynamic> params) async {
     _service.statusBar?.dismissNotice(_namespacedKey(params));
     return null;
+  }
+
+  /// Every string [params] carries, its actions' included, at most
+  /// [statusBarMaxTextChars] long — `text` [textChars]: a notice's markdown,
+  /// and its dialog actions', may run longer than a footer line.
+  void _statusBarBounded(Map<String, dynamic> params, {required int textChars}) {
+    void check(String field, Object? value) {
+      final max = field == 'text' ? textChars : statusBarMaxTextChars;
+      if (value is String && value.length > max) throw ExtensionHostException("statusBar refused: '$field' is ${value.length} characters, more than $max");
+      if (value is Map) {
+        for (final MapEntry(:key, :value) in value.entries) {
+          check('$key', value);
+        }
+      }
+      if (value is List) {
+        for (final item in value) {
+          check(field, item);
+        }
+      }
+    }
+
+    params.forEach(check);
+  }
+
+  /// The keys [ns] holds in the footer — its items, its active notices and
+  /// the writes held for its next flush — read from the footer itself, so
+  /// what it dismisses on its own, or a restart's sweep, is counted gone.
+  Set<String> _statusBarKeysOf(String ns) {
+    final prefix = '$ns:', statusBar = _service.statusBar;
+    return {
+      if (statusBar != null) ...[
+        for (final item in statusBar.items)
+          if (item.key.startsWith(prefix)) item.key,
+        for (final notice in statusBar.activeNotices)
+          if (notice.key.startsWith(prefix)) notice.key,
+      ],
+      ...?_statusBarHeld[ns]?.keys,
+    };
+  }
+
+  /// Refuses a key that would be [ns]'s ninth; one it holds is its to rewrite.
+  void _statusBarAdmitKey(String ns, String key) {
+    final held = _statusBarKeysOf(ns);
+    if (!held.contains(key) && held.length >= statusBarMaxKeys) {
+      throw ExtensionHostException("statusBar refused: extension '$ns' already holds $statusBarMaxKeys keys in the footer");
+    }
+  }
+
+  /// Lands [write] now, or holds it as the latest under [key] for the flush
+  /// [statusBarCoalesce] after [ns]'s last landing. [write] reads nothing of
+  /// the call that asked for it: a malformed call fails at the call, where
+  /// its params are read, not in a flush timer nobody awaits.
+  void _statusBarWrite(String ns, String key, void Function() write) {
+    final held = _statusBarHeld[ns];
+    if (held != null) {
+      held[key] = write;
+      return;
+    }
+    write();
+    _statusBarHeld[ns] = {};
+    _statusBarFlush[ns] = Timer(statusBarCoalesce, () => _statusBarFlushHeld(ns));
+  }
+
+  /// Lands what [ns] held, and holds the span open after a flush that landed
+  /// anything: a storm lands once a span, not twice at a span's edges.
+  void _statusBarFlushHeld(String ns) {
+    final held = _statusBarHeld.remove(ns);
+    _statusBarFlush.remove(ns);
+    if (held == null || held.isEmpty) return;
+    for (final write in held.values) {
+      write();
+    }
+    _statusBarHeld[ns] = {};
+    _statusBarFlush[ns] = Timer(statusBarCoalesce, () => _statusBarFlushHeld(ns));
+  }
+
+  /// Forgets the writes held for [namespaces], whose extensions are being
+  /// replaced: landed after the restart's sweep, one would put the old
+  /// generation's progress bar back with nobody to finish it.
+  void dropStatusBarHeld(Iterable<String> namespaces) {
+    for (final ns in namespaces) {
+      _statusBarHeld.remove(ns);
+      _statusBarFlush.remove(ns)?.cancel();
+    }
   }
 
   /// Extension-supplied keys are prefixed with the calling extension's key so

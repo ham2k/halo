@@ -240,20 +240,49 @@ class PanelRadioService {
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }
 
+  /// How many of one extension's [set] calls may be in the queue at once, the
+  /// one being sent included — a fifth is answered `busy` and sends nothing,
+  /// so a dragged control is not walked through where it has been and an
+  /// extension calling in a loop holds nobody else's command back for long —
+  /// and how long after it was made a call may still go out: past that, stuck
+  /// behind other callers' commands, it is answered `expired` and sends
+  /// nothing.
+  static const setMaxWaiting = 4;
+  static const setMaxWait = Duration(seconds: 2);
+  final _setWaiting = <String, int>{};
+
   /// Frequency, mode, power, keyer speed, tuner, a tune, passband and antennas. Paced: each one moves the radio,
-  /// and a dragged control would otherwise flood its CAT link.
+  /// and a dragged control would otherwise flood its CAT link. One queue for every caller, in which one extension
+  /// has at most [setMaxWaiting] calls — a further one is answered `busy` — and none goes out past [setMaxWait]
+  /// after it was made.
   Future<Map<String, dynamic>> set(Map<String, dynamic> args) async {
+    final caller = args['extensionKey'] as String?;
+    if (caller != null) {
+      final waiting = _setWaiting[caller] ?? 0;
+      if (waiting >= setMaxWaiting) return {'accepted': false, 'reason': 'busy', 'state': read(args['selection'] as String?)};
+      _setWaiting[caller] = waiting + 1;
+    }
     final previous = _tail;
-    final done = _perform(previous, args);
+    final done = _perform(previous, args, askedAt: realNowMillis()).whenComplete(() {
+      if (caller == null) return;
+      final left = _setWaiting[caller]! - 1;
+      if (left > 0) {
+        _setWaiting[caller] = left;
+      } else {
+        _setWaiting.remove(caller);
+      }
+    });
     _tail = done.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     return done;
   }
 
-  Future<Map<String, dynamic>> _perform(Future<void> previous, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> _perform(Future<void> previous, Map<String, dynamic> args, {required int askedAt}) async {
     await previous;
     final delay = 250 - (realNowMillis() - _lastCommand);
     if (delay > 0) await Future<void>.delayed(Duration(milliseconds: delay));
     final selection = args['selection'] as String?;
+    // Judged as it goes out: too long since it was asked for to still be what the caller wants.
+    if (realNowMillis() - askedAt > setMaxWait.inMilliseconds) return {'accepted': false, 'reason': 'expired', 'state': read(selection)};
     final state = read(selection);
     String? reason;
     final frequency = args['frequencyHz'];

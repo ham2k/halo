@@ -115,7 +115,13 @@ malformed command or a value out of range (`invalid`); a setting this radio
 cannot take — a tuner, passband or antenna its readout has as null, a keyer
 speed without `keying.canKeyCw` — answers `unsupported`. Accepted requests are
 spaced by at least 250 ms, since a dragged control would otherwise flood the
-CAT link. Omitting a selection follows the designated logging radio; an explicit `selection`
+CAT link, and wait their turn in one queue for every extension: at most four
+of one extension's may be in the queue at once, the one being sent included,
+and a fifth answers `busy` without sending — a panel told so sends its latest
+value again once an earlier call answers, so a dragged control lands where it
+is rather than everywhere it has been — while a call that cannot go out
+within two seconds of being made, behind other callers' commands, answers
+`expired` and sends nothing. Omitting a selection follows the designated logging radio; an explicit `selection`
 pins the command to that local radio without changing the logging designation.
 An accepted result means requested, not confirmed; only subsequent
 reported state confirms it. Drivers retain their own protocol/echo handling.

@@ -283,7 +283,7 @@ mixin _ExtensionHookApi {
   bool get activationIncomplete;
   void invalidateHookContext();
   Future<void> start();
-  void presentResultMessage(Map<String, dynamic> message, {String ns});
+  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns});
 
   /// Fans a call out to every hook in `category` via `invokeHookAll`,
   /// flattens each hook's returned list, and tags every item with
@@ -552,7 +552,7 @@ mixin _ExtensionHookApi {
       debugPrint('[spots] ${hook.method} via ${entry.key}: ${entry.value}');
       final userMessage = entry.value['userMessage'];
       if (userMessage is Map) {
-        presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key);
+        unawaited(presentResultMessage(userMessage.cast<String, dynamic>(), ns: entry.key)); // the result is the caller's at once; a dialog stays up on its own
       }
     }
     return {for (final entry in entries) entry.key: entry.value};

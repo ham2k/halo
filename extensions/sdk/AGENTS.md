@@ -134,7 +134,16 @@ host.log('…')                  // the app's console
   an answer at once, so a loop of un-awaited `host.*` calls fails at the
   thirty-third; `kvSet` holds at most 10 keys per bundle, each key and its
   value at most 4,096 characters of JSON — session state, not a cache; a
-  bundle may open a socket at most 12 times a minute.
+  bundle may open a socket at most 12 times a minute. A dialog — `showForm`,
+  or `showMessage` as one — is one extension's at a time: three open, three
+  waiting for another extension's to close, ten a minute; `showForm`
+  completes with the form's answer, `showMessage` at once, its dialog opening
+  when the surface is free. The footer holds eight of your keys, each string
+  at most 1,024 characters (a notice's text 16,384), ten notices a minute,
+  and a storm of progress reaches it once every 100 ms. Four of your `setRadio`
+  calls may be in the queue at once — a fifth is answered `busy`, so re-send
+  where a dragged control is once a call answers — and one that cannot go out
+  within two seconds is answered `expired`.
 - **Using a shared library without declaring it fails the build.** The app
   carries `@ham2k/lib-*`, `i18next` and `liquidjs`; naming one in
   `sharedDependencies` rewrites your imports into lookups on the app's single
