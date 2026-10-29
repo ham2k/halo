@@ -195,9 +195,10 @@ class PortChoice {
 /// Whether the connection holds RTS high for as long as it is open. Off
 /// unless the operator or the entry turns it on: on a Digirig, a SignaLink
 /// and most home-made cables RTS is the PTT line, so holding it high keys
-/// the transmitter. The radio that needs it is a Yaesu whose CAT RTS menu is
-/// on, which waits for it before answering — on its own USB port the editor
-/// ticks it as that port is picked (see [SerialTransportConfig.fieldChanged]).
+/// the transmitter. The radios that need it take RTS as their CAT handshake:
+/// a Kenwood or an Orion, whose entries prefill it, and a Yaesu whose CAT RTS
+/// menu is on, for which the editor ticks it as the radio's own USB port is
+/// picked (see [SerialTransportConfig.fieldChanged]).
 const serialRtsHighConfigKey = 'rtsHigh';
 
 /// Whether the connection holds DTR high for as long as it is open. Off

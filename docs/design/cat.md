@@ -385,9 +385,13 @@ leaves them where opening the port put them — macOS, Linux and most Windows dr
 open, and libserialport's `setFlowControl(none)` does not lower them (a line it is not told about is
 left alone). Two node settings say where they go (`rtsHigh`, `dtrHigh` in
 `serial_transport_config.dart`), and **both are off unless the operator turns them on**, on every
-entry in the catalogue but the few whose radio is known to wait for RTS — the Orions, whose port uses
-RTS/CTS as its handshake. Each of those prefills RTS high as a default the operator can turn off,
-and `cat_serial_lines_test.dart` names every one, so a new one is a deliberate edit. The Yaesus
+entry in the catalogue but the few whose radio is known to wait for RTS — the Orions and Kenwood's own
+(the TS-590SG, the TS-480 and the generic Kenwood), whose ports use RTS/CTS as their handshake. Each
+of those prefills RTS high as a default the operator can turn off, and `cat_serial_lines_test.dart`
+names every one, so a new one is a deliberate edit; the other rigs on Kenwood's protocol keep it low.
+A prefill is where an added node starts, never what an existing one reads: the editor opens a serial
+node that stored neither key with both boxes off, as it connects, so an unrelated save cannot raise a
+line on a radio that was working. The Yaesus
 reached through their own USB port raise it a different way, because the same entry is just as often
 used through a Digirig: their `port` restriction carries `rtsHigh: true`, and picking a port in the
 editor ticks **Hold RTS high** when the restriction suggests that port — the radio's CP2105 — and

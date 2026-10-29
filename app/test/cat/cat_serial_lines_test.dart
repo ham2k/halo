@@ -34,8 +34,9 @@ void main() {
 
   // The entries whose radio waits for RTS before it answers, and so prefill it
   // high — each one a decision, since on a Digirig the same line transmits.
-  // The Orions' guide wires RTS/CTS as the port's handshake.
-  const rtsHighByDefault = {'tentec-565-serial', 'tentec-566-serial'};
+  // The Orions' guide wires RTS/CTS as the port's handshake, and so does
+  // every Kenwood's CAT port — but not the other rigs on Kenwood's protocol.
+  const rtsHighByDefault = {'tentec-565-serial', 'tentec-566-serial', 'ts590sg-serial', 'ts480-serial', 'kenwood-serial'};
 
   test('no entry in the catalogue raises either line unless it is known to need it', () {
     // Whatever a new entry prefills, these are the lines that transmit. The

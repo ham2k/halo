@@ -9,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/equipment_models_other_radios.dart' show placeholderRadioModel;
+import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
 import '../support/fake_serial_ports.dart';
 import '../support/halo_test_support.dart';
@@ -24,7 +26,7 @@ void main() {
   /// Fixed pumps, never `pumpAndSettle`: the Add dialog runs a discovery
   /// spinner, and an animation that never ends is a settle that never
   /// arrives.
-  Future<void> pick(WidgetTester tester, String query, String name) async {
+  Future<void> showPanel(WidgetTester tester) async {
     // Tall enough that the whole form fits above the pane's footer, which
     // otherwise sits over the fold at the test's default 800x600.
     tester.view.physicalSize = const Size(1000, 2400);
@@ -39,6 +41,10 @@ void main() {
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  Future<void> pick(WidgetTester tester, String query, String name) async {
+    await showPanel(tester);
     await tester.tap(find.text(t.settings.station.add));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -93,6 +99,50 @@ void main() {
     // over a line held high is the operator being lied to.
     expect(checked(tester, st.serialRtsHigh), isFalse);
     expect(checked(tester, st.serialDtrHigh), isFalse);
+  });
+
+  testWidgets('a new Kenwood opens with RTS held high, its CAT handshake', (tester) async {
+    await pick(tester, 'TS-590', t.settings.station.models.ts590sg);
+    await openAdvanced(tester);
+    expect(checked(tester, t.settings.station.serialRtsHigh), isTrue);
+    expect(checked(tester, t.settings.station.serialDtrHigh), isFalse);
+  });
+
+  testWidgets('a Kenwood saved before its RTS prefill opens low, and a save keeps it low', (tester) async {
+    // The trap: the entry's prefill seeds a box the node never stored, so it
+    // opens ticked over a line the connection holds low, and an unrelated
+    // save — a rename — raises RTS, keying a Digirig on a radio that worked.
+    useSerialPortsForTest(const [SerialPortOption(name: '/dev/cu.usbserial-1', productName: 'CP2102N')]);
+    final node = await services.cat.addNode(typeKey: 'ts480-serial', name: 'Shack Rig', config: {'port': '/dev/cu.usbserial-1', 'baudRate': 9600});
+    expect(node.config.containsKey(serialRtsHighConfigKey), isFalse, reason: 'sanity: the node predates the setting');
+
+    await showPanel(tester);
+    await tester.tap(find.text('Shack Rig').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await openAdvanced(tester);
+    expect(checked(tester, t.settings.station.serialRtsHigh), isFalse);
+
+    await tester.tap(find.text(t.common.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(services.cat.nodes.single.config[serialRtsHighConfigKey], isFalse);
+  });
+
+  testWidgets('a placeholder Kenwood switched to serial starts from the prefill', (tester) async {
+    // The trap: holding an existing node's absent lines low reaches a node
+    // whose pairing never reads them, and a switch to serial in the editor
+    // then saves a Kenwood that waits for RTS with RTS low.
+    await services.cat.addNode(typeKey: 'ts480-placeholder', name: 'Shack Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+
+    await showPanel(tester);
+    await tester.tap(find.text('Shack Rig').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text(services.cat.registry.typeFor('ts480-serial')!.transportLabel));
+    await tester.pump();
+    await openAdvanced(tester);
+    expect(checked(tester, t.settings.station.serialRtsHigh), isTrue);
   });
 
   testWidgets('the troubleshooting notes close the form, after the fold', (tester) async {

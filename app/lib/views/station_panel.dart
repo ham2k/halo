@@ -23,6 +23,7 @@ import 'add_equipment_dialog.dart';
 import 'equipment_glyphs.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
+import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
@@ -418,6 +419,13 @@ class StationPanel extends StatelessWidget {
         // makes the merge safe, and this makes it correct anyway.)
         for (final candidate in variants) ...candidate.defaultConfig,
         ...type.defaultConfig,
+        // A serial node's lines open where it connects them: a key it never
+        // stored reads low at connect, so a prefill seeded here would tick a
+        // box the connection ignores, and any save would then raise the line
+        // — on a Digirig, keying the transmitter. Only a pairing that reads
+        // the key: a placeholder or BLE node switched to serial here starts
+        // from the prefill, as an added one does.
+        if (node != null && type.transport is SerialTransportConfig) ...{serialRtsHighConfigKey: false, serialDtrHighConfigKey: false},
         ...config,
         if (choosable) 'transport': type.transportKey,
         // Where each device port is pointing right now — live state, seeded

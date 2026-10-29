@@ -30,6 +30,15 @@ const _tx500SerialKey = 'tx500-serial';
 const _tx500mpSerialKey = 'tx500mp-serial';
 const _tx500mpBluetoothKey = 'tx500mp-bluetooth';
 
+/// RTS held high on Kenwood's own entries, which almost no other entry does:
+/// a Kenwood's CAT port, its USB one included, takes RTS/CTS as its hardware
+/// handshake, so held low it may tell the radio never to answer. A default
+/// rather than an override, because an interface that keys PTT from RTS — a
+/// Digirig — would transmit with it, and that is the operator's to switch
+/// off. The QRP Labs, BG2FX, Elecraft and Lab599 rigs on the same protocol
+/// are not Kenwoods and keep it low.
+const _kenwoodRtsHigh = {serialRtsHighConfigKey: true};
+
 /// Kenwood TS-590SG over its built-in USB port, at the 115200 its USB speed
 /// menu ships on. The operator who reported it working had set 38400.
 ///
@@ -47,7 +56,7 @@ const ts590sgModel = EquipmentModel(
       key: _ts590sgSerialKey,
       driver: KenwoodDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'baudRate': 115200},
+      defaultConfig: {..._kenwoodRtsHigh, 'baudRate': 115200},
       overrides: {
         KenwoodDriver.cwDialectKey: 'kenwood',
         KenwoodDriver.voiceDialectKey: '',
@@ -77,7 +86,7 @@ const ts480Model = EquipmentModel(
       key: _ts480SerialKey,
       driver: KenwoodDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate},
       overrides: {
         KenwoodDriver.cwDialectKey: 'kenwood',
         KenwoodDriver.voiceDialectKey: '',
@@ -117,7 +126,7 @@ const kenwoodGenericModel = EquipmentModel(
       // No keyer until a developer names a dialect: the line disagrees on
       // both (`KY` padded or not, `PB` with a list to open or not), and
       // the catalogue does not know which Kenwood this is.
-      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate, voiceMemoriesConfigKey: 0},
+      defaultConfig: {..._kenwoodRtsHigh, 'baudRate': KenwoodDriver.defaultBaudRate, voiceMemoriesConfigKey: 0},
       notes: _kenwoodSerialNotes,
     ),
   ],

@@ -445,9 +445,9 @@ void main() {
       // behind this entry answered the QMX entry only once changed to it.
       'qcx-serial': ('kenwood', {'baudRate': 38400}),
       // 115200, the TS-590SG's USB speed menu default, not the family's 9600.
-      'ts590sg-serial': ('kenwood', {'baudRate': 115200}),
+      'ts590sg-serial': ('kenwood', {'baudRate': 115200, 'rtsHigh': true}),
       // The rate the TS-480 was reported working on — also its default.
-      'ts480-serial': ('kenwood', {'baudRate': 9600}),
+      'ts480-serial': ('kenwood', {'baudRate': 9600, 'rtsHigh': true}),
       // 38400, not the Kenwood family's 9600: the whole Elecraft line ships
       // on it, and a speed mismatch is answered with silence, not an error.
       'kx2-serial': ('kenwood', {'baudRate': 38400}),
