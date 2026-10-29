@@ -14,11 +14,12 @@ The capture is of **wfview**, taken with `tcpdump` on the LAN interface:
 udp and host <radio> and portrange 50001-50003
 ```
 
-wfview is GPLv3 and this codebase is MPL-2.0. **Its source was not read, and
-must not be.** What follows is derived entirely from datagrams on the wire —
+wfview is GPLv3 and this codebase is MPL-2.0. **Its source was not read for
+this, and is never copied.** What follows is derived entirely from datagrams on the wire —
 the byte layout the *radio* requires is a fact about the radio, not anyone's
-expression of it. Keep any future work on this protocol inside the same
-boundary: capture and observe, never read.
+expression of it. Keep corrections to this protocol inside the same
+boundary: the wire is the evidence, and wfview's source is read for the facts
+of a format at most, never copied.
 
 Capture: 12,371 packets, four control sessions, ~38 seconds — connect, wait for
 a frequency, disconnect, immediately reconnect, disconnect.

@@ -243,6 +243,11 @@ List<int> buildCivFrame({required int to, int from = civDefaultControllerAddress
   civTerminator,
 ];
 
+/// [CivCommand.settings] sub-command: the radio's menu, an item named by two
+/// BCD bytes whose numbering is each model's own. A read is `05 <hi> <lo>`
+/// and answers with its value after them; a set carries the value.
+const civSettingMenu = 0x05;
+
 /// [CivCommand.settings] sub-command: the DATA submode (USB-D and the like).
 /// A read answers `06 <data> <filter>`, data 0x00 off and 0x01-0x03 D1-D3; a
 /// set carries the same two bytes, the filter 0x00 when data is off.

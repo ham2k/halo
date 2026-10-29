@@ -1692,7 +1692,7 @@
         "deleteSetConfirm": "DELETE $name AND ITS RECORDINGS? THIS CANNOT BE UNDONE.",
         "output": "SEND AUDIO TO",
         "input": "RECORD FROM",
-        "outputRadio": "DIRECTLY TO THE RADIO",
+        "outputRadio": "SEND TO RADIO OVER NETWORK",
         "inputDefault": "SYSTEM DEFAULT",
         "pickDevice": "CHOOSE A SOUND DEVICE",
         "deviceMissing": "$name (NOT CONNECTED)",

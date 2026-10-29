@@ -8922,8 +8922,8 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Record from'
 	String get input => 'Record from';
 
-	/// en: 'Directly to the radio'
-	String get outputRadio => 'Directly to the radio';
+	/// en: 'Send to radio over network'
+	String get outputRadio => 'Send to radio over network';
 
 	/// en: 'System default'
 	String get inputDefault => 'System default';
@@ -11112,7 +11112,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Delete ${name} and its recordings? This cannot be undone.',
 			'settings.radio.voiceMessages.output' => 'Send audio to',
 			'settings.radio.voiceMessages.input' => 'Record from',
-			'settings.radio.voiceMessages.outputRadio' => 'Directly to the radio',
+			'settings.radio.voiceMessages.outputRadio' => 'Send to radio over network',
 			'settings.radio.voiceMessages.inputDefault' => 'System default',
 			'settings.radio.voiceMessages.pickDevice' => 'Choose a sound device',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',

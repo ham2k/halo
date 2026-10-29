@@ -4076,7 +4076,7 @@ class _Translations$settings$radio$voiceMessages$cw extends Translations$setting
 	@override String deleteSetConfirm({required Object name}) => '—·· · ·—·· · — · / ${name} / ·— —· —·· / ·· — ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ··· ··——·· / — ···· ·· ··· / —·—· ·— —· —· ——— — / —··· · / ··— —· —·· ——— —· · ·—·—·—';
 	@override String get output => '··· · —· —·· / ·— ··— —·· ·· ——— / — ———';
 	@override String get input => '·—· · —·—· ——— ·—· —·· / ··—· ·—· ——— ——';
-	@override String get outputRadio => '—·· ·· ·—· · —·—· — ·—·· —·—— / — ——— / — ···· · / ·—· ·— —·· ·· ———';
+	@override String get outputRadio => '··· · —· —·· / — ——— / ·—· ·— —·· ·· ——— / ——— ···— · ·—· / —· · — ·—— ——— ·—· —·—';
 	@override String get inputDefault => '··· —·—— ··· — · —— / —·· · ··—· ·— ··— ·—·· —';
 	@override String get pickDevice => '—·—· ···· ——— ——— ··· · / ·— / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· ·';
 	@override String deviceMissing({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—';
@@ -5847,7 +5847,7 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '—·· · ·—·· · — · / ${name} / ·— —· —·· / ·· — ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ··· ··——·· / — ···· ·· ··· / —·—· ·— —· —· ——— — / —··· · / ··— —· —·· ——— —· · ·—·—·—',
 			'settings.radio.voiceMessages.output' => '··· · —· —·· / ·— ··— —·· ·· ——— / — ———',
 			'settings.radio.voiceMessages.input' => '·—· · —·—· ——— ·—· —·· / ··—· ·—· ——— ——',
-			'settings.radio.voiceMessages.outputRadio' => '—·· ·· ·—· · —·—· — ·—·· —·—— / — ——— / — ···· · / ·—· ·— —·· ·· ———',
+			'settings.radio.voiceMessages.outputRadio' => '··· · —· —·· / — ——— / ·—· ·— —·· ·· ——— / ——— ···— · ·—· / —· · — ·—— ——— ·—· —·—',
 			'settings.radio.voiceMessages.inputDefault' => '··· —·—— ··· — · —— / —·· · ··—· ·— ··— ·—·· —',
 			'settings.radio.voiceMessages.pickDevice' => '—·—· ···· ——— ——— ··· · / ·— / ··· ——— ··— —· —·· / —·· · ···— ·· —·—· ·',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',

@@ -4076,7 +4076,7 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String deleteSetConfirm({required Object name}) => 'delete ${name} and its recordings? this cannot be undone.';
 	@override String get output => 'send audio to';
 	@override String get input => 'record from';
-	@override String get outputRadio => 'directly to the radio';
+	@override String get outputRadio => 'send to radio over network';
 	@override String get inputDefault => 'system default';
 	@override String get pickDevice => 'choose a sound device';
 	@override String deviceMissing({required Object name}) => '${name} (not connected)';
@@ -5847,7 +5847,7 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'delete ${name} and its recordings? this cannot be undone.',
 			'settings.radio.voiceMessages.output' => 'send audio to',
 			'settings.radio.voiceMessages.input' => 'record from',
-			'settings.radio.voiceMessages.outputRadio' => 'directly to the radio',
+			'settings.radio.voiceMessages.outputRadio' => 'send to radio over network',
 			'settings.radio.voiceMessages.inputDefault' => 'system default',
 			'settings.radio.voiceMessages.pickDevice' => 'choose a sound device',
 			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (not connected)',

@@ -10,6 +10,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
 import 'drivers/icom_civ_driver.dart';
+import 'drivers/icom_lan_audio.dart' show civLanModConfigKey;
 import 'drivers/civ_power.dart' show civBandMaxWattsConfigKey;
 import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
 import 'equipment.dart';
@@ -95,6 +96,11 @@ const _icomVoiceSeconds = 90;
 /// shape, where Port A is the first data interface. Treat a report that
 /// contradicts it as the better evidence.
 const _icomCatPort = {'index': 0};
+
+/// DATA OFF MOD on the IC-7850 and IC-7851, CI-V setting 0063, whose LAN is 9 — see
+/// [civLanModConfigKey]. Each network variant pins its own model's, from
+/// wfview's rig definitions; none has met a radio.
+const _ic785xLanMod = [0x00, 0x63, 9];
 
 /// The troubleshooting note for a LAN-port Icom's network variant.
 ///
@@ -262,7 +268,11 @@ const ic7300mk2Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': 'B6', ..._icomLanPorts},
-      overrides: {..._ic7300mk2Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {
+        ..._ic7300mk2Overrides,
+        'civControllerAddress': icomNetworkControllerAddress,
+        civLanModConfigKey: [0x00, 0x84, 5],
+      },
       notes: _icomLanNotes,
     ),
   ],
@@ -370,7 +380,11 @@ const ic7610Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': '98', ..._icomLanPorts},
-      overrides: {..._ic7610Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {
+        ..._ic7610Overrides,
+        'civControllerAddress': icomNetworkControllerAddress,
+        civLanModConfigKey: [0x00, 0x91, 5],
+      },
       notes: _icomLanNotes,
     ),
   ],
@@ -416,7 +430,11 @@ const ic7760Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': 'B2', ..._icomLanPorts},
-      overrides: {..._ic7760Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {
+        ..._ic7760Overrides,
+        'civControllerAddress': icomNetworkControllerAddress,
+        civLanModConfigKey: [0x01, 0x29, 9],
+      },
       notes: _icomLanNotes,
     ),
   ],
@@ -462,7 +480,11 @@ const ic9700Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': 'A2', ..._icomLanPorts},
-      overrides: {..._ic9700Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {
+        ..._ic9700Overrides,
+        'civControllerAddress': icomNetworkControllerAddress,
+        civLanModConfigKey: [0x01, 0x15, 5],
+      },
       notes: _icomLanNotes,
     ),
   ],
@@ -515,7 +537,11 @@ const ic905Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': 'AC', ..._icomLanPorts},
-      overrides: {..._ic905Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {
+        ..._ic905Overrides,
+        'civControllerAddress': icomNetworkControllerAddress,
+        civLanModConfigKey: [0x01, 0x26, 3],
+      },
       notes: _icomLanNotes,
     ),
   ],
@@ -576,7 +602,7 @@ const ic7850Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': '8E', ..._icomLanPorts},
-      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress, civLanModConfigKey: _ic785xLanMod},
       notes: _icomLanNotes,
     ),
   ],
@@ -604,7 +630,7 @@ const ic7851Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
       defaultConfig: {'civAddress': '8E', ..._icomLanPorts},
-      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
+      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress, civLanModConfigKey: _ic785xLanMod},
       notes: _icomLanNotes,
     ),
   ],
@@ -735,6 +761,8 @@ const ic705Model = EquipmentModel(
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
+        // DATA OFF MOD is CI-V setting 0118, and its WLAN is 3.
+        civLanModConfigKey: [0x01, 0x18, 3],
       },
       // The failure this transport actually produces is silence: the
       // handshake succeeds and the login is ignored, so a busy radio and a

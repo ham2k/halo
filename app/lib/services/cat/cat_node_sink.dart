@@ -6,7 +6,7 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink {
+class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink, TransmitAudioSink {
   final EquipmentConnection connection;
   final double? Function() linkedVfo;
   final void Function(VfoReading) onReading;
@@ -60,6 +60,12 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
     onSend(bytes);
     connection.send(bytes);
   }
+
+  @override
+  TransmitAudioConnection? get transmitAudio => switch (connection) {
+    final TransmitAudioConnection audio when audio.carriesTransmitAudio => audio,
+    _ => null,
+  };
 
   @override
   void report(VfoReading reading) => onReading(reading);

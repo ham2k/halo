@@ -21,6 +21,7 @@ import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'drivers/meter_calibration.dart';
 import 'telemetry_poller.dart';
+import 'transport.dart' show TransmitAudioConnection;
 import 'transports/config_field_helpers.dart';
 
 /// What a session is allowed to do: write bytes, and report what it read.
@@ -252,6 +253,14 @@ abstract class TunerSink {
   /// What the radio says its tuner is doing; null for a radio that answered
   /// that it has none.
   void reportTuner(TunerStatus? status);
+}
+
+/// Where a session whose connection carries the radio's transmit audio
+/// ([TransmitAudioConnection]) reaches it — a sink of its own, as
+/// [TunerSink] is.
+abstract class TransmitAudioSink {
+  /// Null on a connection that carries none.
+  TransmitAudioConnection? get transmitAudio;
 }
 
 /// Where a session that reads the radio's own antenna ports reports them — a
@@ -575,11 +584,14 @@ abstract interface class SilenceFedOutput implements AudioOutput {
 typedef PcmDecoder = Float32List Function(String path, {required int rate, required int channels});
 
 /// A transceiver that takes transmit audio over its own network link — a
-/// FlexRadio's DAX — so the computer's voice keyer plays a recording into
-/// the radio itself, with no sound device between them.
+/// FlexRadio's DAX, an Icom's LAN audio stream — so the computer's voice
+/// keyer plays a recording into the radio itself, with no sound device
+/// between them.
 abstract class NetworkTransmitAudioSession implements ComputerAudioPttSession {
   /// Whether this connection can carry the audio at all — false where it
-  /// has no UDP link (the web).
+  /// has no UDP link (the web, an Icom on a serial port), or the radio's
+  /// source for it cannot be switched. What the output picker offers the
+  /// radio on, so it is never offered where it would play into nothing.
   bool get sendsTransmitAudio;
 
   /// An output that plays files into the radio's transmit audio, decoding

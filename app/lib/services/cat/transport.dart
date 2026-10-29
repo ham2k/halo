@@ -143,6 +143,42 @@ abstract class EquipmentConnection {
   Future<void> close();
 }
 
+/// A connection that also carries the radio's transmit audio — an Icom's
+/// network link, whose audio stream sits beside its CI-V (docs/design/cat.md
+/// § The computer's voice keyer).
+abstract interface class TransmitAudioConnection {
+  /// Whether this connection knows where the radio takes its audio: false
+  /// leaves the radio unoffered as the voice keyer's output.
+  bool get carriesTransmitAudio;
+
+  /// The audio stream, opened the first time it is asked for and kept until
+  /// it is lost or the connection closes. Fails with
+  /// [TransmitAudioUnavailable] when the radio would not open it.
+  Future<TransmitAudioLink> openTransmitAudio();
+}
+
+/// An open transmit audio stream, in the format its protocol fixes.
+abstract interface class TransmitAudioLink {
+  /// Sends one packet's [pcm]. Never throws, like [EquipmentConnection.send];
+  /// [gone] is what tells anyone it stopped.
+  void send(Uint8List pcm);
+
+  /// Completes when the stream is gone — the radio stopped answering on it,
+  /// or the connection closed.
+  Future<void> get gone;
+}
+
+/// Why a radio's audio stream would not open, in words safe for the CAT
+/// recording — which leaves the device, so never an address.
+class TransmitAudioUnavailable implements Exception {
+  final String reason;
+
+  const TransmitAudioUnavailable(this.reason);
+
+  @override
+  String toString() => 'TransmitAudioUnavailable: $reason';
+}
+
 /// A connection that can say why it closed, for the CAT traffic log — which
 /// otherwise records that a session ended and nothing about whether the
 /// equipment, the cable or this device's own network ended it.

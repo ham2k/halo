@@ -4,26 +4,13 @@
 // Coverage for the Icom UDP transport's socket-error handling
 // (icom_network_transport_io.dart's _onSocketError/_failPending/
 // _declareLost machinery) — no test drives a socket-level failure through
-// any phase of a connect attempt without this file.
-//
-// A real RawDatagramSocket can't be made to fail on demand without OS-level
-// network manipulation, which is exactly the kind of flaky, non-deterministic
-// test this project avoids. RawDatagramSocket is `abstract interface class
-// ... extends Stream<RawSocketEvent>`, so a fake that extends Stream (for
-// its default map/where/etc — the only abstract Stream member is `listen`)
-// and implements RawDatagramSocket's handful of I/O members gives full,
-// deterministic control over both directions: `send()` observes outgoing
-// packets and `queueReply`/`emitSocketError` drive the socket's read side.
-// `IcomNetworkTransport.debugSocketBinder` (a test seam, same pattern as
-// ErrorPolicy.debugTreatAsWeb) hands the transport these fakes instead of
-// real sockets, in the fixed order it always binds them: control, serial,
-// audio. The same doubles record where each packet goes, which is how the
-// configured radio ports are checked too.
+// any phase of a connect attempt without this file. The radio is scripted
+// by test/support/fake_icom_radio.dart, which also records where each
+// packet goes, which is how the configured radio ports are checked too.
 
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
@@ -31,143 +18,19 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_protocol.dart'
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart';
 
 import '../support/fake_clock.dart';
-
-Map<String, dynamic> _target() => {'host': '127.0.0.1', 'username': 'N0CALL', 'password': 'hunter2'};
-
-/// A [length]-byte packet of zeros with specific byte offsets overridden —
-/// far less error-prone than hand-concatenating spreads for a wire format
-/// this file doesn't otherwise need to build.
-List<int> _packet(int length, [Map<int, int> overrides = const {}]) {
-  final bytes = List<int>.filled(length, 0);
-  overrides.forEach((offset, value) => bytes[offset] = value);
-  return bytes;
-}
-
-// The radio-side replies these tests script. Field values that the
-// transport reads but doesn't validate (session ids, auth ids, the stream
-// token) are left at zero — only the bytes _onEvent's predicates actually
-// check are set.
-List<int> _pkt4Reply() => _packet(16, {0: 0x10, 4: 0x04});
-List<int> _pkt6AnswerReply() => _packet(16, {0: 0x10, 4: 0x06, 6: 0x01});
-List<int> _loginAcceptedReply() => _packet(96, {0: 0x60});
-List<int> _streamTokenReply() => _packet(168, {0: 0xa8});
-List<int> _streamAnswerAcceptedReply() => _packet(80, {0: 0x50, 20: 0x02, 66: 0x12, 67: 0x34});
-List<int> _streamAnswerAuthFailedReply() => _packet(80, {0: 0x50, 20: 0x02, 48: 0xff, 49: 0xff, 50: 0xff});
-List<int> _logoutAckReply() => _packet(64, {0: 0x40, 20: 0x02});
-
-/// A [RawDatagramSocket] double: `send()` is observed synchronously by
-/// [onSend], and [queueReply]/[emitSocketError] drive what the transport's
-/// `_onEvent`/`_onSocketError` see next, on the same turn of the event loop
-/// a real socket's callback would use.
-class _FakeIcomSocket extends Stream<RawSocketEvent> implements RawDatagramSocket {
-  _FakeIcomSocket(this._replyAddress);
-
-  final InternetAddress _replyAddress;
-  final _controller = StreamController<RawSocketEvent>();
-  final _incoming = Queue<Datagram>();
-
-  final sent = <List<int>>[];
-  final sentToPorts = <int>{};
-  var closeCalled = false;
-  void Function(List<int> bytes)? onSend;
-
-  void queueReply(List<int> bytes) {
-    _incoming.add(Datagram(Uint8List.fromList(bytes), _replyAddress, 0));
-    _controller.add(RawSocketEvent.read);
-  }
-
-  void emitSocketError(Object error) => _controller.addError(error);
-
-  @override
-  StreamSubscription<RawSocketEvent> listen(void Function(RawSocketEvent event)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      _controller.stream.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError);
-
-  @override
-  Datagram? receive() => _incoming.isEmpty ? null : _incoming.removeFirst();
-
-  @override
-  int send(List<int> buffer, InternetAddress address, int port) {
-    final copy = List<int>.from(buffer);
-    sent.add(copy);
-    sentToPorts.add(port);
-    onSend?.call(copy);
-    return copy.length;
-  }
-
-  @override
-  int get port => 40000 + (identityHashCode(this) % 1000);
-  @override
-  InternetAddress get address => _replyAddress;
-  @override
-  void close() => closeCalled = true;
-  @override
-  bool readEventsEnabled = true;
-  @override
-  bool writeEventsEnabled = true;
-  @override
-  bool multicastLoopback = true;
-  @override
-  int multicastHops = 1;
-  @override
-  NetworkInterface? multicastInterface;
-  @override
-  bool broadcastEnabled = false;
-  @override
-  void joinMulticast(InternetAddress group, [NetworkInterface? interface]) {}
-  @override
-  void leaveMulticast(InternetAddress group, [NetworkInterface? interface]) {}
-  @override
-  Uint8List getRawOption(RawSocketOption option) => Uint8List(0);
-  @override
-  void setRawOption(RawSocketOption option) {}
-}
-
-/// Wires [socket] to auto-answer whichever handshake steps [answer...]
-/// leaves enabled, with the real transport's own request bytes as the
-/// discriminator (see icom_network_transport_io.dart / icom_network_protocol.dart
-/// for the shapes: pkt3/pkt6 are `0x10` typed at byte 4; login is `0x80`;
-/// the post-login ack, stream-token request, and logout request are all
-/// `0x40`-typed 64-byte auth packets told apart by the magic byte at 21).
-/// A disabled step (or one the test overrides via [onEachSend], called
-/// before the auto-responder on every send) is left for the test to drive.
-void _wireSession(
-  _FakeIcomSocket socket, {
-  bool answerHandshake = true,
-  bool answerLogin = true,
-  bool answerStreamToken = true,
-  bool answerStreams = true,
-  bool answerLogout = true,
-  void Function(List<int> bytes)? onEachSend,
-}) {
-  socket.onSend = (bytes) {
-    onEachSend?.call(bytes);
-    if (answerHandshake && bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
-      socket.queueReply(_pkt4Reply());
-    } else if (answerHandshake && bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x06) {
-      socket.queueReply(_pkt6AnswerReply());
-    } else if (answerLogin && bytes[0] == 0x80) {
-      socket.queueReply(_loginAcceptedReply());
-    } else if (answerStreamToken && bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x05) {
-      socket.queueReply(_streamTokenReply());
-    } else if (answerStreams && bytes[0] == 0x90) {
-      socket.queueReply(_streamAnswerAcceptedReply());
-    } else if (answerLogout && bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x01) {
-      socket.queueReply(_logoutAckReply());
-    }
-  };
-}
+import '../support/fake_icom_radio.dart';
 
 void main() {
   final loopback = InternetAddress('127.0.0.1');
-  late _FakeIcomSocket control;
-  late _FakeIcomSocket serial;
-  late _FakeIcomSocket audio;
+  late FakeIcomSocket control;
+  late FakeIcomSocket serial;
+  late FakeIcomSocket audio;
 
   void bindFakeSockets() {
-    control = _FakeIcomSocket(loopback);
-    serial = _FakeIcomSocket(loopback);
-    audio = _FakeIcomSocket(loopback);
-    final dispensed = Queue<_FakeIcomSocket>.from([control, serial, audio]);
+    control = FakeIcomSocket(loopback);
+    serial = FakeIcomSocket(loopback);
+    audio = FakeIcomSocket(loopback);
+    final dispensed = Queue<FakeIcomSocket>.from([control, serial, audio]);
     IcomNetworkTransport.debugSocketBinder = (address, port) async => dispensed.removeFirst();
   }
 
@@ -195,7 +58,7 @@ void main() {
       };
 
       final started = async.elapsed;
-      await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+      await expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
       expect(
         async.elapsed - started,
         lessThan(const Duration(seconds: 1)),
@@ -212,16 +75,16 @@ void main() {
     // own doc comment warns against. A raw SocketException surfacing here is
     // the same behavior CatConnectFailure already gives a TCP or serial
     // radio whose connect fails at the socket layer.
-    _wireSession(
+    wireIcomSession(
       control,
       answerLogin: false,
       onEachSend: (bytes) {
         if (bytes[0] == 0x80) control.emitSocketError(const SocketException('Network is unreachable'));
       },
     );
-    _wireSession(serial);
+    wireIcomSession(serial);
 
-    return expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+    return expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   });
 
   test(
@@ -235,7 +98,7 @@ void main() {
       // its own _failPending hook a socket error here has nowhere to go —
       // onLost isn't wired up yet either, this early — and vanishes into a
       // debugPrint while the attempt rides out the full 3s poll deadline.
-      _wireSession(
+      wireIcomSession(
         control,
         answerStreamToken: false,
         onEachSend: (bytes) {
@@ -244,10 +107,10 @@ void main() {
           }
         },
       );
-      _wireSession(serial);
+      wireIcomSession(serial);
 
       final started = async.elapsed;
-      await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+      await expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
       expect(async.elapsed - started, lessThan(const Duration(seconds: 1)), reason: 'must fail immediately, not ride out the ~3s stream-token poll deadline');
     }),
   );
@@ -259,22 +122,22 @@ void main() {
     // control?.close(), and rethrow. The escaping error would also silently
     // replace the ORIGINAL failure (here, the stream request being
     // rejected) with an unrelated logout-time error.
-    _wireSession(
+    wireIcomSession(
       control,
       answerStreams: false,
       answerLogout: false,
       onEachSend: (bytes) {
         if (bytes[0] == 0x90) {
-          control.queueReply(_streamAnswerAuthFailedReply());
+          control.queueReply(icomStreamAnswerAuthFailedReply());
         } else if (bytes.length == 64 && bytes[0] == 0x40 && bytes[21] == 0x01) {
           control.emitSocketError(const SocketException('No route to host (logout)'));
         }
       },
     );
-    _wireSession(serial);
+    wireIcomSession(serial);
 
     await expectLater(
-      const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()),
+      const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()),
       throwsA(isA<StateError>()),
       reason: 'the stream-request rejection must survive, not the unrelated logout-time socket error',
     );
@@ -300,8 +163,8 @@ void main() {
       // a generic message, not the SocketException asserted below, which is
       // what lets ErrorPolicy's cat-equipment-unreachable rule still recognize
       // it as an ordinary unreachable-radio event rather than an app bug.
-      _wireSession(serial);
-      _wireSession(
+      wireIcomSession(serial);
+      wireIcomSession(
         control,
         answerStreams: false,
         onEachSend: (bytes) {
@@ -312,7 +175,7 @@ void main() {
       );
 
       final started = async.elapsed;
-      await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+      await expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
       expect(
         async.elapsed - started,
         lessThan(const Duration(seconds: 1)),
@@ -330,8 +193,8 @@ void main() {
     // above. It still must fail, once requestStreams is reached, with the
     // real cause rather than silently succeeding on a control session that
     // is already dead.
-    _wireSession(control);
-    _wireSession(
+    wireIcomSession(control);
+    wireIcomSession(
       serial,
       onEachSend: (bytes) {
         if (bytes.length >= 8 && bytes[0] == 0x10 && bytes[4] == 0x03) {
@@ -340,7 +203,7 @@ void main() {
       },
     );
 
-    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+    await expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   });
 
   test('a control error survives even when serial\'s own un-raced open() times out on its own', () async {
@@ -351,8 +214,8 @@ void main() {
     // path; preferLostCause is what still prefers control's already-known
     // SocketException over the generic TimeoutException that produces,
     // once serial's open() finally gives up and throws.
-    _wireSession(control);
-    _wireSession(
+    wireIcomSession(control);
+    wireIcomSession(
       serial,
       answerHandshake: false,
       onEachSend: (bytes) {
@@ -362,24 +225,24 @@ void main() {
       },
     );
 
-    await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
+    await expectLater(const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   }, timeout: const Timeout(Duration(seconds: 10)));
 
   test('each session talks to the port the node names, and to the factory one when it names none', () async {
     // The radio's menu and a port forward can both move these. Without
     // them reaching the sockets, a radio on 50101 is dialled on 50001 and
     // the login simply times out.
-    _wireSession(control);
-    _wireSession(serial);
-    final moved = await const IcomNetworkTransport().connect({..._target(), 'controlPort': 50101, 'serialPort': 50202}, cancel: CatCancelToken());
+    wireIcomSession(control);
+    wireIcomSession(serial);
+    final moved = await const IcomNetworkTransport().connect({...icomTestTarget(), 'controlPort': 50101, 'serialPort': 50202}, cancel: CatCancelToken());
     await moved.close();
     expect(control.sentToPorts, {50101});
     expect(serial.sentToPorts, {50202});
 
     bindFakeSockets();
-    _wireSession(control);
-    _wireSession(serial);
-    final factory = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+    wireIcomSession(control);
+    wireIcomSession(serial);
+    final factory = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
     await factory.close();
     expect(control.sentToPorts, {icomControlPort});
     expect(serial.sentToPorts, {icomSerialPort});
@@ -389,10 +252,10 @@ void main() {
     // Post-handshake, this is the ping-timeout path's own mechanism
     // (_declareLost) — proves the fast-fail machinery hands off to it
     // cleanly rather than the two paths fighting over the same completer.
-    _wireSession(control);
-    _wireSession(serial);
+    wireIcomSession(control);
+    wireIcomSession(serial);
 
-    final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+    final connection = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
     addTearDown(() => connection.close());
 
     control.emitSocketError(const SocketException('No route to host (idle)'));
@@ -401,10 +264,10 @@ void main() {
   });
 
   test('an audio socket error is swallowed — nothing is pending on it, and it carries no connection to lose', () async {
-    _wireSession(control);
-    _wireSession(serial);
+    wireIcomSession(control);
+    wireIcomSession(serial);
 
-    final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+    final connection = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
     addTearDown(() => connection.close());
 
     var closedFired = false;
@@ -428,9 +291,9 @@ void main() {
     String? reasonOf(EquipmentConnection connection) => (connection as ExplainsClose).closeReason;
 
     test('a socket error gives the OS\'s words and the channel, never the address', () async {
-      _wireSession(control);
-      _wireSession(serial);
-      final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+      wireIcomSession(control);
+      wireIcomSession(serial);
+      final connection = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
       addTearDown(() => connection.close());
 
       control.emitSocketError(SocketException('Read failed', osError: const OSError('Network is unreachable', 101), address: loopback, port: 50001));
@@ -440,12 +303,12 @@ void main() {
     });
 
     test('the radio ending the session is told apart from a socket failure', () async {
-      _wireSession(control);
-      _wireSession(serial);
-      final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+      wireIcomSession(control);
+      wireIcomSession(serial);
+      final connection = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
       addTearDown(() => connection.close());
 
-      serial.queueReply(_packet(80, {0: 0x50, 64: 0x01}));
+      serial.queueReply(icomPacket(80, {0: 0x50, 64: 0x01}));
       await connection.closed.timeout(const Duration(seconds: 1));
 
       expect(reasonOf(connection), 'the radio ended the session (radioDisconnected), on the serial channel');
@@ -455,9 +318,9 @@ void main() {
       'silence says how many pings went unanswered',
       () => runOnFakeClock((async) async {
         bindFakeSockets();
-        _wireSession(control);
-        _wireSession(serial);
-        final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+        wireIcomSession(control);
+        wireIcomSession(serial);
+        final connection = await const IcomNetworkTransport().connect(icomTestTarget(), cancel: CatCancelToken());
 
         // Nothing answers the pings from here on: the radio switched off,
         // or out of range.

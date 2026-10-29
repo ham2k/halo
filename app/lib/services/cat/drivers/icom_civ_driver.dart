@@ -17,18 +17,22 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_audio/halo_audio.dart' show AudioOutput;
 import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../error_reporting_service.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../spectrum.dart';
 import '../telemetry_poller.dart';
+import '../transport.dart' show TransmitAudioConnection;
 import '../transports/config_field_helpers.dart';
 import 'civ_codec.dart';
 import 'civ_power.dart';
 import 'civ_scope_codec.dart';
 import 'cw_send_queue.dart';
+import 'icom_lan_audio.dart';
 import 'keyer_config.dart';
 import 'meter_calibration.dart';
 import 'optional_read.dart';
@@ -233,6 +237,7 @@ class IcomCivDriver extends EquipmentDriver {
     civScopeConfigKey,
     civAntennaPortsConfigKey,
     civBandMaxWattsConfigKey,
+    civLanModConfigKey,
   };
 
   @override
@@ -305,7 +310,7 @@ class IcomCivSession
         ReadBackSession,
         CwKeyerSession,
         VoiceKeyerSession,
-        PttSession,
+        NetworkTransmitAudioSession,
         SpectrumSession,
         AntennaTunerSession,
         PassbandSession,
@@ -521,13 +526,18 @@ class IcomCivSession
   ///
   /// [droppingSub] narrows that to one sub-command, for a command byte
   /// shared by things a stop must not take with it.
-  void _sendFirst(List<int> frame, {required int dropping, int? droppingSub}) {
+  ///
+  /// [ahead] goes out just before [frame], in its order.
+  void _sendFirst(List<int> frame, {required int dropping, int? droppingSub, List<List<int>> ahead = const []}) {
     _outbox.removeWhere((queued) {
       final drop = queued[4] == dropping && (droppingSub == null || queued[5] == droppingSub);
       if (drop) _rawAnswers.remove(queued)?.call(const []);
       return drop;
     });
     _outbox.addFirst(frame);
+    for (final early in ahead.reversed) {
+      _outbox.addFirst(early);
+    }
     _sendNext();
   }
 
@@ -770,6 +780,9 @@ class IcomCivSession
       // a width table, so a refusal is not the mode's, and never counted on
       // the air — see [_unanswered].
       if (!_telemetry.transmitting) _optionalReadFor(answeringFrame)?.refused();
+      // A model without the menu item its entry pins refuses every read and
+      // the LAN set: its mic would go out under every recording.
+      if (answeringFrame != null) _lanMod?.nakked(answeringFrame);
       return;
     }
     if (frame.isAck) return;
@@ -836,6 +849,7 @@ class IcomCivSession
         if (frame.command == CivCommand.transceiveMode && _dataModeSupport.available) _readDataMode();
 
       case CivCommand.settings:
+        if (_lanMod?.heard(frame.data, answering: answeringFrame) ?? false) return;
         if (parseFilterWidthData(frame.data) case final index?) {
           _filterWidthSupport.reset();
           _filterWidthIndex = index;
@@ -1070,7 +1084,10 @@ class IcomCivSession
   /// AFTER this one and undo it. A TX read dropped with them is asked again
   /// on the watch's next turn.
   @override
-  void setPtt(bool on) {
+  void setPtt(bool on) => _setPtt(on);
+
+  /// [ahead] goes out before the key, ahead of the queue with it.
+  void _setPtt(bool on, {List<List<int>> ahead = const []}) {
     // Set before a key and cleared only after an unkey: either one that
     // throws leaves [teardown] an unkey to send.
     _keyedByUs |= on;
@@ -1081,8 +1098,93 @@ class IcomCivSession
       // one dropped here would leave the tuner where the operator moved it
       // from.
       droppingSub: 0x00,
+      ahead: ahead,
     );
     _keyedByUs = on;
+  }
+
+  /// See [civLanModConfigKey]; null where the entry pins none, so no LAN
+  /// audio is offered.
+  late final IcomLanModSwitch? _lanMod = IcomLanModSwitch.fromConfig(
+    _config[civLanModConfigKey],
+    to: radioAddress,
+    from: controllerAddress,
+    send: _send,
+    diagnose: _sink.reportDiagnostic,
+    refused: _lanRefused,
+    host: _config['host'] as String?,
+  );
+
+  /// The LAN set did not take on this connection: the radio is no longer
+  /// offered as the voice keyer's output, which then asks for a sound device.
+  bool _lanUnavailable = false;
+
+  /// The message stops with its output, and the keyer's unkey puts the
+  /// source back.
+  void _lanRefused(int? source) {
+    _lanUnavailable = true;
+    final what = source == null ? 'refused DATA OFF MOD' : 'read DATA OFF MOD as $source after the LAN set';
+    _sink.reportDiagnostic('the radio $what: network audio is not offered again on this connection');
+    // The Phone Keyer pane says the radio is not taking the audio.
+    ErrorReportingService.report(IcomLanModRefused(source), StackTrace.current, context: 'icom:lan-mod-refused', told: true);
+    _lanOutput?.lost();
+  }
+
+  TransmitAudioConnection? get _audioConnection => switch (_sink) {
+    final TransmitAudioSink sink => sink.transmitAudio,
+    _ => null,
+  };
+
+  /// The output [openTransmitAudio] last opened.
+  IcomLanAudioOutput? _lanOutput;
+
+  /// Over the network, on a model whose LAN source is known: a serial port
+  /// carries no audio, and a radio whose source cannot be switched would
+  /// transmit its mic over the recording.
+  @override
+  bool get sendsTransmitAudio => _lanMod != null && !_lanUnavailable && _audioConnection != null;
+
+  @override
+  AudioOutput? openTransmitAudio(PcmDecoder decode) {
+    final connection = _audioConnection;
+    if (_lanMod == null || _lanUnavailable || connection == null) return null;
+    _lanOutput?.close();
+    // Read now, so the key that follows needs no question first.
+    _lanMod.read();
+    return _lanOutput = IcomLanAudioOutput(
+      link: connection.openTransmitAudio(),
+      decode: decode,
+      diagnose: (what) => _sink.reportDiagnostic('Icom LAN audio: $what'),
+    );
+  }
+
+  /// While the recording goes over the network — played into a sound device
+  /// instead, LAN would take the radio's audio from nothing — and while a
+  /// restore is owed, so the unkey after an output that died mid-message
+  /// still puts the source back.
+  @override
+  bool get switchesToComputerAudio => _lanMod != null && (_playsToLan || _lanMod.owesRestore);
+
+  bool get _playsToLan => _lanOutput?.isAlive ?? false;
+
+  @override
+  void setPttWithComputerAudio(bool on) {
+    final lanMod = _lanMod;
+    if (lanMod == null) return setPtt(on);
+    if (on) {
+      if (!_playsToLan) return setPtt(true);
+      // A restore still queued from the last message would put the source
+      // back under this one.
+      _outbox.removeWhere(lanMod.owns);
+      final ahead = lanMod.beforeKey();
+      _setPtt(true, ahead: ahead);
+      // CI-V's ACK and NAK name no command, so whether the set took is read:
+      // refused, the radio's mic is on the air under the recording.
+      if (ahead.isNotEmpty) _send(lanMod.verifyFrame());
+    } else {
+      setPtt(false);
+      lanMod.afterUnkey();
+    }
   }
 
   /// Given up for the rest of the session by a radio that refuses or ignores
@@ -1299,6 +1401,7 @@ class IcomCivSession
     _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
     _pollTimer ??= Timer.periodic(_pollInterval, (_) => _requestFrequencyAndMode());
     _telemetry.start();
+    _lanMod?.settle();
   }
 
   /// Asks the radio for its keyer speed again — see [startUpdates].
@@ -1339,6 +1442,7 @@ class IcomCivSession
       // to back, and the stream matters more than what its screen shows.
       _sink.send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: false));
     }
+    final keyed = _keyedByUs;
     if (_keyedByUs) {
       // Straight to the wire, not through the outbox: an unkey that waits
       // for the exchange in flight may not go out at all, and nothing else
@@ -1346,6 +1450,8 @@ class IcomCivSession
       _keyedByUs = false;
       _sink.send(buildSetTransmitFrame(to: radioAddress, from: controllerAddress, on: false));
     }
+    _lanMod?.teardown(_sink.send, keyed: keyed);
+    _lanOutput?.close();
     _answerTimer?.cancel();
     _outbox.clear();
     _rawAnswers.clear();

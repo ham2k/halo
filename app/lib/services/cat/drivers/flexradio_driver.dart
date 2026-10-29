@@ -1051,8 +1051,10 @@ class FlexRadioSession
   /// socket it is sent on.
   FlexDaxOutput? _daxOutput;
 
+  /// Not once the UDP socket the audio goes on has failed to open — the web
+  /// has none.
   @override
-  bool get sendsTransmitAudio => meterHost != null;
+  bool get sendsTransmitAudio => meterHost != null && !_metersUnavailable;
 
   @override
   AudioOutput? openTransmitAudio(PcmDecoder decode) {

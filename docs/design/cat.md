@@ -2155,8 +2155,11 @@ keys plainly, and the pane asks the operator to set the radio's transmit audio t
 
 **A Flex takes the recording over the network, with no sound device** (flex_dax_tx.dart). A
 session that can carry the audio itself implements `NetworkTransmitAudioSession`, and its output is
-offered first in the picker as **Directly to the radio** — and is what plays when no output is
-picked. The Flex session creates its own `dax_tx` stream (`stream create type=dax_tx`, owned by this
+offered first in the picker as **Send to radio over network** — and is what plays when no output is
+picked. It is offered only where the session says this connection can carry it
+(`sendsTransmitAudio`): a Flex whose UDP socket opened, an Icom over its network link on a model
+whose transmit source is known (below) — never a radio on a serial port, where the recording would
+play into nothing. The Flex session creates its own `dax_tx` stream (`stream create type=dax_tx`, owned by this
 client, `tx=0`), claims it as the radio's DAX source with `stream set <id> tx=1` only as a message starts — the
 stream is made as the radio connects, and claimed then it would take a digital-mode program's DAX
 transmit audio on the same radio — and again for each message, since another client can claim it
@@ -2166,7 +2169,9 @@ meters arrive on, to port 4991. The packet is what the radio's own DAX audio car
 VITA type 1, IF data with a stream id: as type 3, the type the radio's own packets carry, a
 FLEX-6600 transmits nothing. Packets are paced against a monotonic clock, four ahead; nothing goes
 out before the radio grants the stream, and the message waits for the grant rather than losing its
-start. A radio keyed with nothing arriving on its DAX transmits noise, so the output is fed silence
+start. The pacing, and the silence below, are the shared `PacedTransmitAudio`
+(paced_transmit_audio.dart) the Icom output uses too. A radio keyed with nothing arriving on its
+DAX transmits noise, so the output is fed silence
 whenever the radio may be on the air: from just before the key (`SilenceFedOutput.startSilence`,
 which the keyer calls, and which decodes the recording there, before the key — decoded as it
 plays, the feed would stop for as long as that takes; a file that will not decode is refused
@@ -2177,6 +2182,52 @@ its audio, and the CAT recording why — when the radio refuses the stream or th
 answer `stream create` within two seconds, or a packet will not send. A GUI client's virtual sound device (AetherSDR's "TX")
 is the other route, and on that FLEX-6600 no audio played into it reached the transmitter, with
 DAX on or off.
+
+**An Icom on its network link takes the recording on the link's audio stream** (icom_lan_audio.dart).
+Not yet met on hardware: the packet and each model's menu item come from reading wfview's source for
+the facts of the format (none of its code is copied; it is GPLv3), and nothing here has keyed a
+radio. The stream request already asks for 16-bit linear PCM, mono, little-endian (codec `0x04`) at
+48 kHz both ways, so that is what goes out: ten-millisecond packets of 480 frames, inside the 1364
+bytes of audio a packet carries. A packet is a `0x18`-byte header — its length, type 0, the
+session's outer sequence, the two session ids, marker `0x0080` at 16, then the audio's own counter
+at 18 and its length at 22, those two big-endian — followed by the samples, sent tracked so the
+radio can ask for one again. The audio channel is a UDP session of its own on the radio's audio port
+(50003), with the same `pkt3`–`pkt6` handshake and keepalives as CI-V. Its socket is bound at every
+connect, because the stream request names it, but the session is opened only when the voice keyer
+first wants to play to the radio, and kept until it is lost or the connection closes: once open,
+the radio streams its receive audio at it (about 96 KB/s, dropped unread), which an operator on
+WiFi who never plays a message should not pay for. Its handshake steps wait a second each, not
+the three of the connect's — the keyer keys as it asks, and the radio is on the air with nothing
+to send meanwhile — and a radio that will not open it leaves CI-V alone, says why in the CAT
+recording, and is asked again at the next message. Silence on it ends the audio, not the
+connection, and the next message opens a new one; a disconnect mid-handshake still ends the
+radio's half of it; the teardown ends it first, then serial, then control, as the capture's client
+does. The radio's audio port is no field, so it is the factory 50003 only where the node's control
+and serial ports are the factory ones too; on other ports the radio is not offered as the output,
+rather than sent audio at a port that may be another radio's.
+
+The radio transmits that audio only while **DATA OFF MOD** (the SSB/AM/FM source with DATA off) is
+**LAN** — **WLAN** on the IC-705; otherwise its mic, most often. So the session switches it for each
+message and puts it back after, as a Flex's `dax` is: it reads the setting as the output opens, sends
+the LAN set ahead of the key (both ahead of the queue, so the key cannot go first), and after the
+unkey sets the value it read and reads it back. CI-V's ACK and NAK name no command, so the set is
+read back just after the key: anything but LAN — refused, or a menu item that is not this model's —
+and the radio's mic is on the air under the recording, so the message stops with its output
+(`IcomLanModRefused`, which the Phone Keyer pane reports), the unkey puts the source back, and the
+radio is not offered again on that connection. A restore read back as not taken is sent again half
+a second later, three times at most, and then reported (`IcomLanModLeftOn`): the operator's mic is
+dead until they set it back. A radio already on LAN is the operator's choice and is left on it. The
+unkey restores whenever a restore is owed, even with the output gone mid-message. A teardown while
+keyed sends only its unkey: a radio keeps the last of two frames sent back to back, and a restore
+that took the unkey's place would leave it transmitting. The restore is owed instead, by the radio's
+address for the launch, as a Flex's DAX is, and the next session to that radio reads the setting as
+it starts: still LAN, it is put back; moved since, the operator's choice stands. It switches only
+while the recording goes over the network: played into a sound device on the same connection, LAN
+would take the audio from nothing, so that key is a plain one. Each network variant pins its own
+item and LAN value (`civLanMod`, the two bytes after `0x1A 0x05` and the value): IC-705 `0118` = 3,
+IC-7300 MK2 `0084` = 5, IC-7610 `0091` = 5, IC-7760 `0129` = 9, IC-9700 `0115` = 5, IC-905
+`0126` = 3, IC-7850/7851 `0063` = 9. The LAN MOD level, the setting before each, is left as the
+radio has it.
 
 **A play keys, waits, plays, waits, unkeys.** The radio is keyed over CAT, the audio starts after
 the **key-up delay** (250 ms unless changed: a radio, and an amplifier behind it, switch to
@@ -2260,8 +2311,8 @@ on the computer's default output, unkeyed, so the operator hears what they recor
 it on the air.
 
 **Elsewhere, the radio must take its transmit audio from the sound device.** Where the session
-cannot switch it (above), a CAT key does not say where the audio comes from: an Icom in SSB
-transmits its microphone unless DATA OFF MOD includes USB, and a Yaesu needs its SSB mod source on
+cannot switch it (above), a CAT key does not say where the audio comes from: an Icom on a serial
+port, in SSB, transmits its microphone unless DATA OFF MOD includes USB, and a Yaesu needs its SSB mod source on
 REAR/USB — both from the manuals, neither yet met on hardware. The pane says so; per-brand notes
 and further switching sessions follow hardware time.
 
@@ -3424,8 +3475,9 @@ attempt; the protocol is no longer the unknown.
 
 The breakthrough came from capturing wfview's traffic. To be precise about the boundary: **the wire
 protocol is a fact about the radio, not wfview's copyrightable expression**, so observing packets is
-clean-room. wfview's *source* was not read, and must not be — it is GPLv3 and this codebase is
-MPL-2.0.
+clean-room. wfview's *source* was not read for any of this; it is GPLv3 and this codebase is
+MPL-2.0, so it may be read for the facts of a format, never copied (the transmit audio packet, in
+§ The computer's voice keyer, is the one fact taken that way).
 
 **Five bugs, four of which app-polo also had:**
 
@@ -3434,7 +3486,8 @@ MPL-2.0.
    whole of the "serial stream alive, no payload" symptom, in both implementations.
 2. **The audio fields cannot be zeroed.** A real bound audio port and a real sample rate (48000) are
    required or the radio rejects the request — it answers `0x50` with `ffff` at offset 56 instead of
-   echoing its ports. The socket is bound and never read; nothing says we have to listen.
+   echoing its ports. The socket is bound at every connect and read only once the voice keyer opens
+   its session (§ The computer's voice keyer).
 3. **The answer to our request is an `0x50`, not a `0x90`.** The radio also sends a `0x90`, but
    afterwards and unprompted. Waiting for the `0x90` times out on a request that was already
    accepted.
@@ -3479,7 +3532,8 @@ whatever ports the router gives it. A node saved without them connects on the fa
 what every such node always did; in the editor, a cleared or unparseable port, a fractional one and
 the same port for both are refused rather than replaced by a guess. The list row names the control port only
 when it is not 50001, so two radios behind one router read differently. The audio port is not a
-field: the radio's audio port is never addressed, and the one the stream request names is our own.
+field: the radio's is addressed only for transmit audio, at the factory 50003, and the one the
+stream request names is our own.
 
 The radio names itself. Its unsolicited `0xa8` carries, after the stream token at 66, a 32-byte
 zero-padded name at 82 (`IC-705` on the capture; then `ICOM_VAUDIO` at 114 and the CI-V address

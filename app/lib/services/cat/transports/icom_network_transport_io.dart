@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The IC-705 over WiFi. Two UDP sessions — control (login, auth, stream
-// request) and serial (CI-V) — plus an audio socket that is bound and never
-// read, because the stream request must name a real port.
+// request) and serial (CI-V) — plus an audio socket, bound at every connect
+// because the stream request must name a real port, and made a session of
+// its own only when the voice keyer sends transmit audio.
 //
 // Verified against a real IC-705: a complete CI-V exchange in ~290 ms, and a
 // held connection answering 149 of 150 polls over five minutes. The duration
@@ -45,6 +46,9 @@ const _handshakeTimeout = Duration(seconds: 3);
 /// on a packet capture, but this is on the disconnect path: waiting a moment
 /// costs the user a spinner, and giving up early costs them the next connect.
 const _logoutAckTimeout = Duration(milliseconds: 600);
+
+/// Each step of the audio channel's handshake, two in all.
+const _audioStepTimeout = Duration(seconds: 1);
 
 /// kappanhang's cadences. app-polo ran neither, which is why its sessions
 /// died.
@@ -144,7 +148,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
     if (cancel.isCancelled) throw const CatCancelledException();
     _IcomSession? control;
     _IcomSession? serial;
-    RawDatagramSocket? audio;
+    _IcomSession? audio;
 
     // A session's own _failPending only fails the ONE step it's actively
     // waiting on — every gap between steps (opening the other session,
@@ -201,11 +205,10 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       final serialSession = await preferLostCause(() => _IcomSession.open(address, radioSerialPort, 'serial'));
       serial = serialSession;
       onSetupLost(serialSession);
-      final audioSocket = await preferLostCause(() => _bindSocket(InternetAddress.anyIPv4, 0));
-      audio = audioSocket;
-      // Bound and never read (see the file header) — an error here has no
-      // connection to tear down, only a socket to stop draining.
-      audioSocket.listen((_) => audioSocket.receive(), onError: (Object e) => debugPrint('[cat] icom audio socket error: $e'));
+      // Only bound: its session is opened for transmit audio, and until then
+      // nothing is sent on it.
+      final audioSession = await preferLostCause(() => _IcomSession.bind(address, icomAudioPort, 'audio', dropsData: true));
+      audio = audioSession;
 
       if (cancel.isCancelled) throw const CatCancelledException();
 
@@ -216,7 +219,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
           username: username,
           radioName: radio.name,
           serialPort: serialSession.localPort,
-          audioPort: audioSocket.port,
+          audioPort: audioSession.localPort,
         ),
       );
 
@@ -224,12 +227,21 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
 
       control.onSetupLost = null;
       serialSession.onSetupLost = null;
-      return _IcomConnection(control: control, serial: serialSession, audio: audioSocket, authId: authId);
+      return _IcomConnection(
+        control: control,
+        serial: serialSession,
+        audio: audioSession,
+        authId: authId,
+        // The radio's audio port is no field: known only where the node's
+        // ports are the factory ones, and a radio on others is never offered
+        // the audio rather than sent it at a port that may be another's.
+        carriesTransmitAudio: radioControlPort == icomControlPort && radioSerialPort == icomSerialPort,
+      );
     } catch (e) {
       // Log out on the way out too — a half-built session the radio still
       // holds is what makes the NEXT connect fail.
       await control?.logout();
-      audio?.close();
+      await audio?.close();
       await serial?.close();
       await control?.close();
       rethrow;
@@ -335,13 +347,34 @@ class _IcomSession {
   /// _attempt's own use of it for why every await in between needs it.
   void Function(Object error)? onSetupLost;
 
-  _IcomSession._(this._socket, this._address, this._port, this._label);
+  _IcomSession._(this._socket, this._address, this._port, this._label, [this._dropsData = false]);
+
+  /// Whether the radio's data packets on this channel are dropped unread —
+  /// the audio channel's.
+  final bool _dropsData;
 
   int get localPort => _socket.port;
 
   static Future<_IcomSession> open(InternetAddress address, int port, String label) async {
+    final session = await bind(address, port, label);
+    try {
+      await session.handshake();
+    } catch (_) {
+      // The socket leaks otherwise — one per failed Connect, and a refused
+      // reconnect is exactly when someone clicks repeatedly.
+      session._closed = true;
+      session._socket.close();
+      rethrow;
+    }
+    return session;
+  }
+
+  /// A socket for [port] on the radio, listening but not yet a session — the
+  /// audio channel's, whose port the stream request names before anything
+  /// is sent on it.
+  static Future<_IcomSession> bind(InternetAddress address, int port, String label, {bool dropsData = false}) async {
     final socket = await _bindSocket(InternetAddress.anyIPv4, 0);
-    final session = _IcomSession._(socket, address, port, label);
+    final session = _IcomSession._(socket, address, port, label, dropsData);
     // Without onError, an async socket-level failure (an ICMP "no route to
     // host" delivered on the stream rather than thrown from send()) escapes
     // this listen() raw and unclassified instead of reading as the radio
@@ -350,35 +383,53 @@ class _IcomSession {
     // From the local PORT alone, little-endian in the top half — a capture
     // settled this; polo derived it from the IP and got intermittency.
     session.localSid = (((socket.port & 0xFF) << 24) | (((socket.port >> 8) & 0xFF) << 16)) & 0xFFFFFFFF;
+    return session;
+  }
 
-    // Everything from here can throw on a timeout, and both failures leave
-    // something behind if we simply propagate. The socket leaks — one per
-    // failed Connect, and a refused reconnect is exactly when someone clicks
-    // repeatedly. Worse, a pkt4 that arrives means the radio HAS created a
-    // session for us, so walking away without a disconnect manufactures the
-    // very "radio is still holding a previous session" state that this
+  /// Whether [handshake] has completed, so [close] has a session on the
+  /// radio's side to end.
+  bool _handshaken = false;
+
+  /// pkt3 to pkt6, then the keepalives, each step given [stepTimeout]. A
+  /// failure leaves the socket open for the caller to retry or close.
+  Future<void> handshake({Duration? stepTimeout}) async {
+    // A pkt4 that arrives means the radio HAS created a session for us, so
+    // walking away from a later failure without a disconnect manufactures
+    // the very "radio is still holding a previous session" state that this
     // transport spent a long time being blamed for.
     try {
-      session._send(buildPkt3(session.localSid, 0));
-      final pkt4 = await session._expect('pkt4', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x04, 0, 0, 0]));
-      session.remoteSid = readBe32(pkt4, 8);
+      _send(buildPkt3(localSid, 0));
+      final pkt4 = await _expect('pkt4', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x04, 0, 0, 0]), timeout: stepTimeout);
+      remoteSid = readBe32(pkt4, 8);
 
-      session._send(buildPkt6(session.localSid, session.remoteSid));
-      await session._expect('pkt6 answer', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x06, 0, 0x01, 0]));
+      _send(buildPkt6(localSid, remoteSid));
+      await _expect('pkt6 answer', (b) => b.length == 16 && icomPrefixIs(b, [0x10, 0, 0, 0, 0x06, 0, 0x01, 0]), timeout: stepTimeout);
     } catch (_) {
       // Only worth a disconnect once the radio has told us its session id;
       // before pkt4 there is nothing on its side to release.
-      if (session.remoteSid != 0) {
-        session._send(buildDisconnect(session.localSid, session.remoteSid));
+      if (remoteSid != 0) {
+        _send(buildDisconnect(localSid, remoteSid));
+        remoteSid = 0;
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
-      session._closed = true;
-      socket.close();
       rethrow;
     }
+    _handshaken = true;
+    _startKeepalives();
+  }
 
-    session._startKeepalives();
-    return session;
+  /// Ends the session on the radio's side and stops its keepalives, keeping
+  /// the socket: the audio channel's, lost while CI-V carries on, whose next
+  /// [handshake] starts over on the port the stream request named.
+  void release() {
+    _idleTimer?.cancel();
+    _pingTimer?.cancel();
+    onLost = null;
+    if (remoteSid != 0) _send(buildDisconnect(localSid, remoteSid));
+    remoteSid = 0;
+    _handshaken = false;
+    _pingsUnanswered = 0;
+    _sent.clear();
   }
 
   void _startKeepalives() {
@@ -448,10 +499,15 @@ class _IcomSession {
     // and two of those branches answer with traffic. Compared as text because
     // that is stable across the IPv4/IPv6 forms InternetAddress can take.
     if (datagram.address.address != _address.address) return;
-    final bytes = datagram.data.toList();
 
     // Anything at all proves the radio is still there.
     _pingsUnanswered = 0;
+
+    // The radio's receive audio, a hundred packets a second once the audio
+    // session is open, which nothing reads: dropped before it is copied.
+    final data = datagram.data;
+    if (_dropsData && data.length > 0x18 && data[4] == 0 && data[5] == 0) return;
+    final bytes = data.toList();
 
     // The radio pings us; not answering gets the session dropped.
     if (bytes.length == 21 && bytes[4] == 0x07 && bytes[16] == 0x00) {
@@ -775,6 +831,24 @@ class _IcomSession {
       // The reference client's close continues the CI-V numbering.
       sendTracked(buildSerialOpen(localSid, remoteSid, serialCloseInnerSeq ?? _innerSeq++, magic: 0x00));
     }
+    if (!_handshaken) {
+      // Closed mid-handshake (the audio channel's, as the connection goes):
+      // the step waiting fails rather than never answering, and a radio that
+      // has answered pkt4 holds a session to end.
+      final fail = _failPending;
+      _failPending = null;
+      if (fail != null) {
+        // The handshake's own failure sends the disconnect once pkt4 is in.
+        fail(const SocketException.closed());
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        _socket.close();
+        return;
+      }
+      if (remoteSid == 0) {
+        _socket.close();
+        return;
+      }
+    }
     // Once. A working client sends exactly one disconnect per channel and the
     // radio releases the session; repeating it with delays spreads the
     // teardown over ~300ms per channel, with datagrams two and three
@@ -787,10 +861,10 @@ class _IcomSession {
   }
 }
 
-class _IcomConnection implements EquipmentConnection, ExplainsClose {
+class _IcomConnection implements EquipmentConnection, ExplainsClose, TransmitAudioConnection {
   final _IcomSession control;
   final _IcomSession serial;
-  final RawDatagramSocket audio;
+  final _IcomSession audio;
   final List<int> authId;
 
   final _dataController = StreamController<Uint8List>();
@@ -801,7 +875,10 @@ class _IcomConnection implements EquipmentConnection, ExplainsClose {
   @override
   String? closeReason;
 
-  _IcomConnection({required this.control, required this.serial, required this.audio, required this.authId}) {
+  @override
+  final bool carriesTransmitAudio;
+
+  _IcomConnection({required this.control, required this.serial, required this.audio, required this.authId, required this.carriesTransmitAudio}) {
     serial.onMessage((bytes) {
       if (!isCivData(bytes)) return;
       if (!_dataController.isClosed) {
@@ -828,6 +905,38 @@ class _IcomConnection implements EquipmentConnection, ExplainsClose {
     // Best-effort: the radio is very likely gone, but if it is merely
     // wedged this still releases the login it is holding.
     unawaited(_shutdown());
+  }
+
+  Future<TransmitAudioLink>? _audioLink;
+
+  /// The audio session, handshaken on the first ask and kept until it is
+  /// lost or the connection closes. The radio answers on the same port it
+  /// streams receive audio from, which nothing reads. Asked again after a
+  /// refusal or a loss, it tries again: the socket is the one the stream
+  /// request named, and stays.
+  @override
+  Future<TransmitAudioLink> openTransmitAudio() {
+    if (!_open || !carriesTransmitAudio) return Future.error(const TransmitAudioUnavailable('no audio stream on this connection'));
+    return _audioLink ??= () async {
+      try {
+        // Short steps: the voice keyer keys as it asks, and the radio is on
+        // the air with nothing to send for as long as this takes.
+        await audio.handshake(stepTimeout: _audioStepTimeout);
+      } on Exception catch (e) {
+        _audioLink = null;
+        if (!_open) throw const TransmitAudioUnavailable('the connection closed');
+        throw TransmitAudioUnavailable(e is TimeoutException ? 'no answer to the handshake' : osErrorDetail(e) ?? e.runtimeType.toString());
+      }
+      if (!_open) throw const TransmitAudioUnavailable('the connection closed');
+      return _IcomAudioLink(audio, this);
+    }();
+  }
+
+  /// The audio session went quiet while CI-V carries on: the next ask opens
+  /// a new one.
+  void _audioLost() {
+    _audioLink = null;
+    audio.release();
   }
 
   @override
@@ -872,9 +981,40 @@ class _IcomConnection implements EquipmentConnection, ExplainsClose {
     // millisecond, and its next connect succeeds two seconds later. Releasing
     // the login first would spend the better part of a second closing streams
     // the radio no longer has a logged-in owner for.
-    await step('audio', () async => audio.close());
+    await step('audio', audio.close);
     await step('serial', () => serial.close(serialStream: true, serialCloseInnerSeq: _civSeq++));
     await step('logout', control.logout);
     await step('control', control.close);
+  }
+}
+
+class _IcomAudioLink implements TransmitAudioLink {
+  _IcomAudioLink(this._session, this._connection) {
+    // Silence on the audio channel ends the audio, not the connection: CI-V
+    // still answers on its own session.
+    _session.onLost = (reason) {
+      debugPrint('[cat] icom: $reason');
+      _lose();
+      _connection._audioLost();
+    };
+    unawaited(_connection.closed.then((_) => _lose()));
+  }
+
+  final _IcomSession _session;
+  final _IcomConnection _connection;
+  final _gone = Completer<void>();
+  int _audioSeq = 0;
+
+  void _lose() {
+    if (!_gone.isCompleted) _gone.complete();
+  }
+
+  @override
+  Future<void> get gone => _gone.future;
+
+  @override
+  void send(Uint8List pcm) {
+    if (_gone.isCompleted) return;
+    _session.sendTracked(buildAudioData(_session.localSid, _session.remoteSid, _audioSeq++ & 0xFFFF, pcm));
   }
 }

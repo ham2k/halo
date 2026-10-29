@@ -9,8 +9,11 @@
 // and Akos Marton ES1AKOS, via app-polo's MPL-2.0 port. The corrections
 // below were established by observing the WIRE — capturing the traffic a
 // working client exchanges with the radio, which is a fact about the radio
-// and not anyone's copyrightable expression. wfview's SOURCE was not read
-// and must not be: it is GPLv3 and this codebase is MPL-2.0.
+// and not anyone's copyrightable expression. The transmit audio packet
+// ([buildAudioData]) is from reading wfview's source for the facts of the
+// format only; wfview is GPLv3 and this codebase is MPL-2.0, so nothing of
+// its code is copied here, and a correction to these layouts comes from the
+// wire.
 //
 // Five things app-polo got wrong here, each of which cost it the feature:
 //
@@ -34,8 +37,9 @@
 
 /// The three UDP ports the radio listens on, as it ships. Control and serial
 /// are the node's to change (`IcomNetworkTransportConfig`); these are what
-/// it falls back to. Audio is never read; a socket is bound for it only
-/// because the stream request must name a real port.
+/// it falls back to. The audio socket is bound at every connect, because the
+/// stream request must name a real port, and its session opened only for
+/// transmit audio.
 const icomControlPort = 50001;
 const icomSerialPort = 50002;
 const icomAudioPort = 50003;
@@ -48,8 +52,16 @@ const icomNetworkControllerAddress = 0xE1;
 /// Opens the serial stream. Established from a capture; polo used 0x05.
 const icomSerialOpenMagic = 0x04;
 
-/// Rejecting a zeroed audio request, the radio wants a real rate.
+/// Rejecting a zeroed audio request, the radio wants a real rate. Both
+/// directions are asked for at this rate as [icomAudioCodecPcm16].
 const icomAudioSampleRate = 48000;
+
+/// 16-bit linear PCM, mono, little-endian — the codec the stream request asks
+/// for in both directions.
+const icomAudioCodecPcm16 = 0x04;
+
+/// The most audio one packet carries.
+const icomAudioMaxBytes = 1364;
 const icomTxBufferMs = 150;
 
 const _substitutionTable = <int, int>{
@@ -355,10 +367,11 @@ List<int> buildRequestStreams({
     ...name,
     ...zeros(32 - name.length),
     ...passcode(username),
+    // Receive and transmit audio both on, each as icomAudioCodecPcm16.
     0x01,
     0x01,
-    0x04,
-    0x04,
+    icomAudioCodecPcm16,
+    icomAudioCodecPcm16,
     0,
     0,
     (audioSampleRate >> 8) & 0xFF,
@@ -431,6 +444,29 @@ List<int> buildCivData(int local, int remote, int innerSeq, List<int> civ) => [
   (innerSeq >> 8) & 0xFF,
   innerSeq & 0xFF,
   ...civ,
+];
+
+/// Transmit audio: a 0x18-byte header, then [pcm]. The outer sequence at 6
+/// is stamped by the session; the marker at 16 is `0x0080`, little-endian
+/// like the header around it, while the audio's own counter at 18 and its
+/// length at 22 are big-endian.
+List<int> buildAudioData(int local, int remote, int audioSeq, List<int> pcm) => [
+  ...le32(0x18 + pcm.length),
+  0,
+  0,
+  0,
+  0,
+  ...be32(local),
+  ...be32(remote),
+  0x80,
+  0x00,
+  (audioSeq >> 8) & 0xFF,
+  audioSeq & 0xFF,
+  0,
+  0,
+  (pcm.length >> 8) & 0xFF,
+  pcm.length & 0xFF,
+  ...pcm,
 ];
 
 bool isCivData(List<int> b) => b.length >= 22 && b[16] == 0xc1 && ((b[0] - 0x15) & 0xFF) == b[17];
