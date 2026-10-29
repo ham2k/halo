@@ -16,7 +16,7 @@ interface LookupHook {
   lookupCall(args: { callInfo: AnnotatedCallInfo; qso; operation }, ctx): Promise<LookupResult>
 }
 // AnnotatedCallInfo: CallInfo & {guess?: CallInfo, lookups?: CallInfoLookup[]}
-// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[], online?: boolean})[] —
+// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[], online?: boolean, largeArea?: boolean})[] —
 //                    zero or more records; [] to skip
 // CallInfoLookup:    CallInfo & {source?, scope?: 'general'|'operation'|'qso', notes?, history?}
 ```
@@ -103,8 +103,40 @@ interface LookupServiceHook {
     args: { callInfo: CallInfo; qso; operation; recentContext?: boolean },
     ctx,
   ): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo }>
+  // The guess settled again from the `lookups[]` already stored on a saved
+  // QSO, asking no source anything; null for a QSO with no call, or one whose
+  // stored guess names another call. Only the core orchestrator answers it.
+  resolveCallInfo?(args: { qso }, ctx): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo } | null>
 }
 ```
+
+**The returned `guess` is settled** (`resolveGuess`,
+`extensions/core/lookups/src/resolveGuess.ts`): which location fields still
+describe the other station is decided there, once, and every reader in the
+app takes the guess as it stands (docs/design/locations.md). What a lookup
+author needs to know of it:
+- A result about the **callsign** (`scope` other than `qso`) keeps its name
+  and the rest, but its location is dropped when the station is away from
+  its registered address: a portable or mobile call (`/P`, `/M`, `/AM`,
+  `/MM`) or a call-area digit (`/4`); a prefixed call (`EA3/KI2D`) when the
+  result answers for the base call rather than the full one (`call` on the
+  result); or a reference on the QSO with a location.
+- A `scope: 'qso'` result is an answer **about one of the QSO's
+  references**, and is matched to it by name: its `source` is the ref's
+  `type` (`pota`, `sota`). One whose ref is no longer on the QSO takes no
+  part at all. One that carries a location places the station — and sets
+  the callsign results' locations aside.
+- A reference that covers more ground than one point can stand for — a
+  trail, a park across several states — places nothing: mark the ref
+  `largeArea` (`Ref.largeArea`), or, for a ref nobody decorated, answer
+  `largeArea: true` with no grid or coordinate. The station still counts as
+  away. A ref inside exactly one state names it (`Ref.state`), and places
+  the station there.
+- Only entries that name a reference (`ref`) count as references; a
+  contest exchange carried on `refs` does not.
+- What the operator entered (`their.lat`/`lon`, `grid`, `state`) goes on
+  last, as a group: a state that disagrees with the lookup's drops the
+  lookup's whole location, one that matches keeps it.
 
 **locationScope merge rules** (`CallInfo.locationScope`, ranked
 `qth < prefixed < portable`, most general to most specific):

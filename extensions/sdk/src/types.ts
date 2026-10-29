@@ -214,7 +214,13 @@ import type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2
 /// log query, a cached file, recent spots) — a QSO whose only lookups are
 /// unmarked is treated as never having reached the network, however many
 /// distinct sources contributed to it.
-export type LookupResult = (CallInfoLookup & { locAccuracy?: number; refs?: RefInfo[]; online?: boolean })[]
+///
+/// `largeArea: true` on a `scope: 'qso'` result says the contact's reference
+/// covers more ground than one point can stand for — a trail, a park across
+/// several states (`Ref.largeArea`). The station is taken to be away from its
+/// registered address, but the result places it nowhere: give no grid or
+/// coordinate with it.
+export type LookupResult = (CallInfoLookup & { locAccuracy?: number; refs?: RefInfo[]; online?: boolean; largeArea?: boolean })[]
 
 /// Registered under category `lookup`. Called once per decoration pass, in
 /// priority order, by the core `lookupService/core` hook's internal
@@ -269,6 +275,11 @@ export interface LookupServiceResult {
 /// the locationScope rules internally.
 export interface LookupServiceHook {
   lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Promise<LookupServiceResult>
+  /// Settles a saved contact's guess again from the `lookups[]` already
+  /// stored on it — after an edit to its location or refs — asking no source
+  /// anything. Null for a contact with no call, or one whose stored guess
+  /// names another call. Only the core orchestrator answers it.
+  resolveCallInfo?(args: { qso: Record<string, JSONValue> }, ctx: HookContext): Promise<LookupServiceResult | null>
 }
 
 export interface SpotRef {
@@ -519,6 +530,12 @@ export interface Ref {
   lat?: number
   lon?: number
   location?: string
+  /// The state or province the entity lies in, for one inside exactly one —
+  /// the code the program uses (`ME`, `ON`). A contact made with a reference
+  /// that names one is placed in that state, over whatever a callsign
+  /// lookup said about the operator's home. Leave it unset for one that
+  /// spans several, along with [largeArea].
+  state?: string
   program?: string
 
   /// How far from [lat]/[lon] the program lets an activator be, drawn as a

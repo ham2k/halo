@@ -19,7 +19,7 @@ const LOCATION_SCOPE_RANK: Record<string, number> = { qth: 0, prefixed: 1, porta
 // `street` and `postal` are the mailing address's own lines: grouped with the
 // town they complete, so an address is never one source's street on another
 // source's town.
-const LOCATION_FIELDS = ["locSource", "lat", "lon", "grid", "street", "city", "state", "postal", "county", "country", "location"] as const
+export const LOCATION_FIELDS = ["locSource", "lat", "lon", "grid", "street", "city", "state", "postal", "county", "country", "location"] as const
 type LocationField = (typeof LOCATION_FIELDS)[number]
 
 // Meta fields ABOUT a result, never folded into the flat guess merge below —

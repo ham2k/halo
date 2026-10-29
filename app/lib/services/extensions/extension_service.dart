@@ -80,6 +80,7 @@ part 'extension_accounts.dart';
 part 'extension_installs.dart';
 part 'extension_host_calls.dart';
 part 'extension_command_gate.dart';
+part 'extension_resolve_calls.dart';
 
 /// An extension's timers, suspended for breaking their budget
 /// (extensions/sdk/src/timerQueue.ts). Its own type so the crash backend can
@@ -101,6 +102,7 @@ class ExtensionService
         ExtensionChasing,
         _ExtensionHookApi,
         _ExtensionCommandGate,
+        _ExtensionResolveCalls,
         _ExtensionSyncCalls,
         _ExtensionPanels,
         _ExtensionAccounts,

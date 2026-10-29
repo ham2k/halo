@@ -183,6 +183,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   late final _lookup = CallLookupModel(
     config: () => (
       lookup: widget.lookups.lookup,
+      settle: widget.lookups.settleLookup,
       workedBefore: widget.lookups.workedBefore,
       scoreQso: widget.lookups.scoreQso,
       editingQso: widget.session.editingQso,
@@ -1216,6 +1217,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                   // exchange), so a typed state reaches the scorer the
                                   // way an exchange field's value does.
                                   _lookup.exchangeEdited();
+                                  _lookup.entriesEdited();
                                 },
                                 grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
                                 gridHint: _guessGridHint,
@@ -1223,6 +1225,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                   _draft.markGridTouched();
                                   // A scorer judges the grid (`shortGrid`).
                                   _lookup.exchangeEdited();
+                                  _lookup.entriesEdited();
                                 },
                                 command: _command,
                                 virtualSpace: _virtualSpace,

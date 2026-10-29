@@ -73,7 +73,7 @@ class _Harness {
     onControlsRefreshed: () {},
   );
   late final CallLookupModel lookup = CallLookupModel(
-    config: () => (lookup: null, workedBefore: null, scoreQso: null, editingQso: editingQso, operation: operation),
+    config: () => (lookup: null, settle: null, workedBefore: null, scoreQso: null, editingQso: editingQso, operation: operation),
     activeCall: () => callText,
     isCallInfoActive: () => false,
     qsoData: (call) => draft.toData(callOverride: call),

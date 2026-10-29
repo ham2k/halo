@@ -34,14 +34,39 @@ only.** Every reader resolves through `locationForQsoInfoWithSource`
 (`exact:` outranks `grid:`), or through `Operation.location` / `Qso.ourLocation`
 which do the same thing.
 
-For saved contacts on the map, source precedence comes before precision:
-`Qso.theirLocation` prefers an entered coordinate, then an entered grid,
-then a nonblank entered state, before falling back to lookup values. A
-state-only correction uses the state centroid, even when the lookup names
-the same state: its address need not be the station's operating location.
-An entered state suppresses guessed coordinates and grids without changing
-the saved QSON or the field getters used for display and export. Live
-composing/editing highlights still resolve their lookup result separately.
+The other station's `their.guess` is **settled once, where the lookup is
+made**, and every reader takes it as it stands. `resolveGuess`
+(extensions/core/lookups/src/resolveGuess.ts) decides which lookup fields
+still describe the station:
+
+- A source that answers about the **callsign** (`scope: 'general'`: QRZ,
+  the Ham2K lookup, call history) knows where the license is registered.
+  Its location is dropped, and its name kept, when the call is portable or
+  mobile (`/P`, `/M`, `/AM`, `/MM`) or carries a call-area digit (`/4`);
+  when the call is prefixed (`EA3/KI2D`) and the source answered for the
+  base call rather than the full one; and when one of the contact's
+  references has a location — a point, or just the state it lies in
+  (`Ref.state`) — whether the QSO ref carries it or a `scope: 'qso'` source
+  (POTA, SOTA) answered with it. That reference then places the station,
+  state included.
+- A reference that covers more ground than one point can stand for — a
+  trail, a park across several states — still drops the callsign's address,
+  but places nothing: not its own point, and not its program's answer for
+  it. The ref says so with `largeArea`; a program's answer for a ref no one
+  decorated says so with `largeArea` of its own (`LookupResult`).
+- **What the operator entered** goes on last, as a group. An entered
+  coordinate or grid replaces the lookup's pin. An entered state that
+  disagrees with the lookup's drops the lookup's whole location; one that
+  matches, or one beside a lookup that named no state, leaves it standing.
+
+The settling runs at the end of every lookup, and again, locally from the
+stored `lookups[]`, through `resolveCallInfo` — when a saved contact is
+edited, and while a contact is composed and its State or Grid change. A
+contact with no `lookups[]` (logged by app-polo, imported) has its guess
+filed as one first, so a later settling can still restore what the lookup
+said. Readers (`Qso.theirGrid`, `theirExactLocation`, `theirLocation`, the
+ADIF export) take the entered value, else the settled guess, and never
+re-decide which guessed fields stand.
 
 The other half is what keeps that honest: **a writer that states a grid must
 replace `lat`/`lon` in the same write.** A stale coordinate outranks the grid

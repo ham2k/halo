@@ -39,3 +39,13 @@ test("annotateCallsign leaves ituRegion/countryCode unset for an unresolvable ca
   assert.equal(result.ituRegion, undefined)
   assert.equal(result.countryCode, undefined)
 })
+
+// A station signing a call-area digit is outside the call area its license
+// address is in; reading it as home lets that address place it.
+test("annotateCallsign reads a call-area digit as away from home, like /P", () => {
+  for (const call of ["KI2D/4", "KI2D/P"]) {
+    assert.equal(annotateCallsign(call).locationScope, "portable", call)
+  }
+  assert.equal(annotateCallsign("KI2D").locationScope, "qth")
+  assert.equal(annotateCallsign("EA3/KI2D").locationScope, "prefixed")
+})

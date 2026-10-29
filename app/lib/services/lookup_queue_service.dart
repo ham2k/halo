@@ -36,6 +36,12 @@ class LookupQueueService {
   /// confirmed going online anyway (`ExtensionService.lookupCallDespiteAssistance`).
   /// Null falls back to [lookup].
   final CallLookup? lookupDespiteAssistance;
+
+  /// Settles a contact's guess again from what it already stores
+  /// (`ExtensionService.resolveCallInfo`) — for a contact whose online answer
+  /// is in and that has been edited since. Null skips it (tests that only
+  /// exercise the online path).
+  final Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso)? resolve;
   final QsosRepository qsos;
   final OperationsRepository operations;
   final StatusBarService statusBar;
@@ -73,6 +79,7 @@ class LookupQueueService {
   LookupQueueService({
     required this.lookup,
     this.lookupDespiteAssistance,
+    this.resolve,
     required this.qsos,
     required this.operations,
     required this.statusBar,
@@ -116,14 +123,16 @@ class LookupQueueService {
 
   /// Completes when the queue is idle — for tests and callers that need to
   /// observe a drained queue; enqueuing itself never waits on this.
-  Future<void> get idle => _processing ? (_idleCompleter ??= Completer<void>()).future : Future.value();
+  Future<void> get idle => Future.wait([_processing ? (_idleCompleter ??= Completer<void>()).future : Future<void>.value(), ..._resolving]);
   Completer<void>? _idleCompleter;
+  final Set<Future<void>> _resolving = {};
 
   /// Queues [qso] for a background online lookup. Event markers, deleted
   /// QSOs, and too-short calls (mirroring `lookupCall`'s own gate) are
   /// skipped, as is anything already waiting in the queue. A QSO that
   /// already carries online lookup data is skipped too — pass [force] (the
-  /// explicit "Lookup all QSOs" refresh) to re-run those as well.
+  /// explicit "Lookup all QSOs" refresh) to re-run those as well. An edit
+  /// that may change what a stored guess has to say goes to [settle].
   ///
   /// Never shows progress: one QSO is one QSO however it got here, and an
   /// operator logging a run of contacts shouldn't see a "Callsign lookups"
@@ -312,6 +321,48 @@ class LookupQueueService {
     }
   }
 
+  /// Settles saved [qso]'s guess again from what it stores, and nothing more:
+  /// an edit to its entries or refs may change what the guess has to say,
+  /// and saving an edit never starts a network lookup. Not for opening a
+  /// record or logging a new one — neither changes the entries the guess was
+  /// settled against, and each would cost a write or a runtime call.
+  void settle(Qso qso) {
+    if (!qso.isRealContact || qso.theirCall.length < 3 || qso.hasIncompleteCall) return;
+    _resolveNow(qso.uuid);
+  }
+
+  /// Settles the stored contact [uuid]'s guess again ([resolve]) and writes
+  /// it through the same guards as a lookup. Not queued: it asks no source
+  /// anything, so neither the offline hold nor the progress count is about
+  /// it, and behind a long queue an edit would wait minutes to show.
+  void _resolveNow(String uuid) {
+    final resolve = this.resolve;
+    if (resolve == null) return;
+    final settling = _settle(uuid, resolve);
+    _resolving.add(settling);
+    unawaited(settling.whenComplete(() => _resolving.remove(settling)));
+  }
+
+  /// [_resolveNow]'s work. Never completes with an error, so [idle] never
+  /// rethrows one.
+  Future<void> _settle(String uuid, Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso) resolve) async {
+    try {
+      final qso = await qsos.get(uuid);
+      if (qso == null || qso.deleted) return;
+      final result = await resolve(qso.data);
+      if (result == null || (result['guess'] == null && result['lookups'] == null)) {
+        // No runtime yet, a timeout, or stored data for a call since
+        // corrected: the stored guess stands until the next settling.
+        debugPrint('[lookup queue] settle skipped for $uuid: no answer');
+        return;
+      }
+      await _applyOne(_CompletedLookup(_PendingLookup(qso.uuid, qso.operationUuid), qso.theirCall, result, readAtMillis: qso.updatedAtMillis));
+    } catch (e, st) {
+      debugPrint('[lookup queue] failed to settle $uuid: $e');
+      ErrorReportingService.report(e, st, context: 'lookup-queue:resolve');
+    }
+  }
+
   /// Runs the (network) lookup for one entry. Reads, no writes — the merge
   /// happens later in `_applyResults`, in a batch.
   Future<_CompletedLookup?> _lookupOne(_PendingLookup entry) async {
@@ -329,7 +380,7 @@ class LookupQueueService {
     final result = await lookup(call, qso: qso.data, operation: _cachedOperation?.data ?? const {}, online: true);
     // Nothing came back (runtime down mid-call) — leave the record alone.
     if (result == null || (result['guess'] == null && result['lookups'] == null)) return null;
-    return _CompletedLookup(entry, call, result);
+    return _CompletedLookup(entry, call, result, readAtMillis: qso.updatedAtMillis);
   }
 
   Future<void> _applyResults(List<_CompletedLookup> completed) async {
@@ -360,8 +411,27 @@ class LookupQueueService {
     if (current.theirCall != item.call) return;
 
     final their = asQsonMap(current.data['their']) ?? <String, dynamic>{};
-    final newGuess = item.result['guess'];
-    final newLookups = item.result['lookups'];
+    var result = item.result;
+    // The answer was settled against the record as it was read, and the
+    // record has moved since — an edit to the entries or refs the guess is
+    // settled against. Written as it stands, it would bring back what that
+    // edit overruled, so it is settled again against the record as it is.
+    final resolve = this.resolve;
+    if (resolve != null && current.updatedAtMillis != item.readAtMillis) {
+      final settled = await resolve({
+        ...current.data,
+        'their': {...their, 'guess': result['guess'] ?? their['guess'], 'lookups': result['lookups'] ?? their['lookups']},
+      });
+      // Unsettled, it is settled against what the edit overruled; the record
+      // keeps what it has until the next lookup or settling.
+      if (settled == null || settled['guess'] == null) {
+        debugPrint('[lookup queue] ${item.entry.qsoUuid} moved during its lookup and did not settle again; not written');
+        return;
+      }
+      result = {...result, 'guess': settled['guess'], 'lookups': settled['lookups'] ?? result['lookups']};
+    }
+    final newGuess = result['guess'];
+    final newLookups = result['lookups'];
 
     // Fail-safe against a crossed lookup result. The merged guess is seeded
     // from the callsign we asked for (annotate.ts always sets `guess.call` to
@@ -387,10 +457,13 @@ class LookupQueueService {
     // A degraded result (offline, or a source erroring) must not wipe
     // richer stored data: the pipeline always returns at least the offline
     // annotation entry, so "sources that answered" is the real signal. Only
-    // write when the new result covers every source already stored.
+    // write when the new result covers every source already stored. A stored
+    // guess filed as a lookup (`stored-guess`, the lookups pipeline's
+    // `resolveCallInfo`) is no source: no lookup ever answers as one, and
+    // requiring it would refuse every lookup the contact gets from then on.
     Set<String> sourcesOf(dynamic lookups) =>
         (asQsonList(lookups) ?? const []).whereType<Map<dynamic, dynamic>>().map((l) => l['source']).whereType<String>().toSet();
-    if (!sourcesOf(newLookups).containsAll(sourcesOf(their['lookups']))) return;
+    if (!sourcesOf(newLookups).containsAll(sourcesOf(their['lookups']).difference(const {'stored-guess'}))) return;
 
     // Identical result — don't dirty the record: an update restamps
     // `updatedAtMillis` and re-syncs the row, and a vacuous newer stamp can
@@ -467,5 +540,9 @@ class _CompletedLookup {
   /// record again at apply time.
   final String call;
   final Map<String, dynamic> result;
-  const _CompletedLookup(this.entry, this.call, this.result);
+
+  /// The record's `updatedAtMillis` when [result] was asked for — the guess
+  /// in it is settled against that record (see `_applyOne`).
+  final int? readAtMillis;
+  const _CompletedLookup(this.entry, this.call, this.result, {required this.readAtMillis});
 }

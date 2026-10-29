@@ -350,19 +350,12 @@ class Qso {
     return locationFromGuess(_theirGuess);
   }
 
-  /// Where the saved contact belongs on the map. An entered state corrects
-  /// the lookup's location, so guessed grids and coordinates cannot place it
-  /// back at that address. Entered coordinates and grids still take precedence
-  /// over an entered state; a blank state supplies no location correction.
-  GridLocation? get theirLocation {
-    final hasEnteredState = asQsonString(_their['state'])?.trim().isNotEmpty ?? false;
-    return locationForQsoInfo(
-      exact: hasEnteredState ? locationFromGuess(_their) : theirExactLocation,
-      grid: hasEnteredState ? asQsonString(_their['grid']) : theirGrid,
-      entityPrefix: theirEntityPrefix,
-      state: theirState,
-    );
-  }
+  /// Where the other station was: [theirExactLocation], else [theirGrid]'s
+  /// square, else [theirState]'s centroid, else the entity's. Which of the
+  /// lookup's fields still stand beside the operator's entries, the refs and
+  /// a portable call is settled where the guess is made
+  /// (extensions/core/lookups/src/resolveGuess.ts) — never here.
+  GridLocation? get theirLocation => locationForQsoInfo(exact: theirExactLocation, grid: theirGrid, entityPrefix: theirEntityPrefix, state: theirState);
 
   String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);
   // Both set by the callsign-annotation lookup step

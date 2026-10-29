@@ -50,8 +50,10 @@ void main() {
     Duration? waitBudget,
     bool Function()? isOffline,
     Stream<bool>? offlineChanges,
+    Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso)? resolve,
   }) => LookupQueueService(
     lookup: lookup,
+    resolve: resolve,
     qsos: qsos,
     operations: operations,
     statusBar: statusBar,
@@ -439,6 +441,198 @@ void main() {
     await queue.idle;
     expect(calls, 1);
     expect((await qsos.get(qso.uuid))!.theirName, 'Refreshed');
+  });
+
+  // An edit to a contact already looked up changes what its guess has to say
+  // (an entered state overruling the lookup's square) without changing what
+  // any source would answer. Without the local settling, the stored guess
+  // keeps the overruled square until someone forces a network refresh — and
+  // an outage must not hold it, since no network is involved.
+  test('an edited contact is settled again locally, offline too, never looked up', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'KE1J',
+        'state': 'ME',
+        'guess': {'name': 'Jim', 'state': 'RI', 'grid': 'FN41gk'},
+        'lookups': [
+          {'source': 'qrz.com', 'name': 'Jim', 'state': 'RI', 'grid': 'FN41gk', 'online': true},
+        ],
+      },
+    });
+
+    var lookups = 0;
+    Map<String, dynamic>? settledFrom;
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+        lookups += 1;
+        return null;
+      },
+      isOffline: () => true,
+      resolve: (data) async {
+        settledFrom = data;
+        final their = asQsonMap(data['their'])!;
+        return {
+          'guess': {'name': 'Jim', 'state': 'ME'},
+          'lookups': their['lookups'],
+        };
+      },
+    );
+
+    queue.settle(qso);
+    await queue.idle;
+
+    expect(lookups, 0);
+    expect(asQsonMap(settledFrom?['their'])?['state'], 'ME', reason: 'settled against the stored entries');
+    final stored = (await qsos.get(qso.uuid))!;
+    expect(stored.theirGrid, isNull);
+    expect(stored.theirState, 'ME');
+  });
+
+  // A contact from app-polo or an import gets its guess filed as a
+  // `stored-guess` lookup the first time it is settled. No lookup ever answers
+  // as that source; counted as one, it would refuse every lookup from then on.
+  test('a filed stored guess does not block a real lookup from being written', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'KE1J',
+        'guess': {'call': 'KE1J', 'name': 'From PoLo'},
+        'lookups': [
+          {'source': 'stored-guess', 'scope': 'general', 'name': 'From PoLo'},
+        ],
+      },
+    });
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async => {
+        'guess': {'call': 'KE1J', 'name': 'From QRZ'},
+        'lookups': [
+          {'source': 'qrz.com', 'name': 'From QRZ', 'online': true},
+        ],
+      },
+    );
+
+    queue.enqueueAll([qso]);
+    await queue.idle;
+    expect((await qsos.get(qso.uuid))!.theirName, 'From QRZ');
+  });
+
+  // The guess a lookup brings is settled against the record it read. An edit
+  // that lands while the lookup is out (a corrected state) must survive it,
+  // or the lookup puts back the square the edit overruled.
+  test('a lookup that lands after an edit is settled again against the edited record', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'KE1J'},
+    });
+    final started = Completer<void>();
+    final release = Completer<void>();
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+        started.complete();
+        await release.future;
+        return {
+          'guess': {'call': 'KE1J', 'state': 'RI', 'grid': 'FN41gk'},
+          'lookups': [
+            {'source': 'qrz.com', 'state': 'RI', 'grid': 'FN41gk', 'online': true},
+          ],
+        };
+      },
+      resolve: (data) async {
+        final their = asQsonMap(data['their'])!;
+        final state = asQsonString(their['state']);
+        return {
+          'guess': state == null ? their['guess'] : {'call': 'KE1J', 'state': state},
+          'lookups': their['lookups'],
+        };
+      },
+    );
+
+    queue.enqueue(qso);
+    await started.future;
+    final edited = (await qsos.get(qso.uuid))!;
+    await qsos.update(
+      Qso(
+        uuid: edited.uuid,
+        operationUuid: edited.operationUuid,
+        data: {
+          ...edited.data,
+          'their': {...asQsonMap(edited.data['their'])!, 'state': 'ME'},
+        },
+      ),
+      basedOn: edited,
+    );
+    release.complete();
+    await queue.idle;
+
+    final stored = (await qsos.get(qso.uuid))!;
+    expect(stored.theirGrid, isNull);
+    expect(stored.theirState, 'ME');
+  });
+
+  // Opening a record for editing, and logging a new one, hand it to
+  // `enqueue`. Neither changes what its guess was settled against: settling
+  // there would restamp and re-sync a record just looked at, and cost a
+  // runtime call on every contact of a contest run.
+  test('enqueue never settles: only an edit does', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'KE1J',
+        'guess': {'call': 'KE1J', 'name': 'Jim'},
+        'lookups': [
+          {'source': 'qrz.com', 'name': 'Jim', 'online': true},
+        ],
+      },
+    });
+    var settles = 0;
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async => null,
+      resolve: (data) async {
+        settles += 1;
+        return null;
+      },
+    );
+
+    queue.enqueue(qso);
+    await queue.idle;
+    expect(settles, 0);
+  });
+
+  // Settled against the record it read, a lookup that lands after an edit
+  // would bring back what the edit overruled; when it cannot be settled
+  // again, the record keeps what it has rather than take it.
+  test('a lookup that lands after an edit and cannot be settled again is not written', () async {
+    final qso = await qsos.add(operation.uuid, {
+      'their': {'call': 'KE1J'},
+    });
+    final started = Completer<void>();
+    final release = Completer<void>();
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      started.complete();
+      await release.future;
+      return {
+        'guess': {'call': 'KE1J', 'state': 'RI', 'grid': 'FN41gk'},
+        'lookups': [
+          {'source': 'qrz.com', 'state': 'RI', 'grid': 'FN41gk', 'online': true},
+        ],
+      };
+    }, resolve: (data) async => null);
+
+    queue.enqueue(qso);
+    await started.future;
+    final edited = (await qsos.get(qso.uuid))!;
+    await qsos.update(
+      Qso(
+        uuid: edited.uuid,
+        operationUuid: edited.operationUuid,
+        data: {
+          ...edited.data,
+          'their': {...asQsonMap(edited.data['their'])!, 'state': 'ME'},
+        },
+      ),
+      basedOn: edited,
+    );
+    release.complete();
+    await queue.idle;
+
+    expect((await qsos.get(qso.uuid))!.theirGrid, isNull);
   });
 
   test('enqueueAll(force: false) still skips already-enriched QSOs', () async {

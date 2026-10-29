@@ -100,6 +100,7 @@ abstract final class Hooks {
   static const formOnChangeField = HookRef(HookCategories.form, 'onChangeField');
 
   static const lookupServiceLookupCallInfo = HookRef(HookCategories.lookupService, 'lookupCallInfo');
+  static const lookupServiceResolveCallInfo = HookRef(HookCategories.lookupService, 'resolveCallInfo');
 
   static const panelGetPanels = HookRef(HookCategories.panel, 'getPanels');
   static const panelRender = HookRef(HookCategories.panel, 'render');

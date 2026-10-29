@@ -756,6 +756,7 @@ void main() {
       ))!;
 
       final enqueued = <Qso>[];
+      final settled = <Qso>[];
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -763,7 +764,7 @@ void main() {
               log: baseLog(),
               session: LoggingSession(editingQso: existingQso),
               radio: baseRadio(),
-              lookups: LookupHooks(enqueueLookup: enqueued.add),
+              lookups: LookupHooks(enqueueLookup: enqueued.add, settleSaved: settled.add),
             ),
           ),
         ),
@@ -789,9 +790,12 @@ void main() {
       // The newly added call is saved bare and queued for its own
       // independent background lookup, rather than inheriting anything
       // cached for the original call — and saving doesn't enqueue the
-      // original record a second time.
+      // original record a second time. The edit is handed over to be
+      // settled instead: it can change what the guess has to say, and
+      // settling asks no source anything.
       expect(k1abc.theirName, isNull);
       expect(enqueued.map((q) => q.uuid).toList(), [existingQso.uuid, k1abc.uuid]);
+      expect(settled.map((q) => q.uuid).toList(), [existingQso.uuid]);
     },
   );
 
@@ -886,6 +890,112 @@ void main() {
     // already carry online data), so an Enter that beats the 300ms preview
     // debounce — leaving the record bare — still gets enriched.
     expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
+  });
+
+  // The lookup shown was settled before the operator typed the state. Left
+  // as it was, the info line, the map's mark and the guess the entry is saved
+  // with all keep the address the operator just ruled out.
+  testWidgets('a state typed after the lookup settles the shown guess again, and the entry is saved with it', (tester) async {
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+      bool recentContext = false,
+    }) async => {
+      'guess': {'name': 'Jim', 'state': 'RI', 'grid': 'FN41gk'},
+      'lookups': [
+        {'source': 'qrz.com', 'name': 'Jim', 'state': 'RI', 'grid': 'FN41gk'},
+      ],
+    };
+    final settledWith = <Map<String, dynamic>>[];
+    Future<Map<String, dynamic>?> settle(Map<String, dynamic> qso) async {
+      settledWith.add(qso);
+      final their = asQsonMap(qso['their'])!;
+      return {
+        'guess': {'name': 'Jim', 'state': their['state']},
+        'lookups': their['lookups'],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            prefs: LoggingPreferences(showStateField: true),
+            lookups: LookupHooks(lookup: lookup, settleLookup: settle),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KE1J');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.widgetWithText(TextField, 'State'), 'ME');
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(asQsonMap(settledWith.last['their'])?['lookups'], isNotEmpty, reason: 'settled from the lookup the entry holds');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirGrid, isNull);
+    expect(logged.single.theirState, 'ME');
+  });
+
+  // The online pass is asked with the entry as it stood when it left. A state
+  // typed during its round trip would otherwise be lost from the guess it
+  // brings — the info line and the map back at the callbook address.
+  testWidgets('a state typed while the online lookup is out is settled into its answer', (tester) async {
+    final onlineLanded = Completer<void>();
+    Future<Map<String, dynamic>?> lookup(
+      String call, {
+      required Map<String, dynamic> qso,
+      required Map<String, dynamic> operation,
+      required bool online,
+      bool recentContext = false,
+    }) async {
+      if (online) await onlineLanded.future;
+      return {
+        'guess': {'name': 'Jim', 'state': 'RI', 'grid': 'FN41gk'},
+        'lookups': [
+          {'source': online ? 'qrz.com' : 'callsign-annotation', 'state': 'RI', 'grid': 'FN41gk'},
+        ],
+      };
+    }
+
+    Future<Map<String, dynamic>?> settle(Map<String, dynamic> qso) async {
+      final their = asQsonMap(qso['their'])!;
+      return {
+        'guess': {'name': 'Jim', 'state': their['state']},
+        'lookups': their['lookups'],
+      };
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            prefs: LoggingPreferences(showStateField: true),
+            lookups: LookupHooks(lookup: lookup, settleLookup: settle),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KE1J');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.enterText(find.widgetWithText(TextField, 'State'), 'ME');
+    await tester.pump(const Duration(milliseconds: 400));
+    onlineLanded.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirGrid, isNull);
   });
 
   testWidgets('command actions that add QSOs enqueue the whole batch for background lookup at once', (tester) async {

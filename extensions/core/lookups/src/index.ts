@@ -8,11 +8,12 @@
 // entirely inside the runtime.
 
 import { defineExtension, hooks, host } from "@ham2k/extension-sdk"
-import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/extension-sdk"
+import type { CallInfo, CallInfoLookup, HookContext, JSONValue, LookupServiceRequest, LookupServiceResult } from "@ham2k/extension-sdk"
 
 import { annotateCallsign } from "./annotate"
-import { preferStationValues, runLookupPipeline } from "./mergeLookup"
+import { runLookupPipeline } from "./mergeLookup"
 import { normalizeGuess } from "./normalizeGuess"
+import { resolveGuess, storedGuessLookup } from "./resolveGuess"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -50,8 +51,6 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
     )
   }
 
-  guess = preferStationValues(guess, preAnnotation, lookups.slice(seeded.lookups.length))
-
   // A hook that threw has already been isolated (its entry carries the
   // error instead of poisoning the others) — but it must not be *silent*,
   // or a broken lookup source just looks like "no data" in the field.
@@ -59,21 +58,52 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
     if (!entry.ok) host.log(`ERROR lookup hook '${entry.key}' failed for ${call}: ${entry.error}`)
   }
 
-  // Cleanup of the assembled answer only — `lookups[]` keeps each source's
-  // own wording (see normalizeGuess). Cosmetic, and so never allowed to cost
-  // the operator a lookup that did resolve: a throw here would empty a guess
-  // several sources just filled, and would read on screen as "not found".
+  // The running `guess` above is what each hook sees of the sources before
+  // it. The answer is settled afresh from everything fetched, against the
+  // contact's refs and what the operator entered — the same settling a saved
+  // contact gets from `resolveCallInfo`.
+  return { lookups, guess: normalized(call, resolveGuess(call, lookups, args.qso as Record<string, unknown>)) }
+}
+
+/// A saved contact's guess settled again from what is already stored on it,
+/// with no source asked anything: after the operator edits its location or
+/// its refs, so the stored guess says what every reader should show.
+///
+/// A contact with no `lookups[]` (logged by app-polo, imported) gets its
+/// stored guess filed as one, so this and every later settling has something
+/// to replay — once overlaid, the guess no longer holds what the lookup said.
+async function resolveCallInfo(args: { qso: Record<string, JSONValue> }): Promise<LookupServiceResult | null> {
+  const their = (args.qso.their ?? {}) as Record<string, unknown>
+  const call = (typeof their.call === "string" ? their.call : "").trim().toUpperCase()
+  if (call === "") return null
+  const stored = Array.isArray(their.lookups) ? (their.lookups as CallInfoLookup[]) : []
+  const guess = their.guess as Record<string, unknown> | undefined
+  // What is stored was looked up for a call since corrected: replayed, it
+  // would file that station's name and address under this one — and under
+  // this call, past the host's check for a crossed result. Nothing is
+  // settled; only a lookup of the corrected call can answer for it.
+  const storedCall = typeof guess?.call === "string" ? guess.call.trim().toUpperCase() : undefined
+  if (storedCall !== undefined && storedCall !== call) return null
+  const lookups = stored.length > 0 ? stored : guess ? [storedGuessLookup(guess)] : []
+  return { lookups, guess: normalized(call, resolveGuess(call, lookups, args.qso as Record<string, unknown>)) }
+}
+
+/// Cleanup of the assembled answer only — `lookups[]` keeps each source's
+/// own wording (see normalizeGuess). Cosmetic, and so never allowed to cost
+/// the operator a lookup that did resolve: a throw here would empty a guess
+/// several sources just filled, and would read on screen as "not found".
+function normalized(call: string, guess: CallInfo): CallInfo {
   try {
-    return { lookups, guess: normalizeGuess(guess) }
+    return normalizeGuess(guess)
   } catch (e) {
     host.log(`ERROR normalizing the guess for ${call}: ${(e as Error).message ?? e}`)
-    return { lookups, guess }
+    return guess
   }
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook("lookupService", { hook: { lookupCallInfo }, key: "core" })
+    registerHook("lookupService", { hook: { lookupCallInfo, resolveCallInfo }, key: "core" })
   },
 })

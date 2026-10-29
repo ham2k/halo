@@ -97,26 +97,32 @@ void main() {
   testWidgets(
     'a saved state correction moves the marker and line away from the lookup grid',
     (tester) => onLinux(() async {
-      Qso contact({String? state, required int stamp}) => Qso(
+      // The second contact is the first as the edit leaves it once its guess
+      // is settled again (resolveGuess.ts): the state stands, the square went.
+      Qso contact({String? state, required Map<String, dynamic> guess, required int stamp}) => Qso(
         uuid: 'ke1j',
         operationUuid: 'op-map',
         data: {
-          'their': {
-            'call': 'KE1J',
-            'state': ?state,
-            'guess': {'entityPrefix': 'K', 'state': 'RI', 'grid': 'FN41gk27'},
-          },
+          'their': {'call': 'KE1J', 'state': ?state, 'guess': guess},
           'band': '20m',
           'updatedAtMillis': stamp,
         },
       );
 
-      await tester.pumpWidget(host([contact(stamp: 1)]));
+      await tester.pumpWidget(
+        host([
+          contact(guess: {'entityPrefix': 'K', 'state': 'RI', 'grid': 'FN41gk27'}, stamp: 1),
+        ]),
+      );
       await tester.pumpAndSettle();
       final ri = gridToLocation('FN41gk27')!;
       expect(qsoMarkersOf(tester).single.latitude, ri.latitude);
 
-      await tester.pumpWidget(host([contact(state: 'ME', stamp: 2)]));
+      await tester.pumpWidget(
+        host([
+          contact(state: 'ME', guess: {'entityPrefix': 'K', 'state': 'ME'}, stamp: 2),
+        ]),
+      );
       await tester.pumpAndSettle();
       final marker = qsoMarkersOf(tester).single;
       expect(marker.latitude, 45.4);

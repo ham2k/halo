@@ -575,6 +575,7 @@ class HaLoServices with _TimeTravel {
       LookupQueueService(
         lookup: extensions.lookupCall,
         lookupDespiteAssistance: extensions.lookupCallDespiteAssistance,
+        resolve: extensions.resolveCallInfo,
         qsos: qsos,
         operations: operations,
         statusBar: statusBar,

@@ -24,7 +24,14 @@ import 'panel_model.dart';
 /// What the model reads from the panel's live configuration — re-read on
 /// every use rather than copied in, because the hooks, the edited QSO and the
 /// operation all change under a mounted panel.
-typedef CallLookupConfig = ({CallLookup? lookup, WorkedBefore? workedBefore, ScoreQso? scoreQso, Qso? editingQso, Operation operation});
+typedef CallLookupConfig = ({
+  CallLookup? lookup,
+  Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso)? settle,
+  WorkedBefore? workedBefore,
+  ScoreQso? scoreQso,
+  Qso? editingQso,
+  Operation operation,
+});
 
 /// Scoring keys that complain about the EXCHANGE — which, until the lookup
 /// lands, is often only what the lookup is about to supply (a US station's
@@ -95,6 +102,10 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   final VoidCallback onCleared;
 
   Timer? _lookupDebounce;
+  Timer? _entriesDebounce;
+
+  /// Counts [entriesEdited] calls, so only the latest one's settling lands.
+  int _settlesIssued = 0;
   String? _lookupFor;
   Map<String, dynamic>? _result;
 
@@ -218,6 +229,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   @override
   void dispose() {
     _lookupDebounce?.cancel();
+    _entriesDebounce?.cancel();
     _scoreDebounce?.cancel();
     _settleTimer?.cancel();
     _exchangeTypingTimer?.cancel();
@@ -266,6 +278,33 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       notify();
     });
     exchangePrefilled();
+  }
+
+  /// The operator typed a state or a grid: the shown guess was settled
+  /// without it, and the info line's distance, the map's mark and the guess
+  /// the entry is saved with all read that guess. Settled again (local, no
+  /// source asked) once the typing pauses; the cached result is replaced, so
+  /// re-typing the call shows the settled one.
+  void entriesEdited() {
+    _entriesDebounce?.cancel();
+    final settle = config().settle;
+    if (settle == null) return;
+    final settling = ++_settlesIssued;
+    _entriesDebounce = Timer(const Duration(milliseconds: 300), () async {
+      final call = activeCall();
+      final result = resultFor(call);
+      if (result == null) return;
+      final settled = await settle(qsoData(call));
+      final guess = settled?['guess'];
+      // The call moved on, a newer lookup landed, or a later edit's settling
+      // was issued, while this was out — or it answered no guess, which must
+      // not wipe the one shown.
+      if (isDisposed || guess is! Map || settling != _settlesIssued || resultFor(call)?['lookups'] != result['lookups']) return;
+      final next = {...result, 'guess': guess};
+      _result = next;
+      _cache[call] = next;
+      notify();
+    });
   }
 
   /// A lookup's suggestion filled an exchange field. Nobody is typing, so
@@ -373,6 +412,9 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       // pre-step) almost instantly. Then an online pass fills in
       // network-sourced data (QRZ/HamDB/etc) as soon as it resolves — no
       // extra artificial delay beyond its own network latency.
+      // Each pass is settled against the entry as it was asked; a state or
+      // grid typed while one is out is settled into it once it lands.
+      var settlesAsked = _settlesIssued;
       final offlineResult = await _fetch(lookup, call, online: false);
       if (isDisposed || activeCall() != call) return; // stale — the active call changed
       _cache[call] = offlineResult;
@@ -382,7 +424,9 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       // park/summit on that pass and resolve its grid — a re-lookup here
       // would instead race the online pass already in flight.
       _adopt(call, offlineResult, LookupPhase.offline);
+      if (_settlesIssued != settlesAsked) entriesEdited();
 
+      settlesAsked = _settlesIssued;
       final onlineResult = await _fetch(lookup, call, online: true);
       if (isDisposed || activeCall() != call) return; // stale — the active call changed
       // A failed/timed-out online pass (host down, network error) must not
@@ -396,6 +440,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       }
       _cache[call] = onlineResult;
       _adopt(call, onlineResult, LookupPhase.online);
+      if (_settlesIssued != settlesAsked) entriesEdited();
     });
   }
 

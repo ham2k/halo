@@ -46,6 +46,7 @@ class _Harness {
 
   late final model = CallLookupModel(
     config: () => (
+      settle: null,
       lookup: withLookup
           ? (call, {required qso, required operation, required online, recentContext = false}) async {
               lookups.add('$call ${online ? 'online' : 'offline'} recent=$recentContext');

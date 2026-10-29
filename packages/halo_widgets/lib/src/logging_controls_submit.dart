@@ -520,19 +520,19 @@ extension _Submit on _LoggingControlsState {
       }
 
       if (editingQso != null) {
+        final Qso saved;
         try {
           // `basedOn` is the snapshot this edit was composed from: if a sync
           // pull moved the row while the editor sat open, only the fields
           // actually edited here overwrite it (see mergeConcurrentEdit).
-          await widget.log.qsosRepository.update(
-            Qso(uuid: editingQso.uuid, operationUuid: widget.log.operation.uuid, data: await _decorated(dataFor(calls.first, 0))),
-            basedOn: editingQso,
-          );
+          saved = Qso(uuid: editingQso.uuid, operationUuid: widget.log.operation.uuid, data: await _decorated(dataFor(calls.first, 0)));
+          await widget.log.qsosRepository.update(saved, basedOn: editingQso);
         } catch (e, stack) {
           // Nothing committed — the editor stays open with every typed value.
           _reportWriteFailure(e, stack);
           return null;
         }
+        widget.lookups.settleSaved?.call(saved);
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
           // from its record) — strip it so add() generates a fresh one for

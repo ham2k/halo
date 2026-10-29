@@ -1082,7 +1082,9 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         // them open.
         onOpenLink: openExternalUrl,
         lookup: widget.services.extensions.lookupCall,
+        settleLookup: widget.services.extensions.resolveCallInfo,
         enqueueLookup: widget.services.lookupQueue.enqueue,
+        settleSaved: widget.services.lookupQueue.settle,
         // force: false — unlike the explicit "Lookup all QSOs" action,
         // a SEED batch shouldn't force-refresh a QSO that (somehow)
         // already carries real online lookup data.

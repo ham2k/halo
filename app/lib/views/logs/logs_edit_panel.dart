@@ -180,6 +180,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     final statusBar = widget.services.statusBar;
     final t = context.t;
     setState(() => _saving = true);
+    final Qso updated;
     try {
       final their = <String, dynamic>{...?asQsonMap(qso.data['their'])};
       final our = <String, dynamic>{...?asQsonMap(qso.data['our'])};
@@ -231,7 +232,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       // values rather than wiping both to null; same "unparseable input
       // changes nothing" rule `_parsedStartAtMillis` follows below.
       final freqFieldUnparseable = parsedFreqKHz == null && parsedBand == null;
-      final updated = Qso(
+      updated = Qso(
         uuid: qso.uuid,
         operationUuid: qso.operationUuid,
         data: {
@@ -281,6 +282,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+    // The stored guess was settled against the entries this edit may have
+    // changed. Settled only: saving here never starts a network lookup.
+    widget.services.lookupQueue.settle(updated);
     return true;
   }
 

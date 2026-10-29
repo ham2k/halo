@@ -22,6 +22,11 @@ import type { CallInfo, CallInfoLookup } from "@ham2k/extension-sdk"
 // alternate), 'MM' (maritime mobile).
 const PORTABLE_INDICATORS = new Set(["P", "M", "AM", "MM"])
 
+// A bare call-area digit (`KI2D/4`) moves the station out of the call area
+// its registered address is in — away from home exactly as `/P` is. The
+// parser reports it as a postindicator only, with no prefix override.
+const CALL_AREA_INDICATOR = /^\d$/
+
 // `flag`/`ituRegion`/`countryCode` ride along as extra fields CallInfo/
 // CallInfoLookup's fixed shape (from lib-qson-tools, matching app-polo's
 // QSON schema) doesn't declare — the same way every hook result already
@@ -40,7 +45,7 @@ export function annotateCallsign(call: string): CallInfoLookupWithFlag {
   const annotated = annotateCallAgainstCountryFile(call) as CallInfo
 
   let locationScope: CallInfo["locationScope"] = "qth"
-  if (annotated.indicators?.some((i) => PORTABLE_INDICATORS.has(i))) {
+  if (annotated.indicators?.some((i) => PORTABLE_INDICATORS.has(i)) || annotated.postindicators?.some((i) => CALL_AREA_INDICATOR.test(i))) {
     locationScope = "portable"
   } else if (annotated.preindicator || annotated.prefixOverride) {
     locationScope = "prefixed"

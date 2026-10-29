@@ -291,6 +291,7 @@ extension _ControlStrip on _LoggingControlsState {
         _draft.stateTouched = _draft.stateTouched || state != stateBeforePane.toUpperCase();
         _gridController.text = grid;
         _stateController.text = state;
+        _lookup.entriesEdited();
         _sentController.text = (result['sent'] as String?) ?? '';
         _rcvdController.text = (result['rcvd'] as String?) ?? '';
 

@@ -576,7 +576,9 @@ class RadioHookup {
 class LookupHooks {
   const LookupHooks({
     this.lookup,
+    this.settleLookup,
     this.enqueueLookup,
+    this.settleSaved,
     this.enqueueAllLookups,
     this.operationStatsLines,
     this.callLocationLine,
@@ -594,6 +596,12 @@ class LookupHooks {
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
   final CallLookup? lookup;
 
+  /// Settles the shown lookup's guess again against the entry as it stands
+  /// (`resolveCallInfo`, local only) — after the operator types a state or a
+  /// grid, which the lookup already shown was settled without. Fired
+  /// debounced. Null leaves the guess as the lookup answered it.
+  final Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso)? settleLookup;
+
   /// Hands a just-saved QSO to the caller's background lookup queue, so
   /// online enrichment happens after the record is on screen instead of
   /// delaying the save (no network ⇒ no stall). Fired for every newly ADDED
@@ -609,6 +617,12 @@ class LookupHooks {
   /// lookup shouldn't flash a "Callsign lookups" bar for one QSO, even when
   /// several land close together.
   final void Function(Qso qso)? enqueueLookup;
+
+  /// Hands the record just saved from an edit to the caller, to settle its
+  /// stored guess again against the entries the edit may have changed — an
+  /// entered state overruling the lookup's square. Local only: saving an
+  /// edit never starts a network lookup.
+  final void Function(Qso qso)? settleSaved;
 
   /// Hands every QSO added by a single command action to the caller's
   /// background lookup queue as one batch, fired once all of a command's
@@ -677,7 +691,9 @@ class LookupHooks {
   @visibleForTesting
   LookupHooks copyWith({
     CallLookup? lookup,
+    Future<Map<String, dynamic>?> Function(Map<String, dynamic> qso)? settleLookup,
     void Function(Qso qso)? enqueueLookup,
+    void Function(Qso qso)? settleSaved,
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     OperationStatsLines? operationStatsLines,
     CallLocationLine? callLocationLine,
@@ -692,7 +708,9 @@ class LookupHooks {
     InlineMarkdownOpenLink? onOpenLink,
   }) => LookupHooks(
     lookup: lookup ?? this.lookup,
+    settleLookup: settleLookup ?? this.settleLookup,
     enqueueLookup: enqueueLookup ?? this.enqueueLookup,
+    settleSaved: settleSaved ?? this.settleSaved,
     enqueueAllLookups: enqueueAllLookups ?? this.enqueueAllLookups,
     operationStatsLines: operationStatsLines ?? this.operationStatsLines,
     callLocationLine: callLocationLine ?? this.callLocationLine,
