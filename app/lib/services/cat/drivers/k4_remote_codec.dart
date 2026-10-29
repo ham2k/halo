@@ -275,7 +275,7 @@ class K4RemoteDecoder {
   }
 }
 
-/// Wraps only ASCII CAT commands. There is deliberately no audio writer.
+/// Wraps ASCII CAT commands. Audio has its own writer, [encodeK4RemoteAudio].
 Uint8List encodeK4RemoteCat(List<int> asciiBytes) {
   if (asciiBytes.length > k4RemoteMaxPayloadLength - 3) throw ArgumentError.value(asciiBytes.length, 'asciiBytes.length', 'CAT packet is too large');
   if (asciiBytes.any((byte) => byte < 0 || byte > 0x7f)) throw ArgumentError('CAT commands must contain only ASCII bytes');
@@ -285,6 +285,40 @@ Uint8List encodeK4RemoteCat(List<int> asciiBytes) {
   ByteData.sublistView(result).setUint32(4, length, Endian.big);
   // TYPE, VER and SEQ are all zero for outbound CAT.
   result.setRange(11, 11 + asciiBytes.length, asciiBytes);
+  result.setRange(8 + length, result.length, _end);
+  return result;
+}
+
+/// The remote audio sample rate, in Hz: what rate code 0 names.
+const k4RemoteAudioRate = 12000;
+
+const _audioHeaderLength = 7;
+
+/// One packet of transmit audio: [frames] frames of [samples], raw 16-bit
+/// little-endian stereo (EM1), left Main and right Sub.
+///
+/// The header is type 1, version 1, the [sequence] (0-255, from 0 for each
+/// transmission), the encode mode, the frames per channel as a little-endian
+/// u16, and the rate code. Every packet that arrives keys the K4, so this is
+/// written only while a message plays (docs/design/k4-remote.md § Transmit
+/// audio).
+Uint8List encodeK4RemoteAudio({required int sequence, required int frames, required Int16List samples}) {
+  if (samples.length != frames * 2) throw ArgumentError.value(samples.length, 'samples.length', 'not $frames stereo frames');
+  final length = _audioHeaderLength + samples.length * 2;
+  if (length > k4RemoteMaxPayloadLength) throw ArgumentError.value(frames, 'frames', 'audio packet is too large');
+  final result = Uint8List(length + _envelopeLength);
+  final data = ByteData.sublistView(result);
+  result.setRange(0, _begin.length, _begin);
+  data.setUint32(4, length, Endian.big);
+  result[8] = 1; // TYPE: audio
+  result[9] = 1; // VER
+  result[10] = sequence & 0xff;
+  result[11] = 1; // EM1
+  data.setUint16(12, frames, Endian.little);
+  result[14] = 0; // 12 kHz
+  for (var i = 0; i < samples.length; i++) {
+    data.setInt16(8 + _audioHeaderLength + i * 2, samples[i], Endian.little);
+  }
   result.setRange(8 + length, result.length, _end);
   return result;
 }

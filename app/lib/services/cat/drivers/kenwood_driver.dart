@@ -27,6 +27,7 @@ import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../error_reporting_service.dart';
 import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
@@ -37,6 +38,7 @@ import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
+import 'k4_setting_switch.dart';
 import 'k4_spectrum.dart';
 import 'k4_shared_session_config.dart';
 import 'keyer_config.dart';
@@ -660,6 +662,9 @@ class KenwoodSession
       case 'DT':
         if (isK4 && RegExp(r'^[0-3]$').hasMatch(command.params)) _send('IF;');
 
+      case 'MI':
+        _lineIn?.heard(command.params);
+
       case 'PC':
         if (isK4) {
           if (remote && RegExp(r'^\d{3}$').hasMatch(command.params)) _send('PCX;');
@@ -1226,13 +1231,64 @@ class KenwoodSession
     _keyedByUs = on;
   }
 
+  /// A K4 over USB or its LAN CAT port takes the recording from its sound
+  /// card only with MI on LINE IN (docs/design/cat.md § The computer's voice
+  /// keyer). Not over the secure remote connection, whose audio is its own
+  /// stream (K4SharedSession).
+  late final K4SettingSwitch? _lineIn = isK4 && !remote
+      ? K4SettingSwitch(command: 'MI', value: k4MicInputLineIn, send: _send, diagnose: _sink.reportDiagnostic, refused: _lineInRefused, radio: _radioIdentity)
+      : null;
+
+  /// The LINE IN set did not take on this connection: keyed plainly from
+  /// now on, with the pane asking the operator to set the source.
+  bool _lineInUnavailable = false;
+
+  /// What the keyed message asked to be told if LINE IN does not take.
+  void Function()? _onLineInRefused;
+
+  String? get _radioIdentity => switch ((_config['host'], _config['port'])) {
+    (final String host, _) when host.isNotEmpty => host,
+    (_, final String port) when port.isNotEmpty => port,
+    _ => null,
+  };
+
+  /// The radio is transmitting its mic, not the recording: unkeyed here at
+  /// once, the message stopped, and the keyer's unkey puts MI back.
+  void _lineInRefused(int read) {
+    _lineInUnavailable = true;
+    _sink.reportDiagnostic('the radio read MI$read after MI$k4MicInputLineIn: keyed plainly from now on, on this connection');
+    // The Phone Keyer pane says the radio would not switch its audio.
+    ErrorReportingService.report(K4SettingRefused('MI', read), StackTrace.current, context: 'k4:line-in-refused', told: true);
+    setPtt(false);
+    final refused = _onLineInRefused;
+    _onLineInRefused = null;
+    refused?.call();
+  }
+
+  /// While a restore is owed too, so the unkey after a refusal still puts
+  /// MI back.
   @override
-  bool get switchesToComputerAudio => dataSend;
+  bool get switchesToComputerAudio => dataSend || (_lineIn != null && (!_lineInUnavailable || _lineIn.owesRestore));
 
   /// DATA SEND for the message; `RX;` ends either kind of transmit, so the
-  /// radio's source needs no putting back.
+  /// radio's source needs no putting back. A K4's MI does, after the unkey.
   @override
-  void setPttWithComputerAudio(bool on) {
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
+    final lineIn = _lineIn;
+    if (lineIn != null) {
+      _onLineInRefused = on ? refused : null;
+      if (!on) {
+        setPtt(false);
+        return lineIn.afterUnkey();
+      }
+      if (_lineInUnavailable) return setPtt(true);
+      final ahead = lineIn.beforeKey();
+      if (ahead.isNotEmpty) _send(ahead);
+      setPtt(true);
+      final verify = lineIn.verify();
+      if (verify.isNotEmpty) _send(verify);
+      return;
+    }
     if (!on || !dataSend) return setPtt(on);
     _keyedByUs = true;
     _send(kenwoodDataSendCommand);
@@ -1276,6 +1332,7 @@ class KenwoodSession
     // speed changes only when someone turns the knob, and the dialog that
     // shows it re-reads it when it opens.
     if (cwDialect != null) _send(buildKenwoodReadKeyerSpeedCommand());
+    _lineIn?.settle();
     if (!remote) _poller.start();
   }
 
@@ -1304,6 +1361,8 @@ class KenwoodSession
       _keyedByUs = false;
       _send(buildKenwoodSetTxCommand(false));
     }
+    _lineIn?.teardown(_send);
+    _lineIn?.dispose();
     _cwQueue.clear();
     _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.

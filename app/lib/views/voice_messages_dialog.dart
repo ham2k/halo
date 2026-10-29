@@ -816,6 +816,7 @@ String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem probl
     ComputerVoiceProblem.recordingSilent => m.problemRecordingSilent,
     ComputerVoiceProblem.cannotKey => m.problemCannotKey,
     ComputerVoiceProblem.radioAudioUnavailable => m.problemRadioAudioUnavailable,
+    ComputerVoiceProblem.sourceRefused => m.problemSourceRefused,
     ComputerVoiceProblem.unplayable => m.problemUnplayable,
     ComputerVoiceProblem.recordingFailed => m.problemRecordingFailed,
     ComputerVoiceProblem.fileFailed => m.problemFileFailed,

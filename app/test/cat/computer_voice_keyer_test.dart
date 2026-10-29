@@ -54,8 +54,14 @@ class _FakeComputerAudioPtt extends _FakePtt implements ComputerAudioPttSession 
   final bool switchesToComputerAudio;
   final withComputerAudio = <bool>[];
 
+  /// What the last key was told to call if the switch is refused.
+  void Function()? refused;
+
   @override
-  void setPttWithComputerAudio(bool on) => withComputerAudio.add(on);
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
+    withComputerAudio.add(on);
+    if (on) this.refused = refused;
+  }
 }
 
 class _FedOutput extends FakeOutput implements SilenceFedOutput {
@@ -99,9 +105,9 @@ class _FakeNetworkPtt extends _FakeComputerAudioPtt implements NetworkTransmitAu
   }
 
   @override
-  void setPttWithComputerAudio(bool on) {
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
     events.add(on ? 'key' : 'unkey');
-    super.setPttWithComputerAudio(on);
+    super.setPttWithComputerAudio(on, refused: refused);
   }
 }
 
@@ -496,6 +502,23 @@ void main() {
       playThrough(async);
       expect(plain.sent, [true, false]);
       expect(plain.withComputerAudio, isEmpty);
+      keyer.dispose();
+    });
+  });
+
+  // The radio was on the air with its mic: it is unkeyed already, and a
+  // message left "playing" into it would show nothing wrong for its length.
+  test('a source switch the radio refused stops the message and says why', () {
+    fakeAsync((async) {
+      final switching = _FakeComputerAudioPtt(switchesToComputerAudio: true);
+      keyer = ComputerVoiceKeyer(ptt: switching, audio: audio, config: () => config, fileFor: (n) => '/v/$n.wav', report: reports.add);
+      keyer.playVoiceMemory(1);
+      async.elapse(lead);
+      switching.refused!();
+      expect(switching.withComputerAudio, [true, false]);
+      expect(audio.plays.single.stopped, isTrue);
+      expect(keyer.problem, ComputerVoiceProblem.sourceRefused);
+      async.elapse(voiceDoubtLinger);
       keyer.dispose();
     });
   });

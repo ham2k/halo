@@ -126,7 +126,7 @@ class _Harness {
   final void Function(String key, List<int> bytes)? onSend;
   late final pool = K4SharedConnectionPool(
     onSend: onSend,
-    createSession: ({required send, required pan, required config}) {
+    createSession: ({required send, required pan, required config, sendAudio}) {
       final owner = _Owner(events, write: send, settings: config);
       owners.add(owner);
       return owner;

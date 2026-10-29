@@ -313,6 +313,20 @@ void main() {
     });
   });
 
+  // Swallowed, the voice keyer would play on into a closed link, its message
+  // gone and nothing saying so.
+  test('an audio packet the link will not take throws, and closes the connection', () {
+    fakeAsync((async) {
+      final secure = _SecureConnection()..throwOnSend = true;
+      final connection = K4RemoteConnection(secure);
+      final packet = encodeK4RemoteAudio(sequence: 0, frames: 720, samples: Int16List(1440));
+      expect(() => connection.sendAudio(packet), throwsA(isA<K4AudioNotSent>()));
+      async.flushMicrotasks();
+      expect(secure.closeCalls, 1);
+      expect(() => connection.sendAudio(packet), throwsA(isA<K4AudioNotSent>()));
+    });
+  });
+
   test('bad envelopes and unsupported payloads cannot enter the CAT stream or block recovery', () {
     fakeAsync((async) {
       final secure = _SecureConnection();

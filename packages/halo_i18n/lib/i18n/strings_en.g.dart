@@ -8973,6 +8973,9 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'The radio is not taking audio from the app right now. It needs a network connection to the radio.'
 	String get problemRadioAudioUnavailable => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.';
 
+	/// en: 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app's audio.'
+	String get problemSourceRefused => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.';
+
 	/// en: 'This radio can't be keyed over CAT, so the computer can't play messages into it.'
 	String get problemCannotKey => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.';
 
@@ -11129,6 +11132,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemNotRecorded' => 'That message has no recording yet.',
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'Nothing was heard from the recording device, so the message was left as it was. Check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'The radio is not taking audio from the app right now. It needs a network connection to the radio.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'The radio would not switch its transmit audio to the app, so the message stopped. Set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'This radio can\'t be keyed over CAT, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'That message\'s file isn\'t a sound file the app can play. Use a WAV, FLAC or MP3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
@@ -11244,9 +11248,9 @@ extension on Translations {
 			'settings.peers.syncing' => 'Syncing…',
 			'settings.peers.waitingForThem' => 'Waiting for the other device',
 			'settings.peers.notConnected' => 'Not connected',
-			'settings.peers.wantsToPair' => 'wants to share this operation',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.wantsToPair' => 'wants to share this operation',
 			'settings.peers.allow' => 'Allow',
 			'settings.peers.link' => 'Link',
 			'settings.peers.reject' => 'Reject',
@@ -11758,9 +11762,9 @@ extension on Translations {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
-			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
 			'settings.station.placeholderSwr' => 'SWR reading',
 			'settings.station.placeholderSwrDescription' => 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.',
@@ -12272,9 +12276,9 @@ extension on Translations {
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
-			'offline.reachable' => 'All services responding as expected.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'No service has reported in yet.',

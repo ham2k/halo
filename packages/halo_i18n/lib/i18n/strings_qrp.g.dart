@@ -4093,6 +4093,7 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String get problemNotRecorded => 'that message has no recording yet.';
 	@override String get problemRecordingSilent => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.';
 	@override String get problemRadioAudioUnavailable => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.';
+	@override String get problemSourceRefused => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.';
 	@override String get problemCannotKey => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.';
 	@override String get problemUnplayable => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.';
 	@override String get problemRecordingFailed => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.';
@@ -5864,6 +5865,7 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemNotRecorded' => 'that message has no recording yet.',
 			'settings.radio.voiceMessages.problemRecordingSilent' => 'nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.',
 			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'the radio is not taking audio from the app right now. it needs a network connection to the radio.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app\'s audio.',
 			'settings.radio.voiceMessages.problemCannotKey' => 'this radio can\'t be keyed over cat, so the computer can\'t play messages into it.',
 			'settings.radio.voiceMessages.problemUnplayable' => 'that message\'s file isn\'t a sound file the app can play. use a wav, flac or mp3 file, or record it again.',
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
@@ -5979,9 +5981,9 @@ extension on TranslationsQrp {
 			'settings.peers.syncing' => 'syncing…',
 			'settings.peers.waitingForThem' => 'waiting for the other device',
 			'settings.peers.notConnected' => 'not connected',
-			'settings.peers.wantsToPair' => 'wants to share this operation',
 			_ => null,
 		} ?? switch (path) {
+			'settings.peers.wantsToPair' => 'wants to share this operation',
 			'settings.peers.allow' => 'allow',
 			'settings.peers.link' => 'link',
 			'settings.peers.reject' => 'reject',
@@ -6493,9 +6495,9 @@ extension on TranslationsQrp {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
-			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'advanced settings',
 			'settings.station.placeholderSwr' => 'swr reading',
 			'settings.station.placeholderSwrDescription' => 'what this radio reports on its swr meter while transmitting. above 1.8 the panel warns.',
@@ -7007,9 +7009,9 @@ extension on TranslationsQrp {
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
-			'offline.reachable' => 'all services responding as expected.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.reachable' => 'all services responding as expected.',
 			'offline.whatStops' => 'lookups, spots and data files are paused. logging and nearby sync are not.',
 			'offline.servicesTitle' => 'services',
 			'offline.noServices' => 'no service has reported in yet.',

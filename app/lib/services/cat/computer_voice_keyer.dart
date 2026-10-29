@@ -138,6 +138,10 @@ enum ComputerVoiceProblem {
   /// up — or the radio refused the stream.
   radioAudioUnavailable,
 
+  /// The radio would not switch its transmit audio to the computer when
+  /// keyed, so it was unkeyed: the operator sets the source on the radio.
+  sourceRefused,
+
   /// The memory's file is there, and not a sound file this app can read —
   /// or broke off partway through playing.
   unplayable,
@@ -1000,10 +1004,16 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   void _setPtt(bool on) {
     final session = ptt;
     if (session is ComputerAudioPttSession && session.switchesToComputerAudio) {
-      session.setPttWithComputerAudio(on);
+      session.setPttWithComputerAudio(on, refused: on ? _sourceRefused : null);
     } else {
       session?.setPtt(on);
     }
+  }
+
+  /// The radio would not switch its transmit audio to the computer, and the
+  /// session unkeyed it. Nothing to stop once the message has ended.
+  void _sourceRefused() {
+    if (_keyed) _fail(ComputerVoiceProblem.sourceRefused);
   }
 
   /// Whether a key switches the radio's transmit audio to the computer by

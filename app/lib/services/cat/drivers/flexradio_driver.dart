@@ -1072,7 +1072,7 @@ class FlexRadioSession
   /// DAX on for the message and off again after, unless the operator had it
   /// on already (flex_dax_switch.dart).
   @override
-  void setPttWithComputerAudio(bool on) {
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
     if (on) {
       _daxSwitch.beforeKey();
       setPtt(true);

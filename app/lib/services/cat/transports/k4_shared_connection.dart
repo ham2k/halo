@@ -14,7 +14,12 @@ import '../transport.dart';
 import 'k4_remote_connection.dart';
 
 typedef K4SharedSessionFactory =
-    K4SharedSession Function({required void Function(List<int>) send, required Stream<K4RemotePanPacket> pan, required Map<String, dynamic> config});
+    K4SharedSession Function({
+      required void Function(List<int>) send,
+      required Stream<K4RemotePanPacket> pan,
+      required Map<String, dynamic> config,
+      void Function(Uint8List envelope)? sendAudio,
+    });
 
 typedef K4ConnectionOpener = Future<EquipmentConnection> Function(Map<String, dynamic> target, {required CatCancelToken cancel});
 
@@ -140,7 +145,7 @@ class _SharedEntry {
         K4RemoteConnection() => connection.pan,
         _ => const Stream<K4RemotePanPacket>.empty(),
       };
-      _owner = pool._createSession(send: send, pan: pan, config: config);
+      _owner = pool._createSession(send: send, pan: pan, config: config, sendAudio: connection is K4RemoteConnection ? _sendAudio : null);
       // This reader exists before any receiver attaches: an early RDY must
       // reach the one protocol owner, even with no facade listening yet.
       _subscription = connection.data.listen(_receive, onDone: close, onError: (Object _, StackTrace _) => close());
@@ -191,6 +196,13 @@ class _SharedEntry {
     } catch (_) {
       unawaited(close());
     }
+  }
+
+  /// Kept out of the traffic log, which records CAT.
+  void _sendAudio(Uint8List envelope) {
+    final connection = _connection;
+    if (connection is! K4RemoteConnection || _closeDone.isCompleted) throw const K4AudioNotSent('the connection is closed');
+    connection.sendAudio(envelope);
   }
 
   void _rejectPending(Object error, [StackTrace? stack]) {

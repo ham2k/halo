@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Transmit audio this app sends to a radio over the network itself, paced
-// against the clock — what a FlexRadio's DAX output and an Icom's LAN audio
-// output share (docs/design/cat.md § The computer's voice keyer). A radio
+// against the clock — what the FlexRadio DAX, Icom LAN and K4 remote audio
+// outputs share (docs/design/cat.md § The computer's voice keyer). A radio
 // plays what arrives as it arrives: sent faster, its buffer overflows and the
 // end is lost; slower, it runs dry mid-word.
 
@@ -16,8 +16,9 @@ import 'package:halo_audio/halo_audio.dart' show AudioPlayback, HaloAudioExcepti
 import '../../error_reporting_service.dart';
 import '../driver.dart' show PcmDecoder, SilenceFedOutput;
 
-/// Packets sent ahead of the clock, for the timer's jitter.
-const _ahead = 4;
+/// Packets sent ahead of the clock, for the timer's jitter, unless an
+/// output says otherwise.
+const _defaultAhead = 4;
 const _tick = Duration(milliseconds: 5);
 
 /// How long silence keeps going after a message ends or is stopped. The
@@ -28,19 +29,36 @@ const transmitAudioSilenceAfter = Duration(seconds: 1);
 /// The pacing, the silence around a message and the playbacks; a subclass
 /// says when the radio is ready for packets and how one is sent.
 abstract class PacedTransmitAudio implements SilenceFedOutput {
-  PacedTransmitAudio({required this.decode, required this.rate, required this.channels, required this.framesPerPacket, int Function()? clockMicros})
-    : _clock = clockMicros ?? _stopwatchClock();
+  PacedTransmitAudio({
+    required this.decode,
+    required this.rate,
+    required this.channels,
+    required this.framesPerPacket,
+    this.ahead = _defaultAhead,
+    this.feedsSilence = true,
+    int Function()? clockMicros,
+  }) : _clock = clockMicros ?? _stopwatchClock();
 
   final PcmDecoder decode;
   final int rate;
   final int channels;
   final int framesPerPacket;
 
+  /// Packets sent ahead of the clock. A message's end is reported as its
+  /// last packet goes, and the radio still has these to play: the keyer's
+  /// unkey delay has to cover them.
+  final int ahead;
+
+  /// Whether silence goes out around a message. False for a radio that
+  /// every packet keys (a K4), which [startSilence] and the tail after a
+  /// message would put on the air before the key and after the unkey.
+  final bool feedsSilence;
+
   /// Monotonic microseconds — the real clock, never the app's: packets are
   /// paced against real time whatever DEVTT says.
   final int Function() _clock;
 
-  late final int _silenceAfterPackets = (transmitAudioSilenceAfter.inMicroseconds * rate / (1000000 * framesPerPacket)).ceil();
+  late final int _silenceAfterPackets = feedsSilence ? (transmitAudioSilenceAfter.inMicroseconds * rate / (1000000 * framesPerPacket)).ceil() : 0;
 
   final _gone = Completer<void>();
   bool _closed = false;
@@ -110,10 +128,14 @@ abstract class PacedTransmitAudio implements SilenceFedOutput {
   /// Silence from now: the keyer keys the radio and waits out its key-up
   /// delay before the message, and a radio keyed with nothing arriving may
   /// transmit noise for that long.
+  ///
+  /// Without [feedsSilence], only the decode: the message's first packet is
+  /// the first to go.
   @override
   void startSilence(String next) {
     if (!isAlive) return;
     _ready = (next, decode(next, rate: rate, channels: channels));
+    if (!feedsSilence) return;
     starting();
     _run();
     _silenceUntil = math.max(_silenceUntil, _packetsSent + _silenceAfterPackets);
@@ -143,7 +165,7 @@ abstract class PacedTransmitAudio implements SilenceFedOutput {
       _packetsSent = 0;
       return;
     }
-    final due = (_clock() - _startMicros) * rate ~/ (1000000 * framesPerPacket) + _ahead;
+    final due = (_clock() - _startMicros) * rate ~/ (1000000 * framesPerPacket) + ahead;
     while (_packetsSent < due) {
       final playing = _playing;
       if (playing == null && _packetsSent >= _silenceUntil) {

@@ -8,8 +8,18 @@ import 'dart:typed_data';
 import '../drivers/k4_remote_codec.dart';
 import '../transport.dart';
 
-/// Multiplexes CAT and spectrum over an already authenticated TLS stream.
-/// Only CAT has an outgoing encoder: sending audio packets would key the K4.
+class K4AudioNotSent implements Exception {
+  final String why;
+
+  const K4AudioNotSent(this.why);
+
+  @override
+  String toString() => 'K4AudioNotSent: $why';
+}
+
+/// Multiplexes CAT and spectrum over an already authenticated TLS stream,
+/// and carries the voice keyer's transmit audio the other way. Every audio
+/// packet keys the K4: [sendAudio] is for a message playing, nothing else.
 class K4RemoteConnection implements EquipmentConnection {
   final EquipmentConnection _secure;
   final _decoder = K4RemoteDecoder();
@@ -82,6 +92,19 @@ class K4RemoteConnection implements EquipmentConnection {
       _secure.send(encodeK4RemoteCat(bytes));
     } catch (_) {
       unawaited(close());
+    }
+  }
+
+  /// An audio envelope from [encodeK4RemoteAudio]. Throws [K4AudioNotSent]
+  /// when the link will not take it, so the message stops rather than
+  /// playing on into a closed connection.
+  void sendAudio(Uint8List envelope) {
+    if (_closed.isCompleted) throw const K4AudioNotSent('the connection is closed');
+    try {
+      _secure.send(envelope);
+    } catch (e) {
+      unawaited(close());
+      throw K4AudioNotSent('$e');
     }
   }
 

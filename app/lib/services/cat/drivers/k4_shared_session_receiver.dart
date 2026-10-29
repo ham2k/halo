@@ -6,12 +6,23 @@ part of 'k4_shared_session.dart';
 /// A logical receiver has its own VFO/display demand while TX capabilities
 /// address the one physical transmitter without changing its split selection.
 class _K4ReceiverSession
-    implements ReadBackSession, SpectrumSession, PassbandSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession, AntennaTunerSession {
+    implements
+        ReadBackSession,
+        SpectrumSession,
+        PassbandSession,
+        NetworkTransmitAudioSession,
+        CwKeyerSession,
+        VoiceKeyerSession,
+        RawCommandSession,
+        AntennaTunerSession {
   final K4SharedSession owner;
   final EquipmentSink sink;
   final K4Receiver receiver;
   bool _active = false, _disposed = false, _spectrumWanted = false;
   String? _spectrumProblem;
+
+  /// The output this receiver's keyer last opened.
+  K4RemoteAudioOutput? _output;
   late final _presenter = K4SpectrumPresenter(sink: sink is SpectrumSink ? sink as SpectrumSink : null);
 
   _K4ReceiverSession(this.owner, this.sink, this.receiver);
@@ -137,6 +148,24 @@ class _K4ReceiverSession
     if (!on && owner._pttOwner != null && owner._pttOwner != this) return;
     owner._pttOwner = on ? this : null;
     owner._radio.setPtt(on);
+  }
+
+  @override
+  bool get sendsTransmitAudio => owner._sendsTransmitAudio;
+
+  @override
+  AudioOutput? openTransmitAudio(PcmDecoder decode) => _usable ? owner._openTransmitAudio(this, decode) : null;
+
+  /// While the recording goes over the network, and while an EM restore is
+  /// owed, so the unkey after an output that died mid-message still puts it
+  /// back.
+  @override
+  bool get switchesToComputerAudio => (_output?.isAlive ?? false) || owner._encoding.owesRestore;
+
+  @override
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
+    // A refused EM loses this receiver's output, which stops the message.
+    if (_usable) owner._setPttWithComputerAudio(this, on);
   }
 
   @override

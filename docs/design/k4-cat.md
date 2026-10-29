@@ -17,7 +17,9 @@ existing feature gate.
   The panadapter opens port **9201** on the same host while visible.
 - **Secure Network/WiFi:** enter the address, remote port (default **9204**)
   and K4 network password. CAT and spectrum share one TLS connection;
-  see [K4 remote connection](k4-remote.md). Audio playback is not implemented.
+  see [K4 remote connection](k4-remote.md). Receive audio is not played; the
+  computer's voice keyer sends its recordings over it
+  ([k4-remote.md § Transmit audio](k4-remote.md#transmit-audio)).
 - The serial device path is stored as `port`; the TCP number as `tcpPort`.
   Both variants seed the same editor, so reusing `port` would overwrite one
   connection's settings when switching to the other. TCP still receives the

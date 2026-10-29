@@ -1709,6 +1709,7 @@
         "problemNotRecorded": "that message has no recording yet.",
         "problemRecordingSilent": "nothing was heard from the recording device, so the message was left as it was. check the input, and that the app is allowed to use the microphone.",
         "problemRadioAudioUnavailable": "the radio is not taking audio from the app right now. it needs a network connection to the radio.",
+        "problemSourceRefused": "the radio would not switch its transmit audio to the app, so the message stopped. set the radio to transmit the app's audio.",
         "problemCannotKey": "this radio can't be keyed over cat, so the computer can't play messages into it.",
         "problemUnplayable": "that message's file isn't a sound file the app can play. use a wav, flac or mp3 file, or record it again.",
         "problemRecordingFailed": "the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.",

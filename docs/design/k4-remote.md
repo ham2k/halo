@@ -64,8 +64,8 @@ Each logical receiver has an ordinary `SpectrumSession` and its own
 `K4SpectrumPresenter`; Main and Sub are selected by radio ID throughout the
 panel and extension APIs. A terminated PAN stream reports unavailable until
 the physical connection is replaced; it does not start a separate retry loop.
-Audio still consumes network bandwidth before being discarded. There is no
-outbound audio encoder: sending an audio packet would key the radio.
+Receive audio still consumes network bandwidth before being discarded. The
+only outbound audio is the voice keyer's (§ Transmit audio).
 
 ## Receiver and CAT state
 
@@ -125,6 +125,34 @@ and uses the sample rate for the frequency width.
 A1 leaves the PAN version, nested type and declared inner length ambiguous.
 Those fields are preserved without imposing guessed validity rules. Bin
 levels use the documented conversion above and are not calibrated dBm.
+
+## Transmit audio
+
+The computer's voice keyer sends its recordings over this connection
+([cat.md § The computer's voice keyer](cat.md#the-computers-voice-keyer)).
+Not yet met on hardware: the layout below is from QK4's source (GPL-3.0, read
+for the facts of the format; none of its code is copied).
+
+| Offset | Field | Value |
+| --- | --- | --- |
+| 0 | Type | 1, audio |
+| 1 | Version | 1 |
+| 2 | Sequence | u8, from 0 for each transmission, wrapping |
+| 3 | Encode mode | 1 (EM1) |
+| 4 | Frames per channel | u16 little-endian; 720 |
+| 6 | Rate code | 0, 12 kHz |
+| 7 onward | Samples | S16 little-endian, stereo interleaved, mono copied to both |
+
+720 frames is 60 ms, what the K4 bundles at its default streaming latency
+(SL3; SL0 is 240, SL1–2 480, SL6–7 1440). The connection's encoding is EM3,
+Opus, unless set; `EM1;` goes out ahead of each message's `TX;` and the
+connection's own EM after its `RX;`.
+
+Every audio packet keys the K4: `TX;` goes before the first, and the stream
+ends before `RX;`, or the audio keys the radio again. Unconfirmed until a K4
+tries it: whether EM changed mid-connection takes effect, whether a frame size
+other than the SL tier's is accepted, and whether the K4 needs stereo (QK4
+sends stereo for the raw modes and mono Opus).
 
 ## Capture and replay
 

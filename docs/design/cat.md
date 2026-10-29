@@ -2154,15 +2154,18 @@ reported (`FlexDaxLeftOn`). A teardown while keyed sends it straight after its u
 by the radio's address, and the next session to that radio sends it once the radio reports
 receive with DAX still on. A TS-590SG keys with `TX1;` (DATA SEND,
 the audio its data menu routes from ACC2 or USB) and unkeys with the same `RX;`; the entry pins it
-(`dataSend`), because the Kenwood driver serves rigs whose `TX` takes no parameter. Everything else
-keys plainly, and the pane asks the operator to set the radio's transmit audio themselves.
+(`dataSend`), because the Kenwood driver serves rigs whose `TX` takes no parameter. An Elecraft K4
+over USB or its LAN CAT port has its voice modes' input set to LINE IN for the message (below).
+Everything else keys plainly, and the pane asks the operator to set the radio's transmit audio
+themselves.
 
 **A Flex takes the recording over the network, with no sound device** (flex_dax_tx.dart). A
 session that can carry the audio itself implements `NetworkTransmitAudioSession`, and its output is
 offered first in the picker as **Send to radio over network** — and is what plays when no output is
 picked. It is offered only where the session says this connection can carry it
 (`sendsTransmitAudio`): a Flex whose UDP socket opened, an Icom over its network link on a model
-whose transmit source is known (below) — never a radio on a serial port, where the recording would
+whose transmit source is known, a K4 over its secure remote connection (below) — never a radio on a
+serial port, where the recording would
 play into nothing. The Flex session creates its own `dax_tx` stream (`stream create type=dax_tx`, owned by this
 client, `tx=0`), claims it as the radio's DAX source with `stream set <id> tx=1` only as a message starts — the
 stream is made as the radio connects, and claimed then it would take a digital-mode program's DAX
@@ -2232,6 +2235,41 @@ item and LAN value (`civLanMod`, the two bytes after `0x1A 0x05` and the value):
 IC-7300 MK2 `0084` = 5, IC-7610 `0091` = 5, IC-7760 `0129` = 9, IC-9700 `0115` = 5, IC-905
 `0126` = 3, IC-7850/7851 `0063` = 9. The LAN MOD level, the setting before each, is left as the
 radio has it.
+
+**An Elecraft K4 over USB or its LAN CAT port plays the recording from its own sound card**
+(k4_setting_switch.dart). Not yet met on hardware; the commands are from Elecraft's K4 Programmer's
+Reference. In the voice modes the K4 transmits what `MI` picks — the front or rear mic, LINE IN, or
+a mic with LINE IN — so the session sets `MI2;` (LINE IN alone) ahead of the key and puts the
+operator's input back after the unkey: read first when it is not yet known, as the Icom's source
+is, read back just after the key — anything but 2 is the mic on the air, so the session unkeys,
+the keyer stops the message and says the radio would not switch its audio, and later keys on the
+connection are plain ones (`K4SettingRefused`) — and after the restore, sent again half a second
+later up to three times and then reported (`K4SettingLeftOn`). An input already on LINE IN is the
+operator's choice and left on it. A reply names the setting but not the question, so each is
+matched to the oldest read unanswered: a message keyed before the last one's restore is read back
+takes that late reply as no answer of its own, and reads still unanswered after two quiet seconds
+are given up on — a restore among them is sent again — so one lost reply cannot shift every later
+answer onto the wrong question. Where LINE IN comes from (`LI`, the
+K4's USB sound card or its LINE IN jack) is the shack's wiring, already set for the data modes,
+which always transmit LINE IN, so it is left alone. A teardown while keyed sends the restore behind
+its unkey — the K4 takes ASCII commands in order, so it cannot take the unkey's place — but nothing
+reads it back, so it is owed by the radio's address or serial port for the launch, and the next
+session reads `MI` as it starts: still 2, it is put back; moved since, the operator's choice stands.
+
+**A K4 over its secure remote connection takes the recording on that connection** (k4_remote_audio.dart,
+k4-remote.md § Transmit audio). Not yet met on hardware: the packet layout is from QK4's source
+(GPL-3.0, read for the facts of the format; none of its code is copied). The recording goes as
+remote audio packets of 720 frames (60 ms, the K4's default streaming latency), raw 16-bit at
+12 kHz with the mono copied to both channels, paced one packet ahead of the one playing — four
+would leave the radio a quarter of a second to play after the end is reported, past the unkey
+delay. Raw needs the connection's encoding (`EM`) at EM1, so `EM1;` goes ahead of the key and the
+connection's own EM after the unkey, read and read back and retried as `MI` is; an EM read back as
+anything else stops the message with its output, and the radio is not offered again on that
+connection. Every audio packet keys the K4, so this output feeds no silence: nothing goes out
+during the key-up delay, and nothing after the message, which ends before the keyer's `RX;`. Each
+receiver's entry has its own keyer and its own output, so one opening never cuts the other's
+message short; one transmitter carries them, so a receiver keying stops the other's message still
+playing. A packet the connection will not take stops the message as a lost link does.
 
 **A play keys, waits, plays, waits, unkeys.** The radio is keyed over CAT, the audio starts after
 the **key-up delay** (250 ms unless changed: a radio, and an amplifier behind it, switch to

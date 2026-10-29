@@ -566,7 +566,12 @@ abstract class ComputerAudioPttSession implements PttSession {
   /// Keys with the transmit audio from the computer, or unkeys and puts the
   /// source back to what it was. A session that switched it and is torn
   /// down while keyed puts it back too, after its unkey.
-  void setPttWithComputerAudio(bool on);
+  ///
+  /// [refused] is called when the switch did not take and the session
+  /// unkeyed for it: the radio was sending its mic, and the message stops. A
+  /// session that carries the audio itself loses its output instead
+  /// ([NetworkTransmitAudioSession]).
+  void setPttWithComputerAudio(bool on, {void Function()? refused});
 }
 
 /// An output the radio has to be fed for as long as it is keyed, silence

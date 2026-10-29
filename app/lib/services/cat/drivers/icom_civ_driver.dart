@@ -1168,7 +1168,7 @@ class IcomCivSession
   bool get _playsToLan => _lanOutput?.isAlive ?? false;
 
   @override
-  void setPttWithComputerAudio(bool on) {
+  void setPttWithComputerAudio(bool on, {void Function()? refused}) {
     final lanMod = _lanMod;
     if (lanMod == null) return setPtt(on);
     if (on) {

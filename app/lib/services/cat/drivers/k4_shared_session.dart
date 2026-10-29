@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:halo_audio/halo_audio.dart' show AudioOutput;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../error_reporting_service.dart';
@@ -15,7 +16,9 @@ import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'k4_codec.dart';
 import 'k4_receiver_codec.dart';
+import 'k4_remote_audio.dart';
 import 'k4_remote_codec.dart';
+import 'k4_setting_switch.dart';
 import 'k4_shared_session_config.dart';
 import 'k4_spectrum_presenter.dart';
 import 'kenwood_cat_codec.dart';
@@ -31,7 +34,11 @@ class K4SharedSession implements EquipmentSink {
   final Stream<K4RemotePanPacket> _pan;
   final Map<String, dynamic> _config;
 
-  K4SharedSession({required void Function(List<int>) send, required this._pan, required Map<String, dynamic> config})
+  /// Writes a transmit audio envelope; null where the connection carries
+  /// none.
+  final void Function(Uint8List envelope)? _sendAudio;
+
+  K4SharedSession({required void Function(List<int>) send, required this._pan, required Map<String, dynamic> config, this._sendAudio})
     : _sendBytes = send,
       _config = Map.of(config);
 
@@ -58,6 +65,23 @@ class K4SharedSession implements EquipmentSink {
   _K4ReceiverSession? _pttOwner;
   _K4ReceiverSession? _cwOwner, _voiceOwner;
 
+  /// The connection's audio encoding, raw 16-bit while a message plays.
+  late final _encoding = K4SettingSwitch(
+    command: 'EM',
+    value: k4EncodeRaw16,
+    send: _send,
+    diagnose: reportDiagnostic,
+    refused: _encodingRefused,
+    radio: switch (_config['host']) {
+      final String host when host.isNotEmpty => host,
+      _ => null,
+    },
+  );
+
+  /// The EM set did not take on this connection: the radio is no longer
+  /// offered as the voice keyer's output.
+  bool _audioRefused = false;
+
   EquipmentSession attach(EquipmentSink sink, {required String receiver}) {
     if (_disposed || _closing) throw StateError('K4 session is closed');
     final selected = parseK4Receiver(receiver);
@@ -75,6 +99,7 @@ class K4SharedSession implements EquipmentSink {
       _radio.startUpdates();
       if (_disposed) return;
       _send('FA;FB;MD;MD\$;DT;DT\$;DV;SB;BW;BW\$;IS;IS\$;CW;SMH1;');
+      _encoding.settle();
     }
     for (final report in _global.values.toList()) {
       if (!facade._active || _disposed) return;
@@ -94,11 +119,68 @@ class K4SharedSession implements EquipmentSink {
       _voiceOwner = null;
       _radio.stopVoice();
     }
+    // Ahead of the unkey: a packet after it keys the radio again.
+    facade._output?.lost();
     if (_pttOwner == facade) {
       _pttOwner = null;
       _radio.setPtt(false);
+      _encoding.afterUnkey();
     }
     facade.stopSpectrum();
+  }
+
+  bool get _sendsTransmitAudio => _sendAudio != null && !_audioRefused;
+
+  /// Each receiver's keyer opens and closes its own output: one opening
+  /// never cuts the other's message short.
+  AudioOutput? _openTransmitAudio(_K4ReceiverSession facade, PcmDecoder decode) {
+    final sendAudio = _sendAudio;
+    if (sendAudio == null || _audioRefused || _disposed) return null;
+    facade._output?.close();
+    // Read now, so the key that follows needs no question first.
+    _encoding.read();
+    return facade._output = K4RemoteAudioOutput(send: sendAudio, decode: decode);
+  }
+
+  void _loseOutputs() {
+    for (final facade in _facades) {
+      facade._output?.lost();
+    }
+  }
+
+  /// EM1 ahead of the key, and the connection's own EM back after the
+  /// unkey. Audio packets arriving after `RX;` would key the radio again;
+  /// the output sends none once its message ends, and the keyer unkeys after
+  /// that.
+  void _setPttWithComputerAudio(_K4ReceiverSession facade, bool on) {
+    if (!on && _pttOwner != null && _pttOwner != facade) return;
+    _pttOwner = on ? facade : null;
+    final output = facade._output;
+    if (!on) {
+      _radio.setPtt(false);
+      return _encoding.afterUnkey();
+    }
+    // One transmitter: the other receiver's message stops as this one keys,
+    // rather than both streams going out on it at once.
+    for (final other in _facades) {
+      if (other != facade && (other._output?.running ?? false)) other._output!.lost();
+    }
+    if (output == null || !output.isAlive) return _radio.setPtt(true);
+    final ahead = _encoding.beforeKey();
+    if (ahead.isNotEmpty) _send(ahead);
+    output.keyed();
+    _radio.setPtt(true);
+    final verify = _encoding.verify();
+    if (verify.isNotEmpty) _send(verify);
+  }
+
+  /// The message stops with its output, and the keyer's unkey puts EM back.
+  void _encodingRefused(int read) {
+    _audioRefused = true;
+    reportDiagnostic('the radio read EM$read after EM$k4EncodeRaw16: network audio is not offered again on this connection');
+    // The Phone Keyer pane says the radio is not taking the audio.
+    ErrorReportingService.report(K4SettingRefused('EM', read), StackTrace.current, context: 'k4:encoding-refused', told: true);
+    _loseOutputs();
   }
 
   K4Receiver? _binding(K4Receiver receiver) => receiver == K4Receiver.main
@@ -180,6 +262,9 @@ class K4SharedSession implements EquipmentSink {
         final pitch = parseElecraftPitchParams(params);
         if (pitch == null) return;
         _cwPitchHz = pitch;
+      case 'EM':
+        _encoding.heard(params);
+        return;
       case 'SM':
         final signal = parseK4Signal(command.params);
         if (signal == null) return;
@@ -304,7 +389,10 @@ class K4SharedSession implements EquipmentSink {
   void teardown() {
     if (_disposed || _closing) return;
     _closing = true;
+    _loseOutputs();
     _radio.teardown();
+    _encoding.teardown(_send);
+    _encoding.dispose();
     _disposed = true;
     _panEpoch++;
     for (final facade in _facades.toList()) {
