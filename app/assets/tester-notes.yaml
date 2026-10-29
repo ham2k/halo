@@ -4,6 +4,13 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Improved secondary controls: a park, note or frequency control stays open from one contact to the next"
+    - "Kenwood-protocol radios on VFO B are read and tuned on VFO B, and no longer wipe the call being typed (tell us how it behaves)"
+    - "Fixed extension panels such as the Band Map, and call history lookups, broken in 185"
+    - "Map locations honor a manually entered state (thanks to N1RWJ)"
+
 "185":
   changes:
     - "New: tuning the radio away from a contact being entered wipes it (Undo returns it)"
