@@ -25,6 +25,28 @@ const rotatorAxesAzimuthElevation = 'azel';
 /// Whether a node configured like [config] reports and takes an elevation.
 bool rotatorHasElevation(Map<String, dynamic> config) => config[rotatorAxesConfigKey] == rotatorAxesAzimuthElevation;
 
+/// The azimuth-only or az/el choice, as every rotator asks it.
+Map<String, dynamic> rotatorAxesConfigElement() {
+  final st = t.settings.station;
+  return {
+    'type': 'field',
+    'fieldType': 'select',
+    'key': rotatorAxesConfigKey,
+    'label': st.rotatorAxes,
+    'description': st.rotatorAxesDescription,
+    'options': [
+      {'value': rotatorAxesAzimuth, 'label': st.rotatorAxesAzimuth},
+      {'value': rotatorAxesAzimuthElevation, 'label': st.rotatorAxesAzimuthElevation},
+    ],
+  };
+}
+
+/// Blank, or one of the two axes choices.
+String? validateRotatorAxes(dynamic value) {
+  if (value == null || value == '') return null;
+  return (value == rotatorAxesAzimuth || value == rotatorAxesAzimuthElevation) ? null : t.settings.station.rotatorAxesRequired;
+}
+
 const rotatorAzimuthOffsetConfigKey = 'azimuthOffset';
 const rotatorElevationOffsetConfigKey = 'elevationOffset';
 const rotatorAzimuthMinConfigKey = 'azimuthMin';

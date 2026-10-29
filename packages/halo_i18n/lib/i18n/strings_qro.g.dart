@@ -2721,6 +2721,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get connectFailedUnsupported => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.';
 	@override String get connectFailedLines => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.';
 	@override String get connectFailedNetwork => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.';
+	@override String connectFailedReplyPort({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE, AND THE ANSWERS ARRIVE THERE. CLOSE WHATEVER ELSE LISTENS ON IT — ANOTHER PSTROTATOR NODE INCLUDED — OR CHANGE THE PORT.';
 	@override String get connectFailedTimeout => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.';
 	@override late final _Translations$settings$station$models$qro models = _Translations$settings$station$models$qro._(_root);
 	@override late final _Translations$settings$station$transports$qro transports = _Translations$settings$station$transports$qro._(_root);
@@ -2954,6 +2955,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String rotatorPollIntervalDescription({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.';
 	@override String get rotatorAxesRequired => 'CHOOSE WHICH AXES THE ROTATOR TURNS';
 	@override String get rotatorRefused => 'THE CONTROLLER REFUSED A COMMAND. CHECK THAT IT IS SET TO GS-232 MODE.';
+	@override String get pstRotatorTroubleshooting => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).';
 	@override String rotatorCurrentStateHeader({required Object position}) => 'CURRENT STATE: ${position}';
 	@override String get rotatorDisconnected => 'DISCONNECTED';
 	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° AZIMUTH';
@@ -4382,6 +4384,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get antennaGenius => '4O3A ANTENNA GENIUS';
 	@override String get sierraCoax => 'SIERRA RADIO CX-1 COAX SWITCH';
 	@override String get gs232a => 'YAESU GS-232A ROTATOR INTERFACE';
+	@override String get pstRotator => 'PSTROTATOR (UDP CONTROL)';
 	@override String get rtlSdr => 'RTL-SDR';
 	@override String get nesdr => 'NOOELEC NESDR';
 	@override String get sdrplay => 'SDRPLAY RSP';
@@ -6343,6 +6346,7 @@ extension on TranslationsQro {
 			'settings.station.connectFailedUnsupported' => 'NO DRIVER RECOGNIZES THIS USB ADAPTER\'S CHIP. IF YOU KNOW WHICH CHIP IT IS, CHOOSE IT UNDER USB CHIP DRIVER IN ADVANCED SETTINGS.',
 			'settings.station.connectFailedLines' => 'RTS/DTR COULD NOT BE HELD AS SET, SO THE PORT WAS CLOSED. ANOTHER PROGRAM MAY HAVE LEFT HARDWARE HANDSHAKING ON — UNPLUG AND REPLUG THE CABLE.',
 			'settings.station.connectFailedNetwork' => 'CANNOT FIND THE RADIO OVER THE NETWORK. CHECK ITS ADDRESS AND THAT IT\'S POWERED ON AND REACHABLE.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'PORT ${port} ON THIS DEVICE IS ALREADY IN USE, AND THE ANSWERS ARRIVE THERE. CLOSE WHATEVER ELSE LISTENS ON IT — ANOTHER PSTROTATOR NODE INCLUDED — OR CHANGE THE PORT.',
 			'settings.station.connectFailedTimeout' => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.',
 			'settings.station.models.flexRadio' => 'FLEXRADIO (SMARTSDR)',
 			'settings.station.models.ft891' => 'YAESU FT-891',
@@ -6409,6 +6413,7 @@ extension on TranslationsQro {
 			'settings.station.models.antennaGenius' => '4O3A ANTENNA GENIUS',
 			'settings.station.models.sierraCoax' => 'SIERRA RADIO CX-1 COAX SWITCH',
 			'settings.station.models.gs232a' => 'YAESU GS-232A ROTATOR INTERFACE',
+			'settings.station.models.pstRotator' => 'PSTROTATOR (UDP CONTROL)',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
@@ -6559,10 +6564,10 @@ extension on TranslationsQro {
 			'settings.station.trackStationInfo' => 'TRACK STATION INFO FOR EACH QSO',
 			'settings.station.includeStationInfoInAdif' => 'INCLUDE IN ADIF EXPORTS',
 			'settings.station.whatToTrack' => 'WHAT TO TRACK?',
-			'settings.station.trackFieldRig' => 'TRANSCEIVER',
-			'settings.station.trackFieldPower' => 'POWER',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.trackFieldRig' => 'TRANSCEIVER',
+			'settings.station.trackFieldPower' => 'POWER',
 			'settings.station.watts' => 'WATTS',
 			'settings.station.trackFieldAntenna' => 'ANTENNA',
 			'settings.station.trackFieldKey' => 'CW KEY',
@@ -6653,6 +6658,7 @@ extension on TranslationsQro {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.',
 			'settings.station.rotatorAxesRequired' => 'CHOOSE WHICH AXES THE ROTATOR TURNS',
 			'settings.station.rotatorRefused' => 'THE CONTROLLER REFUSED A COMMAND. CHECK THAT IT IS SET TO GS-232 MODE.',
+			'settings.station.pstRotatorTroubleshooting' => 'PSTROTATOR ANSWERS ONLY ONCE IT IS SET UP FOR IT, AND SAYS NOTHING AT ALL OTHERWISE:\n\n- **TURN ON UDP CONTROL** IN PSTROTATOR\'S SETUP MENU.\n- **MATCH THE PORT**: COMMUNICATION → UDP CONTROL PORT, 12000 UNLESS CHANGED. PSTROTATOR ANSWERS ON THE NEXT PORT UP (12001), WHICH HAS TO BE FREE ON THIS DEVICE.\n- **CONNECT PSTROTATOR TO ITS CONTROLLER.** UNTIL IT IS, IT ANSWERS NOTHING OVER UDP.\n- **ALLOW IT THROUGH THE FIREWALL** ON THE PC RUNNING PSTROTATOR, AND ON THIS DEVICE, WHICH LISTENS FOR THE ANSWERS.\n- **ON A MAC, IPHONE OR IPAD**, HAM2K LOGGER NEEDS LOCAL NETWORK ACCESS (SETTINGS → PRIVACY & SECURITY → LOCAL NETWORK).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'CURRENT STATE: ${position}',
 			'settings.station.rotatorDisconnected' => 'DISCONNECTED',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° AZIMUTH',
@@ -7072,11 +7078,11 @@ extension on TranslationsQro {
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'THE LINK EXPIRED AND A NEW ONE IS READY — OPEN ${app} AGAIN.',
 			'switchAccounts.tryAgain' => 'TRY AGAIN',
 			'switchAccounts.linkWithQr' => 'LINK WITH A QR CODE',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'SCAN IT FROM A DEVICE ALREADY USING THE ACCOUNT',
 			'switchAccounts.linkWithEmail' => 'LINK WITH AN EMAIL ADDRESS',
 			'switchAccounts.linkWithEmailDescription' => 'CONFIRM WITH A CODE OR AN EMAIL LINK',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'ENTER THE EMAIL ADDRESS OF THE ACCOUNT YOU WANT THIS DEVICE TO USE.',
 			'switchAccounts.emailAddress' => 'EMAIL ADDRESS',
 			'switchAccounts.linkAccount' => 'LINK ACCOUNT',

@@ -3131,6 +3131,53 @@ Reached over its own serial port (9600 prefilled; the interface's DIP
 switches go from 150 to 9600) or over the network through a serial-to-TCP
 bridge, which speaks the same bytes and has no standard port to prefill.
 
+### PstRotator
+
+`pstrotator_codec.dart` and `pstrotator_driver.dart`, over
+`transports/udp_transport*.dart`. From PstRotator's User's Manual (Rev 7.5,
+"UDP Control"), not from a capture. PstRotator (YO3DMU) drives whatever
+controller it is set up for, so this one node reaches all of them over the
+network.
+
+- **UDP Control only.** The manual also describes a rotctld server (only
+  while its Gpredict tracker is selected), N1MM rotor broadcasts on 12040
+  (they turn the rotator, and nothing reports a heading back), and a TCP
+  link between two PstRotator instances with no published protocol. UDP
+  Control is the one that both turns the rotator and says where it points.
+- **The answers come back on the next port up.** Commands go to the node's
+  port (12000 prefilled, PstRotator's default) and PstRotator answers to the
+  sender on that port + 1, which the transport binds — exclusively: two
+  listeners on it would each get some of the answers. Held a moment longer
+  (this node's own socket, on a reconnect) it is waited for; held for good
+  it is a failed connect that names the port (`UdpReplyPortTaken`, a
+  `CatUnreachable`, only for EADDRINUSE), not a node that silently never
+  hears. Answers are read from any address: a PC with two interfaces on one
+  network answers from whichever it routes by, not necessarily the one
+  dialled.
+- **"Connected" proves nothing about PstRotator, and nothing about it ends
+  the connection.** UDP has no handshake: the connect binds the reply port
+  and resolves the host. PstRotator says nothing while UDP Control is off or
+  it has no controller of its own, so a node that never hears it reads not
+  responding, and its troubleshooting notes say where to look. A send the OS
+  refuses (a PC asleep, a Local Network grant not given) makes the SDK close
+  the socket, so the transport binds the reply port again rather than let
+  the node drop — nothing reconnects a rotator — and the silence watch says
+  the rest. Every answer counts as life, an azimuth still waiting for its
+  elevation included.
+- **It never speaks unasked**, like the GS-232: the session polls `AZ?` (and
+  `EL?` on an az/el node) at the poll interval. Answers are `AZ:xxx.x` and
+  `EL:yy.y`, read in whole degrees. One report per poll, on the answer that
+  completes it — the elevation, on an az/el node — because the stall rule
+  (`rotatorStalledAfterReadings`) counts reports, and two a poll would give
+  up on a turn in half the time.
+- **A turn is one envelope** — `<AZIMUTH>` and `<ELEVATION>` together, the
+  manual's several-commands-to-a-message — so a lost datagram cannot leave
+  the mast turned on one axis only. Stop is `<STOP>1</STOP>`.
+- **No offsets and no limits.** PstRotator has its own calibration and its
+  own end stops, so what it reports is already a true heading; the same
+  correction set here as well would apply twice. The node carries the axes
+  and the poll interval only, and `rotateTo` returns what it was asked.
+
 ## Tuner, passband and the radio's own antenna ports
 
 Three more capabilities beside `CwKeyerSession` (driver.dart), each a session interface with a sink

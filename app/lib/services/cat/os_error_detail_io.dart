@@ -4,6 +4,7 @@
 import 'dart:io';
 
 import 'transports/serial_transport_io.dart' show SerialPortUnavailable;
+import 'transports/udp_transport_io.dart' show UdpReplyPortTaken;
 
 /// The OS's message and code for [error] — "Network is unreachable (errno
 /// 101)" — or null when it carries none.
@@ -17,6 +18,7 @@ String? osErrorDetail(Object error) => switch (error) {
   SocketException(osError: final os?) => _describe(os),
   OSError() => _describe(error),
   SerialPortUnavailable(osError: final os?) => _describe(os),
+  UdpReplyPortTaken(osError: final os?) => _describe(os),
   _ => null,
 };
 

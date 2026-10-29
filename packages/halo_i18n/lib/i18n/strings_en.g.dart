@@ -5960,6 +5960,9 @@ class Translations$settings$station$en {
 	/// en: 'Cannot find the radio over the network. Check its address and that it's powered on and reachable.'
 	String get connectFailedNetwork => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.';
 
+	/// en: 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.'
+	String connectFailedReplyPort({required Object port}) => 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.';
+
 	/// en: 'The radio didn't respond in time. Check it's powered on and reachable.'
 	String get connectFailedTimeout => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.';
 
@@ -6633,6 +6636,9 @@ class Translations$settings$station$en {
 
 	/// en: 'The controller refused a command. Check that it is set to GS-232 mode.'
 	String get rotatorRefused => 'The controller refused a command. Check that it is set to GS-232 mode.';
+
+	/// en: 'PstRotator answers only once it is set up for it, and says nothing at all otherwise: - **Turn on UDP Control** in PstRotator's Setup menu. - **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device. - **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP. - **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers. - **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).'
+	String get pstRotatorTroubleshooting => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).';
 
 	/// en: 'Current State: $position'
 	String rotatorCurrentStateHeader({required Object position}) => 'Current State: ${position}';
@@ -9660,6 +9666,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu GS-232A Rotator Interface'
 	String get gs232a => 'Yaesu GS-232A Rotator Interface';
 
+	/// en: 'PstRotator (UDP Control)'
+	String get pstRotator => 'PstRotator (UDP Control)';
+
 	/// en: 'RTL-SDR'
 	String get rtlSdr => 'RTL-SDR';
 
@@ -11742,6 +11751,7 @@ extension on Translations {
 			'settings.station.connectFailedUnsupported' => 'No driver recognizes this USB adapter\'s chip. If you know which chip it is, choose it under USB chip driver in Advanced Settings.',
 			'settings.station.connectFailedLines' => 'RTS/DTR could not be held as set, so the port was closed. Another program may have left hardware handshaking on — unplug and replug the cable.',
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Port ${port} on this device is already in use, and the answers arrive there. Close whatever else listens on it — another PstRotator node included — or change the port.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -11808,6 +11818,7 @@ extension on Translations {
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
+			'settings.station.models.pstRotator' => 'PstRotator (UDP Control)',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
@@ -11958,10 +11969,10 @@ extension on Translations {
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',
-			'settings.station.trackFieldRig' => 'Transceiver',
-			'settings.station.trackFieldPower' => 'Power',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.trackFieldRig' => 'Transceiver',
+			'settings.station.trackFieldPower' => 'Power',
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
@@ -12052,6 +12063,7 @@ extension on Translations {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
 			'settings.station.rotatorAxesRequired' => 'Choose which axes the rotator turns',
 			'settings.station.rotatorRefused' => 'The controller refused a command. Check that it is set to GS-232 mode.',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Current State: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
@@ -12471,11 +12483,11 @@ extension on Translations {
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'The link expired and a new one is ready — open ${app} again.',
 			'switchAccounts.tryAgain' => 'Try again',
 			'switchAccounts.linkWithQr' => 'Link with a QR code',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',
 			'switchAccounts.emailAddress' => 'Email address',
 			'switchAccounts.linkAccount' => 'Link account',

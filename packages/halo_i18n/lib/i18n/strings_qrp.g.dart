@@ -2721,6 +2721,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get connectFailedUnsupported => 'no driver recognizes this usb adapter\'s chip. if you know which chip it is, choose it under usb chip driver in advanced settings.';
 	@override String get connectFailedLines => 'rts/dtr could not be held as set, so the port was closed. another program may have left hardware handshaking on — unplug and replug the cable.';
 	@override String get connectFailedNetwork => 'cannot find the radio over the network. check its address and that it\'s powered on and reachable.';
+	@override String connectFailedReplyPort({required Object port}) => 'port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.';
 	@override String get connectFailedTimeout => 'the radio didn\'t respond in time. check it\'s powered on and reachable.';
 	@override late final _Translations$settings$station$models$qrp models = _Translations$settings$station$models$qrp._(_root);
 	@override late final _Translations$settings$station$transports$qrp transports = _Translations$settings$station$transports$qrp._(_root);
@@ -2954,6 +2955,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String rotatorPollIntervalDescription({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.';
 	@override String get rotatorAxesRequired => 'choose which axes the rotator turns';
 	@override String get rotatorRefused => 'the controller refused a command. check that it is set to gs-232 mode.';
+	@override String get pstRotatorTroubleshooting => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).';
 	@override String rotatorCurrentStateHeader({required Object position}) => 'current state: ${position}';
 	@override String get rotatorDisconnected => 'disconnected';
 	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimuth';
@@ -4382,6 +4384,7 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get antennaGenius => '4o3a antenna genius';
 	@override String get sierraCoax => 'sierra radio cx-1 coax switch';
 	@override String get gs232a => 'yaesu gs-232a rotator interface';
+	@override String get pstRotator => 'pstrotator (udp control)';
 	@override String get rtlSdr => 'rtl-sdr';
 	@override String get nesdr => 'nooelec nesdr';
 	@override String get sdrplay => 'sdrplay rsp';
@@ -6343,6 +6346,7 @@ extension on TranslationsQrp {
 			'settings.station.connectFailedUnsupported' => 'no driver recognizes this usb adapter\'s chip. if you know which chip it is, choose it under usb chip driver in advanced settings.',
 			'settings.station.connectFailedLines' => 'rts/dtr could not be held as set, so the port was closed. another program may have left hardware handshaking on — unplug and replug the cable.',
 			'settings.station.connectFailedNetwork' => 'cannot find the radio over the network. check its address and that it\'s powered on and reachable.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.',
 			'settings.station.connectFailedTimeout' => 'the radio didn\'t respond in time. check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'flexradio (smartsdr)',
 			'settings.station.models.ft891' => 'yaesu ft-891',
@@ -6409,6 +6413,7 @@ extension on TranslationsQrp {
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
 			'settings.station.models.gs232a' => 'yaesu gs-232a rotator interface',
+			'settings.station.models.pstRotator' => 'pstrotator (udp control)',
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
@@ -6559,10 +6564,10 @@ extension on TranslationsQrp {
 			'settings.station.trackStationInfo' => 'track station info for each qso',
 			'settings.station.includeStationInfoInAdif' => 'include in adif exports',
 			'settings.station.whatToTrack' => 'what to track?',
-			'settings.station.trackFieldRig' => 'transceiver',
-			'settings.station.trackFieldPower' => 'power',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.trackFieldRig' => 'transceiver',
+			'settings.station.trackFieldPower' => 'power',
 			'settings.station.watts' => 'watts',
 			'settings.station.trackFieldAntenna' => 'antenna',
 			'settings.station.trackFieldKey' => 'cw key',
@@ -6653,6 +6658,7 @@ extension on TranslationsQrp {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.',
 			'settings.station.rotatorAxesRequired' => 'choose which axes the rotator turns',
 			'settings.station.rotatorRefused' => 'the controller refused a command. check that it is set to gs-232 mode.',
+			'settings.station.pstRotatorTroubleshooting' => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
 			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
@@ -7072,11 +7078,11 @@ extension on TranslationsQrp {
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'the link expired and a new one is ready — open ${app} again.',
 			'switchAccounts.tryAgain' => 'try again',
 			'switchAccounts.linkWithQr' => 'link with a qr code',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'confirm with a code or an email link',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'enter the email address of the account you want this device to use.',
 			'switchAccounts.emailAddress' => 'email address',
 			'switchAccounts.linkAccount' => 'link account',

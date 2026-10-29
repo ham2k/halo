@@ -30,6 +30,7 @@ import 'package:ham2k_logger/services/extensions/catalog_service.dart' show Cata
 // keep quiet — exist only on the socket/serial side.
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart' show IcomLoginTimeout;
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
+import 'package:ham2k_logger/services/cat/transports/udp_transport_io.dart' show UdpReplyPortTaken;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart'
@@ -453,6 +454,7 @@ void main() {
       // A transport's own account of the same thing, tagged CatUnreachable.
       expect(dispositionFor(const CatConnectFailure('ft891', SerialPortUnavailable('/dev/cu.usbserial', 'busy'))), ErrorDisposition.logOnly);
       expect(dispositionFor(const CatConnectFailure('icom-network', IcomLoginTimeout())), ErrorDisposition.logOnly);
+      expect(dispositionFor(const CatConnectFailure('pstrotator-udp', UdpReplyPortTaken(12001))), ErrorDisposition.logOnly);
     });
 
     test('a bug raised inside a connect attempt is still loud', () {

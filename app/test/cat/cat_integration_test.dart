@@ -293,6 +293,51 @@ class _FakeGs232 {
   Future<void> stop() => _server.close();
 }
 
+/// PstRotator's UDP Control as its manual describes it: `<PST>…</PST>` in,
+/// `AZ:`/`EL:` answers out to the port after its own.
+class _FakePstRotator {
+  final RawDatagramSocket _socket;
+  final commands = <String>[];
+  var azimuth = 180.0;
+  var elevation = 0.0;
+
+  _FakePstRotator(this._socket) {
+    _socket.listen((event) {
+      if (event != RawSocketEvent.read) return;
+      final datagram = _socket.receive();
+      if (datagram == null) return;
+      final message = ascii.decode(datagram.data);
+      commands.add(message);
+      void answer(String text) => _socket.send(ascii.encode(text), datagram.address, port + 1);
+      if (message == '<PST>AZ?</PST>') answer('AZ:${azimuth.toStringAsFixed(1)}\r');
+      if (message == '<PST>EL?</PST>') answer('EL:${elevation.toStringAsFixed(1)}\r');
+      if (RegExp(r'<AZIMUTH>(\d+)</AZIMUTH>').firstMatch(message) case final turn?) azimuth = double.parse(turn.group(1)!);
+      if (RegExp(r'<ELEVATION>(-?\d+)</ELEVATION>').firstMatch(message) case final turn?) elevation = double.parse(turn.group(1)!);
+    });
+  }
+
+  /// On a port whose next one is free, since that is where the node under
+  /// test has to listen.
+  static Future<_FakePstRotator> start() async {
+    while (true) {
+      final socket = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
+      try {
+        (await RawDatagramSocket.bind(InternetAddress.anyIPv4, socket.port + 1, reuseAddress: false)).close();
+        // A closed socket's port is released by the IO service, a moment
+        // after `close` returns.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        return _FakePstRotator(socket);
+      } on SocketException {
+        socket.close();
+      }
+    }
+  }
+
+  int get port => _socket.port;
+
+  void stop() => _socket.close();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -519,6 +564,48 @@ void main() {
       expect(rotator.commands.where((c) => c == 'C2').length - polls, greaterThanOrEqualTo(rotatorStalledAfterReadings));
     } finally {
       await rotator.stop();
+    }
+  });
+
+  test('connects to PstRotator over UDP, reads where it points and turns it', () async {
+    final pst = await _FakePstRotator.start();
+    try {
+      final node = await cat.addNode(typeKey: 'pstrotator-udp', name: 'Tower', config: {'host': '127.0.0.1', 'udpPort': pst.port, 'rotatorAxes': 'azel'});
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null, tries: 300);
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 180, elevation: 0));
+
+      cat.rotateTo(node.uuid, azimuth: 45, elevation: 30);
+      const turn = '<PST><AZIMUTH>45</AZIMUTH><ELEVATION>30</ELEVATION></PST>';
+      await _settleUntil(() => pst.commands.contains(turn));
+      expect(pst.commands, contains(turn));
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator == const RotatorPosition(azimuth: 45, elevation: 30), tries: 300);
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 45, elevation: 30));
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull, reason: 'there, on both axes');
+
+      cat.stopRotator(node.uuid);
+      await _settleUntil(() => pst.commands.contains('<PST><STOP>1</STOP></PST>'));
+      expect(pst.commands, contains('<PST><STOP>1</STOP></PST>'));
+      await cat.disconnect(node.uuid);
+    } finally {
+      pst.stop();
+    }
+  });
+
+  // UDP has no handshake, so the reply port is the one thing a connect can
+  // find wrong. Shared, a second listener there takes some of the answers
+  // and the heading stutters with nothing to say why.
+  test('a PstRotator reply port something else holds is an error, not a node that never hears', () async {
+    final holder = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0, reuseAddress: false);
+    try {
+      final node = await cat.addNode(typeKey: 'pstrotator-udp', name: 'Tower', config: {'host': '127.0.0.1', 'udpPort': holder.port - 1});
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.error);
+      expect(cat.stateFor(node.uuid).error, contains('${holder.port}'), reason: 'the port to free, not a network that cannot reach the host');
+      await cat.disconnect(node.uuid);
+    } finally {
+      holder.close();
     }
   });
 

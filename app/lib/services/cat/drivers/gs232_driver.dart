@@ -50,18 +50,7 @@ class Gs232Driver extends EquipmentDriver {
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) {
     final st = t.settings.station;
     return [
-      if (!overrides.containsKey(rotatorAxesConfigKey))
-        {
-          'type': 'field',
-          'fieldType': 'select',
-          'key': rotatorAxesConfigKey,
-          'label': st.rotatorAxes,
-          'description': st.rotatorAxesDescription,
-          'options': [
-            {'value': rotatorAxesAzimuth, 'label': st.rotatorAxesAzimuth},
-            {'value': rotatorAxesAzimuthElevation, 'label': st.rotatorAxesAzimuthElevation},
-          ],
-        },
+      if (!overrides.containsKey(rotatorAxesConfigKey)) rotatorAxesConfigElement(),
       ...rotatorConfigElements(),
       // The shared poll field's key, bounds and blank rule, in a rotator's
       // words: this poll is not an idle one, it is the only reading there is.
@@ -76,9 +65,8 @@ class Gs232Driver extends EquipmentDriver {
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     if (key == pollIntervalConfigKey) return validatePollInterval(value);
-    if (validateRotatorField(key, value, config) case final error?) return error;
-    if (key != rotatorAxesConfigKey || value == null || value == '') return null;
-    return (value == rotatorAxesAzimuth || value == rotatorAxesAzimuthElevation) ? null : t.settings.station.rotatorAxesRequired;
+    if (key == rotatorAxesConfigKey) return validateRotatorAxes(value);
+    return validateRotatorField(key, value, config);
   }
 
   @override

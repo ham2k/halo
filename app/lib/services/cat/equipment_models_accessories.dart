@@ -9,6 +9,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
 import 'drivers/gs232_driver.dart';
+import 'drivers/pstrotator_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
@@ -17,12 +18,14 @@ import 'equipment_registry.dart';
 import 'transports/none_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
+import 'transports/udp_transport.dart';
 
 const _winkeyerSerialKey = 'winkeyer-serial';
 const _antennaGeniusTcpKey = 'antenna-genius-tcp';
 const _sierraCoaxSerialKey = 'sierra-coax-serial';
 const _gs232aSerialKey = 'gs232a-serial';
 const _gs232aTcpKey = 'gs232a-tcp';
+const _pstRotatorUdpKey = 'pstrotator-udp';
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///
@@ -121,6 +124,35 @@ const gs232aModel = EquipmentModel(
 );
 
 String _gs232aName() => t.settings.station.models.gs232a;
+
+/// PstRotator, YO3DMU's rotator control program, over its UDP Control port:
+/// whatever controller PstRotator drives, from anywhere on the network.
+///
+/// 12000 is PstRotator's own default, and its answers come back on the port
+/// after it, which this node listens on.
+const pstRotatorModel = EquipmentModel(
+  key: 'pstrotator',
+  category: kCategoryRotator,
+  name: _pstRotatorName,
+  variants: [
+    EquipmentVariant(
+      key: _pstRotatorUdpKey,
+      driver: PstRotatorDriver(),
+      transport: UdpTransport(portConfigKey: 'udpPort', replyPortOffset: 1),
+      defaultConfig: {'udpPort': 12000, rotatorAxesConfigKey: rotatorAxesAzimuth},
+      notes: _pstRotatorNotes,
+    ),
+  ],
+);
+
+String _pstRotatorName() => t.settings.station.models.pstRotator;
+
+/// PstRotator says nothing until UDP Control is on, and nothing while it has
+/// no controller of its own: a node that never hears it needs to say where
+/// to look.
+List<Map<String, dynamic>> _pstRotatorNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.pstRotatorTroubleshooting},
+];
 
 const _antennaKey = 'antenna-none';
 const _keyKey = 'key-none';

@@ -2167,6 +2167,7 @@
       "connectFailedUnsupported": "no driver recognizes this usb adapter's chip. if you know which chip it is, choose it under usb chip driver in advanced settings.",
       "connectFailedLines": "rts/dtr could not be held as set, so the port was closed. another program may have left hardware handshaking on — unplug and replug the cable.",
       "connectFailedNetwork": "cannot find the radio over the network. check its address and that it's powered on and reachable.",
+      "connectFailedReplyPort": "port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.",
       "connectFailedTimeout": "the radio didn't respond in time. check it's powered on and reachable.",
       "models": {
         "flexRadio": "flexradio (smartsdr)",
@@ -2234,6 +2235,7 @@
         "antennaGenius": "4o3a antenna genius",
         "sierraCoax": "sierra radio cx-1 coax switch",
         "gs232a": "yaesu gs-232a rotator interface",
+        "pstRotator": "pstrotator (udp control)",
         "rtlSdr": "rtl-sdr",
         "nesdr": "nooelec nesdr",
         "sdrplay": "sdrplay rsp"
@@ -2493,6 +2495,7 @@
       "rotatorPollIntervalDescription": "how often to ask the rotator where it points. leave blank for ${fallback} ms.",
       "rotatorAxesRequired": "choose which axes the rotator turns",
       "rotatorRefused": "the controller refused a command. check that it is set to gs-232 mode.",
+      "pstRotatorTroubleshooting": "pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator's setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).",
       "rotatorCurrentStateHeader": "current state: $position",
       "rotatorDisconnected": "disconnected",
       "rotatorAzimuthReading": "$degrees° azimuth",

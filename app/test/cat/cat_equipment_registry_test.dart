@@ -307,6 +307,7 @@ void main() {
       'sierra-coax-serial',
       'gs232a-serial',
       'gs232a-tcp',
+      'pstrotator-udp',
       'antenna-none',
       'key-none',
       'rtl-sdr-rtltcp',
