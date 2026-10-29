@@ -3283,7 +3283,11 @@ export interface PanelDescriptor {
   /// MDI icon name, matching the rest of the extension's controls.
   icon?: string
   /// A still image for the Layout Setup sheet: an SVG document, or a `data:`
-  /// URI. Not a URL — the sheet must render offline and without a fetch.
+  /// URI. Not a URL — the sheet must render offline and without a fetch. At
+  /// most 262,144 characters, and an SVG is self-contained vector artwork of
+  /// at most 16,384 elements nested at most 32 deep (no `<image>`, `<script>`,
+  /// `<foreignObject>` or entity declarations); past that the preview is dropped
+  /// with a line in the console, and the row keeps its title.
   preview?: string
   on?: PanelTrigger[]
   /// Whether an operator may place more than one of this panel in a layout.
@@ -3601,6 +3605,14 @@ export interface PanelRenderArgs {
 /// The declaration lands after the render that carried it, so the first
 /// render of a panel that asks for `qso` is answered without one; it is woken
 /// by the next change to the draft.
+///
+/// `content` is budgeted: at most 262,144 characters of `markdown`, 1,048,576
+/// of `svg`, 4,194,304 of `html`. An `svg` is self-contained vector artwork —
+/// no `<image>`, `<script>` or `<foreignObject>`, no entity declarations — of
+/// at most 16,384 elements nested at most 32 deep, as a scene's layers are.
+/// Over a budget the document is refused whole: the pane shows a placeholder
+/// naming the budget and the console says what was sent; nothing is drawn in
+/// part.
 export type PanelContent =
   | { kind: "scene"; scene: PanelScene; title?: string; triggers?: string[] }
   /**

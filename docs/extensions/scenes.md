@@ -151,8 +151,9 @@ the hook); the control shows its pending value until the outcome is known.
 
 The schema in one place; `panelScene.ts` in the SDK carries the same as types.
 Every rule below is checked when the scene arrives: a scene that breaks one is
-refused whole, and the pane shows the error naming what is wrong, rather than
-drawing part of it.
+refused whole rather than drawn in part — the pane says the panel could not be
+displayed, naming the budget when the rule broken is the layers' total of
+artwork and text or a layer's artwork budget, and the console names the rule.
 
 **The scene document**
 
@@ -162,7 +163,7 @@ drawing part of it.
 | `width`, `height` | The artwork's viewBox, in scene units. Size it to `environment.width`/`height` and a scene unit is a logical pixel. |
 | `values` | `{name: number}`: what bindings, numeric text and numeric controls read. At most 256. |
 | `strings` | `{name: string}`: what text fields and choices hold. At most 256, each up to 4096 characters. A name is in `values` or `strings`, never both. |
-| `layers` | Painted in order, each over the ones before: `svg` artwork, `text`, or an `icon`. At most 512 (128 before extension API 12), and 1 MiB of artwork and text in all. |
+| `layers` | Painted in order, each over the ones before: `svg` artwork, `text`, or an `icon`. At most 512 (128 before extension API 12), and 1,048,576 characters of artwork and text in all. A layer's `svg` is self-contained vector artwork — no `<image>`, `<script>` or `<foreignObject>`, no entity declarations — of at most 16,384 elements nested at most 32 deep, the same budget a panel's `svg` content keeps ([Panel hooks](panels.md), *Budgets*). |
 | `controls` | At most 256 (64 before extension API 12). Drawn or native; see below. |
 | `layout` | Optional. Where rect-less native controls and the artwork go; omitted, the artwork fills the pane. |
 | `scroll` | Optional, `{axis?, value, event?}` (extension API 12): a scene longer than its pane along `axis` (`y` by default), scrolled natively by the app — wheel, trackpad and drag, a drag begun on a button included — with no call to the extension. It fills the pane across and runs on past it. The position, in scene units, is written to the scene value `value`; a render that changes that value moves the view there, one that leaves it alone leaves the operator's scroll alone. `event` is sent as a `commit`, the position as `value`, once a scroll comes to rest. Layers and controls with `fixed: true` stay put over the pane, in pane coordinates. A drag along the scroll on a slider or knob that scrolls with the content is the scroll's: make one that must be dragged `fixed`. Not with `layout`. |

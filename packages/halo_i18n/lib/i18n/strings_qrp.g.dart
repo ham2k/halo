@@ -1741,6 +1741,10 @@ class _Translations$operation$layout$qrp extends Translations$operation$layout$e
 	@override String get layoutUnreadableBody => 'your saved layout could not be read, so the default arrangement is showing instead. it won\'t be saved over your original until you choose to keep it.';
 	@override String get layoutUnreadableAction => 'use this layout';
 	@override String panelRenderFailed({required Object panel}) => '${panel} could not be displayed';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} could not be displayed: it sent more than ${max} characters';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep';
+	@override String panelNotArtwork({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained';
 	@override String get panelRenderRetry => 'try again';
 	@override String get panelActionFailed => 'that panel action failed. try again.';
 	@override late final _Translations$operation$layout$panels$qrp panels = _Translations$operation$layout$panels$qrp._(_root);
@@ -4945,16 +4949,20 @@ extension on TranslationsQrp {
 			'operation.layout.layoutUnreadableBody' => 'your saved layout could not be read, so the default arrangement is showing instead. it won\'t be saved over your original until you choose to keep it.',
 			'operation.layout.layoutUnreadableAction' => 'use this layout',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} could not be displayed: it sent more than ${max} characters',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
 			'operation.layout.panelRenderRetry' => 'try again',
 			'operation.layout.panelActionFailed' => 'that panel action failed. try again.',
 			'operation.layout.panels.loggingDescription' => 'the log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'what we know about the station being worked',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.spotsDescription' => 'spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'the operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'sections and order',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.summariesDays' => 'each day',
 			'operation.layout.panels.summariesReset' => 'show all',
 			'operation.layout.panels.summariesAllHidden' => 'every section is hidden. pick the ones to show in this panel\'s settings.',
@@ -5463,12 +5471,12 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeInvalidCategory' => 'not workable',
 			'loggingControls.info.noticeOverTime' => 'time over',
 			'loggingControls.info.noticeWorkedBefore' => 'worked before',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'new park',
 			'loggingControls.info.noticeNewSection' => 'new section',
 			'loggingControls.info.noticeBonusStation' => 'bonus station!',
 			'loggingControls.info.noticeMissingExchange' => 'no exchange',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeInvalidExchange' => 'bad exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'unknown event',
 			'loggingControls.info.noticeIncompleteCall' => 'incomplete call — not scored',
@@ -5977,12 +5985,12 @@ extension on TranslationsQrp {
 			'settings.peers.nearby' => 'nearby',
 			'settings.peers.connected' => 'connected',
 			'settings.peers.viaBluetooth' => 'via bluetooth',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.connecting' => 'connecting…',
 			'settings.peers.syncing' => 'syncing…',
 			'settings.peers.waitingForThem' => 'waiting for the other device',
 			'settings.peers.notConnected' => 'not connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'wants to share this operation',
 			'settings.peers.allow' => 'allow',
 			'settings.peers.link' => 'link',
@@ -6491,12 +6499,12 @@ extension on TranslationsQrp {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'reads the radio\'s po, swr and alc meters while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'meter reading interval (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'how often to read the radio\'s meters while it is transmitting. leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'advanced settings',
 			'settings.station.placeholderSwr' => 'swr reading',
@@ -7005,12 +7013,12 @@ extension on TranslationsQrp {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'import anyway',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOffline' => 'internet: offline',
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',
 			'offline.unreachable' => 'the network is up, but no server is responding — often a sign-in page waiting in a browser.',
-			_ => null,
-		} ?? switch (path) {
 			'offline.reachable' => 'all services responding as expected.',
 			'offline.whatStops' => 'lookups, spots and data files are paused. logging and nearby sync are not.',
 			'offline.servicesTitle' => 'services',

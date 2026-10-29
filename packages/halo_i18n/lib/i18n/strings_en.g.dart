@@ -3745,6 +3745,18 @@ class Translations$operation$layout$en {
 	/// en: '${panel} could not be displayed'
 	String panelRenderFailed({required Object panel}) => '${panel} could not be displayed';
 
+	/// en: '${panel} could not be displayed: it sent more than ${max} characters'
+	String panelOverCharacters({required Object panel, required Object max}) => '${panel} could not be displayed: it sent more than ${max} characters';
+
+	/// en: '${panel} could not be displayed: its artwork has more than ${max} elements'
+	String panelOverElements({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements';
+
+	/// en: '${panel} could not be displayed: its artwork nests more than ${max} levels deep'
+	String panelOverDepth({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep';
+
+	/// en: '${panel} could not be displayed: its artwork is not self-contained'
+	String panelNotArtwork({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained';
+
 	/// en: 'Try again'
 	String get panelRenderRetry => 'Try again';
 
@@ -10212,16 +10224,20 @@ extension on Translations {
 			'operation.layout.layoutUnreadableBody' => 'Your saved layout could not be read, so the default arrangement is showing instead. It won\'t be saved over your original until you choose to keep it.',
 			'operation.layout.layoutUnreadableAction' => 'Use this layout',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} could not be displayed: it sent more than ${max} characters',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
 			'operation.layout.panelRenderRetry' => 'Try again',
 			'operation.layout.panelActionFailed' => 'That panel action failed. Try again.',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'The operation\'s stats and scores, in the sections and order you pick',
 			'operation.layout.panels.summariesSections' => 'Sections and Order',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.summariesDays' => 'Each day',
 			'operation.layout.panels.summariesReset' => 'Show all',
 			'operation.layout.panels.summariesAllHidden' => 'Every section is hidden. Pick the ones to show in this panel\'s settings.',
@@ -10730,12 +10746,12 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
 			'loggingControls.info.noticeOverTime' => 'Time Over',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'New Park',
 			'loggingControls.info.noticeNewSection' => 'New Section',
 			'loggingControls.info.noticeBonusStation' => 'Bonus Station!',
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
 			'loggingControls.info.noticeIncompleteCall' => 'Incomplete Call — Not Scored',
@@ -11244,12 +11260,12 @@ extension on Translations {
 			'settings.peers.nearby' => 'Nearby',
 			'settings.peers.connected' => 'Connected',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.connecting' => 'Connecting…',
 			'settings.peers.syncing' => 'Syncing…',
 			'settings.peers.waitingForThem' => 'Waiting for the other device',
 			'settings.peers.notConnected' => 'Not connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'wants to share this operation',
 			'settings.peers.allow' => 'Allow',
 			'settings.peers.link' => 'Link',
@@ -11758,12 +11774,12 @@ extension on Translations {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
 			'settings.station.placeholderSwr' => 'SWR reading',
@@ -12272,12 +12288,12 @@ extension on Translations {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'Import anyway',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
-			_ => null,
-		} ?? switch (path) {
 			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',

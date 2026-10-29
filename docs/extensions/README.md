@@ -325,6 +325,7 @@ note above), and what it holds is released by that resource's own bound: a
 fetch slot when the fetch ends, within the `timeout` you gave it. Each of these
 budgets is refused at the call that would exceed it, never queued or quietly
 dropped, so a runaway loop fails where it runs and the error names the budget.
+What a panel renders is bounded too — its sizes are in [panels.md](panels.md).
 
 A dialog — `host.showForm`, or `host.showMessage` with `presentation:
 'dialog'` — is one extension's at a time: while another extension's dialogs

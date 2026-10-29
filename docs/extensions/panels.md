@@ -48,6 +48,20 @@ popups: the no-navigation rule above is the one part a panel cannot be trusted
 to keep on its own, so the pane refuses rather than render under it.
 `markdown` has none of these caveats, which is the other reason to prefer it.
 
+**Budgets.** A render's `content` is at most 262,144 characters of `markdown`,
+1,048,576 of `svg` and 4,194,304 of `html`; a `preview` is at most 262,144.
+An `svg` document — content or preview — is self-contained vector artwork, as
+a scene's layers are: no `<image>`, `<script>` or `<foreignObject>` and no
+entity declarations (the DOCTYPE an editor exports declares none and is
+fine; one carrying an internal subset is refused), at most 16,384 elements,
+nested at most 32 deep. The app draws
+`markdown` and `svg` itself, on the UI thread and outside the runtime's
+memory ceiling, which is why they are bounded where the document arrives;
+`html` is the web view's to parse, so its budget bounds only what crosses the
+bridge. Over any of these the document is refused whole: the pane shows a
+placeholder naming the budget and the console says what was sent; a preview
+is dropped, its row kept. Nothing is trimmed or drawn in part.
+
 A render may answer a **panel scene** instead of a document: artwork, text
 and controls the app draws, animates and keeps live itself, calling the
 extension only when the operator acts. [Panel scenes](scenes.md) describes

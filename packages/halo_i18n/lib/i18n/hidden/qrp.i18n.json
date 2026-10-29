@@ -585,6 +585,10 @@
       "layoutUnreadableBody": "your saved layout could not be read, so the default arrangement is showing instead. it won't be saved over your original until you choose to keep it.",
       "layoutUnreadableAction": "use this layout",
       "panelRenderFailed": "${panel} could not be displayed",
+      "panelOverCharacters": "${panel} could not be displayed: it sent more than ${max} characters",
+      "panelOverElements": "${panel} could not be displayed: its artwork has more than ${max} elements",
+      "panelOverDepth": "${panel} could not be displayed: its artwork nests more than ${max} levels deep",
+      "panelNotArtwork": "${panel} could not be displayed: its artwork is not self-contained",
       "panelRenderRetry": "try again",
       "panelActionFailed": "that panel action failed. try again.",
       "panels": {

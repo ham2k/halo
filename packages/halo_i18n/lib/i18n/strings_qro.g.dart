@@ -1741,6 +1741,10 @@ class _Translations$operation$layout$qro extends Translations$operation$layout$e
 	@override String get layoutUnreadableBody => 'YOUR SAVED LAYOUT COULD NOT BE READ, SO THE DEFAULT ARRANGEMENT IS SHOWING INSTEAD. IT WON\'T BE SAVED OVER YOUR ORIGINAL UNTIL YOU CHOOSE TO KEEP IT.';
 	@override String get layoutUnreadableAction => 'USE THIS LAYOUT';
 	@override String panelRenderFailed({required Object panel}) => '${panel} COULD NOT BE DISPLAYED';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: IT SENT MORE THAN ${max} CHARACTERS';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP';
+	@override String panelNotArtwork({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED';
 	@override String get panelRenderRetry => 'TRY AGAIN';
 	@override String get panelActionFailed => 'THAT PANEL ACTION FAILED. TRY AGAIN.';
 	@override late final _Translations$operation$layout$panels$qro panels = _Translations$operation$layout$panels$qro._(_root);
@@ -4945,16 +4949,20 @@ extension on TranslationsQro {
 			'operation.layout.layoutUnreadableBody' => 'YOUR SAVED LAYOUT COULD NOT BE READ, SO THE DEFAULT ARRANGEMENT IS SHOWING INSTEAD. IT WON\'T BE SAVED OVER YOUR ORIGINAL UNTIL YOU CHOOSE TO KEEP IT.',
 			'operation.layout.layoutUnreadableAction' => 'USE THIS LAYOUT',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} COULD NOT BE DISPLAYED',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: IT SENT MORE THAN ${max} CHARACTERS',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED',
 			'operation.layout.panelRenderRetry' => 'TRY AGAIN',
 			'operation.layout.panelActionFailed' => 'THAT PANEL ACTION FAILED. TRY AGAIN.',
 			'operation.layout.panels.loggingDescription' => 'THE LOG AND THE ENTRY FIELDS',
 			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.spotsDescription' => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS',
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
 			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
 			'operation.layout.panels.summariesSections' => 'SECTIONS AND ORDER',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.summariesDays' => 'EACH DAY',
 			'operation.layout.panels.summariesReset' => 'SHOW ALL',
 			'operation.layout.panels.summariesAllHidden' => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.',
@@ -5463,12 +5471,12 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeInvalidCategory' => 'NOT WORKABLE',
 			'loggingControls.info.noticeOverTime' => 'TIME OVER',
 			'loggingControls.info.noticeWorkedBefore' => 'WORKED BEFORE',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'NEW PARK',
 			'loggingControls.info.noticeNewSection' => 'NEW SECTION',
 			'loggingControls.info.noticeBonusStation' => 'BONUS STATION!',
 			'loggingControls.info.noticeMissingExchange' => 'NO EXCHANGE',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeInvalidExchange' => 'BAD EXCHANGE',
 			'loggingControls.info.noticeUnknownEvent' => 'UNKNOWN EVENT',
 			'loggingControls.info.noticeIncompleteCall' => 'INCOMPLETE CALL — NOT SCORED',
@@ -5977,12 +5985,12 @@ extension on TranslationsQro {
 			'settings.peers.nearby' => 'NEARBY',
 			'settings.peers.connected' => 'CONNECTED',
 			'settings.peers.viaBluetooth' => 'VIA BLUETOOTH',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.connecting' => 'CONNECTING…',
 			'settings.peers.syncing' => 'SYNCING…',
 			'settings.peers.waitingForThem' => 'WAITING FOR THE OTHER DEVICE',
 			'settings.peers.notConnected' => 'NOT CONNECTED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.wantsToPair' => 'WANTS TO SHARE THIS OPERATION',
 			'settings.peers.allow' => 'ALLOW',
 			'settings.peers.link' => 'LINK',
@@ -6491,12 +6499,12 @@ extension on TranslationsQro {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'READS THE RADIO\'S POWER-OUTPUT METER AND HIGH-SWR FLAG WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.yaesuMeterCaptureDescription' => 'READS THE RADIO\'S PO, SWR AND ALC METERS WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.telemetryInterval' => 'METER READING INTERVAL (MS)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.pollInterval' => 'IDLE POLLING INTERVAL (MS)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE RADIO FOR ITS FREQUENCY AND MODE WHILE NEITHER IS CHANGING. LEAVE BLANK FOR ${fallback} MS.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.advancedSettings' => 'ADVANCED SETTINGS',
 			'settings.station.placeholderSwr' => 'SWR READING',
@@ -7005,12 +7013,12 @@ extension on TranslationsQro {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',
 			'offline.unreachable' => 'THE NETWORK IS UP, BUT NO SERVER IS RESPONDING — OFTEN A SIGN-IN PAGE WAITING IN A BROWSER.',
-			_ => null,
-		} ?? switch (path) {
 			'offline.reachable' => 'ALL SERVICES RESPONDING AS EXPECTED.',
 			'offline.whatStops' => 'LOOKUPS, SPOTS AND DATA FILES ARE PAUSED. LOGGING AND NEARBY SYNC ARE NOT.',
 			'offline.servicesTitle' => 'SERVICES',

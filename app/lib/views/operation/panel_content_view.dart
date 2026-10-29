@@ -26,6 +26,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
+import '../../services/panel_content_budgets.dart';
 import '../../services/windows_webview.dart';
 
 /// One rendered document from a panel's `render`.
@@ -62,7 +63,9 @@ class PanelContent {
   /// answering null: the FormatException names the layer, tag or value at
   /// fault, and the caller's render `catch` is what carries it to the console
   /// and the dev client. Swallowed here, the author sees only "could not be
-  /// displayed".
+  /// displayed". A document over a budget (panel_content_budgets.dart) throws
+  /// the same way, as a [PanelContentRefusal] the caller can name to the
+  /// operator — refused whole, never trimmed or drawn in part.
   ///
   /// [previous] is what the pane is showing. A ticking scene panel returns the
   /// same document most of the time, and validating it walks every layer's
@@ -86,6 +89,12 @@ class PanelContent {
       scene ??= PanelScene(document);
     } else {
       content = json['content'];
+      // The same document again — a ticking panel's, most renders — was
+      // judged when it first arrived.
+      if (kind is String && content is String && !(previous?.kind == kind && previous?.content == content)) {
+        final refusal = panelDocumentRefusal(kind, content);
+        if (refusal != null) throw refusal;
+      }
     }
     if (kind is! String || content is! String) return null;
     final title = json['title'];

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import '../../../services/panel_content_budgets.dart';
 import '../panel_environment.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
@@ -82,8 +83,13 @@ class PanelScene {
       throw const FormatException('A scene value uses a name the host reserves');
     }
     bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name));
-    if (layers.fold<int>(0, (n, l) => n + (l.svg?.length ?? 0) + (l.text?.toString().length ?? 0)) > 1048576) {
-      throw const FormatException('Scene artwork and text exceed 1 MiB');
+    final artwork = layers.fold<int>(0, (n, l) => n + (l.svg?.length ?? 0) + (l.text?.toString().length ?? 0));
+    if (artwork > kSceneArtworkMaxChars) {
+      throw PanelContentRefusal(
+        PanelBudget.characters,
+        kSceneArtworkMaxChars,
+        'scene artwork and text are $artwork characters in all, at most $kSceneArtworkMaxChars',
+      );
     }
     final layerIds = <String>{};
     final fixedLayers = <String>{};
@@ -345,8 +351,9 @@ class SceneLayer {
     if ([svg, text, json['icon']].nonNulls.length != 1 || (json['icon'] != null && icon == null)) {
       throw const FormatException('Expected SVG, text or an icon');
     }
-    if (svg != null && RegExp(r'<(?:image|script|foreignObject)\b|<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(svg!)) {
-      throw const FormatException('Scene SVG must be self-contained vector artwork');
+    if (svg != null) {
+      final refusal = svgArtworkRefusal('scene artwork', svg!);
+      if (refusal != null) throw refusal;
     }
     if (text != null) {
       final samples = text!['samples'];

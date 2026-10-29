@@ -585,6 +585,10 @@
       "layoutUnreadableBody": "YOUR SAVED LAYOUT COULD NOT BE READ, SO THE DEFAULT ARRANGEMENT IS SHOWING INSTEAD. IT WON'T BE SAVED OVER YOUR ORIGINAL UNTIL YOU CHOOSE TO KEEP IT.",
       "layoutUnreadableAction": "USE THIS LAYOUT",
       "panelRenderFailed": "${panel} COULD NOT BE DISPLAYED",
+      "panelOverCharacters": "${panel} COULD NOT BE DISPLAYED: IT SENT MORE THAN ${max} CHARACTERS",
+      "panelOverElements": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS",
+      "panelOverDepth": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP",
+      "panelNotArtwork": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED",
       "panelRenderRetry": "TRY AGAIN",
       "panelActionFailed": "THAT PANEL ACTION FAILED. TRY AGAIN.",
       "panels": {

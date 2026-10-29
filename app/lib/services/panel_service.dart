@@ -19,6 +19,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 
+import 'panel_content_budgets.dart';
+
 /// Where a panel comes from, which decides how the view gets its content.
 enum PanelSource { native, extension }
 
@@ -179,6 +181,22 @@ class PanelDefinition {
   @override
   int get hashCode => Object.hash(id, title, description, icon, preview, source, hookKey, panelKey, settingsTarget, minWidth, minHeight);
 
+  /// A preview over its budget (panel_content_budgets.dart), or one that is
+  /// not a string, is dropped with a line, and the row keeps its title: the
+  /// operator choosing panels cannot fix an extension's artwork, and a row
+  /// that vanished would read as a panel that does not exist.
+  static String? _previewWithinBudget(Object? preview, {required String hookKey, required String panelKey}) {
+    if (preview == null) return null;
+    if (preview is! String) {
+      debugPrint('[panels] "$hookKey:$panelKey" preview ignored: not a string');
+      return null;
+    }
+    final refusal = panelPreviewRefusal(preview);
+    if (refusal == null) return preview;
+    debugPrint('[panels] "$hookKey:$panelKey" preview dropped: ${refusal.message}');
+    return null;
+  }
+
   /// Reads one entry of `getExtensionPanels`. Returns null for an entry
   /// missing what a panel cannot work without — an extension bug should
   /// cost that panel, not the whole catalog.
@@ -201,7 +219,7 @@ class PanelDefinition {
       title: title,
       description: entry['description'] as String?,
       icon: entry['icon'] as String?,
-      preview: entry['preview'] as String?,
+      preview: _previewWithinBudget(entry['preview'], hookKey: hookKey, panelKey: panelKey),
       source: PanelSource.extension,
       hookKey: hookKey,
       panelKey: panelKey,

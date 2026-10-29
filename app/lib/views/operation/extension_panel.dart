@@ -30,6 +30,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/panel_content_budgets.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
@@ -132,6 +133,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   int _sceneGeneration = 0;
   int _sceneRevision = 0;
   String? _error;
+
+  /// The refusal the console last named, so a ticking panel's repeat prints
+  /// nothing and a new reason behind the same placeholder does.
+  String? _lastRefusal;
 
   /// False while this panel sits behind another tab. It stays mounted (so
   /// its scroll position and content survive), but it stops rendering —
@@ -331,6 +336,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     if (old.panel.id != widget.panel.id) {
       _content = null;
       _error = null;
+      _lastRefusal = null;
       _missedWhileHidden = false;
       _startTicker();
       if (_visible) {
@@ -542,6 +548,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // that throws has said nothing about what it needs, and dropping its
       // triggers would strand it on the error it just produced.
       if (content != null && widget.panels.declareTriggers(panel.id, content.triggers)) _startTicker();
+      // A render that answered ends a refusal: the next one is news again.
+      _lastRefusal = null;
       final error = content == null ? context.t.operation.layout.panelRenderFailed(panel: panel.title) : null;
       // Only when something actually changed. A panel on a tick re-renders the
       // same document most of the time — a band plan, a reference table — and
@@ -564,6 +572,23 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // failure would never be reported at all. A null document is a failed
       // render too, so it must not clear the streak either.
       if (content != null) ErrorReportingService.recordSuccess('panel:render:${panel.id}');
+    } on PanelContentRefusal catch (e) {
+      // A budget is the extension's to keep, like a refused host call, not a
+      // failure of the app's: nothing is reported. The pane names the budget
+      // and the console says what was sent — once per change, since a ticking
+      // panel sends the same document again and again. The last document
+      // stays underneath; the view shows the message over whatever it holds.
+      if (!mounted || panel.id != widget.panel.id || generation != _sceneGeneration || sceneRevision != _sceneRevision) {
+        return;
+      }
+      final message = _refusalMessage(e, panel);
+      // The console keys on the reason and the pane on its wording: four
+      // reasons share the `not self-contained` placeholder.
+      if (e.message != _lastRefusal) {
+        debugPrint('[panels] "${panel.id}" refused: ${e.message}');
+        _lastRefusal = e.message;
+      }
+      if (message != _error) setState(() => _error = message);
     } catch (e, stack) {
       // Through ErrorPolicy like everything else (docs/design/error-reporting.md):
       // a panel that throws for every operator is exactly the thing that has
@@ -594,6 +619,18 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         _requestRender('coalesced');
       }
     }
+  }
+
+  /// What the operator reads in place of a document over its budget.
+  String _refusalMessage(PanelContentRefusal refusal, PanelDefinition panel) {
+    final layout = context.t.operation.layout;
+    final max = refusal.max == null ? '' : formatNumber(refusal.max!);
+    return switch (refusal.budget) {
+      PanelBudget.characters => layout.panelOverCharacters(panel: panel.title, max: max),
+      PanelBudget.elements => layout.panelOverElements(panel: panel.title, max: max),
+      PanelBudget.depth => layout.panelOverDepth(panel: panel.title, max: max),
+      PanelBudget.artwork => layout.panelNotArtwork(panel: panel.title),
+    };
   }
 
   @override
