@@ -700,7 +700,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       if (own == null) continue;
       // Resolved only for a contact about to place a NEW grid — rare — so the
       // walk stays an identity check for everything else.
-      if (locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState) == null) continue;
+      if (qso.theirLocation == null) continue;
       addQth(qthGrid, own);
     }
     if (!_sameQthGrids(_builtQthGrids, qthGrids)) _contacts.clear();
@@ -772,7 +772,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     required Color lineColor,
     required Color strokeColor,
   }) {
-    final location = locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState);
+    final location = qso.theirLocation;
     if (location == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: null, lines: const []);
     final qthGrid = qso.ourDisplayGrid ?? operationGrid;
     final qth = qthGrid == null ? null : qthGrids[qthGrid.toUpperCase()]?.location ?? qso.ourLocation;

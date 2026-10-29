@@ -82,6 +82,56 @@ void main() {
   });
 
   group('Qso location', () {
+    const riGuess = {'entityPrefix': 'K', 'state': 'RI', 'grid': 'FN41gk27'};
+    const maine = GridLocation(45.4, -69.2);
+
+    test('an entered state places the contact there instead of at the guessed grid or coordinate', () {
+      for (final guess in [
+        riGuess,
+        {...riGuess, 'lat': 41.44783, 'lon': -71.476222},
+      ]) {
+        final q = _qso({'call': 'KE1J', 'state': 'ME', 'guess': guess});
+        expect(q.theirLocation, maine);
+        expect(q.theirGrid, 'FN41gk27', reason: 'resolving the map does not discard lookup fields');
+      }
+    });
+
+    test('an entered grid or coordinate still places the contact more precisely than an entered state', () {
+      final their = {
+        'call': 'KE1J',
+        'state': 'ME',
+        'guess': {...riGuess, 'lat': 41.44783, 'lon': -71.476222},
+      };
+      expect(_qso({...their, 'grid': 'FN54'}).theirLocation, gridToLocation('FN54'));
+      expect(_qso({...their, 'lat': 44.3, 'lon': -69.8}).theirLocation, const GridLocation(44.3, -69.8));
+      expect(_qso({...their, 'grid': 'FN54', 'lat': 44.3, 'lon': -69.8}).theirLocation, const GridLocation(44.3, -69.8));
+    });
+
+    test('a matching lookup state does not establish the actual operating location', () {
+      final q = _qso({
+        'state': 'ME',
+        'guess': {'entityPrefix': 'K', 'state': 'ME', 'grid': 'FN54', 'lat': 44.3, 'lon': -69.8},
+      });
+      expect(q.theirLocation, maine);
+    });
+
+    test('an absent or blank entered state retains the lookup location', () {
+      for (final state in [null, '', '  ']) {
+        expect(_qso({'state': state, 'guess': riGuess}).theirLocation, gridToLocation('FN41gk27'));
+        expect(
+          _qso({
+            'state': state,
+            'guess': {...riGuess, 'lat': 41.44783, 'lon': -71.476222},
+          }).theirLocation,
+          const GridLocation(41.44783, -71.476222),
+        );
+      }
+    });
+
+    test('an entered state still refuses an imported country-file centroid', () {
+      expect(_qso({'state': 'ME', 'lat': 40.0, 'lon': 100.0, 'locSource': 'prefix', 'guess': riGuess}).theirLocation, maine);
+    });
+
     test("an entered coordinate is the QSO's location", () {
       final q = _qso({'call': 'W1AW', 'lat': 41.7135, 'lon': -72.7278});
       expect(q.theirExactLocation, const GridLocation(41.7135, -72.7278));

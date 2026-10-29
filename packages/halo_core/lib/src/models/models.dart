@@ -7,6 +7,7 @@
 
 import 'dart:convert';
 
+import '../ham/geo.dart';
 import '../ham/grid.dart';
 import '../ham/radio.dart' show isIncompleteCall;
 import 'operation_title.dart';
@@ -347,6 +348,20 @@ class Qso {
     if (locationFromGuess(_their) case final entered?) return entered;
     if (asQsonString(_their['grid']) != null) return null;
     return locationFromGuess(_theirGuess);
+  }
+
+  /// Where the saved contact belongs on the map. An entered state corrects
+  /// the lookup's location, so guessed grids and coordinates cannot place it
+  /// back at that address. Entered coordinates and grids still take precedence
+  /// over an entered state; a blank state supplies no location correction.
+  GridLocation? get theirLocation {
+    final hasEnteredState = asQsonString(_their['state'])?.trim().isNotEmpty ?? false;
+    return locationForQsoInfo(
+      exact: hasEnteredState ? locationFromGuess(_their) : theirExactLocation,
+      grid: hasEnteredState ? asQsonString(_their['grid']) : theirGrid,
+      entityPrefix: theirEntityPrefix,
+      state: theirState,
+    );
   }
 
   String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);

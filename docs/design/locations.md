@@ -34,6 +34,15 @@ only.** Every reader resolves through `locationForQsoInfoWithSource`
 (`exact:` outranks `grid:`), or through `Operation.location` / `Qso.ourLocation`
 which do the same thing.
 
+For saved contacts on the map, source precedence comes before precision:
+`Qso.theirLocation` prefers an entered coordinate, then an entered grid,
+then a nonblank entered state, before falling back to lookup values. A
+state-only correction uses the state centroid, even when the lookup names
+the same state: its address need not be the station's operating location.
+An entered state suppresses guessed coordinates and grids without changing
+the saved QSON or the field getters used for display and export. Live
+composing/editing highlights still resolve their lookup result separately.
+
 The other half is what keeps that honest: **a writer that states a grid must
 replace `lat`/`lon` in the same write.** A stale coordinate outranks the grid
 everywhere it is read, so leaving one behind silently discards what the

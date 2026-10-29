@@ -95,6 +95,38 @@ void main() {
   List<MapMarkerData> qsoMarkersOf(WidgetTester tester) => backend(tester).markers.where((m) => m.kind == MapMarkerKind.qso).toList();
 
   testWidgets(
+    'a saved state correction moves the marker and line away from the lookup grid',
+    (tester) => onLinux(() async {
+      Qso contact({String? state, required int stamp}) => Qso(
+        uuid: 'ke1j',
+        operationUuid: 'op-map',
+        data: {
+          'their': {
+            'call': 'KE1J',
+            'state': ?state,
+            'guess': {'entityPrefix': 'K', 'state': 'RI', 'grid': 'FN41gk27'},
+          },
+          'band': '20m',
+          'updatedAtMillis': stamp,
+        },
+      );
+
+      await tester.pumpWidget(host([contact(stamp: 1)]));
+      await tester.pumpAndSettle();
+      final ri = gridToLocation('FN41gk27')!;
+      expect(qsoMarkersOf(tester).single.latitude, ri.latitude);
+
+      await tester.pumpWidget(host([contact(state: 'ME', stamp: 2)]));
+      await tester.pumpAndSettle();
+      final marker = qsoMarkersOf(tester).single;
+      expect(marker.latitude, 45.4);
+      expect(marker.longitude, -69.2);
+      expect(linesOf(tester).single.points.first.latitude, closeTo(45.4, 1e-9));
+      expect(linesOf(tester).single.points.first.longitude, closeTo(-69.2, 1e-9));
+    }),
+  );
+
+  testWidgets(
     'an emission that changed nothing hands the backend the same objects',
     (tester) => onLinux(() async {
       await tester.pumpWidget(host([_contact('a', stamp: 1), _contact('b', stamp: 2)]));
