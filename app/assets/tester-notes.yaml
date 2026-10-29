@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"186":
   changes:
     - "Improved secondary controls: a park, note or frequency control stays open from one contact to the next"
     - "Kenwood-protocol radios on VFO B are read and tuned on VFO B, and no longer wipe the call being typed (tell us how it behaves)"
