@@ -106,10 +106,12 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// that ends a gesture made on another surface, where pulling focus here
   /// would raise the mobile keyboard over the list they are actually working.
   ///
-  /// [inPlace] also leaves an open control open and the command line's
-  /// message standing — for a wipe nothing in this panel asked for (a QSY),
-  /// which must not close the control being read or eat the confirmation of
-  /// the command that moved the radio.
+  /// [inPlace] also leaves the command line's message standing — for a wipe
+  /// nothing in this panel asked for (a QSY), which must not eat the
+  /// confirmation of the command that moved the radio.
+  ///
+  /// No wipe closes an open control (docs/design/logging-fields.md § Focus
+  /// and the secondary controls).
   void _wipe({bool focusCall = true, bool inPlace = false}) {
     // The draft is gone, and so is its hold on a number. After a commit this
     // is a no-op — the log path released with the committed numbers already.
@@ -129,7 +131,7 @@ extension _WipeAndUndo on _LoggingControlsState {
     _exchange.clear();
     _notesController.clear();
     _time.manualStartAtMillis = null;
-    if (!inPlace) _selectedControlKey = null;
+    _reseedOpenTime();
     _radio.clearPowerEntry();
     // The VFO's power is ambient, not composed — a wipe drops what the entry
     // stated and goes back to mirroring it, the way the Radio control does.
@@ -158,9 +160,9 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// it is wiped, with the wipe button's undo offer; the undo tunes back to
   /// [startedOn] with it.
   ///
-  /// Unlike the operator's own wipe it leaves manual time entry, focus and
-  /// the open control alone: the gesture was made at the radio, not this
-  /// panel.
+  /// It leaves manual time entry as the operator's wipe does, and its undo
+  /// goes back into it — but leaves focus alone: the gesture was made at the
+  /// radio, not this panel.
   void _wipeOnQsy(Vfo startedOn) {
     // Dropped, not flushed: a frequency still being typed belongs to the
     // entry being wiped, and flushing it would tune the radio back off where
@@ -169,6 +171,7 @@ extension _WipeAndUndo on _LoggingControlsState {
     // This stash replaces any earlier wipe's without expiring it, and undo
     // would otherwise resume that wipe's manual time on this entry.
     _time.forgetWipe();
+    _time.leaveForWipe();
     _stashForUndo({..._draft.toData(), 'freq': startedOn.freq, 'band': startedOn.band, 'mode': startedOn.mode});
     // As a seed, not an edit: the wipe writes the VFO's new frequency into
     // the field, which read as typed stops the panel following the radio and
@@ -216,6 +219,7 @@ extension _WipeAndUndo on _LoggingControlsState {
       // there, and an unmarked guess is never taken back.
       if (guesses != null) _refs.restoreGuesses(guesses);
       _time.manualStartAtMillis = data['startAtMillis'] as int?;
+      _reseedOpenTime();
       _setStateFromPart(() {});
     });
     // The populate bracket suppressed _onCallChanged's own _scheduleLookup()/

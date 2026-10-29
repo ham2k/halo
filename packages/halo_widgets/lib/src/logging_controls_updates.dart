@@ -465,6 +465,7 @@ extension _WidgetUpdates on _LoggingControlsState {
         _seedFromRadioService();
       }
       _time.manualStartAtMillis = null; // _time.effectiveStartAtMillis falls back to editingQso.startAtMillis
+      _reseedOpenTime();
       _setStateFromPart(() {});
     });
     // Score the edited QSO (excluding itself) so its dupe/New-* pills show, the
@@ -504,6 +505,7 @@ extension _WidgetUpdates on _LoggingControlsState {
       // than carrying it into `_draft.extra`.
       final suggestedStart = data['startAtMillis'];
       _time.manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
+      _reseedOpenTime();
       _setStateFromPart(() {});
     });
     // A tapped spot starts a contact as surely as a typed call does, and it
@@ -552,12 +554,11 @@ extension _WidgetUpdates on _LoggingControlsState {
   /// editing) and `_restoreFromUndoSlot` (undoing a wipe) — both need to
   /// push a `data` map from a `Qso`/[QsoDraft.toData] shape back into the
   /// live controllers/state. The draft does the fields and the models; what
-  /// stays here is the panel's own context — the lookup, the open control,
-  /// the command line.
+  /// stays here is the panel's own context — the lookup and the command
+  /// line. Not the open control: nothing but the operator closes one.
   void _applyFieldsFromData(Map<String, dynamic> data, {bool restoringDraft = false}) {
     _draft.applyData(data, restoringDraft: restoringDraft);
     _lookup.reset();
-    _selectedControlKey = null;
     // Command state must never survive into a freshly populated QSO
     // context: this runs under [QsoDraft.populate], so _onCallChanged's own
     // per-keystroke reset is suppressed. Without this, typing "NOTE hi",
@@ -601,12 +602,15 @@ extension _WidgetUpdates on _LoggingControlsState {
       _notesController.clear();
       _time.manualStartAtMillis = null;
       _radio.manualBand = null;
-      _selectedControlKey = null;
       _radio.clearPowerEntry();
       // Back to composing a new QSO — the Radio control goes back to
       // mirroring the operation's VFO, not whatever the just-edited QSO's
       // own freq/band/mode happened to be.
       _seedFromRadioService();
+      // The dropdowns' text follows the model only on a wholesale rewrite,
+      // and an open Radio control would keep showing the edited band.
+      _radio.resyncDropdownFields();
+      _reseedOpenTime();
       _setStateFromPart(_command.reset);
     });
   }

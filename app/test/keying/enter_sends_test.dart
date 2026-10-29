@@ -80,11 +80,15 @@ void main() {
 
   late String rig;
 
-  Future<void> pumpOperation(WidgetTester tester) async {
+  Future<void> pumpOperation(WidgetTester tester, {String? mode}) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final node = await services.cat.addNode(
+      typeKey: 'placeholder-radio',
+      name: 'Bench Rig',
+      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderMode': ?mode},
+    );
     rig = node.uuid;
     await tester.runAsync(() => services.cat.connect(rig));
     addTearDown(() => services.cat.disconnect(rig));
@@ -146,6 +150,15 @@ void main() {
     services.cat.setEnterSends(on: true);
     await tester.runAsync(() => services.cat.disconnect(rig));
     await tester.pump();
+    expect(enterSends(tester), isNull);
+    await unmount(tester);
+  });
+
+  testWidgets('in a Digital mode ESM is off whatever its switch says, and Enter logs', (tester) async {
+    // A switch left on from a CW run must not key CW thanks over an FT8 or
+    // RTTY contact, nor swallow the Enter that logs it.
+    await pumpOperation(tester, mode: 'RTTY');
+    services.cat.setEnterSends(on: true);
     expect(enterSends(tester), isNull);
     await unmount(tester);
   });

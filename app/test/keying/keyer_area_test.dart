@@ -115,6 +115,7 @@ void main() {
     bool suppressed = false,
     PanelRenderContext? templateContext,
     bool phone = false,
+    bool digital = false,
     bool enterSends = false,
     ValueNotifier<EsmFacts?>? esmFacts,
     bool panel = true,
@@ -123,7 +124,7 @@ void main() {
       home: Scaffold(
         body: Column(
           children: [
-            KeyerArea(cat: services.cat, services: services, suppressed: suppressed, phone: phone),
+            KeyerArea(cat: services.cat, services: services, suppressed: suppressed, phone: phone, digital: digital),
             if (panel)
               KeyerControls(
                 services: services,
@@ -471,6 +472,30 @@ void main() {
         expect(tinted(tester, 'M1'), isFalse);
         await tester.pump(const Duration(seconds: 62));
       });
+    });
+
+    testWidgets('the draft turning Digital ends keyboard mode, as Phone does', (tester) async {
+      // The keyer control closes when its chip turns disabled, taking the
+      // field with it; a mode left on there would key what was typed into
+      // the next five idle seconds with nowhere to see or stop it.
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      services.cat.toggleKeyboardMode();
+      await tester.pump();
+      expect(services.cat.cwTyping.value, isNotNull);
+      await tester.pumpWidget(host(panel: false, digital: true));
+      expect(services.cat.cwTyping.value, isNull);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    test('in a Digital mode its chip stays in the row, plainly the Keyer, and disabled', () {
+      // A chip that vanished with the mode would move every pill after it;
+      // one still reading "25 WPM" would claim a keyer that keys nothing here.
+      final digital = keyerHostControl(services: services, superMode: 'Digital').spec();
+      expect(digital.enabled, isFalse);
+      expect(digital.icon, MdiIcons.key);
+      expect(digital.summary, 'Keyer');
+      expect(keyerHostControl(services: services, superMode: 'CW').spec().enabled, isTrue);
     });
 
     // A row whose buttons came and went as messages were written would move

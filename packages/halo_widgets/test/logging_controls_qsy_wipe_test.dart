@@ -199,6 +199,31 @@ void main() {
     expect(writes, 0);
   });
 
+  testWidgets('a QSY wipe leaves manual time entry, in the open Time control too, and its undo goes back into it', (tester) async {
+    // The next entry is a new station on a new frequency, and stamping it with
+    // the stopped clock of the one tuned away from files it at the wrong time.
+    String time() => textOf(tester, 'Time (UTC)');
+    await tester.pumpWidget(host());
+    await tune(tester, freq: 14200);
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await openControl(tester, MdiIcons.clockOutline);
+    final manualDt = nowUtc().add(const Duration(hours: 6));
+    final manual = '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
+    await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manual);
+    await tester.pump();
+    expect(find.byIcon(MdiIcons.pause), findsOneWidget, reason: 'a manual time is in force');
+
+    await tune(tester, freq: 14250);
+    expect(find.byIcon(MdiIcons.pause), findsNothing, reason: 'the wipe goes back to the clock');
+    expect(time(), isNot(manual), reason: 'and the open control shows it');
+
+    await tester.tap(find.byIcon(MdiIcons.undo));
+    await tester.pump();
+    expect(textOf(tester, 'Their call'), 'W1AW');
+    expect(find.byIcon(MdiIcons.pause), findsOneWidget);
+    expect(time(), manual);
+  });
+
   testWidgets("undo of a QSY wipe never resumes an earlier wipe's manual time", (tester) async {
     await tester.pumpWidget(host());
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');

@@ -52,7 +52,7 @@ void main() {
     await harness.settings.setCwMessage(3, 'TU');
   });
 
-  Future<void> pumpOperation(WidgetTester tester) async {
+  Future<void> pumpOperation(WidgetTester tester, {String mode = 'CW'}) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -60,7 +60,7 @@ void main() {
     final node = await services.cat.addNode(
       typeKey: 'placeholder-radio',
       name: 'Bench Rig',
-      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderMode': 'CW'},
+      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderMode': mode},
     );
     await tester.runAsync(() => services.cat.connect(node.uuid));
     addTearDown(() => services.cat.disconnect(node.uuid));
@@ -107,6 +107,20 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft, platform: 'web');
     await tester.pump(const Duration(milliseconds: 100));
     expect(services.cat.cwProgress.value?.text, 'CQ TEST');
+    await unmount(tester);
+  });
+
+  testWidgets('in a Digital mode neither F1-F8, ⌥1-⌥8 nor ⌥K key anything', (tester) async {
+    // A CW message keyed over an FT8 or RTTY contact goes out on the wrong
+    // mode entirely; the keyer's pill is disabled there for the same reason.
+    await pumpOperation(tester, mode: 'RTTY');
+    await tester.sendKeyEvent(LogicalKeyboardKey.f1);
+    await tester.pump(const Duration(milliseconds: 100));
+    await chord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.digit3);
+    expect(services.cat.cwSending, isFalse);
+    expect(services.cat.cwProgress.value, isNull);
+    await chord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyK);
+    expect(services.cat.cwTyping.value, isNull, reason: 'nor does keyboard mode start, with no field to type into');
     await unmount(tester);
   });
 

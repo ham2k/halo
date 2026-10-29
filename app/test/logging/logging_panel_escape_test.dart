@@ -20,6 +20,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/lookup_queue_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -77,6 +78,17 @@ void main() {
     return labels.contains('Delete') || labels.contains('Revert') || labels.contains('Restore');
   }
 
+  // An untuned station opens the Radio control by itself, and nothing but the
+  // operator closes one — left open, it takes the first Escape after a row
+  // loads, ahead of the edit these tests are about.
+  Future<void> closeRadioControl(WidgetTester tester) async {
+    await tester.tap(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+  }
+
   // Matches the info row's second button regardless of which state it's
   // showing. Finds the Icon (which carries the name) and walks up to the
   // button, so `tap` hits the whole target rather than the glyph.
@@ -95,6 +107,7 @@ void main() {
 
     expect(isEditing(tester), isFalse);
 
+    await closeRadioControl(tester);
     await tester.tap(find.text('W1AW'));
     await tester.pump();
     expect(isEditing(tester), isTrue);
@@ -128,6 +141,7 @@ void main() {
       wrap(LoggingPanel(operation: operation, services: services, qsos: [qso], loggingControls: const [], onCommandAction: (action, [params]) async {})),
     );
     await tester.pump();
+    await closeRadioControl(tester);
     await tester.tap(find.text('W1AW'));
     await tester.pump();
     expect(isEditing(tester), isTrue);
@@ -186,6 +200,7 @@ void main() {
     );
     await tester.pump();
 
+    await closeRadioControl(tester);
     await tester.tap(find.text('W1AW'));
     await tester.pump();
     expect(isEditing(tester), isTrue);

@@ -853,6 +853,20 @@ while one is already open moves focus straight to the new control's field
 and keeps the remembered main field, so closing the strip still returns to
 where the operator left off.
 
+**Only the operator closes a control.** A control opened to set something
+for every contact (a park, a note, the frequency) is one the operator is
+about to set again for the next, so nothing that replaces the entry closes it:
+not logging, not a wipe (the operator's own, Alt+W or the wipe button, or a
+QSY's), not a spot or a deep link filling the entry, not loading a contact
+from the list, and not that edit ending by a save, a cancel or Escape. Each of
+these clears or replaces what the control shows, and the keyboard goes where
+it would have anyway. An open Time control is written again each time, so it
+shows the time of the contact now in the entry rather than the one that left.
+The one exception is a chip turning disabled under an open control, which
+leaves nothing to type into: an event row, whose controls are disabled but
+Time's, and the keyer in a Digital mode ([cat.md](cat.md#voice-keying)). What closes a control is a tap on its
+pill, picking another, Down, Enter or Up inside it, and Escape (below).
+
 ## Leaving the entry row: the focus ladder
 
 Tab and the arrows above keep the operator inside the entry row. **Arrow Up
@@ -946,7 +960,11 @@ suggestion menu opens below its field, best match nearest the field.
   Not on a phone with no physical keyboard: there a tap only loads the row,
   since focusing the callsign field would pop the on-screen keyboard.
 
-**Escape** is the way *out*, at every rung, one layer per press: an open
+**Escape** is the way *out*, at every rung, one layer per press — except
+that while a message, chain or repeat is keying, Escape stops it and does
+nothing else ([cat.md § CW keying](cat.md#cw-keying)). The keyer control in
+particular stays open on that Escape, with the keyboard resting on its pill,
+and the next Escape closes it. The layers: an open
 suggestion menu, then an open control (back to the main fields, the same
 destination Down/Enter reach above) — then the editing session, back
 specifically to the callsign field, a "start a fresh QSO" gesture. It stops there: a
@@ -991,9 +1009,10 @@ through the CAT server, a frequency, band or mode command typed into the call
 field. The entry's own surfaces are the exception — the Radio control's
 Frequency, Band and Mode and the More pane edit the contact, so they move
 where it is measured from instead, as does a spot that fills the entry and
-tunes the radio for it. Unlike the operator's own wipe, it leaves manual time
-entry, focus, an open control and the command line's message alone: the
-gesture was made at the radio, not the panel.
+tunes the radio for it. Like the operator's own wipe it leaves manual time
+entry, back to the live clock, and its undo goes back into it; unlike it, it
+leaves focus and the command line's message alone: the gesture was made at
+the radio, not the panel.
 
 What the radio reports is not always a move. For three seconds after the
 entry's own write, and after the radio connects, whatever it reports becomes

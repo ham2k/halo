@@ -1960,6 +1960,12 @@ alias). The draft's mode and not the radio's, the same reasoning as the messages
 against the draft: the message is for the contact being logged, and a rig left in USB while the
 operator logs CW keys CW.
 
+In a Digital mode (`superModeForMode` says neither CW nor Phone — FT8, RTTY, PSK) nothing keys:
+F1-F8, ⌥1-⌥8 and ⌥K (keyboard mode) are left unclaimed, keyboard mode already on ends, Enter Sends Messages is off whatever its switch says (Enter
+logs), and the keyer control's chip stays in the strip, reading
+"Keyer" by the key icon, disabled, so the row keeps its shape. A tap, the keyboard and `KEYER` all leave it shut, and one open when the
+draft's mode turns Digital closes.
+
 **The messages are audio in the radio, so the app stores only a label.** `voiceMessageLabel1..8`
 (Radio settings, like the CW ones) is the whole of it — nothing to render, nothing to sanitize, and
 no `voiceMessage$n` beside it. A memory is keyed by NUMBER, and every surface offers exactly as many

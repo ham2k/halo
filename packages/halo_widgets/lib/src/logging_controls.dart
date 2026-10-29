@@ -317,6 +317,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final so2r? when so2r.ownsStrip => () => so2r.link.focusSet('B'),
         _ => null,
       },
+      escapeClaimed: widget.session.escapeClaimed,
     ),
     selectControl: _onSelectControl,
     showControl: _showControl,
@@ -661,6 +662,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncSo2r(oldWidget);
     _syncRadioUpdates(oldWidget);
     _syncHostOpenRequests(oldWidget.strip.hostControls);
+    _closeDisabledControl();
     if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
     // An edit opening or closing, or a contest's exchange fields arriving —
     // none of them touches a field this hears otherwise.
@@ -1156,13 +1158,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             opacity: fieldsLocked ? 0.5 : 1,
                             child: SecondaryControlRow(
                               // Every pill still shows while editing an event —
-                              // just disabled but Time, so the row's shape
+                              // just disabled but Time ([_controlDisabled]), so the row's shape
                               // doesn't change between editing a contact and an
                               // event. A BREAK's grid/contest-exchange segment
                               // override has no editing UI yet either
                               // (docs/design/contests.md §5.1.3), so it stays
                               // disabled along with the rest.
-                              controls: _buildSecondaryControls(accentTheme, accentPoloColors, enabledFor: _editingEvent ? (key) => key == 'time' : null),
+                              controls: _buildSecondaryControls(accentTheme, accentPoloColors),
                               selectedKey: _selectedControlKey,
                               onSelect: _onSelectControl,
                               onOpenSettings: _openControlSettingsDialog,

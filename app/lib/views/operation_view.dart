@@ -860,7 +860,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 onSendCwMessage: _sendCwMessageFromArea,
                 onEnterSends: _sendEsmMessages,
                 cwTemplateContext: panelRenderContext,
-                keyingPhone: _keyingPhone,
+                keyingSuperMode: _keyingSuperMode,
                 qsos: qsos,
                 loggingControls: _runtime.loggingControls,
                 onCommandAction: _handleCommandAction,

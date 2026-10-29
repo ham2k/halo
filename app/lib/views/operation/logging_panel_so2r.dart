@@ -109,8 +109,14 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
 
   /// [radio]'s set's keyer line — its own radio's keyer: its messages going
   /// out, its repeat, and what waits for the other radio.
-  KeyerArea _keyerArea(String radio, {required bool editingHere}) =>
-      KeyerArea(cat: widget.services.cat, radio: radio, services: widget.services, phone: widget.keyingPhone, suppressed: editingHere && _selectedQso != null);
+  KeyerArea _keyerArea(String radio, {required bool editingHere}) => KeyerArea(
+    cat: widget.services.cat,
+    radio: radio,
+    services: widget.services,
+    phone: widget.keyingSuperMode == 'Phone',
+    digital: widget.keyingSuperMode == 'Digital',
+    suppressed: editingHere && _selectedQso != null,
+  );
 
   void _disposeSo2r() {
     for (final facts in _esmFacts.values) {

@@ -71,13 +71,17 @@ class KeyerArea extends StatefulWidget {
   /// operator logs CW keys CW.
   final bool phone;
 
+  /// Whether the draft contact's mode is Digital, where nothing keys — read
+  /// only to end keyboard mode when the draft turns Digital.
+  final bool digital;
+
   /// True while the logging panel is editing a logged QSO: the area slides
   /// out and stays out until editing ends, then comes back if something is
   /// still keying. Messages are for the contact in progress, not for one
   /// being corrected.
   final bool suppressed;
 
-  const KeyerArea({super.key, required this.cat, required this.services, this.radio = 'A', this.phone = false, this.suppressed = false});
+  const KeyerArea({super.key, required this.cat, required this.services, this.radio = 'A', this.phone = false, this.digital = false, this.suppressed = false});
 
   @override
   State<KeyerArea> createState() => _KeyerAreaState();
@@ -134,9 +138,9 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
       _unlisten(old.cat, old.radio);
       _listen(widget.cat, widget.radio);
     }
-    // Keyboard mode is the CW keyer's; the draft going to Phone ends it the
-    // way Enter would.
-    if (widget.phone && !old.phone) _k.cwTyping.value?.finish();
+    // Keyboard mode is the CW keyer's; the draft going to Phone or Digital
+    // ends it the way Enter would.
+    if ((widget.phone && !old.phone) || (widget.digital && !old.digital)) _k.cwTyping.value?.finish();
     _onProgress();
   }
 
@@ -327,17 +331,25 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
 /// messages' settings. One strip for both SO2R radios, so it is the keyer of
 /// the set the operator is in ([CatService.operatorKeyer]). What is going
 /// out shows in each radio's [KeyerArea], in its info area.
+///
+/// [superMode] is the draft contact's (`superModeForMode`): Phone makes it
+/// the voice keyer's, and in a Digital mode the chip stays in the row,
+/// plainly "Keyer" and disabled — a chip that vanished with the mode would
+/// move every pill after it.
 HostControl keyerHostControl({
   required HaLoServices services,
-  required bool phone,
+  required String? superMode,
   void Function(int n, String radio)? onSendMessage,
   PanelRenderContext? templateContext,
   bool enterSends = false,
   Map<String, ValueListenable<EsmFacts?>>? esmFacts,
 }) {
   final cat = services.cat;
+  final phone = superMode == 'Phone';
+  final digital = superMode == 'Digital';
   String summary() {
     final k = t.settings.radio.keyerControl;
+    if (digital) return k.label;
     if (phone) return k.voice;
     final speed = cat.operatorKeyer.keyerSpeed;
     return speed == null ? k.cw : k.cwSpeed(wpm: speed);
@@ -357,6 +369,7 @@ HostControl keyerHostControl({
       icon: phone ? MdiIcons.microphone : MdiIcons.key,
       summary: summary(),
       liveSummary: summary,
+      enabled: !digital,
       expandedBuilder: (context) => KeyerControls(
         services: services,
         phone: phone,

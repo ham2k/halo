@@ -970,8 +970,8 @@ void main() {
       {'type': 'pota', 'ref': 'US-1234'},
     ]);
 
-    // Wipe cleared the control's field too.
-    await openControl(tester, MdiIcons.pineTree);
+    // The log left the control open, and its wipe cleared the field.
+    await settleControl(tester);
     final potaField = tester.widget<TextField>(find.widgetWithText(TextField, 'POTA'));
     expect(potaField.controller?.text, '');
   });

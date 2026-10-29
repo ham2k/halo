@@ -84,11 +84,32 @@ extension _ControlStrip on _LoggingControlsState {
   /// Time here as well as on a tap: a Tab across the strip must not expand a
   /// control whose chip is disabled.
   void _showControl(String? key) {
-    if (_editingEvent && key != null && key != 'time') return;
+    if (key != null && _controlDisabled(key)) return;
     _setStateFromPart(() {
       if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
       _selectedControlKey = key;
     });
+  }
+
+  /// Whether [key]'s chip is disabled: every control but Time on an event
+  /// row, and a host control that says so of itself (the keyer in a Digital
+  /// mode). The one rule for it: the chip is drawn disabled from this, the
+  /// keyboard's walk leaves it out, and the keyboard and the host's open
+  /// requests are refused by it, as a tap on the chip is.
+  bool _controlDisabled(String key) => (_editingEvent && key != 'time') || widget.strip.hostControls.any((host) => host.key == key && !host.spec().enabled);
+
+  /// The one thing that closes a control the operator did not: its chip
+  /// turning disabled under it, which leaves nothing open to type into.
+  void _closeDisabledControl() {
+    if (_selectedControlKey case final key? when _controlDisabled(key)) _selectedControlKey = null;
+  }
+
+  /// An open Time control's fields are written when it opens, so one that
+  /// stays open while the entry is wiped, replaced or loaded is written
+  /// again here — after the entry's own time has been set — or it shows the
+  /// time of the contact that just left.
+  void _reseedOpenTime() {
+    if (_selectedControlKey == 'time') _time.seedFields();
   }
 
   /// A tap on a chip, or the keyboard arriving on one: what a tap means is
@@ -97,7 +118,7 @@ extension _ControlStrip on _LoggingControlsState {
   /// (ChoiceChip.onSelected: null, see _ControlChip), which this repeats for
   /// the keyboard paths. Everything else is the ladder's open and close.
   void _onSelectControl(String? key) {
-    if (_editingEvent && key != null && key != 'time') return;
+    if (key != null && _controlDisabled(key)) return;
     if (key == 'more') {
       _openMoreEditor();
       return;
@@ -118,7 +139,7 @@ extension _ControlStrip on _LoggingControlsState {
   /// The strip's specs, in row order, each carrying the panel's keyboard
   /// policy. Which controls appear is [_catalog]'s call; what each one shows
   /// is its model's.
-  List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, HaLoColors poloColors, {bool Function(String key)? enabledFor}) {
+  List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, HaLoColors poloColors) {
     final specs = <SecondaryControlSpec>[];
     final so2r = widget.so2r;
     for (final descriptor in _catalog.visibleControls()) {
@@ -171,10 +192,16 @@ extension _ControlStrip on _LoggingControlsState {
           }
       }
     }
+    final enabled = {for (final spec in specs) spec.key: !_controlDisabled(spec.key)};
     // The strip's keys, for the arrow keys to walk. Recorded from the list
-    // actually handed to the row, so the two can't drift apart.
-    _ladder.pillOrder = [for (final spec in specs) spec.key];
-    return [for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true)];
+    // actually handed to the row, so the two can't drift apart — and only the
+    // enabled ones: a disabled chip takes no focus, and a walk onto one stops
+    // dead there.
+    _ladder.pillOrder = [
+      for (final spec in specs)
+        if (enabled[spec.key]!) spec.key,
+    ];
+    return [for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabled[spec.key]!)];
   }
 
   /// The contact's own note. Wider than the other controls' fields — a note

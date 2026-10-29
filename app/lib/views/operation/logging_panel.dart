@@ -143,10 +143,10 @@ class LoggingPanel extends StatefulWidget {
   /// A new one arrives with each draft change (debounced upstream).
   final PanelRenderContext? cwTemplateContext;
 
-  /// Whether the keyer area is the voice keyer's — the draft contact's mode
-  /// is Phone — decided by the operation view, which routes the function
-  /// keys by the same answer.
-  final bool keyingPhone;
+  /// The draft contact's super-mode (`superModeForMode`), decided by the
+  /// operation view, which routes the function keys by the same answer: Phone
+  /// makes the keyer the voice keyer's, and Digital disables its pill.
+  final String? keyingSuperMode;
 
   /// Fires when a day header in the QSO list is tapped, or the info area
   /// while it shows anything but the call info — the operation view opens
@@ -218,7 +218,7 @@ class LoggingPanel extends StatefulWidget {
     this.onSendCwMessage,
     this.onEnterSends,
     this.cwTemplateContext,
-    this.keyingPhone = false,
+    this.keyingSuperMode,
     this.onOperationInfoTap,
     this.controlsAboveLog = false,
     this.stampQso,
@@ -864,15 +864,15 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
   }
 
   /// Enter Sends Messages as it stands at this Enter: on, and [radio]'s key
-  /// for the draft's mode able to send — otherwise off, and Enter logs.
+  /// for the draft's mode (never Digital) able to send — else off; Enter logs.
   EnterSends? _enterSends(String radio) {
     final send = widget.onEnterSends;
-    if (send == null || !_keyerEnabled || !_esmEnabled) return null;
+    if (send == null || !_keyerEnabled || !_esmEnabled || widget.keyingSuperMode == 'Digital') return null;
     final cat = widget.services.cat;
     final esm = cat.enterSends.value;
     if (!esm.on) return null;
     final keyer = cat.keyer(radio);
-    if (!(widget.keyingPhone ? keyer.canPlayVoice : keyer.canKeyCw)) return null;
+    if (!(widget.keyingSuperMode == 'Phone' ? keyer.canPlayVoice : keyer.canKeyCw)) return null;
     return EnterSends(
       running: cat.isRunning(radio),
       send: (messages, qso, {logged}) => send(radio, messages, qso, logged: logged),
@@ -1157,7 +1157,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
           if (_keyerEnabled && radio == 'A')
             keyerHostControl(
               services: widget.services,
-              phone: widget.keyingPhone,
+              superMode: widget.keyingSuperMode,
               onSendMessage: widget.onSendCwMessage,
               templateContext: widget.cwTemplateContext,
               enterSends: _esmEnabled,

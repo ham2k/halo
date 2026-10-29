@@ -88,6 +88,10 @@ typedef FocusLadderConfig = ({
   /// that edge — then outward is the pills, and inward goes nowhere.
   bool Function()? crossOutward,
   bool Function()? crossInward,
+
+  /// Whether this Escape already stopped keying — see
+  /// `LoggingSession.escapeClaimed`. Null without a keyer.
+  bool Function()? escapeClaimed,
 });
 
 /// The ladder. See the file comment.
@@ -572,7 +576,10 @@ class LoggingFocusLadder {
         // control, from one rung further out. Handled here rather than left
         // to the panel's Escape because that one would read a merely-parked
         // keyboard as a cue to wipe the form the operator hasn't touched.
-        closeControl();
+        // An Escape that stopped keying is spent: the keyer control rests the
+        // keyboard on its pill, and closing it there would take the stop's
+        // own buttons away with it.
+        if (!(config().escapeClaimed?.call() ?? false)) closeControl();
         return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;

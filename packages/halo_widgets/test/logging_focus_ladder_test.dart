@@ -35,6 +35,7 @@ class _Harness {
   bool Function()? navigateToQsoList;
   bool Function()? crossOutward;
   bool Function()? crossInward;
+  bool escapeClaimed = false;
   final selects = <String?>[];
   final shows = <String?>[];
 
@@ -65,6 +66,7 @@ class _Harness {
       aboveLog: aboveLog,
       crossOutward: crossOutward,
       crossInward: crossInward,
+      escapeClaimed: () => escapeClaimed,
     ),
     // The panel's tap: `more` and event rows are its business; the rest
     // comes straight back to the ladder.
@@ -102,10 +104,7 @@ class _Harness {
       body: Column(
         children: [
           Row(
-            children: [
-              for (final (node, key) in [(ladder.pillFocusFor('time'), 'time'), (ladder.pillFocusFor('radio'), 'radio'), (ladder.pillFocusFor('more'), 'more')])
-                Focus(focusNode: node, child: Text(key)),
-            ],
+            children: [for (final key in ladder.pillOrder) Focus(focusNode: ladder.pillFocusFor(key), child: Text(key))],
           ),
           Focus(
             canRequestFocus: false,
@@ -311,6 +310,29 @@ void main() {
     await _press(tester, LogicalKeyboardKey.enter);
     expect(h.shows.last, isNull);
     expect(h.gridFocus.hasFocus, isTrue, reason: 'back where the operator was, not at Call');
+    h.dispose();
+  });
+
+  testWidgets('Escape on a fieldless pill closes its control, unless that Escape stopped keying', (tester) async {
+    // The keyer control has no field, so the keyboard rests on its pill —
+    // and the Escape that stops a CQ repeat there must leave the keyer's
+    // buttons on screen, not close them along with the repeat.
+    final h = _Harness()..wireCaretRule();
+    h.ladder.pillOrder = const ['time', 'radio', 'keyer', 'more'];
+    await tester.pumpWidget(h.build());
+    h.ladder.focusPillAndOpen('keyer');
+    await tester.pump();
+    await tester.pump();
+    expect(h.selected, 'keyer');
+    expect(h.ladder.pillFocusFor('keyer').hasFocus, isTrue);
+
+    h.escapeClaimed = true;
+    await _press(tester, LogicalKeyboardKey.escape);
+    expect(h.selected, 'keyer', reason: 'the stop spent this Escape');
+
+    h.escapeClaimed = false;
+    await _press(tester, LogicalKeyboardKey.escape);
+    expect(h.selected, isNull, reason: 'with nothing keying, Escape closes it as before');
     h.dispose();
   });
 

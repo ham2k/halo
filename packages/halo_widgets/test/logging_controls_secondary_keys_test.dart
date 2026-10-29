@@ -48,6 +48,50 @@ void main() {
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus, isFalse);
     });
 
+    testWidgets('the keyboard walks past a disabled pill, both ways', (tester) async {
+      // The keyer in a Digital mode sits right after Radio. A disabled chip
+      // takes no focus and its control refuses to open, so a walk that
+      // stopped there would leave the keyboard stuck in Radio, every Tab and
+      // every Right eaten on the same spot.
+      await tester.pumpWidget(
+        host(
+          strip: ControlStripSettings(
+            controlOrder: const ['time', 'radio', 'keyer', 'more'],
+            hostControls: [
+              HostControl(
+                key: 'keyer',
+                icon: MdiIcons.key,
+                label: 'Keyer',
+                spec: () =>
+                    SecondaryControlSpec(key: 'keyer', icon: MdiIcons.key, summary: 'Keyer', enabled: false, expandedBuilder: (_) => const Text('keyer panel')),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextField, 'Their call'));
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await settleControl(tester);
+      // Time's two fields, then Radio's three (its dropdowns take the
+      // keyboard on a desktop only).
+      for (var i = 0; i < 4; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await settleControl(tester);
+      }
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).focusNode?.hasFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await settleControl(tester);
+      expect(focusedPill(tester), 'more', reason: 'Tab off Radio skips the disabled keyer');
+      expect(find.widgetWithText(TextField, 'Mode'), findsNothing, reason: 'and Radio closed behind it');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await settleControl(tester);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget, reason: 'Left off More skips it the other way');
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
     testWidgets('Tab and Shift-Tab cross between pills, opening whichever one they land on', (tester) async {
       // Tab bypasses Flutter's own default traversal entirely now (it broke
       // once a field could auto-open under it — probed with a real test run,

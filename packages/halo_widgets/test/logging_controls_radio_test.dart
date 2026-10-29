@@ -843,8 +843,6 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    // The wipe collapses the Radio control along with everything else.
-    await openControl(tester, MdiIcons.radio);
     fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
@@ -1110,6 +1108,44 @@ void main() {
     expect(fakeRadio.vfoA.freq, isNull);
   });
 
+  testWidgets('an open Radio control on an untuned station shows no band once an edit ends', (tester) async {
+    // The Band dropdown's text follows the model only when it is rewritten
+    // wholesale. Left showing the edited contact's band over an entry that
+    // has none, the control says the next contact will log on 40m when the
+    // log is about to be refused for having no band at all.
+    final existingQso = Qso(
+      uuid: 'existing-uuid',
+      operationUuid: operation.uuid,
+      data: {
+        'their': {'call': 'W1AW'},
+        'band': '40m',
+        'mode': 'CW',
+      },
+    );
+    final editing = ValueNotifier<Qso?>(existingQso);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ValueListenableBuilder<Qso?>(
+            valueListenable: editing,
+            builder: (context, editingQso, _) => LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: editingQso, onEditCanceled: () => editing.value = null),
+              radio: RadioHookup(radioService: fakeRadio),
+            ),
+          ),
+        ),
+      ),
+    );
+    String band() => tester.widget<TextField>(find.widgetWithText(TextField, 'Band').first).controller!.text;
+    await openControl(tester, MdiIcons.radio);
+    expect(band(), '40m');
+
+    editing.value = null;
+    await settleControl(tester);
+    expect(band(), isEmpty);
+  });
+
   testWidgets('ending an edit session re-seeds the Radio control from the VFO, not the just-edited QSO', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
     final existingQso = Qso(
@@ -1140,11 +1176,10 @@ void main() {
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7100');
 
+    // The control stays open across the edit's end, so the field on screen
+    // is the one that has to follow the VFO.
     editing.value = null;
-    await tester.pump();
-    // Ending the edit collapses the secondary control row back to its
-    // default (nothing expanded) — reopen it to read the re-seeded value.
-    await openControl(tester, MdiIcons.radio);
+    await settleControl(tester);
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
   });

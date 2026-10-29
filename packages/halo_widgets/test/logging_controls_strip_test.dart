@@ -302,9 +302,9 @@ void main() {
 
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, 'Second time this week');
 
+      // The edit ends with the control still open, now on the entry row.
       await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
-      await tester.pump();
-      await openControl(tester, MdiIcons.noteOutline);
+      await settleControl(tester);
       expect(
         tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text,
         isEmpty,
@@ -424,6 +424,175 @@ void main() {
       expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     });
 
+    testWidgets('logging leaves an open control open, with the keyboard back in the call field', (tester) async {
+      // The operator who opened a control is stating something per contact
+      // (a park, a note, the frequency) and is about to state it again: the
+      // log must not make them reopen it every time.
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await waitForQsos(tester, 1);
+      await settleControl(tester);
+
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
+      final call = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(call.controller!.text, isEmpty);
+      expect(call.focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets("the operator's wipe, loading a contact and ending its edit all leave an open control open", (tester) async {
+      // Only the operator closes a control. Each of these replaces what the
+      // control shows, and the field must follow — a stale note on screen
+      // would be saved onto whichever contact is open next.
+      const strip = ControlStripSettings(controlOrder: ['time', 'radio', 'notes']);
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+        'band': '20m',
+        'mode': 'SSB',
+        'notes': 'Second time this week',
+      });
+      String notes() => tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text;
+
+      await tester.pumpWidget(host(strip: strip));
+      await openControl(tester, MdiIcons.noteOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'Ran 5W');
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+      await settleControl(tester);
+      expect(notes(), isEmpty, reason: 'the wipe cleared it, and left it open');
+
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existing),
+          strip: strip,
+        ),
+      );
+      await settleControl(tester);
+      expect(notes(), 'Second time this week');
+
+      await tester.pumpWidget(host(strip: strip));
+      await settleControl(tester);
+      expect(notes(), isEmpty);
+    });
+
+    testWidgets('an open Time control follows the contact loaded into it and back out', (tester) async {
+      // The fields are written when the control opens; one that stays open
+      // has to be written again, or it shows (and an edit saves) the time
+      // of the contact that just left. Built already editing, so the way
+      // out has no parked draft to restore — the reset alone must reseed.
+      final first = DateTime.utc(2025, 3, 4, 5, 6);
+      final second = DateTime.utc(2024, 7, 8, 9, 10);
+      Future<Qso> contactAt(DateTime at) => qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': at.millisecondsSinceEpoch,
+      });
+      final a = await contactAt(first);
+      final b = await contactAt(second);
+      String field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label)).controller!.text;
+
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: a)));
+      await openControl(tester, MdiIcons.clockOutline);
+      expect(field('Date'), TimeControlModel.fmtDate(first));
+
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: b)));
+      await settleControl(tester);
+      expect(field('Time (UTC)'), TimeControlModel.fmtTime(second));
+      expect(field('Date'), TimeControlModel.fmtDate(second));
+
+      await tester.pumpWidget(host());
+      await settleControl(tester);
+      expect(field('Date'), isNot(TimeControlModel.fmtDate(second)), reason: 'back to the live clock');
+    });
+
+    testWidgets('an open Time control shows the time a deep link arrives with', (tester) async {
+      final at = DateTime.utc(2025, 3, 4, 5, 6);
+      String field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label)).controller!.text;
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.clockOutline);
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(
+            suggestedQso: {
+              'their': {'call': 'K1ABC'},
+              'startAtMillis': at.millisecondsSinceEpoch,
+            },
+          ),
+        ),
+      );
+      await settleControl(tester);
+      expect(field('Time (UTC)'), TimeControlModel.fmtTime(at));
+      expect(field('Date'), TimeControlModel.fmtDate(at));
+    });
+
+    testWidgets('an event row closes an open control it disables', (tester) async {
+      final note = Qso(
+        uuid: 'note-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'note',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'NOTE'},
+          'event': {'event': 'note', 'note': 'check later'},
+        },
+      );
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.radio);
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note)));
+      await settleControl(tester);
+      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+    });
+
+    testWidgets('a host control can disable itself: nothing opens it, and turning disabled closes it', (tester) async {
+      // The keyer in a Digital mode: its chip stays in the row, so the row
+      // keeps its shape, but neither a tap, the keyboard nor the KEYER
+      // command may open a panel of buttons that key nothing — and the panel
+      // wrapping every spec must not quietly re-enable it.
+      var enabled = true;
+      final opens = ValueNotifier(0);
+      addTearDown(opens.dispose);
+      Widget build() => host(
+        strip: ControlStripSettings(
+          hostControls: [
+            HostControl(
+              key: 'keyer',
+              icon: MdiIcons.key,
+              label: 'Keyer',
+              openRequests: opens,
+              spec: () =>
+                  SecondaryControlSpec(key: 'keyer', icon: MdiIcons.key, summary: 'Keyer', enabled: enabled, expandedBuilder: (_) => const Text('keyer panel')),
+            ),
+          ],
+        ),
+      );
+
+      await tester.pumpWidget(build());
+      await openControl(tester, MdiIcons.key);
+      expect(find.text('keyer panel'), findsOneWidget);
+
+      enabled = false;
+      await tester.pumpWidget(build());
+      await settleControl(tester);
+      expect(find.text('keyer panel'), findsNothing, reason: 'a disabled control leaves nothing open');
+      expect(tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.key), matching: find.byType(ChoiceChip))).onSelected, isNull);
+
+      opens.value++;
+      await settleControl(tester);
+      expect(find.text('keyer panel'), findsNothing, reason: 'nor does the command open it');
+
+      enabled = true;
+      await tester.pumpWidget(build());
+      opens.value++;
+      await settleControl(tester);
+      expect(find.text('keyer panel'), findsOneWidget, reason: 'the same request opens it once it is enabled again');
+    });
+
     testWidgets('a successful command applies the change without opening the Radio control', (tester) async {
       await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
@@ -451,6 +620,23 @@ void main() {
     final manualDt = DateTime.now().toUtc().add(const Duration(hours: 6));
     final manualTime = '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
 
+    testWidgets('an open Time control follows a wipe out of manual time entry and its undo back in', (tester) async {
+      String time() => tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).controller!.text;
+      await tester.pumpWidget(host());
+      await openControl(tester, MdiIcons.clockOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+      await settleControl(tester);
+      expect(time(), isNot(manualTime), reason: 'the wipe left manual time entry');
+
+      await sendChord(tester, LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.keyZ);
+      await settleControl(tester);
+      expect(time(), manualTime, reason: 'and the undo went back into it');
+    });
+
     testWidgets('a typed time stamps the contact, and the next one follows it rather than the clock', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
@@ -467,8 +653,11 @@ void main() {
       final stamped = DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute);
       expect(DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true), stamped);
 
-      // Still manual after the log, one default increment on.
-      await openControl(tester, MdiIcons.pause);
+      // Still manual after the log, one default increment on — in the
+      // control the log left open, which would otherwise still show the
+      // contact just logged.
+      await settleControl(tester);
+      expect(find.byIcon(MdiIcons.pause), findsOneWidget);
       final next = stamped.add(ManualTimeHooks.defaultIncrement);
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).controller!.text, TimeControlModel.fmtTime(next));
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Date')).controller!.text, TimeControlModel.fmtDate(next));

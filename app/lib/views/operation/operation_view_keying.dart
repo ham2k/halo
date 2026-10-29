@@ -45,9 +45,13 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// view has heard a draft, the operator's radio's mode, which is what a
   /// fresh draft takes: turning PTT on mid-operation publishes nothing new to
   /// hear.
-  bool get _keyingPhone {
+  bool get _keyingPhone => _keyingSuperMode == 'Phone';
+
+  /// The draft's super-mode, from the same snapshot: the logging panel reads
+  /// Phone from it as these keys do, and Digital to disable the keyer's pill.
+  String? get _keyingSuperMode {
     final vfo = widget.services.radio.vfo(widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA');
-    return superModeForMode((_latestDraftQso?['mode'] as String?) ?? vfo.mode) == 'Phone';
+    return superModeForMode((_latestDraftQso?['mode'] as String?) ?? vfo.mode);
   }
 
   /// Which radio the PTT key keys from this view (cat_ptt.dart): the
@@ -88,7 +92,8 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // Keyboard mode on or off. Not ⌘K by default, which is the command
     // dialog's (halo_app.dart).
     if (bindings.claim('keyer.keyboardMode', event) != null) {
-      if (_keyingPhone) return false;
+      // The CW keyer's alone: nothing keys in a Digital mode either.
+      if (_keyingPhone || _keyingSuperMode == 'Digital') return false;
       if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return keyer.radio == 'B';
       keyer.toggleKeyboardMode();
       return true;
@@ -121,6 +126,9 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     }
 
     if (n == null) return false;
+    // Nothing keys in a Digital mode, where the keyer's pill is disabled too:
+    // the key stays free, as one past the radio's last memory does.
+    if (_keyingSuperMode == 'Digital') return false;
     // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
     // area is built with: the message is for the contact being logged,
     // whatever the rig sits in. Under SO2R, on the radio of the set the
