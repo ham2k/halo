@@ -106,11 +106,16 @@ key buffer.
 
 The C shim is a memory-BIO state machine. Native calls never wait for a socket;
 Dart owns asynchronous TCP I/O. Each native wire buffer is capped at 64 KiB,
-the Dart wire input queue at 256 KiB, and unsent plaintext at 1 MiB. The wrapper
-flushes one wire chunk at a time and pauses the socket when plaintext is
-unobserved or the input queue reaches 128 KiB, resuming below 64 KiB. This
-applies backpressure while a slow wire flush prevents input processing. The
-hard queue bounds remain a defensive `bufferLimit` failure. EOF without TLS
+unsent plaintext at 1 MiB, and the Dart wire input queue at 256 KiB plus the
+socket read that crosses it — a read is as large as the kernel had buffered,
+up to the 4 MiB at which Dart stops reading. The wrapper flushes one wire chunk
+at a time and pauses the socket when plaintext is unobserved or the input
+queue reaches 128 KiB, resuming below 64 KiB. This applies backpressure while
+a slow wire flush prevents input processing: the read that crosses the mark is
+queued whole and the socket paused behind it. The hard bounds remain a
+defensive `bufferLimit` failure — a write past the plaintext limit, a wire
+chunk the native buffer cannot take, or a read arriving while the input queue
+already holds its limit, which an honoured pause never allows. EOF without TLS
 `close_notify` reports a connection failure. Native state has explicit teardown
 and finalizers as a last-resort cleanup.
 

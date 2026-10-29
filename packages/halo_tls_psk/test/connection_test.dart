@@ -162,11 +162,60 @@ void main() {
     final sent = peer.send(expected);
     await socket.inputPaused.future.timeout(const Duration(seconds: 15));
     socket.releaseFlush();
-    await sent.timeout(const Duration(seconds: 15));
-    await complete.future.timeout(const Duration(seconds: 15));
+    // The resume is observed, not inferred from a tail that one read may already have carried.
+    await socket.inputResumed.future.timeout(const Duration(seconds: 15));
+    await Future.wait([sent, complete.future], eagerError: true).timeout(const Duration(seconds: 15));
     expect(utf8.decode(received.takeBytes()), expected);
     connection.send(utf8.encode('still-connected-after-backpressure\n'));
     await peer.received('still-connected-after-backpressure');
+  });
+
+  test('one socket read larger than the whole input queue is backpressure, not a dropped connection', () async {
+    // The trap: a limit judged against the arriving event drops the connection
+    // on the very read that should pause it. Dart hands a lagging reader
+    // everything the kernel had buffered as one event — far past the headroom
+    // under the limit, and past the limit itself under load.
+    final peer = await OpenSslPeer.start();
+    addTearDown(peer.dispose);
+    final socket = _GatedSocket(await Socket.connect('127.0.0.1', peer.port));
+    addTearDown(socket.destroy);
+    final connection = await IOOverrides.runZoned(
+      () => PskTlsConnection.connect(host: '127.0.0.1', port: peer.port, psk: testPsk, identity: 'Client_identity'),
+      socketStartConnect: (dynamic host, int port, {dynamic sourceAddress, int sourcePort = 0}) async =>
+          ConnectionTask.fromSocket(Future<Socket>.value(socket), socket.destroy),
+    );
+    addTearDown(connection.close);
+    final expected = '${List.filled(512 * 1024, 'x').join()}\n';
+    final received = BytesBuilder();
+    final complete = Completer<void>();
+    final subscription = connection.data.listen(
+      (bytes) {
+        received.add(bytes);
+        if (received.length >= expected.length && !complete.isCompleted) complete.complete();
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!complete.isCompleted) complete.completeError(error, stack);
+      },
+    );
+    addTearDown(subscription.cancel);
+    socket.blockFlush();
+    addTearDown(socket.releaseFlush);
+    socket.burstInput(300 * 1024);
+    connection.send(utf8.encode('request-large-response\n'));
+    await socket.flushStarted.future.timeout(const Duration(seconds: 15));
+    await peer.received('request-large-response');
+    final sent = peer.send(expected);
+    // A dropped connection errors the data stream at once; a paused socket is the pass.
+    await Future.any([socket.inputPaused.future, complete.future]).timeout(const Duration(seconds: 15));
+    expect(socket.inputPaused.isCompleted, isTrue);
+    expect(socket.burstDelivered, greaterThanOrEqualTo(300 * 1024));
+    socket.releaseFlush();
+    // The resume is observed, not inferred from a tail that one read may already have carried.
+    await socket.inputResumed.future.timeout(const Duration(seconds: 15));
+    await Future.wait([sent, complete.future], eagerError: true).timeout(const Duration(seconds: 15));
+    expect(utf8.decode(received.takeBytes()), expected);
+    connection.send(utf8.encode('still-connected-after-burst\n'));
+    await peer.received('still-connected-after-burst');
   });
 
   for (final synchronous in [true, false]) {
@@ -253,14 +302,41 @@ void main() {
   });
 }
 
-/// Controls only completion of a real socket's flush. Input pause/resume is
-/// observed on the real subscription rather than buffered in a fake stream.
+/// Gates the completion of a real socket's flush, and observes input pause and
+/// resume on the real subscription. Armed by [burstInput], it holds input back
+/// until that many bytes have arrived and hands them over as one event, as a
+/// lagging reader is handed everything the kernel buffered; a pause before the
+/// threshold stalls the burst, since pause and resume still act on the real
+/// subscription.
 class _GatedSocket implements Socket {
   final Socket _socket;
   Completer<void>? _flushGate;
   final flushStarted = Completer<void>();
   final inputPaused = Completer<void>();
+
+  /// The resume that follows the gated pause, not the one that attaches the
+  /// data listener.
+  final inputResumed = Completer<void>();
   _GatedSocket(this._socket);
+
+  int? _burst;
+  final _burstBuffer = BytesBuilder(copy: false);
+
+  /// How long the one burst event was.
+  int burstDelivered = 0;
+
+  /// Delivers what arrives next as one event once [bytes] of it have, the way
+  /// a lagging reader is handed everything the kernel had buffered.
+  void burstInput(int bytes) => _burst = bytes;
+
+  /// The kernel delivers what it buffered before an EOF; so does the burst.
+  void _deliverHeld(void Function(Uint8List)? onData) {
+    if (_burst == null || _burstBuffer.isEmpty || onData == null) return;
+    _burst = null;
+    final held = _burstBuffer.takeBytes();
+    burstDelivered = held.length;
+    onData(held);
+  }
 
   void blockFlush() => _flushGate = Completer<void>();
   void releaseFlush() {
@@ -291,9 +367,39 @@ class _GatedSocket implements Socket {
 
   @override
   StreamSubscription<Uint8List> listen(void Function(Uint8List)? onData, {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      _ObservedSubscription(_socket.listen(onData, onError: onError, onDone: onDone, cancelOnError: cancelOnError), () {
-        if (_flushGate != null && !inputPaused.isCompleted) inputPaused.complete();
-      });
+      _ObservedSubscription(
+        _socket.listen(
+          onData == null
+              ? null
+              : (bytes) {
+                  final burst = _burst;
+                  if (burst == null) {
+                    onData(bytes);
+                    return;
+                  }
+                  _burstBuffer.add(bytes);
+                  if (_burstBuffer.length < burst) return;
+                  _burst = null;
+                  final whole = _burstBuffer.takeBytes();
+                  burstDelivered = whole.length;
+                  onData(whole);
+                },
+          onError: onError,
+          onDone: onDone == null
+              ? null
+              : () {
+                  _deliverHeld(onData);
+                  onDone();
+                },
+          cancelOnError: cancelOnError,
+        ),
+        () {
+          if (_flushGate != null && !inputPaused.isCompleted) inputPaused.complete();
+        },
+        () {
+          if (inputPaused.isCompleted && !inputResumed.isCompleted) inputResumed.complete();
+        },
+      );
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -301,7 +407,8 @@ class _GatedSocket implements Socket {
 class _ObservedSubscription implements StreamSubscription<Uint8List> {
   final StreamSubscription<Uint8List> _subscription;
   final void Function() _onPause;
-  _ObservedSubscription(this._subscription, this._onPause);
+  final void Function() _onResume;
+  _ObservedSubscription(this._subscription, this._onPause, this._onResume);
   @override
   void pause([Future<void>? resumeSignal]) {
     _subscription.pause(resumeSignal);
@@ -309,7 +416,11 @@ class _ObservedSubscription implements StreamSubscription<Uint8List> {
   }
 
   @override
-  void resume() => _subscription.resume();
+  void resume() {
+    _subscription.resume();
+    _onResume();
+  }
+
   @override
   bool get isPaused => _subscription.isPaused;
   @override

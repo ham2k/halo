@@ -115,7 +115,13 @@ class PskTlsConnection {
 
   void _receive(Uint8List bytes) {
     if (_disposed) return;
-    if (bytes.length > _inputLimit - _inputBytes) {
+    // An event is as large as the kernel had buffered — Dart reads all it can
+    // — and its bytes are allocated by then, so refusing the event that carries
+    // the queue past its limit turns the backpressure the pause is about to
+    // apply into a dropped connection. The bound is for a pause that does not
+    // hold: an event arriving onto a queue already at its limit, which the
+    // resume below the low-water mark never allows.
+    if (_inputBytes >= _inputLimit) {
       _finish(const PskTlsException('bufferLimit'));
       return;
     }
