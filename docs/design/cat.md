@@ -150,6 +150,9 @@ value, and is **still passed to the validator on submit**. So the editor resolve
 the form's `transport` value and asks only that one — otherwise the IC-705's serial port, required
 and invisible, would refuse to save a perfectly good WiFi radio. The upside of the same contract is
 why it is worth it: switching transport and back keeps what was typed, with no state to thread.
+A driver field that declares a `visibleWhen` of its own (a rotator's elevation fields, shown only
+for an az/el rotator) keeps it: the editor passes both, as a list FormRenderer reads as "all of",
+rather than replacing the driver's with its transport condition.
 
 The **protocol codec stays one shared pure file per protocol family**. Duplicating glue is cheap;
 duplicating frame parsing duplicates parsing bugs. Polo's evidence is unambiguous — its pure codec
@@ -3008,6 +3011,125 @@ app knows which of its antenna nodes that is, but nothing reads it —
 join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
 are the next step and are what § Where this is going means by "ports,
 port-to-port connections".
+
+## Rotators
+
+The second kind of equipment in this layer that is not a radio, and it took
+no new split: `RotatorSession` sits beside `AntennaSwitchSession` (turn to a
+heading, stop), and the heading comes up through a sink of its own,
+`RotatorSink`, as the tuner's does — so the many fake sinks with no use for
+a rotator did not grow a method. `EquipmentState.rotator` holds it, live and
+never persisted, for the switch's reason: a remembered heading is a claim
+about a mast nobody has asked in a while.
+
+**Every heading report re-arms the silence watch, changed or not.** A rotator
+that is not turning answers every poll with the same azimuth and says nothing
+else, so a watch fed only by changes would mark an idle rotator Not
+Responding — the switch's lesson, learned before it could happen here.
+
+**The controls live in the editor, behind `EXP ROTATOR`.** The equipment row
+stays the same shape as every other node's, as with a switch: a saved
+rotator's editor grows a Current State section whose band carries the
+heading ("Current State: 45° azimuth, 30° elevation", "az"/"el" on a phone;
+"Current State: disconnected") and the station rows' plug toggle, over one row holding a target azimuth (and
+elevation, on an az/el rotator), Turn and Stop. Unlike the switch's section
+it shows while disconnected, its controls greyed: the pane is where a rotator
+is turned, so it is where it is connected, and Connect reaches the rotator as
+saved rather than as edited. The editor also sets the address beside what
+completes it, host beside port or serial port beside speed. Unlike the
+switch's pickers, the readout follows the rotator while the pane is open —
+the editor republishes its elements every second for a rotator (still
+enumerating serial ports at the usual three) — because a heading is mostly
+watched while it moves. The target boxes are a command's arguments: their
+keys are stripped before the record is stored, the Save validator skips them,
+and Turn checks them itself, so a heading typed and never sent cannot block a
+rename. A turn the limits held short says where it is going instead, since
+the box still says what was typed. A stale rotator reads "not responding",
+its heading withheld and Turn greyed; a driver problem (the GS-232's refusal)
+takes the place of "Waiting for the controller…", which it would otherwise
+say for good.
+
+**Everything above the session speaks true headings.** A node's offsets
+(`rotator_config.dart`, in the editor beside the address) are what to add to
+the controller's degrees when its zero is not true north; its limits, under
+Advanced, are in the controller's own degrees, since they are its end stops.
+The session converts both ways: a reading comes up offset, and a turn goes
+down with the offset taken off and fitted inside the limits — with overlap
+(a maximum past 360) the nearer of the two ways to a heading from the last
+reading, and past the limits the nearer limit. `rotateTo` returns the true
+heading it actually turns to, and that is the target CatService holds: a
+target of 300 on a mast that stops at 270 would never be arrived at. The poll
+interval is the shared poll field's key, bounds and blank rule
+(`poll_config.dart`), in a rotator's words.
+
+**The target is state, and it ends at the heading.** `rotateTo` records
+`EquipmentState.rotatorTarget`, a position on every axis the turn named, so
+the editor's Turn and the panel's tap draw the same turn; it clears on Stop,
+on a disconnect (the state resets), and when a report comes within
+`rotatorArrivedWithin` (3°) of it on each of those axes — a controller coasts
+to a stop a degree or two short and reports whole degrees, so a target held
+until hit exactly could be held for good, and one judged on azimuth alone
+ends a turn in elevation alone at its first poll. It also clears after
+`rotatorStalledAfterReadings` (5) readings in a row find the mast where the
+last one left it: a GS-232 says nothing when it is stopped at its own panel or
+meets a stop of its own, and the map would otherwise show a turn in progress
+until Stop is pressed in the app. Counted in readings, not seconds, so a slow
+poll interval is not taken for a stall. A heading changed at the controller's
+own knob sets none, and is not drawn as a turn.
+
+**The Rotator panel** (`views/operation/rotator/`, also behind the
+experiment) ports red-ham-toolkit's Node-RED rotator widget without its zoom:
+an azimuthal equidistant map centred on the station — the one projection on
+which every great circle from the centre is a straight radius, so the beam is
+a radius and a tap's angle IS the heading to send. It shows the heading with a
+beam-width wedge, the target while turning, the grayline, and the station in
+the call field (snapped to its exact heading when tapped near), in the
+Operation and Chase views alike. The centre is the panel's own location if
+set — a grid or a `lat, lon` pair, read as the Weather panel reads one —
+else the operation's coordinate rather than its grid, since every heading is
+measured from it (locations.md); with neither it is a bare compass, still
+true and still tappable. A location the panel names and cannot read is said
+so, never replaced by the operation's: the map would be right and every
+bearing on it wrong. A stale rotator reads "not responding" and turns
+nothing, and the pane shows a failed connect and a driver problem under the
+map. It rebuilds for its own rotator's state only, not for each reading from
+a live radio. The world is Natural Earth's 1:110m,
+bundled as `assets/geo/world-110m.json` by `scripts/world-outlines.py`. Land
+and night are a raster asking each pixel where on Earth it is, because the
+projection's rim is a single point — the antipode — and a polygon round it
+projects inside out (New Zealand seen from Spain); only the outlines are
+lines, broken near the antipode.
+
+### Yaesu GS-232A
+
+`gs232_codec.dart` and `gs232_driver.dart`. From the GS-232A manual, not from
+a capture — no rotator has been on the bench. The protocol is also what most
+third-party controllers speak (K3NG, ERC, PstRotator's serial side), which is
+why the model is the one an operator with any of them picks.
+
+- **It never speaks unasked.** No echo, no reply to a set command, and a turn
+  from the front panel is reported by nothing — so the session polls, `C` or
+  `C2`, every second (`gs232PollInterval`), and that poll is the only way the
+  heading is ever read.
+- **Two dialects answer the same query.** A GS-232A says `+0123` and
+  `+0123+0045`; a GS-232B, and the emulators built after it, say `AZ=123` and
+  `AZ=123  EL=045`. The parser takes either, so nothing else depends on which
+  one a controller speaks.
+- **Angles are three digits, the terminator a bare CR.** `M5` is not `M005`
+  to the controller, and a CRLF leaves the LF to prefix the next command.
+- **There is no elevation-only turn.** `W` always carries an azimuth too, so
+  a heading with no elevation is sent as `M`, which leaves the elevation where
+  it is — sent as `W` it would have to invent one.
+- **Which axes the rotator turns is the operator's to say** (`rotatorAxes`).
+  An az-only rotator on an az/el interface reports an elevation from its
+  unconnected input, so an az-only node drops whatever elevation arrives.
+- **`?>` is a problem, not an error.** The controller is answering — set to
+  another protocol, or asked `C2` on an az-only interface — and a reconnect
+  cannot change that. It is reported once and cleared by the next position.
+
+Reached over its own serial port (9600 prefilled; the interface's DIP
+switches go from 150 to 9600) or over the network through a serial-to-TCP
+bridge, which speaks the same bytes and has no standard port to prefill.
 
 ## Tuner, passband and the radio's own antenna ports
 

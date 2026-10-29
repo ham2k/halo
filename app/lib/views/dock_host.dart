@@ -18,7 +18,7 @@ import 'dart:math' as math;
 import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:halo_core/halo_core.dart' show HookCategories;
+import 'package:halo_core/halo_core.dart' show GridLocation, HookCategories, asQsonString, locationForQsoInfo, locationFromGuess;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -46,6 +46,7 @@ import 'operation/solar/solar_panel.dart';
 import 'operation/weather/weather_panel.dart';
 import 'operation/radio/radio_panel.dart';
 import 'operation/remote_screen/remote_screen_panel.dart';
+import 'operation/rotator/rotator_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
 import 'dock_layouts/layout_file.dart';
@@ -1436,17 +1437,26 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     );
   }
 
-  /// Clock, Weather, Solar, Web Site, Radio and Remote Screen: the native
+  /// Clock, Weather, Solar, Web Site, Radio, Rotator and Remote Screen: the native
   /// panels every view offers (docs/design/layouts.md), built here once so a
   /// change to one
   /// of them doesn't have to reach every view that hosts a dock. See
   /// [registerSharedDashboardPanels] for their catalog entry — this only
   /// builds the widget for whatever placement [inLayout] holds.
   ///
-  /// [operationGrid] and [isEnteringQso] are the two things only an operation
-  /// has: null outside the Operation view, which leaves Weather to its own
-  /// configured location and Web Site to reload strictly on schedule.
-  Map<String, Widget> sharedDashboardPanes(List<String> inLayout, {String? operationGrid, bool Function()? isEnteringQso}) => {
+  /// [operationGrid], [operationLocation], [isEnteringQso] and [callInfo]
+  /// are what only an operation has: null outside one, which leaves Weather
+  /// to its own configured location, Web Site to reload strictly on
+  /// schedule, and Rotator with no centre but its own and no station to
+  /// mark. Rotator takes the operation's [operationLocation] rather than its
+  /// grid: it measures headings from it (docs/design/locations.md).
+  Map<String, Widget> sharedDashboardPanes(
+    List<String> inLayout, {
+    String? operationGrid,
+    GridLocation? operationLocation,
+    bool Function()? isEnteringQso,
+    CallInfoData? callInfo,
+  }) => {
     for (final id in inLayout)
       if (PanelDefinition.descriptorIdOf(id) == clockPanelId)
         id: ClockPanel(key: ValueKey('panel-$id'), panelId: id, panels: dockServices.panels, onTitle: (title) => onPanelTitle(id, title))
@@ -1474,6 +1484,15 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         )
       else if (PanelDefinition.descriptorIdOf(id) == radioPanelId)
         id: RadioPanel(key: ValueKey('panel-$id'), panelId: id, services: dockServices, onTitle: (title) => onPanelTitle(id, title))
+      else if (PanelDefinition.descriptorIdOf(id) == rotatorPanelId)
+        id: RotatorPanel(
+          key: ValueKey('panel-$id'),
+          panelId: id,
+          services: dockServices,
+          operationLocation: operationLocation,
+          dx: _callInfoLocation(callInfo),
+          onTitle: (title) => onPanelTitle(id, title),
+        )
       else if (PanelDefinition.descriptorIdOf(id) == remoteScreenPanelId)
         id: Builder(
           builder: (paneContext) => RemoteScreenPanel(
@@ -1492,7 +1511,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         ),
   };
 
-  /// Clock, Weather, Solar, Web Site, Radio and Remote Screen's catalog
+  /// Clock, Weather, Solar, Web Site, Radio, Rotator and Remote Screen's catalog
   /// entries — see
   /// [sharedDashboardPanes] for the widgets. Every view that hosts a dock
   /// calls this from its own `_registerNativePanels`: [PanelService.registerNative]
@@ -1706,6 +1725,75 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         ],
       ),
     );
+    // Behind the rotator experiment, with the equipment it shows — the
+    // remote screen's registration below says what a saved arrangement
+    // holding one gets with the experiment off.
+    if (dockServices.settings.experimentEnabled('rotator') /* stored key, see experiments.yaml */ ) {
+      final rotators = [
+        for (final node in cat.nodes)
+          if (cat.typeFor(node)?.category == kCategoryRotator) node,
+      ];
+      service.registerNative(
+        PanelDefinition(
+          id: rotatorPanelId,
+          title: t.tabs.rotator,
+          description: t.layout.panels.rotatorDescription,
+          icon: 'compass-outline',
+          source: PanelSource.native,
+          views: sharedViews,
+          // One per rotator, and independent placements across views, as
+          // Radio.
+          multiple: true,
+          minWidth: 2,
+          minHeight: 2,
+          formFields: [
+            {
+              'type': 'field',
+              'key': rotatorNodeKey,
+              'fieldType': 'select',
+              'label': t.layout.panels.rotatorRotator,
+              'value': rotatorNodeAuto,
+              'options': [
+                {
+                  'label': rotators.isEmpty ? t.layout.panels.rotatorAutoNone : t.layout.panels.rotatorAutoNamed(name: cat.displayNameFor(rotators.first)),
+                  'value': rotatorNodeAuto,
+                },
+                for (final node in rotators) {'label': cat.displayNameFor(node), 'value': node.uuid},
+              ],
+            },
+            {
+              'type': 'field',
+              'key': rotatorBeamWidthKey,
+              'fieldType': 'number',
+              'label': t.layout.panels.rotatorBeamWidth,
+              'description': t.layout.panels.rotatorBeamWidthDescription,
+              'value': rotatorBeamWidthDefault,
+            },
+            {
+              'type': 'field',
+              'key': rotatorLocationKey,
+              'fieldType': 'text',
+              'label': t.layout.panels.rotatorLocation,
+              'description': t.layout.panels.rotatorLocationDescription,
+              'value': '',
+            },
+            {
+              'type': 'field',
+              'key': rotatorThemeKey,
+              'fieldType': 'select',
+              'label': t.layout.panels.rotatorTheme,
+              'value': rotatorThemeColor,
+              'options': [
+                {'label': t.layout.panels.rotatorThemeColor, 'value': rotatorThemeColor},
+                {'label': t.layout.panels.rotatorThemeGray, 'value': rotatorThemeGray},
+                {'label': t.layout.panels.rotatorThemeMuted, 'value': rotatorThemeMuted},
+              ],
+            },
+            {'type': 'field', 'key': rotatorGraylineKey, 'fieldType': 'checkbox', 'label': t.layout.panels.rotatorGrayline, 'value': true},
+          ],
+        ),
+      );
+    }
     // Registered only with the experiment on. A saved arrangement holding one
     // of these then falls to the missing-panel placeholder rather than
     // vanishing, which is the same deal an uninstalled extension's panel
@@ -1940,3 +2028,14 @@ class _DockClassState {
     viewOptionsSnapshot = null;
   }
 }
+
+/// Where the station in the call field is, as well as its lookup can say.
+GridLocation? _callInfoLocation(CallInfoData? info) => switch (info?.guess) {
+  final guess? => locationForQsoInfo(
+    exact: locationFromGuess(guess),
+    grid: asQsonString(guess['grid']),
+    entityPrefix: asQsonString(guess['entityPrefix']),
+    state: asQsonString(guess['state']),
+  ),
+  null => null,
+};

@@ -353,6 +353,20 @@ extension _Connection on CatService {
         if (runtime.connection != connection || stateFor(uuid).spectrumProblem == message) return;
         _setState(uuid, stateFor(uuid).copyWith(spectrumProblem: message, clearSpectrumProblem: message == null));
       },
+      onRotator: (position) {
+        if (runtime.connection != connection) return;
+        // Every answer is life, changed or not: a rotator that is not
+        // turning reports the same heading every poll, and that is the only
+        // thing it ever says — see onSwitchState.
+        _noteAlive(uuid, runtime);
+        final state = stateFor(uuid);
+        final moved = state.rotator != position;
+        runtime.rotatorStillReadings = moved ? 0 : runtime.rotatorStillReadings + 1;
+        final target = state.rotatorTarget;
+        final done = target != null && (rotatorArrived(position, target) || runtime.rotatorStillReadings >= rotatorStalledAfterReadings);
+        if (!moved && !done) return;
+        _setState(uuid, state.copyWith(rotator: position, clearRotatorTarget: done));
+      },
       onTuner: (status) {
         if (runtime.connection != connection || stateFor(uuid).tuner == status) return;
         _setState(uuid, stateFor(uuid).copyWith(tuner: status, clearTuner: status == null));

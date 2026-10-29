@@ -305,6 +305,8 @@ void main() {
       'winkeyer-serial',
       'antenna-genius-tcp',
       'sierra-coax-serial',
+      'gs232a-serial',
+      'gs232a-tcp',
       'antenna-none',
       'key-none',
       'rtl-sdr-rtltcp',

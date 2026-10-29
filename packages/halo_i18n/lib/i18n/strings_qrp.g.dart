@@ -1653,6 +1653,7 @@ class _Translations$operation$tabs$qrp extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'remote screen';
 	@override String get solar => 'solar';
 	@override String get radio => 'radio';
+	@override String get rotator => 'rotator';
 	@override String get summaries => 'operation summaries';
 }
 
@@ -2934,6 +2935,42 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get switchCurrentStateDescription => 'which antenna each radio port is on right now. changes take effect immediately.';
 	@override String get switchWiringHeader => 'wiring';
 	@override String get switchPortInhibitedHint => 'transmit inhibited';
+	@override String get rotatorAxes => 'axes';
+	@override String get rotatorAxesDescription => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).';
+	@override String get rotatorAxesAzimuth => 'azimuth only';
+	@override String get rotatorAxesAzimuthElevation => 'azimuth and elevation';
+	@override String get rotatorAzimuthOffset => 'azimuth offset';
+	@override String get rotatorAzimuthOffsetDescription => 'degrees to add to what the controller reads, when its zero is not true north. turns are corrected to match.';
+	@override String get rotatorElevationOffset => 'elevation offset';
+	@override String get rotatorAzimuthMin => 'lowest azimuth';
+	@override String get rotatorAzimuthMax => 'highest azimuth';
+	@override String get rotatorAzimuthMaxDescription => 'in the controller\'s own degrees. above 360 for a rotator with overlap, which then takes the shorter turn.';
+	@override String get rotatorElevationMin => 'lowest elevation';
+	@override String get rotatorElevationMax => 'highest elevation';
+	@override String get rotatorElevationMaxDescription => 'in the controller\'s own degrees. above 90 for a rotator that flips over.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'whole degrees, ${min} to ${max}';
+	@override String get rotatorLimitsInvalid => 'the lowest limit has to be below the highest';
+	@override String get rotatorPollInterval => 'polling interval (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.';
+	@override String get rotatorAxesRequired => 'choose which axes the rotator turns';
+	@override String get rotatorRefused => 'the controller refused a command. check that it is set to gs-232 mode.';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'current state: ${position}';
+	@override String get rotatorDisconnected => 'disconnected';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimuth';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° elevation';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'waiting for the controller to report its position…';
+	@override String get rotatorNotResponding => 'not responding';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'turning to ${heading}, as far as this rotator\'s limits allow';
+	@override String get rotatorTargetAzimuth => 'turn to azimuth';
+	@override String get rotatorTargetAzimuthShort => 'turn to az';
+	@override String get rotatorTargetElevation => 'turn to elevation';
+	@override String get rotatorTargetElevationShort => 'turn to el';
+	@override String get rotatorAzimuthInvalid => 'must be 0 to 360';
+	@override String get rotatorElevationInvalid => 'must be 0 to 180';
+	@override String get rotatorTurn => 'turn';
+	@override String get rotatorStop => 'stop';
 	@override String get configUnreadable => 'this radio\'s saved settings could not be read. open its settings and enter them again, or remove it and add it back.';
 	@override String get autoConnectHeld => 'halo stopped responding the last time it connected to this radio, so it did not connect on its own this time. press connect to try again.';
 }
@@ -3537,6 +3574,30 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get radioAlc => 'alc';
 	@override String get radioVolts => 'v';
 	@override String get radioSwrHigh => 'high swr';
+	@override String get rotatorDescription => 'where the antenna points, on a map centred on the station. tap the map to turn it.';
+	@override String get rotatorRotator => 'rotator';
+	@override String rotatorAutoNamed({required Object name}) => 'automatic — ${name}';
+	@override String get rotatorAutoNone => 'automatic — no rotator yet';
+	@override String get rotatorBeamWidth => 'beam width';
+	@override String get rotatorBeamWidthDescription => 'in degrees, drawn around the heading. 0 draws none.';
+	@override String get rotatorLocation => 'location';
+	@override String get rotatorLocationDescription => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.';
+	@override String get rotatorTheme => 'theme';
+	@override String get rotatorThemeColor => 'color';
+	@override String get rotatorThemeGray => 'gray';
+	@override String get rotatorThemeMuted => 'muted';
+	@override String get rotatorGrayline => 'show the grayline';
+	@override String get rotatorNoRotator => 'no rotator to show. pick one in this panel\'s settings, or add one under station configuration.';
+	@override String get rotatorNoLocation => 'no location to centre a map on. set one in this panel\'s settings.';
+	@override String get rotatorDisconnected => 'disconnected';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'not responding';
+	@override String get rotatorLocationInvalid => 'can\'t read the location in this panel\'s settings. use a grid square, or a latitude and longitude like 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'n';
+	@override String get rotatorEast => 'e';
+	@override String get rotatorSouth => 's';
+	@override String get rotatorWest => 'w';
 }
 
 // Path: operation.export.compactFileNames
@@ -4320,6 +4381,7 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get placeholderRadioNodeName => 'my radio';
 	@override String get antennaGenius => '4o3a antenna genius';
 	@override String get sierraCoax => 'sierra radio cx-1 coax switch';
+	@override String get gs232a => 'yaesu gs-232a rotator interface';
 	@override String get rtlSdr => 'rtl-sdr';
 	@override String get nesdr => 'nooelec nesdr';
 	@override String get sdrplay => 'sdrplay rsp';
@@ -4822,6 +4884,7 @@ extension on TranslationsQrp {
 			'operation.tabs.remoteScreen' => 'remote screen',
 			'operation.tabs.solar' => 'solar',
 			'operation.tabs.radio' => 'radio',
+			'operation.tabs.rotator' => 'rotator',
 			'operation.tabs.summaries' => 'operation summaries',
 			'operation.positions.nobodyYet' => 'no other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'pos: ${number}',
@@ -4956,9 +5019,9 @@ extension on TranslationsQrp {
 			'operation.layout.panelRenderRetry' => 'try again',
 			'operation.layout.panelActionFailed' => 'that panel action failed. try again.',
 			'operation.layout.panels.loggingDescription' => 'the log and the entry fields',
-			'operation.layout.panels.infoDescription' => 'what we know about the station being worked',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.infoDescription' => 'what we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'the operation\'s stats and scores, in the sections and order you pick',
@@ -5090,6 +5153,30 @@ extension on TranslationsQrp {
 			'operation.layout.panels.radioAlc' => 'alc',
 			'operation.layout.panels.radioVolts' => 'v',
 			'operation.layout.panels.radioSwrHigh' => 'high swr',
+			'operation.layout.panels.rotatorDescription' => 'where the antenna points, on a map centred on the station. tap the map to turn it.',
+			'operation.layout.panels.rotatorRotator' => 'rotator',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'automatic — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'automatic — no rotator yet',
+			'operation.layout.panels.rotatorBeamWidth' => 'beam width',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'in degrees, drawn around the heading. 0 draws none.',
+			'operation.layout.panels.rotatorLocation' => 'location',
+			'operation.layout.panels.rotatorLocationDescription' => 'a grid square, or a latitude and longitude, to centre the map on. blank uses the operation\'s location.',
+			'operation.layout.panels.rotatorTheme' => 'theme',
+			'operation.layout.panels.rotatorThemeColor' => 'color',
+			'operation.layout.panels.rotatorThemeGray' => 'gray',
+			'operation.layout.panels.rotatorThemeMuted' => 'muted',
+			'operation.layout.panels.rotatorGrayline' => 'show the grayline',
+			'operation.layout.panels.rotatorNoRotator' => 'no rotator to show. pick one in this panel\'s settings, or add one under station configuration.',
+			'operation.layout.panels.rotatorNoLocation' => 'no location to centre a map on. set one in this panel\'s settings.',
+			'operation.layout.panels.rotatorDisconnected' => 'disconnected',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'not responding',
+			'operation.layout.panels.rotatorLocationInvalid' => 'can\'t read the location in this panel\'s settings. use a grid square, or a latitude and longitude like 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'n',
+			'operation.layout.panels.rotatorEast' => 'e',
+			'operation.layout.panels.rotatorSouth' => 's',
+			'operation.layout.panels.rotatorWest' => 'w',
 			'operation.layout.htmlPanelUnsupported' => 'this panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'this panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'operation exports',
@@ -5446,6 +5533,8 @@ extension on TranslationsQrp {
 			'loggingControls.info.qsoCountOne' => '1 qso',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} qsos',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} q/h for last 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} q/h for last 100',
@@ -5471,8 +5560,6 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeInvalidCategory' => 'not workable',
 			'loggingControls.info.noticeOverTime' => 'time over',
 			'loggingControls.info.noticeWorkedBefore' => 'worked before',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'new park',
 			'loggingControls.info.noticeNewSection' => 'new section',
 			'loggingControls.info.noticeBonusStation' => 'bonus station!',
@@ -5960,6 +6047,8 @@ extension on TranslationsQrp {
 			'settings.privacy.title' => 'privacy',
 			'settings.privacy.shareAppData.title' => 'share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'helping us improve the app by sharing usage, configuration, crash and performance data',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => 'keeping app usage data private.\nthe ham2k team won\'t be able to detect crashes or other issues.',
 			'settings.privacy.shareOpData.title' => 'share operation data',
 			'settings.privacy.shareOpData.descriptionOn' => 'sharing some operation data publicly and with other users',
@@ -5985,8 +6074,6 @@ extension on TranslationsQrp {
 			'settings.peers.nearby' => 'nearby',
 			'settings.peers.connected' => 'connected',
 			'settings.peers.viaBluetooth' => 'via bluetooth',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.connecting' => 'connecting…',
 			'settings.peers.syncing' => 'syncing…',
 			'settings.peers.waitingForThem' => 'waiting for the other device',
@@ -6321,6 +6408,7 @@ extension on TranslationsQrp {
 			'settings.station.models.placeholderRadioNodeName' => 'my radio',
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
+			'settings.station.models.gs232a' => 'yaesu gs-232a rotator interface',
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
@@ -6473,6 +6561,8 @@ extension on TranslationsQrp {
 			'settings.station.whatToTrack' => 'what to track?',
 			'settings.station.trackFieldRig' => 'transceiver',
 			'settings.station.trackFieldPower' => 'power',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.watts' => 'watts',
 			'settings.station.trackFieldAntenna' => 'antenna',
 			'settings.station.trackFieldKey' => 'cw key',
@@ -6499,8 +6589,6 @@ extension on TranslationsQrp {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'reads the radio\'s power-output meter and high-swr flag while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'reads the radio\'s po, swr and alc meters while transmitting and prints the raw values to the log. for building the scale yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'meter reading interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'how often to read the radio\'s meters while it is transmitting. leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
@@ -6546,6 +6634,42 @@ extension on TranslationsQrp {
 			'settings.station.switchCurrentStateDescription' => 'which antenna each radio port is on right now. changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'wiring',
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
+			'settings.station.rotatorAxes' => 'axes',
+			'settings.station.rotatorAxesDescription' => 'whether the rotator turns in azimuth only, or in elevation too (a g-5500 or similar).',
+			'settings.station.rotatorAxesAzimuth' => 'azimuth only',
+			'settings.station.rotatorAxesAzimuthElevation' => 'azimuth and elevation',
+			'settings.station.rotatorAzimuthOffset' => 'azimuth offset',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'degrees to add to what the controller reads, when its zero is not true north. turns are corrected to match.',
+			'settings.station.rotatorElevationOffset' => 'elevation offset',
+			'settings.station.rotatorAzimuthMin' => 'lowest azimuth',
+			'settings.station.rotatorAzimuthMax' => 'highest azimuth',
+			'settings.station.rotatorAzimuthMaxDescription' => 'in the controller\'s own degrees. above 360 for a rotator with overlap, which then takes the shorter turn.',
+			'settings.station.rotatorElevationMin' => 'lowest elevation',
+			'settings.station.rotatorElevationMax' => 'highest elevation',
+			'settings.station.rotatorElevationMaxDescription' => 'in the controller\'s own degrees. above 90 for a rotator that flips over.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'whole degrees, ${min} to ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'the lowest limit has to be below the highest',
+			'settings.station.rotatorPollInterval' => 'polling interval (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'choose which axes the rotator turns',
+			'settings.station.rotatorRefused' => 'the controller refused a command. check that it is set to gs-232 mode.',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
+			'settings.station.rotatorDisconnected' => 'disconnected',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'waiting for the controller to report its position…',
+			'settings.station.rotatorNotResponding' => 'not responding',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'turning to ${heading}, as far as this rotator\'s limits allow',
+			'settings.station.rotatorTargetAzimuth' => 'turn to azimuth',
+			'settings.station.rotatorTargetAzimuthShort' => 'turn to az',
+			'settings.station.rotatorTargetElevation' => 'turn to elevation',
+			'settings.station.rotatorTargetElevationShort' => 'turn to el',
+			'settings.station.rotatorAzimuthInvalid' => 'must be 0 to 360',
+			'settings.station.rotatorElevationInvalid' => 'must be 0 to 180',
+			'settings.station.rotatorTurn' => 'turn',
+			'settings.station.rotatorStop' => 'stop',
 			'settings.station.configUnreadable' => 'this radio\'s saved settings could not be read. open its settings and enter them again, or remove it and add it back.',
 			'settings.station.autoConnectHeld' => 'halo stopped responding the last time it connected to this radio, so it did not connect on its own this time. press connect to try again.',
 			'settings.offlineData.title' => 'offline data',
@@ -6951,6 +7075,8 @@ extension on TranslationsQrp {
 			'switchAccounts.linkWithQrDescription' => 'scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'confirm with a code or an email link',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'enter the email address of the account you want this device to use.',
 			'switchAccounts.emailAddress' => 'email address',
 			'switchAccounts.linkAccount' => 'link account',
@@ -7013,8 +7139,6 @@ extension on TranslationsQrp {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'import anyway',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOffline' => 'internet: offline',
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',

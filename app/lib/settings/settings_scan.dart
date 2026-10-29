@@ -216,10 +216,13 @@ dynamic declaredSettingValue(Map<String, dynamic> element) {
 /// predicate `FormRenderer._isVisible` applies at render time, evaluated here
 /// against a group's own field values so the SET command can't offer a
 /// setting the settings screen would be hiding. `equals` may be a single
-/// value or a list meaning "any of"; naming a field that doesn't exist reads
-/// as null and so hides the element, matching the renderer.
-bool elementIsVisibleWhen(Map<String, dynamic> element, Map<String, dynamic> values) {
-  final when = element['visibleWhen'];
+/// value or a list meaning "any of", and a list of conditions must all hold;
+/// naming a field that doesn't exist reads as null and so hides the element,
+/// matching the renderer.
+bool elementIsVisibleWhen(Map<String, dynamic> element, Map<String, dynamic> values) => _conditionHolds(element['visibleWhen'], values);
+
+bool _conditionHolds(Object? when, Map<String, dynamic> values) {
+  if (when is List) return when.every((condition) => _conditionHolds(condition, values));
   if (when is! Map) return true;
   final actual = values[when['field']];
   final expected = when['equals'];

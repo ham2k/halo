@@ -3536,6 +3536,9 @@ class Translations$operation$tabs$en {
 	/// en: 'Radio'
 	String get radio => 'Radio';
 
+	/// en: 'Rotator'
+	String get rotator => 'Rotator';
+
 	/// en: 'Operation Summaries'
 	String get summaries => 'Operation Summaries';
 }
@@ -6574,6 +6577,114 @@ class Translations$settings$station$en {
 	/// en: 'transmit inhibited'
 	String get switchPortInhibitedHint => 'transmit inhibited';
 
+	/// en: 'Axes'
+	String get rotatorAxes => 'Axes';
+
+	/// en: 'Whether the rotator turns in azimuth only, or in elevation too (a G-5500 or similar).'
+	String get rotatorAxesDescription => 'Whether the rotator turns in azimuth only, or in elevation too (a G-5500 or similar).';
+
+	/// en: 'Azimuth only'
+	String get rotatorAxesAzimuth => 'Azimuth only';
+
+	/// en: 'Azimuth and elevation'
+	String get rotatorAxesAzimuthElevation => 'Azimuth and elevation';
+
+	/// en: 'Azimuth offset'
+	String get rotatorAzimuthOffset => 'Azimuth offset';
+
+	/// en: 'Degrees to add to what the controller reads, when its zero is not true north. Turns are corrected to match.'
+	String get rotatorAzimuthOffsetDescription => 'Degrees to add to what the controller reads, when its zero is not true north. Turns are corrected to match.';
+
+	/// en: 'Elevation offset'
+	String get rotatorElevationOffset => 'Elevation offset';
+
+	/// en: 'Lowest azimuth'
+	String get rotatorAzimuthMin => 'Lowest azimuth';
+
+	/// en: 'Highest azimuth'
+	String get rotatorAzimuthMax => 'Highest azimuth';
+
+	/// en: 'In the controller's own degrees. Above 360 for a rotator with overlap, which then takes the shorter turn.'
+	String get rotatorAzimuthMaxDescription => 'In the controller\'s own degrees. Above 360 for a rotator with overlap, which then takes the shorter turn.';
+
+	/// en: 'Lowest elevation'
+	String get rotatorElevationMin => 'Lowest elevation';
+
+	/// en: 'Highest elevation'
+	String get rotatorElevationMax => 'Highest elevation';
+
+	/// en: 'In the controller's own degrees. Above 90 for a rotator that flips over.'
+	String get rotatorElevationMaxDescription => 'In the controller\'s own degrees. Above 90 for a rotator that flips over.';
+
+	/// en: 'Whole degrees, ${min} to ${max}'
+	String rotatorDegreesInvalid({required Object min, required Object max}) => 'Whole degrees, ${min} to ${max}';
+
+	/// en: 'The lowest limit has to be below the highest'
+	String get rotatorLimitsInvalid => 'The lowest limit has to be below the highest';
+
+	/// en: 'Polling interval (ms)'
+	String get rotatorPollInterval => 'Polling interval (ms)';
+
+	/// en: 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.'
+	String rotatorPollIntervalDescription({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.';
+
+	/// en: 'Choose which axes the rotator turns'
+	String get rotatorAxesRequired => 'Choose which axes the rotator turns';
+
+	/// en: 'The controller refused a command. Check that it is set to GS-232 mode.'
+	String get rotatorRefused => 'The controller refused a command. Check that it is set to GS-232 mode.';
+
+	/// en: 'Current State: $position'
+	String rotatorCurrentStateHeader({required Object position}) => 'Current State: ${position}';
+
+	/// en: 'disconnected'
+	String get rotatorDisconnected => 'disconnected';
+
+	/// en: '$degrees° azimuth'
+	String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimuth';
+
+	/// en: '$degrees° az'
+	String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+
+	/// en: '$degrees° elevation'
+	String rotatorElevationReading({required Object degrees}) => '${degrees}° elevation';
+
+	/// en: '$degrees° el'
+	String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+
+	/// en: 'Waiting for the controller to report its position…'
+	String get rotatorNoReading => 'Waiting for the controller to report its position…';
+
+	/// en: 'not responding'
+	String get rotatorNotResponding => 'not responding';
+
+	/// en: 'Turning to ${heading}, as far as this rotator's limits allow'
+	String rotatorHeldAtLimit({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow';
+
+	/// en: 'Turn to azimuth'
+	String get rotatorTargetAzimuth => 'Turn to azimuth';
+
+	/// en: 'Turn to az'
+	String get rotatorTargetAzimuthShort => 'Turn to az';
+
+	/// en: 'Turn to elevation'
+	String get rotatorTargetElevation => 'Turn to elevation';
+
+	/// en: 'Turn to el'
+	String get rotatorTargetElevationShort => 'Turn to el';
+
+	/// en: 'Must be 0 to 360'
+	String get rotatorAzimuthInvalid => 'Must be 0 to 360';
+
+	/// en: 'Must be 0 to 180'
+	String get rotatorElevationInvalid => 'Must be 0 to 180';
+
+	/// en: 'Turn'
+	String get rotatorTurn => 'Turn';
+
+	/// en: 'Stop'
+	String get rotatorStop => 'Stop';
+
 	/// en: 'This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back.'
 	String get configUnreadable => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.';
 
@@ -7937,6 +8048,78 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'high SWR'
 	String get radioSwrHigh => 'high SWR';
+
+	/// en: 'Where the antenna points, on a map centred on the station. Tap the map to turn it.'
+	String get rotatorDescription => 'Where the antenna points, on a map centred on the station. Tap the map to turn it.';
+
+	/// en: 'Rotator'
+	String get rotatorRotator => 'Rotator';
+
+	/// en: 'Automatic — ${name}'
+	String rotatorAutoNamed({required Object name}) => 'Automatic — ${name}';
+
+	/// en: 'Automatic — no rotator yet'
+	String get rotatorAutoNone => 'Automatic — no rotator yet';
+
+	/// en: 'Beam width'
+	String get rotatorBeamWidth => 'Beam width';
+
+	/// en: 'In degrees, drawn around the heading. 0 draws none.'
+	String get rotatorBeamWidthDescription => 'In degrees, drawn around the heading. 0 draws none.';
+
+	/// en: 'Location'
+	String get rotatorLocation => 'Location';
+
+	/// en: 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation's location.'
+	String get rotatorLocationDescription => 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation\'s location.';
+
+	/// en: 'Theme'
+	String get rotatorTheme => 'Theme';
+
+	/// en: 'Color'
+	String get rotatorThemeColor => 'Color';
+
+	/// en: 'Gray'
+	String get rotatorThemeGray => 'Gray';
+
+	/// en: 'Muted'
+	String get rotatorThemeMuted => 'Muted';
+
+	/// en: 'Show the grayline'
+	String get rotatorGrayline => 'Show the grayline';
+
+	/// en: 'No rotator to show. Pick one in this panel's settings, or add one under Station Configuration.'
+	String get rotatorNoRotator => 'No rotator to show. Pick one in this panel\'s settings, or add one under Station Configuration.';
+
+	/// en: 'No location to centre a map on. Set one in this panel's settings.'
+	String get rotatorNoLocation => 'No location to centre a map on. Set one in this panel\'s settings.';
+
+	/// en: 'disconnected'
+	String get rotatorDisconnected => 'disconnected';
+
+	/// en: '—'
+	String get rotatorNoReading => '—';
+
+	/// en: 'not responding'
+	String get rotatorNotResponding => 'not responding';
+
+	/// en: 'Can't read the location in this panel's settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.'
+	String get rotatorLocationInvalid => 'Can\'t read the location in this panel\'s settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.';
+
+	/// en: '${degrees}° el'
+	String rotatorElevation({required Object degrees}) => '${degrees}° el';
+
+	/// en: 'N'
+	String get rotatorNorth => 'N';
+
+	/// en: 'E'
+	String get rotatorEast => 'E';
+
+	/// en: 'S'
+	String get rotatorSouth => 'S';
+
+	/// en: 'W'
+	String get rotatorWest => 'W';
 }
 
 // Path: operation.export.compactFileNames
@@ -9474,6 +9657,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Sierra Radio CX-1 Coax Switch'
 	String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
 
+	/// en: 'Yaesu GS-232A Rotator Interface'
+	String get gs232a => 'Yaesu GS-232A Rotator Interface';
+
 	/// en: 'RTL-SDR'
 	String get rtlSdr => 'RTL-SDR';
 
@@ -10097,6 +10283,7 @@ extension on Translations {
 			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
+			'operation.tabs.rotator' => 'Rotator',
 			'operation.tabs.summaries' => 'Operation Summaries',
 			'operation.positions.nobodyYet' => 'No other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
@@ -10231,9 +10418,9 @@ extension on Translations {
 			'operation.layout.panelRenderRetry' => 'Try again',
 			'operation.layout.panelActionFailed' => 'That panel action failed. Try again.',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
-			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
 			'operation.layout.panels.summariesDescription' => 'The operation\'s stats and scores, in the sections and order you pick',
@@ -10365,6 +10552,30 @@ extension on Translations {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'high SWR',
+			'operation.layout.panels.rotatorDescription' => 'Where the antenna points, on a map centred on the station. Tap the map to turn it.',
+			'operation.layout.panels.rotatorRotator' => 'Rotator',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatic — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Automatic — no rotator yet',
+			'operation.layout.panels.rotatorBeamWidth' => 'Beam width',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'In degrees, drawn around the heading. 0 draws none.',
+			'operation.layout.panels.rotatorLocation' => 'Location',
+			'operation.layout.panels.rotatorLocationDescription' => 'A grid square, or a latitude and longitude, to centre the map on. Blank uses the operation\'s location.',
+			'operation.layout.panels.rotatorTheme' => 'Theme',
+			'operation.layout.panels.rotatorThemeColor' => 'Color',
+			'operation.layout.panels.rotatorThemeGray' => 'Gray',
+			'operation.layout.panels.rotatorThemeMuted' => 'Muted',
+			'operation.layout.panels.rotatorGrayline' => 'Show the grayline',
+			'operation.layout.panels.rotatorNoRotator' => 'No rotator to show. Pick one in this panel\'s settings, or add one under Station Configuration.',
+			'operation.layout.panels.rotatorNoLocation' => 'No location to centre a map on. Set one in this panel\'s settings.',
+			'operation.layout.panels.rotatorDisconnected' => 'disconnected',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'not responding',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Can\'t read the location in this panel\'s settings. Use a grid square, or a latitude and longitude like 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'E',
+			'operation.layout.panels.rotatorSouth' => 'S',
+			'operation.layout.panels.rotatorWest' => 'W',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'This panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'Operation Exports',
@@ -10721,6 +10932,8 @@ extension on Translations {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/h for last 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h for last 100',
@@ -10746,8 +10959,6 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
 			'loggingControls.info.noticeOverTime' => 'Time Over',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'New Park',
 			'loggingControls.info.noticeNewSection' => 'New Section',
 			'loggingControls.info.noticeBonusStation' => 'Bonus Station!',
@@ -11235,6 +11446,8 @@ extension on Translations {
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'Helping us improve the app by sharing usage, configuration, crash and performance data',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => 'Keeping app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
 			'settings.privacy.shareOpData.title' => 'Share operation data',
 			'settings.privacy.shareOpData.descriptionOn' => 'Sharing some operation data publicly and with other users',
@@ -11260,8 +11473,6 @@ extension on Translations {
 			'settings.peers.nearby' => 'Nearby',
 			'settings.peers.connected' => 'Connected',
 			'settings.peers.viaBluetooth' => 'via Bluetooth',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.connecting' => 'Connecting…',
 			'settings.peers.syncing' => 'Syncing…',
 			'settings.peers.waitingForThem' => 'Waiting for the other device',
@@ -11596,6 +11807,7 @@ extension on Translations {
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
@@ -11748,6 +11960,8 @@ extension on Translations {
 			'settings.station.whatToTrack' => 'What to track?',
 			'settings.station.trackFieldRig' => 'Transceiver',
 			'settings.station.trackFieldPower' => 'Power',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
@@ -11774,8 +11988,6 @@ extension on Translations {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
@@ -11821,6 +12033,42 @@ extension on Translations {
 			'settings.station.switchCurrentStateDescription' => 'Which antenna each radio port is on right now. Changes take effect immediately.',
 			'settings.station.switchWiringHeader' => 'Wiring',
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
+			'settings.station.rotatorAxes' => 'Axes',
+			'settings.station.rotatorAxesDescription' => 'Whether the rotator turns in azimuth only, or in elevation too (a G-5500 or similar).',
+			'settings.station.rotatorAxesAzimuth' => 'Azimuth only',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Azimuth and elevation',
+			'settings.station.rotatorAzimuthOffset' => 'Azimuth offset',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Degrees to add to what the controller reads, when its zero is not true north. Turns are corrected to match.',
+			'settings.station.rotatorElevationOffset' => 'Elevation offset',
+			'settings.station.rotatorAzimuthMin' => 'Lowest azimuth',
+			'settings.station.rotatorAzimuthMax' => 'Highest azimuth',
+			'settings.station.rotatorAzimuthMaxDescription' => 'In the controller\'s own degrees. Above 360 for a rotator with overlap, which then takes the shorter turn.',
+			'settings.station.rotatorElevationMin' => 'Lowest elevation',
+			'settings.station.rotatorElevationMax' => 'Highest elevation',
+			'settings.station.rotatorElevationMaxDescription' => 'In the controller\'s own degrees. Above 90 for a rotator that flips over.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Whole degrees, ${min} to ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'The lowest limit has to be below the highest',
+			'settings.station.rotatorPollInterval' => 'Polling interval (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'Choose which axes the rotator turns',
+			'settings.station.rotatorRefused' => 'The controller refused a command. Check that it is set to GS-232 mode.',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Current State: ${position}',
+			'settings.station.rotatorDisconnected' => 'disconnected',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimuth',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevation',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'Waiting for the controller to report its position…',
+			'settings.station.rotatorNotResponding' => 'not responding',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Turning to ${heading}, as far as this rotator\'s limits allow',
+			'settings.station.rotatorTargetAzimuth' => 'Turn to azimuth',
+			'settings.station.rotatorTargetAzimuthShort' => 'Turn to az',
+			'settings.station.rotatorTargetElevation' => 'Turn to elevation',
+			'settings.station.rotatorTargetElevationShort' => 'Turn to el',
+			'settings.station.rotatorAzimuthInvalid' => 'Must be 0 to 360',
+			'settings.station.rotatorElevationInvalid' => 'Must be 0 to 180',
+			'settings.station.rotatorTurn' => 'Turn',
+			'settings.station.rotatorStop' => 'Stop',
 			'settings.station.configUnreadable' => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.',
 			'settings.station.autoConnectHeld' => 'HaLo stopped responding the last time it connected to this radio, so it did not connect on its own this time. Press Connect to try again.',
 			'settings.offlineData.title' => 'Offline Data',
@@ -12226,6 +12474,8 @@ extension on Translations {
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',
 			'switchAccounts.emailAddress' => 'Email address',
 			'switchAccounts.linkAccount' => 'Link account',
@@ -12288,8 +12538,6 @@ extension on Translations {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
 			'adifImport.importAnyway' => 'Import anyway',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',

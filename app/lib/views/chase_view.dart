@@ -751,7 +751,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                   ),
                   ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
                 },
-                extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
+                extraChildren: (inLayout) =>
+                    sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid, operationLocation: operation.location, callInfo: _callInfo),
               ),
             ),
           ),

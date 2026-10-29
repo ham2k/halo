@@ -25,6 +25,7 @@ import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
 import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
+import '../services/cat/drivers/rotator_config.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
 import '../services/peer/peer_remote_radios.dart';
@@ -51,6 +52,10 @@ const _storedSecretPlaceholder = '••••••••';
 /// The equipment editor's Advanced Settings fold: every field a transport or
 /// driver marks `'advanced': true` folds under it.
 const _advancedDisclosureKey = 'advanced';
+
+/// How often an open equipment editor looks again for serial ports — a
+/// cable plugged in while the pane is open.
+const _portRefresh = Duration(seconds: 3);
 
 /// The inset the rows of this panel take: the ambient `ListTileTheme`, which
 /// in the settings pane is the `SettingsList` one plus the pane's centring
@@ -178,6 +183,7 @@ class StationPanel extends StatelessWidget {
         showAntennaAndKey: services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
         showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
+        showRotator: services.settings.experimentEnabled('rotator') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -291,6 +297,11 @@ class StationPanel extends StatelessWidget {
 
     await prepareVariants();
     if (!context.mounted) return null;
+    // A connected rotator's editor refreshes faster, so its readout keeps up
+    // with a turn — but still enumerates ports only every [_portRefresh].
+    final refreshEvery = model.category == kCategoryRotator ? _rotatorReadoutRefresh : _portRefresh;
+    final ticksPerPrepare = _portRefresh.inMilliseconds ~/ refreshEvery.inMilliseconds;
+    var refreshTicks = 0;
 
     // Reused whenever an action changes what's available to pick (a newly
     // granted USB device, say) — configElements() reflects the transport's
@@ -324,8 +335,14 @@ class StationPanel extends StatelessWidget {
                   'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
                 // Only when there is a choice to hide behind: an unconditional
                 // visibleWhen on a single-transport radio would depend on a
-                // `transport` value no field sets.
-                if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
+                // `transport` value no field sets. Beside the driver's own
+                // condition, never over it: a rotator's elevation fields
+                // hide for an az-only rotator on either transport.
+                if (choosable)
+                  'visibleWhen': [
+                    ?element['visibleWhen'],
+                    {'field': 'transport', 'equals': candidate.transportKey},
+                  ],
               },
       ];
       // A pairing's troubleshooting notes (every note is collapsible
@@ -345,12 +362,23 @@ class StationPanel extends StatelessWidget {
               for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
             ],
           },
-        ...connection.where((element) => !isAdvanced(element) && !isNote(element)),
+        ...switch (connection.where((element) => !isAdvanced(element) && !isNote(element)).toList()) {
+          final main when model.category == kCategoryRotator => _addressRows(main),
+          final main => main,
+        },
         // Everything most operators never touch — the serial lines, the
         // poll and meter cadences — folded away after what they do, closed
         // until asked for. FormRenderer hides the fold whenever the chosen
         // pairing has nothing in it.
-        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings, 'elements': connection.where(isAdvanced).toList()},
+        {
+          'type': 'disclosure',
+          'key': _advancedDisclosureKey,
+          'title': st.advancedSettings,
+          'elements': switch (connection.where(isAdvanced).toList()) {
+            final advanced when model.category == kCategoryRotator => _addressRows(advanced),
+            final advanced => advanced,
+          },
+        },
         // Which of the operator's own enabled bands (Preferences → Bands)
         // this antenna covers. Lives here rather than in AntennaDriver's
         // own configElements(): a driver is pure data with no settings
@@ -376,6 +404,7 @@ class StationPanel extends StatelessWidget {
         // operator opening this dialog mid-operation is looking for the
         // former, and the latter is answered once and rarely revisited.
         if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+        if (model.category == kCategoryRotator) ..._rotatorCurrentState(context, node),
         // Which radio this receiver shows the spectrum for. Here rather than
         // in the driver for the antenna bands' reason: the choices are the
         // station's own radios, which a driver cannot see.
@@ -440,7 +469,7 @@ class StationPanel extends StatelessWidget {
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
       validator: (key, value, values) async =>
-          isSwitchPortRoutingFormKey(key) ? null : _cat.validateEquipmentEditorField(typeForState(values), node, key, value, values),
+          isSwitchPortRoutingFormKey(key) || isRotatorFormKey(key) ? null : _cat.validateEquipmentEditorField(typeForState(values), node, key, value, values),
       // A pairing's own field gets the companions its transport sets beside
       // it (a Bluetooth LE device's name). Routing a port is the one field
       // kind that acts as it is touched rather than on save: it is a command
@@ -462,6 +491,7 @@ class StationPanel extends StatelessWidget {
       // than importing halo_widgets, so this is the one place that
       // translates.
       onAction: (actionKey, method, state) async {
+        if (_runRotatorAction(context, node, actionKey, state) case final rotated?) return rotated;
         final actionResult = await typeForState(state).runAction(actionKey, method, state);
         if (actionResult == null) return null;
         return FormActionResult(
@@ -510,9 +540,9 @@ class StationPanel extends StatelessWidget {
       // result actually differs, so an untouched machine costs one
       // enumeration and no rebuild.
       refreshElements: (
-        every: const Duration(seconds: 3),
+        every: refreshEvery,
         build: () async {
-          await prepareVariants();
+          if (++refreshTicks % ticksPerPrepare == 0) await prepareVariants();
           return buildElements();
         },
       ),
@@ -553,7 +583,8 @@ class StationPanel extends StatelessWidget {
           // Storing one would put a stale claim about a relay into the
           // record, and the panel would then have two answers to which
           // antenna is live.
-          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key)) entry.key: entry.value,
+          // Nor are a rotator's target boxes: a heading is a command.
+          if (entry.key != 'name' && entry.key != 'transport' && !isSwitchPortRoutingFormKey(entry.key) && !isRotatorFormKey(entry.key)) entry.key: entry.value,
       },
     );
   }

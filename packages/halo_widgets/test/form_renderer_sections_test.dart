@@ -90,6 +90,31 @@ void main() {
       expect(_field('Power'), findsNothing);
       expect(_field('Placed'), findsOneWidget);
     });
+
+    // A category band starts a new top-level grouping: flush against the
+    // field above, it reads as that field's caption. A section band is one
+    // section of a continuous list, and keeps abutting.
+    testWidgets('a category band stands off the rows above it, and a section band does not (${sliver ? 'sliver' : 'box'})', (tester) async {
+      double gapAbove(Type band) => tester.getTopLeft(find.byType(band)).dy - tester.getBottomLeft(find.widgetWithText(TextField, 'Callsign')).dy;
+
+      await tester.pumpWidget(
+        _form([
+          _text('Callsign'),
+          {'type': 'header', 'style': 'section', 'title': 'Radio'},
+          _text('Power'),
+        ], sliver: sliver),
+      );
+      expect(gapAbove(SectionHeader), 0);
+
+      await tester.pumpWidget(
+        _form([
+          _text('Callsign'),
+          {'type': 'header', 'style': 'category', 'title': 'Current State'},
+          _text('Power'),
+        ], sliver: sliver),
+      );
+      expect(gapAbove(CategoryBand), Space.xl);
+    });
   }
 
   // A section header among a disclosure's members heads no rows of its own:

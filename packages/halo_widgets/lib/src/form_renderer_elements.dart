@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The elements that are not a value's own field: headers, dividers, markdown,
-// disclosures, links, the account row and actions.
+// disclosures, side-by-side rows, links, the account row and actions.
 
 part of 'form_renderer.dart';
 
@@ -15,8 +15,9 @@ mixin _Elements on State<FormRenderer> {
   int get _actionGeneration;
   set _actionGeneration(int value);
   EdgeInsetsGeometry get _rowContentPadding;
+  set _buildingRowMembers(bool value);
   Color? _devModeColor(Map<String, dynamic> el);
-  List<Map<String, dynamic>> _members(Map<String, dynamic> disclosure);
+  List<Map<String, dynamic>> _members(Map<String, dynamic> group);
   bool _visibleWhenHolds(Map<String, dynamic> el);
   List<Widget> _elementRows(ThemeData theme, List<Map<String, dynamic>> elements);
   void _applyFieldUpdates(Map<String, dynamic> updates);
@@ -67,7 +68,7 @@ mixin _Elements on State<FormRenderer> {
         if (subtitleWidget != null) ...[const SizedBox(height: Space.xs), subtitleWidget],
       ],
     );
-    if (el['style'] == 'category') return CategoryBand(title, color: devModeColor, subtitle: subtitleWidget);
+    if (el['style'] == 'category') return CategoryBand(title, color: devModeColor, subtitle: subtitleWidget, trailing: _bandAction(el));
     if (!isSection) return Padding(padding: _rowContentPadding, child: content);
     return folds
         ? _sectionHeader(el, title, color: devModeColor, subtitle: subtitleWidget)
@@ -140,6 +141,50 @@ mixin _Elements on State<FormRenderer> {
           const SizedBox(height: Space.xl),
           ..._elementRows(theme, _members(el).where(_visibleWhenHolds).toList()),
         ],
+      ),
+    );
+  }
+
+  /// `{type: 'row', elements}` — its visible members side by side, each
+  /// taking its `flex` (1 when absent) share of the width, or with `flex: 0`
+  /// its natural width — which is for a button: a text box has none, and
+  /// throws. Aligned on the text baseline, so a box and a button beside it
+  /// line up on what they say, and an error opening under one box does not
+  /// shift its neighbours.
+  ///
+  /// A button pads its label less here: at phone width, beside two boxes,
+  /// the default padding is room a box needs for its label.
+  Widget _buildRow(Map<String, dynamic> el, ThemeData theme) {
+    final members = _members(el).where(_visibleWhenHolds).toList();
+    final inset = _rowContentPadding;
+    final List<Widget> built;
+    _buildingRowMembers = true;
+    try {
+      built = [
+        for (final member in members) _elementRows(theme, [member]).single,
+      ];
+    } finally {
+      _buildingRowMembers = false;
+    }
+    return Padding(
+      padding: inset,
+      child: OutlinedButtonTheme(
+        data: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: Space.md)).merge(theme.outlinedButtonTheme.style),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            for (final (index, member) in members.indexed) ...[
+              if (index > 0) const SizedBox(width: Space.md),
+              switch (member['flex'] as int? ?? 1) {
+                0 => built[index],
+                final flex => Expanded(flex: flex, child: built[index]),
+              },
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -259,6 +304,36 @@ mixin _Elements on State<FormRenderer> {
     }
   }
 
+  /// A category band's `action` — an action element's own map — as a button
+  /// at the band's trailing edge: a control acting on the whole section,
+  /// opposite its title, the way [CategoryBand.trailing] describes. With an
+  /// `icon` it is the icon alone, its `label` the accessible name only.
+  Widget? _bandAction(Map<String, dynamic> band) => switch (band['action']) {
+    final Map<String, dynamic> action when action['icon'] is String => _iconActionButton(action),
+    final Map<String, dynamic> action => _actionButton(action),
+    _ => null,
+  };
+
+  /// An icon-only action, as the station rows draw their connection toggle.
+  /// `tone: 'connected'` draws the icon in [connectedGreen]; `busy: true`
+  /// shows the spinner the row does while a connection is changing, where
+  /// a tap could only queue a second change behind the first.
+  Widget _iconActionButton(Map<String, dynamic> el) {
+    final actionKey = el['key'] as String? ?? '';
+    if (_runningActions.contains(actionKey) || el['busy'] == true) return const ConnectionBusySpinner();
+    final theme = Theme.of(context);
+    return IconButton(
+      icon: Icon(
+        resolveIconName(el['icon'] as String),
+        // The app has no hover tooltips, so the accessible name is the only
+        // place this control is named.
+        semanticLabel: el['label'] as String?,
+        color: _devModeColor(el) ?? (el['tone'] == 'connected' ? connectedGreen(theme) : theme.colorScheme.onSurfaceVariant),
+      ),
+      onPressed: widget.onAction == null || el['disabled'] == true ? null : () => _runAction(actionKey, el['method'] as String? ?? ''),
+    );
+  }
+
   /// A `type: 'action'` element: a button that runs [_runAction].
   /// A bare button, so it takes the row inset here — a form that pads
   /// around its rows is not what holds the others in line (see the `inset`
@@ -285,18 +360,26 @@ mixin _Elements on State<FormRenderer> {
       );
     }
 
-    return Padding(
-      padding: _rowContentPadding,
-      child: OutlinedButton(
-        style: devModeColor == null
-            ? null
-            : OutlinedButton.styleFrom(
-                foregroundColor: devModeColor,
-                side: BorderSide(color: devModeColor),
-              ),
-        onPressed: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
-        child: isRunning ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(label),
-      ),
+    return Padding(padding: _rowContentPadding, child: _actionButton(el));
+  }
+
+  /// An action's bare button, with no inset of its own. `disabled: true`
+  /// greys it, for an action that does not apply right now but is still
+  /// where the operator will look for it.
+  Widget _actionButton(Map<String, dynamic> el) {
+    final actionKey = el['key'] as String? ?? '';
+    final method = el['method'] as String? ?? '';
+    final isRunning = _runningActions.contains(actionKey);
+    final devModeColor = _devModeColor(el);
+    return OutlinedButton(
+      style: devModeColor == null
+          ? null
+          : OutlinedButton.styleFrom(
+              foregroundColor: devModeColor,
+              side: BorderSide(color: devModeColor),
+            ),
+      onPressed: widget.onAction == null || isRunning || el['disabled'] == true ? null : () => _runAction(actionKey, method),
+      child: isRunning ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Text(el['label'] as String? ?? ''),
     );
   }
 }

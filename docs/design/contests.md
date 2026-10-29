@@ -1370,6 +1370,10 @@ interface FormField {
 }
 ```
 
+The app's own forms may also pass a LIST of these, all of which must hold —
+the station editor adds its transport condition to a driver field's own
+(cat.md). The extension-facing type stays the single condition above.
+
 **Only `build` filters.** `FormRenderer` passes `controller: _controllers[key]`
 with no lazy creation, so a field first initialized when it becomes visible would
 render against a null controller and silently drop everything typed into it — a

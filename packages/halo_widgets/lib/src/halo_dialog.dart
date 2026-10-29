@@ -246,15 +246,8 @@ Widget haloDialogFooterBand(
   List<Widget> actions = const [],
   Widget? tools,
 }) {
-  final theme = Theme.of(context);
   return Container(
-    decoration: BoxDecoration(
-      // Elevation-corrected for a modal pane's own Material, so a Done-only
-      // footer reads the same wherever it appears rather than drifting to a
-      // tint of its own.
-      color: haloDialogBandColorAt(context),
-      border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5))),
-    ),
+    decoration: haloDialogFooterBandDecoration(context),
     child: SafeArea(
       top: false,
       child: Padding(
@@ -264,6 +257,18 @@ Widget haloDialogFooterBand(
     ),
   );
 }
+
+/// The band under a footer pinned inside a modal pane, whose body is the
+/// plain surface: without it the footer sits on that surface with nothing
+/// setting it off from the rows scrolling above. Shared by
+/// [haloDialogFooterBand] and `showFormPane`, whose footer is a form's own
+/// actions row rather than slots.
+BoxDecoration haloDialogFooterBandDecoration(BuildContext context) => BoxDecoration(
+  // Elevation-corrected for a modal pane's own Material, so a footer reads
+  // the same wherever it appears rather than drifting to a tint of its own.
+  color: haloDialogBandColorAt(context),
+  border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5))),
+);
 
 class HaloDialog extends StatelessWidget {
   /// The header band's content — usually a plain `Text`; it picks up the

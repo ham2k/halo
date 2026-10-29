@@ -601,11 +601,6 @@ class EquipmentTile extends StatelessWidget {
   }
 }
 
-/// One green that reads on both a light and a dark surface. Spelled out
-/// because the scheme has no semantic "success" colour, and `primary` is the
-/// app's accent — it says nothing about being connected.
-Color connectedGreen(ThemeData theme) => theme.brightness == Brightness.dark ? Colors.green.shade600 : Colors.green.shade700;
-
 /// A rig's mode and frequency, as it reports them. The frequency holds its
 /// decimals while the dial turns ([FreqDecimalsHold]): this row is the app's
 /// live view of where the rig is, and must not change width at every step.
@@ -697,13 +692,7 @@ class StationConnectionToggle extends StatelessWidget {
     final st = context.t.settings.station;
     final theme = Theme.of(context);
 
-    if (busy) {
-      return const SizedBox(
-        width: 48,
-        height: 48,
-        child: Padding(padding: EdgeInsets.all(14), child: CircularProgressIndicator(strokeWidth: 2)),
-      );
-    }
+    if (busy) return const ConnectionBusySpinner();
 
     // No semantic "success" colour in the scheme, so it is spelled out here
     // rather than borrowed from `primary` (which is the app's accent and

@@ -50,6 +50,11 @@ const kCategoryAntennaSwitch = 'antennaSwitch';
 /// nothing tunes it but the app, and nothing logs from it.
 const kCategorySdr = 'sdr';
 
+/// An antenna rotator controller — a Yaesu GS-232A today. Its state is
+/// where the antenna points, which is live and never persisted: a
+/// remembered heading is a claim about a mast nobody has asked in a while.
+const kCategoryRotator = 'rotator';
+
 /// The config key naming the radio an SDR shows the spectrum for: a node's
 /// uuid, or [sdrRadioMain] (also what an absent value means).
 const sdrRadioConfigKey = 'sdrRadio';
@@ -548,6 +553,57 @@ enum TunerStatus {
   failed,
 }
 
+/// Where a rotator says its antenna points, in degrees — azimuth from true
+/// north as the controller is calibrated, elevation above the horizon.
+///
+/// Whole degrees, because that is all any controller here reports.
+@immutable
+class RotatorPosition {
+  final int azimuth;
+
+  /// Null for a rotator that turns in azimuth alone, and for an az/el
+  /// controller that has not said.
+  final int? elevation;
+
+  const RotatorPosition({required this.azimuth, this.elevation});
+
+  @override
+  bool operator ==(Object other) => other is RotatorPosition && other.azimuth == azimuth && other.elevation == elevation;
+
+  @override
+  int get hashCode => Object.hash(azimuth, elevation);
+
+  @override
+  String toString() => 'RotatorPosition($azimuth${elevation == null ? '' : '/$elevation'})';
+}
+
+/// How close, in degrees, a rotator's azimuth has to come to its target to
+/// count as there. Controllers coast and settle a degree or two short, and
+/// report whole degrees; a target held until it is hit exactly could be held
+/// forever.
+const int rotatorArrivedWithin = 3;
+
+/// How many readings in a row may show a rotator standing still, short of its
+/// target, before the target is let go: it was stopped at the controller's
+/// own panel, or met a stop of its own short of the node's limits. Counted
+/// in readings rather than seconds so a slow poll interval is not taken for
+/// a stall, and more than a brake's release delay at the default one.
+const int rotatorStalledAfterReadings = 5;
+
+/// Whether [position] is [target], on every axis the target names, to within
+/// [rotatorArrivedWithin]. An elevation the controller has not reported is
+/// taken as there: nothing will ever say otherwise.
+bool rotatorArrived(RotatorPosition position, RotatorPosition target) =>
+    rotatorHeadingGap(position.azimuth, target.azimuth) <= rotatorArrivedWithin &&
+    (target.elevation == null || position.elevation == null || (position.elevation! - target.elevation!).abs() <= rotatorArrivedWithin);
+
+/// How far apart two azimuths are, the short way round: 0–180. A controller
+/// with overlap reports past 360, which is the same heading as 360 less.
+int rotatorHeadingGap(int a, int b) {
+  final gap = (a - b) % 360;
+  return gap > 180 ? 360 - gap : gap;
+}
+
 /// Everything the UI needs to know about one node's connection.
 @immutable
 class EquipmentState {
@@ -644,6 +700,17 @@ class EquipmentState {
   /// a port names its antenna by key.
   final List<SwitchPort> switchPorts;
 
+  /// Where a rotator's antenna points — see [RotatorSink]. Null for
+  /// everything that is not a rotator, and for one that has not said yet.
+  final RotatorPosition? rotator;
+
+  /// Where a rotator was last told to turn to, in true degrees, until it gets
+  /// there ([rotatorArrived]), is stopped, or stands still short of it for
+  /// [rotatorStalledAfterReadings]. Null when it was not told, so a heading
+  /// changed at the controller's own knob is not drawn as a turn the app
+  /// asked for.
+  final RotatorPosition? rotatorTarget;
+
   /// What the radio calls its voice memories and how long each runs, for a
   /// radio that holds them itself — see [EquipmentSink.reportVoiceMemories].
   /// Null for every other radio, and for one that has not said yet; empty
@@ -674,6 +741,8 @@ class EquipmentState {
     this.channels = const [],
     this.switchAntennas = const [],
     this.switchPorts = const [],
+    this.rotator,
+    this.rotatorTarget,
     this.voiceMemories,
     this.spectrum,
     this.spectrumProblem,
@@ -701,6 +770,9 @@ class EquipmentState {
     List<EquipmentChannel>? channels,
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
+    RotatorPosition? rotator,
+    RotatorPosition? rotatorTarget,
+    bool clearRotatorTarget = false,
     List<VoiceMemory>? voiceMemories,
     SpectrumSettings? spectrum,
     bool clearSpectrum = false,
@@ -730,6 +802,8 @@ class EquipmentState {
     channels: channels ?? this.channels,
     switchAntennas: switchAntennas ?? this.switchAntennas,
     switchPorts: switchPorts ?? this.switchPorts,
+    rotator: rotator ?? this.rotator,
+    rotatorTarget: clearRotatorTarget ? null : (rotatorTarget ?? this.rotatorTarget),
     voiceMemories: voiceMemories ?? this.voiceMemories,
     spectrum: clearSpectrum ? null : (spectrum ?? this.spectrum),
     spectrumProblem: clearSpectrumProblem ? null : (spectrumProblem ?? this.spectrumProblem),

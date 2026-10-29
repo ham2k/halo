@@ -1653,6 +1653,7 @@ class _Translations$operation$tabs$cw extends Translations$operation$tabs$en {
 	@override String get remoteScreen => '·—· · —— ——— — · / ··· —·—· ·—· · · —·';
 	@override String get solar => '··· ——— ·—·· ·— ·—·';
 	@override String get radio => '·—· ·— —·· ·· ———';
+	@override String get rotator => '·—· ——— — ·— — ——— ·—·';
 	@override String get summaries => '——— ·——· · ·—· ·— — ·· ——— —· / ··· ··— —— —— ·— ·—· ·· · ···';
 }
 
@@ -2934,6 +2935,42 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => '·—— ···· ·· —·—· ···· / ·— —· — · —· —· ·— / · ·— —·—· ···· / ·—· ·— —·· ·· ——— / ·——· ——— ·—· — / ·· ··· / ——— —· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / —·—· ···· ·— —· ——· · ··· / — ·— —·— · / · ··—· ··—· · —·—· — / ·· —— —— · —·· ·· ·— — · ·—·· —·—— ·—·—·—';
 	@override String get switchWiringHeader => '·—— ·· ·—· ·· —· ——·';
 	@override String get switchPortInhibitedHint => '— ·—· ·— —· ··· —— ·· — / ·· —· ···· ·· —··· ·· — · —··';
+	@override String get rotatorAxes => '·— —··— · ···';
+	@override String get rotatorAxesDescription => '·—— ···· · — ···· · ·—· / — ···· · / ·—· ——— — ·— — ——— ·—· / — ··— ·—· —· ··· / ·· —· / ·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·—— ——··—— / ——— ·—· / ·· —· / · ·—·· · ···— ·— — ·· ——— —· / — ——— ——— / —·——· ·— / ——· —····— ····· ····· ————— ————— / ——— ·—· / ··· ·· —— ·· ·—·· ·— ·—· —·——·— ·—·—·—';
+	@override String get rotatorAxesAzimuth => '·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·——';
+	@override String get rotatorAxesAzimuthElevation => '·— ——·· ·· —— ··— — ···· / ·— —· —·· / · ·—·· · ···— ·— — ·· ——— —·';
+	@override String get rotatorAzimuthOffset => '·— ——·· ·· —— ··— — ···· / ——— ··—· ··—· ··· · —';
+	@override String get rotatorAzimuthOffsetDescription => '—·· · ——· ·—· · · ··· / — ——— / ·— —·· —·· / — ——— / ·—— ···· ·— — / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ·— —·· ··· ——··—— / ·—— ···· · —· / ·· — ··· / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·— / — ··— ·—· —· ··· / ·— ·—· · / —·—· ——— ·—· ·—· · —·—· — · —·· / — ——— / —— ·— — —·—· ···· ·—·—·—';
+	@override String get rotatorElevationOffset => '· ·—·· · ···— ·— — ·· ——— —· / ——— ··—· ··—· ··· · —';
+	@override String get rotatorAzimuthMin => '·—·· ——— ·—— · ··· — / ·— ——·· ·· —— ··— — ····';
+	@override String get rotatorAzimuthMax => '···· ·· ——· ···· · ··· — / ·— ——·· ·· —— ··— — ····';
+	@override String get rotatorAzimuthMaxDescription => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ···—— —···· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / ·—— ·· — ···· / ——— ···— · ·—· ·—·· ·— ·——· ——··—— / ·—— ···· ·· —·—· ···· / — ···· · —· / — ·— —·— · ··· / — ···· · / ··· ···· ——— ·—· — · ·—· / — ··— ·—· —· ·—·—·—';
+	@override String get rotatorElevationMin => '·—·· ——— ·—— · ··· — / · ·—·· · ···— ·— — ·· ——— —·';
+	@override String get rotatorElevationMax => '···· ·· ——· ···· · ··· — / · ·—·· · ···— ·— — ·· ——— —·';
+	@override String get rotatorElevationMaxDescription => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ————· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / — ···· ·— — / ··—· ·—·· ·· ·——· ··· / ——— ···— · ·—· ·—·—·—';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => '·—— ···· ——— ·—·· · / —·· · ——· ·—· · · ··· ——··—— / ${min} / — ——— / ${max}';
+	@override String get rotatorLimitsInvalid => '— ···· · / ·—·· ——— ·—— · ··· — / ·—·· ·· —— ·· — / ···· ·— ··· / — ——— / —··· · / —··· · ·—·· ——— ·—— / — ···· · / ···· ·· ——· ···· · ··· —';
+	@override String get rotatorPollInterval => '·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ——— — ·— — ——— ·—· / ·—— ···· · ·—· · / ·· — / ·——· ——— ·· —· — ··· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—';
+	@override String get rotatorAxesRequired => '—·—· ···· ——— ——— ··· · / ·—— ···· ·· —·—· ···· / ·— —··— · ··· / — ···· · / ·—· ——— — ·— — ——— ·—· / — ··— ·—· —· ···';
+	@override String get rotatorRefused => '— ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ··—· ··— ··· · —·· / ·— / —·—· ——— —— —— ·— —· —·· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — / ·· ··· / ··· · — / — ——— / ——· ··· —····— ··——— ···—— ··——— / —— ——— —·· · ·—·—·—';
+	@override String rotatorCurrentStateHeader({required Object position}) => '—·—· ··— ·—· ·—· · —· — / ··· — ·— — · ———··· / ${position}';
+	@override String get rotatorDisconnected => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees} ° / ·— ——·· ·· —— ··— — ····';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees} ° / ·— ——··';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees} ° / · ·—·· · ···— ·— — ·· ——— —·';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees} ° / · ·—··';
+	@override String get rotatorNoReading => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / — ——— / ·—· · ·——· ——— ·—· — / ·· — ··· / ·——· ——— ··· ·· — ·· ——— —· …';
+	@override String get rotatorNotResponding => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·';
+	@override String rotatorHeldAtLimit({required Object heading}) => '— ··— ·—· —· ·· —· ——· / — ——— / ${heading} ——··—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· ·· ··· / ·—· ——— — ·— — ——— ·—· ·————· ··· / ·—·· ·· —— ·· — ··· / ·— ·—·· ·—·· ——— ·——';
+	@override String get rotatorTargetAzimuth => '— ··— ·—· —· / — ——— / ·— ——·· ·· —— ··— — ····';
+	@override String get rotatorTargetAzimuthShort => '— ··— ·—· —· / — ——— / ·— ——··';
+	@override String get rotatorTargetElevation => '— ··— ·—· —· / — ——— / · ·—·· · ···— ·— — ·· ——— —·';
+	@override String get rotatorTargetElevationShort => '— ··— ·—· —· / — ——— / · ·—··';
+	@override String get rotatorAzimuthInvalid => '—— ··— ··· — / —··· · / ————— / — ——— / ···—— —···· —————';
+	@override String get rotatorElevationInvalid => '—— ··— ··· — / —··· · / ————— / — ——— / ·———— ———·· —————';
+	@override String get rotatorTurn => '— ··— ·—· —·';
+	@override String get rotatorStop => '··· — ——— ·——·';
 	@override String get configUnreadable => '— ···· ·· ··· / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·— ···— · —·· / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ·—·—·— / ——— ·——· · —· / ·· — ··· / ··· · — — ·· —· ——· ··· / ·— —· —·· / · —· — · ·—· / — ···· · —— / ·— ——· ·— ·· —· ——··—— / ——— ·—· / ·—· · —— ——— ···— · / ·· — / ·— —· —·· / ·— —·· —·· / ·· — / —··· ·— —·—· —·— ·—·—·—';
 	@override String get autoConnectHeld => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / —·—· ——— —· —· · —·—· — · —·· / — ——— / — ···· ·· ··· / ·—· ·— —·· ·· ——— ——··—— / ··· ——— / ·· — / —·· ·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / ——— —· / ·· — ··· / ——— ·—— —· / — ···· ·· ··· / — ·· —— · ·—·—·— / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / — ——— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—';
 }
@@ -3537,6 +3574,30 @@ class _Translations$operation$layout$panels$cw extends Translations$operation$la
 	@override String get radioAlc => '·— ·—·· —·—·';
 	@override String get radioVolts => '···—';
 	@override String get radioSwrHigh => '···· ·· ——· ···· / ··· ·—— ·—·';
+	@override String get rotatorDescription => '·—— ···· · ·—· · / — ···· · / ·— —· — · —· —· ·— / ·——· ——— ·· —· — ··· ——··—— / ——— —· / ·— / —— ·— ·——· / —·—· · —· — ·—· · —·· / ——— —· / — ···· · / ··· — ·— — ·· ——— —· ·—·—·— / — ·— ·——· / — ···· · / —— ·— ·——· / — ——— / — ··— ·—· —· / ·· — ·—·—·—';
+	@override String get rotatorRotator => '·—· ——— — ·— — ——— ·—·';
+	@override String rotatorAutoNamed({required Object name}) => '·— ··— — ——— —— ·— — ·· —·—· / — / ${name}';
+	@override String get rotatorAutoNone => '·— ··— — ——— —— ·— — ·· —·—· / — / —· ——— / ·—· ——— — ·— — ——— ·—· / —·—— · —';
+	@override String get rotatorBeamWidth => '—··· · ·— —— / ·—— ·· —·· — ····';
+	@override String get rotatorBeamWidthDescription => '·· —· / —·· · ——· ·—· · · ··· ——··—— / —·· ·—· ·— ·—— —· / ·— ·—· ——— ··— —· —·· / — ···· · / ···· · ·— —·· ·· —· ——· ·—·—·— / ————— / —·· ·—· ·— ·—— ··· / —· ——— —· · ·—·—·—';
+	@override String get rotatorLocation => '·—·· ——— —·—· ·— — ·· ——— —·';
+	@override String get rotatorLocationDescription => '·— / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · ——··—— / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ——··—— / — ——— / —·—· · —· — ·—· · / — ···· · / —— ·— ·——· / ——— —· ·—·—·— / —··· ·—·· ·— —· —·— / ··— ··· · ··· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—';
+	@override String get rotatorTheme => '— ···· · —— ·';
+	@override String get rotatorThemeColor => '—·—· ——— ·—·· ——— ·—·';
+	@override String get rotatorThemeGray => '——· ·—· ·— —·——';
+	@override String get rotatorThemeMuted => '—— ··— — · —··';
+	@override String get rotatorGrayline => '··· ···· ——— ·—— / — ···· · / ——· ·—· ·— —·—— ·—·· ·· —· ·';
+	@override String get rotatorNoRotator => '—· ——— / ·—· ——— — ·— — ——— ·—· / — ——— / ··· ···· ——— ·—— ·—·—·— / ·——· ·· —·—· —·— / ——— —· · / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ——··—— / ——— ·—· / ·— —·· —·· / ——— —· · / ··— —· —·· · ·—· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ·—·—·—';
+	@override String get rotatorNoLocation => '—· ——— / ·—·· ——— —·—· ·— — ·· ——— —· / — ——— / —·—· · —· — ·—· · / ·— / —— ·— ·——· / ——— —· ·—·—·— / ··· · — / ——— —· · / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·—';
+	@override String get rotatorDisconnected => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·';
+	@override String get rotatorLocationInvalid => '—·—· ·— —· ·————· — / ·—· · ·— —·· / — ···· · / ·—·· ——— —·—· ·— — ·· ——— —· / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·— / ··— ··· · / ·— / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · ——··—— / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · / ·—·· ·· —·— · / ····— ————— ·—·—·— ——··· ——··—— / —····— ——··· ····— ·—·—·— ————— ·—·—·—';
+	@override String rotatorElevation({required Object degrees}) => '${degrees} ° / · ·—··';
+	@override String get rotatorNorth => '—·';
+	@override String get rotatorEast => '·';
+	@override String get rotatorSouth => '···';
+	@override String get rotatorWest => '·——';
 }
 
 // Path: operation.export.compactFileNames
@@ -4320,6 +4381,7 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => '—— —·—— / ·—· ·— —·· ·· ———';
 	@override String get antennaGenius => '····— ——— ···—— ·— / ·— —· — · —· —· ·— / ——· · —· ·· ··— ···';
 	@override String get sierraCoax => '··· ·· · ·—· ·—· ·— / ·—· ·— —·· ·· ——— / —·—· —··— —····— ·———— / —·—· ——— ·— —··— / ··· ·—— ·· — —·—· ····';
+	@override String get gs232a => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·';
 	@override String get rtlSdr => '·—· — ·—·· —····— ··· —·· ·—·';
 	@override String get nesdr => '—· ——— ——— · ·—·· · —·—· / —· · ··· —·· ·—·';
 	@override String get sdrplay => '··· —·· ·—· ·——· ·—·· ·— —·—— / ·—· ··· ·——·';
@@ -4822,6 +4884,7 @@ extension on TranslationsCw {
 			'operation.tabs.remoteScreen' => '·—· · —— ——— — · / ··· —·—· ·—· · · —·',
 			'operation.tabs.solar' => '··· ——— ·—·· ·— ·—·',
 			'operation.tabs.radio' => '·—· ·— —·· ·· ———',
+			'operation.tabs.rotator' => '·—· ——— — ·— — ——— ·—·',
 			'operation.tabs.summaries' => '——— ·——· · ·—· ·— — ·· ——— —· / ··· ··— —— —— ·— ·—· ·· · ···',
 			'operation.positions.nobodyYet' => '—· ——— / ——— — ···· · ·—· / ——— ·——· · ·—· ·— — ·· —· ——· / ·——· ——— ··· ·· — ·· ——— —· ··· / ·— ·—· · / ··· ···· ·— ·—· ·· —· ——· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· / —·—— · — ·—·—·—',
 			'operation.positions.positionLabel' => ({required Object number}) => '·——· ——— ··· ———··· / ${number}',
@@ -4956,9 +5019,9 @@ extension on TranslationsCw {
 			'operation.layout.panelRenderRetry' => '— ·—· —·—— / ·— ——· ·— ·· —·',
 			'operation.layout.panelActionFailed' => '— ···· ·— — / ·——· ·— —· · ·—·· / ·— —·—· — ·· ——— —· / ··—· ·— ·· ·—·· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'operation.layout.panels.loggingDescription' => '— ···· · / ·—·· ——— ——· / ·— —· —·· / — ···· · / · —· — ·—· —·—— / ··—· ·· · ·—·· —·· ···',
-			'operation.layout.panels.infoDescription' => '·—— ···· ·— — / ·—— · / —·— —· ——— ·—— / ·— —··· ——— ··— — / — ···· · / ··· — ·— — ·· ——— —· / —··· · ·· —· ——· / ·—— ——— ·—· —·— · —··',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.infoDescription' => '·—— ···· ·— — / ·—— · / —·— —· ——— ·—— / ·— —··· ——— ··— — / — ···· · / ··· — ·— — ·· ——— —· / —··· · ·· —· ——· / ·—— ——— ·—· —·— · —··',
 			'operation.layout.panels.spotsDescription' => '··· ·——· ——— — ··· / ··—· ·—· ——— —— / — ···· · / —·—· ·—·· ··— ··· — · ·—· ··· / ·— —· —·· / ·— —·—· — ·· ···— ·· — —·—— / ·——· ·—· ——— ——· ·—· ·— —— ···',
 			'operation.layout.panels.mapDescription' => '·—— ···· · ·—· · / — ···· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—· ·',
 			'operation.layout.panels.summariesDescription' => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ··· / ·— —· —·· / ··· —·—· ——— ·—· · ··· ——··—— / ·· —· / — ···· · / ··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—· / —·—— ——— ··— / ·——· ·· —·—· —·—',
@@ -5090,6 +5153,30 @@ extension on TranslationsCw {
 			'operation.layout.panels.radioAlc' => '·— ·—·· —·—·',
 			'operation.layout.panels.radioVolts' => '···—',
 			'operation.layout.panels.radioSwrHigh' => '···· ·· ——· ···· / ··· ·—— ·—·',
+			'operation.layout.panels.rotatorDescription' => '·—— ···· · ·—· · / — ···· · / ·— —· — · —· —· ·— / ·——· ——— ·· —· — ··· ——··—— / ——— —· / ·— / —— ·— ·——· / —·—· · —· — ·—· · —·· / ——— —· / — ···· · / ··· — ·— — ·· ——— —· ·—·—·— / — ·— ·——· / — ···· · / —— ·— ·——· / — ——— / — ··— ·—· —· / ·· — ·—·—·—',
+			'operation.layout.panels.rotatorRotator' => '·—· ——— — ·— — ——— ·—·',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '·— ··— — ——— —— ·— — ·· —·—· / — / ${name}',
+			'operation.layout.panels.rotatorAutoNone' => '·— ··— — ——— —— ·— — ·· —·—· / — / —· ——— / ·—· ——— — ·— — ——— ·—· / —·—— · —',
+			'operation.layout.panels.rotatorBeamWidth' => '—··· · ·— —— / ·—— ·· —·· — ····',
+			'operation.layout.panels.rotatorBeamWidthDescription' => '·· —· / —·· · ——· ·—· · · ··· ——··—— / —·· ·—· ·— ·—— —· / ·— ·—· ——— ··— —· —·· / — ···· · / ···· · ·— —·· ·· —· ——· ·—·—·— / ————— / —·· ·—· ·— ·—— ··· / —· ——— —· · ·—·—·—',
+			'operation.layout.panels.rotatorLocation' => '·—·· ——— —·—· ·— — ·· ——— —·',
+			'operation.layout.panels.rotatorLocationDescription' => '·— / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · ——··—— / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · ——··—— / — ——— / —·—· · —· — ·—· · / — ···· · / —— ·— ·——· / ——— —· ·—·—·— / —··· ·—·· ·— —· —·— / ··— ··· · ··· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',
+			'operation.layout.panels.rotatorTheme' => '— ···· · —— ·',
+			'operation.layout.panels.rotatorThemeColor' => '—·—· ——— ·—·· ——— ·—·',
+			'operation.layout.panels.rotatorThemeGray' => '——· ·—· ·— —·——',
+			'operation.layout.panels.rotatorThemeMuted' => '—— ··— — · —··',
+			'operation.layout.panels.rotatorGrayline' => '··· ···· ——— ·—— / — ···· · / ——· ·—· ·— —·—— ·—·· ·· —· ·',
+			'operation.layout.panels.rotatorNoRotator' => '—· ——— / ·—· ——— — ·— — ——— ·—· / — ——— / ··· ···· ——— ·—— ·—·—·— / ·——· ·· —·—· —·— / ——— —· · / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ——··—— / ——— ·—· / ·— —·· —·· / ——— —· · / ··— —· —·· · ·—· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ·—·—·—',
+			'operation.layout.panels.rotatorNoLocation' => '—· ——— / ·—·· ——— —·—· ·— — ·· ——— —· / — ——— / —·—· · —· — ·—· · / ·— / —— ·— ·——· / ——— —· ·—·—·— / ··· · — / ——— —· · / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
+			'operation.layout.panels.rotatorDisconnected' => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·',
+			'operation.layout.panels.rotatorLocationInvalid' => '—·—· ·— —· ·————· — / ·—· · ·— —·· / — ···· · / ·—·· ——— —·—· ·— — ·· ——— —· / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·— / ··— ··· · / ·— / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · ——··—— / ——— ·—· / ·— / ·—·· ·— — ·· — ··— —·· · / ·— —· —·· / ·—·· ——— —· ——· ·· — ··— —·· · / ·—·· ·· —·— · / ····— ————— ·—·—·— ——··· ——··—— / —····— ——··· ····— ·—·—·— ————— ·—·—·—',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees} ° / · ·—··',
+			'operation.layout.panels.rotatorNorth' => '—·',
+			'operation.layout.panels.rotatorEast' => '·',
+			'operation.layout.panels.rotatorSouth' => '···',
+			'operation.layout.panels.rotatorWest' => '·——',
 			'operation.layout.htmlPanelUnsupported' => '— ···· ·· ··· / ·——· ·— —· · ·—·· / —· · · —·· ··· / ·— / ·—— · —··· / ···— ·· · ·—— ——··—— / ·—— ···· ·· —·—· ···· / — ···· ·· ··· / ·——· ·—·· ·— — ··—· ——— ·—· —— / —·· ——— · ··· / —· ——— — / ·——· ·—· ——— ···— ·· —·· ·',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => '— ···· ·· ··· / ·——· ·— —· · ·—·· / —· · · —·· ··· / ·— / ··· ·— —· —·· —··· ——— —··— / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· / —·—· ·— —· —· ——— — / ·——· ·—· ——— ···— ·· —·· ·',
 			'operation.export.title' => '——— ·——· · ·—· ·— — ·· ——— —· / · —··— ·——· ——— ·—· — ···',
@@ -5446,6 +5533,8 @@ extension on TranslationsCw {
 			'loggingControls.info.qsoCountOne' => '·———— / ——·— ··· ———',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} / ——·— ··· ——— ···',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} / ·· —· / ${time}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} / ··· ·· —· —·—· · / ·—·· ·— ··· —',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— —————',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— ————— —————',
@@ -5471,8 +5560,6 @@ extension on TranslationsCw {
 			'loggingControls.info.noticeInvalidCategory' => '—· ——— — / ·—— ——— ·—· —·— ·— —··· ·—·· ·',
 			'loggingControls.info.noticeOverTime' => '— ·· —— · / ——— ···— · ·—·',
 			'loggingControls.info.noticeWorkedBefore' => '·—— ——— ·—· —·— · —·· / —··· · ··—· ——— ·—· ·',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => '—· · ·—— / ·——· ·— ·—· —·—',
 			'loggingControls.info.noticeNewSection' => '—· · ·—— / ··· · —·—· — ·· ——— —·',
 			'loggingControls.info.noticeBonusStation' => '—··· ——— —· ··— ··· / ··· — ·— — ·· ——— —· —·—·——',
@@ -5960,6 +6047,8 @@ extension on TranslationsCw {
 			'settings.privacy.title' => '·——· ·—· ·· ···— ·— —·—· —·——',
 			'settings.privacy.shareAppData.title' => '··· ···· ·— ·—· · / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·—',
 			'settings.privacy.shareAppData.descriptionOn' => '···· · ·—·· ·——· ·· —· ——· / ··— ··· / ·· —— ·——· ·—· ——— ···— · / — ···· · / ·— ·——· ·——· / —··· —·—— / ··· ···· ·— ·—· ·· —· ——· / ··— ··· ·— ——· · ——··—— / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ——··—— / —·—· ·—· ·— ··· ···· / ·— —· —·· / ·——· · ·—· ··—· ——— ·—· —— ·— —· —·—· · / —·· ·— — ·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => '—·— · · ·——· ·· —· ——· / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·— / ·——· ·—· ·· ···— ·— — · ·—·—·—\n— ···· · / ···· ·— —— ··——— —·— / — · ·— —— / ·—— ——— —· ·————· — / —··· · / ·— —··· ·—·· · / — ——— / —·· · — · —·—· — / —·—· ·—· ·— ··· ···· · ··· / ——— ·—· / ——— — ···· · ·—· / ·· ··· ··· ··— · ··· ·—·—·—',
 			'settings.privacy.shareOpData.title' => '··· ···· ·— ·—· · / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·—',
 			'settings.privacy.shareOpData.descriptionOn' => '··· ···· ·— ·—· ·· —· ——· / ··· ——— —— · / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·— / ·——· ··— —··· ·—·· ·· —·—· ·—·· —·—— / ·— —· —·· / ·—— ·· — ···· / ——— — ···· · ·—· / ··— ··· · ·—· ···',
@@ -5985,8 +6074,6 @@ extension on TranslationsCw {
 			'settings.peers.nearby' => '—· · ·— ·—· —··· —·——',
 			'settings.peers.connected' => '—·—· ——— —· —· · —·—· — · —··',
 			'settings.peers.viaBluetooth' => '···— ·· ·— / —··· ·—·· ··— · — ——— ——— — ····',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.connecting' => '—·—· ——— —· —· · —·—· — ·· —· ——· …',
 			'settings.peers.syncing' => '··· —·—— —· —·—· ·· —· ——· …',
 			'settings.peers.waitingForThem' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
@@ -6321,6 +6408,7 @@ extension on TranslationsCw {
 			'settings.station.models.placeholderRadioNodeName' => '—— —·—— / ·—· ·— —·· ·· ———',
 			'settings.station.models.antennaGenius' => '····— ——— ···—— ·— / ·— —· — · —· —· ·— / ——· · —· ·· ··— ···',
 			'settings.station.models.sierraCoax' => '··· ·· · ·—· ·—· ·— / ·—· ·— —·· ·· ——— / —·—· —··— —····— ·———— / —·—· ——— ·— —··— / ··· ·—— ·· — —·—· ····',
+			'settings.station.models.gs232a' => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·',
 			'settings.station.models.rtlSdr' => '·—· — ·—·· —····— ··· —·· ·—·',
 			'settings.station.models.nesdr' => '—· ——— ——— · ·—·· · —·—· / —· · ··· —·· ·—·',
 			'settings.station.models.sdrplay' => '··· —·· ·—· ·——· ·—·· ·— —·—— / ·—· ··· ·——·',
@@ -6473,6 +6561,8 @@ extension on TranslationsCw {
 			'settings.station.whatToTrack' => '·—— ···· ·— — / — ——— / — ·—· ·— —·—· —·— ··——··',
 			'settings.station.trackFieldRig' => '— ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
 			'settings.station.trackFieldPower' => '·——· ——— ·—— · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.watts' => '·—— ·— — — ···',
 			'settings.station.trackFieldAntenna' => '·— —· — · —· —· ·—',
 			'settings.station.trackFieldKey' => '—·—· ·—— / —·— · —·——',
@@ -6499,8 +6589,6 @@ extension on TranslationsCw {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ·—— · ·—· —····— ——— ··— — ·——· ··— — / —— · — · ·—· / ·— —· —·· / ···· ·· ——· ···· —····— ··· ·—— ·—· / ··—· ·—·· ·— ——· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · / —·—— ·— · ··· ··— / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· / — / — ···· · / ···— ·— ·—·· ··— · ··· / ·— ·—· · / —· ——— — / ··· ···· ——— ·—— —· / ·— ··· / —— · — · ·—· ··· ·—·—·—',
 			'settings.station.yaesuMeterCaptureDescription' => '·—· · ·— —·· ··· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· ——— ——··—— / ··· ·—— ·—· / ·— —· —·· / ·— ·—·· —·—· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——· / ·— —· —·· / ·——· ·—· ·· —· — ··· / — ···· · / ·—· ·— ·—— / ···— ·— ·—·· ··— · ··· / — ——— / — ···· · / ·—·· ——— ——· ·—·—·— / ··—· ——— ·—· / —··· ··— ·· ·—·· —·· ·· —· ——· / — ···· · / ··· —·—· ·— ·—·· · / —·—— ·— · ··· ··— / —·· ——— · ··· / —· ——— — / ·——· ··— —··· ·—·· ·· ··· ···· / — / — ···· · / ···— ·— ·—·· ··— · ··· / ·— ·—· · / —· ——— — / ··· ···· ——— ·—— —· / ·— ··· / —— · — · ·—· ··· ·—·—·—',
 			'settings.station.telemetryInterval' => '—— · — · ·—· / ·—· · ·— —·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·—· · ·— —·· / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —— · — · ·—· ··· / ·—— ···· ·· ·—·· · / ·· — / ·· ··· / — ·—· ·— —· ··· —— ·· — — ·· —· ——· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ··—· ·— ··· — · ··· — / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / —·—· ·— —· / ···· ·— —· —·· ·—·· · ——··—— / ··— ·——· / — ——— / ··——— ————— ————— / —— ··· ·—·—·—',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '·— / ·—— ···· ——— ·—·· · / —· ··— —— —··· · ·—· / ——— ··—· / —— ·· ·—·· ·—·· ·· ··· · —·—· ——— —· —·· ··· ——··—— / ${min} / — ——— / ${max}',
 			'settings.station.pollInterval' => '·· —·· ·—·· · / ·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
@@ -6546,6 +6634,42 @@ extension on TranslationsCw {
 			'settings.station.switchCurrentStateDescription' => '·—— ···· ·· —·—· ···· / ·— —· — · —· —· ·— / · ·— —·—· ···· / ·—· ·— —·· ·· ——— / ·——· ——— ·—· — / ·· ··· / ——— —· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·— / —·—· ···· ·— —· ——· · ··· / — ·— —·— · / · ··—· ··—· · —·—· — / ·· —— —— · —·· ·· ·— — · ·—·· —·—— ·—·—·—',
 			'settings.station.switchWiringHeader' => '·—— ·· ·—· ·· —· ——·',
 			'settings.station.switchPortInhibitedHint' => '— ·—· ·— —· ··· —— ·· — / ·· —· ···· ·· —··· ·· — · —··',
+			'settings.station.rotatorAxes' => '·— —··— · ···',
+			'settings.station.rotatorAxesDescription' => '·—— ···· · — ···· · ·—· / — ···· · / ·—· ——— — ·— — ——— ·—· / — ··— ·—· —· ··· / ·· —· / ·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·—— ——··—— / ——— ·—· / ·· —· / · ·—·· · ···— ·— — ·· ——— —· / — ——— ——— / —·——· ·— / ——· —····— ····· ····· ————— ————— / ——— ·—· / ··· ·· —— ·· ·—·· ·— ·—· —·——·— ·—·—·—',
+			'settings.station.rotatorAxesAzimuth' => '·— ——·· ·· —— ··— — ···· / ——— —· ·—·· —·——',
+			'settings.station.rotatorAxesAzimuthElevation' => '·— ——·· ·· —— ··— — ···· / ·— —· —·· / · ·—·· · ···— ·— — ·· ——— —·',
+			'settings.station.rotatorAzimuthOffset' => '·— ——·· ·· —— ··— — ···· / ——— ··—· ··—· ··· · —',
+			'settings.station.rotatorAzimuthOffsetDescription' => '—·· · ——· ·—· · · ··· / — ——— / ·— —·· —·· / — ——— / ·—— ···· ·— — / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ·— —·· ··· ——··—— / ·—— ···· · —· / ·· — ··· / ——·· · ·—· ——— / ·· ··· / —· ——— — / — ·—· ··— · / —· ——— ·—· — ···· ·—·—·— / — ··— ·—· —· ··· / ·— ·—· · / —·—· ——— ·—· ·—· · —·—· — · —·· / — ——— / —— ·— — —·—· ···· ·—·—·—',
+			'settings.station.rotatorElevationOffset' => '· ·—·· · ···— ·— — ·· ——— —· / ——— ··—· ··—· ··· · —',
+			'settings.station.rotatorAzimuthMin' => '·—·· ——— ·—— · ··· — / ·— ——·· ·· —— ··— — ····',
+			'settings.station.rotatorAzimuthMax' => '···· ·· ——· ···· · ··· — / ·— ——·· ·· —— ··— — ····',
+			'settings.station.rotatorAzimuthMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ···—— —···· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / ·—— ·· — ···· / ——— ···— · ·—· ·—·· ·— ·——· ——··—— / ·—— ···· ·· —·—· ···· / — ···· · —· / — ·— —·— · ··· / — ···· · / ··· ···· ——— ·—· — · ·—· / — ··— ·—· —· ·—·—·—',
+			'settings.station.rotatorElevationMin' => '·—·· ——— ·—— · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
+			'settings.station.rotatorElevationMax' => '···· ·· ——· ···· · ··· — / · ·—·· · ···— ·— — ·· ——— —·',
+			'settings.station.rotatorElevationMaxDescription' => '·· —· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· ·————· ··· / ——— ·—— —· / —·· · ——· ·—· · · ··· ·—·—·— / ·— —··· ——— ···— · / ————· ————— / ··—· ——— ·—· / ·— / ·—· ——— — ·— — ——— ·—· / — ···· ·— — / ··—· ·—·· ·· ·——· ··· / ——— ···— · ·—· ·—·—·—',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => '·—— ···· ——— ·—·· · / —·· · ——· ·—· · · ··· ——··—— / ${min} / — ——— / ${max}',
+			'settings.station.rotatorLimitsInvalid' => '— ···· · / ·—·· ——— ·—— · ··· — / ·—·· ·· —— ·· — / ···· ·— ··· / — ——— / —··· · / —··· · ·—·· ——— ·—— / — ···· · / ···· ·· ——· ···· · ··· —',
+			'settings.station.rotatorPollInterval' => '·——· ——— ·—·· ·—·· ·· —· ——· / ·· —· — · ·—· ···— ·— ·—·· / —·——· —— ··· —·——·—',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => '···· ——— ·—— / ——— ··—· — · —· / — ——— / ·— ··· —·— / — ···· · / ·—· ——— — ·— — ——— ·—· / ·—— ···· · ·—· · / ·· — / ·——· ——— ·· —· — ··· ·—·—·— / ·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / ${fallback} / —— ··· ·—·—·—',
+			'settings.station.rotatorAxesRequired' => '—·—· ···· ——— ——— ··· · / ·—— ···· ·· —·—· ···· / ·— —··— · ··· / — ···· · / ·—· ——— — ·— — ——— ·—· / — ··— ·—· —· ···',
+			'settings.station.rotatorRefused' => '— ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·—· · ··—· ··— ··· · —·· / ·— / —·—· ——— —— —— ·— —· —·· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — / ·· ··· / ··· · — / — ——— / ——· ··· —····— ··——— ···—— ··——— / —— ——— —·· · ·—·—·—',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => '—·—· ··— ·—· ·—· · —· — / ··· — ·— — · ———··· / ${position}',
+			'settings.station.rotatorDisconnected' => '—·· ·· ··· —·—· ——— —· —· · —·—· — · —··',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees} ° / ·— ——·· ·· —— ··— — ····',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees} ° / ·— ——··',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees} ° / · ·—·· · ···— ·— — ·· ——— —·',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees} ° / · ·—··',
+			'settings.station.rotatorNoReading' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / — ——— / ·—· · ·——· ——— ·—· — / ·· — ··· / ·——· ——— ··· ·· — ·· ——— —· …',
+			'settings.station.rotatorNotResponding' => '—· ——— — / ·—· · ··· ·——· ——— —· —·· ·· —· ——·',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '— ··— ·—· —· ·· —· ——· / — ——— / ${heading} ——··—— / ·— ··· / ··—· ·— ·—· / ·— ··· / — ···· ·· ··· / ·—· ——— — ·— — ——— ·—· ·————· ··· / ·—·· ·· —— ·· — ··· / ·— ·—·· ·—·· ——— ·——',
+			'settings.station.rotatorTargetAzimuth' => '— ··— ·—· —· / — ——— / ·— ——·· ·· —— ··— — ····',
+			'settings.station.rotatorTargetAzimuthShort' => '— ··— ·—· —· / — ——— / ·— ——··',
+			'settings.station.rotatorTargetElevation' => '— ··— ·—· —· / — ——— / · ·—·· · ···— ·— — ·· ——— —·',
+			'settings.station.rotatorTargetElevationShort' => '— ··— ·—· —· / — ——— / · ·—··',
+			'settings.station.rotatorAzimuthInvalid' => '—— ··— ··· — / —··· · / ————— / — ——— / ···—— —···· —————',
+			'settings.station.rotatorElevationInvalid' => '—— ··— ··· — / —··· · / ————— / — ——— / ·———— ———·· —————',
+			'settings.station.rotatorTurn' => '— ··— ·—· —·',
+			'settings.station.rotatorStop' => '··· — ——— ·——·',
 			'settings.station.configUnreadable' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— ·————· ··· / ··· ·— ···— · —·· / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ·—·—·— / ——— ·——· · —· / ·· — ··· / ··· · — — ·· —· ——· ··· / ·— —· —·· / · —· — · ·—· / — ···· · —— / ·— ——· ·— ·· —· ——··—— / ——— ·—· / ·—· · —— ——— ···— · / ·· — / ·— —· —·· / ·— —·· —·· / ·· — / —··· ·— —·—· —·— ·—·—·—',
 			'settings.station.autoConnectHeld' => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / —·—· ——— —· —· · —·—· — · —·· / — ——— / — ···· ·· ··· / ·—· ·— —·· ·· ——— ——··—— / ··· ——— / ·· — / —·· ·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / ——— —· / ·· — ··· / ——— ·—— —· / — ···· ·· ··· / — ·· —— · ·—·—·— / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / — ——— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.offlineData.title' => '——— ··—· ··—· ·—·· ·· —· · / —·· ·— — ·—',
@@ -6951,6 +7075,8 @@ extension on TranslationsCw {
 			'switchAccounts.linkWithQrDescription' => '··· —·—· ·— —· / ·· — / ··—· ·—· ——— —— / ·— / —·· · ···— ·· —·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ··— ··· ·· —· ——· / — ···· · / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.linkWithEmail' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —· / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkWithEmailDescription' => '—·—· ——— —· ··—· ·· ·—· —— / ·—— ·· — ···· / ·— / —·—· ——— —·· · / ——— ·—· / ·— —· / · —— ·— ·· ·—·· / ·—·· ·· —· —·—',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => '· —· — · ·—· / — ···· · / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ··· / ——— ··—· / — ···· · / ·— —·—· —·—· ——— ··— —· — / —·—— ——— ··— / ·—— ·— —· — / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ··— ··· · ·—·—·—',
 			'switchAccounts.emailAddress' => '· —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkAccount' => '·—·· ·· —· —·— / ·— —·—· —·—· ——— ··— —· —',
@@ -7013,8 +7139,6 @@ extension on TranslationsCw {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ——··—— / — ···· · / —— ——— ··· — / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / —·—· ·— —· / ·· —— ·——· ——— ·—· — / ·— — / ·— / — ·· —— · ·—·—·—',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ·—·—·— / ·· —— ·——· ——— ·—· — ·· —· ——· / ·— —· / ·— —·· ·· ··—· / ·· —· — ——— / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / —— · ·— —· — / — ——— / ·— —·· —·· / ·— / ··—· · ·—— / ——·— ··· ——— ··· ——··—— / —· ——— — / — ——— / —··· ·—· ·· —· ——· / ·· —· / ·— / ·—·· ·— ·—· ——· · / ·—·· ——— ——· / — / ··— ··· · / — ···· · / ·—·· ——— ——· ··· / ···— ·· · ·—— / ··—· ——— ·—· / — ···· ·— — ·—·—·— / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / ·—·· · — ··· / —·—— ——— ··— / ·· —— ·——· ——— ·—· — / ·· — / ·— —· —·—— ·—— ·— —·—— ——··—— / ·· ··—· / —·—— ——— ··— / ·— ·—· · / ··· ··— ·—· · ·—·—·—',
 			'adifImport.importAnyway' => '·· —— ·——· ——— ·—· — / ·— —· —·—— ·—— ·— —·——',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOffline' => '·· —· — · ·—· —· · — ———··· / ——— ··—· ··—· ·—·· ·· —· ·',
 			'offline.statusOnline' => '·· —· — · ·—· —· · — ———··· / —·—· ——— —· —· · —·—· — · —··',
 			'offline.noRoute' => '—· ——— / —· · — ·—— ——— ·—· —·— / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— — / ·— ·—·· ·—·· ·—·—·—',

@@ -1653,6 +1653,7 @@ class _Translations$operation$tabs$qro extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'REMOTE SCREEN';
 	@override String get solar => 'SOLAR';
 	@override String get radio => 'RADIO';
+	@override String get rotator => 'ROTATOR';
 	@override String get summaries => 'OPERATION SUMMARIES';
 }
 
@@ -2934,6 +2935,42 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get switchCurrentStateDescription => 'WHICH ANTENNA EACH RADIO PORT IS ON RIGHT NOW. CHANGES TAKE EFFECT IMMEDIATELY.';
 	@override String get switchWiringHeader => 'WIRING';
 	@override String get switchPortInhibitedHint => 'TRANSMIT INHIBITED';
+	@override String get rotatorAxes => 'AXES';
+	@override String get rotatorAxesDescription => 'WHETHER THE ROTATOR TURNS IN AZIMUTH ONLY, OR IN ELEVATION TOO (A G-5500 OR SIMILAR).';
+	@override String get rotatorAxesAzimuth => 'AZIMUTH ONLY';
+	@override String get rotatorAxesAzimuthElevation => 'AZIMUTH AND ELEVATION';
+	@override String get rotatorAzimuthOffset => 'AZIMUTH OFFSET';
+	@override String get rotatorAzimuthOffsetDescription => 'DEGREES TO ADD TO WHAT THE CONTROLLER READS, WHEN ITS ZERO IS NOT TRUE NORTH. TURNS ARE CORRECTED TO MATCH.';
+	@override String get rotatorElevationOffset => 'ELEVATION OFFSET';
+	@override String get rotatorAzimuthMin => 'LOWEST AZIMUTH';
+	@override String get rotatorAzimuthMax => 'HIGHEST AZIMUTH';
+	@override String get rotatorAzimuthMaxDescription => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 360 FOR A ROTATOR WITH OVERLAP, WHICH THEN TAKES THE SHORTER TURN.';
+	@override String get rotatorElevationMin => 'LOWEST ELEVATION';
+	@override String get rotatorElevationMax => 'HIGHEST ELEVATION';
+	@override String get rotatorElevationMaxDescription => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 90 FOR A ROTATOR THAT FLIPS OVER.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'WHOLE DEGREES, ${min} TO ${max}';
+	@override String get rotatorLimitsInvalid => 'THE LOWEST LIMIT HAS TO BE BELOW THE HIGHEST';
+	@override String get rotatorPollInterval => 'POLLING INTERVAL (MS)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.';
+	@override String get rotatorAxesRequired => 'CHOOSE WHICH AXES THE ROTATOR TURNS';
+	@override String get rotatorRefused => 'THE CONTROLLER REFUSED A COMMAND. CHECK THAT IT IS SET TO GS-232 MODE.';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'CURRENT STATE: ${position}';
+	@override String get rotatorDisconnected => 'DISCONNECTED';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° AZIMUTH';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° AZ';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° ELEVATION';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° EL';
+	@override String get rotatorNoReading => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…';
+	@override String get rotatorNotResponding => 'NOT RESPONDING';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW';
+	@override String get rotatorTargetAzimuth => 'TURN TO AZIMUTH';
+	@override String get rotatorTargetAzimuthShort => 'TURN TO AZ';
+	@override String get rotatorTargetElevation => 'TURN TO ELEVATION';
+	@override String get rotatorTargetElevationShort => 'TURN TO EL';
+	@override String get rotatorAzimuthInvalid => 'MUST BE 0 TO 360';
+	@override String get rotatorElevationInvalid => 'MUST BE 0 TO 180';
+	@override String get rotatorTurn => 'TURN';
+	@override String get rotatorStop => 'STOP';
 	@override String get configUnreadable => 'THIS RADIO\'S SAVED SETTINGS COULD NOT BE READ. OPEN ITS SETTINGS AND ENTER THEM AGAIN, OR REMOVE IT AND ADD IT BACK.';
 	@override String get autoConnectHeld => 'HALO STOPPED RESPONDING THE LAST TIME IT CONNECTED TO THIS RADIO, SO IT DID NOT CONNECT ON ITS OWN THIS TIME. PRESS CONNECT TO TRY AGAIN.';
 }
@@ -3537,6 +3574,30 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'HIGH SWR';
+	@override String get rotatorDescription => 'WHERE THE ANTENNA POINTS, ON A MAP CENTRED ON THE STATION. TAP THE MAP TO TURN IT.';
+	@override String get rotatorRotator => 'ROTATOR';
+	@override String rotatorAutoNamed({required Object name}) => 'AUTOMATIC — ${name}';
+	@override String get rotatorAutoNone => 'AUTOMATIC — NO ROTATOR YET';
+	@override String get rotatorBeamWidth => 'BEAM WIDTH';
+	@override String get rotatorBeamWidthDescription => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE.';
+	@override String get rotatorLocation => 'LOCATION';
+	@override String get rotatorLocationDescription => 'A GRID SQUARE, OR A LATITUDE AND LONGITUDE, TO CENTRE THE MAP ON. BLANK USES THE OPERATION\'S LOCATION.';
+	@override String get rotatorTheme => 'THEME';
+	@override String get rotatorThemeColor => 'COLOR';
+	@override String get rotatorThemeGray => 'GRAY';
+	@override String get rotatorThemeMuted => 'MUTED';
+	@override String get rotatorGrayline => 'SHOW THE GRAYLINE';
+	@override String get rotatorNoRotator => 'NO ROTATOR TO SHOW. PICK ONE IN THIS PANEL\'S SETTINGS, OR ADD ONE UNDER STATION CONFIGURATION.';
+	@override String get rotatorNoLocation => 'NO LOCATION TO CENTRE A MAP ON. SET ONE IN THIS PANEL\'S SETTINGS.';
+	@override String get rotatorDisconnected => 'DISCONNECTED';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'NOT RESPONDING';
+	@override String get rotatorLocationInvalid => 'CAN\'T READ THE LOCATION IN THIS PANEL\'S SETTINGS. USE A GRID SQUARE, OR A LATITUDE AND LONGITUDE LIKE 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° EL';
+	@override String get rotatorNorth => 'N';
+	@override String get rotatorEast => 'E';
+	@override String get rotatorSouth => 'S';
+	@override String get rotatorWest => 'W';
 }
 
 // Path: operation.export.compactFileNames
@@ -4320,6 +4381,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get placeholderRadioNodeName => 'MY RADIO';
 	@override String get antennaGenius => '4O3A ANTENNA GENIUS';
 	@override String get sierraCoax => 'SIERRA RADIO CX-1 COAX SWITCH';
+	@override String get gs232a => 'YAESU GS-232A ROTATOR INTERFACE';
 	@override String get rtlSdr => 'RTL-SDR';
 	@override String get nesdr => 'NOOELEC NESDR';
 	@override String get sdrplay => 'SDRPLAY RSP';
@@ -4822,6 +4884,7 @@ extension on TranslationsQro {
 			'operation.tabs.remoteScreen' => 'REMOTE SCREEN',
 			'operation.tabs.solar' => 'SOLAR',
 			'operation.tabs.radio' => 'RADIO',
+			'operation.tabs.rotator' => 'ROTATOR',
 			'operation.tabs.summaries' => 'OPERATION SUMMARIES',
 			'operation.positions.nobodyYet' => 'NO OTHER OPERATING POSITIONS ARE SHARING THIS OPERATION YET.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'POS: ${number}',
@@ -4956,9 +5019,9 @@ extension on TranslationsQro {
 			'operation.layout.panelRenderRetry' => 'TRY AGAIN',
 			'operation.layout.panelActionFailed' => 'THAT PANEL ACTION FAILED. TRY AGAIN.',
 			'operation.layout.panels.loggingDescription' => 'THE LOG AND THE ENTRY FIELDS',
-			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
 			'operation.layout.panels.spotsDescription' => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS',
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
 			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
@@ -5090,6 +5153,30 @@ extension on TranslationsQro {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'HIGH SWR',
+			'operation.layout.panels.rotatorDescription' => 'WHERE THE ANTENNA POINTS, ON A MAP CENTRED ON THE STATION. TAP THE MAP TO TURN IT.',
+			'operation.layout.panels.rotatorRotator' => 'ROTATOR',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'AUTOMATIC — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'AUTOMATIC — NO ROTATOR YET',
+			'operation.layout.panels.rotatorBeamWidth' => 'BEAM WIDTH',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'IN DEGREES, DRAWN AROUND THE HEADING. 0 DRAWS NONE.',
+			'operation.layout.panels.rotatorLocation' => 'LOCATION',
+			'operation.layout.panels.rotatorLocationDescription' => 'A GRID SQUARE, OR A LATITUDE AND LONGITUDE, TO CENTRE THE MAP ON. BLANK USES THE OPERATION\'S LOCATION.',
+			'operation.layout.panels.rotatorTheme' => 'THEME',
+			'operation.layout.panels.rotatorThemeColor' => 'COLOR',
+			'operation.layout.panels.rotatorThemeGray' => 'GRAY',
+			'operation.layout.panels.rotatorThemeMuted' => 'MUTED',
+			'operation.layout.panels.rotatorGrayline' => 'SHOW THE GRAYLINE',
+			'operation.layout.panels.rotatorNoRotator' => 'NO ROTATOR TO SHOW. PICK ONE IN THIS PANEL\'S SETTINGS, OR ADD ONE UNDER STATION CONFIGURATION.',
+			'operation.layout.panels.rotatorNoLocation' => 'NO LOCATION TO CENTRE A MAP ON. SET ONE IN THIS PANEL\'S SETTINGS.',
+			'operation.layout.panels.rotatorDisconnected' => 'DISCONNECTED',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'NOT RESPONDING',
+			'operation.layout.panels.rotatorLocationInvalid' => 'CAN\'T READ THE LOCATION IN THIS PANEL\'S SETTINGS. USE A GRID SQUARE, OR A LATITUDE AND LONGITUDE LIKE 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° EL',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'E',
+			'operation.layout.panels.rotatorSouth' => 'S',
+			'operation.layout.panels.rotatorWest' => 'W',
 			'operation.layout.htmlPanelUnsupported' => 'THIS PANEL NEEDS A WEB VIEW, WHICH THIS PLATFORM DOES NOT PROVIDE',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'THIS PANEL NEEDS A SANDBOX THE WEB VERSION CANNOT PROVIDE',
 			'operation.export.title' => 'OPERATION EXPORTS',
@@ -5446,6 +5533,8 @@ extension on TranslationsQro {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOS',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} IN ${time}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} SINCE LAST',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/H FOR LAST 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/H FOR LAST 100',
@@ -5471,8 +5560,6 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeInvalidCategory' => 'NOT WORKABLE',
 			'loggingControls.info.noticeOverTime' => 'TIME OVER',
 			'loggingControls.info.noticeWorkedBefore' => 'WORKED BEFORE',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.noticeNewPark' => 'NEW PARK',
 			'loggingControls.info.noticeNewSection' => 'NEW SECTION',
 			'loggingControls.info.noticeBonusStation' => 'BONUS STATION!',
@@ -5960,6 +6047,8 @@ extension on TranslationsQro {
 			'settings.privacy.title' => 'PRIVACY',
 			'settings.privacy.shareAppData.title' => 'SHARE APP USAGE DATA',
 			'settings.privacy.shareAppData.descriptionOn' => 'HELPING US IMPROVE THE APP BY SHARING USAGE, CONFIGURATION, CRASH AND PERFORMANCE DATA',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => 'KEEPING APP USAGE DATA PRIVATE.\nTHE HAM2K TEAM WON\'T BE ABLE TO DETECT CRASHES OR OTHER ISSUES.',
 			'settings.privacy.shareOpData.title' => 'SHARE OPERATION DATA',
 			'settings.privacy.shareOpData.descriptionOn' => 'SHARING SOME OPERATION DATA PUBLICLY AND WITH OTHER USERS',
@@ -5985,8 +6074,6 @@ extension on TranslationsQro {
 			'settings.peers.nearby' => 'NEARBY',
 			'settings.peers.connected' => 'CONNECTED',
 			'settings.peers.viaBluetooth' => 'VIA BLUETOOTH',
-			_ => null,
-		} ?? switch (path) {
 			'settings.peers.connecting' => 'CONNECTING…',
 			'settings.peers.syncing' => 'SYNCING…',
 			'settings.peers.waitingForThem' => 'WAITING FOR THE OTHER DEVICE',
@@ -6321,6 +6408,7 @@ extension on TranslationsQro {
 			'settings.station.models.placeholderRadioNodeName' => 'MY RADIO',
 			'settings.station.models.antennaGenius' => '4O3A ANTENNA GENIUS',
 			'settings.station.models.sierraCoax' => 'SIERRA RADIO CX-1 COAX SWITCH',
+			'settings.station.models.gs232a' => 'YAESU GS-232A ROTATOR INTERFACE',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
@@ -6473,6 +6561,8 @@ extension on TranslationsQro {
 			'settings.station.whatToTrack' => 'WHAT TO TRACK?',
 			'settings.station.trackFieldRig' => 'TRANSCEIVER',
 			'settings.station.trackFieldPower' => 'POWER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.watts' => 'WATTS',
 			'settings.station.trackFieldAntenna' => 'ANTENNA',
 			'settings.station.trackFieldKey' => 'CW KEY',
@@ -6499,8 +6589,6 @@ extension on TranslationsQro {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'READS THE RADIO\'S POWER-OUTPUT METER AND HIGH-SWR FLAG WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.yaesuMeterCaptureDescription' => 'READS THE RADIO\'S PO, SWR AND ALC METERS WHILE TRANSMITTING AND PRINTS THE RAW VALUES TO THE LOG. FOR BUILDING THE SCALE YAESU DOES NOT PUBLISH — THE VALUES ARE NOT SHOWN AS METERS.',
 			'settings.station.telemetryInterval' => 'METER READING INTERVAL (MS)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryIntervalDescription' => 'HOW OFTEN TO READ THE RADIO\'S METERS WHILE IT IS TRANSMITTING. LEAVE BLANK FOR THE FASTEST THIS CONNECTION CAN HANDLE, UP TO 200 MS.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A WHOLE NUMBER OF MILLISECONDS, ${min} TO ${max}',
 			'settings.station.pollInterval' => 'IDLE POLLING INTERVAL (MS)',
@@ -6546,6 +6634,42 @@ extension on TranslationsQro {
 			'settings.station.switchCurrentStateDescription' => 'WHICH ANTENNA EACH RADIO PORT IS ON RIGHT NOW. CHANGES TAKE EFFECT IMMEDIATELY.',
 			'settings.station.switchWiringHeader' => 'WIRING',
 			'settings.station.switchPortInhibitedHint' => 'TRANSMIT INHIBITED',
+			'settings.station.rotatorAxes' => 'AXES',
+			'settings.station.rotatorAxesDescription' => 'WHETHER THE ROTATOR TURNS IN AZIMUTH ONLY, OR IN ELEVATION TOO (A G-5500 OR SIMILAR).',
+			'settings.station.rotatorAxesAzimuth' => 'AZIMUTH ONLY',
+			'settings.station.rotatorAxesAzimuthElevation' => 'AZIMUTH AND ELEVATION',
+			'settings.station.rotatorAzimuthOffset' => 'AZIMUTH OFFSET',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'DEGREES TO ADD TO WHAT THE CONTROLLER READS, WHEN ITS ZERO IS NOT TRUE NORTH. TURNS ARE CORRECTED TO MATCH.',
+			'settings.station.rotatorElevationOffset' => 'ELEVATION OFFSET',
+			'settings.station.rotatorAzimuthMin' => 'LOWEST AZIMUTH',
+			'settings.station.rotatorAzimuthMax' => 'HIGHEST AZIMUTH',
+			'settings.station.rotatorAzimuthMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 360 FOR A ROTATOR WITH OVERLAP, WHICH THEN TAKES THE SHORTER TURN.',
+			'settings.station.rotatorElevationMin' => 'LOWEST ELEVATION',
+			'settings.station.rotatorElevationMax' => 'HIGHEST ELEVATION',
+			'settings.station.rotatorElevationMaxDescription' => 'IN THE CONTROLLER\'S OWN DEGREES. ABOVE 90 FOR A ROTATOR THAT FLIPS OVER.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'WHOLE DEGREES, ${min} TO ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'THE LOWEST LIMIT HAS TO BE BELOW THE HIGHEST',
+			'settings.station.rotatorPollInterval' => 'POLLING INTERVAL (MS)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'HOW OFTEN TO ASK THE ROTATOR WHERE IT POINTS. LEAVE BLANK FOR ${fallback} MS.',
+			'settings.station.rotatorAxesRequired' => 'CHOOSE WHICH AXES THE ROTATOR TURNS',
+			'settings.station.rotatorRefused' => 'THE CONTROLLER REFUSED A COMMAND. CHECK THAT IT IS SET TO GS-232 MODE.',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'CURRENT STATE: ${position}',
+			'settings.station.rotatorDisconnected' => 'DISCONNECTED',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° AZIMUTH',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° AZ',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° ELEVATION',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° EL',
+			'settings.station.rotatorNoReading' => 'WAITING FOR THE CONTROLLER TO REPORT ITS POSITION…',
+			'settings.station.rotatorNotResponding' => 'NOT RESPONDING',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'TURNING TO ${heading}, AS FAR AS THIS ROTATOR\'S LIMITS ALLOW',
+			'settings.station.rotatorTargetAzimuth' => 'TURN TO AZIMUTH',
+			'settings.station.rotatorTargetAzimuthShort' => 'TURN TO AZ',
+			'settings.station.rotatorTargetElevation' => 'TURN TO ELEVATION',
+			'settings.station.rotatorTargetElevationShort' => 'TURN TO EL',
+			'settings.station.rotatorAzimuthInvalid' => 'MUST BE 0 TO 360',
+			'settings.station.rotatorElevationInvalid' => 'MUST BE 0 TO 180',
+			'settings.station.rotatorTurn' => 'TURN',
+			'settings.station.rotatorStop' => 'STOP',
 			'settings.station.configUnreadable' => 'THIS RADIO\'S SAVED SETTINGS COULD NOT BE READ. OPEN ITS SETTINGS AND ENTER THEM AGAIN, OR REMOVE IT AND ADD IT BACK.',
 			'settings.station.autoConnectHeld' => 'HALO STOPPED RESPONDING THE LAST TIME IT CONNECTED TO THIS RADIO, SO IT DID NOT CONNECT ON ITS OWN THIS TIME. PRESS CONNECT TO TRY AGAIN.',
 			'settings.offlineData.title' => 'OFFLINE DATA',
@@ -6951,6 +7075,8 @@ extension on TranslationsQro {
 			'switchAccounts.linkWithQrDescription' => 'SCAN IT FROM A DEVICE ALREADY USING THE ACCOUNT',
 			'switchAccounts.linkWithEmail' => 'LINK WITH AN EMAIL ADDRESS',
 			'switchAccounts.linkWithEmailDescription' => 'CONFIRM WITH A CODE OR AN EMAIL LINK',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.enterEmailPrompt' => 'ENTER THE EMAIL ADDRESS OF THE ACCOUNT YOU WANT THIS DEVICE TO USE.',
 			'switchAccounts.emailAddress' => 'EMAIL ADDRESS',
 			'switchAccounts.linkAccount' => 'LINK ACCOUNT',
@@ -7013,8 +7139,6 @@ extension on TranslationsQro {
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',

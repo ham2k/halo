@@ -246,6 +246,30 @@ abstract class AntennaSwitchSession implements EquipmentSession {
   void selectAntenna(String portKey, String antennaKey);
 }
 
+/// A session for equipment that points an antenna.
+///
+/// Reading is not here, for [AntennaSwitchSession]'s reason: the heading
+/// arrives through [RotatorSink], so a panel that only shows it never needs
+/// this type.
+abstract class RotatorSession implements EquipmentSession {
+  /// Turns to true [azimuth] degrees, and to [elevation] on a rotator that
+  /// has one. A null [elevation] leaves it where it is. Returns the true
+  /// heading it is turning to, which the node's limits can make another:
+  /// that is the target there is any arriving at. Its elevation is null when
+  /// no elevation was sent.
+  RotatorPosition rotateTo({required num azimuth, num? elevation});
+
+  /// Stops every axis, wherever it has got to.
+  void stopRotation();
+}
+
+/// Where a [RotatorSession] reports its heading — a sink of its own, as
+/// [TunerSink] is, so the many sinks with no use for it need not grow one.
+abstract class RotatorSink {
+  /// Where the antenna points now, each time the controller says.
+  void reportRotator(RotatorPosition position);
+}
+
 /// Where a session with an antenna tuner reports it. A sink of its own, as
 /// [SpectrumSink] is, so the many sinks with no use for it need not grow one:
 /// a driver reports through `if (sink case final TunerSink t)`.

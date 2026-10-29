@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'form_renderer.dart';
+import 'halo_dialog.dart';
 import 'modal_pane.dart';
 import 'spacing.dart';
 
@@ -165,8 +166,9 @@ Future<Map<String, dynamic>?> showFormPane(
           ),
           ValueListenableBuilder<bool>(
             valueListenable: submittingNotifier,
-            builder: (context, isSubmitting, _) => Padding(
-              padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
+            builder: (context, isSubmitting, _) => Container(
+              decoration: haloDialogFooterBandDecoration(context),
+              padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
               child: formActionsRow(
                 saveLabel: saveLabel,
                 isSubmitting: isSubmitting,

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // What the equipment editor's form says about the equipment's live state:
-// which channel another client already holds, and an antenna switch's
-// current routing, wiring and antenna links. Labels and read-only rows only —
-// every value the form saves is still the driver's.
+// which channel another client already holds, an antenna switch's current
+// routing, wiring and antenna links, and where a rotator points. Labels,
+// read-only rows and commands only — every value the form saves is still the
+// driver's.
 
 part of 'station_panel.dart';
 
@@ -268,4 +269,188 @@ extension _EditorAnnotations on StationPanel {
           },
     ];
   }
+
+  /// The Current State section for a saved rotator: where it points, a
+  /// heading to turn it to, and Connect or Disconnect in the band.
+  ///
+  /// Unlike the switch's section it shows while disconnected too, its
+  /// controls greyed: a rotator is turned from this pane, so the pane is
+  /// where the operator connects it — and controls that vanish leave them
+  /// nothing saying how to get them back. Connect reaches the rotator as
+  /// SAVED, not as edited in the form. Unlike a switch's pickers, the readout DOES
+  /// follow the rotator while the pane is open — the editor republishes its
+  /// elements every [_rotatorReadoutRefresh] — because a heading is mostly
+  /// watched while it changes. The target boxes are commands' arguments, not
+  /// settings: their keys never reach the stored record
+  /// ([isRotatorFormKey]), and Turn sends them on the spot.
+  List<Map<String, dynamic>> _rotatorCurrentState(BuildContext context, EquipmentNode? node) {
+    if (node == null) return const [];
+    final state = _cat.stateFor(node.uuid);
+    final connected = state.status == EquipmentStatus.connected;
+    // A stale heading is where the antenna WAS: shown as current, it is a
+    // turn the operator plans from a place the mast may have left.
+    final live = connected && !state.stale;
+    final st = context.t.settings.station;
+    final elevation = rotatorHasElevation(node.config);
+    final position = live ? state.rotator : null;
+    // A phone-width pane fits four controls on one row only with the short
+    // labels, and the heading in the band only with the short units.
+    final short = !ShirtSize.of(context).isTwoPane;
+
+    return [
+      {
+        'type': 'header',
+        'style': 'category',
+        'title': !connected
+            ? st.rotatorCurrentStateHeader(position: st.rotatorDisconnected)
+            : !live
+            ? st.rotatorCurrentStateHeader(position: st.rotatorNotResponding)
+            : position == null
+            ? st.switchCurrentStateHeader
+            : st.rotatorCurrentStateHeader(
+                position: _rotatorReading(st, position, elevation: elevation, short: short),
+              ),
+        'action': {
+          'type': 'action',
+          'key': connected ? _rotatorDisconnectAction : _rotatorConnectAction,
+          'label': connected ? st.disconnect : st.connect,
+          'icon': connected ? 'power-plug' : 'power-plug-off',
+          if (connected) 'tone': 'connected',
+          'busy': state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting,
+        },
+      },
+      // The driver's problem is the one thing that says why no heading comes:
+      // a controller refusing every poll answers, so nothing else is wrong.
+      if (connected && state.problem != null)
+        {'type': 'markdown', 'text': state.problem!}
+      else if (live && position == null)
+        {'type': 'markdown', 'text': st.rotatorNoReading},
+      // Here as well as on the station row: Connect pressed in this pane
+      // fails where the row's own message is out of sight.
+      if (!connected && state.error != null) {'type': 'markdown', 'text': state.error!},
+      {
+        'type': 'row',
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'number',
+            'key': _rotatorTargetAzimuthKey,
+            'label': short ? st.rotatorTargetAzimuthShort : st.rotatorTargetAzimuth,
+            'disabled': !live,
+          },
+          if (elevation)
+            {
+              'type': 'field',
+              'fieldType': 'number',
+              'key': _rotatorTargetElevationKey,
+              'label': short ? st.rotatorTargetElevationShort : st.rotatorTargetElevation,
+              'disabled': !live,
+            },
+          {'type': 'action', 'key': _rotatorTurnAction, 'label': st.rotatorTurn, 'flex': 0, 'disabled': !live},
+          {'type': 'action', 'key': _rotatorStopAction, 'label': st.rotatorStop, 'flex': 0, 'disabled': !connected},
+        ],
+      },
+    ];
+  }
+
+  /// Runs Turn, Stop, Connect or Disconnect for [node] with the form's
+  /// current [values]. Null for any other action, which is the transport's
+  /// to run.
+  ///
+  /// The target boxes are checked here rather than by the form's validator,
+  /// which runs on Save — and a heading the operator typed and never sent
+  /// must not stop them saving a renamed rotator.
+  FormActionResult? _runRotatorAction(BuildContext context, EquipmentNode? node, String actionKey, Map<String, dynamic> values) {
+    if (node == null || !_rotatorActions.contains(actionKey)) return null;
+    if (actionKey == _rotatorConnectAction) {
+      unawaited(_cat.connect(node.uuid));
+      return const FormActionResult();
+    }
+    if (actionKey == _rotatorDisconnectAction) {
+      unawaited(_cat.disconnect(node.uuid));
+      return const FormActionResult();
+    }
+    if (actionKey == _rotatorStopAction) {
+      _cat.stopRotator(node.uuid);
+      return const FormActionResult();
+    }
+    final st = context.t.settings.station;
+    final azimuth = values[_rotatorTargetAzimuthKey];
+    if (azimuth is! num || azimuth < 0 || azimuth > 360) return FormActionResult(message: st.rotatorAzimuthInvalid);
+    final elevation = rotatorHasElevation(node.config) ? values[_rotatorTargetElevationKey] : null;
+    if (elevation != null && (elevation is! num || elevation < 0 || elevation > rotatorElevationCeiling)) {
+      return FormActionResult(message: st.rotatorElevationInvalid);
+    }
+    final target = _cat.rotateTo(node.uuid, azimuth: azimuth, elevation: elevation as num?);
+    // The node's limits turn a heading past them to the nearer one; the box
+    // still saying what was typed is the operator's only other account of it.
+    final held =
+        target != null &&
+        (rotatorHeadingGap(target.azimuth, azimuth.round()) > 0 || (target.elevation != null && target.elevation != (elevation as num).round()));
+    if (!held) return const FormActionResult();
+    return FormActionResult(
+      message: st.rotatorHeldAtLimit(heading: _rotatorReading(st, target, elevation: rotatorHasElevation(node.config), short: false)),
+    );
+  }
 }
+
+/// Where [position] points, as the editor's header and its messages say it.
+String _rotatorReading(Translations$settings$station$en st, RotatorPosition position, {required bool elevation, required bool short}) => [
+  short ? st.rotatorAzimuthReadingShort(degrees: position.azimuth) : st.rotatorAzimuthReading(degrees: position.azimuth),
+  if (elevation && position.elevation != null)
+    short ? st.rotatorElevationReadingShort(degrees: position.elevation!) : st.rotatorElevationReading(degrees: position.elevation!),
+].join(', ');
+
+const _rotatorTargetAzimuthKey = 'rotatorTargetAzimuth';
+const _rotatorTargetElevationKey = 'rotatorTargetElevation';
+const _rotatorTurnAction = 'rotatorTurn';
+const _rotatorStopAction = 'rotatorStop';
+const _rotatorConnectAction = 'rotatorConnect';
+const _rotatorDisconnectAction = 'rotatorDisconnect';
+const _rotatorActions = {_rotatorTurnAction, _rotatorStopAction, _rotatorConnectAction, _rotatorDisconnectAction};
+
+/// How often an open rotator editor rereads the heading.
+const _rotatorReadoutRefresh = Duration(seconds: 1);
+
+/// [elements] with each address beside the setting that completes it, on
+/// one row, the second the narrower: a network pairing's host and the
+/// number field after it (its port, under whichever key the transport
+/// keeps it), and a serial pairing's port and speed. A rotator's azimuth
+/// and elevation offsets share a row too, half each, as do each axis's
+/// limits. The row takes the first field's `visibleWhen`, so it hides with
+/// the pairing it belongs to; a member keeps its own, so an elevation
+/// offset still hides beside its azimuth one.
+List<Map<String, dynamic>> _addressRows(List<Map<String, dynamic>> elements) {
+  bool pairs(Map<String, dynamic> first, Map<String, dynamic> next) => switch (first['key']) {
+    'host' => next['fieldType'] == 'number',
+    'port' => next['key'] == 'baudRate',
+    rotatorAzimuthOffsetConfigKey => next['key'] == rotatorElevationOffsetConfigKey,
+    rotatorAzimuthMinConfigKey => next['key'] == rotatorAzimuthMaxConfigKey,
+    rotatorElevationMinConfigKey => next['key'] == rotatorElevationMaxConfigKey,
+    _ => false,
+  };
+  bool even(Map<String, dynamic> first) => first['key'] != 'host' && first['key'] != 'port';
+  final paired = <Map<String, dynamic>>[];
+  for (var index = 0; index < elements.length; index++) {
+    final element = elements[index];
+    final next = index + 1 < elements.length ? elements[index + 1] : null;
+    if (next != null && pairs(element, next)) {
+      paired.add({
+        'type': 'row',
+        if (element['visibleWhen'] != null) 'visibleWhen': element['visibleWhen'],
+        'elements': [
+          {...element, 'flex': even(element) ? 1 : 7},
+          {...next, 'flex': even(element) ? 1 : 3},
+        ],
+      });
+      index++;
+    } else {
+      paired.add(element);
+    }
+  }
+  return paired;
+}
+
+/// Whether [key] is one of the rotator's command boxes rather than a
+/// setting — see [_rotatorCurrentState].
+bool isRotatorFormKey(String key) => key == _rotatorTargetAzimuthKey || key == _rotatorTargetElevationKey;

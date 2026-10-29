@@ -823,6 +823,41 @@ class CatService extends ChangeNotifier
     }
   }
 
+  /// Turns a rotator to [azimuth], and to [elevation] on one that has it.
+  ///
+  /// Addressed by node uuid, for [selectAntenna]'s reason: the operator is
+  /// acting on the equipment in front of them. A no-op on a node that is not
+  /// connected or is not a rotator — races, not states, as there.
+  ///
+  /// Returns where it is turning to, which the node's limits can make
+  /// somewhere other than asked; null when nothing was sent.
+  RotatorPosition? rotateTo(String uuid, {required num azimuth, num? elevation}) {
+    final runtime = _runtimes[uuid];
+    final session = runtime?.session;
+    if (runtime == null || session is! RotatorSession) return null;
+    try {
+      final target = session.rotateTo(azimuth: azimuth, elevation: elevation);
+      runtime.rotatorStillReadings = 0;
+      _setState(uuid, stateFor(uuid).copyWith(rotatorTarget: target));
+      return target;
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:rotate');
+      return null;
+    }
+  }
+
+  /// Stops a rotator wherever it has got to. See [rotateTo].
+  void stopRotator(String uuid) {
+    final session = _runtimes[uuid]?.session;
+    if (session is! RotatorSession) return;
+    try {
+      session.stopRotation();
+      _setState(uuid, stateFor(uuid).copyWith(clearRotatorTarget: true));
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:rotate-stop');
+    }
+  }
+
   /// Whether the radio driving `vfoA` is keyed RIGHT NOW: it says so, or the app
   /// holds its PTT key — unconfirmed, or the radio gone stale (RF in its CAT cable).
   ///

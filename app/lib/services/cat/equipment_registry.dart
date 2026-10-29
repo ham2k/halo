@@ -569,6 +569,7 @@ const _defaultModels = [
   placeholderRadioModel,
   antennaGeniusModel,
   sierraCoaxModel,
+  gs232aModel,
   antennaModel,
   keyModel,
   winkeyerModel,

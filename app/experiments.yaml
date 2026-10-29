@@ -119,6 +119,13 @@ experiments:
     name: SDR Receivers
     description: Add SDR receivers as equipment, to show a radio's panadapter and waterfall.
     aliases: [sdr]
+  # Rotators (docs/design/cat.md § Rotators): a Yaesu GS-232A, or a
+  # controller emulating one, offered under Other Equipment and turned from
+  # its editor. Gated because no rotator has been on the bench.
+  - key: rotator
+    name: Rotators
+    description: Add an antenna rotator as equipment, turn it from the station settings, and place a Rotator panel with a map to turn it from.
+    aliases: [rotor, gs232]
   # Named layouts (docs/design/layouts.md § Named layouts): several layouts
   # per docked view, a switcher beside the layout button, and layout files —
   # exporting all or part of one, and importing one as a new layout, in place

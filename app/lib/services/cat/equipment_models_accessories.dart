@@ -1,13 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Everything in the catalogue that is not a transceiver: antenna switches, a
-// plain antenna and key, and the WinKeyer.
+// Everything in the catalogue that is not a transceiver: antenna switches,
+// rotators, a plain antenna and key, and the WinKeyer.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
+import 'drivers/gs232_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
@@ -20,6 +21,8 @@ import 'transports/tcp_transport.dart';
 const _winkeyerSerialKey = 'winkeyer-serial';
 const _antennaGeniusTcpKey = 'antenna-genius-tcp';
 const _sierraCoaxSerialKey = 'sierra-coax-serial';
+const _gs232aSerialKey = 'gs232a-serial';
+const _gs232aTcpKey = 'gs232a-tcp';
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///
@@ -81,6 +84,43 @@ const sierraCoaxModel = EquipmentModel(
 );
 
 String _sierraCoaxName() => t.settings.station.models.sierraCoax;
+
+/// A Yaesu GS-232A rotator interface — or any controller that emulates
+/// one, which is most of them.
+///
+/// Over its own serial port, or over the network through a serial-to-TCP
+/// bridge (ser2net, a remote station's port server): the protocol is the
+/// same bytes either way, and a bridge has no standard port, so there is
+/// nothing to prefill for it.
+///
+/// 9600 is a prefill rather than an override: the interface's speed is set
+/// by DIP switch, anywhere from 150 to 9600 baud, and 9600 is what the
+/// GS-232B and the emulators ship at.
+const gs232aModel = EquipmentModel(
+  key: 'gs232a',
+  category: kCategoryRotator,
+  name: _gs232aName,
+  manufacturer: 'Yaesu',
+  variants: [
+    EquipmentVariant(
+      key: _gs232aSerialKey,
+      driver: Gs232Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': 9600, rotatorAxesConfigKey: rotatorAxesAzimuth},
+    ),
+    EquipmentVariant(
+      key: _gs232aTcpKey,
+      driver: Gs232Driver(),
+      // Its own key for the TCP port: the serial variant beside it has a
+      // `port` too — the serial port's name, in a picker — and the editor
+      // renders both variants' fields over one set of values.
+      transport: TcpTransport(portConfigKey: 'tcpPort'),
+      defaultConfig: {rotatorAxesConfigKey: rotatorAxesAzimuth},
+    ),
+  ],
+);
+
+String _gs232aName() => t.settings.station.models.gs232a;
 
 const _antennaKey = 'antenna-none';
 const _keyKey = 'key-none';

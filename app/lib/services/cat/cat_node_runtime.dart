@@ -64,6 +64,10 @@ class _NodeRuntime {
   /// reconnected — see [CatService.silentDropAfter].
   Timer? silenceTimer;
 
+  /// Readings in a row that found a rotator where the last one left it,
+  /// counted from its last turn — see [rotatorStalledAfterReadings].
+  int rotatorStillReadings = 0;
+
   /// When this session's radio first and last answered, in real milliseconds
   /// — what [silenceTimer] waits on before it may be armed. Null until it
   /// answers.

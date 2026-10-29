@@ -13,6 +13,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'category_band.dart';
 import 'collapsible_section.dart';
 import 'collapsing_sliver.dart';
+import 'connection_toggle.dart';
 import 'halo_dialog.dart';
 import 'halo_markdown.dart';
 import 'icon_resolver.dart';
@@ -333,9 +334,15 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   List<Map<String, dynamic>> _shown(Object? elements) =>
       (elements as List? ?? const []).cast<Map<String, dynamic>>().where((el) => el['devMode'] != true || widget.developerMode).toList();
 
-  /// A `type: 'disclosure'` element's own members — the fold owns them.
+  /// A `type: 'disclosure'` or `type: 'row'` element's own members — the
+  /// fold or the row owns them.
   @override
-  List<Map<String, dynamic>> _members(Map<String, dynamic> disclosure) => _shown(disclosure['elements']);
+  List<Map<String, dynamic>> _members(Map<String, dynamic> group) => _shown(group['elements']);
+
+  /// Whether [el] holds members of its own rather than being one. Groups
+  /// nest — a row of fields inside a fold — and a field is a field at any
+  /// depth ([_fieldsAmong]).
+  static bool _isGroup(Map<String, dynamic> el) => el['type'] == 'disclosure' || el['type'] == 'row';
 
   /// The orange "dev mode" accent for an element flagged `devMode: true` —
   /// null once [_elements] has already excluded it, so no builder needs its
@@ -348,14 +355,26 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   /// settings_view.dart's wide-layout wrapper), or none at all for every
   /// other FormRenderer caller (dialogs, embedded forms), which keep the
   /// flush-left look those callers already size their own container for.
+  ///
+  /// None while a `row` builds its members: the row takes the inset once,
+  /// around them all, and a member taking it too would open the inset's
+  /// width twice over between each pair.
   @override
-  EdgeInsetsGeometry get _rowContentPadding => ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
+  EdgeInsetsGeometry get _rowContentPadding => _buildingRowMembers ? EdgeInsets.zero : ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
 
-  /// Every field, a fold's members included: a field inside a closed fold
+  @override
+  bool _buildingRowMembers = false;
+
+  /// Every field, a group's members included: a field inside a closed fold
   /// is registered, validated and submitted like any other.
-  List<Map<String, dynamic>> get _fields => [
-    for (final el in _elements)
-      if (el['type'] == 'disclosure') ..._members(el).where((member) => member['type'] == 'field') else if (el['type'] == 'field') el,
+  List<Map<String, dynamic>> get _fields => _fieldsAmong(_elements);
+
+  /// The fields among [elements], a group's at any depth: a field one group
+  /// further down that went unregistered would render against no controller
+  /// and drop what is typed into it.
+  List<Map<String, dynamic>> _fieldsAmong(List<Map<String, dynamic>> elements) => [
+    for (final el in elements)
+      if (_isGroup(el)) ..._fieldsAmong(_members(el)) else if (el['type'] == 'field') el,
   ];
 
   /// [_elements] minus any whose `visibleWhen` predicate doesn't currently
@@ -379,21 +398,26 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   ///
   /// Reads [_values], so any field's `setState` re-evaluates visibility.
   ///
-  /// A `type: 'disclosure'` element shows only while at least one of its
-  /// members' `visibleWhen` holds — a fold with nothing in it would open onto
-  /// nothing. Its members are filtered by the same rules when it renders.
+  /// A group shows only while at least one of its members' `visibleWhen`
+  /// holds — a fold with nothing in it would open onto nothing, and an empty
+  /// row would still take its gap. Its members are filtered by the same
+  /// rules when it renders.
   List<Map<String, dynamic>> get _visibleElements => [
     for (final el in _elements)
-      if (_visibleWhenHolds(el) && (el['type'] != 'disclosure' || _members(el).any(_visibleWhenHolds))) el,
+      if (_visibleWhenHolds(el) && (!_isGroup(el) || _members(el).any(_visibleWhenHolds))) el,
   ];
 
   /// Whether [el]'s `visibleWhen` holds. `equals` may be a single value or a
-  /// list meaning "any of". Naming a field that doesn't exist reads as null and
-  /// so hides the element — a definition that points at nothing shows nothing,
-  /// rather than throwing in the middle of someone's setup dialog.
+  /// list meaning "any of"; a list of conditions must all hold, so a host can
+  /// add its own to one a field declared without replacing it. Naming a
+  /// field that doesn't exist reads as null and so hides the element — a
+  /// definition that points at nothing shows nothing, rather than throwing
+  /// in the middle of someone's setup dialog.
   @override
-  bool _visibleWhenHolds(Map<String, dynamic> el) {
-    final when = el['visibleWhen'];
+  bool _visibleWhenHolds(Map<String, dynamic> el) => _conditionHolds(el['visibleWhen']);
+
+  bool _conditionHolds(Object? when) {
+    if (when is List) return when.every(_conditionHolds);
     if (when is! Map) return true;
     final actual = _values[when['field']];
     final expected = when['equals'];
@@ -424,12 +448,11 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     );
   }
 
-  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => [
-    for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
-      if (el['type'] == 'disclosure')
-        ...(el['elements'] as List? ?? const []).cast<Map<String, dynamic>>().where((member) => member['type'] == 'field')
-      else if (el['type'] == 'field')
-        el,
+  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => _declaredFields(definition['elements']);
+
+  static List<Map<String, dynamic>> _declaredFields(Object? elements) => [
+    for (final el in (elements as List? ?? const []).cast<Map<String, dynamic>>())
+      if (_isGroup(el)) ..._declaredFields(el['elements']) else if (el['type'] == 'field') el,
   ];
 
   /// A field's `value` here is the source of truth — set by whatever last
@@ -764,13 +787,13 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
           // nothing on screen saying why.
           var opened = false;
           for (final el in _elements) {
-            if (el['type'] == 'disclosure' && _members(el).any((member) => errors.containsKey(member['key']))) {
+            if (el['type'] == 'disclosure' && _fieldsAmong(_members(el)).any((field) => errors.containsKey(field['key']))) {
               opened = _openDisclosures.add(el['key'] as String) || opened;
             }
           }
           for (final (:band, :rows) in _sections(_visibleElements)) {
             if (band == null || !_folds(band) || _sectionIsOpen(band)) continue;
-            if (rows.any((el) => errors.containsKey(el['key']) || (el['type'] == 'disclosure' && _members(el).any((m) => errors.containsKey(m['key']))))) {
+            if (rows.any((el) => errors.containsKey(el['key']) || (_isGroup(el) && _fieldsAmong(_members(el)).any((m) => errors.containsKey(m['key']))))) {
               _openSections[_sectionName(band)] = opened = true;
             }
           }
@@ -814,25 +837,29 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     return AutofillGroup(child: child);
   }
 
-  Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) => Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      ..._formTitle(context, theme),
-      for (final (index, (:band, :rows)) in _sections(elements).indexed) ...[
-        if (band == null && index > 0 && rows.isNotEmpty) const SizedBox(height: Space.xl),
-        if (band != null) _buildHeader(band, theme, folds: true),
-        if (band != null && _folds(band))
-          CollapsibleBody(
-            expanded: _sectionIsOpen(band),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, rows)),
-          )
-        else
-          ..._elementRows(theme, rows),
+  Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) {
+    final sections = _sections(elements);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ..._formTitle(context, theme),
+        for (final (index, (:band, :rows)) in sections.indexed) ...[
+          if (band == null && index > 0 && rows.isNotEmpty) const SizedBox(height: Space.xl),
+          if (_spacedAbove(band, sections.take(index))) const SizedBox(height: Space.xl),
+          if (band != null) _buildHeader(band, theme, folds: true),
+          if (band != null && _folds(band))
+            CollapsibleBody(
+              expanded: _sectionIsOpen(band),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, rows)),
+            )
+          else
+            ..._elementRows(theme, rows),
+        ],
+        ..._formActions(),
       ],
-      ..._formActions(),
-    ],
-  );
+    );
+  }
 
   /// The same form, as one sliver: every run of rows under a section band is
   /// a group of its own, so the band pins over ITS rows and is pushed off by
@@ -849,8 +876,10 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
       );
     }
 
-    for (final (index, (:band, :rows)) in _sections(elements).indexed) {
+    final sections = _sections(elements);
+    for (final (index, (:band, :rows)) in sections.indexed) {
       if (band == null && rows.isEmpty) continue;
+      if (_spacedAbove(band, sections.take(index))) slivers.add(const SliverToBoxAdapter(child: SizedBox(height: Space.xl)));
       // One box per section, not a SliverList: a lazy list builds only what
       // is on screen and DISPOSES what scrolls off it, and these rows own
       // the FocusNodes and TextEditingControllers the operator is typing
@@ -898,6 +927,15 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   /// does not.
   static bool _folds(Map<String, dynamic> el) => el['style'] == 'section';
 
+  /// Whether [band] stands off the rows above it. A 'category' band starts a
+  /// new top-level grouping, and flush against the last field of the one
+  /// before it reads as that field's caption. Outside the band's own pinned
+  /// group, so the gap scrolls away with the rows above rather than riding
+  /// along under the pinned band. A 'section' band keeps abutting: it is one
+  /// section of a continuous list.
+  static bool _spacedAbove(Map<String, dynamic>? band, Iterable<({Map<String, dynamic>? band, List<Map<String, dynamic>> rows})> above) =>
+      band?['style'] == 'category' && above.any((section) => section.rows.isNotEmpty);
+
   /// [elements] cut at every band: the rows ahead of the first band, then
   /// each band over the rows up to the next band or `sectionEnd` — which is
   /// all a band ever owns, since the declaration is a flat list. Rows after a
@@ -944,7 +982,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
     final color = _devModeColor(el);
     final subtitle = _headerSubtitle(el, theme);
     return el['style'] == 'category'
-        ? CategoryBand(title, color: color, subtitle: subtitle).asPinnedSliver
+        ? CategoryBand(title, color: color, subtitle: subtitle, trailing: _bandAction(el)).asPinnedSliver
         : _sectionHeader(el, title, color: color, subtitle: subtitle).asPinnedSliver(context);
   }
 
@@ -986,6 +1024,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
         'divider' => _buildDivider(el, theme),
         'markdown' => _buildMarkdown(el, theme),
         'disclosure' => _buildDisclosure(el, theme),
+        'row' => _buildRow(el, theme),
         'field' => NumbersRowExtraKey(extraKey: _numbersRowKeyFor(el), child: _buildField(el, theme)),
         'link' => _buildLink(el, theme),
         'action' => _buildActionElement(el, theme),

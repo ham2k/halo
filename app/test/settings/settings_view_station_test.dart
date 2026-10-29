@@ -14,11 +14,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/add_equipment_dialog.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
+import '../support/fake_gs232_line.dart';
 import '../support/fake_serial_ports.dart';
 import '../support/halo_test_support.dart';
 
@@ -34,6 +36,7 @@ void main() {
     // catalogue is only a handful of radios, so at the default size it
     // never scrolls and the scroll-driven fold cannot be exercised at all.
     Size viewSize = const Size(1000, 1400),
+    CatService Function(SettingsService settings)? cat,
   }) async {
     tester.view.physicalSize = viewSize;
     tester.view.devicePixelRatio = 1.0;
@@ -43,6 +46,7 @@ void main() {
     final HaLoHarness(:services) = await makeHaLoServices(
       prefs: {if (equipment != null) 'stationEquipment': jsonEncode(equipment)},
       secureStorage: secureStorage,
+      cat: cat,
     );
 
     await tester.pumpWidget(
@@ -715,6 +719,177 @@ void main() {
     await tester.enterText(search, 'bluetooth le');
     await tester.pump();
     expect(find.text('Icom IC-7300'), findsOneWidget);
+  });
+
+  testWidgets('the GS-232A waits for EXP ROTATOR, and then sits under Other Equipment, not on the Yaesu shelf', (tester) async {
+    // No rotator has met hardware, so it is not offered before the
+    // experiment. Once it is, it is station plumbing like a switch: filed
+    // under its maker, an operator browsing Yaesu for their radio would
+    // find a rotator interface between the transceivers.
+    final services = await pumpSettings(tester);
+    await openAddDialog(tester);
+    final search = find.widgetWithText(TextField, 'Search equipment');
+    await tester.enterText(search, 'gs-232');
+    await tester.pump();
+    expect(find.text('Yaesu GS-232A Rotator Interface'), findsNothing);
+
+    Navigator.of(tester.element(search)).pop();
+    await tester.pumpAndSettle();
+    await services.settings.setExperimentEnabled('rotator', true);
+    await tester.pumpAndSettle();
+    await openAddDialog(tester);
+
+    // Only Other Equipment open: a row filed on the Yaesu shelf would stay
+    // folded away there, and a folded shelf keeps its rows mounted, so only
+    // a tappable row proves which shelf it is on.
+    await openBrand(tester, otherEquipment);
+    expect(find.descendant(of: catalogue, matching: find.text('Yaesu GS-232A Rotator Interface')).hitTestable(), findsOneWidget);
+  });
+
+  group('a rotator\'s offsets and limits', () {
+    Future<HaLoServices> openTower(WidgetTester tester, {required String axes}) async {
+      final services = await pumpSettings(
+        tester,
+        equipment: {
+          'version': 1,
+          'nodes': {
+            'tower': {
+              'typeKey': 'gs232a-tcp',
+              'name': 'Tower',
+              'config': {'host': '10.0.0.7', 'tcpPort': 4535, 'rotatorAxes': axes},
+            },
+          },
+        },
+      );
+      await services.settings.setExperimentEnabled('rotator', true);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Station Configuration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 other device'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tower').first);
+      await tester.pumpAndSettle();
+      return services;
+    }
+
+    Finder box(String label) => find.widgetWithText(TextField, label).hitTestable();
+
+    // Both pairings render the driver's fields, each behind the transport
+    // picker. An elevation field's own condition replacing the picker's
+    // shows both pairings' copies; the picker's replacing its own shows one
+    // on a rotator that has no elevation.
+    testWidgets('an az-only rotator shows no elevation fields', (tester) async {
+      await openTower(tester, axes: 'az');
+      expect(box('Azimuth offset'), findsOneWidget);
+      expect(box('Elevation offset'), findsNothing);
+    });
+
+    testWidgets('an az/el rotator shows its elevation offset once, beside the azimuth one', (tester) async {
+      await openTower(tester, axes: 'azel');
+      expect(box('Elevation offset'), findsOneWidget);
+      expect(tester.getRect(box('Elevation offset')).top, tester.getRect(box('Azimuth offset')).top, reason: 'the two offsets share a row');
+    });
+
+    // The limits sit in a row inside the Advanced fold — a group in a
+    // group. A renderer that registers only one level down draws the boxes
+    // and saves nothing typed into them.
+    testWidgets('limits inside Advanced save like any field', (tester) async {
+      final services = await openTower(tester, axes: 'az');
+      await tester.tap(find.text('Advanced Settings').last);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(box('Highest azimuth')).top, tester.getRect(box('Lowest azimuth')).top);
+
+      await tester.enterText(box('Highest azimuth'), '450');
+      await tester.enterText(box('Azimuth offset'), '-12');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save').last);
+      await tester.pumpAndSettle();
+
+      final config = services.cat.nodeFor('tower')!.config;
+      expect(config['azimuthMax'], 450);
+      expect(config['azimuthOffset'], -12);
+    });
+  });
+
+  group('a connected rotator in its editor', () {
+    late FakeGs232Line line;
+    late CatService cat;
+
+    Future<void> openConnectedTower(WidgetTester tester, {Map<String, dynamic> config = const {}}) async {
+      line = FakeGs232Line();
+      final services = await pumpSettings(
+        tester,
+        equipment: {
+          'version': 1,
+          'nodes': {
+            'tower': {'typeKey': fakeGs232TypeKey, 'name': 'Tower', 'config': config},
+          },
+        },
+        cat: (settings) => cat = line.catService(settings, staleAfter: const Duration(milliseconds: 300)),
+      );
+      addTearDown(cat.dispose);
+      await services.settings.setExperimentEnabled('rotator', true);
+      await tester.runAsync(() => cat.connect('tower'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Station Configuration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 other device'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tower').first);
+      await tester.pumpAndSettle();
+    }
+
+    /// The controller's answer, and the editor's next readout refresh.
+    Future<void> hear(WidgetTester tester, String text) async {
+      line.say(text);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump(const Duration(seconds: 2));
+    }
+
+    final st = t.settings.station;
+
+    // Past its limits a turn goes to the nearer one, and the box still says
+    // what was typed: unsaid, the operator believes the antenna is headed
+    // somewhere it will never reach.
+    testWidgets('a turn past the limits says where it is going instead', (tester) async {
+      await openConnectedTower(tester, config: {'azimuthMax': 180});
+      await hear(tester, '+0090\r\n');
+      await tester.enterText(find.widgetWithText(TextField, st.rotatorTargetAzimuth).hitTestable(), '200');
+      await tester.tap(find.text(st.rotatorTurn).hitTestable());
+      await tester.pump();
+      expect(line.sent, contains('M180\r'));
+      expect(find.text(st.rotatorHeldAtLimit(heading: st.rotatorAzimuthReading(degrees: 180))), findsOneWidget);
+    });
+
+    testWidgets('a turn within the limits says nothing', (tester) async {
+      await openConnectedTower(tester, config: {'azimuthMax': 180});
+      await hear(tester, '+0090\r\n');
+      await tester.enterText(find.widgetWithText(TextField, st.rotatorTargetAzimuth).hitTestable(), '150');
+      await tester.tap(find.text(st.rotatorTurn).hitTestable());
+      await tester.pump();
+      expect(line.sent, contains('M150\r'));
+      expect(find.textContaining(st.rotatorHeldAtLimit(heading: '')), findsNothing);
+    });
+
+    // A controller refusing every poll still answers, so nothing else is
+    // wrong: without its problem the pane waits for a position forever.
+    testWidgets('a controller refusing every poll says why, not that it is waiting', (tester) async {
+      await openConnectedTower(tester);
+      await hear(tester, '?>\r\n');
+      expect(find.text(st.rotatorRefused).hitTestable(), findsOneWidget);
+      expect(find.text(st.rotatorNoReading).hitTestable(), findsNothing);
+    });
+
+    testWidgets('a rotator gone quiet reads not responding, and Turn waits for it', (tester) async {
+      await openConnectedTower(tester);
+      await hear(tester, '+0090\r\n');
+      expect(find.text(st.rotatorCurrentStateHeader(position: st.rotatorAzimuthReading(degrees: 90))), findsOneWidget);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text(st.rotatorCurrentStateHeader(position: st.rotatorNotResponding)), findsOneWidget);
+      final turn = tester.widget<OutlinedButton>(find.ancestor(of: find.text(st.rotatorTurn).hitTestable(), matching: find.byType(OutlinedButton)));
+      expect(turn.onPressed, isNull);
+    });
   });
 
   testWidgets('a radio already on a pairing EXP 500MP holds back keeps it in its editor', (tester) async {

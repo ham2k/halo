@@ -48,6 +48,9 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Whether "Other Equipment" offers the SDR receivers — behind `EXP SDR`.
   final bool showSdr;
 
+  /// Whether "Other Equipment" offers the rotators — behind `EXP ROTATOR`.
+  final bool showRotator;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const AddEquipmentDialog({
@@ -57,6 +60,7 @@ class AddEquipmentDialog extends StatefulWidget {
     required this.showAntennaAndKey,
     required this.showKeyer,
     this.showSdr = false,
+    this.showRotator = false,
     required this.supportedVariants,
   });
 
@@ -244,6 +248,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     // left out here rather than offered.
     final catalogue = <String, List<_AddRow>>{};
     final switches = <_AddRow>[];
+    final rotators = <_AddRow>[];
     for (final model in widget.cat.registry.models) {
       if (model.hiddenFromCatalog) continue;
       final variants = widget.supportedVariants(model);
@@ -254,6 +259,9 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       // the other one-off equipment rather than under their maker's brand.
       if (model.category == kCategoryAntennaSwitch) {
         switches.add(row);
+      } else if (model.category == kCategoryRotator) {
+        // Station plumbing, for the switches' reason.
+        if (widget.showRotator) rotators.add(row);
       } else {
         catalogue.putIfAbsent(_shelfOf(model), () => []).add(row);
       }
@@ -267,6 +275,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       rows.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     }
     switches.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    rotators.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     final other = <_AddRow>[
       if (widget.showAntennaAndKey) ...[
@@ -286,6 +295,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           variants: widget.supportedVariants(winkeyerModel),
         ),
       ...switches,
+      ...rotators,
       if (widget.showSdr)
         for (final model in sdrModels)
           if (widget.supportedVariants(model) case final variants when variants.isNotEmpty) _AddRow.forModel(model, variants),

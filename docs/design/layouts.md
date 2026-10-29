@@ -538,7 +538,8 @@ constant in the view. Two sources write into it:
   view offers all four, so `DockHost.registerSharedDashboardPanels` (used by
   every view via the mixin) is what registers them, and
   `DockHost.sharedDashboardPanes` is what builds their widgets. Radio joins
-  them, and Remote Screen does while its experiment (`remote`) is on —
+  them, and Rotator and Remote Screen do while their experiments (`rotator`,
+  `remote`) are on —
   registered from the same place and gated there, so a saved arrangement
   holding one falls to the missing-panel placeholder with the experiment off
   rather than losing the operator their pane. Registering

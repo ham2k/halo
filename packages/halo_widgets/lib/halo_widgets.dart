@@ -8,6 +8,7 @@ export 'src/call_info_summary.dart';
 export 'src/display_regions.dart';
 export 'src/logging_controls_spotting.dart' show spotFailureText, SpottingControlModel;
 export 'src/category_band.dart';
+export 'src/connection_toggle.dart';
 export 'src/chrome_edge.dart';
 export 'src/collapsible_section.dart';
 export 'src/collapsing_sliver.dart';

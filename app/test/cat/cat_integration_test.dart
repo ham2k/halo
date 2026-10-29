@@ -3,7 +3,8 @@
 //
 // The whole chain with nothing faked but the radio: the real
 // EquipmentRegistry, the real TCP transport over a real loopback socket,
-// and the real FlexRadio and rigctld drivers, driven by CatService the way
+// and the real FlexRadio, rigctld, flrig and GS-232 drivers, driven by
+// CatService the way
 // the Station Configuration panel drives it.
 //
 // The unit tests each prove one layer; this is the only tier that proves
@@ -250,6 +251,48 @@ class _FakeFlrig {
   Future<void> stop() => _server.close();
 }
 
+/// A GS-232A rotator interface on a serial-to-TCP bridge: answers `C2` in
+/// the A dialect and nothing else, as the manual says it does, and jumps
+/// straight to whatever heading it is told.
+class _FakeGs232 {
+  final ServerSocket _server;
+  final commands = <String>[];
+  var azimuth = 180;
+  var elevation = 0;
+
+  /// Off, it takes turn commands and stays put — a mast still on its way.
+  var turns = true;
+
+  _FakeGs232(this._server) {
+    _server.listen((socket) {
+      unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+      var pending = '';
+      socket.listen((chunk) {
+        pending += ascii.decode(chunk);
+        while (pending.contains('\r')) {
+          final end = pending.indexOf('\r');
+          final command = pending.substring(0, end);
+          pending = pending.substring(end + 1);
+          commands.add(command);
+          if (command == 'C2') {
+            socket.add(ascii.encode('+0${'$azimuth'.padLeft(3, '0')}+0${'$elevation'.padLeft(3, '0')}\r\n'));
+          } else if (RegExp(r'^W(\d{3}) (\d{3})$').firstMatch(command) case final turn? when turns) {
+            azimuth = int.parse(turn.group(1)!);
+            elevation = int.parse(turn.group(2)!);
+          }
+        }
+      }, onError: (Object _) {});
+    });
+  }
+
+  static Future<_FakeGs232> start() async => _FakeGs232(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+
+  String get host => _server.address.address;
+  int get port => _server.port;
+
+  Future<void> stop() => _server.close();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -355,6 +398,127 @@ void main() {
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.disconnected);
     } finally {
       await rig.stop();
+    }
+  });
+
+  test('connects to a GS-232A over TCP, reads where it points and turns it', () async {
+    // The TCP port is stored under `tcpPort`, not `port` — the serial
+    // variant's `port` is its device name. A target built from the wrong
+    // key connects to port 0 and this never gets past connecting.
+    final rotator = await _FakeGs232.start();
+    try {
+      final node = await cat.addNode(typeKey: 'gs232a-tcp', name: 'Tower', config: {'host': rotator.host, 'tcpPort': rotator.port, 'rotatorAxes': 'azel'});
+      await cat.connect(node.uuid);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null);
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 180, elevation: 0));
+
+      cat.rotateTo(node.uuid, azimuth: 45, elevation: 30);
+      await _settleUntil(() => rotator.commands.contains('W045 030'));
+      expect(rotator.commands, contains('W045 030'));
+      // The new heading arrives on a later poll, never assumed from the
+      // command: a controller at its end stop does not get there.
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator == const RotatorPosition(azimuth: 45, elevation: 30), tries: 300);
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 45, elevation: 30));
+
+      cat.stopRotator(node.uuid);
+      await _settleUntil(() => rotator.commands.contains('S'));
+      expect(rotator.commands, contains('S'));
+
+      await cat.disconnect(node.uuid);
+      expect(cat.stateFor(node.uuid).rotator, isNull, reason: 'a heading is never carried past its connection');
+    } finally {
+      await rotator.stop();
+    }
+  });
+
+  // The map draws a target line for as long as this holds one. Dropped too
+  // early, a turn in progress reads as done; never dropped, a mast that got
+  // there still shows a turn, and so does one later moved at the
+  // controller's own knob.
+  test('a rotator holds its target until it gets there or is stopped', () async {
+    final rotator = await _FakeGs232.start()
+      ..turns = false;
+    try {
+      final node = await cat.addNode(typeKey: 'gs232a-tcp', name: 'Tower', config: {'host': rotator.host, 'tcpPort': rotator.port, 'rotatorAxes': 'azel'});
+      await cat.connect(node.uuid);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null);
+
+      cat.rotateTo(node.uuid, azimuth: 300, elevation: 0);
+      expect(cat.stateFor(node.uuid).rotatorTarget, const RotatorPosition(azimuth: 300, elevation: 0));
+      final polls = rotator.commands.where((c) => c == 'C2').length;
+      await _settleUntil(() => rotator.commands.where((c) => c == 'C2').length > polls + 1, tries: 300);
+      expect(cat.stateFor(node.uuid).rotatorTarget, const RotatorPosition(azimuth: 300, elevation: 0), reason: 'still at 180, still on its way');
+
+      // Short of the target, as a controller coasting to a stop leaves it.
+      rotator.azimuth = 298;
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator?.azimuth == 298, tries: 300);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull);
+
+      rotator.azimuth = 90;
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator?.azimuth == 90, tries: 300);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull, reason: 'turned at the knob, not by the app');
+
+      cat.rotateTo(node.uuid, azimuth: 0, elevation: 0);
+      cat.stopRotator(node.uuid);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull);
+
+      cat.rotateTo(node.uuid, azimuth: 270, elevation: 0);
+      await cat.disconnect(node.uuid);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull, reason: 'a turn is never carried past its connection');
+    } finally {
+      await rotator.stop();
+    }
+  });
+
+  // Judged on azimuth alone, a turn that only raises the elevation is "there"
+  // at the first poll, and the pane drops its Stop while the mast still
+  // moves.
+  test('a turn in elevation alone holds its target until the elevation gets there', () async {
+    final rotator = await _FakeGs232.start()
+      ..turns = false;
+    try {
+      final node = await cat.addNode(typeKey: 'gs232a-tcp', name: 'Tower', config: {'host': rotator.host, 'tcpPort': rotator.port, 'rotatorAxes': 'azel'});
+      await cat.connect(node.uuid);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null);
+
+      cat.rotateTo(node.uuid, azimuth: 180, elevation: 45);
+      final polls = rotator.commands.where((c) => c == 'C2').length;
+      await _settleUntil(() => rotator.commands.where((c) => c == 'C2').length > polls + 1, tries: 300);
+      expect(cat.stateFor(node.uuid).rotatorTarget, const RotatorPosition(azimuth: 180, elevation: 45));
+
+      rotator.elevation = 44;
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator?.elevation == 44, tries: 300);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull);
+    } finally {
+      await rotator.stop();
+    }
+  });
+
+  // A GS-232 says nothing when it is stopped at its own front panel, or when
+  // the mast meets a stop short of the node's limits: without this the map
+  // shows a turn in progress until someone presses Stop in the app. Too
+  // eager, and a mast still releasing its brake loses its target.
+  test('a turn that stands still short of its target lets the target go', () async {
+    final rotator = await _FakeGs232.start()
+      ..turns = false;
+    try {
+      final node = await cat.addNode(
+        typeKey: 'gs232a-tcp',
+        name: 'Tower',
+        config: {'host': rotator.host, 'tcpPort': rotator.port, 'rotatorAxes': 'azel', 'pollInterval': 500},
+      );
+      await cat.connect(node.uuid);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null);
+
+      cat.rotateTo(node.uuid, azimuth: 300, elevation: 0);
+      final polls = rotator.commands.where((c) => c == 'C2').length;
+      await _settleUntil(() => cat.stateFor(node.uuid).rotatorTarget == null, tries: 600);
+      expect(cat.stateFor(node.uuid).rotatorTarget, isNull);
+      expect(rotator.commands.where((c) => c == 'C2').length - polls, greaterThanOrEqualTo(rotatorStalledAfterReadings));
+    } finally {
+      await rotator.stop();
     }
   });
 
