@@ -86,7 +86,9 @@ class SpotsQuery {
     );
   }
 
-  static const _knownParams = {'filter', 'maxAgeMinutes', 'band', 'mode', 'source', 'annotate', 'operationUuid'};
+  /// `extensionKey` is no option: the kernel names the caller on every host call it makes, and
+  /// refusing it refuses every call.
+  static const _knownParams = {'filter', 'maxAgeMinutes', 'band', 'mode', 'source', 'annotate', 'operationUuid', 'extensionKey'};
 
   static List<String>? _strings(Map<String, dynamic> params, String key) {
     final value = params[key];

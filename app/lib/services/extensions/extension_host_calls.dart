@@ -362,8 +362,9 @@ class _ExtensionHostCalls {
     // lookups a batch at a time: the requests landing within
     // [historyCoalesceWindow] of one another with the same options are
     // answered by one query, not a queue of them that every other reader of
-    // the database would wait behind.
-    final options = jsonEncode({for (final key in params.keys.where((key) => key != 'call').toList()..sort()) key: params[key]});
+    // the database would wait behind — whichever extension asked, so the
+    // caller's key is no part of them.
+    final options = jsonEncode({for (final key in params.keys.where((key) => key != 'call' && key != 'extensionKey').toList()..sort()) key: params[key]});
     final waiting = _historyWaiting[options] ??= _answerHistorySoon(options, filter, qsos);
     return (waiting[call] ??= Completer()).future;
   }

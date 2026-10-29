@@ -290,8 +290,11 @@ class HistoryFilter {
     );
   }
 
+  /// `extensionKey` is no option: the kernel names the caller on every host call it makes, and
+  /// refusing it refuses every call.
   static const _knownParams = {
     'call',
+    'extensionKey',
     'refType',
     'refPrefix',
     'refsSegmentAware',

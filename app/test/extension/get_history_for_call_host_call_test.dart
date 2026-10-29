@@ -185,6 +185,27 @@ void main() {
     expect(reads.count, lessThanOrEqualTo(2), reason: 'the newest of each call picked, then those rows read — not a read per call');
   });
 
+  // The kernel names the caller on every call. Kept in the options a batch is
+  // grouped by, each lookup extension's requests would queue apart again.
+  test('requests from different extensions share one read too', () async {
+    final op = await operations.create(stationCall: 'N0DEV');
+    for (final call in ['KI2D', 'W1AW', 'N0DEV']) {
+      await qsos.add(op.uuid, {
+        'their': {'call': call},
+        'startAtMillis': 100,
+      });
+    }
+    reads.count = 0;
+
+    final answers = await Future.wait([
+      for (final (call, caller) in [('KI2D', 'ham2k-lookup'), ('W1AW', 'ham2k-qrz'), ('N0DEV', 'ham2k-call-notes')])
+        extensions.debugHandleHostCall('getHistoryForCall', {'call': call, 'extensionKey': caller}),
+    ]);
+
+    expect([for (final answer in answers) (answer as List).length], [1, 1, 1]);
+    expect(reads.count, lessThanOrEqualTo(2), reason: 'one shared query, not a read per extension');
+  });
+
   // The operator's own lookup usually asks alone. The shared query reads
   // every row of every call it names; alone, a station worked thousands of
   // times reads only its newest few, as the index walk stops at the LIMIT.
