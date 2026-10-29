@@ -180,6 +180,16 @@ class KenwoodSession
   /// the connection; a radio does not change its own `IF` layout mid-session.
   bool _settled = false;
 
+  /// Where the last `IF` packet said the radio is operating, which decides
+  /// whose frequency an `FA` or `FB` answer is. The poll asks `FA;` on every
+  /// radio, and on one operating on VFO B (a QMX switched to it, say) that
+  /// answer is the VFO the operator is not on: reported, the frequency
+  /// alternates between the two on every poll, and each alternation is a QSY
+  /// that wipes the entry being typed. Null until an `IF` has said, or on a
+  /// layout not known well enough to read it — `FA` is believed then, as it
+  /// always was.
+  KenwoodVfo? _vfo;
+
   /// Whether [startUpdates] has run. [teardown] goes through [stopUpdates],
   /// which would otherwise write to a connection this session never
   /// configured — a superseded handshake, or an immediate disconnect.
@@ -636,7 +646,11 @@ class KenwoodSession
 
   void _handle(AsciiCatCommand command) {
     switch (command.command) {
-      case 'FA':
+      case 'FA' || 'FB':
+        final vfo = command.command == 'FA' ? KenwoodVfo.a : KenwoodVfo.b;
+        // `FB` only once an `IF` has said B is the one in use; `FA` unless one
+        // has said it is not. See [_vfo].
+        if ((_vfo ?? KenwoodVfo.a) != vfo) return;
         final freqHz = parseKenwoodFrequencyParams(command.params);
         // The radio reports exact Hz; everything above here speaks kHz.
         if (freqHz != null) _report(VfoReading(freqKHz: freqHz / 1000));
@@ -856,6 +870,7 @@ class KenwoodSession
     // offset is known, because that is what locates it: an unlearned layout
     // reports nothing rather than a character read from the wrong place.
     if (learned != null) {
+      _vfo = parseKenwoodInfoVfoAfterMode(params, learned);
       final transmitting = parseKenwoodInfoTransmittingBeforeMode(params, learned);
       if (_lab599) _lab599TransmitSays(transmitting: transmitting);
       if (transmitting != null && _noteTransmitting(transmitting)) {
@@ -903,6 +918,9 @@ class KenwoodSession
         // from where the radio says the mode actually is, so the wrong one
         // just reported upward does not stand until the next poll.
         _modeOffset = null;
+        // Read beside the contradicted index, so no more to be trusted than
+        // the mode was.
+        _vfo = null;
         _report(VfoReading(mode: _withData(parseKenwoodInfoModeAt(params, offset, dialect: modeDialect))));
         // Said once and done: the layout does not change mid-session, so
         // re-deciding it on every packet forever would add nothing.
@@ -941,7 +959,8 @@ class KenwoodSession
       // not recall the band again between the mode and that final frequency.
       _k4Band = band;
     }
-    _send(buildKenwoodSetFrequencyCommand((freqKHz * 1000).round()));
+    // The VFO the operator is on: tuning the other one moves nothing they hear.
+    _send(buildKenwoodSetFrequencyCommand((freqKHz * 1000).round(), vfoB: _vfo == KenwoodVfo.b));
     if (remote) _send('IF;'); // AI4 omits changes made by this client.
   }
 

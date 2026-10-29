@@ -444,6 +444,45 @@ void main() {
       expect(sink.txReports, [false, true, false]);
     });
 
+    group('a radio operating on VFO B', () {
+      // A QMX's own packets, operating on VFO B in CW: the `1` after the mode
+      // says B, and the poll's `FA;` is answered with VFO A, 112.5 kHz away.
+      const ifOnB = 'IF00007030000     +00000000003100000 ;';
+      const ifOnA = 'IF00007142500     +00000000003000000 ;';
+      late KenwoodSession qmx;
+      setUp(() => qmx = KenwoodSession(sink, declaredModeOffset: 27));
+      void receiveQmx(String text) => qmx.handleData(Uint8List.fromList(ascii.encode(text)));
+
+      test('reads one frequency, the one it is on, never alternating with VFO A', () {
+        // Reported, the FA answer flips the VFO between the two on every
+        // poll, and the logging panel takes each flip for a QSY that wipes
+        // the callsign being typed.
+        receiveQmx(ifOnB);
+        for (var poll = 0; poll < 3; poll++) {
+          receiveQmx('FA00007142500;MD3;$ifOnB');
+        }
+        expect(sink.readings.map((r) => r.freqKHz).whereType<double>().toSet(), {7030.0});
+      });
+
+      test('takes a pushed FB as the frequency, and FA again once back on A', () {
+        receiveQmx(ifOnB);
+        receiveQmx('FB00007031000;');
+        expect(sink.readings.last.freqKHz, 7031.0);
+        receiveQmx(ifOnA);
+        final backOnA = sink.readings.length;
+        receiveQmx('FB00007031000;FA00007143000;');
+        expect(sink.readings.skip(backOnA).map((r) => r.freqKHz), [7143.0], reason: 'back on A, an FB answer is the VFO not in use');
+      });
+
+      test('is tuned on VFO B, the one the operator hears', () {
+        receiveQmx(ifOnB);
+        qmx.setFrequency(7025.0);
+        receiveQmx(ifOnA);
+        qmx.setFrequency(7140.0);
+        expect(sink.sent, ['FB00007025000;', 'FA00007140000;']);
+      });
+    });
+
     test('an unlearned layout says nothing about transmitting', () {
       // The flag is located by the mode offset, so before that is settled
       // there is no character to read — and reading one anyway would report

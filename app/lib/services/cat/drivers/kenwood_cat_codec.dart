@@ -73,7 +73,9 @@ String encodeKenwoodFrequencyHz(int freqHz) {
   return digits.substring(digits.length - kenwoodFrequencyDigits);
 }
 
-String buildKenwoodSetFrequencyCommand(int freqHz) => 'FA${encodeKenwoodFrequencyHz(freqHz)};';
+/// `FA` tunes VFO A and `FB` VFO B, whichever one the radio is on: [vfoB]
+/// is the caller's to know ([parseKenwoodInfoVfoAfterMode]).
+String buildKenwoodSetFrequencyCommand(int freqHz, {bool vfoB = false}) => '${vfoB ? 'FB' : 'FA'}${encodeKenwoodFrequencyHz(freqHz)};';
 
 String buildKenwoodReadFrequencyCommand() => 'FA;';
 
@@ -421,6 +423,28 @@ bool? parseKenwoodInfoTransmittingBeforeMode(String params, int modeOffset) {
   return switch (params[offset]) {
     '0' => false,
     '1' => true,
+    _ => null,
+  };
+}
+
+/// Where the radio is operating: the VFO, or a memory channel.
+enum KenwoodVfo { a, b, memory }
+
+/// Which VFO the radio is operating on, read out of an `IF` packet whose
+/// mode position is already known: the character immediately after the mode
+/// (P10 on the TS-480 and TS-590, the K3's receive VFO), `0` for VFO A, `1`
+/// for VFO B, `2` for a memory channel. The packet's frequency is that one's;
+/// an `FA` answer is VFO A's whichever this is.
+///
+/// Null for a packet too short or a character outside those three — a layout
+/// this does not fit, rather than a radio on VFO A.
+KenwoodVfo? parseKenwoodInfoVfoAfterMode(String params, int modeOffset) {
+  final offset = modeOffset + 1;
+  if (offset < 0 || offset >= params.length) return null;
+  return switch (params[offset]) {
+    '0' => KenwoodVfo.a,
+    '1' => KenwoodVfo.b,
+    '2' => KenwoodVfo.memory,
     _ => null,
   };
 }
