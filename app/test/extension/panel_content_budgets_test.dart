@@ -7,6 +7,7 @@
 // extension's to keep, not a failure of the app's.
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +22,7 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
 
 import '../support/error_reporting_fakes.dart';
 import '../support/fake_panel_extensions.dart';
+import '../support/image_headers.dart';
 
 /// An SVG of exactly [elements] elements, the root included.
 String flat(int elements, {String inside = ''}) => '<svg xmlns="http://www.w3.org/2000/svg">$inside${'<rect/>' * (elements - 1)}</svg>';
@@ -28,17 +30,47 @@ String flat(int elements, {String inside = ''}) => '<svg xmlns="http://www.w3.or
 /// An SVG nested exactly [depth] deep, the root counted, with [leaf] at the bottom.
 String nested(int depth, {String leaf = ''}) => '<svg>${'<g>' * (depth - 1)}$leaf${'</g>' * (depth - 1)}</svg>';
 
-Map<String, dynamic> scene({required List<Map<String, dynamic>> layers}) => {
-  'version': 1,
+Map<String, dynamic> scene({
+  required List<Map<String, dynamic>> layers,
+  Map<String, double> values = const {},
+  Map<String, String> strings = const {},
+  List<Map<String, dynamic>> controls = const [],
+  Map<String, dynamic>? layout,
+}) => {'version': 1, 'width': 400, 'height': 100, 'values': values, 'strings': strings, 'layers': layers, 'controls': controls, 'layout': ?layout};
+
+Map<String, dynamic> layer(String id, String svg, {Map<String, dynamic>? when}) => {
+  'id': id,
+  'x': 0,
+  'y': 0,
   'width': 400,
   'height': 100,
-  'values': <String, double>{},
-  'strings': <String, String>{},
-  'layers': layers,
-  'controls': <Map<String, dynamic>>[],
+  'svg': svg,
+  'when': ?when,
 };
 
-Map<String, dynamic> layer(String id, String svg) => {'id': id, 'x': 0, 'y': 0, 'width': 400, 'height': 100, 'svg': svg};
+Map<String, dynamic> button(String id, {List<Map<String, String>>? menu}) => {
+  'id': id,
+  'label': id,
+  'kind': 'button',
+  'x': 0,
+  'y': 0,
+  'width': 40,
+  'height': 20,
+  'event': 'go',
+  'menu': ?menu,
+};
+
+/// A layout [depth] columns deep, the scene node at the bottom.
+Map<String, dynamic> nestedLayout(int depth) => depth == 1
+    ? {'scene': true}
+    : {
+        'column': [nestedLayout(depth - 1)],
+      };
+
+List<T> many<T>(int count, T Function(int) make) => [for (var i = 0; i < count; i++) make(i)];
+
+/// A malformed scene is refused as what it is, never as a budget.
+final malformed = throwsA(allOf(isA<FormatException>(), isNot(isA<PanelContentRefusal>())));
 
 Matcher refusedFor(PanelBudget budget, {int? max}) =>
     throwsA(isA<PanelContentRefusal>().having((r) => r.budget, 'budget', budget).having((r) => r.max, 'max', max));
@@ -178,6 +210,186 @@ void main() {
       expect(() => PanelScene(scene(layers: layers(5))), refusedFor(PanelBudget.characters, max: kSceneArtworkMaxChars));
       expect(PanelScene(scene(layers: layers(4))).layers, hasLength(4));
     });
+
+    test('names each of its counts as the budget it is, at the bound', () {
+      // The trap: a cap folded into the shape check ('Invalid scene items')
+      // reports an extension's oversized scene as the app's failure and tells
+      // its author nothing — the number is the point of a budget.
+      final layers = many(512, (i) => layer('l$i', '<svg/>'));
+      expect(PanelScene(scene(layers: layers)).layers, hasLength(512));
+      expect(() => PanelScene(scene(layers: [...layers, layer('more', '<svg/>')])), refusedFor(PanelBudget.layers, max: 512));
+      final controls = many(256, (i) => button('c$i'));
+      expect(PanelScene(scene(layers: layers, controls: controls)).controls, hasLength(256));
+      expect(() => PanelScene(scene(layers: layers, controls: [...controls, button('more')])), refusedFor(PanelBudget.controls, max: 256));
+      final values = {for (var i = 0; i < 257; i++) 'v$i': 0.0};
+      expect(() => PanelScene(scene(layers: layers, values: values)), refusedFor(PanelBudget.items, max: 256));
+      expect(PanelScene(scene(layers: layers, values: {...values}..remove('v0'))).values, hasLength(256));
+      expect(() => PanelScene(scene(layers: layers, strings: {for (var i = 0; i < 257; i++) 's$i': ''})), refusedFor(PanelBudget.items, max: 256));
+      expect(
+        () => PanelScene(
+          scene(
+            layers: layers,
+            controls: [
+              button('m', menu: many(33, (i) => {'label': 'a', 'event': 'e'})),
+            ],
+          ),
+        ),
+        refusedFor(PanelBudget.items, max: 32),
+      );
+      expect(
+        () => PanelScene(
+          scene(
+            layers: layers,
+            values: {'v': 1},
+            controls: [],
+            layout: {
+              'column': many(129, (i) => {'spacer': 1}),
+            },
+          ),
+        ),
+        // The node count shares the budget and the bound; only the message says which was crossed.
+        throwsA(isA<PanelContentRefusal>().having((r) => r.message, 'message', 'scene has 129 layout children, at most 128')),
+      );
+      expect(
+        () => PanelScene(
+          scene(
+            layers: layers,
+            layout: {
+              'column': [
+                {
+                  'column': many(64, (i) => {'spacer': 1}),
+                },
+                {
+                  'column': many(64, (i) => {'spacer': 1}),
+                },
+              ],
+            },
+          ),
+        ),
+        throwsA(isA<PanelContentRefusal>().having((r) => r.message, 'message', 'scene layout has more than 128 nodes')),
+      );
+      final conditioned = layer('w', '<svg/>', when: {'value': 'v', 'in': List.filled(257, 1)});
+      expect(() => PanelScene(scene(layers: [conditioned], values: {'v': 1})), refusedFor(PanelBudget.items, max: 256));
+      // What is malformed, not oversized, stays a malformed scene.
+      expect(() => PanelScene({...scene(layers: layers), 'layers': 'nope'}), malformed);
+      expect(
+        () => PanelScene(
+          scene(
+            layers: [
+              layer('w', '<svg/>', when: {'value': 'v', 'in': []}),
+            ],
+            values: {'v': 1},
+          ),
+        ),
+        malformed,
+      );
+      expect(() => PanelScene({...scene(layers: layers), 'values': 7}), malformed);
+    });
+
+    test('names a string over its length, and a layout nested too deep', () {
+      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], strings: {'s': 'x' * 4097})), refusedFor(PanelBudget.stringLength, max: 4096));
+      expect(PanelScene(scene(layers: [layer('a', '<svg/>')], strings: {'s': 'x' * 4096})).strings['s'], hasLength(4096));
+      expect(() => PanelScene(scene(layers: [layer('a', 'x' * (sceneFieldMaxLength + 1))])), refusedFor(PanelBudget.stringLength, max: sceneFieldMaxLength));
+      expect(
+        () => PanelScene(
+          scene(
+            layers: [
+              layer('a', '<svg/>', when: {'value': 'v', 'is': 'x' * 4097}),
+            ],
+            values: {'v': 1},
+          ),
+        ),
+        refusedFor(PanelBudget.stringLength, max: 4096),
+      );
+      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(9))), refusedFor(PanelBudget.layoutDepth, max: 8));
+      expect(PanelScene(scene(layers: [layer('a', '<svg/>')], layout: nestedLayout(8))).layout, isNotNull);
+    });
+
+    test('holds its samples, value labels, annotations and waterfall colors to their bounds by name too', () {
+      // The trap: a cap checked inside a shape check reads an oversized scene
+      // as a malformed one — reported, and no number for the author.
+      expect(
+        () => SceneBinding({
+          'value': 'v',
+          'input': [0, 1],
+          'output': [0, 1],
+          'samples': List.filled(4097, 1),
+        }),
+        refusedFor(PanelBudget.items, max: 4096),
+      );
+      expect(
+        SceneBinding({
+          'value': 'v',
+          'input': [0, 1],
+          'output': [0, 1],
+          'samples': List.filled(4096, 1),
+        }).samples,
+        hasLength(4096),
+      );
+      expect(
+        () => SceneBinding({
+          'value': 'v',
+          'input': [0, 1],
+          'output': [0, 1],
+          'samples': <int>[],
+        }),
+        malformed,
+      );
+      final textLayer = {
+        'id': 't',
+        'x': 0,
+        'y': 0,
+        'width': 400,
+        'height': 100,
+        'text': {'value': 'v', 'samples': List.filled(4097, 'x')},
+      };
+      expect(() => PanelScene(scene(layers: [textLayer], values: {'v': 1})), refusedFor(PanelBudget.items, max: 4096));
+      final slider = {
+        'id': 's',
+        'label': 's',
+        'kind': 'slider',
+        'x': 0,
+        'y': 0,
+        'width': 100,
+        'height': 20,
+        'value': 'v',
+        'min': 0,
+        'max': 1,
+        'step': 1,
+        'valueLabels': List.filled(4097, 'l'),
+      };
+      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], values: {'v': 0}, controls: [slider])), refusedFor(PanelBudget.items, max: 4096));
+      expect(() => SceneSpectrumAnnotation({'id': 'a', 'text': 'x' * 257, 'hz': 1}), refusedFor(PanelBudget.stringLength, max: 256));
+      expect(SceneSpectrumAnnotation({'id': 'a', 'text': 'x' * 256, 'hz': 1}).text, hasLength(256));
+      expect(() => SceneSpectrumSpec({'waterfallColors': List.filled(9, '#000000')}), refusedFor(PanelBudget.items, max: 8));
+      expect(SceneSpectrumSpec({'waterfallColors': List.filled(8, '#000000')}).waterfallColors, hasLength(8));
+      expect(
+        () => SceneSpectrumSpec({
+          'waterfallColors': ['#000000'],
+        }),
+        malformed,
+      );
+      final dropdown = {
+        'id': 'd',
+        'label': 'd',
+        'kind': 'nativeDropdown',
+        'value': 's',
+        'options': many(65, (i) => {'label': 'o$i', 'value': 'v$i'}),
+      };
+      expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], strings: {'s': 'v0'}, controls: [dropdown])), refusedFor(PanelBudget.items, max: 64));
+      expect(
+        () => SceneSpectrumSpec({
+          'annotations': many(65, (i) => {'id': 'a$i'}),
+        }),
+        refusedFor(PanelBudget.items, max: 64),
+      );
+      expect(
+        () => SceneSpectrumSpec({
+          'overlays': many(17, (i) => {'id': 'o$i'}),
+        }),
+        refusedFor(PanelBudget.items, max: 16),
+      );
+    });
   });
 
   group('a preview', () {
@@ -216,9 +428,42 @@ void main() {
       expect(lines.single, contains('preview is not self-contained vector artwork: it has a <script> element'));
       expect(definition(dataUri(flat(3)))!.preview, isNotNull);
       expect(definition('data:image/svg+xml;base64,@@@')!.preview, isNotNull);
-      // A raster says nothing about elements; only its size is held.
-      expect(definition('data:image/png;base64,iVBORw0KGgo=')!.preview, isNotNull);
+      expect(definition('data:image/png;base64,@@@')!.preview, isNotNull);
       expect(definition('data:image/png;base64,${'A' * (kPanelDocumentMaxChars + 1)}')!.preview, isNull);
+    });
+
+    test('a raster is held to the pixels its header declares, whatever the URI calls it, and dropped with no header to read', () {
+      // The trap: the character budget bounds the encoded bytes, and a flat
+      // PNG compresses a thousand to one — so a few kilobytes can declare a
+      // bitmap of hundreds of megabytes, decoded the moment the sheet opens.
+      // The header says how large before anything decodes.
+      String dataUri(String mime, Uint8List bytes) => 'data:image/$mime;base64,${base64Encode(bytes)}';
+      expect(definition(dataUri('png', pngHeader(4096, 4096)))!.preview, isNotNull);
+      expect(definition(dataUri('png', pngHeader(4096, 4097)))!.preview, isNull);
+      expect(lines, ['[panels] "wx:forecast" preview dropped: preview image is 4096 × 4097 pixels, at most $kPreviewMaxPixels in all']);
+      lines.clear();
+      // Two 32-bit sides multiply past the integer's range and back under the bound.
+      expect(definition(dataUri('png', pngHeader(0xFFFFFFFF, 0xFFFFFFFF)))!.preview, isNull);
+      expect(definition(dataUri('png', pngHeader(1, kPreviewMaxPixels)))!.preview, isNotNull);
+      lines.clear();
+      expect(definition(dataUri('jpeg', jpegHeader(8192, 2048)))!.preview, isNotNull);
+      expect(definition(dataUri('jpeg', jpegHeader(8192, 2049)))!.preview, isNull);
+      expect(definition(dataUri('webp', webpExtendedHeader(5000, 5000)))!.preview, isNull);
+      // The bytes decide the format, not the MIME type: a GIF called a PNG is the GIF it is.
+      expect(definition(dataUri('png', gifHeader(5000, 5000)))!.preview, isNull);
+      expect(lines.last, contains('preview image is 5000 × 5000 pixels'));
+      // A GIF's screen says 1 × 1; its first frame, which the decoders grow the screen to, says otherwise.
+      expect(definition(dataUri('gif', gifHeader(1, 1, frame: (left: 0, top: 0, width: 5000, height: 5000))))!.preview, isNull);
+      expect(lines.last, contains('preview image is 5000 × 5000 pixels'));
+      lines.clear();
+      // A header this does not read, or one cut short, says nothing about the bitmap — so nothing decodes it.
+      expect(definition(dataUri('png', Uint8List.sublistView(pngHeader(1, 1), 0, 8)))!.preview, isNull);
+      expect(definition(dataUri('tiff', Uint8List.fromList([0x49, 0x49, 0x2A, 0x00, ...List.filled(28, 0)])))!.preview, isNull);
+      // The line names the format it did recognise: a cut-short PNG is not 'not a PNG'.
+      expect(lines, [
+        endsWith('preview image is a PNG whose header does not say its size, so it cannot be read'),
+        endsWith('preview image is none of PNG, JPEG, GIF, WebP or BMP, so its size cannot be read'),
+      ]);
     });
   });
 
@@ -317,6 +562,77 @@ void main() {
         debugPrint = previous;
       }
     });
+
+    testWidgets('names a scene\'s budget by its own number', (tester) async {
+      // The trap: ten budgets share one switch; a case mapped to the wrong
+      // string names a bound the author never crossed.
+      final backend = FakeErrorReportingBackend();
+      final lines = <String>[];
+      final previous = debugPrint;
+      debugPrint = (message, {wrapWidth}) => lines.add(message ?? '');
+      try {
+        await withErrorHooks(() async {
+          final base = [layer('a', '<svg/>')];
+          final cases = <(Map<String, dynamic>, String)>[
+            (scene(layers: many(513, (i) => layer('l$i', '<svg/>'))), 'its scene has more than 512 layers'),
+            (scene(layers: base, controls: many(257, (i) => button('c$i'))), 'its scene has more than 256 controls'),
+            (scene(layers: base, values: {for (var i = 0; i < 257; i++) 'v$i': 0.0}), 'part of its scene has more than 256 entries'),
+            (scene(layers: base, strings: {'s': 'x' * 4097}), 'a scene string is longer than 4,096 characters'),
+            (scene(layers: base, layout: nestedLayout(9)), 'its layout nests more than 8 levels deep'),
+          ];
+          final panels = _Panels({'kind': 'scene', 'scene': cases.first.$1});
+          for (final (i, (document, expected)) in cases.indexed) {
+            panels.content = {'kind': 'scene', 'scene': document};
+            await tester.pumpWidget(harness(panels, qsoCount: i));
+            await settle(tester);
+            expect(find.text('Forecast could not be displayed: $expected'), findsOneWidget);
+          }
+          expect(lines.where((l) => l.startsWith('[panels]')), hasLength(cases.length));
+          expect(backend.exceptions, isEmpty);
+        }, backend: backend);
+      } finally {
+        debugPrint = previous;
+      }
+    });
+
+    testWidgets('an event answer over a budget goes to the console, not to a report', (tester) async {
+      // The trap: the event path's catch reports every error, so an
+      // extension's oversized answer to a tap — a budget, which the render
+      // path keeps out of the reports — would upload as the app's failure.
+      final backend = FakeErrorReportingBackend();
+      final lines = <String>[];
+      final previous = debugPrint;
+      debugPrint = (message, {wrapWidth}) => lines.add(message ?? '');
+      try {
+        await withErrorHooks(() async {
+          final document = scene(
+            layers: [layer('a', '<svg/>')],
+            controls: [
+              {'id': 'go', 'label': 'Go', 'kind': 'nativeButton', 'event': 'go'},
+            ],
+            layout: {
+              'column': [
+                {'scene': true},
+                {'control': 'go'},
+              ],
+            },
+          );
+          final panels = _Panels({'kind': 'scene', 'scene': document})
+            ..eventResult = {
+              'strings': {'s': 'x' * 4097},
+            };
+          await tester.pumpWidget(harness(panels));
+          await settle(tester);
+          await tester.tap(find.text('Go'));
+          await settle(tester);
+          expect(lines.where((l) => l.startsWith('[panels]')), ['[panels] "ext:wx:forecast" refused: scene string value is 4097 characters, at most 4096']);
+          expect(find.text('That panel action failed. Try again.'), findsOneWidget);
+          expect(backend.exceptions, isEmpty);
+        }, backend: backend);
+      } finally {
+        debugPrint = previous;
+      }
+    });
   });
 }
 
@@ -324,7 +640,11 @@ class _Panels extends PanelService {
   _Panels(this.content) : super(FakePanelExtensions());
 
   Map<String, dynamic> content;
+  Map<String, dynamic>? eventResult;
   int renders = 0;
+
+  @override
+  Future<Map<String, dynamic>?> event(PanelDefinition panel, Map<String, dynamic> args) async => eventResult;
 
   @override
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) async {

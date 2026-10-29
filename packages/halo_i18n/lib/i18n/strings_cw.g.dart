@@ -1746,6 +1746,11 @@ class _Translations$operation$layout$cw extends Translations$operation$layout$en
 	@override String panelOverElements({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · ·—·· · —— · —· — ···';
 	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·';
 	@override String panelNotArtwork({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ·· ··· / —· ——— — / ··· · ·—·· ··—· —····— —·—· ——— —· — ·— ·· —· · —··';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· ·— —·—— · ·—· ···';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / —·—· ——— —· — ·—· ——— ·—·· ···';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·——· ·— ·—· — / ——— ··—· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · —· — ·—· ·· · ···';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·— / ··· —·—· · —· · / ··· — ·—· ·· —· ——· / ·· ··· / ·—·· ——— —· ——· · ·—· / — ···· ·— —· / ${max} / —·—· ···· ·— ·—· ·— —·—· — · ·—· ···';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·—·· ·— —·—— ——— ··— — / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·';
 	@override String get panelRenderRetry => '— ·—· —·—— / ·— ——· ·— ·· —·';
 	@override String get panelActionFailed => '— ···· ·— — / ·——· ·— —· · ·—·· / ·— —·—· — ·· ——— —· / ··—· ·— ·· ·—·· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—';
 	@override late final _Translations$operation$layout$panels$cw panels = _Translations$operation$layout$panels$cw._(_root);
@@ -5019,11 +5024,16 @@ extension on TranslationsCw {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · ·—·· · —— · —· — ···',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ·· ··· / —· ——— — / ··· · ·—·· ··—· —····— —·—· ——— —· — ·— ·· —· · —··',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· ·— —·—— · ·—· ···',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / —·—· ——— —· — ·—· ——— ·—·· ···',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·——· ·— ·—· — / ——— ··—· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · —· — ·—· ·· · ···',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·— / ··· —·—· · —· · / ··· — ·—· ·· —· ——· / ·· ··· / ·—·· ——— —· ——· · ·—· / — ···· ·— —· / ${max} / —·—· ···· ·— ·—· ·— —·—· — · ·—· ···',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·—·· ·— —·—— ——— ··— — / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·',
 			'operation.layout.panelRenderRetry' => '— ·—· —·—— / ·— ——· ·— ·· —·',
 			'operation.layout.panelActionFailed' => '— ···· ·— — / ·——· ·— —· · ·—·· / ·— —·—· — ·· ——— —· / ··—· ·— ·· ·—·· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'operation.layout.panels.loggingDescription' => '— ···· · / ·—·· ——— ——· / ·— —· —·· / — ···· · / · —· — ·—· —·—— / ··—· ·· · ·—·· —·· ···',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.infoDescription' => '·—— ···· ·— — / ·—— · / —·— —· ——— ·—— / ·— —··· ——— ··— — / — ···· · / ··· — ·— — ·· ——— —· / —··· · ·· —· ——· / ·—— ——— ·—· —·— · —··',
 			'operation.layout.panels.spotsDescription' => '··· ·——· ——— — ··· / ··—· ·—· ——— —— / — ···· · / —·—· ·—·· ··— ··· — · ·—· ··· / ·— —· —·· / ·— —·—· — ·· ···— ·· — —·—— / ·——· ·—· ——— ——· ·—· ·— —— ···',
 			'operation.layout.panels.mapDescription' => '·—— ···· · ·—· · / — ···· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—· ·',
@@ -5531,13 +5541,13 @@ extension on TranslationsCw {
 			'loggingControls.missingBand' => '—· ——— / —··· ·— —· —··',
 			'loggingControls.missingMode' => '—· ——— / —— ——— —·· ·',
 			'loggingControls.saveFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ··· ·— ···— · ———··· / ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·· · ·—·· · — · ———··· / ${error}',
 			'loggingControls.info.noQsos' => '—· ——— / ——·— ··· ——— ··· / —·—— · — ·—·—·— ·—·—·— ·—·—·— / ·—·· · — ·————· ··· / ——· · — / ——— —· / — ···· · / ·— ·· ·—· —·—·——',
 			'loggingControls.info.qsoCountOne' => '·———— / ——·— ··· ———',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} / ——·— ··· ——— ···',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} / ·· —· / ${time}',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} / ··· ·· —· —·—· · / ·—·· ·— ··· —',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— —————',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— ————— —————',
@@ -6045,13 +6055,13 @@ extension on TranslationsCw {
 			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
 			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
 			'settings.map.styleOpts.positron' => '·——· ——— ··· ·· — ·—· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => '···— ——— —·—— ·— ——· · ·—·',
 			'settings.map.styleOpts.darkMatter' => '—·· ·— ·—· —·— / —— ·— — — · ·—·',
 			'settings.privacy.title' => '·——· ·—· ·· ···— ·— —·—· —·——',
 			'settings.privacy.shareAppData.title' => '··· ···· ·— ·—· · / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·—',
 			'settings.privacy.shareAppData.descriptionOn' => '···· · ·—·· ·——· ·· —· ——· / ··— ··· / ·· —— ·——· ·—· ——— ···— · / — ···· · / ·— ·——· ·——· / —··· —·—— / ··· ···· ·— ·—· ·· —· ——· / ··— ··· ·— ——· · ——··—— / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ——··—— / —·—· ·—· ·— ··· ···· / ·— —· —·· / ·——· · ·—· ··—· ——— ·—· —— ·— —· —·—· · / —·· ·— — ·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => '—·— · · ·——· ·· —· ——· / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·— / ·——· ·—· ·· ···— ·— — · ·—·—·—\n— ···· · / ···· ·— —— ··——— —·— / — · ·— —— / ·—— ——— —· ·————· — / —··· · / ·— —··· ·—·· · / — ——— / —·· · — · —·—· — / —·—· ·—· ·— ··· ···· · ··· / ——— ·—· / ——— — ···· · ·—· / ·· ··· ··· ··— · ··· ·—·—·—',
 			'settings.privacy.shareOpData.title' => '··· ···· ·— ·—· · / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·—',
 			'settings.privacy.shareOpData.descriptionOn' => '··· ···· ·— ·—· ·· —· ——· / ··· ——— —— · / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·— / ·——· ··— —··· ·—·· ·· —·—· ·—·· —·—— / ·— —· —·· / ·—— ·· — ···· / ——— — ···· · ·—· / ··— ··· · ·—· ···',
@@ -6559,13 +6569,13 @@ extension on TranslationsCw {
 			'settings.station.newAntenna' => '—· · ·—— / ·— —· — · —· —· ·—',
 			'settings.station.newKey' => '—· · ·—— / —·— · —·——',
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => '—·— · —·—— / ——— —· / ${device}',
 			'settings.station.trackStationInfo' => '— ·—· ·— —·—· —·— / ··· — ·— — ·· ——— —· / ·· —· ··—· ——— / ··—· ——— ·—· / · ·— —·—· ···· / ——·— ··· ———',
 			'settings.station.includeStationInfoInAdif' => '·· —· —·—· ·—·· ··— —·· · / ·· —· / ·— —·· ·· ··—· / · —··— ·——· ——— ·—· — ···',
 			'settings.station.whatToTrack' => '·—— ···· ·— — / — ——— / — ·—· ·— —·—· —·— ··——··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldRig' => '— ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
 			'settings.station.trackFieldPower' => '·——· ——— ·—— · ·—·',
 			'settings.station.watts' => '·—— ·— — — ···',
@@ -7073,13 +7083,13 @@ extension on TranslationsCw {
 			'switchAccounts.linkWithSiblingDescription' => '—·—— ——— ··— / ···· ·— ···— · / ·— —· ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——· / ·· —· ··· — ·— ·—·· ·—·· · —·· ·—·—·— / ·—·· ·· —· —·— / ·—— ·· — ···· / — ···· · / ·— —·—· —·—· ——— ··— —· — / ·· —· / ··— ··· · / — ···· · ·—· · ·—·—·—',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '·— ·——· ·——· ·—· ——— ···— · / — ···· · / ·—· · ——·— ··— · ··· — / ·· —· / ${app} ——··—— / — ···· · —· / —·—· ——— —— · / —··· ·— —·—· —·— / ···· · ·—· · ·—·—·—',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '——— ·——· · —· / ${app} / ·— ——· ·— ·· —·',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => '—·· ·· —·· —· ·————· — / ·—— ——— ·—· —·— ··——·· / ——— ·——· · —· / ·· — / ·— ——· ·— ·· —· ——··—— / ——— ·—· / ——· ——— / —··· ·— —·—· —·— / ·— —· —·· / ·—·· ·· —· —·— / ·— —· ——— — ···· · ·—· / ·—— ·— —·—— ·—·—·—',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / ${app} ·—·—·—',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '— ···· · / ·—·· ·· —· —·— / · —··— ·——· ·· ·—· · —·· / ·— —· —·· / ·— / —· · ·—— / ——— —· · / ·· ··· / ·—· · ·— —·· —·—— / — / ——— ·——· · —· / ${app} / ·— ——· ·— ·· —· ·—·—·—',
 			'switchAccounts.tryAgain' => '— ·—· —·—— / ·— ——· ·— ·· —·',
 			'switchAccounts.linkWithQr' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— / ——·— ·—· / —·—· ——— —·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => '··· —·—· ·— —· / ·· — / ··—· ·—· ——— —— / ·— / —·· · ···— ·· —·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ··— ··· ·· —· ——· / — ···· · / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.linkWithEmail' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —· / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkWithEmailDescription' => '—·—· ——— —· ··—· ·· ·—· —— / ·—— ·· — ···· / ·— / —·—· ——— —·· · / ——— ·—· / ·— —· / · —— ·— ·· ·—·· / ·—·· ·· —· —·—',

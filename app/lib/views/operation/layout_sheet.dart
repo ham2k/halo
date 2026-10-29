@@ -92,7 +92,15 @@ class _PanelPreview extends StatelessWidget {
     } else if (trimmed.startsWith('data:image/')) {
       final decoded = _decodeDataUri(trimmed);
       if (decoded != null) {
-        image = Image.memory(decoded, fit: BoxFit.contain, errorBuilder: (_, error, _) => _dropped('preview image did not decode: $error'));
+        // Decoded to fit the box it is drawn in, either side: the header budget
+        // bounds what one decode may make, this bounds what the image cache
+        // keeps of it — a 1 × 16,777,216 strip included.
+        final pixels = (size * MediaQuery.devicePixelRatioOf(context)).round();
+        image = Image(
+          image: ResizeImage(MemoryImage(decoded), width: pixels, height: pixels, policy: ResizeImagePolicy.fit),
+          fit: BoxFit.contain,
+          errorBuilder: (_, error, _) => _dropped('preview image did not decode: $error'),
+        );
       }
     }
     // Inside the box either way. The row wraps this in a tap target and

@@ -672,6 +672,13 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       PanelBudget.elements => layout.panelOverElements(panel: panel.title, max: max),
       PanelBudget.depth => layout.panelOverDepth(panel: panel.title, max: max),
       PanelBudget.artwork => layout.panelNotArtwork(panel: panel.title),
+      // A raster is only ever a preview, dropped rather than shown: no render carries one.
+      PanelBudget.pixels => layout.panelRenderFailed(panel: panel.title),
+      PanelBudget.layers => layout.panelOverLayers(panel: panel.title, max: max),
+      PanelBudget.controls => layout.panelOverControls(panel: panel.title, max: max),
+      PanelBudget.items => layout.panelOverItems(panel: panel.title, max: max),
+      PanelBudget.stringLength => layout.panelOverStringLength(panel: panel.title, max: max),
+      PanelBudget.layoutDepth => layout.panelOverLayoutDepth(panel: panel.title, max: max),
     };
   }
 
@@ -747,6 +754,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       final patch = <String, Object>{...values, ...strings};
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
       return patch;
+    } on PanelContentRefusal catch (e) {
+      // A budget is the extension's to keep, as a render's is: the console, not a report.
+      debugPrint('[panels] "${panel.id}" refused: ${e.message}');
+      rethrow;
     } catch (error, stack) {
       if (current() && !configUnreadable) {
         ErrorReportingService.reportIfRepeated('panel:event:${panel.id}', error, stack, context: 'panel:event:${panel.id}', threshold: 1);

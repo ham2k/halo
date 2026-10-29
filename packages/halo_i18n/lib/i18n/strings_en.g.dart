@@ -3760,6 +3760,21 @@ class Translations$operation$layout$en {
 	/// en: '${panel} could not be displayed: its artwork is not self-contained'
 	String panelNotArtwork({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained';
 
+	/// en: '${panel} could not be displayed: its scene has more than ${max} layers'
+	String panelOverLayers({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers';
+
+	/// en: '${panel} could not be displayed: its scene has more than ${max} controls'
+	String panelOverControls({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls';
+
+	/// en: '${panel} could not be displayed: part of its scene has more than ${max} entries'
+	String panelOverItems({required Object panel, required Object max}) => '${panel} could not be displayed: part of its scene has more than ${max} entries';
+
+	/// en: '${panel} could not be displayed: a scene string is longer than ${max} characters'
+	String panelOverStringLength({required Object panel, required Object max}) => '${panel} could not be displayed: a scene string is longer than ${max} characters';
+
+	/// en: '${panel} could not be displayed: its layout nests more than ${max} levels deep'
+	String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} could not be displayed: its layout nests more than ${max} levels deep';
+
 	/// en: 'Try again'
 	String get panelRenderRetry => 'Try again';
 
@@ -10424,11 +10439,16 @@ extension on Translations {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} could not be displayed: part of its scene has more than ${max} entries',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} could not be displayed: a scene string is longer than ${max} characters',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its layout nests more than ${max} levels deep',
 			'operation.layout.panelRenderRetry' => 'Try again',
 			'operation.layout.panelActionFailed' => 'That panel action failed. Try again.',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
@@ -10936,13 +10956,13 @@ extension on Translations {
 			'loggingControls.missingBand' => 'No Band',
 			'loggingControls.missingMode' => 'No Mode',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/h for last 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h for last 100',
@@ -11450,13 +11470,13 @@ extension on Translations {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
 			'settings.privacy.shareAppData.descriptionOn' => 'Helping us improve the app by sharing usage, configuration, crash and performance data',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => 'Keeping app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
 			'settings.privacy.shareOpData.title' => 'Share operation data',
 			'settings.privacy.shareOpData.descriptionOn' => 'Sharing some operation data publicly and with other users',
@@ -11964,13 +11984,13 @@ extension on Translations {
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldRig' => 'Transceiver',
 			'settings.station.trackFieldPower' => 'Power',
 			'settings.station.watts' => 'Watts',
@@ -12478,13 +12498,13 @@ extension on Translations {
 			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approve the request in ${app}, then come back here.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Open ${app} again',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Didn\'t work? Open it again, or go back and link another way.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Could not open ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'The link expired and a new one is ready — open ${app} again.',
 			'switchAccounts.tryAgain' => 'Try again',
 			'switchAccounts.linkWithQr' => 'Link with a QR code',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',

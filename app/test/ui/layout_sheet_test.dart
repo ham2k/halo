@@ -8,6 +8,8 @@
 // onto the delete target, and a second list would be a second place to
 // disagree.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -16,6 +18,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
 import 'package:ham2k_logger/views/operation/layout_sheet.dart';
+
+import '../support/image_headers.dart';
 
 void main() {
   Widget harness(List<LayoutPanelEntry> available, {void Function(String)? onAdd}) => TranslationProvider(
@@ -100,6 +104,23 @@ void main() {
       // The author's own line, shown where the operator is deciding — not
       // just truncated into a subtitle.
       expect(find.text('Today and tomorrow'), findsWidgets);
+    });
+
+    testWidgets('a raster preview is decoded at the size it is drawn, thumbnail and pane alike', (tester) async {
+      // The trap: a preview within its pixel budget may still be 4,096 × 4,096,
+      // and decoded as such it keeps 64 MB in the image cache for a 40 pt
+      // thumbnail — per panel. The header budget bounds one decode; this bounds
+      // what is kept.
+      final png = 'data:image/png;base64,${base64Encode(pngHeader(4096, 4096))}';
+      await tester.pumpWidget(harness([LayoutPanelEntry(id: 'wx', title: 'Weather', preview: png)]));
+      final scale = tester.view.devicePixelRatio;
+      Matcher fitting(int px) =>
+          isA<ResizeImage>().having((r) => r.width, 'width', px).having((r) => r.height, 'height', px).having((r) => r.policy, 'policy', ResizeImagePolicy.fit);
+      expect(tester.widget<Image>(find.byType(Image)).image, fitting((40 * scale).round()));
+
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
+      expect(tester.widget<Image>(find.byType(Image).last).image, fitting((320 * scale).round()));
     });
 
     testWidgets('a preview that draws nothing offers no tap', (tester) async {

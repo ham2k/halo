@@ -122,8 +122,9 @@ host.log('…')                  // the app's console
 - **A panel returns content, not widgets.** `{ kind: "markdown", content }` and
   its siblings. There is no way to reach the app's UI toolkit, by design. The
   content is budgeted: `markdown` at most 262,144 characters, `svg` 1,048,576,
-  `html` 4,194,304, a `preview` 262,144; an SVG — content, preview or a scene
-  layer — is self-contained (no `<image>`, `<script>`, `<foreignObject>` or
+  `html` 4,194,304, a `preview` 262,144 (a raster one — PNG, JPEG, GIF, WebP or
+  BMP in a `data:` URI — at most 16,777,216 pixels); an SVG — content, preview
+  or a scene layer — is self-contained (no `<image>`, `<script>`, `<foreignObject>` or
   entity declarations) and has at most 16,384 elements nested at most 32 deep.
   Over a budget the pane shows a placeholder naming it and the console says
   why; nothing is drawn in part.

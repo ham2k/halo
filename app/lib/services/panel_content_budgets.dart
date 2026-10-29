@@ -5,17 +5,26 @@
 // A render's `svg` and `markdown`, a descriptor's `preview` and a scene's
 // layers are drawn by the app's own renderers, on the UI thread and outside
 // the engine's memory ceiling; its `html` is the web view's to parse, and what
-// crosses the bridge to it is memory still. So their size — and for SVG, how
-// much there is to draw and what it may contain — is bounded here, where the
-// document arrives. A document over a budget is refused whole: the pane shows
-// a placeholder naming the budget and the console says what was sent. Nothing
-// is trimmed or drawn in part.
+// crosses the bridge to it is memory still. So their size — for SVG, how much
+// there is to draw and what it may contain; for a raster preview, how large a
+// bitmap it decodes to — is bounded here, where the document arrives. A
+// document over a budget is refused whole: the pane shows a placeholder naming
+// the budget and the console says what was sent. Nothing is trimmed or drawn
+// in part.
 
 import 'dart:convert';
+import 'dart:typed_data';
+
+import 'image_header.dart';
 
 /// The most characters of `markdown` content a render may answer, and of a
 /// `preview`.
 const kPanelDocumentMaxChars = 262144;
+
+/// The most pixels a raster `preview` may declare — 4,096 × 4,096, or any shape
+/// of that area: the bitmap decoding it makes, which the characters of its
+/// `data:` URI say nothing about.
+const kPreviewMaxPixels = 16777216;
 
 /// The most characters of `svg` content a render may answer: what a scene's
 /// layers may hold in all, so one document carries what a scene would — a
@@ -48,6 +57,28 @@ enum PanelBudget {
 
   /// An SVG that is not self-contained vector artwork.
   artwork,
+
+  /// A raster image of more than [PanelContentRefusal.max] pixels — or one
+  /// whose header says nothing: none of PNG, JPEG, GIF, WebP or BMP, or one
+  /// of those cut short of its size — so that nothing says how many.
+  pixels,
+
+  /// A scene with more than [PanelContentRefusal.max] layers.
+  layers,
+
+  /// A scene with more than [PanelContentRefusal.max] controls.
+  controls,
+
+  /// A list in a scene — its values or strings, a control's menu or options,
+  /// a condition's `in`, a layout node's children, the layout's nodes in all
+  /// — with more than [PanelContentRefusal.max] entries.
+  items,
+
+  /// A scene string longer than [PanelContentRefusal.max] characters.
+  stringLength,
+
+  /// A scene layout nesting more than [PanelContentRefusal.max] deep.
+  layoutDepth,
 }
 
 /// A document a panel may not show. A [FormatException], so a caller that
@@ -57,7 +88,7 @@ enum PanelBudget {
 class PanelContentRefusal extends FormatException {
   final PanelBudget budget;
 
-  /// The bound, for the three counted budgets; null for [PanelBudget.artwork].
+  /// The bound; null for [PanelBudget.artwork], the one budget with no number.
   final int? max;
 
   PanelContentRefusal(this.budget, this.max, String message) : super(message);
@@ -79,22 +110,53 @@ PanelContentRefusal? panelDocumentRefusal(String kind, String content) {
 }
 
 /// The reason a descriptor's `preview` may not be shown, or null: longer than
-/// [kPanelDocumentMaxChars], or an SVG — a document, or the payload of a
-/// `data:image/svg+xml` URI — that [svgArtworkRefusal] refuses. A `data:`
-/// payload that does not decode breaks no budget: null here, and the thumbnail
-/// says why where it fails to draw.
+/// [kPanelDocumentMaxChars]; an SVG — a document, or the payload of a
+/// `data:image/svg+xml` URI — that [svgArtworkRefusal] refuses; or any other
+/// `data:` image that [rasterRefusal] does. A `data:` payload that does not
+/// decode breaks no budget: null here, and the thumbnail says why where it
+/// fails to draw.
 PanelContentRefusal? panelPreviewRefusal(String preview) {
   if (preview.length > kPanelDocumentMaxChars) return _overLength('preview', preview.length, kPanelDocumentMaxChars);
   final trimmed = preview.trimLeft();
   if (trimmed.startsWith('<svg') || trimmed.startsWith('<?xml')) return svgArtworkRefusal('preview', preview);
-  if (!trimmed.startsWith('data:image/svg+xml')) return null;
+  if (!trimmed.startsWith('data:image/')) return null;
+  final Uint8List bytes;
+  try {
+    bytes = UriData.fromUri(Uri.parse(trimmed)).contentAsBytes();
+  } on FormatException {
+    return null;
+  }
+  if (!trimmed.startsWith('data:image/svg+xml')) return rasterRefusal('preview image', bytes);
   final String decoded;
   try {
-    decoded = utf8.decode(UriData.fromUri(Uri.parse(trimmed)).contentAsBytes());
-  } on Exception {
+    decoded = utf8.decode(bytes);
+  } on FormatException {
     return null;
   }
   return svgArtworkRefusal('preview', decoded);
+}
+
+/// The reason an encoded raster may not be decoded, or null when it may: its
+/// header declares more than [kPreviewMaxPixels] pixels, or is none that
+/// [readImageHeader] reads — the format decides, not the MIME type the URI
+/// claims — so nothing says how large a bitmap decoding would make.
+PanelContentRefusal? rasterRefusal(String what, Uint8List bytes) {
+  final header = readImageHeader(bytes);
+  if (header == null) {
+    final format = imageFormat(bytes);
+    return PanelContentRefusal(
+      PanelBudget.pixels,
+      kPreviewMaxPixels,
+      format == null
+          ? '$what is none of PNG, JPEG, GIF, WebP or BMP, so its size cannot be read'
+          : '$what is a $format whose header does not say its size, so it cannot be read',
+    );
+  }
+  // Each side first: a product of two 32-bit sides can wrap past the bound.
+  if (header.width > kPreviewMaxPixels || header.height > kPreviewMaxPixels || header.width * header.height > kPreviewMaxPixels) {
+    return PanelContentRefusal(PanelBudget.pixels, kPreviewMaxPixels, '$what is ${header.width} × ${header.height} pixels, at most $kPreviewMaxPixels in all');
+  }
+  return null;
 }
 
 PanelContentRefusal _overLength(String what, int length, int max) =>

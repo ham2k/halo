@@ -590,6 +590,11 @@
       "panelOverElements": "${panel} could not be displayed: its artwork has more than ${max} elements",
       "panelOverDepth": "${panel} could not be displayed: its artwork nests more than ${max} levels deep",
       "panelNotArtwork": "${panel} could not be displayed: its artwork is not self-contained",
+      "panelOverLayers": "${panel} could not be displayed: its scene has more than ${max} layers",
+      "panelOverControls": "${panel} could not be displayed: its scene has more than ${max} controls",
+      "panelOverItems": "${panel} could not be displayed: part of its scene has more than ${max} entries",
+      "panelOverStringLength": "${panel} could not be displayed: a scene string is longer than ${max} characters",
+      "panelOverLayoutDepth": "${panel} could not be displayed: its layout nests more than ${max} levels deep",
       "panelRenderRetry": "Try again",
       "panelActionFailed": "That panel action failed. Try again.",
       "panels": {

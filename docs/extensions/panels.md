@@ -49,7 +49,11 @@ to keep on its own, so the pane refuses rather than render under it.
 `markdown` has none of these caveats, which is the other reason to prefer it.
 
 **Budgets.** A render's `content` is at most 262,144 characters of `markdown`,
-1,048,576 of `svg` and 4,194,304 of `html`; a `preview` is at most 262,144.
+1,048,576 of `svg` and 4,194,304 of `html`; a `preview` is at most 262,144, and
+a raster one — a `data:` URI holding a PNG, JPEG, GIF, WebP or BMP — declares
+at most 16,777,216 pixels (4,096 × 4,096, or any shape of that area), read
+from its header before anything is decoded; a `data:` image of any other
+type, or whose header does not say its size, is dropped.
 An `svg` document — content or preview — is self-contained vector artwork, as
 a scene's layers are: no `<image>`, `<script>` or `<foreignObject>` and no
 entity declarations (the DOCTYPE an editor exports declares none and is

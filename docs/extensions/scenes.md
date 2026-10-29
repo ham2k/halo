@@ -184,8 +184,10 @@ the hook); the control shows its pending value until the outcome is known.
 The schema in one place; `panelScene.ts` in the SDK carries the same as types.
 Every rule below is checked when the scene arrives: a scene that breaks one is
 refused whole rather than drawn in part — the pane says the panel could not be
-displayed, naming the budget when the rule broken is the layers' total of
-artwork and text or a layer's artwork budget, and the console names the rule.
+displayed, naming the bound when the rule broken is one of the budgets below
+(how many layers, controls, values, strings or entries, how long a string, how
+large or deep the layout, the layers' artwork and text in all, a layer's
+artwork), and the console names the rule either way.
 
 **The scene document**
 

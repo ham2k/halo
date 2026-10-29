@@ -3306,8 +3306,10 @@ export interface PanelDescriptor {
   /// URI. Not a URL — the sheet must render offline and without a fetch. At
   /// most 262,144 characters, and an SVG is self-contained vector artwork of
   /// at most 16,384 elements nested at most 32 deep (no `<image>`, `<script>`,
-  /// `<foreignObject>` or entity declarations); past that the preview is dropped
-  /// with a line in the console, and the row keeps its title.
+  /// `<foreignObject>` or entity declarations), and a raster — PNG, JPEG, GIF,
+  /// WebP or BMP — declares at most 16,777,216 pixels (4,096 × 4,096, or any
+  /// shape of that area); past that, or as any other image type, the preview is
+  /// dropped with a line in the console, and the row keeps its title.
   preview?: string
   on?: PanelTrigger[]
   /// Whether an operator may place more than one of this panel in a layout.

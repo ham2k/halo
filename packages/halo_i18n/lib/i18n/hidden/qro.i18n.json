@@ -590,6 +590,11 @@
       "panelOverElements": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS",
       "panelOverDepth": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP",
       "panelNotArtwork": "${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED",
+      "panelOverLayers": "${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} LAYERS",
+      "panelOverControls": "${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS",
+      "panelOverItems": "${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES",
+      "panelOverStringLength": "${panel} COULD NOT BE DISPLAYED: A SCENE STRING IS LONGER THAN ${max} CHARACTERS",
+      "panelOverLayoutDepth": "${panel} COULD NOT BE DISPLAYED: ITS LAYOUT NESTS MORE THAN ${max} LEVELS DEEP",
       "panelRenderRetry": "TRY AGAIN",
       "panelActionFailed": "THAT PANEL ACTION FAILED. TRY AGAIN.",
       "panels": {

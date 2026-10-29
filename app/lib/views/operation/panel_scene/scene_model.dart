@@ -76,8 +76,8 @@ class PanelScene {
       hasRadio = json['radio'] is Map,
       radio = json['radio'] is Map && (json['radio'] as Map)['node'] != null ? string(json['radio'] as Map, 'node') : null,
       strings = parseStrings(json['strings'] ?? const {}),
-      layers = items(json['layers'], 512).map(SceneLayer.new).toList(),
-      controls = items(json['controls'] ?? [], 256).map(SceneControl.new).toList(),
+      layers = items(json['layers'], 512, budget: PanelBudget.layers, what: 'layers').map(SceneLayer.new).toList(),
+      controls = items(json['controls'] ?? [], 256, budget: PanelBudget.controls, what: 'controls').map(SceneControl.new).toList(),
       controlsById = {},
       layout = json['layout'] == null ? null : SceneLayoutNode.parse(json['layout']),
       scroll = json['scroll'] is Map
@@ -212,18 +212,16 @@ class PanelScene {
 }
 
 Map<String, double> parseValues(Object? raw) {
-  if (raw is! Map<dynamic, dynamic> || raw.length > 256) {
-    throw const FormatException('Invalid scene values');
-  }
+  if (raw is! Map<dynamic, dynamic>) throw const FormatException('Invalid scene values');
+  if (raw.length > 256) throw _overCount('values', raw.length, 256);
   return {
     for (final key in raw.keys) string({'key': key}, 'key'): number(raw, key as String),
   };
 }
 
 Map<String, String> parseStrings(Object? raw) {
-  if (raw is! Map<dynamic, dynamic> || raw.length > 256) {
-    throw const FormatException('Invalid scene strings');
-  }
+  if (raw is! Map<dynamic, dynamic>) throw const FormatException('Invalid scene strings');
+  if (raw.length > 256) throw _overCount('strings', raw.length, 256);
   return {
     for (final key in raw.keys) string({'key': key}, 'key'): _boundedString(raw[key]),
   };
@@ -233,15 +231,27 @@ Map<String, String> parseStrings(Object? raw) {
 /// the next render refuses.
 const sceneStringMaxLength = 4096;
 
+/// What any one string field may hold; a layer's artwork is the one that gets there.
+const sceneFieldMaxLength = 262144;
+
 String _boundedString(Object? value) {
-  if (value is! String || value.length > sceneStringMaxLength) throw const FormatException('Invalid scene string value');
+  if (value is! String) throw const FormatException('Invalid scene string value');
+  if (value.length > sceneStringMaxLength) throw _overLength('string value', value.length, sceneStringMaxLength);
   return value;
 }
 
-List<Map<dynamic, dynamic>> items(Object? raw, int limit) {
-  if (raw is! List || raw.length > limit || raw.any((v) => v is! Map<dynamic, dynamic>)) {
-    throw const FormatException('Invalid scene items');
-  }
+/// A scene's budgets are refused as such — named to the operator, a line in the
+/// console, nothing reported — where a malformed scene is a plain [FormatException].
+PanelContentRefusal _overCount(String what, int count, int limit, [PanelBudget budget = PanelBudget.items]) =>
+    PanelContentRefusal(budget, limit, 'scene has $count $what, at most $limit');
+
+PanelContentRefusal _overLength(String what, int length, int max) =>
+    PanelContentRefusal(PanelBudget.stringLength, max, 'scene $what is $length characters, at most $max');
+
+List<Map<dynamic, dynamic>> items(Object? raw, int limit, {PanelBudget budget = PanelBudget.items, required String what}) {
+  if (raw is! List) throw const FormatException('Invalid scene items');
+  if (raw.length > limit) throw _overCount(what, raw.length, limit, budget);
+  if (raw.any((v) => v is! Map<dynamic, dynamic>)) throw const FormatException('Invalid scene items');
   return raw.cast<Map<dynamic, dynamic>>();
 }
 
@@ -255,9 +265,8 @@ double number(Map<dynamic, dynamic> json, String key, {double? fallback, double 
 
 String string(Map<dynamic, dynamic> json, String key, {String? fallback}) {
   final value = json[key] ?? fallback;
-  if (value is! String || value.length > 262144) {
-    throw FormatException('Invalid scene string: $key');
-  }
+  if (value is! String) throw FormatException('Invalid scene string: $key');
+  if (value.length > sceneFieldMaxLength) throw _overLength(key, value.length, sceneFieldMaxLength);
   return value;
 }
 
@@ -330,7 +339,8 @@ class SceneCondition {
       matches = switch ((json['is'], json['in'])) {
         (null, null) => null,
         (final one?, null) => [_conditionOperand(one)],
-        (null, final List<dynamic> many) when many.isNotEmpty && many.length <= 256 => many.map(_conditionOperand).toList(),
+        (null, final List<dynamic> many) when many.length > 256 => throw _overCount('when.in entries', many.length, 256),
+        (null, final List<dynamic> many) when many.isNotEmpty => many.map(_conditionOperand).toList(),
         _ => throw const FormatException('Invalid scene when: give one of is or in'),
       },
       min = json['min'] == null ? null : number(json, 'min'),
@@ -355,7 +365,8 @@ class SceneCondition {
 }
 
 Object _conditionOperand(Object? v) => switch (v) {
-  final String s when s.length <= sceneStringMaxLength => s,
+  final String s when s.length > sceneStringMaxLength => throw _overLength('when operand', s.length, sceneStringMaxLength),
+  final String s => s,
   final num n when n.isFinite => n.toDouble(),
   _ => throw const FormatException('Invalid scene when operand'),
 };
@@ -380,9 +391,10 @@ String? _oneOf(Map<dynamic, dynamic> json, String key, List<String> allowed, {St
 }
 
 List<double> _bindingSamples(dynamic value) {
-  if (value is! List || value.isEmpty || value.length > 4096 || value.any((v) => v is! num || !v.isFinite)) {
+  if (value is! List || value.isEmpty || value.any((v) => v is! num || !v.isFinite)) {
     throw const FormatException('Invalid binding samples');
   }
+  if (value.length > 4096) throw _overCount('binding samples', value.length, 4096);
   return value.map((v) => (v as num).toDouble()).toList();
 }
 
@@ -441,9 +453,10 @@ class SceneLayer {
     }
     if (text != null) {
       final samples = text!['samples'];
-      if (samples != null && (samples is! List || samples.isEmpty || samples.length > 4096 || samples.any((v) => v is! String && (v is! num || !v.isFinite)))) {
+      if (samples != null && (samples is! List || samples.isEmpty || samples.any((v) => v is! String && (v is! num || !v.isFinite)))) {
         throw const FormatException('Invalid text samples');
       }
+      if (samples is List && samples.length > 4096) throw _overCount('text samples', samples.length, 4096);
       if ((text!['value'] == null) == (text!['literal'] == null)) {
         throw const FormatException('Expected literal or bound text');
       }
@@ -601,8 +614,12 @@ class SceneControl {
       opacity = json['opacity'] is Map ? 1 : number(json, 'opacity', fallback: 1, min: 0, max: 1),
       opacityBinding = json['opacity'] is Map ? SceneBinding(json['opacity'] as Map<dynamic, dynamic>) : null,
       when = json['when'] == null ? null : SceneCondition(_map(json, 'when')),
-      menu = json['menu'] == null ? null : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
-      options = json['options'] == null ? null : items(json['options'], 64).map((m) => (label: string(m, 'label'), value: string(m, 'value'))).toList(),
+      menu = json['menu'] == null
+          ? null
+          : items(json['menu'], 32, what: 'menu entries').map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
+      options = json['options'] == null
+          ? null
+          : items(json['options'], 64, what: 'options').map((m) => (label: string(m, 'label'), value: string(m, 'value'))).toList(),
       id = string(json, 'id'),
       label = string(json, 'label'),
       kind = string(json, 'kind'),
@@ -630,6 +647,7 @@ class SceneControl {
       max = number(json, 'max', fallback: 1),
       step = number(json, 'step', fallback: 1, min: 1e-9),
       sensitivity = number(json, 'sensitivity', fallback: 1, min: 1e-9) {
+    if (valueLabels != null && valueLabels!.length > 4096) throw _overCount('value labels', valueLabels!.length, 4096);
     final choices = options?.map((o) => o.value).toList();
     bool only(Object? field, Set<String> kinds) => field == null || field == false || kinds.contains(kind);
     if ((menu != null && (!const {'button', 'nativeButton', 'knob'}.contains(kind) || menu!.isEmpty)) ||
@@ -641,7 +659,7 @@ class SceneControl {
         // Drawn by nothing, a zoom strip has no place among the layers.
         (kind == 'zoom' && json['after'] != null) ||
         (json['hoverSet'] != null && (json['hoverSet'] is! Map || !_drawnKinds.containsKey(kind))) ||
-        (valueLabels != null && (valueLabels!.isEmpty || valueLabels!.length > 4096)) ||
+        (valueLabels != null && valueLabels!.isEmpty) ||
         // A choice needs something to choose from, and a value can be chosen once.
         (const {'nativeDropdown', 'nativeRadio', 'nativeSegmented'}.contains(kind) != (choices != null)) ||
         (choices != null && (choices.isEmpty || choices.toSet().length != choices.length)) ||
@@ -886,7 +904,7 @@ class SceneSpectrumAnnotation {
 
   static String _short(Map<dynamic, dynamic> json, String key) {
     final text = string(json, key);
-    if (text.length > 256) throw const FormatException('A spectrum annotation is at most 256 characters');
+    if (text.length > 256) throw _overLength('annotation $key', text.length, 256);
     return text;
   }
 
@@ -1088,7 +1106,7 @@ class SceneSpectrumSpec {
       tuneStep = SceneNumber.parse(json, 'tuneStep', min: 1, max: 1e6),
       follow = json['follow'] == null ? null : number(json, 'follow', min: 0, max: .45),
       span = SceneNumber.parse(json, 'span', min: 100, max: 1e7),
-      annotations = json['annotations'] == null ? const [] : items(json['annotations'], 64).map(SceneSpectrumAnnotation.new).toList(),
+      annotations = json['annotations'] == null ? const [] : items(json['annotations'], 64, what: 'annotations').map(SceneSpectrumAnnotation.new).toList(),
       scale = switch (json['scale']) {
         null || false => null,
         true => SceneSpectrumScale(const {}),
@@ -1101,10 +1119,11 @@ class SceneSpectrumSpec {
         final Map<dynamic, dynamic> center => SceneSpectrumMark(center, line: true),
         _ => throw const FormatException('Invalid scene spectrum center'),
       },
-      overlays = json['overlays'] == null ? const [] : items(json['overlays'], 16).map(SceneSpectrumMark.new).toList();
+      overlays = json['overlays'] == null ? const [] : items(json['overlays'], 16, what: 'overlays').map(SceneSpectrumMark.new).toList();
 
   static List<Color> _stops(Object? raw) {
-    if (raw is! List || raw.length < 2 || raw.length > 8) throw const FormatException('Invalid scene waterfallColors');
+    if (raw is! List || raw.length < 2) throw const FormatException('Invalid scene waterfallColors');
+    if (raw.length > 8) throw _overCount('waterfall colors', raw.length, 8);
     return [
       for (var i = 0; i < raw.length; i++) _color({'c': raw[i]}, 'c')!,
     ];
@@ -1167,12 +1186,14 @@ class SceneLayoutNode {
   static SceneLayoutNode parse(Object? json) {
     var count = 0;
     SceneLayoutNode node(Object? raw, int depth, {required bool inFlex}) {
-      if (raw is! Map<dynamic, dynamic> || ++count > maxNodes || depth > maxDepth) throw const FormatException('Invalid scene layout');
+      if (raw is! Map<dynamic, dynamic>) throw const FormatException('Invalid scene layout');
+      if (++count > maxNodes) throw PanelContentRefusal(PanelBudget.items, maxNodes, 'scene layout has more than $maxNodes nodes');
+      if (depth > maxDepth) throw PanelContentRefusal(PanelBudget.layoutDepth, maxDepth, 'scene layout nests $depth deep, at most $maxDepth');
       final types = _types.where(raw.containsKey).toList();
       if (types.length != 1) throw const FormatException('A layout node needs exactly one type');
       final type = types.single;
       final children = const {'row', 'column', 'wrap'}.contains(type)
-          ? items(raw[type], maxNodes).map((c) => node(c, depth + 1, inFlex: type != 'wrap')).toList()
+          ? items(raw[type], maxNodes, what: 'layout children').map((c) => node(c, depth + 1, inFlex: type != 'wrap')).toList()
           : const <SceneLayoutNode>[];
       return SceneLayoutNode._(raw, type, children, inFlex: inFlex);
     }

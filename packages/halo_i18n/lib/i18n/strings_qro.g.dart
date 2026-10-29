@@ -1746,6 +1746,11 @@ class _Translations$operation$layout$qro extends Translations$operation$layout$e
 	@override String panelOverElements({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS';
 	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP';
 	@override String panelNotArtwork({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} LAYERS';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: A SCENE STRING IS LONGER THAN ${max} CHARACTERS';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS LAYOUT NESTS MORE THAN ${max} LEVELS DEEP';
 	@override String get panelRenderRetry => 'TRY AGAIN';
 	@override String get panelActionFailed => 'THAT PANEL ACTION FAILED. TRY AGAIN.';
 	@override late final _Translations$operation$layout$panels$qro panels = _Translations$operation$layout$panels$qro._(_root);
@@ -5019,11 +5024,16 @@ extension on TranslationsQro {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK HAS MORE THAN ${max} ELEMENTS',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} LAYERS',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: A SCENE STRING IS LONGER THAN ${max} CHARACTERS',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS LAYOUT NESTS MORE THAN ${max} LEVELS DEEP',
 			'operation.layout.panelRenderRetry' => 'TRY AGAIN',
 			'operation.layout.panelActionFailed' => 'THAT PANEL ACTION FAILED. TRY AGAIN.',
 			'operation.layout.panels.loggingDescription' => 'THE LOG AND THE ENTRY FIELDS',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
 			'operation.layout.panels.spotsDescription' => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS',
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
@@ -5531,13 +5541,13 @@ extension on TranslationsQro {
 			'loggingControls.missingBand' => 'NO BAND',
 			'loggingControls.missingMode' => 'NO MODE',
 			'loggingControls.saveFailed' => ({required Object error}) => 'COULD NOT SAVE: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'COULD NOT DELETE: ${error}',
 			'loggingControls.info.noQsos' => 'NO QSOS YET... LET\'S GET ON THE AIR!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOS',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} IN ${time}',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} SINCE LAST',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} Q/H FOR LAST 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/H FOR LAST 100',
@@ -6045,13 +6055,13 @@ extension on TranslationsQro {
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
 			'settings.map.styleOpts.positron' => 'POSITRON',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'VOYAGER',
 			'settings.map.styleOpts.darkMatter' => 'DARK MATTER',
 			'settings.privacy.title' => 'PRIVACY',
 			'settings.privacy.shareAppData.title' => 'SHARE APP USAGE DATA',
 			'settings.privacy.shareAppData.descriptionOn' => 'HELPING US IMPROVE THE APP BY SHARING USAGE, CONFIGURATION, CRASH AND PERFORMANCE DATA',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.descriptionOff' => 'KEEPING APP USAGE DATA PRIVATE.\nTHE HAM2K TEAM WON\'T BE ABLE TO DETECT CRASHES OR OTHER ISSUES.',
 			'settings.privacy.shareOpData.title' => 'SHARE OPERATION DATA',
 			'settings.privacy.shareOpData.descriptionOn' => 'SHARING SOME OPERATION DATA PUBLICLY AND WITH OTHER USERS',
@@ -6559,13 +6569,13 @@ extension on TranslationsQro {
 			'settings.station.newAntenna' => 'NEW ANTENNA',
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT KEYER IN ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'KEY ON ${device}',
 			'settings.station.trackStationInfo' => 'TRACK STATION INFO FOR EACH QSO',
 			'settings.station.includeStationInfoInAdif' => 'INCLUDE IN ADIF EXPORTS',
 			'settings.station.whatToTrack' => 'WHAT TO TRACK?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldRig' => 'TRANSCEIVER',
 			'settings.station.trackFieldPower' => 'POWER',
 			'settings.station.watts' => 'WATTS',
@@ -7073,13 +7083,13 @@ extension on TranslationsQro {
 			'switchAccounts.linkWithSiblingDescription' => 'YOU HAVE ANOTHER HAM2K APP INSTALLED. LINK WITH THE ACCOUNT IN USE THERE.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'APPROVE THE REQUEST IN ${app}, THEN COME BACK HERE.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'OPEN ${app} AGAIN',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'DIDN\'T WORK? OPEN IT AGAIN, OR GO BACK AND LINK ANOTHER WAY.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'COULD NOT OPEN ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'THE LINK EXPIRED AND A NEW ONE IS READY — OPEN ${app} AGAIN.',
 			'switchAccounts.tryAgain' => 'TRY AGAIN',
 			'switchAccounts.linkWithQr' => 'LINK WITH A QR CODE',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.linkWithQrDescription' => 'SCAN IT FROM A DEVICE ALREADY USING THE ACCOUNT',
 			'switchAccounts.linkWithEmail' => 'LINK WITH AN EMAIL ADDRESS',
 			'switchAccounts.linkWithEmailDescription' => 'CONFIRM WITH A CODE OR AN EMAIL LINK',
