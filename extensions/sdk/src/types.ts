@@ -1807,9 +1807,20 @@ export interface CommandAction {
   /// `target` picks what gets spotted: `'self'` (default) spots the
   /// operation itself at the current VFO; `'last'` spots the most recent
   /// logged QSO (SPOTLAST family) regardless of what's being edited.
+  /// `source` picks where it goes: only the spot sources whose hook key is
+  /// that word, or has it as a run of its hyphen- or underscore-separated
+  /// words, case aside — `pota` reaches `ham2k-pota`, `discord` every
+  /// Discord source, `ham2k` all of Ham2K's. The app's preview names the
+  /// sources reached, in place of the hook's `describe` and `confirm`, and
+  /// a word no installed source answers to is an error in place of the
+  /// command — so a hook need not know the sources. One that none of the
+  /// sources on offer answers to fails when it runs, sending nothing. A
+  /// self-spot sent this way is a message to those sources, never what
+  /// auto-respotting repeats nor what starts it.
   sendSpots?: {
     comment?: string
     target?: "self" | "last"
+    source?: string
   }
   /// RESPOT: auto-respotting every `minutes` — the self-spot just taken at the
   /// current VFO, or one sent now when there is none to repeat — or `off`

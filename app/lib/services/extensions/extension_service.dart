@@ -42,6 +42,7 @@ import '../panel_service.dart';
 import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
 import 'settings_placement.dart';
+import 'spot_command_sources.dart';
 import '../settings_service.dart';
 import '../spots_service.dart';
 import '../status_bar_service.dart';

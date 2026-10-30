@@ -43,7 +43,7 @@ never arbitrary state:
 | `updateQso`, `addQso` | changes the draft contact, adds a record to the log (an event row, `band: 'event'`, is how a note lands on the timeline) | |
 | `updateOperation`, `markSegment` | changes the operation, marks a break | |
 | `setCallField`, `findInLog`, `navigate`, `openSettings` | moves the operator somewhere | |
-| `sendSpots`, `autoRespot`, `syncAll`, `setTime` | the app's own actions | |
+| `sendSpots`, `autoRespot`, `syncAll`, `setTime` | the app's own actions; `sendSpots` with a `source` posts only to the spot sources whose hook key carries that word (`pota` for `ham2k-pota`), the app's preview names them, and a word no source carries is refused | |
 | `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setKeyerSpeed`, `showKeyer` | changes the app's own settings | `requiresSettingsWrite` |
 
 A command carrying an action its extension may not run is refused before it

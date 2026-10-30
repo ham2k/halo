@@ -11,6 +11,11 @@
 //   SPOTLAST / SPOTEM / SPOTTHEM / SPTHEM [comment] — spot the most recently logged
 //                                       QSO, no reference in app-polo (new
 //                                       behavior for app-halo)
+//   Any of these takes a spot source first, a word stuck to a colon
+//   ("SPOT discord: hey", "QRV pota: hunters first"), and goes to that
+//   source alone — HaLo's own, no app-polo equivalent. Only parsed here:
+//   the app names the sources the word reaches in the preview, and refuses
+//   a word none answers to.
 //   CLUSTER                          — opens the cluster console
 //   RESPOT [minutes|OFF]             — auto-respotting, HaLo's own: the
 //                                       Spotting control's "Re-spot every
@@ -39,7 +44,7 @@ const SelfSpotCommand = {
     if (!parsed) return null
     const t = tFor(ctx)
     if (!operation) return { error: t("needsOperation") }
-    const { comment } = parsed
+    const { comment, source } = parsed
     return {
       // The comment is free prose for other operators (same as the Spotting
       // control's own comment field), so the call field must not force it
@@ -48,7 +53,7 @@ const SelfSpotCommand = {
       mixedCase: true,
       describe: comment ? t("selfSpotWithComment", { comment }) : t("selfSpot"),
       confirm: comment ? t("selfSpottingComment", { comment }) : t("selfSpotting"),
-      commands: [{ sendSpots: { comment: comment || undefined, target: "self" } }],
+      commands: [{ sendSpots: { comment: comment || undefined, target: "self", source } }],
     }
   },
 
@@ -58,7 +63,7 @@ const SelfSpotCommand = {
       {
         command: "SPOT",
         keywords: ["SPOTME", "SPME", "SELFSPOT", "QRV", "QRT", "QSY", "QRX", "CLUSTER", "SELF-SPOT"],
-        params: "[comment]",
+        params: "[source:] [comment]",
         describe: t("catalogSelfSpot"),
         category: t("catalogCategory"),
         needsOperation: true,
@@ -79,14 +84,14 @@ const LastSpotCommand = {
     if (!parsed) return null
     const t = tFor(ctx)
     if (!operation) return { error: t("needsOperation") }
-    const { comment } = parsed
+    const { comment, source } = parsed
     return {
       // Free prose for other operators, as SPOT's comment is: mixed case, and
       // space a character rather than advance-focus.
       mixedCase: true,
       describe: comment ? t("spotLastWithComment", { comment }) : t("spotLast"),
       confirm: comment ? t("spottingLastComment", { comment }) : t("spottingLast"),
-      commands: [{ sendSpots: { comment: comment || undefined, target: "last" } }],
+      commands: [{ sendSpots: { comment: comment || undefined, target: "last", source } }],
     }
   },
 
@@ -96,7 +101,7 @@ const LastSpotCommand = {
       {
         command: "SPOTLAST",
         keywords: ["SPOTEM", "SPOTTHEM", "SPTHEM", "CLUSTER"],
-        params: "[comment]",
+        params: "[source:] [comment]",
         describe: t("catalogSpotLast"),
         category: t("catalogCategory"),
         needsOperation: true,

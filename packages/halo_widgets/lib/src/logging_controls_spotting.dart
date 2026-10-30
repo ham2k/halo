@@ -421,7 +421,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// (non-event) QSO, regardless of what's being edited — sent from here
   /// too, so the button shows it in flight and the icons colour by its
   /// answers. [qsos] is oldest-first (see `watchForOperation`), so the last
-  /// real contact is `lastWhere`, not `firstWhere`.
+  /// real contact is `lastWhere`, not `firstWhere`. Either goes only to the
+  /// sources a `source` names ([spotSourceMatches]) when the command names
+  /// one — a self-spot so narrowed is a message to them, not a spot every
+  /// source took, so it is never what auto-respotting repeats and the
+  /// auto-respot-by-default setting promises nothing for it.
   ///
   /// `autoRespot` (RESPOT) runs this control's own auto-respotting, so the
   /// chip, the button and the respots are one, however it was started.
@@ -441,20 +445,21 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
     final params = (action['sendSpots'] as Map).cast<String, dynamic>();
     final comment = params['comment'] as String?;
+    final source = params['source'] as String?;
     if (params['target'] != 'last') {
       final freq = config().radioService?.vfoA.freq;
-      final spotted = await _spotSelf(comment);
-      final failure = spotted.failure ?? _autoStartAfter(spotted, comment, freq);
+      final spotted = await _spotSelf(comment, source: source);
+      final failure = spotted.failure ?? (source == null ? _autoStartAfter(spotted, comment, freq) : null);
       return _reportRan('sendSpots', {'target': 'self', 'failure': ?failure}, forward);
     }
     final qso = qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
-    final failure = await _spotLast(qso, comment);
+    final failure = await _spotLast(qso, comment, source: source);
     return _reportRan('sendSpots', {'target': 'last', 'failure': ?failure}, forward);
   }
 
-  /// SPOTLAST: spots [qso]'s station on every source offering it. Returns why
-  /// it did not go through, or null.
-  Future<String?> _spotLast(Qso? qso, String? comment) async {
+  /// SPOTLAST: spots [qso]'s station on every source offering it, or on those
+  /// [source] names. Returns why it did not go through, or null.
+  Future<String?> _spotLast(Qso? qso, String? comment, {String? source}) async {
     if (qso == null) return t.spotting.noQsoYet;
     // Said here, before [SpottingConfig.suggestSpotSources] offers nothing
     // for it and the operator reads that as no extension spotting at all.
@@ -462,9 +467,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final cfg = config();
     final suggest = cfg.suggestSpotSources;
     if (cfg.sendSpot == null || suggest == null) return t.spotting.nothingToSpot;
-    final sources = await suggest(operation: cfg.operation.data, qso: qso.data);
+    final offered = await suggest(operation: cfg.operation.data, qso: qso.data);
     if (isDisposed) return null;
-    if (sources.isEmpty) return t.spotting.nothingToSpot;
+    if (offered.isEmpty) return t.spotting.nothingToSpot;
+    final sources = _named(offered, source);
+    if (sources.isEmpty) return _notOfferedText(offered, source!);
     final results = await _post(sources: sources, qso: qso.data, comment: comment);
     if (isDisposed) return null;
     if (results == null) return t.loggingControls.spotBusy;
@@ -532,18 +539,21 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   }
 
   /// Sends a self-spot at the VFO — the button's, a typed one's, RESPOT's —
-  /// to every source offering one.
+  /// to every source offering one, or to those [source] names.
   ///
   /// A one-off announcement ([oneOffQCode]) ends auto-respotting whether or
   /// not it goes through: the operator is leaving or pausing either way. Any
   /// other that every source took, with the VFO still on its frequency,
   /// becomes what auto-respotting repeats — an arrival ([arrivalQCode])
-  /// without its comment — a running one re-timed from it.
+  /// without its comment — a running one re-timed from it. One sent to the
+  /// sources [source] names is neither: repeated, it would tell the rest
+  /// something said to a few.
   /// Returns why it did not go through, or the spot it recorded.
-  Future<_Spotted> _spotSelf(String? comment, {VoidCallback? onAnswered}) async {
+  Future<_Spotted> _spotSelf(String? comment, {VoidCallback? onAnswered, String? source}) async {
     // An offer standing from an earlier spot would repeat that one, or —
-    // after a one-off — nothing at all.
-    _withdrawOffer();
+    // after a one-off — nothing at all. A spot narrowed to a source leaves
+    // it standing: the earlier spot is still the one to repeat.
+    if (source == null || _isOneOff(comment)) _withdrawOffer();
     if (_isOneOff(comment)) {
       _selfSpot = null;
       if (_autoRespotting) stopAutoRespotting();
@@ -555,9 +565,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     if (freq == null) return (failure: t.spotting.setFrequencyFirst, spot: null, skipped: false);
     final suggest = cfg.suggestSpotSources;
     if (cfg.sendSpot == null || suggest == null) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
-    final sources = await suggest(operation: cfg.operation.data, qso: null);
+    final offered = await suggest(operation: cfg.operation.data, qso: null);
     if (isDisposed) return (failure: null, spot: null, skipped: false);
-    if (sources.isEmpty) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
+    if (offered.isEmpty) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
+    final sources = _named(offered, source);
+    if (sources.isEmpty) return (failure: _notOfferedText(offered, source!), spot: null, skipped: false);
     final results = await _post(sources: sources, freq: freq, mode: vfo?.mode, comment: comment, onAnswered: onAnswered);
     if (isDisposed) return (failure: null, spot: null, skipped: false);
     if (results == null) return (failure: t.loggingControls.spotBusy, spot: null, skipped: false);
@@ -567,7 +579,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     // sending nothing every round under a chip saying "Auto re-spot".
     if (outcome == null) return (failure: _spotSkippedText(sources, results), spot: null, skipped: true);
     final failure = spotFailureText(sources, results);
-    if (failure != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
+    if (failure != null || source != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
       return (failure: failure, spot: null, skipped: false);
     }
     final spot = (freq: freq, comment: _isArrival(comment) ? null : comment, operationUuid: cfg.operation.uuid, atRealMillis: realNowMillis());
@@ -860,6 +872,22 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 
   static String _hookKey(Map<String, dynamic> source) => source['hookKey'] as String? ?? '';
 
+  /// The sources among [offered] that [source] names ([spotSourceMatches]),
+  /// or all of them when a command named none.
+  static List<Map<String, dynamic>> _named(List<Map<String, dynamic>> offered, String? source) => source == null
+      ? offered
+      : [
+          for (final candidate in offered)
+            if (spotSourceMatches(_hookKey(candidate), source)) candidate,
+        ];
+
+  /// What the operator is told when none of the sources on offer answers to
+  /// [source] — a word some installed source does answer to, or the command's
+  /// preview would have refused it: what is on offer, by key, since a word
+  /// of a key is what the next try has to be.
+  static String _notOfferedText(List<Map<String, dynamic>> offered, String source) =>
+      t.spotting.sourceNotOffered(source: source, sources: offered.map(_hookKey).join(', '));
+
   /// The sources among [sources] that did not take a spot — refused, or never
   /// answered.
   static Set<String> _refusedBy(List<Map<String, dynamic>> sources, Map<String, Map<String, dynamic>> results) => {
@@ -891,10 +919,17 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     if (_sending) return null;
     if (sendSpot == null) return const {};
     // Colors from a previous attempt would misread as THIS attempt's
-    // results while the send is in flight — back to neutral gray first.
+    // results while the send is in flight — back to neutral gray first. Only
+    // the sources this one goes to: a spot narrowed to a source, or a retry
+    // of the ones that refused, says nothing about the rest, whose last
+    // answers still stand.
     bool paints() => qso != null || config().editingQso == null;
     _sending = true;
-    if (paints()) _status.clear();
+    if (paints()) {
+      for (final source in sources) {
+        _status.remove(_hookKey(source));
+      }
+    }
     notify();
     try {
       final results = await sendSpot(sources: sources, operation: operationPayload, qso: qso, freq: freq, mode: mode, comment: comment);
@@ -926,6 +961,17 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       }
     }
   }
+}
+
+/// Whether [source], as a spot command names one (`SPOT pota: hi`), names the
+/// spot source registered under [hookKey]: the whole key, or a run of its
+/// words — the parts between hyphens and underscores — case aside. So
+/// `pota` names `ham2k-pota`, `discord` every Discord source, `ham2k` all of
+/// Ham2K's; `qp` names nothing, since no key has it as a word.
+bool spotSourceMatches(String hookKey, String source) {
+  String words(String key) => key.toLowerCase().split(RegExp(r'[-_]+')).where((word) => word.isNotEmpty).join('-');
+  final wanted = words(source);
+  return wanted.isNotEmpty && '-${words(hookKey)}-'.contains('-$wanted-');
 }
 
 /// What the operator is told about a spot that did not go through, or null

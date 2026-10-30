@@ -974,6 +974,16 @@ class _Translations$spotting$qro extends Translations$spotting$en {
 	@override String get noQsoYet => 'NO QSO LOGGED YET TO SPOT.';
 	@override String get setFrequencyFirst => 'SET A FREQUENCY FIRST.';
 	@override String get nothingToSpot => 'NOTHING TO SPOT — NO EXTENSION OFFERS SPOTTING HERE.';
+	@override String noSuchSource({required Object source, required Object sources}) => 'NO SPOT SOURCE MATCHES "${source}" — INSTALLED: ${sources}.';
+	@override String sourceNotOffered({required Object source, required Object sources}) => '"${source}" ISN\'T SPOTTING HERE — ON OFFER: ${sources}.';
+	@override String selfSpotTo({required Object sources}) => 'SELF-SPOT TO ${sources}?';
+	@override String selfSpotToWithComment({required Object sources, required Object comment}) => 'SELF-SPOT TO ${sources} WITH "${comment}"?';
+	@override String selfSpottingTo({required Object sources}) => 'SELF-SPOTTING TO ${sources}…';
+	@override String selfSpottingToComment({required Object sources, required Object comment}) => 'SELF-SPOTTING TO ${sources}: ${comment}';
+	@override String spotLastTo({required Object sources}) => 'SPOT THE LAST LOGGED QSO TO ${sources}?';
+	@override String spotLastToWithComment({required Object sources, required Object comment}) => 'SPOT THE LAST LOGGED QSO TO ${sources} WITH "${comment}"?';
+	@override String spottingLastTo({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…';
+	@override String spottingLastToComment({required Object sources, required Object comment}) => 'SPOTTING LAST QSO TO ${sources}: ${comment}';
 	@override String get incompleteCall => 'CAN\'T SPOT AN INCOMPLETE CALL — FINISH THE CALLSIGN FIRST.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} FAILED: ${message}';
 	@override String get unknownError => 'UNKNOWN ERROR';
@@ -6980,6 +6990,16 @@ extension on TranslationsQro {
 			'spotting.noQsoYet' => 'NO QSO LOGGED YET TO SPOT.',
 			'spotting.setFrequencyFirst' => 'SET A FREQUENCY FIRST.',
 			'spotting.nothingToSpot' => 'NOTHING TO SPOT — NO EXTENSION OFFERS SPOTTING HERE.',
+			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'NO SPOT SOURCE MATCHES "${source}" — INSTALLED: ${sources}.',
+			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" ISN\'T SPOTTING HERE — ON OFFER: ${sources}.',
+			'spotting.selfSpotTo' => ({required Object sources}) => 'SELF-SPOT TO ${sources}?',
+			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'SELF-SPOT TO ${sources} WITH "${comment}"?',
+			'spotting.selfSpottingTo' => ({required Object sources}) => 'SELF-SPOTTING TO ${sources}…',
+			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'SELF-SPOTTING TO ${sources}: ${comment}',
+			'spotting.spotLastTo' => ({required Object sources}) => 'SPOT THE LAST LOGGED QSO TO ${sources}?',
+			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'SPOT THE LAST LOGGED QSO TO ${sources} WITH "${comment}"?',
+			'spotting.spottingLastTo' => ({required Object sources}) => 'SPOTTING LAST QSO TO ${sources}…',
+			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'SPOTTING LAST QSO TO ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'CAN\'T SPOT AN INCOMPLETE CALL — FINISH THE CALLSIGN FIRST.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} FAILED: ${message}',
 			'spotting.unknownError' => 'UNKNOWN ERROR',
@@ -7080,6 +7100,8 @@ extension on TranslationsQro {
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',
 			'confirmDevice.unnamedDevice' => 'AN UNNAMED DEVICE',
@@ -7090,8 +7112,6 @@ extension on TranslationsQro {
 			'confirmDevice.linkIt' => 'LINK DEVICE',
 			'switchAccounts.noAccountDetails' => 'NO ACCOUNT DETAILS YET',
 			'switchAccounts.currentAccount' => 'CURRENT ACCOUNT',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'OTHER ACCOUNTS',
 			'switchAccounts.linkToAnother' => 'LINK TO ANOTHER ACCOUNT',
 			'switchAccounts.linkWithSibling' => 'LINK WITH OTHER HAM2K APP',

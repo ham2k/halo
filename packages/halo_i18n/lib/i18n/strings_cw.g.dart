@@ -974,6 +974,16 @@ class _Translations$spotting$cw extends Translations$spotting$en {
 	@override String get noQsoYet => '—· ——— / ——·— ··· ——— / ·—·· ——— ——· ——· · —·· / —·—— · — / — ——— / ··· ·——· ——— — ·—·—·—';
 	@override String get setFrequencyFirst => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··—· ·· ·—· ··· — ·—·—·—';
 	@override String get nothingToSpot => '—· ——— — ···· ·· —· ——· / — ——— / ··· ·——· ——— — / — / —· ——— / · —··— — · —· ··· ·· ——— —· / ——— ··—· ··—· · ·—· ··· / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · ·—·—·—';
+	@override String noSuchSource({required Object source, required Object sources}) => '—· ——— / ··· ·——· ——— — / ··· ——— ··— ·—· —·—· · / —— ·— — —·—· ···· · ··· / ·—··—· ${source} ·—··—· / — / ·· —· ··· — ·— ·—·· ·—·· · —·· ———··· / ${sources} ·—·—·—';
+	@override String sourceNotOffered({required Object source, required Object sources}) => '·—··—· ${source} ·—··—· / ·· ··· —· ·————· — / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · / — / ——— —· / ——— ··—· ··—· · ·—· ———··· / ${sources} ·—·—·—';
+	@override String selfSpotTo({required Object sources}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — / — ——— / ${sources} ··——··';
+	@override String selfSpotToWithComment({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··';
+	@override String selfSpottingTo({required Object sources}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} …';
+	@override String selfSpottingToComment({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} ———··· / ${comment}';
+	@override String spotLastTo({required Object sources}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} ··——··';
+	@override String spotLastToWithComment({required Object sources, required Object comment}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··';
+	@override String spottingLastTo({required Object sources}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} …';
+	@override String spottingLastToComment({required Object sources, required Object comment}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} ———··· / ${comment}';
 	@override String get incompleteCall => '—·—· ·— —· ·————· — / ··· ·——· ——— — / ·— —· / ·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / ··—· ·· —· ·· ··· ···· / — ···· · / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ··—· ·· ·—· ··· — ·—·—·—';
 	@override String spotFailed({required Object source, required Object message}) => '${source} / ··—· ·— ·· ·—·· · —·· ———··· / ${message}';
 	@override String get unknownError => '··— —· —·— —· ——— ·—— —· / · ·—· ·—· ——— ·—·';
@@ -6980,6 +6990,16 @@ extension on TranslationsCw {
 			'spotting.noQsoYet' => '—· ——— / ——·— ··· ——— / ·—·· ——— ——· ——· · —·· / —·—— · — / — ——— / ··· ·——· ——— — ·—·—·—',
 			'spotting.setFrequencyFirst' => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··—· ·· ·—· ··· — ·—·—·—',
 			'spotting.nothingToSpot' => '—· ——— — ···· ·· —· ——· / — ——— / ··· ·——· ——— — / — / —· ——— / · —··— — · —· ··· ·· ——— —· / ——— ··—· ··—· · ·—· ··· / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · ·—·—·—',
+			'spotting.noSuchSource' => ({required Object source, required Object sources}) => '—· ——— / ··· ·——· ——— — / ··· ——— ··— ·—· —·—· · / —— ·— — —·—· ···· · ··· / ·—··—· ${source} ·—··—· / — / ·· —· ··· — ·— ·—·· ·—·· · —·· ———··· / ${sources} ·—·—·—',
+			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '·—··—· ${source} ·—··—· / ·· ··· —· ·————· — / ··· ·——· ——— — — ·· —· ——· / ···· · ·—· · / — / ——— —· / ——— ··—· ··—· · ·—· ———··· / ${sources} ·—·—·—',
+			'spotting.selfSpotTo' => ({required Object sources}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — / — ——— / ${sources} ··——··',
+			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··',
+			'spotting.selfSpottingTo' => ({required Object sources}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} …',
+			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => '··· · ·—·· ··—· —····— ··· ·——· ——— — — ·· —· ——· / — ——— / ${sources} ———··· / ${comment}',
+			'spotting.spotLastTo' => ({required Object sources}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} ··——··',
+			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — / — ···· · / ·—·· ·— ··· — / ·—·· ——— ——· ——· · —·· / ——·— ··· ——— / — ——— / ${sources} / ·—— ·· — ···· / ·—··—· ${comment} ·—··—· ··——··',
+			'spotting.spottingLastTo' => ({required Object sources}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} …',
+			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => '··· ·——· ——— — — ·· —· ——· / ·—·· ·— ··· — / ——·— ··· ——— / — ——— / ${sources} ———··· / ${comment}',
 			'spotting.incompleteCall' => '—·—· ·— —· ·————· — / ··· ·——· ——— — / ·— —· / ·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / ··—· ·· —· ·· ··· ···· / — ···· · / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ··—· ·· ·—· ··· — ·—·—·—',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} / ··—· ·— ·· ·—·· · —·· ———··· / ${message}',
 			'spotting.unknownError' => '··— —· —·— —· ——— ·—— —· / · ·—· ·—· ——— ·—·',
@@ -7080,6 +7100,8 @@ extension on TranslationsCw {
 			'confirmDevice.code' => '—·—· ——— —·· ·',
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',
 			'confirmDevice.codeNotFound' => '—· ——— / ·—· · ——·— ··— · ··· — / —— ·— — —·—· ···· · ··· / — ···· ·— — / —·—· ——— —·· · ·—·—·— / —·—· ——— —·· · ··· / · —··— ·——· ·· ·—· · / ·— ··—· — · ·—· / ·———— ————— / —— ·· —· ··— — · ··· / — / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ··—· ——— ·—· / ·— / ··—· ·—· · ··· ···· / ——— —· · ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => '— ···· ·— — / ·—·· ·· —· —·— / ···· ·— ··· / · —··— ·——· ·· ·—· · —·· ·—·—·— / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / — ——— / ··· ···· ——— ·—— / ·— / —· · ·—— / ——·— ·—· / —·—· ——— —·· · ·—·—·—',
 			'confirmDevice.areYouSure' => ({required Object device}) => '·—·· ·· —· —·— / ${device} / — ——— / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ··——··',
 			'confirmDevice.unnamedDevice' => '·— —· / ··— —· —· ·— —— · —·· / —·· · ···— ·· —·—· ·',
@@ -7090,8 +7112,6 @@ extension on TranslationsCw {
 			'confirmDevice.linkIt' => '·—·· ·· —· —·— / —·· · ···— ·· —·—· ·',
 			'switchAccounts.noAccountDetails' => '—· ——— / ·— —·—· —·—· ——— ··— —· — / —·· · — ·— ·· ·—·· ··· / —·—— · —',
 			'switchAccounts.currentAccount' => '—·—· ··— ·—· ·—· · —· — / ·— —·—· —·—· ——— ··— —· —',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => '——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· — ···',
 			'switchAccounts.linkToAnother' => '·—·· ·· —· —·— / — ——— / ·— —· ——— — ···· · ·—· / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.linkWithSibling' => '·—·· ·· —· —·— / ·—— ·· — ···· / ——— — ···· · ·—· / ···· ·— —— ··——— —·— / ·— ·——· ·——·',

@@ -2166,6 +2166,36 @@ class Translations$spotting$en {
 	/// en: 'Nothing to spot — no extension offers spotting here.'
 	String get nothingToSpot => 'Nothing to spot — no extension offers spotting here.';
 
+	/// en: 'No spot source matches "${source}" — installed: ${sources}.'
+	String noSuchSource({required Object source, required Object sources}) => 'No spot source matches "${source}" — installed: ${sources}.';
+
+	/// en: '"${source}" isn't spotting here — on offer: ${sources}.'
+	String sourceNotOffered({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.';
+
+	/// en: 'Self-spot to ${sources}?'
+	String selfSpotTo({required Object sources}) => 'Self-spot to ${sources}?';
+
+	/// en: 'Self-spot to ${sources} with "${comment}"?'
+	String selfSpotToWithComment({required Object sources, required Object comment}) => 'Self-spot to ${sources} with "${comment}"?';
+
+	/// en: 'Self-spotting to ${sources}…'
+	String selfSpottingTo({required Object sources}) => 'Self-spotting to ${sources}…';
+
+	/// en: 'Self-spotting to ${sources}: ${comment}'
+	String selfSpottingToComment({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}';
+
+	/// en: 'Spot the last logged QSO to ${sources}?'
+	String spotLastTo({required Object sources}) => 'Spot the last logged QSO to ${sources}?';
+
+	/// en: 'Spot the last logged QSO to ${sources} with "${comment}"?'
+	String spotLastToWithComment({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?';
+
+	/// en: 'Spotting last QSO to ${sources}…'
+	String spottingLastTo({required Object sources}) => 'Spotting last QSO to ${sources}…';
+
+	/// en: 'Spotting last QSO to ${sources}: ${comment}'
+	String spottingLastToComment({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}';
+
 	/// en: 'Can't spot an incomplete call — finish the callsign first.'
 	String get incompleteCall => 'Can\'t spot an incomplete call — finish the callsign first.';
 
@@ -12409,6 +12439,16 @@ extension on Translations {
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
+			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'No spot source matches "${source}" — installed: ${sources}.',
+			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
+			'spotting.selfSpotTo' => ({required Object sources}) => 'Self-spot to ${sources}?',
+			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'Self-spot to ${sources} with "${comment}"?',
+			'spotting.selfSpottingTo' => ({required Object sources}) => 'Self-spotting to ${sources}…',
+			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'Self-spotting to ${sources}: ${comment}',
+			'spotting.spotLastTo' => ({required Object sources}) => 'Spot the last logged QSO to ${sources}?',
+			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'Spot the last logged QSO to ${sources} with "${comment}"?',
+			'spotting.spottingLastTo' => ({required Object sources}) => 'Spotting last QSO to ${sources}…',
+			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'Spotting last QSO to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
@@ -12509,6 +12549,8 @@ extension on Translations {
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',
@@ -12519,8 +12561,6 @@ extension on Translations {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',

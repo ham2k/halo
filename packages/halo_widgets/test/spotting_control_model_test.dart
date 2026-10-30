@@ -721,11 +721,11 @@ void main() {
 
     group('typed spots', () {
       final forwarded = <Map<String, dynamic>?>[];
-      Future<void> typed(_Harness h, String? comment, {String target = 'self'}) => h.model.runCommandAction(
+      Future<void> typed(_Harness h, String? comment, {String target = 'self', String? source, List<Qso> qsos = const []}) => h.model.runCommandAction(
         {
-          'sendSpots': {'comment': ?comment, 'target': target},
+          'sendSpots': {'comment': ?comment, 'target': target, 'source': ?source},
         },
-        qsos: const [],
+        qsos: qsos,
         forward: (action, [params]) async => forwarded.add(params),
       );
       setUp(forwarded.clear);
@@ -815,6 +815,114 @@ void main() {
         expect(forwarded.single!['target'], 'last');
         await tester.pump(_every + const Duration(seconds: 1));
         expect(h.sent.last['comment'], 'CQ POTA');
+        h.model.dispose();
+      });
+
+      List<String> sentTo(Map<String, dynamic> sent) => [for (final source in sent['sources'] as List) source['hookKey'] as String];
+
+      // `SPOT pota: hi` is a message to one audience: sent to the rest, the
+      // narrowing would be a lie the operator cannot see.
+      test('a spot naming a source goes to the sources it names, case aside, and nowhere else', () async {
+        final h = _Harness();
+        h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+        h.answer = {
+          'pota': {'ok': true},
+        };
+        await typed(h, 'hi hunters', source: 'POTA');
+        expect(sentTo(h.sent.single), ['pota']);
+        expect(h.sent.single['comment'], 'hi hunters');
+        expect(h.model.statusOf('pota'), isTrue);
+        expect(h.model.statusOf('sota'), isNull, reason: 'a source the spot never went to has nothing to show');
+        expect(forwarded.single, {'target': 'self'});
+        h.model.dispose();
+      });
+
+      // Falling back to every source would send a message meant for one
+      // audience to all of them. The preview refuses a word no installed
+      // source answers to; this is the word an installed source answers to
+      // that is not spotting here (no park ref, no account).
+      test('a name none of the sources on offer answers to sends nothing, and names what is on offer', () async {
+        final h = _Harness();
+        h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+        await typed(h, 'hi', source: 'discord');
+        expect(h.sent, isEmpty);
+        expect(forwarded.single, {'target': 'self', 'failure': '"discord" isn\'t spotting here — on offer: pota, sota.'});
+        h.model.dispose();
+      });
+
+      // Repeated, a spot sent to one source would reach every source; and
+      // the setting's promise is about spots every source took.
+      testWidgets('a narrowed spot is never what auto-respotting repeats, and does not start it', (tester) async {
+        final h = _Harness();
+        h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+        h.autoRespotByDefault = true;
+        h.answer = {
+          'pota': {'ok': true},
+          'sota': {'ok': true},
+        };
+        await typed(h, 'hi hunters', source: 'pota');
+        expect(h.model.autoRespotting, isFalse);
+        expect(forwarded.single, {'target': 'self'}, reason: 'nothing was promised, so nothing failed');
+        expect(await h.model.respotEvery(5), isNull);
+        expect(h.sent, hasLength(2), reason: 'RESPOT spots afresh, to every source');
+        expect(sentTo(h.sent.last), ['pota', 'sota']);
+        expect(h.sent.last['comment'], isNull);
+        h.model.dispose();
+      });
+
+      testWidgets('a narrowed spot while it runs leaves the spot it repeats, and its timing, alone', (tester) async {
+        final h = await spotted(tester);
+        await h.model.press();
+        await tester.pump(const Duration(minutes: 8));
+        await typed(h, 'hi hunters', source: 'pota');
+        expect(h.model.autoRespotting, isTrue);
+        await tester.pump(const Duration(minutes: 2, seconds: 1));
+        expect(h.sent.map((s) => s['comment']), ['CQ POTA', 'hi hunters', 'CQ POTA']);
+        expect(sentTo(h.sent.last), ['pota', 'sota']);
+        h.model.dispose();
+      });
+
+      // The offer is to repeat the full spot just sent; a word to one source
+      // in between does not change which spot that is. A QRT does: to
+      // whoever it is said, the operator is leaving.
+      testWidgets('a narrowed spot leaves a standing auto-respot offer standing; a narrowed QRT withdraws it', (tester) async {
+        final h = await spotted(tester);
+        expect(h.model.state.buttonLabel, startsWith('Re-spot every'));
+        await typed(h, 'hi hunters', source: 'pota');
+        expect(h.model.state.buttonLabel, startsWith('Re-spot every'), reason: 'the full spot is still the one to repeat');
+        await typed(h, 'QRT thanks', source: 'pota');
+        expect(h.model.state.buttonLabel, startsWith('Self-spot at'));
+        h.model.dispose();
+      });
+
+      // The icons say how the last spot to each source went; one that never
+      // went to a source has nothing to say about it.
+      testWidgets("a narrowed spot leaves the other sources' icons as the last spot to them left them", (tester) async {
+        final h = await spotted(tester);
+        expect(h.model.statusOf('sota'), isTrue);
+        await typed(h, 'hi hunters', source: 'pota');
+        expect(h.model.statusOf('pota'), isTrue);
+        expect(h.model.statusOf('sota'), isTrue, reason: "sota's spot stands; this one never went there");
+        h.model.dispose();
+      });
+
+      test('SPOTLAST naming a source spots the last QSO there alone', () async {
+        final h = _Harness();
+        final qso = Qso(
+          uuid: 'q1',
+          operationUuid: 'op',
+          data: {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': nowMillis(),
+          },
+        );
+        h.answer = {
+          'sota': {'ok': true},
+        };
+        await typed(h, 'nice signal', target: 'last', source: 'sota', qsos: [qso]);
+        expect(sentTo(h.sent.single), ['sota']);
+        expect(h.sent.single['qso']?['their'], {'call': 'W1AW'});
+        expect(forwarded.single, {'target': 'last'});
         h.model.dispose();
       });
     });
@@ -1640,5 +1748,24 @@ void main() {
       expect(h.model.autoRespotting, isFalse);
       h.model.dispose();
     });
+  });
+
+  // A hook key is `<publisher>-<name>`, or that with a `_suffix`; an operator
+  // types the name. Matching inside a word (`ota` for `ham2k-pota`) would
+  // make `spot` reach every source whose key says "spots".
+  test('spotSourceMatches: the whole key or a run of its words, never part of one', () {
+    expect(spotSourceMatches('ham2k-pota', 'pota'), isTrue);
+    expect(spotSourceMatches('ham2k-pota', 'POTA'), isTrue);
+    expect(spotSourceMatches('ham2k-pota', 'ham2k-pota'), isTrue);
+    expect(spotSourceMatches('ham2k-pota_spots', 'pota'), isTrue);
+    expect(spotSourceMatches('ki2d-discord-spotting', 'discord'), isTrue);
+    expect(spotSourceMatches('ham2k-discord-spotterbot', 'discord'), isTrue);
+    expect(spotSourceMatches('ki2d-qso-party-spots', 'qso-party'), isTrue);
+    expect(spotSourceMatches('ki2d-qso-party-spots', 'party_spots'), isTrue, reason: 'hyphen and underscore are both word breaks');
+    expect(spotSourceMatches('ham2k-pota', 'ota'), isFalse);
+    expect(spotSourceMatches('ki2d-qso-party-spots', 'qpspots'), isFalse);
+    expect(spotSourceMatches('ki2d-qso-party-spots', 'spots-qso'), isFalse, reason: 'the words in another order are another name');
+    expect(spotSourceMatches('ham2k-pota', ''), isFalse);
+    expect(spotSourceMatches('ham2k-pota', '-'), isFalse);
   });
 }

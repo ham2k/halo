@@ -248,6 +248,7 @@ mixin _ExtensionHookApi {
   Map<String, dynamic> _attributedCommand(Map<String, dynamic> interpretation, String? extensionKey);
   String _describedByOwner(String describe, String? extensionKey);
   bool get activationIncomplete;
+  ValueNotifier<int> get runtimeGeneration;
   void invalidateHookContext();
   Future<void> presentResultMessage(Map<String, dynamic> message, {String ns});
 
@@ -817,7 +818,7 @@ mixin _ExtensionHookApi {
       );
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
-          return _attributedCommand((entry['value'] as Map).cast<String, dynamic>(), entry['extensionKey'] as String?);
+          return _attributedCommand(await _withSpotSources((entry['value'] as Map).cast<String, dynamic>()), entry['extensionKey'] as String?);
         }
       }
     } on ExtensionHostException catch (e) {
@@ -831,6 +832,33 @@ mixin _ExtensionHookApi {
     }
     return null;
   }
+
+  /// [interpretation] previewed as the app runs it when it names a spot
+  /// source ([describeSpotSources]): the hook has only the word typed. The
+  /// runtime is asked for the sources' names only then — the preview reruns
+  /// on every pause in typing.
+  Future<Map<String, dynamic>> _withSpotSources(Map<String, dynamic> interpretation) async {
+    if (sendSpotsNamingSource(interpretation) == null) return interpretation;
+    return describeSpotSources(interpretation, await spotSourceNames());
+  }
+
+  /// [getSpotSourceNames]'s answer, kept for the runtime's generation: the
+  /// preview asks on every pause in typing, for names that change only with
+  /// the set of extensions loaded. Not kept while activation is still under
+  /// way, when the set is partial, nor when the fan-out answered nothing.
+  Future<Map<String, String>> spotSourceNames() async {
+    final kept = _spotSourceNames;
+    if (kept != null && _spotSourceNamesGeneration == runtimeGeneration.value) return kept;
+    final names = await getSpotSourceNames();
+    if (!activationIncomplete && names.isNotEmpty) {
+      _spotSourceNames = names;
+      _spotSourceNamesGeneration = runtimeGeneration.value;
+    }
+    return names;
+  }
+
+  Map<String, String>? _spotSourceNames;
+  int _spotSourceNamesGeneration = -1;
 
   /// Every command advertised by a `command` hook's optional `catalog()`, for
   /// the command dialog's browsable list — `{command, describe, params?,

@@ -386,7 +386,9 @@ Other core extensions add their own call-field commands:
 - **Spotting** ([`spot-commands`](extensions/core/spot-commands/src/index.ts)):
   `SPOT` / `SPOTME` / `SELFSPOT` self-spot (optional comment); `QRV` / `QRT` /
   `QSY` / `QRX` self-spot with that Q-code as the comment; `SPOTLAST` /
-  `SPOTTHEM` spot the last logged QSO.
+  `SPOTTHEM` spot the last logged QSO. A first word stuck to a colon names
+  the spot source to use (`QRV pota: hunters first`, `SPOT discord: hey`):
+  a word of its hook key, or the whole key.
 - **Annotations**
   ([`annotation-commands`](extensions/core/annotation-commands/src/index.ts)):
   `NOTE <text>`, `TODO <text>`, `SOLAR` (current solar conditions), `WEATHER`

@@ -38,6 +38,24 @@ test("parseSelfSpotCommand: a slash separator works the same as a space", () => 
   assert.deepEqual(parseSelfSpotCommand("SPOT/good signal"), { comment: "good signal" })
 })
 
+// The source is the first word and its colon, nothing more: a colon later in
+// the text is prose, or "SPOT back at 14:30" would look for a source "14".
+test("parseSelfSpotCommand: a first word stuck to a colon names the source, and leaves the comment", () => {
+  assert.deepEqual(parseSelfSpotCommand("SPOT discord: Hey guys"), { comment: "Hey guys", source: "discord" })
+  assert.deepEqual(parseSelfSpotCommand("SPOT ki2d-discord-spotting:"), { comment: "", source: "ki2d-discord-spotting" })
+  assert.deepEqual(parseSelfSpotCommand("spot/pota_spots: hi"), { comment: "hi", source: "pota_spots" })
+  assert.deepEqual(parseSelfSpotCommand("SPOT back at 14:30"), { comment: "back at 14:30" })
+  assert.deepEqual(parseSelfSpotCommand("SPOT Note: back soon"), { comment: "back soon", source: "Note" })
+  assert.deepEqual(parseSelfSpotCommand("SPOT hey all: lunch"), { comment: "hey all: lunch" })
+})
+
+// The Q-code still leads the comment: the source is where it goes, not what
+// it says.
+test("parseSelfSpotCommand: a Q-code with a source keeps the Q-code as the comment's first word", () => {
+  assert.deepEqual(parseSelfSpotCommand("QRV pota:park hunters first!"), { comment: "QRV park hunters first!", source: "pota" })
+  assert.deepEqual(parseSelfSpotCommand("qrt discord:"), { comment: "QRT", source: "discord" })
+})
+
 test("parseSelfSpotCommand: unrelated input doesn't match", () => {
   assert.equal(parseSelfSpotCommand("K1ABC"), null)
   assert.equal(parseSelfSpotCommand("SPOTLAST"), null) // handled by parseLastSpotCommand instead
@@ -53,6 +71,12 @@ test("parseLastSpotCommand: SPOTLAST, SPOTEM, SPOTTHEM, SPTHEM all match bare, c
 test("parseLastSpotCommand: text after a space or a slash is the comment, as SPOT's is", () => {
   assert.deepEqual(parseLastSpotCommand("SPOTTHEM nice signal"), { comment: "nice signal" })
   assert.deepEqual(parseLastSpotCommand("spotlast/QSB, try again"), { comment: "QSB, try again" })
+})
+
+test("parseLastSpotCommand: a source named first goes with the spot, as SPOT's does", () => {
+  assert.deepEqual(parseLastSpotCommand("SPOTLAST sota: nice signal"), { comment: "nice signal", source: "sota" })
+  assert.deepEqual(parseLastSpotCommand("SPOTTHEM/cluster:"), { comment: "", source: "cluster" })
+  assert.deepEqual(parseLastSpotCommand("SPOTLAST QSB at 14:30"), { comment: "QSB at 14:30" })
 })
 
 test("parseLastSpotCommand: a call that merely starts with the word is not the command", () => {

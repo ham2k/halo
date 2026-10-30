@@ -974,6 +974,16 @@ class _Translations$spotting$qrp extends Translations$spotting$en {
 	@override String get noQsoYet => 'no qso logged yet to spot.';
 	@override String get setFrequencyFirst => 'set a frequency first.';
 	@override String get nothingToSpot => 'nothing to spot — no extension offers spotting here.';
+	@override String noSuchSource({required Object source, required Object sources}) => 'no spot source matches "${source}" — installed: ${sources}.';
+	@override String sourceNotOffered({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.';
+	@override String selfSpotTo({required Object sources}) => 'self-spot to ${sources}?';
+	@override String selfSpotToWithComment({required Object sources, required Object comment}) => 'self-spot to ${sources} with "${comment}"?';
+	@override String selfSpottingTo({required Object sources}) => 'self-spotting to ${sources}…';
+	@override String selfSpottingToComment({required Object sources, required Object comment}) => 'self-spotting to ${sources}: ${comment}';
+	@override String spotLastTo({required Object sources}) => 'spot the last logged qso to ${sources}?';
+	@override String spotLastToWithComment({required Object sources, required Object comment}) => 'spot the last logged qso to ${sources} with "${comment}"?';
+	@override String spottingLastTo({required Object sources}) => 'spotting last qso to ${sources}…';
+	@override String spottingLastToComment({required Object sources, required Object comment}) => 'spotting last qso to ${sources}: ${comment}';
 	@override String get incompleteCall => 'can\'t spot an incomplete call — finish the callsign first.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
 	@override String get unknownError => 'unknown error';
@@ -6980,6 +6990,16 @@ extension on TranslationsQrp {
 			'spotting.noQsoYet' => 'no qso logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'set a frequency first.',
 			'spotting.nothingToSpot' => 'nothing to spot — no extension offers spotting here.',
+			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'no spot source matches "${source}" — installed: ${sources}.',
+			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
+			'spotting.selfSpotTo' => ({required Object sources}) => 'self-spot to ${sources}?',
+			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'self-spot to ${sources} with "${comment}"?',
+			'spotting.selfSpottingTo' => ({required Object sources}) => 'self-spotting to ${sources}…',
+			'spotting.selfSpottingToComment' => ({required Object sources, required Object comment}) => 'self-spotting to ${sources}: ${comment}',
+			'spotting.spotLastTo' => ({required Object sources}) => 'spot the last logged qso to ${sources}?',
+			'spotting.spotLastToWithComment' => ({required Object sources, required Object comment}) => 'spot the last logged qso to ${sources} with "${comment}"?',
+			'spotting.spottingLastTo' => ({required Object sources}) => 'spotting last qso to ${sources}…',
+			'spotting.spottingLastToComment' => ({required Object sources, required Object comment}) => 'spotting last qso to ${sources}: ${comment}',
 			'spotting.incompleteCall' => 'can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
@@ -7080,6 +7100,8 @@ extension on TranslationsQrp {
 			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
 			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'that link has expired. ask the other device to show a new qr code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',
@@ -7090,8 +7112,6 @@ extension on TranslationsQrp {
 			'confirmDevice.linkIt' => 'link device',
 			'switchAccounts.noAccountDetails' => 'no account details yet',
 			'switchAccounts.currentAccount' => 'current account',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'other accounts',
 			'switchAccounts.linkToAnother' => 'link to another account',
 			'switchAccounts.linkWithSibling' => 'link with other ham2k app',
