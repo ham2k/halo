@@ -425,6 +425,23 @@ void main() {
 
       expect(_our(r)['city'], 'Woodridge');
     });
+
+    // PFX is the WPX prefix. Stored as the entity prefix, "KP4" on a mainland
+    // station makes the QSO row count a domestic contact as DX, and a "W1"
+    // matches no entity anywhere.
+    test('the entity prefix comes from DXCC, never from PFX', () {
+      final r = only('<CALL:6>KP4ABC<PFX:3>KP4<DXCC:3>291<MY_PFX:2>W1<MY_DXCC:3>291');
+
+      expect(_their(r)['entityPrefix'], 'K');
+      expect(_our(r)['entityPrefix'], 'K');
+      expect(_their(r).containsKey('pfx'), isFalse);
+    });
+
+    test('a record with PFX and no DXCC names no entity', () {
+      final r = only('<CALL:5>W1ABC<PFX:2>W1');
+
+      expect(_their(r).containsKey('entityPrefix'), isFalse);
+    });
   });
 
   group('power', () {

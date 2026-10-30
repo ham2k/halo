@@ -81,6 +81,84 @@ void main() {
     });
   });
 
+  group('Qso.theirFlag derived from the entity', () {
+    // app-polo never stores a flag: its guess names the entity and derives the
+    // flag at render time. Read for the stored field alone, every synced QSO
+    // shows no flag.
+    test('a guess with an entity prefix and no flag or code gets the entity flag, as a guess', () {
+      final q = _qso({
+        'guess': {'entityPrefix': 'K'},
+      });
+      expect(q.theirFlag, '🇺🇸');
+      expect(q.theirFieldIsGuessed('flag'), isTrue);
+    });
+
+    // A record imported before the importer read DXCC holds its WPX prefix as
+    // the entity prefix, and one with a digit can be another entity's: KP4
+    // held by a station in the mainland US. Read prefix first, the row counts
+    // it as DX and shows Puerto Rico's flag.
+    test('a record whose code and prefix disagree is the entity the DXCC code names', () {
+      final q = _qso({'entityPrefix': 'KP4', 'dxccCode': 291});
+      expect(q.theirEntityPrefix, 'K');
+      expect(q.theirFlag, '🇺🇸');
+      expect(q.theirFieldIsGuessed('flag'), isFalse);
+      expect(q.theirFieldIsGuessed('entityPrefix'), isFalse);
+    });
+
+    test('a WPX prefix with no code stands as stored, naming no flag', () {
+      final q = _qso({'entityPrefix': 'W1'});
+      expect(q.theirEntityPrefix, 'W1');
+      expect(q.theirFlag, isNull);
+    });
+
+    test('an entity read from a guessed code is guessed even beside an entered prefix', () {
+      final q = _qso({
+        'entityPrefix': 'KP4',
+        'guess': {'dxccCode': 291},
+      });
+      expect(q.theirEntityPrefix, 'K');
+      expect(q.theirFlag, '🇺🇸');
+      expect(q.theirFieldIsGuessed('flag'), isTrue);
+      expect(q.theirFieldIsGuessed('entityPrefix'), isTrue);
+    });
+
+    // Truncated, 291.5 would land on the US; parsed as the getter parses it,
+    // a malformed entered value is not the entered one provenance reports.
+    test('a non-integral code resolves nothing, and a malformed entered value yields to the guess', () {
+      expect(_qso({'dxccCode': 291.5}).theirFlag, isNull);
+      final q = _qso({
+        'dxccCode': 'USA',
+        'entityPrefix': 42,
+        'guess': {'entityPrefix': 'K'},
+      });
+      expect(q.theirFlag, '🇺🇸');
+      expect(q.theirFieldIsGuessed('flag'), isTrue);
+    });
+
+    test('a stored flag wins over the derived one', () {
+      final q = _qso({
+        'guess': {'entityPrefix': 'K', 'flag': '🏴'},
+      });
+      expect(q.theirFlag, '🏴');
+    });
+
+    test('an entity the table has no flag for, or no entity at all, derives nothing', () {
+      expect(
+        _qso({
+          'guess': {'entityPrefix': 'OJ0'},
+        }).theirFlag,
+        isNull,
+      );
+      expect(
+        _qso({
+          'guess': {'entityPrefix': 'OJ0'},
+        }).theirFieldIsGuessed('flag'),
+        isFalse,
+      );
+      expect(_qso({}).theirFlag, isNull);
+    });
+  });
+
   group('Qso location', () {
     // The guess the lookup pipeline settles (resolveGuess.ts) is what every
     // reader shows. A settled correction carries no square, so the state's

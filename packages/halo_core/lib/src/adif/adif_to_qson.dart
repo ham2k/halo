@@ -22,6 +22,7 @@
 
 import 'dart:convert';
 
+import '../ham/dxcc_entities.dart';
 import '../ham/radio.dart';
 import 'adif_parser.dart';
 
@@ -288,7 +289,7 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, their, 'gridsquare', 'grid');
   _set(f, their, 'lat', 'lat', (x) => parseAdifCoordinate(x, latitude: true));
   _set(f, their, 'lon', 'lon', (x) => parseAdifCoordinate(x, latitude: false));
-  _set(f, their, 'pfx', 'entityPrefix');
+  _setEntityPrefix(their);
 
   _set(f, our, 'my_name', 'name');
   _set(f, our, 'my_cont', 'continent');
@@ -316,7 +317,7 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   _set(f, our, 'my_gridsquare', 'grid');
   _set(f, our, 'my_lat', 'lat', (x) => parseAdifCoordinate(x, latitude: true));
   _set(f, our, 'my_lon', 'lon', (x) => parseAdifCoordinate(x, latitude: false));
-  _set(f, our, 'my_pfx', 'entityPrefix');
+  _setEntityPrefix(our);
   // num, not the raw string: `power` is also written by CAT capture
   // (Qso.power) as a number, and the two origins have to agree on a type.
   // Top-level, not under `our` — QSON convention (matching freq/band/mode).
@@ -525,6 +526,15 @@ double? parseAdifCoordinate(String raw, {required bool latitude}) {
 /// Absent stays absent — writing an explicit null would make "the file didn't
 /// say" indistinguishable from "the file said nothing", which is what a merge
 /// against an existing QSO turns on.
+/// `entityPrefix` from the side's DXCC code, never from `PFX`/`MY_PFX`: those
+/// hold the WPX prefix ("W1", "KP4" on a mainland station), which read as an
+/// entity prefix names a foreign entity against every station call. Runs
+/// after the side's `dxccCode` is set.
+void _setEntityPrefix(Map<String, dynamic> dest) {
+  final prefix = entityPrefixByDxccCode[dest['dxccCode']];
+  if (prefix != null) dest['entityPrefix'] = prefix;
+}
+
 void _set(Map<String, String> src, Map<String, dynamic> dest, String field, String destField, [Object? Function(String)? convert]) {
   final raw = _present(src[field]) ?? _present(src['${field}_intl']);
   if (raw == null) return;

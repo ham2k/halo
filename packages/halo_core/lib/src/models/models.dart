@@ -7,6 +7,7 @@
 
 import 'dart:convert';
 
+import '../ham/dxcc_entities.dart';
 import '../ham/geo.dart';
 import '../ham/grid.dart';
 import '../ham/radio.dart' show isIncompleteCall;
@@ -358,13 +359,49 @@ class Qso {
   GridLocation? get theirLocation => locationForQsoInfo(exact: theirExactLocation, grid: theirGrid, entityPrefix: theirEntityPrefix, state: theirState);
 
   String? get theirState => asQsonString(_their['state']) ?? asQsonString(_theirGuess['state']);
-  // Both set by the callsign-annotation lookup step
-  // (`annotateCallsign`) — `entityPrefix` identifies the DXCC entity for the
-  // QSO row's DX/domestic column, `flag` is that entity's emoji flag,
-  // resolved JS-side (extensions/core/lookups/src/annotate.ts) so Dart
-  // doesn't need its own copy of the DXCC entity table.
-  String? get theirEntityPrefix => asQsonString(_their['entityPrefix']) ?? asQsonString(_theirGuess['entityPrefix']);
-  String? get theirFlag => asQsonString(_their['flag']) ?? asQsonString(_theirGuess['flag']);
+  // Both set by the callsign-annotation lookup step (`annotateCallsign`) —
+  // `entityPrefix` identifies the DXCC entity for the QSO row's DX/domestic
+  // column, `flag` is that entity's emoji flag, resolved JS-side
+  // (extensions/core/lookups/src/annotate.ts). A record written elsewhere
+  // names the entity by `dxccCode` alone (an ADIF record, or one imported
+  // before the importer read it) or names it and stores no flag (a guess
+  // synced from app-polo); both are read against dxcc_entities.dart, so a
+  // record shows the same entity and flag whoever wrote it.
+
+  /// The stored entity prefix when it is one, else the entity the record's
+  /// DXCC code names, else the stored value as it stands.
+  String? get theirEntityPrefix => _entityField == 'dxccCode' ? entityPrefixByDxccCode[_theirDxccCode] : _storedEntityPrefix;
+
+  /// The stored flag, or the flag of the entity [theirEntityPrefix] names.
+  String? get theirFlag =>
+      asQsonString(_their['flag']) ??
+      asQsonString(_theirGuess['flag']) ??
+      switch (_entityField) {
+        'dxccCode' => entityFlagByDxccCode[_theirDxccCode],
+        'entityPrefix' => entityFlagByDxccCode[dxccCodeByEntityPrefix[_storedEntityPrefix]],
+        _ => null,
+      };
+
+  String? get _storedEntityPrefix => asQsonString(_their['entityPrefix']) ?? asQsonString(_theirGuess['entityPrefix']);
+
+  /// A DXCC code is an integer by definition: a fractional or exponent value is
+  /// junk a peer wrote, and truncating it would land on a neighbouring entity.
+  int? get _theirDxccCode => _integralDxccCode(_their['dxccCode']) ?? _integralDxccCode(_theirGuess['dxccCode']);
+
+  static int? _integralDxccCode(Object? value) {
+    final n = asQsonNum(value);
+    return n != null && n == n.truncateToDouble() ? n.toInt() : null;
+  }
+
+  /// Which stored field names the entity. The code first: an ADIF PFX is a
+  /// WPX prefix, and one with a digit can coincide with another entity's
+  /// prefix (PFX "KP4" on a station in DXCC 291 is in the US, not Puerto
+  /// Rico). Null when neither names a known entity.
+  String? get _entityField {
+    if (entityPrefixByDxccCode.containsKey(_theirDxccCode)) return 'dxccCode';
+    if (dxccCodeByEntityPrefix.containsKey(_storedEntityPrefix)) return 'entityPrefix';
+    return null;
+  }
 
   /// The DXCC entity's name and two-letter continent code (`NA`, `EU`…), from
   /// the same callsign annotation — or, for an ADIF import, its COUNTRY and
@@ -405,7 +442,25 @@ class Qso {
   /// rather than an entered value — true exactly when the coalescing getters
   /// above fell back to the guess (no top-level value). Callers like the QSO
   /// row use it to render guessed-but-unconfirmed values more faintly.
-  bool theirFieldIsGuessed(String field) => asQsonString(_their[field]) == null && asQsonString(_theirGuess[field]) != null;
+  ///
+  /// A value derived from the entity (a [theirFlag] with none stored, a
+  /// [theirEntityPrefix] read off the DXCC code) is as sure as the field
+  /// naming the entity: guessed when that field is itself only guessed.
+  bool theirFieldIsGuessed(String field) {
+    final derived = switch (field) {
+      'flag' => asQsonString(_their['flag']) == null && asQsonString(_theirGuess['flag']) == null && theirFlag != null,
+      'entityPrefix' => _entityField == 'dxccCode',
+      _ => false,
+    };
+    if (!derived) return asQsonString(_their[field]) == null && asQsonString(_theirGuess[field]) != null;
+    // Judged by the same parse the getter read it with: a malformed entered
+    // value the getter skipped must not pass as the entered one here.
+    return switch (_entityField) {
+      'dxccCode' => _integralDxccCode(_their['dxccCode']) == null,
+      'entityPrefix' => asQsonString(_their['entityPrefix']) == null,
+      _ => false,
+    };
+  }
 
   double? get freq => asQsonNum(data['freq'])?.toDouble();
   String? get band => asQsonString(data['band']);
