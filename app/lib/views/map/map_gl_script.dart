@@ -1000,8 +1000,11 @@ $mapGlSpreadScript
         // typing a call (which moves the highlight marker) doesn't refit —
         // nor does a marker the operator's own panning brought in.
         if (!m.highlight && m.fit !== false) {
-          baseBounds.extend([m.longitude, m.latitude]);
-          baseSig.push(m.longitude, m.latitude);
+          // A contact whose line crosses the antimeridian counts on its
+          // line's side of it (MapMarkerData.fitLongitude).
+          const fitLongitude = m.fitLongitude !== undefined ? m.fitLongitude : m.longitude;
+          baseBounds.extend([fitLongitude, m.latitude]);
+          baseSig.push(fitLongitude, m.latitude);
           if (m.fitKey) fitKey = m.fitKey;
         }
         const geometry = { type: 'Point', coordinates: [m.longitude, m.latitude] };
@@ -1183,6 +1186,12 @@ $mapGlSnapshotScript
       return bounds;
     }
 
+    // A longitude by whole turns into -180..180: a fit across the
+    // antimeridian leaves the camera's own centre past 180, which a host
+    // would print, or hand to something that takes no longitude outside
+    // ±180.
+    function wrapLongitude(lon) { return ((lon + 180) % 360 + 360) % 360 - 180; }
+
     // A camera move, like moveTo.
     function fitTo(points) {
       if (!points.length) return;
@@ -1242,7 +1251,7 @@ $mapGlSnapshotScript
         const center = map.getCenter();
         const box = map.getContainer();
         return {
-          latitude: center.lat, longitude: center.lng, zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
+          latitude: center.lat, longitude: wrapLongitude(center.lng), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch(),
           width: box.clientWidth, height: box.clientHeight,
           // The marker whose popup is open — a page element over the canvas,
           // which a picture of the map has to draw for itself.

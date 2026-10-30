@@ -180,19 +180,9 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   void _moveTo(double latitude, double longitude, double zoom) => _mapController.move(LatLng(latitude, longitude), zoom);
 
-  /// Fitted around longitude 0 and moved back: flutter_map takes no longitude
-  /// past ±180, and a fit is the same at any longitude on a Mercator map.
   void _fitTo(List<GridLocation> points) {
     if (points.isEmpty) return;
-    final longitudes = points.map((p) => p.longitude);
-    final offset = (longitudes.reduce(math.min) + longitudes.reduce(math.max)) / 2;
-    final fitted = CameraFit.coordinates(
-      coordinates: [for (final p in points) LatLng(p.latitude, p.longitude - offset)],
-      padding: const EdgeInsets.all(48),
-      maxZoom: _fitMaxZoom,
-    ).fit(_mapController.camera);
-    final longitude = (fitted.center.longitude + offset + 540) % 360 - 180;
-    _mapController.move(LatLng(fitted.center.latitude, longitude), fitted.zoom);
+    _mapController.fitCamera(_UnwrappedFit(points));
   }
 
   void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
@@ -234,9 +224,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   void _fitCamera() {
     final fitted = _fitted(widget.markers);
     if (fitted.isEmpty) return;
-    _mapController.fitCamera(
-      CameraFit.coordinates(coordinates: [for (final m in fitted) LatLng(m.latitude, m.longitude)], padding: const EdgeInsets.all(48), maxZoom: _fitMaxZoom),
-    );
+    _mapController.fitCamera(_UnwrappedFit.markers(fitted));
   }
 
   @override
@@ -269,10 +257,6 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   Widget build(BuildContext context) {
-    final points = [
-      for (final m in widget.markers)
-        if (m.fitsCamera) LatLng(m.latitude, m.longitude),
-    ];
     final selected = _selectedMarkerId == null || widget.onMarkerTap != null ? null : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
     final frame = widget.frame?.camera;
     final footprints = _footprintLayers();
@@ -300,7 +284,12 @@ class _OsmMapViewState extends State<OsmMapView> {
               interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
             )
           : MapOptions(
-              initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: _fitMaxZoom),
+              // Where a map with nothing to fit opens: the whole world, as the
+              // GL map does (its zoom 1, one less than flutter_map's). Unset,
+              // flutter_map opens on its own default, a city at street level.
+              initialCenter: const LatLng(0, 0),
+              initialZoom: 2,
+              initialCameraFit: _UnwrappedFit.markers(_fitted(widget.markers)),
               // A QSO framed before this backend came up: the fit above is
               // to the markers. Once the frame is over — flutter_map applies
               // that fit after this callback, in the same frame.
@@ -718,5 +707,32 @@ class _OsmAttributionState extends State<_OsmAttribution> {
         ),
       ),
     );
+  }
+}
+
+/// [CameraFit.coordinates] for points whose longitudes may run past ±180:
+/// fitted around longitude 0 and moved back, as flutter_map takes no
+/// longitude past ±180 and a fit is the same at any longitude on a Mercator
+/// map.
+class _UnwrappedFit extends CameraFit {
+  final List<GridLocation> points;
+
+  const _UnwrappedFit(this.points);
+
+  /// Each of [markers] where the fit counts it ([MapMarkerData.fitLongitude]).
+  _UnwrappedFit.markers(List<MapMarkerData> markers) : points = [for (final m in markers) GridLocation(m.latitude, m.fitLongitude ?? m.longitude)];
+
+  @override
+  MapCamera fit(MapCamera camera) {
+    // flutter_map fits nothing to a camera centred on NaN, and throws.
+    if (points.isEmpty) return camera;
+    final longitudes = points.map((p) => p.longitude);
+    final offset = (longitudes.reduce(math.min) + longitudes.reduce(math.max)) / 2;
+    final fitted = CameraFit.coordinates(
+      coordinates: [for (final p in points) LatLng(p.latitude, p.longitude - offset)],
+      padding: const EdgeInsets.all(48),
+      maxZoom: _OsmMapViewState._fitMaxZoom,
+    ).fit(camera);
+    return fitted.withPosition(center: LatLng(fitted.center.latitude, (fitted.center.longitude + offset + 540) % 360 - 180));
   }
 }

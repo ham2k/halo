@@ -18,7 +18,7 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 
 import '../support/map_tile_cache.dart';
 
-MapMarkerData _marker(String id, double latitude, double longitude) => MapMarkerData(
+MapMarkerData _marker(String id, double latitude, double longitude, {bool highlight = false, double? fitLongitude}) => MapMarkerData(
   id: id,
   latitude: latitude,
   longitude: longitude,
@@ -27,6 +27,8 @@ MapMarkerData _marker(String id, double latitude, double longitude) => MapMarker
   color: Colors.red,
   strokeColor: Colors.black,
   popupTitle: id,
+  highlight: highlight,
+  fitLongitude: fitLongitude,
 );
 
 const _tokyo = [GridLocation(35.7, 139.7)];
@@ -83,6 +85,78 @@ void main() {
       expect(center(tester).$2, closeTo(139.7, 0.5));
     });
   });
+
+  // Fiji and Samoa, a few degrees either side of 180°, as the Map pane hands
+  // them over from a QTH in New York: the line to Fiji runs west across the
+  // antimeridian, so Fiji counts a turn round (fitLongitude). Framed where
+  // they are drawn, the camera sits over Africa and the line to Fiji runs
+  // off one edge of the world and back in from the other.
+  group('contacts whose lines cross the antimeridian frame the Pacific between them', () {
+    final pacific = [_marker('fiji', -18, 178, fitLongitude: -182), _marker('samoa', -14, -172)];
+
+    void expectPacific(WidgetTester tester) {
+      expect(center(tester).$2.abs(), greaterThan(170));
+      expect(MapCamera.of(tester.element(find.byType(PolylineLayer).first)).zoom, greaterThan(3), reason: 'ten degrees apart, not the world apart');
+    }
+
+    testWidgets('on a map coming up with them', (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(host(pacific, MapZoomController()));
+        await tester.pump();
+        expectPacific(tester);
+      });
+    });
+
+    // The QSO being worked is framed by MapZoomController.fitTo, not by the
+    // log's fit — counted in, it would stretch the first frame to Europe.
+    testWidgets('on a map coming up with the QSO being worked across the world', (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(host([...pacific, _marker('current', 51, 0, highlight: true)], MapZoomController()));
+        await tester.pump();
+        expectPacific(tester);
+      });
+    });
+
+    testWidgets('logged on a map already up', (tester) async {
+      await tester.runAsync(() async {
+        final controller = MapZoomController();
+        await tester.pumpWidget(host([_marker('a', 40, -74)], controller));
+        await tester.pump();
+        await tester.pumpWidget(host(pacific, controller));
+        await tester.pump();
+        expectPacific(tester);
+      });
+    });
+  });
+
+  // With no line across it, the antimeridian stays at the edge of the frame,
+  // as it always has: nothing is cut there.
+  testWidgets('contacts either side of the antimeridian with no line across it frame as drawn', (tester) async {
+    await tester.runAsync(() async {
+      await tester.pumpWidget(host([_marker('fiji', -18, 178), _marker('samoa', -14, -172)], MapZoomController()));
+      await tester.pump();
+      expect(center(tester).$2.abs(), lessThan(10));
+    });
+  });
+
+  // Nothing to fit is an empty log, or one with only the QSO being worked,
+  // which the log's fit leaves to MapZoomController.fitTo. flutter_map fits
+  // no points to a camera centred on NaN, and throws; and with no starting
+  // camera of its own it opens on flutter_map's default, a city at street
+  // level, rather than the world the GL map opens on.
+  for (final (name, markers) in [
+    ('an empty log', <MapMarkerData>[]),
+    ('only the QSO being worked', [_marker('current', 51, 0, highlight: true)]),
+  ]) {
+    testWidgets('a map coming up with $name opens on the whole world', (tester) async {
+      await tester.runAsync(() async {
+        await tester.pumpWidget(host(markers, MapZoomController()));
+        await tester.pump();
+        expect(center(tester), (0.0, 0.0));
+        expect(MapCamera.of(tester.element(find.byType(PolylineLayer).first)).zoom, 2);
+      });
+    });
+  }
 
   testWidgets('a backend that goes away takes its handlers with it', (tester) async {
     await tester.runAsync(() async {

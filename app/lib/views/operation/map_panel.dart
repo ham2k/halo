@@ -779,9 +779,12 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final marker = _markerForQso(qso, location, qth, colors, miles: miles, callsigns: callsigns, strokeColor: strokeColor);
     if (qth == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: marker, lines: const []);
     final segments = greatCirclePoints(location, qth);
+    // A line split at the antimeridian: the camera counts the contact on the
+    // QTH's side of it, so the frame takes the line in whole.
+    final across = segments.length > 1 ? location.longitude + (qth.longitude > location.longitude ? 360.0 : -360.0) : null;
     return _ContactOnMap(
       stamp: qso.updatedAtMillis,
-      marker: marker,
+      marker: across == null ? marker : marker.withFit(fitLongitude: across),
       lines: [for (var i = 0; i < segments.length; i++) MapLineData(id: '${qso.uuid}/$i', points: segments[i], color: lineColor)],
     );
   }

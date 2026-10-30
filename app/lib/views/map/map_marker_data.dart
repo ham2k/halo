@@ -169,6 +169,13 @@ class MapMarkerData {
   /// Null: refit whenever the fitted markers change, as the QSO map does.
   final String? fitKey;
 
+  /// Where the camera's fit counts this marker, when not at [longitude]: a
+  /// whole turn round, on the side its line arrives from — for a contact
+  /// whose great-circle line to its QTH crosses the antimeridian. Counted
+  /// where it is drawn, the frame would cut that line at one edge and carry
+  /// the rest in from the other.
+  final double? fitLongitude;
+
   /// Faded in with the map's zoom, over the band its map names
   /// ([MapZoomFades.markers]) — a suggestion, which zoomed out is one dot in
   /// a smear of them.
@@ -199,6 +206,7 @@ class MapMarkerData {
     this.labelColor,
     this.fitsCamera = true,
     this.fitKey,
+    this.fitLongitude,
     this.fadesWithZoom = false,
   });
 
@@ -223,6 +231,7 @@ class MapMarkerData {
     labelColor: labelColor,
     fitsCamera: fitsCamera,
     fitKey: fitKey,
+    fitLongitude: fitLongitude,
     fadesWithZoom: fadesWithZoom,
   );
 
@@ -248,13 +257,14 @@ class MapMarkerData {
     labelColor: labelColor,
     fitsCamera: fitsCamera,
     fitKey: fitKey,
+    fitLongitude: fitLongitude,
     // The chosen one stays at full strength whatever the zoom: its card is
     // open, and a faded dot would not say which one that is.
   );
 
-  /// This marker with its camera-fit fields replaced — see [fitsCamera] and
-  /// [fitKey].
-  MapMarkerData withFit({bool? fitsCamera, String? fitKey, bool? fadesWithZoom}) => MapMarkerData(
+  /// This marker with its camera-fit fields replaced — see [fitsCamera],
+  /// [fitKey] and [fitLongitude].
+  MapMarkerData withFit({bool? fitsCamera, String? fitKey, double? fitLongitude, bool? fadesWithZoom}) => MapMarkerData(
     id: id,
     latitude: latitude,
     longitude: longitude,
@@ -273,6 +283,7 @@ class MapMarkerData {
     labelColor: labelColor,
     fitsCamera: fitsCamera ?? this.fitsCamera,
     fitKey: fitKey ?? this.fitKey,
+    fitLongitude: fitLongitude ?? this.fitLongitude,
     fadesWithZoom: fadesWithZoom ?? this.fadesWithZoom,
   );
 
@@ -301,6 +312,7 @@ class MapMarkerData {
           labelColor == other.labelColor &&
           fitsCamera == other.fitsCamera &&
           fitKey == other.fitKey &&
+          fitLongitude == other.fitLongitude &&
           fadesWithZoom == other.fadesWithZoom);
 
   @override
@@ -323,6 +335,7 @@ class MapMarkerData {
     labelColor,
     fitsCamera,
     fitKey,
+    fitLongitude,
     fadesWithZoom,
   );
 }
@@ -389,6 +402,7 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
       'highlight': m.highlight,
       'fit': m.fitsCamera,
       'fitKey': ?m.fitKey,
+      'fitLongitude': ?m.fitLongitude,
       if (m.fadesWithZoom) 'fades': true,
       if (!m.dimsBehindHighlight) 'steady': true,
       if (m.labelColor case final labelColor?) 'labelColor': mapColorToHex(labelColor),

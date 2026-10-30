@@ -15,7 +15,7 @@ const mapGlCameraScript = '''
       const center = map.getCenter();
       const bounds = map.getBounds();
       report('camera', JSON.stringify({
-        latitude: center.lat, longitude: center.lng, zoom: map.getZoom(),
+        latitude: center.lat, longitude: wrapLongitude(center.lng), zoom: map.getZoom(),
         south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast(),
       }));
     }

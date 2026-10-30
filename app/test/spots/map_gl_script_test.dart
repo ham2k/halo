@@ -57,6 +57,37 @@ void main() {
     expect(page.run('String(window.lastFitOptions.maxZoom)'), '${MapZoomController.fitMaxZoom}');
   });
 
+  // From New York the line to Fiji runs west across the antimeridian, so
+  // the Map pane counts Fiji a turn round to the west (fitLongitude).
+  // Counted where it is drawn, the frame takes in the world the other way
+  // round, cutting that line at one edge and carrying it in from the other.
+  // Through the real encoder, so the key the script reads is the one sent.
+  test('a contact counts where its line puts it, not where it is drawn', () {
+    MapMarkerData contact(String id, double longitude, {double? fitLongitude}) => MapMarkerData(
+      id: id,
+      latitude: -16,
+      longitude: longitude,
+      label: id,
+      kind: MapMarkerKind.qso,
+      color: const Color(0xFFFF0000),
+      strokeColor: const Color(0xFF000000),
+      fitLongitude: fitLongitude,
+    );
+    page = GlPage(framed: false);
+    page.run('handle.setMarkersJson(${jsonEncode(jsonEncode(mapMarkersPayload([contact('fiji', 178, fitLongitude: -182), contact('samoa', -172)])))})');
+    final fitted = [for (final p in jsonDecode(page.run('JSON.stringify(window.lastFitPoints)')) as List) (p[0] as num).toDouble()];
+    expect(fitted, [-182, -172]);
+  });
+
+  // A fit across the antimeridian leaves the GL camera centred past 180; a
+  // host reading that back would print it, or hand it to a LatLng, which
+  // takes no longitude outside ±180.
+  test('the camera reports its centre within ±180', () {
+    page = GlPage(framed: false);
+    page.run('handle.map.getCenter = function () { return { lat: -16, lng: 183 }; }');
+    expect((jsonDecode(page.run('JSON.stringify(handle.camera())')) as Map)['longitude'], closeTo(-177, 1e-9));
+  });
+
   test('markers kept out of the fit move nothing', () {
     page = GlPage(framed: false);
     page.run('handle.setMarkers([${_marker('a', fit: false)}])');
