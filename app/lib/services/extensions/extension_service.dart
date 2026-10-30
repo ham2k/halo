@@ -206,7 +206,6 @@ class ExtensionService
   /// service boots.
   late final engineLoad = EngineLoadMonitor(consented: () => settings?.consentAppData ?? false);
 
-  @override
   Future<void> start() {
     if (_exiting) return Future.value();
     // Attached here rather than in a constructor: the service is built long
@@ -233,6 +232,7 @@ class ExtensionService
   /// replacement has taken the host down. With a host up it asks at once, so
   /// a call made from inside a hook — `searchSettings`, during activation —
   /// never waits on the boot that is running it.
+  @override
   Future<T> whenSettled<T>(Future<T> Function() ask) async {
     while (true) {
       if (host == null) await (_restartFuture?.catchError((_) {}) ?? start());

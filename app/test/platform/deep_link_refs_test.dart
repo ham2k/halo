@@ -60,6 +60,45 @@ class _Extensions extends ExtensionService {
   Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {}
 }
 
+/// A service whose runtime is being replaced by [replacement]: a call on the
+/// host it starts with fails, as the replacement fails the calls pending on
+/// the host it disposes, and finds [replacement] up by then.
+class _ReplacedExtensions extends ExtensionService {
+  final ExtensionHost replacement;
+  _ReplacedExtensions(this.replacement);
+
+  late ExtensionHost _current = _DisposedHost(this);
+
+  @override
+  ExtensionHost? get host => _current;
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {}
+}
+
+class _DisposedHost implements ExtensionHost {
+  final _ReplacedExtensions service;
+  _DisposedHost(this.service);
+
+  @override
+  Future<List<Map<String, dynamic>>> invokeHookAll(
+    String category, {
+    required String method,
+    Object? args,
+    Duration timeout = const Duration(seconds: 10),
+    bool partialOnTimeout = false,
+  }) async {
+    service._current = service.replacement;
+    throw ExtensionHostException('runtime replaced');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   group('activityRefTypes', () {
     test('reads activation from operation controls and hunting from logging controls', () async {
@@ -188,6 +227,24 @@ void main() {
       // The whole point of the flag: "could not ask" must not reach the
       // operator as "you do not have that activity".
       expect(result.loadFailed, isTrue);
+    });
+
+    test('asks again of the runtime that replaces the one it asked', () async {
+      // A toggled extension restarts the runtime, which fails every call
+      // pending on the host it disposes. A deep link arriving then must be
+      // answered by the new runtime, not drop every ref as unknown.
+      final extensions = _ReplacedExtensions(
+        _MockHost({
+          'activity:*:operationControls': [
+            _ok('pota', [_refControl('pota/activation', 'potaActivation')]),
+          ],
+          'activity:*:loggingControls': <Map<String, dynamic>>[],
+        }),
+      );
+
+      final result = await extensions.activityRefTypes();
+      expect(result.loadFailed, isFalse);
+      expect(result.byKey['pota']?.activationType, 'potaActivation');
     });
 
     test('reports no failure when every hook answered', () async {

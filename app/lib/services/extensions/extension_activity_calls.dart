@@ -47,7 +47,7 @@ mixin _ExtensionActivityCalls {
   SettingsService? get settings;
   StatusBarService? get statusBar;
   List<ExtensionInfo> get availableExtensions;
-  Future<void> start();
+  Future<T> whenSettled<T>(Future<T> Function() ask);
 
   /// Descriptors for controls activities want on the logging panel. `qso` is
   /// the in-progress QSO (including any `their.guess` from the callsign
@@ -88,15 +88,14 @@ mixin _ExtensionActivityCalls {
   /// activity is unknown, because the runtime had not finished booting, is a
   /// confident false statement about their own setup.
   ///
-  /// Awaits [start] first for exactly that reason. It memoizes the in-flight
-  /// future, so a caller arriving mid-boot waits for the same start everyone
-  /// else is waiting for rather than triggering a second one — and a deep
-  /// link that cold-launches the app arrives before boot has finished.
+  /// Asks through [whenSettled] for exactly that reason: a deep link that
+  /// cold-launches the app arrives before boot has finished, and one that
+  /// arrives while a toggled extension restarts the runtime finds no host,
+  /// or one whose pending calls the replacement is about to fail.
   Future<({Map<String, ({String? activationType, String? huntingType})> byKey, bool loadFailed})> activityRefTypes({
     Map<String, dynamic> operationData = const {},
   }) async {
-    await start();
-    final results = await Future.wait([operationControls(operationData), loggingControls(operationData)]);
+    final results = await whenSettled(() => Future.wait([operationControls(operationData), loggingControls(operationData)]));
     final activation = _refTypesByActivityKey(results[0].controls);
     final hunting = _refTypesByActivityKey(results[1].controls);
     return (
@@ -155,8 +154,11 @@ mixin _ExtensionActivityCalls {
         Hooks.activityProcessQsoBeforeSave,
         args: {'qso': qsoData, 'operation': operationData},
         // Saving blocks the operator's next QSO, so a stalled hook loses its
-        // contribution rather than the log its pace.
+        // contribution rather than the log its pace — and only its own: the
+        // timeout is one budget for the whole fan-out, and without partials
+        // one slow contest discards every other activity's patch with it.
         timeout: const Duration(seconds: 2),
+        partialOnTimeout: true,
       );
       var merged = qsoData;
       for (final entry in entries) {
@@ -288,8 +290,12 @@ mixin _ExtensionActivityCalls {
     String? preferredSearchTerm,
     ({double south, double west, double north, double east})? searchWithin,
   }) async {
-    final host = this.host;
-    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false, someSourcesFailed: false);
+    // A booting or replacing runtime is waited out rather than answered for:
+    // the picker never asks again on its own, so "failed" here would stand
+    // until the operator typed. No host once that settles is a failure — no
+    // extension could answer — not an empty list of matches.
+    final host = this.host ?? await whenSettled(() async => this.host);
+    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true, someSourcesFailed: true);
 
     // The operation's own coordinate first, then the centre of its grid: a
     // park two kilometres away and one eight kilometres away rank the same
