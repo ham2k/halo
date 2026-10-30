@@ -60,6 +60,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$nl settings = _Translations$settings$nl._(_root);
 	@override late final _Translations$commands$nl commands = _Translations$commands$nl._(_root);
 	@override late final _Translations$commandDialog$nl commandDialog = _Translations$commandDialog$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$nl keyboardShortcuts = _Translations$keyboardShortcuts$nl._(_root);
 	@override late final _Translations$expiredBuild$nl expiredBuild = _Translations$expiredBuild$nl._(_root);
 	@override late final _Translations$staleness$nl staleness = _Translations$staleness$nl._(_root);
 	@override late final _Translations$spotting$nl spotting = _Translations$spotting$nl._(_root);
@@ -73,6 +74,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$nl deepLink = _Translations$deepLink$nl._(_root);
 	@override late final _Translations$confirmDevice$nl confirmDevice = _Translations$confirmDevice$nl._(_root);
 	@override late final _Translations$switchAccounts$nl switchAccounts = _Translations$switchAccounts$nl._(_root);
+	@override late final _Translations$qsonImport$nl qsonImport = _Translations$qsonImport$nl._(_root);
 	@override late final _Translations$adifImport$nl adifImport = _Translations$adifImport$nl._(_root);
 	@override late final _Translations$offline$nl offline = _Translations$offline$nl._(_root);
 	@override late final _Translations$exportSettings$nl exportSettings = _Translations$exportSettings$nl._(_root);
@@ -97,6 +99,7 @@ class _Translations$common$nl extends Translations$common$en {
 	@override String get callsign => 'Roepnaam';
 	@override String get clear => 'Wissen';
 	@override String get dismiss => 'Negeren';
+	@override String get copyDetails => 'Details kopiëren';
 	@override String get expand => 'Uitklappen';
 	@override String get collapse => 'Inklappen';
 }
@@ -117,7 +120,7 @@ class _Translations$onboarding$nl extends Translations$onboarding$en {
 	@override String get next => 'Volgende';
 	@override String get done => 'Klaar';
 	@override String get callsignTitle => 'Wat is je roepnaam?';
-	@override String get callsignBody => 'Je hebt een zendmachtiging voor radioamateurs nodig om deze app nuttig te vinden';
+	@override String get callsignBody => 'Zonder zendmachtiging als radioamateur heb je niet veel aan deze app';
 	@override String get callsignLabel => 'Roepnaam van de operator';
 	@override String get alreadyHaveAccount => 'Heb je al een account?';
 	@override String get foundSiblingTitle => 'Een bestaand account koppelen?';
@@ -133,6 +136,12 @@ class _Translations$onboarding$nl extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'Cloudsynchronisatie';
+	@override String get syncBody => 'Ham2K Log Filer bewaart een back-up van je logboeken in de cloud en synchroniseert ze tussen alle apparaten waarop je Ham2K-apps gebruikt.';
+	@override String get syncPricing => 'Het is gratis! Maar met een betaald abonnement gaat het sneller.';
+	@override String get syncLabel => 'Cloudsynchronisatie inschakelen';
+	@override String get syncOffWarning => 'LET OP: hierdoor is de kans groter dat je activatiegegevens kwijtraakt, bijvoorbeeld als je apparaat crasht of zoekraakt.';
+	@override String get notNow => 'Niet nu';
 	@override String get consentTitle => 'Gegevens & privacy';
 	@override String get consentUsageBody => 'Om de app te verbeteren willen we prestatie-, crash- en gebruiksgegevens verzamelen.';
 	@override String get consentUsageLabel => 'Deel app-gebruiksgegevens';
@@ -160,7 +169,7 @@ class _Translations$testerOverlay$nl extends Translations$testerOverlay$en {
 	// Translations
 	@override String get tape => 'LET OP: IN AANBOUW';
 	@override String get warningTitle => 'Aan deze app wordt nog gewerkt';
-	@override String get warningBody => 'De meeste functies hebben een oneffen ondergrond en overal liggen struikelgevaren. Kijk regelmatig of er updates zijn.';
+	@override String get warningBody => 'De meeste functies hebben nog een oneffen ondergrond en overal is struikelgevaar. Kijk regelmatig of er updates zijn.';
 	@override String whatsNew({required Object build}) => 'Nieuw in build ${build}';
 	@override String get thanks => 'Bedankt dat je je logboek op het spel zet om ons te helpen deze app beter te maken!';
 }
@@ -173,6 +182,7 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Activiteiten';
+	@override String get categoryAward => 'Awards';
 	@override String get categoryContest => 'Contests';
 	@override String get categoryLookup => 'Roepnaam opzoeken';
 	@override String get categorySpots => 'Spotbronnen';
@@ -183,14 +193,24 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get noMatches => 'Geen extensies gevonden';
 	@override String get installFromFile => 'Installeren uit bestand…';
 	@override String installVersion({required Object version}) => 'Versie ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => 'Schermafbeelding ${n} van ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'Vorige schermafbeelding';
+	@override String get nextScreenshot => 'Volgende schermafbeelding';
+	@override String get screenshotUnavailable => 'Schermafbeelding niet beschikbaar';
 	@override String get canReach => 'Deze extensie kan contact maken met';
 	@override String canHoldConnection({required Object host}) => '${host}, via een live verbinding';
 	@override String get canHoldLocalConnection => 'Apparaten op je lokale netwerk, via een live verbinding';
 	@override String get canUseLocation => 'Je locatie';
 	@override String get canReadRadio => 'Je radio, om frequentie en mode uit te lezen';
 	@override String get canControlRadio => 'Je radio, om hem te bedienen en ermee te zenden — afstemmen, vermogen, CW, spraakgeheugens en PTT';
+	@override String get canCommandRadioRaw => 'Je radio, om hem elk commando in zijn eigen protocol te sturen — ook commando\'s die zenden of zijn instellingen wijzigen';
+	@override String get canReadCluster => 'Het DX-cluster, ingelogd als jij, om te lezen wat het stuurt';
+	@override String get canSpotCluster => 'Het DX-cluster, ingelogd als jij, om spots op jouw naam te plaatsen';
+	@override String get canCommandCluster => 'Het DX-cluster, ingelogd als jij, om het elk commando op jouw naam te sturen';
 	@override String get canSetUserAgent => 'Zich bij servers onder eigen naam identificeren';
-	@override String get noCapabilities => 'Ze vraagt niets buiten de app.';
+	@override String get canChangeSettings => 'Je instellingen, om ze via zijn commando\'s te wijzigen: elke instelling, ontwikkelaarsmodus en experimenten';
+	@override String get noCapabilities => 'Deze extensie vraagt niets buiten de app.';
 	@override String get sandboxNote => 'Extensies draaien in een sandbox: geen toegang tot je bestanden en geen netwerk buiten wat hier staat.';
 	@override String get installAction => 'Installeren';
 	@override String get updateAction => 'Bijwerken';
@@ -198,7 +218,7 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get installedBadge => 'Geïnstalleerd';
 	@override String get uninstallAction => 'Verwijderen';
 	@override String uninstallTitle({required Object name}) => '${name} verwijderen?';
-	@override String get uninstallBody => 'Deze extensie en haar instellingen worden verwijderd. Je logboeken blijven onaangetast.';
+	@override String get uninstallBody => 'Deze extensie en de bijbehorende instellingen worden verwijderd. Je logboeken blijven ongemoeid.';
 	@override String installedMessage({required Object name}) => '${name} geïnstalleerd';
 	@override String get installDownloading => 'Downloaden…';
 	@override String get installWaiting => 'Wachten op installatie…';
@@ -206,7 +226,7 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get installAwaitingApproval => 'Wachten op je goedkeuring…';
 	@override String installAlreadyRunning({required Object name}) => '${name} wordt al geïnstalleerd.';
 	@override String updatedTo({required Object version}) => 'Bijgewerkt naar ${version}';
-	@override String installIncomplete({required Object name}) => 'Installatie van ${name} is niet voltooid. Mogelijk moet je hem opnieuw installeren.';
+	@override String installIncomplete({required Object name}) => 'De installatie van ${name} is niet voltooid. Mogelijk moet je die opnieuw installeren.';
 	@override String uninstallFailed({required Object name}) => 'Kon ${name} niet verwijderen';
 	@override String installedFrom({required Object source}) => 'Gedownload van ${source}';
 	@override String get dropHint => 'Sleep een .h2kext-extensie hierheen om te installeren';
@@ -260,20 +280,29 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get restoreBusyBody => 'De app is nog bezig je extensies in te stellen. We bieden deze opnieuw aan als je de app weer opent.';
 	@override String get restoreRuntimeDeadBody => 'We hebben ze opnieuw geïnstalleerd, maar je extensies wilden niet starten. Herstart de app om ze terug te krijgen.';
 	@override String revokedTitle({required Object name}) => '${name} is ingetrokken';
-	@override String get revokedBody => 'De catalogus heeft deze versie ingetrokken, dus ze is uitgeschakeld.';
+	@override String get revokedBody => 'De catalogus heeft deze versie ingetrokken, dus is deze uitgeschakeld.';
+	@override String forceDisabledTitle({required Object name}) => '${name} is uitgeschakeld';
+	@override String get forceDisabledBody => 'Ham2K heeft deze extensie voorlopig uitgeschakeld.';
+	@override String replacedTitle({required Object name}) => '${name} is vervangen';
+	@override String replacedBody({required Object replacement}) => '${replacement} neemt de plaats ervan in. Je kunt overstappen via Extensies.';
+	@override String replacedBy({required Object name}) => 'Vervangen door ${name}';
+	@override String replacedByInstalled({required Object name}) => 'Vervangen door ${name}, die je al hebt';
+	@override String get replaceAction => 'Vervangen';
+	@override String replaceInstalledBody({required Object replacement}) => 'De instellingen gaan over naar ${replacement}, die je al hebt. Je logboeken blijven ongemoeid.';
 	@override String get downloadHashMismatch => 'Die download is niet de extensie die de catalogus beschreef.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'De catalogus heeft geen versie ${version} van ${key}.';
 	@override String get catalogLinkUnknown => 'Die cataloguslink verwijst niet naar een extensieversie.';
 	@override String catalogNoRelease({required Object key}) => 'De catalogus heeft geen release van ${key} op dat kanaal.';
 	@override String get installFromLink => 'Installeren via link';
-	@override String get unstableReleaseWarning => 'Dit is een onstabiele release die de uitgever nog niet af noemt. Ze kan zich vreemd gedragen en blijft onstabiele updates ontvangen.';
-	@override String get bleedingReleaseWarning => 'Dit is een bleeding-edge release: werk in uitvoering dat kan breken of zijn instellingen kan verliezen. Ze blijft bleeding-edge updates ontvangen.';
+	@override String get unstableReleaseWarning => 'Dit is een onstabiele release, die de uitgever nog niet als af beschouwt. Deze kan zich vreemd gedragen en blijft onstabiele updates ontvangen.';
+	@override String get bleedingReleaseWarning => 'Dit is een bleeding-edge-release: werk in uitvoering, dat kan breken of zijn instellingen kan verliezen. Deze blijft bleeding-edge-updates ontvangen.';
 	@override String get channelUnstable => 'Onstabiel';
 	@override String get channelBleeding => 'Bleeding';
 	@override String get followsUnstable => 'Ontvangt onstabiele en stabiele releases';
 	@override String get followsBleeding => 'Ontvangt bleeding-edge, onstabiele en stabiele releases';
 	@override String get followStableAction => 'Alleen stabiele releases volgen';
 	@override String get revokedBadge => 'Ingetrokken';
+	@override String get forceDisabledBadge => 'Uitgeschakeld door Ham2K';
 	@override String get refusedBadge => 'Niet geladen';
 	@override String get downloadNotHttps => 'Die download gaat niet via een beveiligde verbinding.';
 	@override String downloadUnreachable({required Object source}) => '${source} was niet bereikbaar voor die extensie.';
@@ -281,7 +310,7 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get installedFromFile => 'Geïnstalleerd uit een bestand';
 	@override String get detailsWhatItDoes => 'Biedt ondersteuning voor';
 	@override String get installedPreloaded => 'Voorgeïnstalleerd';
-	@override String get hookAccount => 'Accountaanmelding';
+	@override String get hookAccount => 'Inloggen bij account';
 	@override String get hookCallNotes => 'Roepnaamnotities';
 	@override String get hookDataFile => 'Offline gegevens';
 	@override String get hookExport => 'Exporteren';
@@ -290,6 +319,8 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spots';
 	@override String hookHunting({required Object program}) => '${program} jagen';
 	@override String hookActivating({required Object program}) => '${program} activeren';
+	@override String get suggestedSection => 'Aanbevolen';
+	@override String moreAvailableSection({required Object count}) => 'Meer beschikbaar (${count})';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class _Translations$chase$nl extends Translations$chase$en {
 	@override late final _Translations$chase$period$nl period = _Translations$chase$period$nl._(_root);
 	@override late final _Translations$chase$goals$nl goals = _Translations$chase$goals$nl._(_root);
 	@override late final _Translations$chase$panels$nl panels = _Translations$chase$panels$nl._(_root);
+	@override late final _Translations$chase$claims$nl claims = _Translations$chase$claims$nl._(_root);
+	@override late final _Translations$chase$notice$nl notice = _Translations$chase$notice$nl._(_root);
+	@override late final _Translations$chase$alerts$nl alerts = _Translations$chase$alerts$nl._(_root);
+	@override String get checklists => 'Voortgang jagen';
+	@override late final _Translations$chase$imports$nl imports = _Translations$chase$imports$nl._(_root);
 }
 
 // Path: dialogs
@@ -340,6 +376,14 @@ class _Translations$dialogs$nl extends Translations$dialogs$en {
 	@override String get operationDetails => 'Activatiegegevens';
 	@override String get activities => 'Activiteiten';
 	@override String get stationCallsign => 'Station roepnaam';
+	@override String get advanced => 'Geavanceerd';
+	@override String get operatingPosition => 'Operatorpositie (multi-station)';
+	@override String get assistance => 'Assistentie';
+	@override String get assistanceDescription => 'Spotdiensten en andere informatiebronnen gebruiken';
+	@override String get selfSpotting => 'Zelfspotten';
+	@override String get selfSpottingDescription => 'Functies toestaan die je eigen frequentie doorgeven';
+	@override String disabledByRules({required Object rules}) => 'Uitgeschakeld om aan de regels van ${rules} te voldoen';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$nl lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$nl._(_root);
 	@override String get notes => 'Notities';
 	@override String get deleteOperationTitle => 'Activatie verwijderen';
 	@override String get purgeTestsTitle => 'Testactivaties opruimen';
@@ -369,7 +413,7 @@ class _Translations$operation$nl extends Translations$operation$en {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get deletedReadOnly => 'Deze activatie is verwijderd. Herstel haar om te loggen of iets te wijzigen.';
+	@override String get deletedReadOnly => 'Deze activatie is verwijderd. Herstel de activatie om te loggen of iets te wijzigen.';
 	@override late final _Translations$operation$tabs$nl tabs = _Translations$operation$tabs$nl._(_root);
 	@override late final _Translations$operation$positions$nl positions = _Translations$operation$positions$nl._(_root);
 	@override String get stationCallsignNone => 'Geen station roepnaam';
@@ -377,7 +421,7 @@ class _Translations$operation$nl extends Translations$operation$en {
 	@override String get deleteOperation => 'Activatie verwijderen';
 	@override String get loggingControlsStale => 'Activiteitsvelden zijn mogelijk verouderd — open de activatie opnieuw om ze te verversen';
 	@override String get locationNone => 'Niet ingesteld';
-	@override String get generalOperation => 'Algemene Activatie';
+	@override String get generalOperation => 'Algemene activatie';
 	@override String titleFor({required Object value}) => 'voor ${value}';
 	@override String titleAt({required Object value}) => 'bij ${value}';
 	@override String segmentNow({required Object description}) => 'Nu ${description}';
@@ -412,6 +456,7 @@ class _Translations$map$nl extends Translations$map$en {
 	@override String get globe => 'Globe';
 	@override String get zoomIn => 'Inzoomen';
 	@override String get zoomOut => 'Uitzoomen';
+	@override String get resetNorth => 'Noorden weer boven';
 	@override late final _Translations$map$postcard$nl postcard = _Translations$map$postcard$nl._(_root);
 }
 
@@ -478,12 +523,12 @@ class _Translations$activitiesView$nl extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => 'Sta locatietoegang toe in je systeeminstellingen';
 	@override String get locationGrantRefused => 'Nog steeds geen locatie — het systeem weigerde opnieuw';
 	@override String get searchUnavailableTitle => 'Activiteiten zoeken niet beschikbaar';
-	@override String get searchUnavailableReason => 'Geen activiteitsextensie kon de zoekopdracht uitvoeren. Probeer het zo opnieuw.';
+	@override String get searchUnavailableReason => 'Een activiteitsextensie kon de zoekopdracht niet beantwoorden. Probeer het zo opnieuw.';
 	@override String get emptySheet => 'Gebruik suggesties & zoeken hieronder om er een toe te voegen';
-	@override String get exports => 'Exports';
+	@override String get exports => 'Exporteren';
 	@override String get exportLogs => 'Logboeken exporteren';
-	@override String get tools => 'Gereedschap';
-	@override String get toolsTitle => 'Activatiegereedschap';
+	@override String get tools => 'Hulpmiddelen';
+	@override String get toolsTitle => 'Activatiehulpmiddelen';
 	@override String get operationDetails => 'Activatiegegevens';
 	@override String get share => 'Delen';
 	@override String get archive => 'Archiveren';
@@ -504,7 +549,7 @@ class _Translations$activitiesView$nl extends Translations$activitiesView$en {
 	@override String get installExtensionHint => 'Deze extensie past bij je zoekopdracht, maar is niet geïnstalleerd';
 	@override String get onlyCatalogMatches => 'Geen resultaten\nSommige extensies in de catalogus hebben mogelijk resultaten.\nInstalleer ze hieronder bij Activiteitstypen.';
 	@override String get setupUnavailable => 'Kon de instellingen van deze activiteit niet laden — probeer het opnieuw via Beheren';
-	@override String get controlsUnavailableTitle => 'Activiteitsbediening niet beschikbaar';
+	@override String get controlsUnavailableTitle => 'Activiteitsvelden niet beschikbaar';
 	@override String get controlsUnavailableReason => 'Je referenties zijn veilig, maar ze bewerken is nu niet mogelijk.';
 	@override String get controlsUnavailableRetry => 'Opnieuw proberen';
 	@override String get onlyDisabledMatches => 'Geen resultaten\nSommige beschikbare extensies hebben mogelijk resultaten.\nSchakel ze hieronder in bij Activiteitstypen.';
@@ -515,7 +560,7 @@ class _Translations$activitiesView$nl extends Translations$activitiesView$en {
 	@override String get addToOperationShort => 'Toevoegen';
 	@override String get mapEmptyState => 'Geen resultaten om op de kaart te tonen';
 	@override String get mapEmptyStateHint => 'Ga terug naar de lijst, of zoek iets anders';
-	@override String get imports => 'Imports';
+	@override String get imports => 'Importeren';
 }
 
 // Path: loggingControls
@@ -528,6 +573,13 @@ class _Translations$loggingControls$nl extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Tijd (UTC)';
 	@override String get date => 'Datum';
 	@override String get now => 'Nu';
+	@override String get manualTimeSettings => 'Handmatige tijd';
+	@override String get manualTimeIncrement => 'Stap per QSO';
+	@override String get manualTimeIncrementNone => 'Geen';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${count} minuut',
+		other: '${count} minuten',
+	);
 	@override String get frequency => 'Frequentie';
 	@override String get mode => 'Mode';
 	@override String get theirCall => 'Hun roepnaam';
@@ -556,11 +608,24 @@ class _Translations$loggingControls$nl extends Translations$loggingControls$en {
 	@override String get controlSettings => 'Logbediening';
 	@override String get spottingControl => 'Spotten';
 	@override String get spottingSelfControl => 'Zelfspotten';
-	@override String spotSelfAt({required Object freq}) => 'Zelfspot op ${freq}';
+	@override String spotSelfAt({required Object freq}) => 'Zelfspotten op ${freq}';
 	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} op ${freq}';
 	@override String spotTooLate({required Object call}) => 'Te laat om ${call} te spotten';
 	@override String get spotNoFreq => 'Stel eerst een frequentie in om te spotten';
+	@override String get selfSpotDisabled => 'Zelfspotten uitgeschakeld';
 	@override String get spotComment => 'Opmerking';
+	@override String get spottingAutoControl => 'Auto-respot';
+	@override String spotAutoEvery({required Object minutes}) => 'Herhaal elke ${minutes} min';
+	@override String spotAutoNext({required Object time}) => 'Auto in ${time}. Stoppen?';
+	@override String spotAutoInMinutes({required Object minutes}) => 'Auto in ${minutes}m';
+	@override String spotAutoInSeconds({required Object seconds}) => 'Auto in ${seconds}s';
+	@override String spotAutoInCount({required Object seconds}) => 'Auto in ${seconds}';
+	@override String get spotAutoNotStarted => 'Auto-respot niet gestart: de spot is niet doorgekomen';
+	@override String get spotAutoMoved => 'Auto-respot niet gestart: de frequentie veranderde tijdens het spotten';
+	@override String get spotAutoStopped => 'Auto-respot gestopt';
+	@override String get spotAutoLeftFreq => 'Auto-respot gestopt: de frequentie is veranderd';
+	@override String get spotAutoNoFreq => 'Auto-respot gestopt: de radio meldt geen frequentie';
+	@override String get spotBusy => 'Er wordt nog een andere spot verstuurd';
 	@override String get bandOrFreqRequired => 'Stel een frequentie of band in voordat je logt';
 	@override String get missingBand => 'Geen band';
 	@override String get missingMode => 'Geen mode';
@@ -596,7 +661,8 @@ class _Translations$formChrome$nl extends Translations$formChrome$en {
 	@override String transformationError({required Object error}) => 'Transformatiefout: ${error}';
 	@override String actionError({required Object error}) => 'Fout: ${error}';
 	@override String get removeItem => 'Verwijderen';
-	@override String get storageUnavailable => 'Aanmeldgegevens niet beschikbaar';
+	@override String deleteItemTitle({required Object name}) => '${name} verwijderen?';
+	@override String get storageUnavailable => 'Inloggegevens niet beschikbaar';
 }
 
 // Path: qsoEditForm
@@ -623,7 +689,7 @@ class _Translations$qsoEditForm$nl extends Translations$qsoEditForm$en {
 	@override String get theirEntity => 'Entiteit';
 	@override String get theirCqZone => 'CQ-zone';
 	@override String get theirItuZone => 'ITU-zone';
-	@override String get theirArrlSection => 'ARRL Sectie';
+	@override String get theirArrlSection => 'ARRL-sectie';
 	@override String get theirLat => 'Breedtegraad';
 	@override String get theirLon => 'Lengtegraad';
 	@override String get theirPower => 'Hun vermogen';
@@ -641,6 +707,7 @@ class _Translations$qsoList$nl extends Translations$qsoList$en {
 	@override String get today => 'Vandaag';
 	@override String get yesterday => 'Gisteren';
 	@override String get tomorrow => 'Morgen';
+	@override late final _Translations$qsoList$find$nl find = _Translations$qsoList$find$nl._(_root);
 }
 
 // Path: loggingPanel
@@ -650,7 +717,7 @@ class _Translations$loggingPanel$nl extends Translations$loggingPanel$en {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get stats => 'Activatie statistieken';
+	@override String get stats => 'Activatiestatistieken';
 	@override String get scoring => 'Puntentelling';
 	@override String get dxccEntities => 'DXCC-entiteiten';
 	@override String get statesWorked => 'Staten';
@@ -682,7 +749,7 @@ class _Translations$callInfo$nl extends Translations$callInfo$en {
 	@override String otherOpsCountOther({required Object count}) => '${count} QSO\'s in andere activaties';
 	@override String andMore({required Object count}) => '… en ${count} meer';
 	@override String withCall({required Object call}) => 'met ${call}';
-	@override String fromOperation({required Object where}) => 'van ${where}';
+	@override String fromOperation({required Object where}) => 'uit ${where}';
 	@override late final _Translations$callInfo$history$nl history = _Translations$callInfo$history$nl._(_root);
 }
 
@@ -710,9 +777,12 @@ class _Translations$settings$nl extends Translations$settings$en {
 	@override String get userInterface => 'Gebruikersinterface';
 	@override late final _Translations$settings$logging$nl logging = _Translations$settings$logging$nl._(_root);
 	@override late final _Translations$settings$catServer$nl catServer = _Translations$settings$catServer$nl._(_root);
+	@override late final _Translations$settings$cluster$nl cluster = _Translations$settings$cluster$nl._(_root);
+	@override late final _Translations$settings$spotting$nl spotting = _Translations$settings$spotting$nl._(_root);
 	@override late final _Translations$settings$radio$nl radio = _Translations$settings$radio$nl._(_root);
 	@override late final _Translations$settings$help$nl help = _Translations$settings$help$nl._(_root);
 	@override late final _Translations$settings$exports$nl exports = _Translations$settings$exports$nl._(_root);
+	@override late final _Translations$settings$extensionSections$nl extensionSections = _Translations$settings$extensionSections$nl._(_root);
 	@override late final _Translations$settings$map$nl map = _Translations$settings$map$nl._(_root);
 	@override late final _Translations$settings$privacy$nl privacy = _Translations$settings$privacy$nl._(_root);
 	@override String get operatorCall => 'Roepnaam van de operator';
@@ -751,9 +821,14 @@ class _Translations$commands$nl extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name} ingeschakeld';
 	@override String experimentDisabled({required Object name}) => '${name} uitgeschakeld';
 	@override String get sentryTestSent => 'Testfoutrapport naar Sentry verzonden';
+	@override String get idleMetricsEnabled => 'Idle-statistieken ingeschakeld in de statusbalk';
+	@override String get idleMetricsDisabled => 'Idle-statistieken uitgeschakeld';
 	@override String get sentryTestLocalOnly => 'Sentry is uitgeschakeld in deze build — testfout alleen lokaal gelogd';
 	@override String get noOperationOpen => 'Dat commando vereist een geopende activatie';
 	@override String unknownSegmentKind({required Object kind}) => 'Weet niet hoe een \'${kind}\' te markeren';
+	@override String goUnavailable({required Object place}) => '${place} staat niet aan in deze app';
+	@override String goUnknown({required Object to}) => 'Weet niet hoe naar \'${to}\' te gaan';
+	@override String get goBlocked => 'Sluit eerst het geopende venster';
 	@override String get operationAlreadyStarted => 'Deze activatie heeft al een startmarkering';
 	@override String get couldNotOpenLocation => 'Pauze toegevoegd, maar kon het locatiescherm niet openen';
 	@override String get noTestOperations => 'Geen testactivaties om op te ruimen';
@@ -795,6 +870,10 @@ class _Translations$commands$nl extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'CW verzenden: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW-bericht F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CW-bericht F${n} is niet verzonden: de extensies zijn nog niet klaar';
+	@override String voiceMessageError({required Object n, required Object error}) => 'Spraakbericht M${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'de extensies zijn nog niet klaar';
+	@override String so2rRadioCannotKey({required Object radio}) => 'Niets verzonden: Radio ${radio} kan dat niet keyen';
+	@override String get so2rNoRadioB => 'Niets verzonden: kies een Radio B in Stationsconfiguratie om vanuit deze set te keyen';
 	@override String settingNotStored({required Object label}) => '“${label}” accepteerde die waarde niet';
 }
 
@@ -819,6 +898,44 @@ class _Translations$commandDialog$nl extends Translations$commandDialog$en {
 	@override String get blockedByPane => 'Kan geen commando\'s gebruiken zolang een paneel of venster open is';
 }
 
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$nl extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sneltoetsen';
+	@override String get description => 'Toetscombinaties aanpassen';
+	@override String get search => 'Zoek commando\'s en toetsen';
+	@override String get import => 'Importeren…';
+	@override String get export => 'Exporteren…';
+	@override String get resetAll => 'Alles resetten';
+	@override String get resetAllTitle => 'Elke sneltoets resetten?';
+	@override String get resetAllBody => 'Elk commando krijgt zijn standaardtoetsen terug, en de toetsen die aan getypte commando\'s zijn gekoppeld worden verwijderd.';
+	@override String get reset => 'Resetten';
+	@override String get noKey => 'Geen toets';
+	@override String get changed => 'Gewijzigd';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} is ook gekoppeld aan ${commands}';
+	@override String get groupApp => 'App';
+	@override String get groupKeying => 'Keying';
+	@override String get groupLogging => 'Loggen';
+	@override String get groupCommands => 'Commando\'s';
+	@override String get groupFixed => 'Vaste toetsen';
+	@override String get contextApp => 'Overal';
+	@override String get contextLogView => 'Weergaven Activatie, Jagen en Logboeken';
+	@override String get contextOperation => 'Activatieweergave, bij het keyen van een CAT-radio';
+	@override String get contextLogging => 'In het logpaneel';
+	@override String get addCommand => 'Commando toevoegen…';
+	@override String unknownCommand({required Object command}) => 'Onbekend commando: ${command}';
+	@override late final _Translations$keyboardShortcuts$command$nl command = _Translations$keyboardShortcuts$command$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$nl fixed = _Translations$keyboardShortcuts$fixed$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$nl editor = _Translations$keyboardShortcuts$editor$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$file$nl file = _Translations$keyboardShortcuts$file$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$nl modifier = _Translations$keyboardShortcuts$modifier$nl._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$nl platform = _Translations$keyboardShortcuts$platform$nl._(_root);
+}
+
 // Path: expiredBuild
 class _Translations$expiredBuild$nl extends Translations$expiredBuild$en {
 	_Translations$expiredBuild$nl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -827,7 +944,7 @@ class _Translations$expiredBuild$nl extends Translations$expiredBuild$en {
 
 	// Translations
 	@override String get title => 'Deze build is verlopen';
-	@override String get body => 'Ga naar ham2k.com en haal een nieuwere versie.';
+	@override String get body => 'Ga naar ham2k.com voor een nieuwere versie.';
 	@override String get visit => 'Naar ham2k.com';
 	@override String get dismiss => 'Toch doorgaan';
 }
@@ -857,9 +974,11 @@ class _Translations$spotting$nl extends Translations$spotting$en {
 	@override String get noQsoYet => 'Nog geen QSO gelogd om te spotten.';
 	@override String get setFrequencyFirst => 'Stel eerst een frequentie in.';
 	@override String get nothingToSpot => 'Niets te spotten — geen extensie biedt hier spotten aan.';
+	@override String get incompleteCall => 'Kan een onvolledige roepnaam niet spotten — maak de roepnaam eerst af.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} mislukt: ${message}';
 	@override String get unknownError => 'onbekende fout';
 	@override String get notSent => 'Spot niet verzonden.';
+	@override String get allSkipped => 'Spot niet verzonden: elke spotbron heeft hem overgeslagen.';
 	@override String get notRefreshedOffline => 'Geen verbinding — spots zijn niet ververst';
 }
 
@@ -876,6 +995,8 @@ class _Translations$dataFiles$nl extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'De server deed er te lang over om te reageren. Probeer het later opnieuw.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} reageerde met een fout (HTTP ${status}). Probeer het later opnieuw.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} kon dit bestand niet leveren (HTTP ${status}). Controleer of het adres nog klopt.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM heeft geen Call History-bestand voor ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'De Call History-download van N1MM voor ${stem} is mislukt. Probeer het later opnieuw.';
 	@override String processingFailedTitle({required Object name}) => 'Kon ${name} niet verwerken';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'De download had maar ${imported} van de ${existing} records op dit apparaat, dus de weggelaten records zijn behouden. Ververs hem in Instellingen › Offline gegevens om hem toch te accepteren.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
@@ -931,8 +1052,14 @@ class _Translations$extensionService$nl extends Translations$extensionService$en
 	@override String validationError({required Object error}) => 'Validatiefout: ${error}';
 	@override String actionFailed({required Object error}) => 'Actie mislukt: ${error}';
 	@override String get commandFailed => 'Het commando kon niet worden uitgevoerd';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} kan geen instellingen wijzigen: daar heeft het bij de installatie niet om gevraagd';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} kan de radio niet bedienen: daar heeft het bij de installatie niet om gevraagd';
+	@override String commandDeveloperOnly({required Object name}) => '${name} kan dat niet uitvoeren: het is een van de eigen ontwikkelaarscommando\'s van de app';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'Meldingen kunnen nu niet worden verstuurd';
 	@override String get stashUnavailable => 'Ham2K File Stash is nu niet bereikbaar';
+	@override String activitySearchSourcesFailed({required Object names}) => 'Geen antwoord van ${names} op het zoeken naar activiteiten, dus er kunnen resultaten ontbreken.';
+	@override String get activitySearchSomeSourcesFailed => 'Sommige activiteitsextensies beantwoordden de zoekopdracht niet, dus er kunnen resultaten ontbreken.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} besteedde te veel tijd in zijn timers. Ze zijn gestopt tot de extensies herstarten.';
 	@override String timersSuspendedFailures({required Object name}) => 'De timers van ${name} bleven mislukken. Ze zijn gestopt tot de extensies herstarten.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} bleef hangen in een timer. De timers zijn gestopt tot de extensies herstarten.';
@@ -945,20 +1072,20 @@ class _Translations$operationLocationScreen$nl extends Translations$operationLoc
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Activatie locatie';
+	@override String get title => 'Activatielocatie';
 	@override String get selectedLocation => 'Geselecteerde locatie';
 	@override String get gridSquare => 'Grid square';
 	@override String get gridInvalid => 'Vereist 4, 6, 8 of 10 tekens, zoals FN31pr';
 	@override String get suggestedLocations => 'Voorgestelde locaties';
 	@override String get deviceGps => 'GPS van apparaat';
 	@override String peerGps({required Object device}) => 'GPS van ${device}';
-	@override String get locating => 'Plaatsen…';
+	@override String get locating => 'Locatie bepalen…';
 	@override String get gpsUnavailable => 'Locatie niet beschikbaar';
 	@override String get permissionDenied => 'Locatietoestemming geweigerd';
 	@override String get permissionBlocked => 'Locatietoestemming geblokkeerd';
 	@override String get moreDetails => 'Meer details';
 	@override String get stateOrProvince => 'Staat of Provincie (optioneel)';
-	@override String get controlsUnavailableTitle => 'Activiteitsbediening niet beschikbaar';
+	@override String get controlsUnavailableTitle => 'Activiteitsvelden niet beschikbaar';
 	@override String get controlsUnavailableReason => 'Deze referenties zijn nog bruikbaar; alleen hun activiteiten waren niet bereikbaar.';
 	@override String get controlsUnavailableRetry => 'Opnieuw proberen';
 	@override String get county => 'County (optioneel)';
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$nl extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$nl extends Translations$qsonImport$en {
+	_Translations$qsonImport$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'QSON-activatie importeren';
+	@override String get description => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.';
+	@override String get dropHint => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren';
+	@override String importing({required Object filename}) => '${filename} importeren…';
+	@override String failed({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}';
+	@override String pickerFailed({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} is geen UTF-8-tekst, dus geen QSON-bestand';
+	@override String notJson({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand';
+	@override String notOperation({required Object filename}) => '${filename} bevat geen QSON-activatie';
+	@override String get busy => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.';
+	@override String get oneFileOnly => 'Sleep één QSON-bestand tegelijk — elk bestand wordt een eigen activatie.';
+}
+
 // Path: adifImport
 class _Translations$adifImport$nl extends Translations$adifImport$en {
 	_Translations$adifImport$nl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$nl extends Translations$adifImport$en {
 	@override String get busy => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.';
 	@override String get oneFileOnly => 'Sleep één ADIF-bestand tegelijk — de volgorde waarin bestanden worden geïmporteerd bepaalt welke gegevens winnen.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s. Een ADIF in een activatie importeren is bedoeld om een paar QSO\'s toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.';
+	@override String get importAnyway => 'Toch importeren';
 }
 
 // Path: offline
@@ -1179,13 +1328,13 @@ class _Translations$offline$nl extends Translations$offline$en {
 	@override String get noRoute => 'Helemaal geen netwerkverbinding.';
 	@override String get unreachable => 'Het netwerk werkt, maar geen enkele server reageert — vaak een teken van een inlogpagina die in een browser wacht.';
 	@override String get reachable => 'Alle diensten reageren zoals verwacht.';
-	@override String get whatStops => 'Opzoeken, spots en gegevensbestanden zijn gepauzeerd. Loggen en synchronisatie in de buurt niet.';
+	@override String get whatStops => 'Opzoeken, spots en gegevensbestanden zijn gepauzeerd. Loggen en synchronisatie met apparaten in de buurt niet.';
 	@override String get servicesTitle => 'Diensten';
 	@override String get noServices => 'Nog geen dienst heeft zich gemeld.';
 	@override String lastSuccess({required Object when}) => 'Reageerde ${when} geleden voor het laatst';
 	@override String get neverSucceeded => 'Heeft nog niet gereageerd';
 	@override String nextAttempt({required Object when}) => 'Volgende poging over ${when}';
-	@override String get nextAttemptNow => 'Volgende poging staat klaar';
+	@override String get nextAttemptNow => 'Volgende poging is nu aan de beurt';
 	@override String get retry => 'Nu opnieuw proberen';
 	@override String get retrying => 'Proberen…';
 	@override String get retryReached => 'Weer online.';
@@ -1222,9 +1371,9 @@ class _Translations$exportSettings$nl extends Translations$exportSettings$en {
 	@override String get defaults => 'Standaardwaarden';
 	@override String get includeLookupData => 'Opzoekgegevens opnemen';
 	@override String get customTemplates => 'Aangepaste sjablonen';
-	@override String get filenameTemplate => 'Bestandsnaam sjabloon';
+	@override String get filenameTemplate => 'Bestandsnaamsjabloon';
 	@override String get compactFilenameTemplate => 'Sjabloon compacte bestandsnaam';
-	@override String get titleTemplate => 'Titel sjabloon';
+	@override String get titleTemplate => 'Titelsjabloon';
 	@override String get adifNotesTemplate => 'ADIF QSO Notities';
 	@override String get adifCommentTemplate => 'ADIF QSO Opmerkingen';
 	@override String get adifQslMessageTemplate => 'ADIF QSL Bericht';
@@ -1300,6 +1449,10 @@ class _Translations$home$logs$nl extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'Dit QSO is gemarkeerd om te verwijderen.';
 	@override String get editGone => 'Niet opgeslagen: dat QSO staat niet meer in dit logboek.';
 	@override String get discard => 'Weggooien';
+	@override late final _Translations$home$logs$sheet$nl sheet = _Translations$home$logs$sheet$nl._(_root);
+	@override late final _Translations$home$logs$groupBy$nl groupBy = _Translations$home$logs$groupBy$nl._(_root);
+	@override late final _Translations$home$logs$period$nl period = _Translations$home$logs$period$nl._(_root);
+	@override late final _Translations$home$logs$periodTitle$nl periodTitle = _Translations$home$logs$periodTitle$nl._(_root);
 	@override late final _Translations$home$logs$columns$nl columns = _Translations$home$logs$columns$nl._(_root);
 	@override late final _Translations$home$logs$panels$nl panels = _Translations$home$logs$panels$nl._(_root);
 	@override late final _Translations$home$logs$import$nl import = _Translations$home$logs$import$nl._(_root);
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$nl extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Jaagdoelen';
 	@override String remove({required Object name}) => 'Stop met jagen op ${name}';
-	@override String get extensionsTitle => 'Extensies met jaagdoelen';
+	@override String get extensionsTitle => 'Meer jaagprogramma\'s';
 }
 
 // Path: chase.panels
@@ -1384,6 +1537,80 @@ class _Translations$chase$panels$nl extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'Gespotte stations in de lucht, klaar om te jagen.';
 	@override String get map => 'Kaart';
 	@override String get mapDescription => 'De QSO\'s van de periode en het station dat wordt gelogd.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$nl extends Translations$chase$claims$en {
+	_Translations$chase$claims$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'QSO\'s controleren voor het jagen';
+	@override String rebuilding({required Object program}) => 'Logboek controleren voor ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} van ${total} QSO\'s';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$nl extends Translations$chase$notice$en {
+	_Translations$chase$notice$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'Nieuwe ${program}';
+	@override String newRefGuess({required Object program}) => 'Waarschijnlijk nieuwe ${program}';
+	@override String newBand({required Object program}) => 'Nieuwe ${program}-band';
+	@override String newBandGuess({required Object program}) => 'Waarschijnlijk nieuwe ${program}-band';
+	@override String newMode({required Object program}) => 'Nieuwe ${program}-mode';
+	@override String newModeGuess({required Object program}) => 'Waarschijnlijk nieuwe ${program}-mode';
+	@override String unconfirmed({required Object program}) => '${program} onbevestigd';
+	@override String programGuess({required Object notice}) => 'Waarschijnlijk ${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$nl extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Meldingen';
+	@override String get newRef => 'Nieuwe referentie';
+	@override String get newBand => 'Nieuwe band';
+	@override String get newMode => 'Nieuwe mode';
+	@override String get unconfirmed => 'Onbevestigd';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$nl extends Translations$chase$imports$en {
+	_Translations$chase$imports$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => '${label} importeren';
+	@override String pickTitle({required Object file}) => '${file} importeren als';
+	@override String get dropHint => 'Sleep een bestand hierheen om het in een jaagprogramma te importeren';
+	@override String done({required Object count, required Object program, required Object file}) => '${count} ${program}-records geïmporteerd uit ${file}';
+	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => '${count} ${program}-records geïmporteerd uit ${file}, ${skipped} onleesbare overgeslagen';
+	@override String nothing({required Object file, required Object program}) => '${file} bevat niets dat ${program} kan importeren';
+	@override String failed({required Object program, required Object file}) => '${program} kon ${file} niet lezen';
+	@override String unreadable({required Object program, required Object skipped, required Object file}) => '${program} kon geen van de ${skipped} records in ${file} lezen';
+	@override String noProgram({required Object file}) => 'Geen enkel jaagprogramma importeert ${file}';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$nl extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Online opzoeken?';
+	@override String get body => 'Assistentie is uitgeschakeld voor deze activatie. Alle QSO\'s opzoeken gebruikt voor deze ene keer online diensten zoals QRZ.';
+	@override String bodyRules({required Object rules}) => 'Assistentie is voor deze activatie uitgeschakeld om aan de regels van ${rules} te voldoen. Alle QSO\'s opzoeken gebruikt voor deze ene keer online diensten zoals QRZ.';
+	@override String get action => 'Online opzoeken';
 }
 
 // Path: dialogs.callChange
@@ -1426,6 +1653,8 @@ class _Translations$operation$tabs$nl extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Extern scherm';
 	@override String get solar => 'Zon';
 	@override String get radio => 'Radio';
+	@override String get rotator => 'Rotor';
+	@override String get summaries => 'Samenvattingen';
 }
 
 // Path: operation.positions
@@ -1495,8 +1724,16 @@ class _Translations$operation$layout$nl extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => '${panel} toevoegen';
 	@override String showPreview({required Object panel}) => 'Voorbeeld ${panel}';
 	@override String missingExtension({required Object name}) => 'Extensie "${name}" ontbreekt';
+	@override String get missingExtensionEnable => 'Inschakelen';
+	@override String get missingExtensionInstall => 'Installeren…';
+	@override String get missingExtensionWontRun => 'Deze versie start niet. Werk de extensie bij via Instellingen › Extensies.';
+	@override String get missingExtensionUnavailable => 'Niet beschikbaar in deze app';
+	@override String get missingExtensionNotInCatalog => 'Niet in de catalogus';
+	@override String get missingExtensionCatalogUnreachable => 'Catalogus niet bereikbaar. Probeer het opnieuw';
+	@override String get missingExtensionFailed => 'Dat is niet gelukt. Probeer het opnieuw';
 	@override String get previewUnavailable => 'De voorbeeldafbeelding van dit paneel kon niet worden getoond.';
 	@override String get nestedPaneTitle => 'Meer';
+	@override late final _Translations$operation$layout$layouts$nl layouts = _Translations$operation$layout$layouts$nl._(_root);
 	@override String get editLayout => 'Indeling bewerken';
 	@override String get saveLayout => 'Indeling opslaan';
 	@override String get revertLayout => 'Indelingswijzigingen weggooien';
@@ -1505,6 +1742,15 @@ class _Translations$operation$layout$nl extends Translations$operation$layout$en
 	@override String get layoutUnreadableBody => 'Je opgeslagen indeling kon niet worden gelezen, dus de standaardopstelling wordt getoond. Je origineel wordt pas overschreven als je ervoor kiest deze te houden.';
 	@override String get layoutUnreadableAction => 'Deze indeling gebruiken';
 	@override String panelRenderFailed({required Object panel}) => '${panel} kon niet worden weergegeven';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: het stuurde meer dan ${max} tekens';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de afbeelding heeft meer dan ${max} elementen';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de afbeelding is meer dan ${max} niveaus diep genest';
+	@override String panelNotArtwork({required Object panel}) => '${panel} kon niet worden weergegeven: de afbeelding staat niet op zichzelf';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} lagen';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} bedieningselementen';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een tekst in de scène is langer dan ${max} tekens';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de indeling is meer dan ${max} niveaus diep genest';
 	@override String get panelRenderRetry => 'Opnieuw proberen';
 	@override String get panelActionFailed => 'Die paneelactie is mislukt. Probeer het opnieuw.';
 	@override late final _Translations$operation$layout$panels$nl panels = _Translations$operation$layout$panels$nl._(_root);
@@ -1519,7 +1765,7 @@ class _Translations$operation$export$nl extends Translations$operation$export$en
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Activatie-exports';
+	@override String get title => 'Activatie exporteren';
 	@override String get syncedOperation => 'Activatie is gesynchroniseerd';
 	@override String get unsyncedOperation => 'Activatie heeft niet-gesynchroniseerde wijzigingen';
 	@override String qsosInOperation({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
@@ -1627,6 +1873,7 @@ class _Translations$operation$spots$nl extends Translations$operation$spots$en {
 		other: '${count} spots',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => '${count} van ${total} spots getoond';
+	@override String get spotsDisabled => 'Spots uitgeschakeld voor deze activatie';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minuten';
 	@override String get callsOfNote => 'Opmerkelijke roepnamen';
 	@override String get yourSpots => 'Jouw spots';
@@ -1634,12 +1881,12 @@ class _Translations$operation$spots$nl extends Translations$operation$spots$en {
 	@override late final _Translations$operation$spots$continents$nl continents = _Translations$operation$spots$continents$nl._(_root);
 	@override late final _Translations$operation$spots$filters$nl filters = _Translations$operation$spots$filters$nl._(_root);
 	@override String get unavailableTitle => 'Spots niet beschikbaar';
-	@override String unavailableText({required Object sources}) => '${sources} reageerde niet.';
+	@override String unavailableText({required Object sources}) => 'Geen reactie van ${sources}.';
 	@override String get failedTitle => 'Fout bij spotbron';
-	@override String failedText({required Object sources}) => '${sources} gaf een fout terug.';
+	@override String failedText({required Object sources}) => 'Foutmelding van ${sources}.';
 	@override String get slideLogIt => 'Loggen';
 	@override String get slideIgnore => 'Negeren';
-	@override String get slideRestore => 'Herstellen';
+	@override String get slideRestore => 'Terugzetten';
 	@override late final _Translations$operation$spots$logConflict$nl logConflict = _Translations$operation$spots$logConflict$nl._(_root);
 }
 
@@ -1665,7 +1912,7 @@ class _Translations$operation$import$nl extends Translations$operation$import$en
 	@override String get n1mmProtocolName => 'N1MM+ Contact Broadcast';
 	@override String get n1mmAddressValue => 'Alle (broadcast)';
 	@override String get wsjtxProtocolName => 'WSJT-X UDP Server';
-	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → tabblad Broadcast Data → vink "Enable Broadcasts" aan voor contact info. Stel het IP-adres in op 127.0.0.1 als het op deze computer draait, of 255.255.255.255 om op het huidige lokale netwerk uit te zenden.';
+	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → tabblad Broadcast Data → vink "Enable Broadcasts" aan voor contactinfo. Stel het IP-adres in op 127.0.0.1 als het op deze computer draait, of 255.255.255.255 om op het huidige lokale netwerk uit te zenden.';
 	@override String get helpWsjtxSetup => 'File → Settings → tabblad Reporting → sectie UDP Server → vink "Accept UDP requests" aan. Stel UDP Server in op 127.0.0.1 als het op deze computer draait, of op een multicastadres zoals 239.239.0.2, en gebruik hetzelfde adres in de configuratie hierboven in deze app.';
 	@override String get listenTitle => 'Luisteren naar QSO\'s van andere apps';
 	@override String get listenDescriptionOnN1mm => 'Luistert naar N1MM+';
@@ -1737,7 +1984,15 @@ class _Translations$map$postcard$nl extends Translations$map$postcard$en {
 	@override String get previousPage => 'Vorige pagina';
 	@override String get nextPage => 'Volgende pagina';
 	@override String pageOf({required Object page, required Object count}) => 'Pagina ${page} van ${count}';
-	@override String get sectionDays => 'Elke dag';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${count} QSO',
+		other: '${count} QSO\'s',
+	);
+	@override String get options => 'Ansichtkaartopties';
+	@override String get bandLegend => 'Bandlegenda tonen';
+	@override String get grayline => 'Grayline tonen';
+	@override String get sectionsAndOrder => 'Secties en volgorde van de samenvatting';
+	@override String get sectionDays => 'Per dag';
 	@override String get reset => 'Resetten';
 	@override String failed({required Object error}) => 'Kon de ansichtkaart niet maken: ${error}';
 	@override String get mapNotReady => 'De kaart is niet volledig geladen. Controleer de verbinding en probeer het opnieuw.';
@@ -1781,6 +2036,7 @@ class _Translations$loggingControls$info$nl extends Translations$loggingControls
 	@override String get noticeInvalidMode => 'Verkeerde mode';
 	@override String get noticeInvalidBand => 'Verkeerde band';
 	@override String get noticeInvalidCategory => 'Niet werkbaar';
+	@override String get noticeOverTime => 'Tijd voorbij';
 	@override String get noticeWorkedBefore => 'Eerder gewerkt';
 	@override String get noticeNewPark => 'Nieuw park';
 	@override String get noticeNewSection => 'Nieuwe sectie';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$nl extends Translations$loggingControls
 	@override String get noticeMissingExchange => 'Geen uitwisseling';
 	@override String get noticeInvalidExchange => 'Foute uitwisseling';
 	@override String get noticeUnknownEvent => 'Onbekend evenement';
+	@override String get noticeIncompleteCall => 'Onvolledige roepnaam — niet geteld';
 	@override String get noticeOurGrid => 'Stel ons grid in';
 	@override String get noticeRareCounty => 'Zeldzame county!';
 	@override String get noticeOurLocation => 'Stel onze county in';
 	@override String get noticeShortGrid => 'Grid te kort';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$nl extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'Zoeken in logboek (${shortcut})';
+	@override String get menuItemNoShortcut => 'Zoeken in logboek';
+	@override String get hint => 'QSO-nummer of roepnaam';
+	@override String get noMatches => 'Geen resultaat';
+	@override String get noOperationQsos => 'Geen QSO\'s in deze activatie';
+	@override String get noPeriodQsos => 'Geen QSO\'s in deze periode';
+	@override String get outsideQsosOne => '1 QSO buiten deze activatie';
+	@override String outsideQsosOther({required Object count}) => '${count} QSO\'s buiten deze activatie';
+	@override String get pastQsosOne => '1 eerder QSO';
+	@override String pastQsosOther({required Object count}) => '${count} eerdere QSO\'s';
 }
 
 // Path: callInfo.history
@@ -1830,8 +2106,8 @@ class _Translations$settings$themeDescription$nl extends Translations$settings$t
 
 	// Translations
 	@override String get system => 'Volgt de systeeminstellingen';
-	@override String get light => 'Altijd in Lichte Modus';
-	@override String get dark => 'Altijd in Donkere Modus';
+	@override String get light => 'Altijd in lichte modus';
+	@override String get dark => 'Altijd in donkere modus';
 }
 
 // Path: settings.fontScaleOpts
@@ -1931,14 +2207,79 @@ class _Translations$settings$catServer$nl extends Translations$settings$catServe
 	@override String get openAccess => 'Open toegang';
 	@override String get openAccessOn => 'Elke computer op het lokale netwerk kan verbinden.';
 	@override String get openAccessOff => 'Alleen apps op deze computer kunnen verbinden.';
+	@override String get allowTransmit => 'Apps laten zenden';
+	@override String allowTransmitOn({required Object minutes}) => 'Apps kunnen de PTT van de radio schakelen, telkens maximaal ${minutes} minuten.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'Apps op elke computer op het lokale netwerk kunnen de PTT van de radio schakelen, telkens maximaal ${minutes} minuten.';
+	@override String get allowTransmitOff => 'Apps kunnen de PTT van de radio niet schakelen. Gebruik VOX of hun eigen PTT-oplossing.';
+	@override String get allowTransmitUnsupported => 'De PTT van de hoofd-VFO-radio kan niet vanuit Ham2K Logger worden geschakeld, dus apps kunnen er niet mee zenden.';
 	@override String get off => 'Uit.';
 	@override String starting({required Object protocol}) => '${protocol}, wordt gestart…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} op poort ${port}. Verbonden clients: ${clients}.';
-	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} op poort ${port}, maar er is geen Main VFO-radio verbonden.';
+	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} op poort ${port}, maar er is geen hoofd-VFO-radio verbonden.';
 	@override String failed({required Object protocol, required Object port, required Object error}) => '${protocol} kan niet luisteren op poort ${port}: ${error}';
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: een ander programma gebruikt die, vaak ${protocol} zelf. Sluit dat programma of kies een andere poort.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: deze computer staat dat niet toe. Kies een poort boven 1024.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} is gestopt met luisteren op poort ${port}. Nieuwe poging…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$nl extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX-cluster';
+	@override String get description => 'De server waar extensies spots plaatsen en lezen, ingelogd als de operator.';
+	@override String get connect => 'Verbinden met cluster';
+	@override String get connectOn => 'Extensies verbinden met het cluster wanneer ze het nodig hebben';
+	@override String get connectOff => 'Niets verbindt met het cluster';
+	@override String get console => 'Console tonen';
+	@override String get consoleDescription => 'Wat het cluster stuurt, en een plek om commando\'s te typen';
+	@override String get consoleTitle => 'Clusterconsole';
+	@override String get consoleConnect => 'Verbinden';
+	@override String get consoleDisconnect => 'Verbreken';
+	@override String get consoleCommand => 'Commando';
+	@override String get consoleEmpty => 'Nog niets. Verbind, of wacht tot een extensie het cluster gebruikt.';
+	@override String consoleRetry({required Object command}) => 'Opnieuw verzenden: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'Niet verzonden: ${command} (${reason})';
+	@override String get server => 'Clusterserver';
+	@override String get selectServer => 'Server kiezen';
+	@override String get serverOther => 'Andere';
+	@override String serverOtherIncomplete({required Object node}) => 'Nog geen host ingevoerd, dus spots gaan naar ${node}';
+	@override String get customHost => 'Server';
+	@override String get customPort => 'Poort';
+	@override String get password => 'Wachtwoord';
+	@override String get passwordDescription => 'Alleen indien nodig';
+	@override String passwordStored({required Object node}) => 'Wachtwoord opgeslagen voor ${node}';
+	@override String get scrollback => 'Bewaarde regels';
+	@override String scrollbackOpt({required Object count}) => '${count} regels';
+	@override String get connection => 'Verbinding';
+	@override String get statusIdle => 'Niet verbonden. Verbindt wanneer een extensie het nodig heeft. Tik om te testen.';
+	@override String statusConnecting({required Object node}) => 'Verbinden met ${node}…';
+	@override String statusConnected({required Object node, required Object call}) => 'Verbonden met ${node} als ${call}.';
+	@override String statusFailed({required Object node, required Object reason}) => 'Kon niet verbinden met ${node}: ${reason}';
+	@override String get statusUnsupported => 'Niet beschikbaar in de webversie.';
+	@override String get statusOff => 'Uit. Zet Verbinden met cluster aan om het te gebruiken.';
+	@override late final _Translations$settings$cluster$errors$nl errors = _Translations$settings$cluster$errors$nl._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$nl extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spotten';
+	@override String get respotInterval => 'Auto-respot elke';
+	@override String minutes({required Object minutes}) => '${minutes} min';
+	@override String get autoRespotByDefault => 'Auto-respot standaard aan';
+	@override String get autoRespotByDefaultOn => 'Auto-respot inschakelen na elke geplaatste spot';
+	@override String get autoRespotByDefaultOff => 'Auto-respot alleen inschakelen als jij dat doet';
+	@override String get pulseBeforeRespot => 'Pulseren vóór elke auto-respot';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'De Spotten-chip pulseert ${seconds} seconden vóór elke respot blauw';
+	@override String get pulseBeforeRespotOff => 'Geen pulseren vóór een auto-respot';
 }
 
 // Path: settings.radio
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$nl extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$nl enterSends = _Translations$settings$radio$enterSends$nl._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$nl keyerSpeed = _Translations$settings$radio$keyerSpeed$nl._(_root);
 	@override late final _Translations$settings$radio$cwMessages$nl cwMessages = _Translations$settings$radio$cwMessages$nl._(_root);
+	@override late final _Translations$settings$radio$keyerControl$nl keyerControl = _Translations$settings$radio$keyerControl$nl._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$nl voiceMessages = _Translations$settings$radio$voiceMessages$nl._(_root);
+	@override late final _Translations$settings$radio$voiceWords$nl voiceWords = _Translations$settings$radio$voiceWords$nl._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$nl avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$nl._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$nl zeroBeatRange = _Translations$settings$radio$zeroBeatRange$nl._(_root);
 }
@@ -2000,7 +2343,21 @@ class _Translations$settings$exports$nl extends Translations$settings$exports$en
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Exports';
+	@override String get title => 'Exporteren';
+}
+
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$nl extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'Activiteiten';
+	@override String get hunting => 'Jagen';
+	@override String get contests => 'Contests';
+	@override String get lookups => 'Opzoeken';
+	@override String get dashboard => 'Dashboard';
 }
 
 // Path: settings.map
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$nl extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'Kaarten';
 	@override late final _Translations$settings$map$style$nl style = _Translations$settings$map$style$nl._(_root);
+	@override late final _Translations$settings$map$showCallsigns$nl showCallsigns = _Translations$settings$map$showCallsigns$nl._(_root);
+	@override late final _Translations$settings$map$showGrayline$nl showGrayline = _Translations$settings$map$showGrayline$nl._(_root);
 	@override late final _Translations$settings$map$styleOpts$nl styleOpts = _Translations$settings$map$styleOpts$nl._(_root);
 }
 
@@ -2036,7 +2395,7 @@ class _Translations$settings$sync$nl extends Translations$settings$sync$en {
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Cloud-synchronisatie';
+	@override String get title => 'Cloudsynchronisatie';
 	@override String get moreSettings => 'Meer synchronisatie-instellingen';
 	@override String get enable => 'Synchronisatie inschakelen';
 	@override String get deviceKey => 'Apparaatsleutel';
@@ -2090,11 +2449,11 @@ class _Translations$settings$peers$nl extends Translations$settings$peers$en {
 	@override String get screenSources => 'Schermen en vensters';
 	@override String get screenRefresh => 'Lijst verversen';
 	@override String get screenUnsupportedPlatform => 'Dit apparaat kan zijn scherm niet delen. macOS kan dat wel; elk apparaat kan een scherm tonen dat door een ander wordt gedeeld.';
-	@override String get screenUnsupportedVersion => 'Scherm delen vereist macOS 12.3 of later. Dit apparaat kan nog steeds een scherm tonen dat door een ander wordt gedeeld.';
+	@override String get screenUnsupportedVersion => 'Schermdelen vereist macOS 12.3 of later. Dit apparaat kan nog steeds een scherm tonen dat door een ander wordt gedeeld.';
 	@override String get screenNeedsPermission => 'macOS heeft je toestemming nodig om het scherm op te nemen voordat deze app er een kan delen.';
 	@override String get screenGrantPermission => 'Toestemming vragen';
 	@override String get screenRelaunchAfterGranting => 'Sta het toe in Systeeminstellingen onder Privacy en beveiliging → Schermopname, en sluit en heropen daarna deze app — macOS meldt de wijziging pas bij de volgende start van een app.';
-	@override String screenProblem({required Object error}) => 'Scherm delen: ${error}';
+	@override String screenProblem({required Object error}) => 'Schermdelen: ${error}';
 	@override String get screenChooseTitle => 'Kies wat je deelt';
 	@override String get screenChooseButton => 'Kies wat je deelt…';
 	@override String get screenTabScreens => 'Schermen';
@@ -2122,7 +2481,7 @@ class _Translations$settings$syncPanel$nl extends Translations$settings$syncPane
 	@override String get syncing => 'Synchroniseren';
 	@override String get account => 'Account';
 	@override String get refresh => 'Verversen';
-	@override String get switchAccounts => 'Ander account';
+	@override String get switchAccounts => 'Account wisselen';
 	@override String get switchAccountsDescription => 'Koppel dit apparaat aan een ander account via een QR-code of e-mail';
 	@override String get connectionRequests => 'Verbindingsverzoeken';
 	@override String connectionRequestsDescription({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
@@ -2175,7 +2534,7 @@ class _Translations$settings$accounts$nl extends Translations$settings$accounts$
 	@override String get none => 'Geen actieve extensies met accounts';
 	@override String get notConfigured => 'Niet geconfigureerd';
 	@override String get connected => 'Verbonden';
-	@override String get cancelLogin => 'Aanmelden annuleren';
+	@override String get cancelLogin => 'Inloggen annuleren';
 	@override String get openInBrowser => 'Openen in browser';
 	@override String loggedInAs({required Object identity}) => 'Ingelogd als ${identity}';
 	@override String get pressSaveToKeep => 'Druk op Opslaan om dit account verbonden te houden.';
@@ -2202,10 +2561,10 @@ class _Translations$settings$accounts$nl extends Translations$settings$accounts$
 	@override String get relayLoginNotOpened => 'Ham2K Logger kon je browser niet automatisch openen. Gebruik de knop hieronder om de inlogpagina zelf te openen.';
 	@override String get relayLoginUnavailable => 'Kon de synchronisatieserver die nodig is om dit inloggen af te ronden niet bereiken. Controleer je verbinding en probeer het opnieuw.';
 	@override String get loginIncompleteResponse => 'Die inlogpoging is niet goed afgerond. Probeer opnieuw te verbinden.';
-	@override String get noKeyringTitle => 'Accountgegevens kunnen niet worden opgeslagen';
-	@override String get noKeyringText => 'Ham2K Logger kan geen keyring-dienst op deze computer bereiken, dus accountgegevens kunnen niet worden opgeslagen of gelezen — een account verbinden mislukt totdat dit is opgelost. Installeer en start **gnome-keyring**, **KWallet** of **KeePassXC**, of ontgrendel de keyring die je al hebt, en herstart. Loggen, exports en gegevensbestanden werken gewoon; logsynchronisatie blijft zolang uit.';
-	@override String get noKeyringInline => 'Aanmeldgegevens kunnen niet worden opgeslagen: de keyring van deze computer is onbereikbaar. Installeer en start gnome-keyring, KWallet of KeePassXC, of ontgrendel de keyring die je hebt.';
-	@override String get noSecureStorageInline => 'Aanmeldgegevens kunnen niet worden opgeslagen: de beveiligde opslag van deze computer is onbereikbaar.';
+	@override String get noKeyringTitle => 'Inloggegevens kunnen niet worden opgeslagen';
+	@override String get noKeyringText => 'Ham2K Logger kan geen keyring-dienst op deze computer bereiken, dus inloggegevens van accounts kunnen niet worden opgeslagen of gelezen — een account verbinden mislukt totdat dit is opgelost. Installeer en start **gnome-keyring**, **KWallet** of **KeePassXC**, of ontgrendel de keyring die je al hebt, en herstart. Loggen, exports en gegevensbestanden werken gewoon; logsynchronisatie blijft zolang uit.';
+	@override String get noKeyringInline => 'Inloggegevens kunnen niet worden opgeslagen: de keyring van deze computer is onbereikbaar. Installeer en start gnome-keyring, KWallet of KeePassXC, of ontgrendel de keyring die je hebt.';
+	@override String get noSecureStorageInline => 'Inloggegevens kunnen niet worden opgeslagen: de beveiligde opslag van deze computer is onbereikbaar.';
 }
 
 // Path: settings.station
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'poort ${n} van ${total}';
 	@override String get serialPortSuggested => 'voorgesteld';
 	@override String get serialPortJustNow => 'Recent verbonden';
+	@override String get serialPortNoDriver => 'geen driver';
 	@override String get serialDeviceRequest => 'USB-apparaat toevoegen…';
+	@override String get bleDevice => 'Bluetooth LE-apparaat';
+	@override String get bleDeviceDescription => 'De seriële brug waarmee je radio is verbonden, zoals een LiNK500MP in Mode 4 of een BLE-serieel-adapter.';
+	@override String get bleScan => 'Scannen naar Bluetooth LE-apparaten…';
+	@override String get bleScanNoneFound => 'Geen Bluetooth LE-apparaten gevonden. Controleer of de brug aan staat, in de buurt is en in de Bluetooth LE-modus staat (Mode 4 op een LiNK500MP).';
+	@override String bleScanFailed({required Object reason}) => 'De Bluetooth LE-scan kon niet worden uitgevoerd: ${reason}';
+	@override String get bleOff => 'Bluetooth staat uit.';
+	@override String get bleDenied => 'Bluetooth-toestemming is niet verleend. Sta het toe in de systeeminstellingen en probeer het opnieuw.';
+	@override String get bleUnsupported => 'Dit apparaat heeft geen Bluetooth LE.';
+	@override String get bleStarting => 'Bluetooth is nog aan het opstarten. Probeer het zo opnieuw.';
+	@override String get bleConnectFailed => 'Kan het Bluetooth LE-apparaat niet bereiken. Controleer of het aan staat, in de buurt is en niet met een andere app verbonden is.';
+	@override String bleNoSerialService({required Object services}) => 'Dit Bluetooth LE-apparaat heeft geen seriële service die de app herkent. Meld het alsjeblieft met zijn services: ${services}';
 	@override String get baudRate => 'Snelheid (baud)';
 	@override String get baudRateDescription => 'Moet overeenkomen met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin terug, zonder foutmelding.';
 	@override String get serialRtsHigh => 'RTS hoog houden';
 	@override String get serialRtsHighDescription => 'Alleen voor een radio die op RTS wacht voordat hij reageert, zoals een Yaesu met CAT RTS aan. Op een Digirig, SignaLink en de meeste zelfgemaakte kabels is RTS de PTT, en hoog houden zet de zender aan.';
 	@override String get serialDtrHigh => 'DTR hoog houden';
 	@override String get serialDtrHighDescription => 'Alleen voor een CAT-interface die zijn voeding uit DTR haalt, zoals sommige RS-232-kabels voor de FT-817. Op veel kabels keyt DTR de CW of PTT, en hoog houden zet de zender aan.';
+	@override String get serialUsbDriver => 'USB-chipdriver';
+	@override String get serialUsbDriverDescription => 'Automatisch herkent de meeste adapters. Kies de chip alleen voor een adapter waarvan de poortlijst zegt dat er geen driver is — de verpakking of een USB-apparatenlijst noemt hem.';
+	@override String get serialUsbDriverAuto => 'Automatisch';
 	@override String get civAddress => 'CI-V-adres van de radio';
 	@override String get civAddressDescription => 'Hexadecimaal, zoals getoond in het CI-V-menu van de radio. De IC-705 wordt geleverd met A4.';
 	@override String get civAddressInvalid => 'Een CI-V-adres bestaat uit twee hexcijfers, 01 tot FF';
@@ -2298,8 +2672,37 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => 'Deze slice heeft geen panadapter op de radio';
 	@override String spectrumStreamRefused({required Object code}) => 'De radio weigerde een DAX IQ-stream (fout ${code})';
 	@override String get spectrumNoUdp => 'De spectrumgegevens van de radio kunnen dit apparaat niet bereiken';
+	@override String get spectrumK4Unavailable => 'Kan het LAN-spectrum van de K4 niet ontvangen. Nieuwe poging…';
+	@override String get spectrumK4RemoteUnavailable => 'Kan het remote spectrum van de K4 niet ontvangen';
 	@override String get spectrumScopeRefused => 'De radio weigerde zijn scope-commando\'s';
 	@override String get spectrumOutOfRange => 'De scope van de radio staat buiten het bereik dat hij kan tonen';
+	@override String get spectrumBandUnsupported => 'De scope van de radio kan op deze band niet worden getoond';
+	@override String get spectrumSdrNoRadio => 'Wachten op de frequentie van de gekoppelde radio…';
+	@override String get spectrumSdrNotConnected => 'De SDR is niet verbonden';
+	@override String get spectrumSdrNoIf => 'Stel de IF-frequentie van de radio in bij de instellingen van deze SDR';
+	@override String get sdrRadio => 'Toont het spectrum voor';
+	@override String get sdrRadioDescription => 'Een spectrumweergave op deze radio gebruikt deze ontvanger in plaats van de eigen scope van de radio.';
+	@override String get sdrRadioMain => 'De hoofdradio';
+	@override String get sdrTuning => 'Antenne-ingang';
+	@override String get sdrTuningDescription => 'Waar het signaal van de ontvanger vandaan komt. Op een eigen antenne stemt hij zichzelf af om de radio te volgen; op de IF-uitgang van de radio blijft hij op de IF staan.';
+	@override String get sdrTuningIndependent => 'Eigen antenne';
+	@override String get sdrTuningIfTap => 'De IF-uitgang van de radio';
+	@override String get sdrIfHz => 'IF-frequentie (Hz)';
+	@override String get sdrIfHzDescription => 'Alleen voor een IF-uitgang: de frequentie waarop de afstemming van de radio op zijn IF ligt, zoals 68330000 op een FT-817.';
+	@override String get sdrIfInverted => 'IF is geïnverteerd';
+	@override String get sdrGainDb => 'Versterking (dB)';
+	@override String get sdrGainDbDescription => 'Laat leeg voor de automatische versterking van de ontvanger.';
+	@override String get sdrOffsetHz => 'Frequentieverschuiving (Hz)';
+	@override String get sdrOffsetHzDescription => 'Wordt opgeteld bij elke frequentie die naar de ontvanger gaat, voor een upconverter: 125000000 voor een Ham It Up.';
+	@override String get sdrPpm => 'Frequentiecorrectie (ppm)';
+	@override String get rtlDirectSampling => 'Direct sampling';
+	@override String get rtlDirectSamplingDescription => 'Voor HF op een RTL-SDR V3 zonder upconverter. Een RTL-SDR V4 haalt HF ook zonder.';
+	@override String get rtlDirectSamplingOff => 'Uit';
+	@override String get rtlDirectSamplingI => 'I-tak';
+	@override String get rtlDirectSamplingQ => 'Q-tak';
+	@override String get rtlTcpNotAServer => 'Dit is geen rtl_tcp-server';
+	@override String get rtlTcpNotes => 'Dit verbindt met een **rtl_tcp-server die je zelf draait** op de computer waar de dongle in zit.\n\n- **Start hem** met `rtl_tcp -a 0.0.0.0` zodat andere machines hem kunnen bereiken; op dezelfde machine volstaat `rtl_tcp` alleen.\n- **Poort** is 1234, tenzij je hem met `-p` hebt gestart.\n- **Eén programma tegelijk:** rtl_tcp bedient één client. De app verbindt alleen zolang een spectrumweergave zichtbaar is, en laat een paar seconden na het sluiten los.\n- **Op Android** draait de app *SDR driver* dezelfde server op de telefoon.';
+	@override String get rspTcpNotes => 'Dit verbindt met een **rsp_tcp-server die je zelf draait** op de computer waar de RSP in zit, met de API van SDRplay daar geïnstalleerd.\n\n- **Start hem** met `rsp_tcp -a 0.0.0.0`.\n- **Poort** is 1234, tenzij je hem met `-p` hebt gestart.\n- **Eén programma tegelijk:** de server neemt één client aan. De app verbindt alleen zolang een spectrumweergave zichtbaar is.';
 	@override String get n3fjpNoRig => 'N3FJP heeft geen radio-interface ingesteld, dus dit volgt wat in N3FJP wordt getypt, niet een radio';
 	@override String get winkeyerKeyPort => 'Key-uitgang';
 	@override String get winkeyerKeyPortDescription => 'Op welke van de twee uitgangen van de keyer je radio is aangesloten.';
@@ -2308,6 +2711,11 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get winkeyerPttDescription => 'Keyt de PTT-lijn op dezelfde aansluiting, voor een versterker of radio die dat nodig heeft. Laat uit voor een radio die via zijn key-aansluiting wordt gekeyd.';
 	@override String get winkeyerNoAnswer => 'Geen WinKeyer reageerde op deze poort';
 	@override String get winkeyerStoppedAnswering => 'De WinKeyer reageerde niet meer tijdens het verzenden; het bericht is vervallen';
+	@override String get icomControlPort => 'Control-poort (UDP)';
+	@override String get icomControlPortDescription => 'De Control Port (UDP) van de radio — 50001 tenzij gewijzigd in de netwerkinstellingen, of doorgestuurd naar een andere.';
+	@override String get icomSerialPort => 'Seriële poort (UDP)';
+	@override String get icomSerialPortDescription => 'De Serial Port (UDP) van de radio — 50002 tenzij gewijzigd in de netwerkinstellingen, of doorgestuurd naar een andere.';
+	@override String get icomPortsDiffer => 'De control- en seriële poort moeten verschillen';
 	@override String get radioUser => 'Gebruikersnaam radio';
 	@override String get radioPass => 'Wachtwoord radio';
 	@override String get radioLoginDescription => 'De login onder Network → Remote van de radio, niet je wifi-wachtwoord.';
@@ -2315,34 +2723,59 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get connectFailedBusy => 'Apparaat is in gebruik';
 	@override String get connectFailedDenied => 'Toegang geweigerd';
 	@override String get connectFailedDevice => 'Apparaat niet gevonden';
+	@override String get connectFailedUnsupported => 'Geen driver herkent de chip van deze USB-adapter. Als je weet welke chip het is, kies die dan onder USB-chipdriver in Geavanceerde instellingen.';
 	@override String get connectFailedLines => 'RTS/DTR konden niet worden gehouden zoals ingesteld, dus de poort is gesloten. Mogelijk heeft een ander programma hardware-handshaking aan laten staan — koppel de kabel los en weer aan.';
 	@override String get connectFailedNetwork => 'Kan de radio niet vinden via het netwerk. Controleer het adres en of hij aan staat en bereikbaar is.';
+	@override String connectFailedReplyPort({required Object port}) => 'Poort ${port} op dit apparaat is al in gebruik, en daar komen de antwoorden aan. Sluit wat er verder op luistert — ook een andere PstRotator-node — of wijzig de poort.';
 	@override String get connectFailedTimeout => 'De radio reageerde niet op tijd. Controleer of hij aan staat en bereikbaar is.';
 	@override late final _Translations$settings$station$models$nl models = _Translations$settings$station$models$nl._(_root);
 	@override late final _Translations$settings$station$transports$nl transports = _Translations$settings$station$transports$nl._(_root);
 	@override String get troubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
-	@override String get ft891Troubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS moet UIT staan op de radio** (FT-891-menu **05-08**). Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is diezelfde lijn de PTT, dus hoog zetten zou je zender aanzetten. Op de eigen USB-poort van de radio is **RTS hoog houden** onder Geavanceerde instellingen het alternatief.\n- **Snelheid moet overeenkomen** met de CAT RATE van de radio (menu **05-06**). Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
+	@override String get ft891Troubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS uit op de radio, of RTS hoog houden aan.** Met **CAT RTS** aan (FT-891-menu **05-08**) blijft de radio stil zolang RTS laag is — hij antwoordt misschien één keer als de poort opengaat, en daarna niets meer. Kies je de eigen USB-poort van de radio, dan gaat **RTS hoog houden** onder Geavanceerde instellingen aan. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is RTS de PTT, en hoog houden zet je zender aan: zet dan liever CAT RTS uit op de radio.\n- **Snelheid moet overeenkomen** met de CAT RATE van de radio (menu **05-06**). Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
 	@override String get yaesuBinaryTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
 	@override String get yaesuBinaryTroubleshooting => 'Deze radio spreekt het oudere vijf-byte CAT van Yaesu, en reageert helemaal niet als er iets niet klopt. Bijna altijd een van deze:\n\n- **De kabel moet niveaus omzetten.** De CAT-aansluiting achterop is geen RS-232 en geen USB; er is een CT-62 of gelijkwaardige adapter nodig. Een gewone audio- of datakabel werkt niet voor CAT.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio (**#14** op een FT-817, **#19** op een FT-857 of FT-897). Bij een verschil stuurt de radio niets terug, en nooit een foutmelding.\n- **Laat nooit iets RTS of DTR hoog zetten op deze poort.** Op de meeste kabels voor deze radio\'s zijn die lijnen PTT en keying. Een oudere interface die gevoed wordt uit DTR is de uitzondering: zet daarvoor **DTR hoog houden** aan onder Geavanceerde instellingen.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze driver is geschreven op basis van Yaesu\'s gepubliceerde CAT-overzicht en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.';
+	@override String get tenTecTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
+	@override String get tenTecEagleTroubleshooting => '- **De USB-B-poort achterop is de CAT-verbinding.** De radio verschijnt als een USB-seriële poort; op Windows is de USB-naar-UART-driver van Ten-Tec nodig, die in Apparaatbeheer verschijnt als "USB to UART (COMx)".\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open, en de firmware-updater van Ten-Tec ook.\n- **De filterbreedte vanuit de app instellen haalt hem weg van de BW-knop** totdat de radio uit en weer aan is gezet. Zo werkt de radio nu eenmaal.\n\nDeze driver is geschreven op basis van de programmeursreferentie van Ten-Tec. Als hij half werkt, is dat het melden waard, met de firmwareversie uit het menu van de radio.';
+	@override String get tenTecOrionTroubleshooting => '- **Gebruik een rechte DB-9-seriële kabel** naar de SERIAL DATA-poort, geen null-modemkabel.\n- **Deze optie houdt RTS hoog**, omdat de Orion RTS en CTS als handshake gebruikt. Op een interface die de PTT via RTS keyt, zoals een Digirig, zet je RTS hoog houden onder Geavanceerde instellingen uit, anders gaat de radio zenden zodra de app verbindt.\n- **CW vanuit de app vereist dat de interne keyer van de radio aan staat.** Staat die uit, dan negeert de radio wat de app stuurt.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze driver is geschreven op basis van de programmeursreferentie van Ten-Tec en is nog niet met een Orion getest. Als hij half werkt, is dat het melden waard, met de firmwareversie uit het menu van de radio.';
+	@override String get tenTecNoCw => 'De firmware van deze radio neemt geen CW van de app aan. Ten-Tec voegde dat toe in Orion-firmware 1.366.';
+	@override String get tenTecKeyerOff => 'De interne keyer van de radio staat uit, dus hij negeert CW vanuit de app. Zet de keyer aan in het menu van de radio.';
 	@override String get guohetecTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
 	@override String get guohetecTroubleshooting => 'De Q900 heeft twee CAT-protocollen, en deze optie gebruikt het eigen protocol in plaats van de FT-817-imitatie. Kies hier **Guohetec Q900**, geen FT-817 — de imitatie ondersteunt minder commando\'s, en de radio meldt niet welke hij gebruikt.\n\n- **De USB-C-kabel is de CAT-verbinding**, en verbindt ook de geluidskaart. Snelheid maakt daarbij niet uit; de poort negeert wat er is ingesteld.\n- **Laat nooit iets RTS of DTR hoog zetten op deze poort.** Op een seriële kabel zijn die lijnen PTT en keying.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Een radio van de tweede generatie gedraagt zich anders** dan een van de eerste. Houd Menu lang ingedrukt, dan About: HW 2.0 is de tweede generatie.\n\nDeze driver is geschreven op basis van het gepubliceerde protocol van de fabrikant en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.';
 	@override String get yaesuTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
 	@override String get yaesuTroubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is diezelfde lijn de PTT, dus hoog zetten zou je zender aanzetten. Op de eigen USB-poort van de radio is **RTS hoog houden** onder Geavanceerde instellingen het alternatief. Waar die instelling zit verschilt per model (menu **05-08** op een FT-891).\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Modes volgen de tabel van de FT-891.** De meeste Yaesu\'s komen daarmee overeen, maar een radio die zijn modes anders nummert toont en zet voor die modes de verkeerde. De frequentie blijft correct.';
+	@override String get ftdx3000Troubleshooting => '**Menu 037 CAT SELECT moet op USB staan** voor CAT via de USB-poort van de radio; op RS232C zit CAT op de aansluiting achterop.\n\nDeze optie is geschreven op basis van gepubliceerde CAT-documentatie en is nog niet met een FTDX3000 getest. Als hij half werkt, is dat het melden waard.';
 	@override String get yaesuRs232Troubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **De CAT-aansluiting is RS-232.** Er is een USB-naar-serieel-adapter en een rechte DB-9-kabel nodig — een null-modemkabel verwisselt de lijnen, en de radio hoort helemaal niets.\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt, tenzij **RTS hoog houden** aan staat onder Geavanceerde instellingen.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze optie is geschreven op basis van gepubliceerde CAT-documentatie en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.';
-	@override String get yaesuUsbTroubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **Gebruik de eerste van de twee USB-poorten van de radio.** CAT zit normaal op de eerste (de **Enhanced** COM-poort op Windows); de tweede (**Standard**) is voor PTT en keying. De keuzelijst wijst de eerste aan als hij de twee kan onderscheiden.\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt, tenzij **RTS hoog houden** aan staat onder Geavanceerde instellingen.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
+	@override String get yaesuUsbTroubleshooting => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **Gebruik de eerste van de twee USB-poorten van de radio.** CAT zit normaal op de eerste (de **Enhanced** COM-poort op Windows); de tweede (**Standard**) is voor PTT en keying. De keuzelijst wijst de eerste aan als hij de twee kan onderscheiden.\n- **CAT RTS uit op de radio, of RTS hoog houden aan.** Met het **CAT RTS**-menu van de radio aan blijft hij stil zolang RTS laag is — hij antwoordt misschien één keer als de poort opengaat, en daarna niets meer. Kies je de eigen USB-poort van de radio, dan gaat **RTS hoog houden** onder Geavanceerde instellingen aan. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is RTS de PTT, en hoog houden zet je zender aan: zet dan liever CAT RTS uit op de radio.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
 	@override String get k4SerialNotes => 'Sluit de USB-B (PC)-aansluiting achterop de K4 aan. USB-PC1 en USB-PC2 werken allebei voor CAT; kies een ongebruikte poort en stel de bijbehorende Serial USB-PCn: Baud Rate op de radio gelijk in. HaLo vult 38400 vooraf in; wijzig dat zo nodig. Een andere applicatie moet de andere poort of Ethernet gebruiken.\n\nDeze verbinding bestuurt de radio en zijn keyers; ze stuurt geen audio naar HaLo.';
-	@override String get k4TcpNotes => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. Dit is CAT-besturing, niet de aparte remote-audioverbinding op poort 9204.\n\nHaLo bestuurt de radio en zijn keyers zonder audio of panadaptergegevens te streamen.';
+	@override String get k4TcpNotes => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. HaLo gebruikt dezelfde host op de vaste poort 9201 wanneer een panadapter of waterval zichtbaar is; de CAT-poort wijzigen verandert de spectrumpoort niet.\n\nHet spectrum toont de hoofdontvanger. De zoom, referentie-instelling en snelheid ervan beïnvloeden alleen de weergave in HaLo. Audiostreaming wordt niet ondersteund.';
 	@override String get k4PowerTimeout => 'Het K4-vermogen is niet gewijzigd omdat de radio zijn uitgangsbereik niet bevestigde. Probeer het opnieuw.';
+	@override String get k4RemoteNotes => 'Schakel toegang op afstand in op je K4 en voer het netwerkwachtwoord in. Main en Sub delen één versleutelde verbinding voor radiobesturing en spectrum. De standaardpoort is 9204; voer je doorgestuurde poort in als je op afstand verbindt.\n\nAudio afspelen en microfoonstreaming worden niet ondersteund.';
+	@override String get k4Receiver => 'Ontvanger';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'Kies Main of Sub';
+	@override String get k4ReceiverAlreadyConfigured => 'Die ontvanger is al geconfigureerd voor deze K4';
+	@override String get k4SubReceiverOff => 'De subontvanger van de K4 staat uit';
+	@override String get k4RemotePasswordRequired => 'Voer het netwerkwachtwoord van de K4 in om beveiligd te verbinden.';
+	@override String get k4RemoteHandshakeFailed => 'De K4 kon geen beveiligde verbinding opzetten. Controleer het netwerkwachtwoord en de instellingen voor toegang op afstand.';
+	@override String get k4RemoteUnreachable => 'De beveiligde verbinding van de K4 was niet bereikbaar. Controleer het adres, de poort en de instellingen voor toegang op afstand.';
 	@override String get k4PowerRange => 'K4-vermogen moet 0,1–110 W zijn, of 0,0001–0,01 W als de milliwatt-transverteruitgang actief is.';
 	@override String get elecraftTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
 	@override String get elecraftTroubleshooting => 'Elecraft-rigs spreken Kenwood-CAT, en zowel een KX2 als een KX3 zijn zo gebruikt — VFO in beide richtingen, modewissel en CW zero-beat werken allemaal.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met de snelheid onder **RS232** in het menu van de radio. Ze worden geleverd met 38400. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\n**Als de frequentie klopt maar de mode niet**, laat het ons weten. De KX2- en KX3-opties lezen de mode uit een positie in het statusantwoord van de radio die we hebben vastgesteld op basis van de rigs die we kennen, en firmware die hem ergens anders zet merken we alleen via een melding.\n\nVan de K3 is nog niets gemeld, dus laat weten wat er gebeurt als je er een gebruikt. Een K4 heeft een eigen optie.';
+	@override String get lab599TroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
+	@override String get lab599Troubleshooting => 'De TX-500-reeks spreekt Kenwood-CAT. Frequentie en mode zijn getest via een LiNK500MP; vermogen en meters zijn geschreven op basis van de CAT-referentie van Lab599, dus meld wat er gebeurt, hoe dan ook.\n\n- **Snelheid moet overeenkomen** met de CAT-instelling van de radio, 9600 tenzij je die hebt gewijzigd. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Kies het CAT-protocol op de radio.** TS-2000 dekt frequentie, mode en vermogen. Met LAB599 kan de app de radio ook naar DIG schakelen, zien dat hij in DIG zendt, en de voedingsspanning uitlezen.\n- **Via een LiNK500MP** houd je de VFO-knop ongeveer drie seconden ingedrukt om de CAT-besturing aan de interface over te dragen.\n- **Zet de modus van de LiNK500MP voor de verbinding**: Mode 3 voor Bluetooth, Mode 4 voor Bluetooth LE. In elke andere modus vindt een Bluetooth LE-scan hem niet.\n- **Via Bluetooth** koppelt de LiNK500MP als twee seriële poorten, waarvan er maar één CAT draagt. Blijft de radio stil, kies dan de andere.';
+	@override String get lab599TroubleshootingIos => 'De TX-500-reeks spreekt Kenwood-CAT. Frequentie en mode zijn getest via een LiNK500MP; vermogen en meters zijn geschreven op basis van de CAT-referentie van Lab599, dus meld wat er gebeurt, hoe dan ook.\n\n- **Zet de LiNK500MP in Mode 4**, zijn Bluetooth LE-modus, voordat je ernaar scant. In elke andere modus kan een iPhone of iPad hem niet vinden.\n- **Draag de CAT-besturing over aan de LiNK500MP**: houd de VFO-knop van de radio ongeveer drie seconden ingedrukt.\n- **Kies het CAT-protocol op de radio.** TS-2000 dekt frequentie, mode en vermogen. Met LAB599 kan de app de radio ook naar DIG schakelen, zien dat hij in DIG zendt, en de voedingsspanning uitlezen.';
 	@override String get kenwoodTroubleshootingTitle => 'Als de radio verbindt maar geen frequentie toont';
-	@override String get kenwoodTroubleshooting => 'Deze driver is getest met de TS-590SG en TS-480 van Kenwood, de QMX en QCX-mini van QRP Labs, en de KX2 en KX3 van Elecraft. De rest van de reeks is geschreven op basis van gepubliceerde CAT-referenties, dus meld wat er gebeurt, hoe dan ook.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Sommige rigs hebben CAT ingeschakeld nodig** in het menu voordat ze überhaupt reageren.\n\n**Diverse SDR-front-ends spreken hetzelfde protocol**, dus het is de moeite waard deze optie ook daarvoor te proberen; Elecraft-rigs staan apart, onder Elecraft. Als de frequentie klopt maar de mode fout is of ontbreekt: dat is het enige deel dat binnen de reeks verschilt — de app leidt het af uit de radio en vraagt het anders direct op, dus de mode kan gewoon wat achterlopen.';
+	@override String get kenwoodTroubleshooting => 'Deze driver is getest met de TS-590SG en TS-480 van Kenwood, de QMX en QCX-mini van QRP Labs, en de KX2 en KX3 van Elecraft. De rest van de reeks is geschreven op basis van gepubliceerde CAT-referenties, dus meld wat er gebeurt, hoe dan ook.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Sommige rigs hebben CAT ingeschakeld nodig** in het menu voordat ze überhaupt reageren.\n- **Kenwood-radio\'s wachten op RTS**: hun CAT-poort gebruikt het als handshake, dus RTS hoog houden (onder Geavanceerde instellingen) moet aan staan. Een verbinding die is ingesteld voordat dit standaard aan stond, kan het uit hebben. Op een Digirig of een andere kabel die de PTT via RTS keyt, zet je het uit, anders gaat de radio zenden.\n\n**Diverse SDR-front-ends spreken hetzelfde protocol**, dus het is de moeite waard deze optie ook daarvoor te proberen; Elecraft-rigs staan apart, onder Elecraft. Als de frequentie klopt maar de mode fout is of ontbreekt: dat is het enige deel dat binnen de reeks verschilt — de app leidt het af uit de radio en vraagt het anders direct op, dus de mode kan gewoon wat achterlopen.';
 	@override String get statusConnected => 'Verbonden';
 	@override String get statusLost => 'Verbinding verbroken';
 	@override String get notConfigured => 'Niet geconfigureerd';
 	@override String get currentConfiguration => 'Huidige configuratie';
 	@override String get currentTransceiver => 'Huidige transceiver';
+	@override String get currentTransceivers => 'Huidige transceivers';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'Berichten in de wachtrij in plaats van onderbreken';
+	@override String get noRadioBSelected => 'Geen Radio B geselecteerd';
 	@override String get radioMode => 'Radiomode';
 	@override String get keyerNotSupported => 'Niet ondersteund door huidige radio';
 	@override String get catControlPreferences => 'Voorkeuren CAT-besturing';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} zit op een ander apparaat';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'Deze radio is verbonden met ${device}. De verbinding en instellingen worden op dat apparaat geconfigureerd.';
 	@override String get antennaInUse => 'Antenne in gebruik';
-	@override String get keyInUse => 'Seinsleutel in gebruik';
+	@override String get keyInUse => 'CW-keying';
+	@override String get phoneKeying => 'Spraakkeyer';
+	@override String get phoneKeyingNone => 'Geen';
+	@override String phoneKeyingRadio({required Object radio}) => 'Geheugens in ${radio}';
+	@override String get phoneKeyingComputer => 'Audio op deze computer';
+	@override String get phoneKeyingOff => 'Spraakkeyer staat uit';
+	@override String get computerVoiceSettings => 'Computeraudio';
+	@override String get cwKeyingOptions => 'Opties CW-keying';
 	@override String get noneSelected => 'Geen';
 	@override String get moreSettings => 'Meer instellingen';
 	@override String get icomCivTroubleshootingTitle => 'Als er twee seriële poorten voor dezelfde radio verschijnen';
 	@override String get icomCivTroubleshooting => 'Diverse Icom-radio\'s, waaronder de IC-705, tonen **twee** USB-seriële poorten tegelijk (Icom noemt ze Port A en Port B), beide standaard ingesteld op CI-V. Verder kunnen deze app en je besturingssysteem ze niet onderscheiden: dezelfde USB vendor/product-ID verschijnt gewoon twee keer, soms hier gemarkeerd met een achtervoegsel `#2`. **Port A is meestal de juiste** — normaal de eerste die je besturingssysteem of browser toont, en als deze app de twee poorten kan onderscheiden, markeert ze die als voorgesteld. Als er commando\'s uitgaan en de radio nooit reageert, probeer dan de andere poort.';
 	@override String get civAddressTroubleshootingTitle => 'Als de radio nooit reageert';
 	@override String get civAddressTroubleshooting => '- **Het CI-V-adres moet overeenkomen** met het menu van de radio. Deze optie vult het fabrieksadres van het model vooraf in, maar juist bij een rig op een gedeelde CI-V-bus wordt dat gewijzigd. Een frame naar het verkeerde adres wordt stil genegeerd, wat er precies uitziet als een defecte kabel.\n- **Snelheid moet overeenkomen** met de CI-V BAUD RATE van de radio (via USB: CI-V USB Baud Rate). Stel de radio in op hetzelfde getal als hier, **niet Auto**. Op Auto verbinden sommige radio\'s, waaronder de IC-7300, en reageren ze na een minuut of zo niet meer.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **Het CI-V-adres moet overeenkomen** met het menu van de radio. Deze optie vult het fabrieksadres van het model vooraf in, maar juist bij een rig op een gedeelde CI-V-bus wordt dat gewijzigd. Een frame naar het verkeerde adres wordt stil genegeerd, wat er precies uitziet als een defecte kabel.\n${speed}\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.';
+	@override String get icomUsbSpeedFollows => '- **Er is geen snelheid in te stellen.** Via USB praat deze radio op de snelheid die de computer gebruikt, en deze optie gebruikt altijd 115200, de snelheid die de scope nodig heeft.';
+	@override String get ic7610UsbSpeed => '- **Zet CI-V USB Baud Rate op 115200**, de snelheid die deze optie altijd gebruikt omdat de scope die nodig heeft — **niet Auto**. Een radio op een andere snelheid antwoordt met stilte.';
+	@override String get civTransceiveTitle => 'Als de app de radio traag volgt';
+	@override String get civTransceive => 'Als de app er enkele seconden over doet om een frequentie- of modewissel op de radio te tonen, zet dan de instelling **CI-V Transceive** van de radio aan (op de meeste huidige modellen onder SET > Connectors > CI-V). Staat die aan, dan meldt de radio elke wijziging op het moment zelf. Staat die uit, dan ziet de app een wijziging pas de volgende keer dat hij ernaar vraagt, om de paar seconden.';
 	@override String get ic7300Mk2Note => '\n- De **IC-7300 MK2** wordt geleverd met adres `B6`, niet de hier ingevulde `94` — kies in plaats daarvan de optie IC-7300 MK2.';
 	@override String get ic705PortNote => '\n- De **IC-705** toont twee USB-seriële poorten, beide vernoemd naar de radio. CI-V zit op de **eerste**, die de keuzelijst aanwijst als hij de twee kan onderscheiden.';
 	@override String get ic7760PortNote => '\n- De **IC-7760** spreekt CI-V op **Port A** van de twee USB-seriële poorten die hij toont.';
@@ -2393,7 +2838,8 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get commanderTroubleshootingTitle => 'Als de app geen verbinding kan maken';
 	@override String get commanderTroubleshooting => 'Dit verbindt met **DXLab Commander, draaiend op je computer**, niet direct met de radio — Commander praat met de radio.\n\n- **Commander moet al draaien** en met de radio verbonden zijn.\n- **De netwerkdienst moet aan staan**: de knop **Net Serv** in het Radio-paneel van het Configuration-venster van Commander.\n- **Poort** is 52002, de derde poort van het blok dat begint bij de **Base Port** van Net Serv (52000, tenzij je die hebt gewijzigd).\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van de gepubliceerde TCP-berichten van Commander en is nog niet met Commander getest. Als hij half werkt, is dat het melden waard.';
 	@override String get ic705TroubleshootingTitle => 'Als de radio nooit reageert';
-	@override String get ic705Troubleshooting => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.';
+	@override String get ic705Troubleshooting => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **De poorten moeten overeenkomen** met de Control Port en Serial Port (UDP) van de radio, of met de poorten die ernaar zijn doorgestuurd. Een verkeerde poort wordt met stilte beantwoord, net als een radio die uit staat.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.';
+	@override String get icomLanTroubleshooting => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview, RS-BA1 of de Remote Utility van Icom verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** De LAN-poort moet op hetzelfde netwerk zijn aangesloten als dit apparaat, **Network Control** moet aan staan, en de gebruikersnaam en het wachtwoord moeten als netwerkgebruiker op de radio zijn ingesteld.\n- **De poorten moeten overeenkomen** met de Control Port en Serial Port (UDP) van de radio, of met de poorten die ernaar zijn doorgestuurd. Een verkeerde poort wordt met stilte beantwoord, net als een radio die uit staat.\n- **Als hij verbindt maar nooit antwoordt**, moet het CI-V-adres hier overeenkomen met het CI-V ADDRESS-menu van de radio. Deze optie vult het adres in waarmee het model wordt geleverd.\n- **Zet de radio uit en weer aan** als hij vast blijft zitten.';
 	@override String get statusStale => 'Reageert niet';
 	@override String get statusDisconnected => 'Niet verbonden';
 	@override String get statusConnecting => 'Verbinden…';
@@ -2401,8 +2847,8 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get statusError => 'Verbinding mislukt';
 	@override String get currentRadioSettings => 'Huidige radio-instellingen';
 	@override String get notSupportedByThisRadio => 'Niet ondersteund door deze radio';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => 'Spraak';
+	@override String get cwMessagesButton => 'CW-berichten';
+	@override String get voiceMessagesButton => 'Spraakberichten';
 	@override String voiceKeyerAvailable({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio';
 	@override String get antennaBands => 'Banden';
 	@override String get antennaType => 'Antennetype';
@@ -2468,7 +2914,7 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get voiceDialectDescription => 'Hoe deze radio zijn spraakgeheugens via CAT afspeelt. Geen betekent geen spraakgeheugens via CAT. Met een dialect en zonder aantal geldt het standaardaantal van het dialect.';
 	@override String get voiceDialectPb => 'Kenwood (PB, TS-590-stijl)';
 	@override String get voiceDialectK4 => 'Elecraft K4 (PB en DA)';
-	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (schakeltikken)';
+	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (gesimuleerde knopdrukken)';
 	@override String get placeholderDiagnostic => 'Gesimuleerd';
 	@override String get placeholderWholeNumberInvalid => 'Moet een geheel getal zijn, 0 of meer';
 	@override String get placeholderFreqInvalid => 'Moet een frequentie in kHz zijn, groter dan nul';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'Op welke antenne elke radiopoort nu staat. Wijzigingen werken meteen.';
 	@override String get switchWiringHeader => 'Bedrading';
 	@override String get switchPortInhibitedHint => 'zenden geblokkeerd';
+	@override String get rotatorAxes => 'Assen';
+	@override String get rotatorAxesDescription => 'Of de rotor alleen in azimut draait, of ook in elevatie (een G-5500 of vergelijkbaar).';
+	@override String get rotatorAxesAzimuth => 'Alleen azimut';
+	@override String get rotatorAxesAzimuthElevation => 'Azimut en elevatie';
+	@override String get rotatorAzimuthOffset => 'Azimutverschuiving';
+	@override String get rotatorAzimuthOffsetDescription => 'Graden die worden opgeteld bij wat de controller uitleest, als zijn nulpunt niet het ware noorden is. Draaiopdrachten worden overeenkomstig gecorrigeerd.';
+	@override String get rotatorElevationOffset => 'Elevatieverschuiving';
+	@override String get rotatorAzimuthMin => 'Laagste azimut';
+	@override String get rotatorAzimuthMax => 'Hoogste azimut';
+	@override String get rotatorAzimuthMaxDescription => 'In de eigen graden van de controller. Boven 360 voor een rotor met overlap, die dan de kortste draai neemt.';
+	@override String get rotatorElevationMin => 'Laagste elevatie';
+	@override String get rotatorElevationMax => 'Hoogste elevatie';
+	@override String get rotatorElevationMaxDescription => 'In de eigen graden van de controller. Boven 90 voor een rotor die over de kop kan.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'Hele graden, ${min} tot ${max}';
+	@override String get rotatorLimitsInvalid => 'De laagste grens moet onder de hoogste liggen';
+	@override String get rotatorPollInterval => 'Pollinginterval (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'Hoe vaak de rotor wordt gevraagd waar hij heen wijst. Laat leeg voor ${fallback} ms.';
+	@override String get rotatorAxesRequired => 'Kies in welke assen de rotor draait';
+	@override String get rotatorRefused => 'De controller weigerde een commando. Controleer of hij in GS-232-modus staat.';
+	@override String get pstRotatorTroubleshooting => 'PstRotator antwoordt pas als het ervoor is ingesteld, en zegt anders helemaal niets:\n\n- **Zet UDP Control aan** in het Setup-menu van PstRotator.\n- **Laat de poort overeenkomen**: Communication → UDP Control Port, 12000 tenzij gewijzigd. PstRotator antwoordt op de volgende poort (12001), die op dit apparaat vrij moet zijn.\n- **Verbind PstRotator met zijn controller.** Tot dan antwoordt het niets via UDP.\n- **Laat het door de firewall** op de pc waarop PstRotator draait, en op dit apparaat, dat naar de antwoorden luistert.\n- **Op een Mac, iPhone of iPad** heeft Ham2K Logger toegang tot het lokale netwerk nodig (Instellingen → Privacy en beveiliging → Lokaal netwerk).';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'Huidige status: ${position}';
+	@override String get rotatorDisconnected => 'niet verbonden';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimut';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° elevatie';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'Wachten tot de controller zijn positie meldt…';
+	@override String get rotatorNotResponding => 'reageert niet';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'Draait naar ${heading}, zover de grenzen van deze rotor het toelaten';
+	@override String get rotatorTargetAzimuth => 'Draai naar azimut';
+	@override String get rotatorTargetAzimuthShort => 'Draai naar az';
+	@override String get rotatorTargetElevation => 'Draai naar elevatie';
+	@override String get rotatorTargetElevationShort => 'Draai naar el';
+	@override String get rotatorAzimuthInvalid => 'Moet 0 tot 360 zijn';
+	@override String get rotatorElevationInvalid => 'Moet 0 tot 180 zijn';
+	@override String get rotatorTurn => 'Draaien';
+	@override String get rotatorStop => 'Stop';
 	@override String get configUnreadable => 'De opgeslagen instellingen van deze radio konden niet worden gelezen. Open de instellingen en voer ze opnieuw in, of verwijder de radio en voeg hem opnieuw toe.';
 	@override String get autoConnectHeld => 'HaLo reageerde niet meer de vorige keer dat het met deze radio verbond, dus het heeft deze keer niet vanzelf verbonden. Druk op Verbinden om het opnieuw te proberen.';
 }
@@ -2537,7 +3020,7 @@ class _Translations$settings$profiles$nl extends Translations$settings$profiles$
 	@override String get name => 'Naam';
 	@override String get email => 'E-mail';
 	@override String get club => 'Club';
-	@override String get arrlSection => 'ARRL Sectie';
+	@override String get arrlSection => 'ARRL-sectie';
 	@override String get racSection => 'RAC Sectie';
 	@override String get section => 'Sectie';
 }
@@ -2562,6 +3045,11 @@ class _Translations$settings$developer$nl extends Translations$settings$develope
 	// Translations
 	@override String get developerModeDescription => 'Ontwikkelaarswaarschuwingen, debuglogs en hulpmiddelen inschakelen.';
 	@override String get experiments => 'Experimenten';
+	@override String get showIdleMetrics => 'Idle-statistieken tonen';
+	@override String get showIdleMetricsDescription => 'Toon in de statusbalk hoe idle de extensie-engine de afgelopen seconde was. Tik erop voor de gemiddelden over 10 en 60 seconden.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent}% idle';
+	@override String get idleMetricsAverages => 'Gem. idle:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}s ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
 		one: '${count} ingeschakeld',
 		other: '${count} ingeschakeld',
@@ -2609,7 +3097,7 @@ class _Translations$settings$developer$nl extends Translations$settings$develope
 	@override String get catalogDescription => 'De catalogus van een andere server lezen — een lokale tijdens het werken aan de catalogus zelf. Leeg betekent catalog.ham2k.net.';
 	@override String get catalogAddress => 'Catalogusadres';
 	@override String get catalogHint => 'http://localhost:8787';
-	@override String get catalogSearchTracks => 'Kanalen voor catalogus zoeken';
+	@override String get catalogSearchTracks => 'Zoekkanalen catalogus';
 	@override String get catalogSearchStable => 'Alleen stabiel';
 	@override String get catalogSearchUnstable => 'Onstabiel of beter';
 	@override String get catalogSearchBleeding => 'Bleeding of beter';
@@ -2644,7 +3132,7 @@ class _Translations$settings$panels$nl extends Translations$settings$panels$en {
 	@override String get extensionsDescription => 'Activiteiten, contests, dashboardpanelen en meer functies';
 	@override String get profilesDescription => 'Roepnaam van de operator en stationsprofiel';
 	@override String get stationProfiles => 'Stationsprofielen';
-	@override String get developerSettings => 'Ontwikkelaar Instellingen';
+	@override String get developerSettings => 'Ontwikkelaarsinstellingen';
 	@override String get developerSettingsDescription => 'Hulpmiddelen voor debuggen en ontwikkeling';
 	@override String get about => 'Over';
 	@override String get aboutDescription => 'Versie, credits en juridische informatie';
@@ -2676,6 +3164,183 @@ class _Translations$settings$gridPrecisionDescription$nl extends Translations$se
 	// Translations
 	@override String get six => '6 tekens';
 	@override String get eight => '8 tekens';
+}
+
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$nl extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'Het commandovenster openen';
+	@override String get toggleTheme => 'Wisselen tussen licht en donker';
+	@override String get toggleLanguage => 'Wisselen tussen Engels en Spaans';
+	@override String get fontScaleUp => 'Grotere tekst';
+	@override String get fontScaleDown => 'Kleinere tekst';
+	@override String get fontScaleReset => 'Normale tekstgrootte';
+	@override String get densityLooser => 'Ruimere indeling';
+	@override String get densityDenser => 'Compactere indeling';
+	@override String get densityAuto => 'Automatische indelingsdichtheid';
+	@override String get find => 'Zoeken in het logboek';
+	@override String keyerMessage({required Object n}) => 'Bericht ${n} verzenden';
+	@override String get keyboardMode => 'Toetsenbordmodus aan of uit';
+	@override String get ptt => 'Push-to-talk';
+	@override String get wipe => 'Het QSO dat je aan het loggen bent wissen';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$nl extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'Roepnamen typen';
+	@override String get escape => 'Stop met zenden, één stap terug, of sluiten';
+	@override String get enter => 'Het QSO loggen';
+	@override String get space => 'Volgend veld';
+	@override String get tab => 'Volgend of vorig veld';
+	@override String get arrows => 'Tussen velden, bedieningselementen en het logboek bewegen';
+	@override String get walk => 'Door het logboek bladeren, of naar het begin of einde gaan';
+	@override String get undo => 'Een wissen of verwijderen ongedaan maken';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$nl extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'Sneltoets toevoegen';
+	@override String get listening => 'Druk de toetsen voor de sneltoets in…';
+	@override String get listeningHint => 'Esc stopt het luisteren';
+	@override String get add => 'Toevoegen';
+	@override String refusedFixed({required Object keys}) => '${keys} hoort bij de logvelden of een venster en kan niet worden gewijzigd.';
+	@override String refusedCallsign({required Object keys}) => 'Met ${keys} worden roepnamen getypt. Houd er Cmd, Ctrl of Alt bij ingedrukt.';
+	@override String reserved({required Object keys}) => 'Het systeem kan ${keys} onderscheppen voordat de app het ziet.';
+	@override String already({required Object keys}) => '${keys} is al een van de toetsen van dit commando.';
+	@override String takeIt({required Object keys, required Object command}) => '${keys} overnemen van “${command}”';
+	@override String get resetDefault => 'Resetten naar standaard';
+	@override String get remove => 'Verwijderen';
+	@override String get commandLabel => 'Commando';
+	@override String get commandHint => 'Voer een geldig commando in, of meerdere commando\'s gescheiden door ";"';
+	@override String get removeCommand => 'Commando verwijderen';
+	@override String commandUnknown({required Object text}) => 'Geen enkel commando heet “${text}”';
+	@override String get noShortcuts => 'Nog geen toets';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$nl extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'Sneltoetsen opgeslagen in ${location}';
+	@override String exportFailed({required Object error}) => 'Kon de sneltoetsen niet exporteren: ${error}';
+	@override String importPickerFailed({required Object error}) => 'Kon het bestand niet openen: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} is geen sneltoetsenbestand dat deze app kan lezen: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})';
+	@override String get problemNotKeysFile => 'het is geen Ham2K-sneltoetsenbestand';
+	@override String get problemNewerVersion => 'het is geschreven door een nieuwere versie van de app';
+	@override String get problemMalformed => 'een deel ervan volgt het sneltoetsenformaat niet';
+	@override String get problemTooLarge => 'het is te groot';
+	@override String get importTitle => 'Sneltoetsen importeren';
+	@override String writtenOn({required Object platform}) => 'Geschreven op ${platform}.';
+	@override String get writtenOnUnknown => 'Het bestand zegt niet op welk toetsenbord het is geschreven.';
+	@override String get translate => 'Wat moet elk van deze toetsen op dit toetsenbord worden?';
+	@override String get leaveOut => 'Die sneltoetsen weglaten';
+	@override String get replace => 'Configuratie van dit apparaat vervangen';
+	@override String get replaceHint => 'Elke sneltoets die niet in het bestand staat, gaat terug naar de standaard.';
+	@override String get merge => 'Toevoegen aan de configuratie van dit apparaat';
+	@override String get mergeHint => 'De sneltoetsen uit het bestand vervangen die van dit apparaat voor dezelfde commando\'s; de rest blijft.';
+	@override String unknown({required Object commands}) => 'Onbekend in deze versie, dus weggelaten: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'Geen sneltoetsen, dus weggelaten: ${chords}';
+	@override String refusedChords({required Object chords}) => 'Toetsen die de app voor zichzelf houdt, dus weggelaten: ${chords}';
+	@override String conflicts({required Object keys}) => 'Na de import aan meer dan één commando gekoppeld: ${keys}';
+	@override String get importAction => 'Importeren';
+	@override String get imported => 'Sneltoetsen geïmporteerd';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$nl extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$nl extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$nl extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'Station roepnamen';
+	@override String get groupBy => 'Groeperen op';
+	@override String get period => 'Periode';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$nl extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'Niet gegroepeerd';
+	@override String get date => 'Datum';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => 'Onbekend continent';
+	@override String get unknownEntity => 'Onbekende entiteit';
+	@override String get unknownDate => 'Geen datum';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$nl extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'Deze maand';
+	@override String get last3Months => 'Laatste 3 maanden';
+	@override String get thisYear => 'Dit jaar';
+	@override String get lastYear => 'Vorig jaar';
+	@override String get allTime => 'Alle tijden';
+	@override String get custom => 'Aangepast bereik';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$nl extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => 'in ${span}';
+	@override String get custom => 'Aangepast bereik';
 }
 
 // Path: home.logs.columns
@@ -2734,6 +3399,72 @@ class _Translations$home$logs$import$nl extends Translations$home$logs$import$en
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} van ${total} geïmporteerd';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$nl extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'Standaard';
+	@override String untitledName({required Object number}) => 'Indeling ${number}';
+	@override String switcherLabel({required Object name}) => 'Indeling: ${name}';
+	@override String get menuNew => 'Nieuw…';
+	@override String get menuExport => 'Exporteren…';
+	@override String get menuImport => 'Importeren…';
+	@override String get menuTitle => 'Indelingen';
+	@override String get newTitle => 'Nieuwe indeling';
+	@override String get editTitle => 'Indeling bewerken';
+	@override String get edit => 'Bewerken';
+	@override String get duplicateCurrent => 'Huidige indeling dupliceren';
+	@override String get startFromDefault => 'Beginnen met de standaardindeling';
+	@override String get nameLabel => 'Naam';
+	@override String get descriptionLabel => 'Beschrijving';
+	@override String get create => 'Aanmaken';
+	@override String leaveEditTitle({required Object name}) => 'Wijzigingen in "${name}" opslaan?';
+	@override String get leaveEditBody => 'Deze indeling heeft wijzigingen die je niet hebt opgeslagen.';
+	@override String get discard => 'Weggooien';
+	@override String get deleteTitle => 'Deze indeling verwijderen?';
+	@override String deleteBody({required Object name}) => 'Weet je zeker dat je de indeling "${name}" wilt verwijderen?';
+	@override String get exportTitle => 'Indeling exporteren';
+	@override String get exportPick => 'Panelen om te exporteren';
+	@override String get tabSet => 'Tabbladgroep';
+	@override String get exportAction => 'Exporteren';
+	@override String exported({required Object location}) => 'Indeling opgeslagen in ${location}';
+	@override String exportFailed({required Object error}) => 'Kon de indeling niet exporteren: ${error}';
+	@override String get importTitle => 'Indeling importeren';
+	@override String importFromOtherView({required Object view}) => 'Gemaakt voor de weergave ${view}: panelen die alleen die weergave heeft, worden weggelaten.';
+	@override String get viewHome => 'Start';
+	@override String get viewOperation => 'Activatie';
+	@override String get viewLogs => 'Logboeken';
+	@override String get viewChase => 'Jagen';
+	@override String get importAsNew => 'Als nieuwe indeling';
+	@override String get importReplace => 'In plaats van deze indeling';
+	@override String get importAdd => 'Toegevoegd aan deze indeling';
+	@override String get importAddHint => 'De panelen komen in een nieuwe kolom rechts.';
+	@override String get importPick => 'Panelen om te importeren';
+	@override String get importReplaceSettings => 'Instellingen vervangen van panelen die hier al zijn ingesteld';
+	@override String get importAction => 'Importeren';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} is geen indeling die deze app kan lezen: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})';
+	@override String get problemNotLayoutFile => 'het is geen Ham2K-indelingsbestand';
+	@override String get problemNewerVersion => 'het is geschreven door een nieuwere versie van de app';
+	@override String get problemNoArrangement => 'het bevat geen opstelling';
+	@override String get problemMalformed => 'een deel ervan volgt het indelingsformaat niet';
+	@override String get problemTooLarge => 'het is te groot';
+	@override String importPickerFailed({required Object error}) => 'Kon het bestand niet openen: ${error}';
+	@override String importFailed({required Object error}) => 'Kon de indeling niet importeren: ${error}';
+	@override String duplicateFailed({required Object error}) => 'Kon de indeling niet kopiëren: ${error}';
+	@override String get importNothing => 'Geen paneel gekozen, dus er is niets geïmporteerd.';
+	@override String importSkipped({required Object panels}) => 'Weggelaten: ${panels}';
+	@override String importKeptPinned({required Object panels}) => '${panels} behouden: de opstelling voor kleine schermen kan niet zonder.';
+	@override String get notOffered => 'Niet beschikbaar in deze weergave';
+	@override String get alreadyPlaced => 'Al in deze indeling';
+	@override String needsExtension({required Object name}) => 'Vereist ${name}';
+	@override String get listRecoveredTitle => 'Namen van indelingen konden niet worden gelezen';
+	@override String get listRecoveredBody => 'De lijst met indelingen van deze weergave kon niet worden gelezen. Alle indelingen zijn er nog, genummerd in plaats van met hun naam.';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$nl extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$nl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -2745,6 +3476,11 @@ class _Translations$operation$layout$panels$nl extends Translations$operation$la
 	@override String get infoDescription => 'Wat we weten over het gewerkte station';
 	@override String get spotsDescription => 'Spots van de clusters en activiteitenprogramma\'s';
 	@override String get mapDescription => 'Waar de QSO\'s zijn';
+	@override String get summariesDescription => 'De statistieken en scores van de activatie, in de secties en volgorde die jij kiest';
+	@override String get summariesSections => 'Secties en volgorde';
+	@override String get summariesDays => 'Per dag';
+	@override String get summariesReset => 'Alles tonen';
+	@override String get summariesAllHidden => 'Alle secties zijn verborgen. Kies in de instellingen van dit paneel welke je wilt tonen.';
 	@override String get clockDescription => 'Een klok, in elke tijdzone';
 	@override String get clockFace => 'Wijzerplaat';
 	@override String get clockFaceLcd => 'LCD';
@@ -2810,7 +3546,7 @@ class _Translations$operation$layout$panels$nl extends Translations$operation$la
 	@override String get remoteScreenZoomOut => 'Uitzoomen';
 	@override String get remoteScreenStopped => 'Dat scherm of venster wordt niet meer getoond.';
 	@override String get remoteScreenCaptureFailed => 'Dat apparaat kon dat scherm niet vastleggen — mogelijk is toestemming voor schermopname nodig.';
-	@override String get remoteScreenNoAnswer => 'Dat apparaat reageerde niet. Mogelijk staat scherm delen niet aan.';
+	@override String get remoteScreenNoAnswer => 'Dat apparaat reageerde niet. Mogelijk staat schermdelen niet aan.';
 	@override String get remoteScreenNoMedia => 'Kon geen verbinding openen voor het beeld. Controleer de firewall op dit apparaat.';
 	@override String get solarDescription => 'Zonne- en geomagnetische omstandigheden, met propagatie per band';
 	@override String get solarUnreachable => 'hamqsl.com niet bereikbaar — geen netwerk? Straks nieuwe poging.';
@@ -2845,6 +3581,30 @@ class _Translations$operation$layout$panels$nl extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'hoge SWR';
+	@override String get rotatorDescription => 'Waar de antenne heen wijst, op een kaart rond het station. Tik op de kaart om te draaien.';
+	@override String get rotatorRotator => 'Rotor';
+	@override String rotatorAutoNamed({required Object name}) => 'Automatisch — ${name}';
+	@override String get rotatorAutoNone => 'Automatisch — nog geen rotor';
+	@override String get rotatorBeamWidth => 'Openingshoek';
+	@override String get rotatorBeamWidthDescription => 'In graden, getekend rond de richting. 0 tekent niets.';
+	@override String get rotatorLocation => 'Locatie';
+	@override String get rotatorLocationDescription => 'Een grid square, of een breedte- en lengtegraad, om de kaart op te centreren. Leeg gebruikt de locatie van de activatie.';
+	@override String get rotatorTheme => 'Thema';
+	@override String get rotatorThemeColor => 'Kleur';
+	@override String get rotatorThemeGray => 'Grijs';
+	@override String get rotatorThemeMuted => 'Gedempt';
+	@override String get rotatorGrayline => 'Grayline tonen';
+	@override String get rotatorNoRotator => 'Geen rotor om te tonen. Kies er een in de instellingen van dit paneel, of voeg er een toe onder Stationsconfiguratie.';
+	@override String get rotatorNoLocation => 'Geen locatie om een kaart op te centreren. Stel er een in via de instellingen van dit paneel.';
+	@override String get rotatorDisconnected => 'niet verbonden';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'reageert niet';
+	@override String get rotatorLocationInvalid => 'Kan de locatie in de instellingen van dit paneel niet lezen. Gebruik een grid square, of een breedte- en lengtegraad zoals 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'N';
+	@override String get rotatorEast => 'O';
+	@override String get rotatorSouth => 'Z';
+	@override String get rotatorWest => 'W';
 }
 
 // Path: operation.export.compactFileNames
@@ -2880,10 +3640,10 @@ class _Translations$operation$export$stash$nl extends Translations$operation$exp
 
 	// Translations
 	@override String get needsEmailTitle => 'Voeg eerst een e-mailadres toe';
-	@override String get needsEmailBody => 'Ham2K File Stash stuurt je bestanden naar het e-mailadres van je LoFi-account, en daarmee log je in op stash.ham2k.net. Je account heeft nog geen bevestigd adres — voeg het toe in Instellingen › Cloud-synchronisatie.';
-	@override String get openSyncSettings => 'Cloud-synchronisatie openen';
+	@override String get needsEmailBody => 'Ham2K\'s File Stash stuurt je bestanden naar het e-mailadres van je LoFi-account, en daarmee log je in op stash.ham2k.net. Je account heeft nog geen bevestigd adres — voeg het toe in Instellingen › Cloudsynchronisatie.';
+	@override String get openSyncSettings => 'Cloudsynchronisatie openen';
 	@override String get replaceTitle => 'Recente stash wordt vervangen';
-	@override String replaceBody({required Object name}) => 'Je hebt “${name}” minder dan 6 uur geleden verzonden en het is nog niet gedownload. Gratis accounts bewaren één stash tegelijk, dus nu verzenden vervangt het.';
+	@override String replaceBody({required Object name}) => 'Je hebt “${name}” minder dan 6 uur geleden verstuurd en het is nog niet gedownload. Gratis accounts bewaren één stash tegelijk, dus als je nu verstuurt, wordt die vervangen.';
 	@override String get replaceConfirm => 'Toch versturen';
 	@override String get failedTitle => 'Kon niet versturen naar Ham2K File Stash';
 	@override String get sentTitle => 'Verstuurd naar Ham2K File Stash';
@@ -2934,14 +3694,16 @@ class _Translations$operation$spots$filters$nl extends Translations$operation$sp
 	@override String get title => 'Spots filteren';
 	@override String get band => 'Band';
 	@override String get mode => 'Mode';
-	@override String get age => 'Leeftijd';
+	@override String get age => 'Ouderdom';
 	@override String get sources => 'Bronnen';
 	@override String get continent => 'Continent';
 	@override String get sorting => 'Sortering';
 	@override String get sortByTime => 'Op spottijd';
 	@override String get sortByFrequency => 'Op frequentie';
+	@override String get sortByWanted => 'Meest gezocht';
 	@override String get groupByBand => 'Groeperen per band';
 	@override String get groupCallsWithNotes => 'Roepnamen met notities groeperen';
+	@override String get alertingOnly => 'Alleen spots met meldingen';
 	@override String get sourceNoReply => 'Geen reactie';
 	@override String get sourceError => 'Fout';
 }
@@ -2953,7 +3715,7 @@ class _Translations$operation$spots$logConflict$nl extends Translations$operatio
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Logpaneel is bezet';
+	@override String get title => 'Logpaneel is in gebruik';
 	@override String get editingBody => 'Je bewerkt een gelogd QSO. Deze spot in plaats daarvan loggen, of teruggaan en de bewerking afmaken?';
 	@override String get composingBody => 'Je bent begonnen met het invoeren van een QSO. Deze spot in plaats daarvan loggen, of teruggaan en afmaken wat je aan het typen was?';
 	@override String get goBack => 'Teruggaan';
@@ -3006,7 +3768,7 @@ class _Translations$settings$logging$suggestDefaultOperator$nl extends Translati
 	// Translations
 	@override String get title => 'Operator voorstellen';
 	@override String get descriptionOn => 'Je roepnaam wordt als operator voorgesteld als een activatie onder een andere stationroepnaam loopt';
-	@override String get descriptionOff => 'De operator blijft leeg tenzij je hem invult';
+	@override String get descriptionOff => 'De operator blijft leeg tenzij je die invult';
 }
 
 // Path: settings.logging.showBearing
@@ -3016,7 +3778,7 @@ class _Translations$settings$logging$showBearing$nl extends Translations$setting
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Toon azimut';
+	@override String get title => 'Peiling tonen';
 	@override String get descriptionOn => 'Geschatte peiling naar station tonen';
 	@override String get descriptionOff => 'Geen peilingsinformatie tonen';
 }
@@ -3064,7 +3826,7 @@ class _Translations$settings$logging$defaultReport$nl extends Translations$setti
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Standaardrapport — spraak';
+	@override String get title => 'Standaardrapport — SSB';
 	@override String get description => 'Gebruikt als Verzonden of Ontvangen leeg blijft bij SSB, FM of AM';
 }
 
@@ -3098,7 +3860,7 @@ class _Translations$settings$logging$numbersRow$nl extends Translations$settings
 
 	// Translations
 	@override String get title => 'Cijferrij';
-	@override String get description => 'Toon een rij cijfertoetsen boven het toetsenbord tijdens het loggen';
+	@override String get description => 'Toont een rij cijfertoetsen boven het toetsenbord tijdens het loggen';
 }
 
 // Path: settings.logging.numbersRowExtra
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$nl extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$nl extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'geen roepnaam van de operator om mee in te loggen';
+	@override String get connectFailed => 'de node was niet bereikbaar';
+	@override String get needsPassword => 'de node vraagt een wachtwoord en er is er geen opgeslagen';
+	@override String get loginFailed => 'de node accepteerde de login niet';
+	@override String get disconnected => 'de node heeft de verbinding gesloten';
+	@override String get timeout => 'de node antwoordde niet';
+	@override String get off => 'Verbinden met cluster staat uit';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$nl extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$nl._(TranslationsNl root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$nl extends Translations$settings$radio
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'PTT bedienen met toetsenbord';
+	@override late final _Translations$settings$radio$pttKey$modes$nl modes = _Translations$settings$radio$pttKey$modes$nl._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$nl descriptions = _Translations$settings$radio$pttKey$descriptions$nl._(_root);
+	@override String get key => 'PTT-toets';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Zenden';
 }
@@ -3256,8 +4038,8 @@ class _Translations$settings$radio$cwMessages$nl extends Translations$settings$r
 	// Translations
 	@override String get title => 'CW-keyerberichten';
 	@override String get notSupported => 'De huidige radio ondersteunt geen CW-keying';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'Bericht (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Bericht ${n}';
 	@override String get labelField => 'Label';
 	@override String labelKey({required Object n}) => 'Label F${n}';
 	@override String get details => 'Details';
@@ -3271,7 +4053,10 @@ class _Translations$settings$radio$cwMessages$nl extends Translations$settings$r
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM-berichten';
 	@override String get setSaved => 'Mijn berichten';
-	@override String get repeat => 'Bericht #1 herhalen';
+	@override String get repeat => 'Bericht 1 herhalen';
+	@override String get repeatShort => 'M1 herhalen';
+	@override String get cooldown => 'Pauze vóór herhaling';
+	@override String cooldownSeconds({required Object n}) => '${n} seconden';
 	@override String get repeatWait => 'Herhalen';
 	@override String get keyboard => 'Typ om te verzenden';
 	@override String get keyboardField => 'Typ om te verzenden';
@@ -3294,14 +4079,27 @@ class _Translations$settings$radio$cwMessages$nl extends Translations$settings$r
 	@override String get helpCutDigits => 'Kiest de af te korten cijfers, tussen aanhalingstekens — 0 is T, 1 is A, 5 is E, 9 is N';
 	@override String get helpFullExample => 'Volledig voorbeeld:';
 	@override String get helpExample => 'Verzendt W1AW 5NN TT7';
-	@override String get helpEsmIntro => 'Met Enter verstuurt berichten aan verstuurt Enter berichten via hun functietoets, zoals N1MM doet. De set ESM-berichten begint met deze:';
+	@override String get helpEsmIntro => 'Als Enter verstuurt berichten aan staat, verstuurt Enter berichten via hun functietoets, zoals N1MM doet. De set ESM-berichten begint met deze:';
 	@override String get helpEsmCq => 'Bij Run roept Enter met een leeg roepnaamveld CQ';
 	@override String get helpEsmExchange => 'Je uitwisseling: na hun roepnaam bij Run, nadat ze reageren bij S&P';
-	@override String get helpEsmThanks => 'Bedankt, zodra het QSO gelogd is: de plaatshouders verwijzen naar het volgende QSO, niet naar dit';
+	@override String get helpEsmThanks => 'Bedankt, zodra het QSO gelogd is: qso is het QSO zoals gelogd, next het volgende';
 	@override String get helpEsmMyCall => 'Bij S&P je roepnaam aan het station dat je beantwoordt';
 	@override String get helpEsmHisCall => 'Bij Run hun roepnaam vóór je uitwisseling';
 	@override String get helpEsmAgain => 'Vraagt opnieuw als er niets van hun uitwisseling is opgenomen';
-	@override String get helpEsmStackThanks => 'Voorgestelde F3 voor //-stapels: TU gaat uit nadat het QSO gelogd is, dus het bedankt, roept dan het volgende gestapelde station en verstuurt je uitwisseling, of vraagt een gedeeltelijke roepnaam terug (TU KR?); als er niets over is, alleen TU';
+	@override String get helpEsmStackThanks => 'Voorgestelde F3 voor //-stapels: bedankt, roept dan het volgende gestapelde station en verstuurt je uitwisseling, of vraagt een gedeeltelijke roepnaam terug (TU KR?); als er niets over is, alleen TU';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$nl extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'Keyer';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => 'Spraak';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3314,7 +4112,7 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String get title => 'Spraak-keyerberichten';
 	@override String get notSupported => 'De huidige radio ondersteunt geen spraakberichten';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'Spraakgeheugen (${n})';
+	@override String messageTitle({required Object n}) => 'Spraakgeheugen ${n}';
 	@override String get labelField => 'Label';
 	@override String labelKey({required Object n}) => 'Label spraakgeheugen ${n}';
 	@override String durationSeconds({required Object n}) => '${n} s';
@@ -3323,7 +4121,7 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String get playButton => 'Afspelen';
 	@override String get recordButton => 'Opnemen';
 	@override String get stopButton => 'Stop';
-	@override String get repeat => 'Bericht #1 herhalen';
+	@override String get repeat => 'Bericht 1 herhalen';
 	@override String recordHelpTitle({required Object model}) => 'Opmerkingen bij ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Deze geheugens staan in de radio van ${device}. Hun namen en lengtes horen bij dat apparaat.';
 	@override String get namedOnRadio => 'Opgeslagen in de radio, waar ook de andere clients het zien.';
@@ -3340,6 +4138,89 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String recordingMemory({required Object label}) => '${label} opnemen';
 	@override String get doubtful => 'Heeft de radio het afgespeeld? Hij meldde meteen dat hij inactief was.';
 	@override String get recordOnRadio => 'Je moet de geheugens op de radio zelf opnemen.';
+	@override String get sets => 'Berichtenset';
+	@override String get soundFilesSet => 'Geluidsbestanden op deze computer';
+	@override String get openFileButton => 'Bestand openen';
+	@override String get newSet => 'Nieuwe set';
+	@override String get renameSet => 'Set hernoemen';
+	@override String get deleteSet => 'Set verwijderen';
+	@override String get newSetName => 'Naam';
+	@override String deleteSetConfirm({required Object name}) => '${name} en de bijbehorende opnames verwijderen? Dit kan niet ongedaan worden gemaakt.';
+	@override String get output => 'Audio naar';
+	@override String get input => 'Opnemen van';
+	@override String get outputRadio => 'Via netwerk naar de radio';
+	@override String get inputDefault => 'Systeemstandaard';
+	@override String get pickDevice => 'Kies een geluidsapparaat';
+	@override String deviceMissing({required Object name}) => '${name} (niet verbonden)';
+	@override String get lead => 'Vertraging na PTT aan';
+	@override String get tail => 'Vertraging vóór PTT uit';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => 'Luisteren';
+	@override String get notRecorded => 'Niet opgenomen';
+	@override String get unplayable => 'Kan dit bestand niet afspelen';
+	@override String get problemNoOutput => 'Kies eerst het geluidsapparaat dat de radio voedt voordat je een bericht afspeelt.';
+	@override String get problemOutputMissing => 'Het geluidsapparaat dat de radio voedt is niet verbonden.';
+	@override String get problemInputMissing => 'Het opnameapparaat is niet verbonden.';
+	@override String get problemDeviceFailed => 'Het geluidsapparaat ging niet open.';
+	@override String get problemNotRecorded => 'Dat bericht heeft nog geen opname.';
+	@override String get problemRecordingSilent => 'Er is niets gehoord van het opnameapparaat, dus het bericht is ongewijzigd gelaten. Controleer de ingang, en of de app de microfoon mag gebruiken.';
+	@override String get problemRadioAudioUnavailable => 'De radio neemt op dit moment geen audio van de app aan. Daarvoor is een netwerkverbinding met de radio nodig.';
+	@override String get problemSourceRefused => 'De radio wilde zijn zendaudio niet naar de app omschakelen, dus het bericht is gestopt. Stel de radio in om de audio van de app uit te zenden.';
+	@override String get problemCannotKey => 'Deze radio kan niet via CAT in zenden worden gezet, dus de computer kan er geen berichten in afspelen.';
+	@override String get problemUnplayable => 'Het bestand van dat bericht is geen geluidsbestand dat de app kan afspelen. Gebruik een WAV-, FLAC- of MP3-bestand, of neem het opnieuw op.';
+	@override String get problemRecordingFailed => 'De opname is afgebroken, dus het bericht is ongewijzigd gelaten. Controleer of het opnameapparaat nog verbonden is en of er ruimte op de schijf is.';
+	@override String get problemFileFailed => 'De opname kon niet op de plek van het bericht worden opgeslagen, dus het bericht is ongewijzigd gelaten.';
+	@override String problemWordsMissing({required Object words}) => 'Dat bericht heeft woorden nodig die je nog niet hebt opgenomen: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'Het sjabloon van dat bericht heeft een probleem: ${error}';
+	@override String get problemNoOperation => 'Berichten in je eigen woorden spelen af in een activatie, waar er een QSO is om ze voor uit te spreken.';
+	@override String get problemNothingSaid => 'Dat bericht zegt niets voor dit QSO.';
+	@override String get templateField => 'Uitspreken met mijn woorden';
+	@override String get templateHelp => 'Laat leeg om de opname af te spelen. Anders wordt het bericht uitgesproken met de woorden die je hebt opgenomen, per QSO ingevuld, met deze waarden:';
+	@override String get help => 'Help';
+	@override String get helpTitle => 'Berichten uitspreken met je eigen woorden';
+	@override String get helpFullExample => 'Een volledig bericht:';
+	@override String get helpExample => 'Hun roepnaam, hun rapport, en jouw opname van “QSL?”';
+	@override String get playOnRadio => 'Afspelen op radio';
+	@override String get templateHelpCall => 'Hun roepnaam';
+	@override String get templateHelpReport => 'Het rapport dat je ze geeft';
+	@override String get templateHelpMessage => 'De opname van bericht 2, afgespeeld zoals opgenomen';
+	@override String get voiced => 'Uitgesproken met je woorden';
+	@override String willSay({required Object words}) => 'Zegt: ${words}';
+	@override String willSayMissing({required Object words}) => 'Nog niet opgenomen: ${words}';
+	@override String get previewNoOperation => 'Open een activatie om te zien wat het gaat zeggen.';
+	@override String get wordsDescription => 'Gebruik je eigen stem voor roepnamen, cijfers en meer.';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$nl extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Woordopnames';
+	@override String get callField => 'Woorden voor operator';
+	@override String get intro => 'Neem elk woord of cijfer drie keer op, snel achter elkaar, zoals je het voor een roepnaam uitspreekt. Langere zinnen neem je maar één keer op.';
+	@override String get recordAll => 'Alles opnemen';
+	@override String get recordAllGuide => 'Lees elk woord drie keer achter elkaar, en een zin van meerdere woorden één keer, met een ademhaling tussen de regels. Druk na de laatste op Stop.';
+	@override String recordingOne({required Object word}) => 'Zeg “${word} ${word} ${word}” en druk dan op Stop.';
+	@override String recordingOnce({required Object words}) => 'Zeg “${words}” en druk dan op Stop.';
+	@override String get recorded => 'Opgenomen';
+	@override String get notRecorded => 'Niet opgenomen';
+	@override String get addPhrase => 'Zin toevoegen';
+	@override String get phraseField => 'Zin, zoals je die in een bericht schrijft';
+	@override String get deletePhrase => 'Zin verwijderen';
+	@override String get tryField => 'Probeer te zeggen';
+	@override String get pauseLetters => 'Pauze tussen letters';
+	@override String get pauseWords => 'Pauze tussen woorden';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'Snelheid';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'Geavanceerde instellingen';
+	@override String get splitSilent => 'Er is niets gehoord in de opname.';
+	@override String get splitNotThreeTakes => 'Kon geen drie opnames onderscheiden. Zeg het woord drie keer achter elkaar en probeer het opnieuw.';
+	@override String get splitLineCount => 'Kon niet elk woord in de opname terugvinden. Lees elk woord drie keer, met een ademhaling tussen de woorden.';
+	@override String get splitLinesTooClose => 'Kon de woorden niet uit elkaar houden. Laat een langere adempauze tussen de woorden.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3373,6 +4254,28 @@ class _Translations$settings$map$style$nl extends Translations$settings$map$styl
 
 	// Translations
 	@override String get title => 'Kaartstijl';
+}
+
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$nl extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Roepnamen tonen';
+	@override String get description => 'Elk QSO is een label met zijn roepnaam, in de kleur van zijn band';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$nl extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Grayline tonen';
+	@override String get description => 'Schaduwt de nachtzijde van de aarde, met de schemering als verloop';
 }
 
 // Path: settings.map.styleOpts
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$nl extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - Algemeen';
 	@override String get icomGeneric => 'Icom - Algemeen';
 	@override String get kenwoodGeneric => 'Kenwood - Algemeen';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$nl extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - Algemeen';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$nl extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'Radio bestuurd via rigctld';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$nl extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => 'Mijn radio';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
+	@override String get gs232a => 'Yaesu GS-232A rotorinterface';
+	@override String get pstRotator => 'PstRotator (UDP-besturing)';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$nl extends Translations$settings
 
 	// Translations
 	@override String get network => 'Netwerk/wifi';
+	@override String get secureNetwork => 'Beveiligd netwerk/wifi';
 	@override String get usbSerial => 'USB-serieel';
 	@override String get wifi => 'Netwerk/wifi';
 	@override String get bluetoothSerial => 'Bluetooth-serieel';
+	@override String get bleSerial => 'Bluetooth LE';
 	@override String get placeholder => 'Tijdelijk';
 }
 
@@ -3497,7 +4422,7 @@ class _Translations$settings$station$antennaTypes$nl extends Translations$settin
 	@override String get vertical => 'Verticaal';
 	@override String get yagiBeam => 'Yagi / Beam';
 	@override String get loop => 'Loop';
-	@override String get longWire => 'Long Wire / EFHW';
+	@override String get longWire => 'Langdraad / EFHW';
 	@override String get other => 'Andere';
 }
 
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$nl extends Transla
 	@override String get thunderstormWithHail => 'Onweer met hagel';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$nl extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Nee';
+	@override String get toggle => 'Schakelen';
+	@override String get hold => 'Vasthouden';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$nl extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Het toetsenbord bedient de PTT niet.';
+	@override String get toggle => 'In spraakmodes zet de PTT-toets de radio in zenden en haalt een tweede druk hem er weer uit. Na een minuut stopt het zenden vanzelf.';
+	@override String get hold => 'In spraakmodes zendt de radio zolang de PTT-toets ingedrukt blijft, maximaal een minuut.';
+}
+
 /// The flat map containing all translations for locale <nl>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3577,6 +4526,7 @@ extension on TranslationsNl {
 			'common.callsign' => 'Roepnaam',
 			'common.clear' => 'Wissen',
 			'common.dismiss' => 'Negeren',
+			'common.copyDetails' => 'Details kopiëren',
 			'common.expand' => 'Uitklappen',
 			'common.collapse' => 'Inklappen',
 			'onboarding.welcomeTitle' => 'Welkom bij Ham2K Portable Logger!',
@@ -3588,7 +4538,7 @@ extension on TranslationsNl {
 			'onboarding.next' => 'Volgende',
 			'onboarding.done' => 'Klaar',
 			'onboarding.callsignTitle' => 'Wat is je roepnaam?',
-			'onboarding.callsignBody' => 'Je hebt een zendmachtiging voor radioamateurs nodig om deze app nuttig te vinden',
+			'onboarding.callsignBody' => 'Zonder zendmachtiging als radioamateur heb je niet veel aan deze app',
 			'onboarding.callsignLabel' => 'Roepnaam van de operator',
 			'onboarding.alreadyHaveAccount' => 'Heb je al een account?',
 			'onboarding.foundSiblingTitle' => 'Een bestaand account koppelen?',
@@ -3604,6 +4554,12 @@ extension on TranslationsNl {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'Cloudsynchronisatie',
+			'onboarding.syncBody' => 'Ham2K Log Filer bewaart een back-up van je logboeken in de cloud en synchroniseert ze tussen alle apparaten waarop je Ham2K-apps gebruikt.',
+			'onboarding.syncPricing' => 'Het is gratis! Maar met een betaald abonnement gaat het sneller.',
+			'onboarding.syncLabel' => 'Cloudsynchronisatie inschakelen',
+			'onboarding.syncOffWarning' => 'LET OP: hierdoor is de kans groter dat je activatiegegevens kwijtraakt, bijvoorbeeld als je apparaat crasht of zoekraakt.',
+			'onboarding.notNow' => 'Niet nu',
 			'onboarding.consentTitle' => 'Gegevens & privacy',
 			'onboarding.consentUsageBody' => 'Om de app te verbeteren willen we prestatie-, crash- en gebruiksgegevens verzamelen.',
 			'onboarding.consentUsageLabel' => 'Deel app-gebruiksgegevens',
@@ -3613,10 +4569,11 @@ extension on TranslationsNl {
 			'startScreen.credits' => 'door KI2D en vrienden',
 			'testerOverlay.tape' => 'LET OP: IN AANBOUW',
 			'testerOverlay.warningTitle' => 'Aan deze app wordt nog gewerkt',
-			'testerOverlay.warningBody' => 'De meeste functies hebben een oneffen ondergrond en overal liggen struikelgevaren. Kijk regelmatig of er updates zijn.',
+			'testerOverlay.warningBody' => 'De meeste functies hebben nog een oneffen ondergrond en overal is struikelgevaar. Kijk regelmatig of er updates zijn.',
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Nieuw in build ${build}',
 			'testerOverlay.thanks' => 'Bedankt dat je je logboek op het spel zet om ons te helpen deze app beter te maken!',
 			'extensionsPanel.categoryActivity' => 'Activiteiten',
+			'extensionsPanel.categoryAward' => 'Awards',
 			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Roepnaam opzoeken',
 			'extensionsPanel.categorySpots' => 'Spotbronnen',
@@ -3627,14 +4584,24 @@ extension on TranslationsNl {
 			'extensionsPanel.noMatches' => 'Geen extensies gevonden',
 			'extensionsPanel.installFromFile' => 'Installeren uit bestand…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versie ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Schermafbeelding ${n} van ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Vorige schermafbeelding',
+			'extensionsPanel.nextScreenshot' => 'Volgende schermafbeelding',
+			'extensionsPanel.screenshotUnavailable' => 'Schermafbeelding niet beschikbaar',
 			'extensionsPanel.canReach' => 'Deze extensie kan contact maken met',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, via een live verbinding',
 			'extensionsPanel.canHoldLocalConnection' => 'Apparaten op je lokale netwerk, via een live verbinding',
 			'extensionsPanel.canUseLocation' => 'Je locatie',
 			'extensionsPanel.canReadRadio' => 'Je radio, om frequentie en mode uit te lezen',
 			'extensionsPanel.canControlRadio' => 'Je radio, om hem te bedienen en ermee te zenden — afstemmen, vermogen, CW, spraakgeheugens en PTT',
+			'extensionsPanel.canCommandRadioRaw' => 'Je radio, om hem elk commando in zijn eigen protocol te sturen — ook commando\'s die zenden of zijn instellingen wijzigen',
+			'extensionsPanel.canReadCluster' => 'Het DX-cluster, ingelogd als jij, om te lezen wat het stuurt',
+			'extensionsPanel.canSpotCluster' => 'Het DX-cluster, ingelogd als jij, om spots op jouw naam te plaatsen',
+			'extensionsPanel.canCommandCluster' => 'Het DX-cluster, ingelogd als jij, om het elk commando op jouw naam te sturen',
 			'extensionsPanel.canSetUserAgent' => 'Zich bij servers onder eigen naam identificeren',
-			'extensionsPanel.noCapabilities' => 'Ze vraagt niets buiten de app.',
+			'extensionsPanel.canChangeSettings' => 'Je instellingen, om ze via zijn commando\'s te wijzigen: elke instelling, ontwikkelaarsmodus en experimenten',
+			'extensionsPanel.noCapabilities' => 'Deze extensie vraagt niets buiten de app.',
 			'extensionsPanel.sandboxNote' => 'Extensies draaien in een sandbox: geen toegang tot je bestanden en geen netwerk buiten wat hier staat.',
 			'extensionsPanel.installAction' => 'Installeren',
 			'extensionsPanel.updateAction' => 'Bijwerken',
@@ -3642,7 +4609,7 @@ extension on TranslationsNl {
 			'extensionsPanel.installedBadge' => 'Geïnstalleerd',
 			'extensionsPanel.uninstallAction' => 'Verwijderen',
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => '${name} verwijderen?',
-			'extensionsPanel.uninstallBody' => 'Deze extensie en haar instellingen worden verwijderd. Je logboeken blijven onaangetast.',
+			'extensionsPanel.uninstallBody' => 'Deze extensie en de bijbehorende instellingen worden verwijderd. Je logboeken blijven ongemoeid.',
 			'extensionsPanel.installedMessage' => ({required Object name}) => '${name} geïnstalleerd',
 			'extensionsPanel.installDownloading' => 'Downloaden…',
 			'extensionsPanel.installWaiting' => 'Wachten op installatie…',
@@ -3650,7 +4617,7 @@ extension on TranslationsNl {
 			'extensionsPanel.installAwaitingApproval' => 'Wachten op je goedkeuring…',
 			'extensionsPanel.installAlreadyRunning' => ({required Object name}) => '${name} wordt al geïnstalleerd.',
 			'extensionsPanel.updatedTo' => ({required Object version}) => 'Bijgewerkt naar ${version}',
-			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installatie van ${name} is niet voltooid. Mogelijk moet je hem opnieuw installeren.',
+			'extensionsPanel.installIncomplete' => ({required Object name}) => 'De installatie van ${name} is niet voltooid. Mogelijk moet je die opnieuw installeren.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Kon ${name} niet verwijderen',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Gedownload van ${source}',
 			'extensionsPanel.dropHint' => 'Sleep een .h2kext-extensie hierheen om te installeren',
@@ -3701,20 +4668,29 @@ extension on TranslationsNl {
 			'extensionsPanel.restoreBusyBody' => 'De app is nog bezig je extensies in te stellen. We bieden deze opnieuw aan als je de app weer opent.',
 			'extensionsPanel.restoreRuntimeDeadBody' => 'We hebben ze opnieuw geïnstalleerd, maar je extensies wilden niet starten. Herstart de app om ze terug te krijgen.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} is ingetrokken',
-			'extensionsPanel.revokedBody' => 'De catalogus heeft deze versie ingetrokken, dus ze is uitgeschakeld.',
+			'extensionsPanel.revokedBody' => 'De catalogus heeft deze versie ingetrokken, dus is deze uitgeschakeld.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} is uitgeschakeld',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K heeft deze extensie voorlopig uitgeschakeld.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} is vervangen',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} neemt de plaats ervan in. Je kunt overstappen via Extensies.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Vervangen door ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Vervangen door ${name}, die je al hebt',
+			'extensionsPanel.replaceAction' => 'Vervangen',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'De instellingen gaan over naar ${replacement}, die je al hebt. Je logboeken blijven ongemoeid.',
 			'extensionsPanel.downloadHashMismatch' => 'Die download is niet de extensie die de catalogus beschreef.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'De catalogus heeft geen versie ${version} van ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'Die cataloguslink verwijst niet naar een extensieversie.',
 			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'De catalogus heeft geen release van ${key} op dat kanaal.',
 			'extensionsPanel.installFromLink' => 'Installeren via link',
-			'extensionsPanel.unstableReleaseWarning' => 'Dit is een onstabiele release die de uitgever nog niet af noemt. Ze kan zich vreemd gedragen en blijft onstabiele updates ontvangen.',
-			'extensionsPanel.bleedingReleaseWarning' => 'Dit is een bleeding-edge release: werk in uitvoering dat kan breken of zijn instellingen kan verliezen. Ze blijft bleeding-edge updates ontvangen.',
+			'extensionsPanel.unstableReleaseWarning' => 'Dit is een onstabiele release, die de uitgever nog niet als af beschouwt. Deze kan zich vreemd gedragen en blijft onstabiele updates ontvangen.',
+			'extensionsPanel.bleedingReleaseWarning' => 'Dit is een bleeding-edge-release: werk in uitvoering, dat kan breken of zijn instellingen kan verliezen. Deze blijft bleeding-edge-updates ontvangen.',
 			'extensionsPanel.channelUnstable' => 'Onstabiel',
 			'extensionsPanel.channelBleeding' => 'Bleeding',
 			'extensionsPanel.followsUnstable' => 'Ontvangt onstabiele en stabiele releases',
 			'extensionsPanel.followsBleeding' => 'Ontvangt bleeding-edge, onstabiele en stabiele releases',
 			'extensionsPanel.followStableAction' => 'Alleen stabiele releases volgen',
 			'extensionsPanel.revokedBadge' => 'Ingetrokken',
+			'extensionsPanel.forceDisabledBadge' => 'Uitgeschakeld door Ham2K',
 			'extensionsPanel.refusedBadge' => 'Niet geladen',
 			'extensionsPanel.downloadNotHttps' => 'Die download gaat niet via een beveiligde verbinding.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} was niet bereikbaar voor die extensie.',
@@ -3722,7 +4698,7 @@ extension on TranslationsNl {
 			'extensionsPanel.installedFromFile' => 'Geïnstalleerd uit een bestand',
 			'extensionsPanel.detailsWhatItDoes' => 'Biedt ondersteuning voor',
 			'extensionsPanel.installedPreloaded' => 'Voorgeïnstalleerd',
-			'extensionsPanel.hookAccount' => 'Accountaanmelding',
+			'extensionsPanel.hookAccount' => 'Inloggen bij account',
 			'extensionsPanel.hookCallNotes' => 'Roepnaamnotities',
 			'extensionsPanel.hookDataFile' => 'Offline gegevens',
 			'extensionsPanel.hookExport' => 'Exporteren',
@@ -3731,6 +4707,8 @@ extension on TranslationsNl {
 			'extensionsPanel.hookSpots' => 'Spots',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} jagen',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} activeren',
+			'extensionsPanel.suggestedSection' => 'Aanbevolen',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'Meer beschikbaar (${count})',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'Nieuwe activatie',
 			'home.stationCallsign' => 'Station roepnaam',
@@ -3762,6 +4740,23 @@ extension on TranslationsNl {
 			'home.logs.pendingDeleteBody' => 'Dit QSO is gemarkeerd om te verwijderen.',
 			'home.logs.editGone' => 'Niet opgeslagen: dat QSO staat niet meer in dit logboek.',
 			'home.logs.discard' => 'Weggooien',
+			'home.logs.sheet.callsigns' => 'Station roepnamen',
+			'home.logs.sheet.groupBy' => 'Groeperen op',
+			'home.logs.sheet.period' => 'Periode',
+			'home.logs.groupBy.none' => 'Niet gegroepeerd',
+			'home.logs.groupBy.date' => 'Datum',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Onbekend continent',
+			'home.logs.groupBy.unknownEntity' => 'Onbekende entiteit',
+			'home.logs.groupBy.unknownDate' => 'Geen datum',
+			'home.logs.period.thisMonth' => 'Deze maand',
+			'home.logs.period.last3Months' => 'Laatste 3 maanden',
+			'home.logs.period.thisYear' => 'Dit jaar',
+			'home.logs.period.lastYear' => 'Vorig jaar',
+			'home.logs.period.allTime' => 'Alle tijden',
+			'home.logs.period.custom' => 'Aangepast bereik',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'in ${span}',
+			'home.logs.periodTitle.custom' => 'Aangepast bereik',
 			'home.logs.columns.date' => 'Datum',
 			'home.logs.columns.time' => 'Tijd',
 			'home.logs.columns.freq' => 'Frequentie',
@@ -3813,7 +4808,7 @@ extension on TranslationsNl {
 			'chase.period.thisMonth' => 'Deze maand',
 			'chase.goals.title' => 'Jaagdoelen',
 			'chase.goals.remove' => ({required Object name}) => 'Stop met jagen op ${name}',
-			'chase.goals.extensionsTitle' => 'Extensies met jaagdoelen',
+			'chase.goals.extensionsTitle' => 'Meer jaagprogramma\'s',
 			'chase.panels.logging' => 'QSO\'s',
 			'chase.panels.loggingDescription' => 'Logbediening boven de QSO\'s die in de periode zijn gejaagd.',
 			'chase.panels.info' => 'Info',
@@ -3822,9 +4817,46 @@ extension on TranslationsNl {
 			'chase.panels.spotsDescription' => 'Gespotte stations in de lucht, klaar om te jagen.',
 			'chase.panels.map' => 'Kaart',
 			'chase.panels.mapDescription' => 'De QSO\'s van de periode en het station dat wordt gelogd.',
+			'chase.claims.checking' => 'QSO\'s controleren voor het jagen',
+			'chase.claims.rebuilding' => ({required Object program}) => 'Logboek controleren voor ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} van ${total} QSO\'s',
+			'chase.notice.newRef' => ({required Object program}) => 'Nieuwe ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'Waarschijnlijk nieuwe ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'Nieuwe ${program}-band',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'Waarschijnlijk nieuwe ${program}-band',
+			'chase.notice.newMode' => ({required Object program}) => 'Nieuwe ${program}-mode',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'Waarschijnlijk nieuwe ${program}-mode',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} onbevestigd',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Waarschijnlijk ${notice}',
+			'chase.alerts.title' => 'Meldingen',
+			'chase.alerts.newRef' => 'Nieuwe referentie',
+			'chase.alerts.newBand' => 'Nieuwe band',
+			'chase.alerts.newMode' => 'Nieuwe mode',
+			'chase.alerts.unconfirmed' => 'Onbevestigd',
+			'chase.checklists' => 'Voortgang jagen',
+			'chase.imports.importFrom' => ({required Object label}) => '${label} importeren',
+			'chase.imports.pickTitle' => ({required Object file}) => '${file} importeren als',
+			'chase.imports.dropHint' => 'Sleep een bestand hierheen om het in een jaagprogramma te importeren',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => '${count} ${program}-records geïmporteerd uit ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => '${count} ${program}-records geïmporteerd uit ${file}, ${skipped} onleesbare overgeslagen',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} bevat niets dat ${program} kan importeren',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} kon ${file} niet lezen',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => '${program} kon geen van de ${skipped} records in ${file} lezen',
+			'chase.imports.noProgram' => ({required Object file}) => 'Geen enkel jaagprogramma importeert ${file}',
 			'dialogs.operationDetails' => 'Activatiegegevens',
 			'dialogs.activities' => 'Activiteiten',
 			'dialogs.stationCallsign' => 'Station roepnaam',
+			'dialogs.advanced' => 'Geavanceerd',
+			'dialogs.operatingPosition' => 'Operatorpositie (multi-station)',
+			'dialogs.assistance' => 'Assistentie',
+			'dialogs.assistanceDescription' => 'Spotdiensten en andere informatiebronnen gebruiken',
+			'dialogs.selfSpotting' => 'Zelfspotten',
+			'dialogs.selfSpottingDescription' => 'Functies toestaan die je eigen frequentie doorgeven',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'Uitgeschakeld om aan de regels van ${rules} te voldoen',
+			'dialogs.lookupDespiteAssistance.title' => 'Online opzoeken?',
+			'dialogs.lookupDespiteAssistance.body' => 'Assistentie is uitgeschakeld voor deze activatie. Alle QSO\'s opzoeken gebruikt voor deze ene keer online diensten zoals QRZ.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'Assistentie is voor deze activatie uitgeschakeld om aan de regels van ${rules} te voldoen. Alle QSO\'s opzoeken gebruikt voor deze ene keer online diensten zoals QRZ.',
+			'dialogs.lookupDespiteAssistance.action' => 'Online opzoeken',
 			'dialogs.notes' => 'Notities',
 			'dialogs.deleteOperationTitle' => 'Activatie verwijderen',
 			'dialogs.purgeTestsTitle' => 'Testactivaties opruimen',
@@ -3848,7 +4880,7 @@ extension on TranslationsNl {
 			'dialogs.callChange.contactsUnreadable' => 'De QSO\'s van deze activatie konden niet worden gelezen, dus een roepnaamwijziging hier biedt niet aan ze bij te werken',
 			'dialogs.callChange.restampFailed' => ({required Object error}) => 'De reeds gelogde QSO\'s konden niet worden bijgewerkt, dus er is niets gewijzigd: ${error}',
 			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => '${written} van ${planned} QSO\'s zijn bijgewerkt — de rest hoort niet meer bij deze activatie',
-			'operation.deletedReadOnly' => 'Deze activatie is verwijderd. Herstel haar om te loggen of iets te wijzigen.',
+			'operation.deletedReadOnly' => 'Deze activatie is verwijderd. Herstel de activatie om te loggen of iets te wijzigen.',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSO\'s',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -3860,6 +4892,8 @@ extension on TranslationsNl {
 			'operation.tabs.remoteScreen' => 'Extern scherm',
 			'operation.tabs.solar' => 'Zon',
 			'operation.tabs.radio' => 'Radio',
+			'operation.tabs.rotator' => 'Rotor',
+			'operation.tabs.summaries' => 'Samenvattingen',
 			'operation.positions.nobodyYet' => 'Nog geen andere operatorposities delen deze activatie.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
@@ -3873,7 +4907,7 @@ extension on TranslationsNl {
 			'operation.deleteOperation' => 'Activatie verwijderen',
 			'operation.loggingControlsStale' => 'Activiteitsvelden zijn mogelijk verouderd — open de activatie opnieuw om ze te verversen',
 			'operation.locationNone' => 'Niet ingesteld',
-			'operation.generalOperation' => 'Algemene Activatie',
+			'operation.generalOperation' => 'Algemene activatie',
 			'operation.titleFor' => ({required Object value}) => 'voor ${value}',
 			'operation.titleAt' => ({required Object value}) => 'bij ${value}',
 			'operation.segmentNow' => ({required Object description}) => 'Nu ${description}',
@@ -3912,8 +4946,72 @@ extension on TranslationsNl {
 			'operation.layout.addPanel' => ({required Object panel}) => '${panel} toevoegen',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Voorbeeld ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Extensie "${name}" ontbreekt',
+			'operation.layout.missingExtensionEnable' => 'Inschakelen',
+			'operation.layout.missingExtensionInstall' => 'Installeren…',
+			'operation.layout.missingExtensionWontRun' => 'Deze versie start niet. Werk de extensie bij via Instellingen › Extensies.',
+			'operation.layout.missingExtensionUnavailable' => 'Niet beschikbaar in deze app',
+			'operation.layout.missingExtensionNotInCatalog' => 'Niet in de catalogus',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Catalogus niet bereikbaar. Probeer het opnieuw',
+			'operation.layout.missingExtensionFailed' => 'Dat is niet gelukt. Probeer het opnieuw',
 			'operation.layout.previewUnavailable' => 'De voorbeeldafbeelding van dit paneel kon niet worden getoond.',
 			'operation.layout.nestedPaneTitle' => 'Meer',
+			'operation.layout.layouts.defaultName' => 'Standaard',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Indeling ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Indeling: ${name}',
+			'operation.layout.layouts.menuNew' => 'Nieuw…',
+			'operation.layout.layouts.menuExport' => 'Exporteren…',
+			'operation.layout.layouts.menuImport' => 'Importeren…',
+			'operation.layout.layouts.menuTitle' => 'Indelingen',
+			'operation.layout.layouts.newTitle' => 'Nieuwe indeling',
+			'operation.layout.layouts.editTitle' => 'Indeling bewerken',
+			'operation.layout.layouts.edit' => 'Bewerken',
+			'operation.layout.layouts.duplicateCurrent' => 'Huidige indeling dupliceren',
+			'operation.layout.layouts.startFromDefault' => 'Beginnen met de standaardindeling',
+			'operation.layout.layouts.nameLabel' => 'Naam',
+			'operation.layout.layouts.descriptionLabel' => 'Beschrijving',
+			'operation.layout.layouts.create' => 'Aanmaken',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'Wijzigingen in "${name}" opslaan?',
+			'operation.layout.layouts.leaveEditBody' => 'Deze indeling heeft wijzigingen die je niet hebt opgeslagen.',
+			'operation.layout.layouts.discard' => 'Weggooien',
+			'operation.layout.layouts.deleteTitle' => 'Deze indeling verwijderen?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'Weet je zeker dat je de indeling "${name}" wilt verwijderen?',
+			'operation.layout.layouts.exportTitle' => 'Indeling exporteren',
+			'operation.layout.layouts.exportPick' => 'Panelen om te exporteren',
+			'operation.layout.layouts.tabSet' => 'Tabbladgroep',
+			'operation.layout.layouts.exportAction' => 'Exporteren',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Indeling opgeslagen in ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Kon de indeling niet exporteren: ${error}',
+			'operation.layout.layouts.importTitle' => 'Indeling importeren',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Gemaakt voor de weergave ${view}: panelen die alleen die weergave heeft, worden weggelaten.',
+			'operation.layout.layouts.viewHome' => 'Start',
+			'operation.layout.layouts.viewOperation' => 'Activatie',
+			'operation.layout.layouts.viewLogs' => 'Logboeken',
+			'operation.layout.layouts.viewChase' => 'Jagen',
+			'operation.layout.layouts.importAsNew' => 'Als nieuwe indeling',
+			'operation.layout.layouts.importReplace' => 'In plaats van deze indeling',
+			'operation.layout.layouts.importAdd' => 'Toegevoegd aan deze indeling',
+			'operation.layout.layouts.importAddHint' => 'De panelen komen in een nieuwe kolom rechts.',
+			'operation.layout.layouts.importPick' => 'Panelen om te importeren',
+			'operation.layout.layouts.importReplaceSettings' => 'Instellingen vervangen van panelen die hier al zijn ingesteld',
+			'operation.layout.layouts.importAction' => 'Importeren',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} is geen indeling die deze app kan lezen: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'het is geen Ham2K-indelingsbestand',
+			'operation.layout.layouts.problemNewerVersion' => 'het is geschreven door een nieuwere versie van de app',
+			'operation.layout.layouts.problemNoArrangement' => 'het bevat geen opstelling',
+			'operation.layout.layouts.problemMalformed' => 'een deel ervan volgt het indelingsformaat niet',
+			'operation.layout.layouts.problemTooLarge' => 'het is te groot',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Kon het bestand niet openen: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Kon de indeling niet importeren: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Kon de indeling niet kopiëren: ${error}',
+			'operation.layout.layouts.importNothing' => 'Geen paneel gekozen, dus er is niets geïmporteerd.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Weggelaten: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '${panels} behouden: de opstelling voor kleine schermen kan niet zonder.',
+			'operation.layout.layouts.notOffered' => 'Niet beschikbaar in deze weergave',
+			'operation.layout.layouts.alreadyPlaced' => 'Al in deze indeling',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'Vereist ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'Namen van indelingen konden niet worden gelezen',
+			'operation.layout.layouts.listRecoveredBody' => 'De lijst met indelingen van deze weergave kon niet worden gelezen. Alle indelingen zijn er nog, genummerd in plaats van met hun naam.',
 			'operation.layout.editLayout' => 'Indeling bewerken',
 			'operation.layout.saveLayout' => 'Indeling opslaan',
 			'operation.layout.revertLayout' => 'Indelingswijzigingen weggooien',
@@ -3922,12 +5020,28 @@ extension on TranslationsNl {
 			'operation.layout.layoutUnreadableBody' => 'Je opgeslagen indeling kon niet worden gelezen, dus de standaardopstelling wordt getoond. Je origineel wordt pas overschreven als je ervoor kiest deze te houden.',
 			'operation.layout.layoutUnreadableAction' => 'Deze indeling gebruiken',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} kon niet worden weergegeven',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: het stuurde meer dan ${max} tekens',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de afbeelding heeft meer dan ${max} elementen',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de afbeelding is meer dan ${max} niveaus diep genest',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kon niet worden weergegeven: de afbeelding staat niet op zichzelf',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} lagen',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} bedieningselementen',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een tekst in de scène is langer dan ${max} tekens',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de indeling is meer dan ${max} niveaus diep genest',
 			'operation.layout.panelRenderRetry' => 'Opnieuw proberen',
 			'operation.layout.panelActionFailed' => 'Die paneelactie is mislukt. Probeer het opnieuw.',
 			'operation.layout.panels.loggingDescription' => 'Het logboek en de invoervelden',
 			'operation.layout.panels.infoDescription' => 'Wat we weten over het gewerkte station',
 			'operation.layout.panels.spotsDescription' => 'Spots van de clusters en activiteitenprogramma\'s',
 			'operation.layout.panels.mapDescription' => 'Waar de QSO\'s zijn',
+			'operation.layout.panels.summariesDescription' => 'De statistieken en scores van de activatie, in de secties en volgorde die jij kiest',
+			'operation.layout.panels.summariesSections' => 'Secties en volgorde',
+			'operation.layout.panels.summariesDays' => 'Per dag',
+			'operation.layout.panels.summariesReset' => 'Alles tonen',
+			'operation.layout.panels.summariesAllHidden' => 'Alle secties zijn verborgen. Kies in de instellingen van dit paneel welke je wilt tonen.',
 			'operation.layout.panels.clockDescription' => 'Een klok, in elke tijdzone',
 			'operation.layout.panels.clockFace' => 'Wijzerplaat',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -4017,7 +5131,7 @@ extension on TranslationsNl {
 			'operation.layout.panels.remoteScreenZoomOut' => 'Uitzoomen',
 			'operation.layout.panels.remoteScreenStopped' => 'Dat scherm of venster wordt niet meer getoond.',
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'Dat apparaat kon dat scherm niet vastleggen — mogelijk is toestemming voor schermopname nodig.',
-			'operation.layout.panels.remoteScreenNoAnswer' => 'Dat apparaat reageerde niet. Mogelijk staat scherm delen niet aan.',
+			'operation.layout.panels.remoteScreenNoAnswer' => 'Dat apparaat reageerde niet. Mogelijk staat schermdelen niet aan.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'Kon geen verbinding openen voor het beeld. Controleer de firewall op dit apparaat.',
 			'operation.layout.panels.solarDescription' => 'Zonne- en geomagnetische omstandigheden, met propagatie per band',
 			'operation.layout.panels.solarUnreachable' => 'hamqsl.com niet bereikbaar — geen netwerk? Straks nieuwe poging.',
@@ -4052,9 +5166,33 @@ extension on TranslationsNl {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'hoge SWR',
+			'operation.layout.panels.rotatorDescription' => 'Waar de antenne heen wijst, op een kaart rond het station. Tik op de kaart om te draaien.',
+			'operation.layout.panels.rotatorRotator' => 'Rotor',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatisch — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Automatisch — nog geen rotor',
+			'operation.layout.panels.rotatorBeamWidth' => 'Openingshoek',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'In graden, getekend rond de richting. 0 tekent niets.',
+			'operation.layout.panels.rotatorLocation' => 'Locatie',
+			'operation.layout.panels.rotatorLocationDescription' => 'Een grid square, of een breedte- en lengtegraad, om de kaart op te centreren. Leeg gebruikt de locatie van de activatie.',
+			'operation.layout.panels.rotatorTheme' => 'Thema',
+			'operation.layout.panels.rotatorThemeColor' => 'Kleur',
+			'operation.layout.panels.rotatorThemeGray' => 'Grijs',
+			'operation.layout.panels.rotatorThemeMuted' => 'Gedempt',
+			'operation.layout.panels.rotatorGrayline' => 'Grayline tonen',
+			'operation.layout.panels.rotatorNoRotator' => 'Geen rotor om te tonen. Kies er een in de instellingen van dit paneel, of voeg er een toe onder Stationsconfiguratie.',
+			'operation.layout.panels.rotatorNoLocation' => 'Geen locatie om een kaart op te centreren. Stel er een in via de instellingen van dit paneel.',
+			'operation.layout.panels.rotatorDisconnected' => 'niet verbonden',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'reageert niet',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Kan de locatie in de instellingen van dit paneel niet lezen. Gebruik een grid square, of een breedte- en lengtegraad zoals 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'O',
+			'operation.layout.panels.rotatorSouth' => 'Z',
+			'operation.layout.panels.rotatorWest' => 'W',
 			'operation.layout.htmlPanelUnsupported' => 'Dit paneel heeft een webweergave nodig, die dit platform niet biedt',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Dit paneel heeft een sandbox nodig die de webversie niet kan bieden',
-			'operation.export.title' => 'Activatie-exports',
+			'operation.export.title' => 'Activatie exporteren',
 			'operation.export.syncedOperation' => 'Activatie is gesynchroniseerd',
 			'operation.export.unsyncedOperation' => 'Activatie heeft niet-gesynchroniseerde wijzigingen',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in deze activatie', other: '${count} QSO\'s in deze activatie', ), 
@@ -4078,8 +5216,6 @@ extension on TranslationsNl {
 			'operation.export.saveOne' => ({required Object name}) => '${name} opslaan',
 			'operation.export.shareOne' => ({required Object name}) => '${name} delen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exporteren',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} downloaden',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand naar Stash', other: '${count} bestanden naar Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand naar Stash', other: '${count} gecombineerde bestanden naar Stash', ), 
@@ -4100,10 +5236,10 @@ extension on TranslationsNl {
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} bestand gedownload', other: '${count} bestanden gedownload', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export mislukt: ${error}',
 			'operation.export.stash.needsEmailTitle' => 'Voeg eerst een e-mailadres toe',
-			'operation.export.stash.needsEmailBody' => 'Ham2K File Stash stuurt je bestanden naar het e-mailadres van je LoFi-account, en daarmee log je in op stash.ham2k.net. Je account heeft nog geen bevestigd adres — voeg het toe in Instellingen › Cloud-synchronisatie.',
-			'operation.export.stash.openSyncSettings' => 'Cloud-synchronisatie openen',
+			'operation.export.stash.needsEmailBody' => 'Ham2K\'s File Stash stuurt je bestanden naar het e-mailadres van je LoFi-account, en daarmee log je in op stash.ham2k.net. Je account heeft nog geen bevestigd adres — voeg het toe in Instellingen › Cloudsynchronisatie.',
+			'operation.export.stash.openSyncSettings' => 'Cloudsynchronisatie openen',
 			'operation.export.stash.replaceTitle' => 'Recente stash wordt vervangen',
-			'operation.export.stash.replaceBody' => ({required Object name}) => 'Je hebt “${name}” minder dan 6 uur geleden verzonden en het is nog niet gedownload. Gratis accounts bewaren één stash tegelijk, dus nu verzenden vervangt het.',
+			'operation.export.stash.replaceBody' => ({required Object name}) => 'Je hebt “${name}” minder dan 6 uur geleden verstuurd en het is nog niet gedownload. Gratis accounts bewaren één stash tegelijk, dus als je nu verstuurt, wordt die vervangen.',
 			'operation.export.stash.replaceConfirm' => 'Toch versturen',
 			'operation.export.stash.failedTitle' => 'Kon niet versturen naar Ham2K File Stash',
 			'operation.export.stash.sentTitle' => 'Verstuurd naar Ham2K File Stash',
@@ -4129,6 +5265,7 @@ extension on TranslationsNl {
 			'operation.spots.phoneAndCw' => 'SSB & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => '${count} van ${total} spots getoond',
+			'operation.spots.spotsDisabled' => 'Spots uitgeschakeld voor deze activatie',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minuten',
 			'operation.spots.callsOfNote' => 'Opmerkelijke roepnamen',
 			'operation.spots.yourSpots' => 'Jouw spots',
@@ -4143,24 +5280,26 @@ extension on TranslationsNl {
 			'operation.spots.filters.title' => 'Spots filteren',
 			'operation.spots.filters.band' => 'Band',
 			'operation.spots.filters.mode' => 'Mode',
-			'operation.spots.filters.age' => 'Leeftijd',
+			'operation.spots.filters.age' => 'Ouderdom',
 			'operation.spots.filters.sources' => 'Bronnen',
 			'operation.spots.filters.continent' => 'Continent',
 			'operation.spots.filters.sorting' => 'Sortering',
 			'operation.spots.filters.sortByTime' => 'Op spottijd',
 			'operation.spots.filters.sortByFrequency' => 'Op frequentie',
+			'operation.spots.filters.sortByWanted' => 'Meest gezocht',
 			'operation.spots.filters.groupByBand' => 'Groeperen per band',
 			'operation.spots.filters.groupCallsWithNotes' => 'Roepnamen met notities groeperen',
+			'operation.spots.filters.alertingOnly' => 'Alleen spots met meldingen',
 			'operation.spots.filters.sourceNoReply' => 'Geen reactie',
 			'operation.spots.filters.sourceError' => 'Fout',
 			'operation.spots.unavailableTitle' => 'Spots niet beschikbaar',
-			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} reageerde niet.',
+			'operation.spots.unavailableText' => ({required Object sources}) => 'Geen reactie van ${sources}.',
 			'operation.spots.failedTitle' => 'Fout bij spotbron',
-			'operation.spots.failedText' => ({required Object sources}) => '${sources} gaf een fout terug.',
+			'operation.spots.failedText' => ({required Object sources}) => 'Foutmelding van ${sources}.',
 			'operation.spots.slideLogIt' => 'Loggen',
 			'operation.spots.slideIgnore' => 'Negeren',
-			'operation.spots.slideRestore' => 'Herstellen',
-			'operation.spots.logConflict.title' => 'Logpaneel is bezet',
+			'operation.spots.slideRestore' => 'Terugzetten',
+			'operation.spots.logConflict.title' => 'Logpaneel is in gebruik',
 			'operation.spots.logConflict.editingBody' => 'Je bewerkt een gelogd QSO. Deze spot in plaats daarvan loggen, of teruggaan en de bewerking afmaken?',
 			'operation.spots.logConflict.composingBody' => 'Je bent begonnen met het invoeren van een QSO. Deze spot in plaats daarvan loggen, of teruggaan en afmaken wat je aan het typen was?',
 			'operation.spots.logConflict.goBack' => 'Teruggaan',
@@ -4180,7 +5319,7 @@ extension on TranslationsNl {
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
 			'operation.import.n1mmAddressValue' => 'Alle (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
-			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → tabblad Broadcast Data → vink "Enable Broadcasts" aan voor contact info. Stel het IP-adres in op 127.0.0.1 als het op deze computer draait, of 255.255.255.255 om op het huidige lokale netwerk uit te zenden.',
+			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → tabblad Broadcast Data → vink "Enable Broadcasts" aan voor contactinfo. Stel het IP-adres in op 127.0.0.1 als het op deze computer draait, of 255.255.255.255 om op het huidige lokale netwerk uit te zenden.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → tabblad Reporting → sectie UDP Server → vink "Accept UDP requests" aan. Stel UDP Server in op 127.0.0.1 als het op deze computer draait, of op een multicastadres zoals 239.239.0.2, en gebruik hetzelfde adres in de configuratie hierboven in deze app.',
 			'operation.import.listenTitle' => 'Luisteren naar QSO\'s van andere apps',
 			'operation.import.listenDescriptionOnN1mm' => 'Luistert naar N1MM+',
@@ -4227,6 +5366,7 @@ extension on TranslationsNl {
 			'map.globe' => 'Globe',
 			'map.zoomIn' => 'Inzoomen',
 			'map.zoomOut' => 'Uitzoomen',
+			'map.resetNorth' => 'Noorden weer boven',
 			'map.postcard.button' => 'Activatie-ansichtkaart',
 			'map.postcard.title' => ({required Object title}) => 'Ansichtkaart voor ${title}',
 			'map.postcard.portrait' => 'Staand',
@@ -4249,7 +5389,12 @@ extension on TranslationsNl {
 			'map.postcard.previousPage' => 'Vorige pagina',
 			'map.postcard.nextPage' => 'Volgende pagina',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Pagina ${page} van ${count}',
-			'map.postcard.sectionDays' => 'Elke dag',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
+			'map.postcard.options' => 'Ansichtkaartopties',
+			'map.postcard.bandLegend' => 'Bandlegenda tonen',
+			'map.postcard.grayline' => 'Grayline tonen',
+			'map.postcard.sectionsAndOrder' => 'Secties en volgorde van de samenvatting',
+			'map.postcard.sectionDays' => 'Per dag',
 			'map.postcard.reset' => 'Resetten',
 			'map.postcard.failed' => ({required Object error}) => 'Kon de ansichtkaart niet maken: ${error}',
 			'map.postcard.mapNotReady' => 'De kaart is niet volledig geladen. Controleer de verbinding en probeer het opnieuw.',
@@ -4301,12 +5446,12 @@ extension on TranslationsNl {
 			'activitiesView.locationSettingsUnavailable' => 'Sta locatietoegang toe in je systeeminstellingen',
 			'activitiesView.locationGrantRefused' => 'Nog steeds geen locatie — het systeem weigerde opnieuw',
 			'activitiesView.searchUnavailableTitle' => 'Activiteiten zoeken niet beschikbaar',
-			'activitiesView.searchUnavailableReason' => 'Geen activiteitsextensie kon de zoekopdracht uitvoeren. Probeer het zo opnieuw.',
+			'activitiesView.searchUnavailableReason' => 'Een activiteitsextensie kon de zoekopdracht niet beantwoorden. Probeer het zo opnieuw.',
 			'activitiesView.emptySheet' => 'Gebruik suggesties & zoeken hieronder om er een toe te voegen',
-			'activitiesView.exports' => 'Exports',
+			'activitiesView.exports' => 'Exporteren',
 			'activitiesView.exportLogs' => 'Logboeken exporteren',
-			'activitiesView.tools' => 'Gereedschap',
-			'activitiesView.toolsTitle' => 'Activatiegereedschap',
+			'activitiesView.tools' => 'Hulpmiddelen',
+			'activitiesView.toolsTitle' => 'Activatiehulpmiddelen',
 			'activitiesView.operationDetails' => 'Activatiegegevens',
 			'activitiesView.share' => 'Delen',
 			'activitiesView.archive' => 'Archiveren',
@@ -4327,7 +5472,7 @@ extension on TranslationsNl {
 			'activitiesView.installExtensionHint' => 'Deze extensie past bij je zoekopdracht, maar is niet geïnstalleerd',
 			'activitiesView.onlyCatalogMatches' => 'Geen resultaten\nSommige extensies in de catalogus hebben mogelijk resultaten.\nInstalleer ze hieronder bij Activiteitstypen.',
 			'activitiesView.setupUnavailable' => 'Kon de instellingen van deze activiteit niet laden — probeer het opnieuw via Beheren',
-			'activitiesView.controlsUnavailableTitle' => 'Activiteitsbediening niet beschikbaar',
+			'activitiesView.controlsUnavailableTitle' => 'Activiteitsvelden niet beschikbaar',
 			'activitiesView.controlsUnavailableReason' => 'Je referenties zijn veilig, maar ze bewerken is nu niet mogelijk.',
 			'activitiesView.controlsUnavailableRetry' => 'Opnieuw proberen',
 			'activitiesView.onlyDisabledMatches' => 'Geen resultaten\nSommige beschikbare extensies hebben mogelijk resultaten.\nSchakel ze hieronder in bij Activiteitstypen.',
@@ -4338,10 +5483,14 @@ extension on TranslationsNl {
 			'activitiesView.addToOperationShort' => 'Toevoegen',
 			'activitiesView.mapEmptyState' => 'Geen resultaten om op de kaart te tonen',
 			'activitiesView.mapEmptyStateHint' => 'Ga terug naar de lijst, of zoek iets anders',
-			'activitiesView.imports' => 'Imports',
+			'activitiesView.imports' => 'Importeren',
 			'loggingControls.timeUtc' => 'Tijd (UTC)',
 			'loggingControls.date' => 'Datum',
 			'loggingControls.now' => 'Nu',
+			'loggingControls.manualTimeSettings' => 'Handmatige tijd',
+			'loggingControls.manualTimeIncrement' => 'Stap per QSO',
+			'loggingControls.manualTimeIncrementNone' => 'Geen',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} minuut', other: '${count} minuten', ), 
 			'loggingControls.frequency' => 'Frequentie',
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.theirCall' => 'Hun roepnaam',
@@ -4370,15 +5519,30 @@ extension on TranslationsNl {
 			'loggingControls.controlSettings' => 'Logbediening',
 			'loggingControls.spottingControl' => 'Spotten',
 			'loggingControls.spottingSelfControl' => 'Zelfspotten',
-			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Zelfspot op ${freq}',
+			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Zelfspotten op ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} op ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Te laat om ${call} te spotten',
 			'loggingControls.spotNoFreq' => 'Stel eerst een frequentie in om te spotten',
+			'loggingControls.selfSpotDisabled' => 'Zelfspotten uitgeschakeld',
 			'loggingControls.spotComment' => 'Opmerking',
+			'loggingControls.spottingAutoControl' => 'Auto-respot',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Herhaal elke ${minutes} min',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stoppen?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto in ${seconds}',
+			'loggingControls.spotAutoNotStarted' => 'Auto-respot niet gestart: de spot is niet doorgekomen',
+			'loggingControls.spotAutoMoved' => 'Auto-respot niet gestart: de frequentie veranderde tijdens het spotten',
+			'loggingControls.spotAutoStopped' => 'Auto-respot gestopt',
+			'loggingControls.spotAutoLeftFreq' => 'Auto-respot gestopt: de frequentie is veranderd',
+			'loggingControls.spotAutoNoFreq' => 'Auto-respot gestopt: de radio meldt geen frequentie',
+			'loggingControls.spotBusy' => 'Er wordt nog een andere spot verstuurd',
 			'loggingControls.bandOrFreqRequired' => 'Stel een frequentie of band in voordat je logt',
 			'loggingControls.missingBand' => 'Geen band',
 			'loggingControls.missingMode' => 'Geen mode',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kon niet opslaan: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kon niet verwijderen: ${error}',
 			'loggingControls.info.noQsos' => 'Nog geen QSO\'s… Laten we starten!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4407,6 +5571,7 @@ extension on TranslationsNl {
 			'loggingControls.info.noticeInvalidMode' => 'Verkeerde mode',
 			'loggingControls.info.noticeInvalidBand' => 'Verkeerde band',
 			'loggingControls.info.noticeInvalidCategory' => 'Niet werkbaar',
+			'loggingControls.info.noticeOverTime' => 'Tijd voorbij',
 			'loggingControls.info.noticeWorkedBefore' => 'Eerder gewerkt',
 			'loggingControls.info.noticeNewPark' => 'Nieuw park',
 			'loggingControls.info.noticeNewSection' => 'Nieuwe sectie',
@@ -4414,6 +5579,7 @@ extension on TranslationsNl {
 			'loggingControls.info.noticeMissingExchange' => 'Geen uitwisseling',
 			'loggingControls.info.noticeInvalidExchange' => 'Foute uitwisseling',
 			'loggingControls.info.noticeUnknownEvent' => 'Onbekend evenement',
+			'loggingControls.info.noticeIncompleteCall' => 'Onvolledige roepnaam — niet geteld',
 			'loggingControls.info.noticeOurGrid' => 'Stel ons grid in',
 			'loggingControls.info.noticeRareCounty' => 'Zeldzame county!',
 			'loggingControls.info.noticeOurLocation' => 'Stel onze county in',
@@ -4438,7 +5604,8 @@ extension on TranslationsNl {
 			'formChrome.transformationError' => ({required Object error}) => 'Transformatiefout: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Fout: ${error}',
 			'formChrome.removeItem' => 'Verwijderen',
-			'formChrome.storageUnavailable' => 'Aanmeldgegevens niet beschikbaar',
+			'formChrome.deleteItemTitle' => ({required Object name}) => '${name} verwijderen?',
+			'formChrome.storageUnavailable' => 'Inloggegevens niet beschikbaar',
 			'qsoEditForm.title' => 'QSO bewerken',
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Positie',
@@ -4456,7 +5623,7 @@ extension on TranslationsNl {
 			'qsoEditForm.theirEntity' => 'Entiteit',
 			'qsoEditForm.theirCqZone' => 'CQ-zone',
 			'qsoEditForm.theirItuZone' => 'ITU-zone',
-			'qsoEditForm.theirArrlSection' => 'ARRL Sectie',
+			'qsoEditForm.theirArrlSection' => 'ARRL-sectie',
 			'qsoEditForm.theirLat' => 'Breedtegraad',
 			'qsoEditForm.theirLon' => 'Lengtegraad',
 			'qsoEditForm.theirPower' => 'Hun vermogen',
@@ -4465,7 +5632,17 @@ extension on TranslationsNl {
 			'qsoList.today' => 'Vandaag',
 			'qsoList.yesterday' => 'Gisteren',
 			'qsoList.tomorrow' => 'Morgen',
-			'loggingPanel.stats' => 'Activatie statistieken',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Zoeken in logboek (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Zoeken in logboek',
+			'qsoList.find.hint' => 'QSO-nummer of roepnaam',
+			'qsoList.find.noMatches' => 'Geen resultaat',
+			'qsoList.find.noOperationQsos' => 'Geen QSO\'s in deze activatie',
+			'qsoList.find.noPeriodQsos' => 'Geen QSO\'s in deze periode',
+			'qsoList.find.outsideQsosOne' => '1 QSO buiten deze activatie',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} QSO\'s buiten deze activatie',
+			'qsoList.find.pastQsosOne' => '1 eerder QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} eerdere QSO\'s',
+			'loggingPanel.stats' => 'Activatiestatistieken',
 			'loggingPanel.scoring' => 'Puntentelling',
 			'loggingPanel.dxccEntities' => 'DXCC-entiteiten',
 			'loggingPanel.statesWorked' => 'Staten',
@@ -4488,7 +5665,7 @@ extension on TranslationsNl {
 			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSO\'s in andere activaties',
 			'callInfo.andMore' => ({required Object count}) => '… en ${count} meer',
 			'callInfo.withCall' => ({required Object call}) => 'met ${call}',
-			'callInfo.fromOperation' => ({required Object where}) => 'van ${where}',
+			'callInfo.fromOperation' => ({required Object where}) => 'uit ${where}',
 			'callInfo.history.last7days' => ({required Object n}) => '${n} in de laatste 7 dagen',
 			'callInfo.history.today' => ({required Object n}) => '${n} vandaag',
 			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${n} QSO', other: '${n} QSO\'s', ), 
@@ -4500,8 +5677,8 @@ extension on TranslationsNl {
 			'settings.theme.light' => 'Licht',
 			'settings.theme.dark' => 'Donker',
 			'settings.themeDescription.system' => 'Volgt de systeeminstellingen',
-			'settings.themeDescription.light' => 'Altijd in Lichte Modus',
-			'settings.themeDescription.dark' => 'Altijd in Donkere Modus',
+			'settings.themeDescription.light' => 'Altijd in lichte modus',
+			'settings.themeDescription.dark' => 'Altijd in donkere modus',
 			'settings.fontScale' => 'Lettergrootte',
 			'settings.fontScaleOpts.smallestMinusMinus' => 'Kleinste--',
 			'settings.fontScaleOpts.smallestMinus' => 'Kleinste-',
@@ -4541,8 +5718,8 @@ extension on TranslationsNl {
 			'settings.logging.countryFlagsDescription.none' => 'Geen vlaggen tonen',
 			'settings.logging.suggestDefaultOperator.title' => 'Operator voorstellen',
 			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Je roepnaam wordt als operator voorgesteld als een activatie onder een andere stationroepnaam loopt',
-			'settings.logging.suggestDefaultOperator.descriptionOff' => 'De operator blijft leeg tenzij je hem invult',
-			'settings.logging.showBearing.title' => 'Toon azimut',
+			'settings.logging.suggestDefaultOperator.descriptionOff' => 'De operator blijft leeg tenzij je die invult',
+			'settings.logging.showBearing.title' => 'Peiling tonen',
 			'settings.logging.showBearing.descriptionOn' => 'Geschatte peiling naar station tonen',
 			'settings.logging.showBearing.descriptionOff' => 'Geen peilingsinformatie tonen',
 			'settings.logging.showReverseBearing.title' => 'Ook tegenpeiling tonen',
@@ -4554,14 +5731,14 @@ extension on TranslationsNl {
 			'settings.logging.jumpAfterRST.title' => 'Ga naar volgende veld bij RST-invoer',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'Na RST naar het volgende veld springen',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'Niet automatisch springen',
-			'settings.logging.defaultReport.title' => 'Standaardrapport — spraak',
+			'settings.logging.defaultReport.title' => 'Standaardrapport — SSB',
 			'settings.logging.defaultReport.description' => 'Gebruikt als Verzonden of Ontvangen leeg blijft bij SSB, FM of AM',
 			'settings.logging.defaultReportCW.title' => 'Standaardrapport — CW en data',
 			'settings.logging.defaultReportCW.description' => 'Gebruikt als Verzonden of Ontvangen leeg blijft bij CW, RTTY en andere datamodes',
 			'settings.logging.defaultReportFT8.title' => 'Standaardrapport — FT8 en FT4',
 			'settings.logging.defaultReportFT8.description' => 'Gebruikt als Verzonden of Ontvangen leeg blijft bij de FT-modes',
 			'settings.logging.numbersRow.title' => 'Cijferrij',
-			'settings.logging.numbersRow.description' => 'Toon een rij cijfertoetsen boven het toetsenbord tijdens het loggen',
+			'settings.logging.numbersRow.description' => 'Toont een rij cijfertoetsen boven het toetsenbord tijdens het loggen',
 			'settings.logging.numbersRowExtra.title' => 'Schuine streep- en punttoets',
 			'settings.logging.numbersRowExtra.description' => 'Voegt een contextuele toets toe: “/” voor roepnamen, “.” voor getallen',
 			'settings.logging.numbersRowVibrate.title' => 'Trillen bij toetsaanslag',
@@ -4580,20 +5757,71 @@ extension on TranslationsNl {
 			'settings.catServer.openAccess' => 'Open toegang',
 			'settings.catServer.openAccessOn' => 'Elke computer op het lokale netwerk kan verbinden.',
 			'settings.catServer.openAccessOff' => 'Alleen apps op deze computer kunnen verbinden.',
+			'settings.catServer.allowTransmit' => 'Apps laten zenden',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'Apps kunnen de PTT van de radio schakelen, telkens maximaal ${minutes} minuten.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'Apps op elke computer op het lokale netwerk kunnen de PTT van de radio schakelen, telkens maximaal ${minutes} minuten.',
+			'settings.catServer.allowTransmitOff' => 'Apps kunnen de PTT van de radio niet schakelen. Gebruik VOX of hun eigen PTT-oplossing.',
+			'settings.catServer.allowTransmitUnsupported' => 'De PTT van de hoofd-VFO-radio kan niet vanuit Ham2K Logger worden geschakeld, dus apps kunnen er niet mee zenden.',
 			'settings.catServer.off' => 'Uit.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, wordt gestart…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} op poort ${port}. Verbonden clients: ${clients}.',
-			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} op poort ${port}, maar er is geen Main VFO-radio verbonden.',
+			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} op poort ${port}, maar er is geen hoofd-VFO-radio verbonden.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} kan niet luisteren op poort ${port}: ${error}',
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: een ander programma gebruikt die, vaak ${protocol} zelf. Sluit dat programma of kies een andere poort.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: deze computer staat dat niet toe. Kies een poort boven 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} is gestopt met luisteren op poort ${port}. Nieuwe poging…',
+			'settings.cluster.title' => 'DX-cluster',
+			'settings.cluster.description' => 'De server waar extensies spots plaatsen en lezen, ingelogd als de operator.',
+			'settings.cluster.connect' => 'Verbinden met cluster',
+			'settings.cluster.connectOn' => 'Extensies verbinden met het cluster wanneer ze het nodig hebben',
+			'settings.cluster.connectOff' => 'Niets verbindt met het cluster',
+			'settings.cluster.console' => 'Console tonen',
+			'settings.cluster.consoleDescription' => 'Wat het cluster stuurt, en een plek om commando\'s te typen',
+			'settings.cluster.consoleTitle' => 'Clusterconsole',
+			'settings.cluster.consoleConnect' => 'Verbinden',
+			'settings.cluster.consoleDisconnect' => 'Verbreken',
+			'settings.cluster.consoleCommand' => 'Commando',
+			'settings.cluster.consoleEmpty' => 'Nog niets. Verbind, of wacht tot een extensie het cluster gebruikt.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'Opnieuw verzenden: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Niet verzonden: ${command} (${reason})',
+			'settings.cluster.server' => 'Clusterserver',
+			'settings.cluster.selectServer' => 'Server kiezen',
+			'settings.cluster.serverOther' => 'Andere',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'Nog geen host ingevoerd, dus spots gaan naar ${node}',
+			'settings.cluster.customHost' => 'Server',
+			'settings.cluster.customPort' => 'Poort',
+			'settings.cluster.password' => 'Wachtwoord',
+			'settings.cluster.passwordDescription' => 'Alleen indien nodig',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'Wachtwoord opgeslagen voor ${node}',
+			'settings.cluster.scrollback' => 'Bewaarde regels',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} regels',
+			'settings.cluster.connection' => 'Verbinding',
+			'settings.cluster.statusIdle' => 'Niet verbonden. Verbindt wanneer een extensie het nodig heeft. Tik om te testen.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'Verbinden met ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Verbonden met ${node} als ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Kon niet verbinden met ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Niet beschikbaar in de webversie.',
+			'settings.cluster.statusOff' => 'Uit. Zet Verbinden met cluster aan om het te gebruiken.',
+			'settings.cluster.errors.noCall' => 'geen roepnaam van de operator om mee in te loggen',
+			'settings.cluster.errors.connectFailed' => 'de node was niet bereikbaar',
+			'settings.cluster.errors.needsPassword' => 'de node vraagt een wachtwoord en er is er geen opgeslagen',
+			'settings.cluster.errors.loginFailed' => 'de node accepteerde de login niet',
+			'settings.cluster.errors.disconnected' => 'de node heeft de verbinding gesloten',
+			'settings.cluster.errors.timeout' => 'de node antwoordde niet',
+			'settings.cluster.errors.off' => 'Verbinden met cluster staat uit',
+			'settings.spotting.title' => 'Spotten',
+			'settings.spotting.respotInterval' => 'Auto-respot elke',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'Auto-respot standaard aan',
+			'settings.spotting.autoRespotByDefaultOn' => 'Auto-respot inschakelen na elke geplaatste spot',
+			'settings.spotting.autoRespotByDefaultOff' => 'Auto-respot alleen inschakelen als jij dat doet',
+			'settings.spotting.pulseBeforeRespot' => 'Pulseren vóór elke auto-respot',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'De Spotten-chip pulseert ${seconds} seconden vóór elke respot blauw',
+			'settings.spotting.pulseBeforeRespotOff' => 'Geen pulseren vóór een auto-respot',
 			'settings.radio.title' => 'CAT-besturing',
 			'settings.radio.loggingAndCat' => 'Loggen & CAT',
 			'settings.radio.tuningSection' => 'Afstemmen',
 			'settings.radio.keyerSection' => 'Keyer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Diensten',
 			'settings.radio.stationConfigurationSection' => 'Stationsconfiguratie',
 			'settings.radio.moreSettings' => 'Meer instellingen voor stationsconfiguratie',
@@ -4601,6 +5829,14 @@ extension on TranslationsNl {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'PTT bedienen met toetsenbord',
+			'settings.radio.pttKey.modes.off' => 'Nee',
+			'settings.radio.pttKey.modes.toggle' => 'Schakelen',
+			'settings.radio.pttKey.modes.hold' => 'Vasthouden',
+			'settings.radio.pttKey.descriptions.off' => 'Het toetsenbord bedient de PTT niet.',
+			'settings.radio.pttKey.descriptions.toggle' => 'In spraakmodes zet de PTT-toets de radio in zenden en haalt een tweede druk hem er weer uit. Na een minuut stopt het zenden vanzelf.',
+			'settings.radio.pttKey.descriptions.hold' => 'In spraakmodes zendt de radio zolang de PTT-toets ingedrukt blijft, maximaal een minuut.',
+			'settings.radio.pttKey.key' => 'PTT-toets',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Zenden',
 			'settings.radio.smartVfoSnap.title' => 'Slimme VFO-afronding',
@@ -4628,8 +5864,8 @@ extension on TranslationsNl {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CW-keyerberichten',
 			'settings.radio.cwMessages.notSupported' => 'De huidige radio ondersteunt geen CW-keying',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Bericht (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Bericht ${n}',
 			'settings.radio.cwMessages.labelField' => 'Label',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Label F${n}',
 			'settings.radio.cwMessages.details' => 'Details',
@@ -4643,7 +5879,10 @@ extension on TranslationsNl {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM-berichten',
 			'settings.radio.cwMessages.setSaved' => 'Mijn berichten',
-			'settings.radio.cwMessages.repeat' => 'Bericht #1 herhalen',
+			'settings.radio.cwMessages.repeat' => 'Bericht 1 herhalen',
+			'settings.radio.cwMessages.repeatShort' => 'M1 herhalen',
+			'settings.radio.cwMessages.cooldown' => 'Pauze vóór herhaling',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} seconden',
 			'settings.radio.cwMessages.repeatWait' => 'Herhalen',
 			'settings.radio.cwMessages.keyboard' => 'Typ om te verzenden',
 			'settings.radio.cwMessages.keyboardField' => 'Typ om te verzenden',
@@ -4666,18 +5905,22 @@ extension on TranslationsNl {
 			'settings.radio.cwMessages.helpCutDigits' => 'Kiest de af te korten cijfers, tussen aanhalingstekens — 0 is T, 1 is A, 5 is E, 9 is N',
 			'settings.radio.cwMessages.helpFullExample' => 'Volledig voorbeeld:',
 			'settings.radio.cwMessages.helpExample' => 'Verzendt W1AW 5NN TT7',
-			'settings.radio.cwMessages.helpEsmIntro' => 'Met Enter verstuurt berichten aan verstuurt Enter berichten via hun functietoets, zoals N1MM doet. De set ESM-berichten begint met deze:',
+			'settings.radio.cwMessages.helpEsmIntro' => 'Als Enter verstuurt berichten aan staat, verstuurt Enter berichten via hun functietoets, zoals N1MM doet. De set ESM-berichten begint met deze:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Bij Run roept Enter met een leeg roepnaamveld CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Je uitwisseling: na hun roepnaam bij Run, nadat ze reageren bij S&P',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Bedankt, zodra het QSO gelogd is: de plaatshouders verwijzen naar het volgende QSO, niet naar dit',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Bedankt, zodra het QSO gelogd is: qso is het QSO zoals gelogd, next het volgende',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'Bij S&P je roepnaam aan het station dat je beantwoordt',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Bij Run hun roepnaam vóór je uitwisseling',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Vraagt opnieuw als er niets van hun uitwisseling is opgenomen',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'Voorgestelde F3 voor //-stapels: TU gaat uit nadat het QSO gelogd is, dus het bedankt, roept dan het volgende gestapelde station en verstuurt je uitwisseling, of vraagt een gedeeltelijke roepnaam terug (TU KR?); als er niets over is, alleen TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'Voorgestelde F3 voor //-stapels: bedankt, roept dan het volgende gestapelde station en verstuurt je uitwisseling, of vraagt een gedeeltelijke roepnaam terug (TU KR?); als er niets over is, alleen TU',
+			'settings.radio.keyerControl.label' => 'Keyer',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Spraak',
 			'settings.radio.voiceMessages.title' => 'Spraak-keyerberichten',
 			'settings.radio.voiceMessages.notSupported' => 'De huidige radio ondersteunt geen spraakberichten',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Spraakgeheugen (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Spraakgeheugen ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Label spraakgeheugen ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
@@ -4686,7 +5929,7 @@ extension on TranslationsNl {
 			'settings.radio.voiceMessages.playButton' => 'Afspelen',
 			'settings.radio.voiceMessages.recordButton' => 'Opnemen',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
-			'settings.radio.voiceMessages.repeat' => 'Bericht #1 herhalen',
+			'settings.radio.voiceMessages.repeat' => 'Bericht 1 herhalen',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Opmerkingen bij ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Deze geheugens staan in de radio van ${device}. Hun namen en lengtes horen bij dat apparaat.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Opgeslagen in de radio, waar ook de andere clients het zien.',
@@ -4703,6 +5946,80 @@ extension on TranslationsNl {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label} opnemen',
 			'settings.radio.voiceMessages.doubtful' => 'Heeft de radio het afgespeeld? Hij meldde meteen dat hij inactief was.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Je moet de geheugens op de radio zelf opnemen.',
+			'settings.radio.voiceMessages.sets' => 'Berichtenset',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Geluidsbestanden op deze computer',
+			'settings.radio.voiceMessages.openFileButton' => 'Bestand openen',
+			'settings.radio.voiceMessages.newSet' => 'Nieuwe set',
+			'settings.radio.voiceMessages.renameSet' => 'Set hernoemen',
+			'settings.radio.voiceMessages.deleteSet' => 'Set verwijderen',
+			'settings.radio.voiceMessages.newSetName' => 'Naam',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name} en de bijbehorende opnames verwijderen? Dit kan niet ongedaan worden gemaakt.',
+			'settings.radio.voiceMessages.output' => 'Audio naar',
+			'settings.radio.voiceMessages.input' => 'Opnemen van',
+			'settings.radio.voiceMessages.outputRadio' => 'Via netwerk naar de radio',
+			'settings.radio.voiceMessages.inputDefault' => 'Systeemstandaard',
+			'settings.radio.voiceMessages.pickDevice' => 'Kies een geluidsapparaat',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (niet verbonden)',
+			'settings.radio.voiceMessages.lead' => 'Vertraging na PTT aan',
+			'settings.radio.voiceMessages.tail' => 'Vertraging vóór PTT uit',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Luisteren',
+			'settings.radio.voiceMessages.notRecorded' => 'Niet opgenomen',
+			'settings.radio.voiceMessages.unplayable' => 'Kan dit bestand niet afspelen',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Kies eerst het geluidsapparaat dat de radio voedt voordat je een bericht afspeelt.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'Het geluidsapparaat dat de radio voedt is niet verbonden.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'Het opnameapparaat is niet verbonden.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'Het geluidsapparaat ging niet open.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'Dat bericht heeft nog geen opname.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Er is niets gehoord van het opnameapparaat, dus het bericht is ongewijzigd gelaten. Controleer de ingang, en of de app de microfoon mag gebruiken.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'De radio neemt op dit moment geen audio van de app aan. Daarvoor is een netwerkverbinding met de radio nodig.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'De radio wilde zijn zendaudio niet naar de app omschakelen, dus het bericht is gestopt. Stel de radio in om de audio van de app uit te zenden.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'Deze radio kan niet via CAT in zenden worden gezet, dus de computer kan er geen berichten in afspelen.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'Het bestand van dat bericht is geen geluidsbestand dat de app kan afspelen. Gebruik een WAV-, FLAC- of MP3-bestand, of neem het opnieuw op.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'De opname is afgebroken, dus het bericht is ongewijzigd gelaten. Controleer of het opnameapparaat nog verbonden is en of er ruimte op de schijf is.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'De opname kon niet op de plek van het bericht worden opgeslagen, dus het bericht is ongewijzigd gelaten.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'Dat bericht heeft woorden nodig die je nog niet hebt opgenomen: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'Het sjabloon van dat bericht heeft een probleem: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'Berichten in je eigen woorden spelen af in een activatie, waar er een QSO is om ze voor uit te spreken.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'Dat bericht zegt niets voor dit QSO.',
+			'settings.radio.voiceMessages.templateField' => 'Uitspreken met mijn woorden',
+			'settings.radio.voiceMessages.templateHelp' => 'Laat leeg om de opname af te spelen. Anders wordt het bericht uitgesproken met de woorden die je hebt opgenomen, per QSO ingevuld, met deze waarden:',
+			'settings.radio.voiceMessages.help' => 'Help',
+			'settings.radio.voiceMessages.helpTitle' => 'Berichten uitspreken met je eigen woorden',
+			'settings.radio.voiceMessages.helpFullExample' => 'Een volledig bericht:',
+			'settings.radio.voiceMessages.helpExample' => 'Hun roepnaam, hun rapport, en jouw opname van “QSL?”',
+			'settings.radio.voiceMessages.playOnRadio' => 'Afspelen op radio',
+			'settings.radio.voiceMessages.templateHelpCall' => 'Hun roepnaam',
+			'settings.radio.voiceMessages.templateHelpReport' => 'Het rapport dat je ze geeft',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'De opname van bericht 2, afgespeeld zoals opgenomen',
+			'settings.radio.voiceMessages.voiced' => 'Uitgesproken met je woorden',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Zegt: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Nog niet opgenomen: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'Open een activatie om te zien wat het gaat zeggen.',
+			'settings.radio.voiceMessages.wordsDescription' => 'Gebruik je eigen stem voor roepnamen, cijfers en meer.',
+			'settings.radio.voiceWords.title' => 'Woordopnames',
+			'settings.radio.voiceWords.callField' => 'Woorden voor operator',
+			'settings.radio.voiceWords.intro' => 'Neem elk woord of cijfer drie keer op, snel achter elkaar, zoals je het voor een roepnaam uitspreekt. Langere zinnen neem je maar één keer op.',
+			'settings.radio.voiceWords.recordAll' => 'Alles opnemen',
+			'settings.radio.voiceWords.recordAllGuide' => 'Lees elk woord drie keer achter elkaar, en een zin van meerdere woorden één keer, met een ademhaling tussen de regels. Druk na de laatste op Stop.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Zeg “${word} ${word} ${word}” en druk dan op Stop.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Zeg “${words}” en druk dan op Stop.',
+			'settings.radio.voiceWords.recorded' => 'Opgenomen',
+			'settings.radio.voiceWords.notRecorded' => 'Niet opgenomen',
+			'settings.radio.voiceWords.addPhrase' => 'Zin toevoegen',
+			'settings.radio.voiceWords.phraseField' => 'Zin, zoals je die in een bericht schrijft',
+			'settings.radio.voiceWords.deletePhrase' => 'Zin verwijderen',
+			'settings.radio.voiceWords.tryField' => 'Probeer te zeggen',
+			'settings.radio.voiceWords.pauseLetters' => 'Pauze tussen letters',
+			'settings.radio.voiceWords.pauseWords' => 'Pauze tussen woorden',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'Snelheid',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'Geavanceerde instellingen',
+			'settings.radio.voiceWords.splitSilent' => 'Er is niets gehoord in de opname.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'Kon geen drie opnames onderscheiden. Zeg het woord drie keer achter elkaar en probeer het opnieuw.',
+			'settings.radio.voiceWords.splitLineCount' => 'Kon niet elk woord in de opname terugvinden. Lees elk woord drie keer, met een ademhaling tussen de woorden.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'Kon de woorden niet uit elkaar houden. Laat een langere adempauze tussen de woorden.',
 			'settings.radio.avoidZeroBeat.title' => 'Zero-beat op spots vermijden',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Met een verbonden radio een paar Hz naast een CW-spot afstemmen, zodat niet iedereen die reageert op dezelfde toon roept.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Precies op de gespotte frequentie afstemmen.',
@@ -4722,13 +6039,24 @@ extension on TranslationsNl {
 			'settings.help.blueskyDescription' => 'Volg ons voor nieuws en updates',
 			'settings.help.contact' => 'Contacteer ons',
 			'settings.help.contactDescription' => 'help@ham2k.com — maar probeer eerst de forums of chat!',
-			'settings.exports.title' => 'Exports',
+			'settings.exports.title' => 'Exporteren',
+			'settings.extensionSections.activities' => 'Activiteiten',
+			'settings.extensionSections.hunting' => 'Jagen',
+			'settings.extensionSections.contests' => 'Contests',
+			'settings.extensionSections.lookups' => 'Opzoeken',
+			'settings.extensionSections.dashboard' => 'Dashboard',
 			'settings.map.title' => 'Kaarten',
 			'settings.map.style.title' => 'Kaartstijl',
+			'settings.map.showCallsigns.title' => 'Roepnamen tonen',
+			'settings.map.showCallsigns.description' => 'Elk QSO is een label met zijn roepnaam, in de kleur van zijn band',
+			'settings.map.showGrayline.title' => 'Grayline tonen',
+			'settings.map.showGrayline.description' => 'Schaduwt de nachtzijde van de aarde, met de schemering als verloop',
 			'settings.map.styleOpts.automatic' => 'Automatisch',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
@@ -4741,7 +6069,7 @@ extension on TranslationsNl {
 			'settings.privacy.privacyPolicy' => 'Privacybeleid',
 			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
 			'settings.operatorCall' => 'Roepnaam van de operator',
-			'settings.sync.title' => 'Cloud-synchronisatie',
+			'settings.sync.title' => 'Cloudsynchronisatie',
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
 			'settings.sync.enable' => 'Synchronisatie inschakelen',
 			'settings.sync.deviceKey' => 'Apparaatsleutel',
@@ -4786,11 +6114,11 @@ extension on TranslationsNl {
 			'settings.peers.screenSources' => 'Schermen en vensters',
 			'settings.peers.screenRefresh' => 'Lijst verversen',
 			'settings.peers.screenUnsupportedPlatform' => 'Dit apparaat kan zijn scherm niet delen. macOS kan dat wel; elk apparaat kan een scherm tonen dat door een ander wordt gedeeld.',
-			'settings.peers.screenUnsupportedVersion' => 'Scherm delen vereist macOS 12.3 of later. Dit apparaat kan nog steeds een scherm tonen dat door een ander wordt gedeeld.',
+			'settings.peers.screenUnsupportedVersion' => 'Schermdelen vereist macOS 12.3 of later. Dit apparaat kan nog steeds een scherm tonen dat door een ander wordt gedeeld.',
 			'settings.peers.screenNeedsPermission' => 'macOS heeft je toestemming nodig om het scherm op te nemen voordat deze app er een kan delen.',
 			'settings.peers.screenGrantPermission' => 'Toestemming vragen',
 			'settings.peers.screenRelaunchAfterGranting' => 'Sta het toe in Systeeminstellingen onder Privacy en beveiliging → Schermopname, en sluit en heropen daarna deze app — macOS meldt de wijziging pas bij de volgende start van een app.',
-			'settings.peers.screenProblem' => ({required Object error}) => 'Scherm delen: ${error}',
+			'settings.peers.screenProblem' => ({required Object error}) => 'Schermdelen: ${error}',
 			'settings.peers.screenChooseTitle' => 'Kies wat je deelt',
 			'settings.peers.screenChooseButton' => 'Kies wat je deelt…',
 			'settings.peers.screenTabScreens' => 'Schermen',
@@ -4810,7 +6138,7 @@ extension on TranslationsNl {
 			'settings.syncPanel.syncing' => 'Synchroniseren',
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Verversen',
-			'settings.syncPanel.switchAccounts' => 'Ander account',
+			'settings.syncPanel.switchAccounts' => 'Account wisselen',
 			'settings.syncPanel.switchAccountsDescription' => 'Koppel dit apparaat aan een ander account via een QR-code of e-mail',
 			'settings.syncPanel.connectionRequests' => 'Verbindingsverzoeken',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: 'Een apparaat wacht om aan dit account te worden toegevoegd', other: '${n} apparaten wachten om aan dit account te worden toegevoegd', ), 
@@ -4845,7 +6173,7 @@ extension on TranslationsNl {
 			'settings.accounts.none' => 'Geen actieve extensies met accounts',
 			'settings.accounts.notConfigured' => 'Niet geconfigureerd',
 			'settings.accounts.connected' => 'Verbonden',
-			'settings.accounts.cancelLogin' => 'Aanmelden annuleren',
+			'settings.accounts.cancelLogin' => 'Inloggen annuleren',
 			'settings.accounts.openInBrowser' => 'Openen in browser',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Ingelogd als ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Druk op Opslaan om dit account verbonden te houden.',
@@ -4872,10 +6200,10 @@ extension on TranslationsNl {
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger kon je browser niet automatisch openen. Gebruik de knop hieronder om de inlogpagina zelf te openen.',
 			'settings.accounts.relayLoginUnavailable' => 'Kon de synchronisatieserver die nodig is om dit inloggen af te ronden niet bereiken. Controleer je verbinding en probeer het opnieuw.',
 			'settings.accounts.loginIncompleteResponse' => 'Die inlogpoging is niet goed afgerond. Probeer opnieuw te verbinden.',
-			'settings.accounts.noKeyringTitle' => 'Accountgegevens kunnen niet worden opgeslagen',
-			'settings.accounts.noKeyringText' => 'Ham2K Logger kan geen keyring-dienst op deze computer bereiken, dus accountgegevens kunnen niet worden opgeslagen of gelezen — een account verbinden mislukt totdat dit is opgelost. Installeer en start **gnome-keyring**, **KWallet** of **KeePassXC**, of ontgrendel de keyring die je al hebt, en herstart. Loggen, exports en gegevensbestanden werken gewoon; logsynchronisatie blijft zolang uit.',
-			'settings.accounts.noKeyringInline' => 'Aanmeldgegevens kunnen niet worden opgeslagen: de keyring van deze computer is onbereikbaar. Installeer en start gnome-keyring, KWallet of KeePassXC, of ontgrendel de keyring die je hebt.',
-			'settings.accounts.noSecureStorageInline' => 'Aanmeldgegevens kunnen niet worden opgeslagen: de beveiligde opslag van deze computer is onbereikbaar.',
+			'settings.accounts.noKeyringTitle' => 'Inloggegevens kunnen niet worden opgeslagen',
+			'settings.accounts.noKeyringText' => 'Ham2K Logger kan geen keyring-dienst op deze computer bereiken, dus inloggegevens van accounts kunnen niet worden opgeslagen of gelezen — een account verbinden mislukt totdat dit is opgelost. Installeer en start **gnome-keyring**, **KWallet** of **KeePassXC**, of ontgrendel de keyring die je al hebt, en herstart. Loggen, exports en gegevensbestanden werken gewoon; logsynchronisatie blijft zolang uit.',
+			'settings.accounts.noKeyringInline' => 'Inloggegevens kunnen niet worden opgeslagen: de keyring van deze computer is onbereikbaar. Installeer en start gnome-keyring, KWallet of KeePassXC, of ontgrendel de keyring die je hebt.',
+			'settings.accounts.noSecureStorageInline' => 'Inloggegevens kunnen niet worden opgeslagen: de beveiligde opslag van deze computer is onbereikbaar.',
 			'settings.station.title' => 'Stationsconfiguratie & CAT-besturing',
 			'settings.station.none' => 'Geen apparatuur geconfigureerd',
 			'settings.station.add' => 'Toevoegen',
@@ -4932,13 +6260,28 @@ extension on TranslationsNl {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'poort ${n} van ${total}',
 			'settings.station.serialPortSuggested' => 'voorgesteld',
 			'settings.station.serialPortJustNow' => 'Recent verbonden',
+			'settings.station.serialPortNoDriver' => 'geen driver',
 			'settings.station.serialDeviceRequest' => 'USB-apparaat toevoegen…',
+			'settings.station.bleDevice' => 'Bluetooth LE-apparaat',
+			'settings.station.bleDeviceDescription' => 'De seriële brug waarmee je radio is verbonden, zoals een LiNK500MP in Mode 4 of een BLE-serieel-adapter.',
+			'settings.station.bleScan' => 'Scannen naar Bluetooth LE-apparaten…',
+			'settings.station.bleScanNoneFound' => 'Geen Bluetooth LE-apparaten gevonden. Controleer of de brug aan staat, in de buurt is en in de Bluetooth LE-modus staat (Mode 4 op een LiNK500MP).',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'De Bluetooth LE-scan kon niet worden uitgevoerd: ${reason}',
+			'settings.station.bleOff' => 'Bluetooth staat uit.',
+			'settings.station.bleDenied' => 'Bluetooth-toestemming is niet verleend. Sta het toe in de systeeminstellingen en probeer het opnieuw.',
+			'settings.station.bleUnsupported' => 'Dit apparaat heeft geen Bluetooth LE.',
+			'settings.station.bleStarting' => 'Bluetooth is nog aan het opstarten. Probeer het zo opnieuw.',
+			'settings.station.bleConnectFailed' => 'Kan het Bluetooth LE-apparaat niet bereiken. Controleer of het aan staat, in de buurt is en niet met een andere app verbonden is.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'Dit Bluetooth LE-apparaat heeft geen seriële service die de app herkent. Meld het alsjeblieft met zijn services: ${services}',
 			'settings.station.baudRate' => 'Snelheid (baud)',
 			'settings.station.baudRateDescription' => 'Moet overeenkomen met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin terug, zonder foutmelding.',
 			'settings.station.serialRtsHigh' => 'RTS hoog houden',
 			'settings.station.serialRtsHighDescription' => 'Alleen voor een radio die op RTS wacht voordat hij reageert, zoals een Yaesu met CAT RTS aan. Op een Digirig, SignaLink en de meeste zelfgemaakte kabels is RTS de PTT, en hoog houden zet de zender aan.',
 			'settings.station.serialDtrHigh' => 'DTR hoog houden',
 			'settings.station.serialDtrHighDescription' => 'Alleen voor een CAT-interface die zijn voeding uit DTR haalt, zoals sommige RS-232-kabels voor de FT-817. Op veel kabels keyt DTR de CW of PTT, en hoog houden zet de zender aan.',
+			'settings.station.serialUsbDriver' => 'USB-chipdriver',
+			'settings.station.serialUsbDriverDescription' => 'Automatisch herkent de meeste adapters. Kies de chip alleen voor een adapter waarvan de poortlijst zegt dat er geen driver is — de verpakking of een USB-apparatenlijst noemt hem.',
+			'settings.station.serialUsbDriverAuto' => 'Automatisch',
 			'settings.station.civAddress' => 'CI-V-adres van de radio',
 			'settings.station.civAddressDescription' => 'Hexadecimaal, zoals getoond in het CI-V-menu van de radio. De IC-705 wordt geleverd met A4.',
 			'settings.station.civAddressInvalid' => 'Een CI-V-adres bestaat uit twee hexcijfers, 01 tot FF',
@@ -4959,8 +6302,37 @@ extension on TranslationsNl {
 			'settings.station.spectrumNoPanadapter' => 'Deze slice heeft geen panadapter op de radio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'De radio weigerde een DAX IQ-stream (fout ${code})',
 			'settings.station.spectrumNoUdp' => 'De spectrumgegevens van de radio kunnen dit apparaat niet bereiken',
+			'settings.station.spectrumK4Unavailable' => 'Kan het LAN-spectrum van de K4 niet ontvangen. Nieuwe poging…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'Kan het remote spectrum van de K4 niet ontvangen',
 			'settings.station.spectrumScopeRefused' => 'De radio weigerde zijn scope-commando\'s',
 			'settings.station.spectrumOutOfRange' => 'De scope van de radio staat buiten het bereik dat hij kan tonen',
+			'settings.station.spectrumBandUnsupported' => 'De scope van de radio kan op deze band niet worden getoond',
+			'settings.station.spectrumSdrNoRadio' => 'Wachten op de frequentie van de gekoppelde radio…',
+			'settings.station.spectrumSdrNotConnected' => 'De SDR is niet verbonden',
+			'settings.station.spectrumSdrNoIf' => 'Stel de IF-frequentie van de radio in bij de instellingen van deze SDR',
+			'settings.station.sdrRadio' => 'Toont het spectrum voor',
+			'settings.station.sdrRadioDescription' => 'Een spectrumweergave op deze radio gebruikt deze ontvanger in plaats van de eigen scope van de radio.',
+			'settings.station.sdrRadioMain' => 'De hoofdradio',
+			'settings.station.sdrTuning' => 'Antenne-ingang',
+			'settings.station.sdrTuningDescription' => 'Waar het signaal van de ontvanger vandaan komt. Op een eigen antenne stemt hij zichzelf af om de radio te volgen; op de IF-uitgang van de radio blijft hij op de IF staan.',
+			'settings.station.sdrTuningIndependent' => 'Eigen antenne',
+			'settings.station.sdrTuningIfTap' => 'De IF-uitgang van de radio',
+			'settings.station.sdrIfHz' => 'IF-frequentie (Hz)',
+			'settings.station.sdrIfHzDescription' => 'Alleen voor een IF-uitgang: de frequentie waarop de afstemming van de radio op zijn IF ligt, zoals 68330000 op een FT-817.',
+			'settings.station.sdrIfInverted' => 'IF is geïnverteerd',
+			'settings.station.sdrGainDb' => 'Versterking (dB)',
+			'settings.station.sdrGainDbDescription' => 'Laat leeg voor de automatische versterking van de ontvanger.',
+			'settings.station.sdrOffsetHz' => 'Frequentieverschuiving (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Wordt opgeteld bij elke frequentie die naar de ontvanger gaat, voor een upconverter: 125000000 voor een Ham It Up.',
+			'settings.station.sdrPpm' => 'Frequentiecorrectie (ppm)',
+			'settings.station.rtlDirectSampling' => 'Direct sampling',
+			'settings.station.rtlDirectSamplingDescription' => 'Voor HF op een RTL-SDR V3 zonder upconverter. Een RTL-SDR V4 haalt HF ook zonder.',
+			'settings.station.rtlDirectSamplingOff' => 'Uit',
+			'settings.station.rtlDirectSamplingI' => 'I-tak',
+			'settings.station.rtlDirectSamplingQ' => 'Q-tak',
+			'settings.station.rtlTcpNotAServer' => 'Dit is geen rtl_tcp-server',
+			'settings.station.rtlTcpNotes' => 'Dit verbindt met een **rtl_tcp-server die je zelf draait** op de computer waar de dongle in zit.\n\n- **Start hem** met `rtl_tcp -a 0.0.0.0` zodat andere machines hem kunnen bereiken; op dezelfde machine volstaat `rtl_tcp` alleen.\n- **Poort** is 1234, tenzij je hem met `-p` hebt gestart.\n- **Eén programma tegelijk:** rtl_tcp bedient één client. De app verbindt alleen zolang een spectrumweergave zichtbaar is, en laat een paar seconden na het sluiten los.\n- **Op Android** draait de app *SDR driver* dezelfde server op de telefoon.',
+			'settings.station.rspTcpNotes' => 'Dit verbindt met een **rsp_tcp-server die je zelf draait** op de computer waar de RSP in zit, met de API van SDRplay daar geïnstalleerd.\n\n- **Start hem** met `rsp_tcp -a 0.0.0.0`.\n- **Poort** is 1234, tenzij je hem met `-p` hebt gestart.\n- **Eén programma tegelijk:** de server neemt één client aan. De app verbindt alleen zolang een spectrumweergave zichtbaar is.',
 			'settings.station.n3fjpNoRig' => 'N3FJP heeft geen radio-interface ingesteld, dus dit volgt wat in N3FJP wordt getypt, niet een radio',
 			'settings.station.winkeyerKeyPort' => 'Key-uitgang',
 			'settings.station.winkeyerKeyPortDescription' => 'Op welke van de twee uitgangen van de keyer je radio is aangesloten.',
@@ -4969,6 +6341,11 @@ extension on TranslationsNl {
 			'settings.station.winkeyerPttDescription' => 'Keyt de PTT-lijn op dezelfde aansluiting, voor een versterker of radio die dat nodig heeft. Laat uit voor een radio die via zijn key-aansluiting wordt gekeyd.',
 			'settings.station.winkeyerNoAnswer' => 'Geen WinKeyer reageerde op deze poort',
 			'settings.station.winkeyerStoppedAnswering' => 'De WinKeyer reageerde niet meer tijdens het verzenden; het bericht is vervallen',
+			'settings.station.icomControlPort' => 'Control-poort (UDP)',
+			'settings.station.icomControlPortDescription' => 'De Control Port (UDP) van de radio — 50001 tenzij gewijzigd in de netwerkinstellingen, of doorgestuurd naar een andere.',
+			'settings.station.icomSerialPort' => 'Seriële poort (UDP)',
+			'settings.station.icomSerialPortDescription' => 'De Serial Port (UDP) van de radio — 50002 tenzij gewijzigd in de netwerkinstellingen, of doorgestuurd naar een andere.',
+			'settings.station.icomPortsDiffer' => 'De control- en seriële poort moeten verschillen',
 			'settings.station.radioUser' => 'Gebruikersnaam radio',
 			'settings.station.radioPass' => 'Wachtwoord radio',
 			'settings.station.radioLoginDescription' => 'De login onder Network → Remote van de radio, niet je wifi-wachtwoord.',
@@ -4976,8 +6353,10 @@ extension on TranslationsNl {
 			'settings.station.connectFailedBusy' => 'Apparaat is in gebruik',
 			'settings.station.connectFailedDenied' => 'Toegang geweigerd',
 			'settings.station.connectFailedDevice' => 'Apparaat niet gevonden',
+			'settings.station.connectFailedUnsupported' => 'Geen driver herkent de chip van deze USB-adapter. Als je weet welke chip het is, kies die dan onder USB-chipdriver in Geavanceerde instellingen.',
 			'settings.station.connectFailedLines' => 'RTS/DTR konden niet worden gehouden zoals ingesteld, dus de poort is gesloten. Mogelijk heeft een ander programma hardware-handshaking aan laten staan — koppel de kabel los en weer aan.',
 			'settings.station.connectFailedNetwork' => 'Kan de radio niet vinden via het netwerk. Controleer het adres en of hij aan staat en bereikbaar is.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Poort ${port} op dit apparaat is al in gebruik, en daar komen de antwoorden aan. Sluit wat er verder op luistert — ook een andere PstRotator-node — of wijzig de poort.',
 			'settings.station.connectFailedTimeout' => 'De radio reageerde niet op tijd. Controleer of hij aan staat en bereikbaar is.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsNl {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Algemeen',
 			'settings.station.models.icomGeneric' => 'Icom - Algemeen',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Algemeen',
@@ -4997,6 +6385,8 @@ extension on TranslationsNl {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Algemeen',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsNl {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio bestuurd via rigctld',
@@ -5028,34 +6422,64 @@ extension on TranslationsNl {
 			'settings.station.models.placeholderRadioNodeName' => 'Mijn radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A rotorinterface',
+			'settings.station.models.pstRotator' => 'PstRotator (UDP-besturing)',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Netwerk/wifi',
+			'settings.station.transports.secureNetwork' => 'Beveiligd netwerk/wifi',
 			'settings.station.transports.usbSerial' => 'USB-serieel',
 			'settings.station.transports.wifi' => 'Netwerk/wifi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth-serieel',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
 			'settings.station.transports.placeholder' => 'Tijdelijk',
 			'settings.station.troubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
-			'settings.station.ft891Troubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS moet UIT staan op de radio** (FT-891-menu **05-08**). Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is diezelfde lijn de PTT, dus hoog zetten zou je zender aanzetten. Op de eigen USB-poort van de radio is **RTS hoog houden** onder Geavanceerde instellingen het alternatief.\n- **Snelheid moet overeenkomen** met de CAT RATE van de radio (menu **05-06**). Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
+			'settings.station.ft891Troubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS uit op de radio, of RTS hoog houden aan.** Met **CAT RTS** aan (FT-891-menu **05-08**) blijft de radio stil zolang RTS laag is — hij antwoordt misschien één keer als de poort opengaat, en daarna niets meer. Kies je de eigen USB-poort van de radio, dan gaat **RTS hoog houden** onder Geavanceerde instellingen aan. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is RTS de PTT, en hoog houden zet je zender aan: zet dan liever CAT RTS uit op de radio.\n- **Snelheid moet overeenkomen** met de CAT RATE van de radio (menu **05-06**). Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
 			'settings.station.yaesuBinaryTroubleshooting' => 'Deze radio spreekt het oudere vijf-byte CAT van Yaesu, en reageert helemaal niet als er iets niet klopt. Bijna altijd een van deze:\n\n- **De kabel moet niveaus omzetten.** De CAT-aansluiting achterop is geen RS-232 en geen USB; er is een CT-62 of gelijkwaardige adapter nodig. Een gewone audio- of datakabel werkt niet voor CAT.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio (**#14** op een FT-817, **#19** op een FT-857 of FT-897). Bij een verschil stuurt de radio niets terug, en nooit een foutmelding.\n- **Laat nooit iets RTS of DTR hoog zetten op deze poort.** Op de meeste kabels voor deze radio\'s zijn die lijnen PTT en keying. Een oudere interface die gevoed wordt uit DTR is de uitzondering: zet daarvoor **DTR hoog houden** aan onder Geavanceerde instellingen.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze driver is geschreven op basis van Yaesu\'s gepubliceerde CAT-overzicht en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.',
+			'settings.station.tenTecTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
+			'settings.station.tenTecEagleTroubleshooting' => '- **De USB-B-poort achterop is de CAT-verbinding.** De radio verschijnt als een USB-seriële poort; op Windows is de USB-naar-UART-driver van Ten-Tec nodig, die in Apparaatbeheer verschijnt als "USB to UART (COMx)".\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open, en de firmware-updater van Ten-Tec ook.\n- **De filterbreedte vanuit de app instellen haalt hem weg van de BW-knop** totdat de radio uit en weer aan is gezet. Zo werkt de radio nu eenmaal.\n\nDeze driver is geschreven op basis van de programmeursreferentie van Ten-Tec. Als hij half werkt, is dat het melden waard, met de firmwareversie uit het menu van de radio.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **Gebruik een rechte DB-9-seriële kabel** naar de SERIAL DATA-poort, geen null-modemkabel.\n- **Deze optie houdt RTS hoog**, omdat de Orion RTS en CTS als handshake gebruikt. Op een interface die de PTT via RTS keyt, zoals een Digirig, zet je RTS hoog houden onder Geavanceerde instellingen uit, anders gaat de radio zenden zodra de app verbindt.\n- **CW vanuit de app vereist dat de interne keyer van de radio aan staat.** Staat die uit, dan negeert de radio wat de app stuurt.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze driver is geschreven op basis van de programmeursreferentie van Ten-Tec en is nog niet met een Orion getest. Als hij half werkt, is dat het melden waard, met de firmwareversie uit het menu van de radio.',
+			'settings.station.tenTecNoCw' => 'De firmware van deze radio neemt geen CW van de app aan. Ten-Tec voegde dat toe in Orion-firmware 1.366.',
+			'settings.station.tenTecKeyerOff' => 'De interne keyer van de radio staat uit, dus hij negeert CW vanuit de app. Zet de keyer aan in het menu van de radio.',
 			'settings.station.guohetecTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
 			'settings.station.guohetecTroubleshooting' => 'De Q900 heeft twee CAT-protocollen, en deze optie gebruikt het eigen protocol in plaats van de FT-817-imitatie. Kies hier **Guohetec Q900**, geen FT-817 — de imitatie ondersteunt minder commando\'s, en de radio meldt niet welke hij gebruikt.\n\n- **De USB-C-kabel is de CAT-verbinding**, en verbindt ook de geluidskaart. Snelheid maakt daarbij niet uit; de poort negeert wat er is ingesteld.\n- **Laat nooit iets RTS of DTR hoog zetten op deze poort.** Op een seriële kabel zijn die lijnen PTT en keying.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Een radio van de tweede generatie gedraagt zich anders** dan een van de eerste. Houd Menu lang ingedrukt, dan About: HW 2.0 is de tweede generatie.\n\nDeze driver is geschreven op basis van het gepubliceerde protocol van de fabrikant en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
 			'settings.station.yaesuTroubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is diezelfde lijn de PTT, dus hoog zetten zou je zender aanzetten. Op de eigen USB-poort van de radio is **RTS hoog houden** onder Geavanceerde instellingen het alternatief. Waar die instelling zit verschilt per model (menu **05-08** op een FT-891).\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Modes volgen de tabel van de FT-891.** De meeste Yaesu\'s komen daarmee overeen, maar een radio die zijn modes anders nummert toont en zet voor die modes de verkeerde. De frequentie blijft correct.',
+			'settings.station.ftdx3000Troubleshooting' => '**Menu 037 CAT SELECT moet op USB staan** voor CAT via de USB-poort van de radio; op RS232C zit CAT op de aansluiting achterop.\n\nDeze optie is geschreven op basis van gepubliceerde CAT-documentatie en is nog niet met een FTDX3000 getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.yaesuRs232Troubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **De CAT-aansluiting is RS-232.** Er is een USB-naar-serieel-adapter en een rechte DB-9-kabel nodig — een null-modemkabel verwisselt de lijnen, en de radio hoort helemaal niets.\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt, tenzij **RTS hoog houden** aan staat onder Geavanceerde instellingen.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\nDeze optie is geschreven op basis van gepubliceerde CAT-documentatie en is nog niet met een van deze radio\'s getest. Als hij half werkt, is dat het melden waard.',
-			'settings.station.yaesuUsbTroubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **Gebruik de eerste van de twee USB-poorten van de radio.** CAT zit normaal op de eerste (de **Enhanced** COM-poort op Windows); de tweede (**Standard**) is voor PTT en keying. De keuzelijst wijst de eerste aan als hij de twee kan onderscheiden.\n- **CAT RTS moet UIT staan op de radio.** Staat het aan, dan wacht de radio op een handshakelijn die de app laag houdt, tenzij **RTS hoog houden** aan staat onder Geavanceerde instellingen.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
+			'settings.station.yaesuUsbTroubleshooting' => 'De radio ontvangt commando\'s maar reageert niet. Bijna altijd een van deze:\n\n- **Gebruik de eerste van de twee USB-poorten van de radio.** CAT zit normaal op de eerste (de **Enhanced** COM-poort op Windows); de tweede (**Standard**) is voor PTT en keying. De keuzelijst wijst de eerste aan als hij de twee kan onderscheiden.\n- **CAT RTS uit op de radio, of RTS hoog houden aan.** Met het **CAT RTS**-menu van de radio aan blijft hij stil zolang RTS laag is — hij antwoordt misschien één keer als de poort opengaat, en daarna niets meer. Kies je de eigen USB-poort van de radio, dan gaat **RTS hoog houden** onder Geavanceerde instellingen aan. Op een Digirig, SignaLink of de meeste zelfgebouwde kabels is RTS de PTT, en hoog houden zet je zender aan: zet dan liever CAT RTS uit op de radio.\n- **Snelheid moet overeenkomen** met het CAT RATE-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
 			'settings.station.k4SerialNotes' => 'Sluit de USB-B (PC)-aansluiting achterop de K4 aan. USB-PC1 en USB-PC2 werken allebei voor CAT; kies een ongebruikte poort en stel de bijbehorende Serial USB-PCn: Baud Rate op de radio gelijk in. HaLo vult 38400 vooraf in; wijzig dat zo nodig. Een andere applicatie moet de andere poort of Ethernet gebruiken.\n\nDeze verbinding bestuurt de radio en zijn keyers; ze stuurt geen audio naar HaLo.',
-			'settings.station.k4TcpNotes' => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. Dit is CAT-besturing, niet de aparte remote-audioverbinding op poort 9204.\n\nHaLo bestuurt de radio en zijn keyers zonder audio of panadaptergegevens te streamen.',
+			'settings.station.k4TcpNotes' => 'Sluit de Ethernet-aansluiting van de K4 aan op je lokale netwerk. Voer de hostnaam of het IP-adres in en CAT-poort 9200. HaLo gebruikt dezelfde host op de vaste poort 9201 wanneer een panadapter of waterval zichtbaar is; de CAT-poort wijzigen verandert de spectrumpoort niet.\n\nHet spectrum toont de hoofdontvanger. De zoom, referentie-instelling en snelheid ervan beïnvloeden alleen de weergave in HaLo. Audiostreaming wordt niet ondersteund.',
 			'settings.station.k4PowerTimeout' => 'Het K4-vermogen is niet gewijzigd omdat de radio zijn uitgangsbereik niet bevestigde. Probeer het opnieuw.',
+			'settings.station.k4RemoteNotes' => 'Schakel toegang op afstand in op je K4 en voer het netwerkwachtwoord in. Main en Sub delen één versleutelde verbinding voor radiobesturing en spectrum. De standaardpoort is 9204; voer je doorgestuurde poort in als je op afstand verbindt.\n\nAudio afspelen en microfoonstreaming worden niet ondersteund.',
+			'settings.station.k4Receiver' => 'Ontvanger',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Kies Main of Sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'Die ontvanger is al geconfigureerd voor deze K4',
+			'settings.station.k4SubReceiverOff' => 'De subontvanger van de K4 staat uit',
+			'settings.station.k4RemotePasswordRequired' => 'Voer het netwerkwachtwoord van de K4 in om beveiligd te verbinden.',
+			'settings.station.k4RemoteHandshakeFailed' => 'De K4 kon geen beveiligde verbinding opzetten. Controleer het netwerkwachtwoord en de instellingen voor toegang op afstand.',
+			'settings.station.k4RemoteUnreachable' => 'De beveiligde verbinding van de K4 was niet bereikbaar. Controleer het adres, de poort en de instellingen voor toegang op afstand.',
 			'settings.station.k4PowerRange' => 'K4-vermogen moet 0,1–110 W zijn, of 0,0001–0,01 W als de milliwatt-transverteruitgang actief is.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft-rigs spreken Kenwood-CAT, en zowel een KX2 als een KX3 zijn zo gebruikt — VFO in beide richtingen, modewissel en CW zero-beat werken allemaal.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met de snelheid onder **RS232** in het menu van de radio. Ze worden geleverd met 38400. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n\n**Als de frequentie klopt maar de mode niet**, laat het ons weten. De KX2- en KX3-opties lezen de mode uit een positie in het statusantwoord van de radio die we hebben vastgesteld op basis van de rigs die we kennen, en firmware die hem ergens anders zet merken we alleen via een melding.\n\nVan de K3 is nog niets gemeld, dus laat weten wat er gebeurt als je er een gebruikt. Een K4 heeft een eigen optie.',
+			'settings.station.lab599TroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
+			'settings.station.lab599Troubleshooting' => 'De TX-500-reeks spreekt Kenwood-CAT. Frequentie en mode zijn getest via een LiNK500MP; vermogen en meters zijn geschreven op basis van de CAT-referentie van Lab599, dus meld wat er gebeurt, hoe dan ook.\n\n- **Snelheid moet overeenkomen** met de CAT-instelling van de radio, 9600 tenzij je die hebt gewijzigd. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Kies het CAT-protocol op de radio.** TS-2000 dekt frequentie, mode en vermogen. Met LAB599 kan de app de radio ook naar DIG schakelen, zien dat hij in DIG zendt, en de voedingsspanning uitlezen.\n- **Via een LiNK500MP** houd je de VFO-knop ongeveer drie seconden ingedrukt om de CAT-besturing aan de interface over te dragen.\n- **Zet de modus van de LiNK500MP voor de verbinding**: Mode 3 voor Bluetooth, Mode 4 voor Bluetooth LE. In elke andere modus vindt een Bluetooth LE-scan hem niet.\n- **Via Bluetooth** koppelt de LiNK500MP als twee seriële poorten, waarvan er maar één CAT draagt. Blijft de radio stil, kies dan de andere.',
+			'settings.station.lab599TroubleshootingIos' => 'De TX-500-reeks spreekt Kenwood-CAT. Frequentie en mode zijn getest via een LiNK500MP; vermogen en meters zijn geschreven op basis van de CAT-referentie van Lab599, dus meld wat er gebeurt, hoe dan ook.\n\n- **Zet de LiNK500MP in Mode 4**, zijn Bluetooth LE-modus, voordat je ernaar scant. In elke andere modus kan een iPhone of iPad hem niet vinden.\n- **Draag de CAT-besturing over aan de LiNK500MP**: houd de VFO-knop van de radio ongeveer drie seconden ingedrukt.\n- **Kies het CAT-protocol op de radio.** TS-2000 dekt frequentie, mode en vermogen. Met LAB599 kan de app de radio ook naar DIG schakelen, zien dat hij in DIG zendt, en de voedingsspanning uitlezen.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Als de radio verbindt maar geen frequentie toont',
-			'settings.station.kenwoodTroubleshooting' => 'Deze driver is getest met de TS-590SG en TS-480 van Kenwood, de QMX en QCX-mini van QRP Labs, en de KX2 en KX3 van Elecraft. De rest van de reeks is geschreven op basis van gepubliceerde CAT-referenties, dus meld wat er gebeurt, hoe dan ook.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Sommige rigs hebben CAT ingeschakeld nodig** in het menu voordat ze überhaupt reageren.\n\n**Diverse SDR-front-ends spreken hetzelfde protocol**, dus het is de moeite waard deze optie ook daarvoor te proberen; Elecraft-rigs staan apart, onder Elecraft. Als de frequentie klopt maar de mode fout is of ontbreekt: dat is het enige deel dat binnen de reeks verschilt — de app leidt het af uit de radio en vraagt het anders direct op, dus de mode kan gewoon wat achterlopen.',
+			'settings.station.kenwoodTroubleshooting' => 'Deze driver is getest met de TS-590SG en TS-480 van Kenwood, de QMX en QCX-mini van QRP Labs, en de KX2 en KX3 van Elecraft. De rest van de reeks is geschreven op basis van gepubliceerde CAT-referenties, dus meld wat er gebeurt, hoe dan ook.\n\nAls de radio niet reageert, bijna altijd een van deze:\n\n- **Snelheid moet overeenkomen** met het CAT-menu van de radio. Bij een verschil stuurt de radio onzin of niets terug, en nooit een foutmelding.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.\n- **Sommige rigs hebben CAT ingeschakeld nodig** in het menu voordat ze überhaupt reageren.\n- **Kenwood-radio\'s wachten op RTS**: hun CAT-poort gebruikt het als handshake, dus RTS hoog houden (onder Geavanceerde instellingen) moet aan staan. Een verbinding die is ingesteld voordat dit standaard aan stond, kan het uit hebben. Op een Digirig of een andere kabel die de PTT via RTS keyt, zet je het uit, anders gaat de radio zenden.\n\n**Diverse SDR-front-ends spreken hetzelfde protocol**, dus het is de moeite waard deze optie ook daarvoor te proberen; Elecraft-rigs staan apart, onder Elecraft. Als de frequentie klopt maar de mode fout is of ontbreekt: dat is het enige deel dat binnen de reeks verschilt — de app leidt het af uit de radio en vraagt het anders direct op, dus de mode kan gewoon wat achterlopen.',
 			'settings.station.statusConnected' => 'Verbonden',
 			'settings.station.statusLost' => 'Verbinding verbroken',
 			'settings.station.notConfigured' => 'Niet geconfigureerd',
 			'settings.station.currentConfiguration' => 'Huidige configuratie',
 			'settings.station.currentTransceiver' => 'Huidige transceiver',
+			'settings.station.currentTransceivers' => 'Huidige transceivers',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Berichten in de wachtrij in plaats van onderbreken',
+			'settings.station.noRadioBSelected' => 'Geen Radio B geselecteerd',
 			'settings.station.radioMode' => 'Radiomode',
 			'settings.station.keyerNotSupported' => 'Niet ondersteund door huidige radio',
 			'settings.station.catControlPreferences' => 'Voorkeuren CAT-besturing',
@@ -5074,13 +6498,25 @@ extension on TranslationsNl {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} zit op een ander apparaat',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Deze radio is verbonden met ${device}. De verbinding en instellingen worden op dat apparaat geconfigureerd.',
 			'settings.station.antennaInUse' => 'Antenne in gebruik',
-			'settings.station.keyInUse' => 'Seinsleutel in gebruik',
+			'settings.station.keyInUse' => 'CW-keying',
+			'settings.station.phoneKeying' => 'Spraakkeyer',
+			'settings.station.phoneKeyingNone' => 'Geen',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Geheugens in ${radio}',
+			'settings.station.phoneKeyingComputer' => 'Audio op deze computer',
+			'settings.station.phoneKeyingOff' => 'Spraakkeyer staat uit',
+			'settings.station.computerVoiceSettings' => 'Computeraudio',
+			'settings.station.cwKeyingOptions' => 'Opties CW-keying',
 			'settings.station.noneSelected' => 'Geen',
 			'settings.station.moreSettings' => 'Meer instellingen',
 			'settings.station.icomCivTroubleshootingTitle' => 'Als er twee seriële poorten voor dezelfde radio verschijnen',
 			'settings.station.icomCivTroubleshooting' => 'Diverse Icom-radio\'s, waaronder de IC-705, tonen **twee** USB-seriële poorten tegelijk (Icom noemt ze Port A en Port B), beide standaard ingesteld op CI-V. Verder kunnen deze app en je besturingssysteem ze niet onderscheiden: dezelfde USB vendor/product-ID verschijnt gewoon twee keer, soms hier gemarkeerd met een achtervoegsel `#2`. **Port A is meestal de juiste** — normaal de eerste die je besturingssysteem of browser toont, en als deze app de twee poorten kan onderscheiden, markeert ze die als voorgesteld. Als er commando\'s uitgaan en de radio nooit reageert, probeer dan de andere poort.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Als de radio nooit reageert',
 			'settings.station.civAddressTroubleshooting' => '- **Het CI-V-adres moet overeenkomen** met het menu van de radio. Deze optie vult het fabrieksadres van het model vooraf in, maar juist bij een rig op een gedeelde CI-V-bus wordt dat gewijzigd. Een frame naar het verkeerde adres wordt stil genegeerd, wat er precies uitziet als een defecte kabel.\n- **Snelheid moet overeenkomen** met de CI-V BAUD RATE van de radio (via USB: CI-V USB Baud Rate). Stel de radio in op hetzelfde getal als hier, **niet Auto**. Op Auto verbinden sommige radio\'s, waaronder de IC-7300, en reageren ze na een minuut of zo niet meer.\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **Het CI-V-adres moet overeenkomen** met het menu van de radio. Deze optie vult het fabrieksadres van het model vooraf in, maar juist bij een rig op een gedeelde CI-V-bus wordt dat gewijzigd. Een frame naar het verkeerde adres wordt stil genegeerd, wat er precies uitziet als een defecte kabel.\n${speed}\n- **Een andere app houdt mogelijk de poort bezet**: WSJT-X, fldigi en rigctld houden hem allemaal open.',
+			'settings.station.icomUsbSpeedFollows' => '- **Er is geen snelheid in te stellen.** Via USB praat deze radio op de snelheid die de computer gebruikt, en deze optie gebruikt altijd 115200, de snelheid die de scope nodig heeft.',
+			'settings.station.ic7610UsbSpeed' => '- **Zet CI-V USB Baud Rate op 115200**, de snelheid die deze optie altijd gebruikt omdat de scope die nodig heeft — **niet Auto**. Een radio op een andere snelheid antwoordt met stilte.',
+			'settings.station.civTransceiveTitle' => 'Als de app de radio traag volgt',
+			'settings.station.civTransceive' => 'Als de app er enkele seconden over doet om een frequentie- of modewissel op de radio te tonen, zet dan de instelling **CI-V Transceive** van de radio aan (op de meeste huidige modellen onder SET > Connectors > CI-V). Staat die aan, dan meldt de radio elke wijziging op het moment zelf. Staat die uit, dan ziet de app een wijziging pas de volgende keer dat hij ernaar vraagt, om de paar seconden.',
 			'settings.station.ic7300Mk2Note' => '\n- De **IC-7300 MK2** wordt geleverd met adres `B6`, niet de hier ingevulde `94` — kies in plaats daarvan de optie IC-7300 MK2.',
 			'settings.station.ic705PortNote' => '\n- De **IC-705** toont twee USB-seriële poorten, beide vernoemd naar de radio. CI-V zit op de **eerste**, die de keuzelijst aanwijst als hij de twee kan onderscheiden.',
 			'settings.station.ic7760PortNote' => '\n- De **IC-7760** spreekt CI-V op **Port A** van de twee USB-seriële poorten die hij toont.',
@@ -5096,7 +6532,8 @@ extension on TranslationsNl {
 			'settings.station.commanderTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.commanderTroubleshooting' => 'Dit verbindt met **DXLab Commander, draaiend op je computer**, niet direct met de radio — Commander praat met de radio.\n\n- **Commander moet al draaien** en met de radio verbonden zijn.\n- **De netwerkdienst moet aan staan**: de knop **Net Serv** in het Radio-paneel van het Configuration-venster van Commander.\n- **Poort** is 52002, de derde poort van het blok dat begint bij de **Base Port** van Net Serv (52000, tenzij je die hebt gewijzigd).\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van de gepubliceerde TCP-berichten van Commander en is nog niet met Commander getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.ic705TroubleshootingTitle' => 'Als de radio nooit reageert',
-			'settings.station.ic705Troubleshooting' => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.',
+			'settings.station.ic705Troubleshooting' => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **De poorten moeten overeenkomen** met de Control Port en Serial Port (UDP) van de radio, of met de poorten die ernaar zijn doorgestuurd. Een verkeerde poort wordt met stilte beantwoord, net als een radio die uit staat.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.',
+			'settings.station.icomLanTroubleshooting' => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview, RS-BA1 of de Remote Utility van Icom verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** De LAN-poort moet op hetzelfde netwerk zijn aangesloten als dit apparaat, **Network Control** moet aan staan, en de gebruikersnaam en het wachtwoord moeten als netwerkgebruiker op de radio zijn ingesteld.\n- **De poorten moeten overeenkomen** met de Control Port en Serial Port (UDP) van de radio, of met de poorten die ernaar zijn doorgestuurd. Een verkeerde poort wordt met stilte beantwoord, net als een radio die uit staat.\n- **Als hij verbindt maar nooit antwoordt**, moet het CI-V-adres hier overeenkomen met het CI-V ADDRESS-menu van de radio. Deze optie vult het adres in waarmee het model wordt geleverd.\n- **Zet de radio uit en weer aan** als hij vast blijft zitten.',
 			'settings.station.statusStale' => 'Reageert niet',
 			'settings.station.statusDisconnected' => 'Niet verbonden',
 			'settings.station.statusConnecting' => 'Verbinden…',
@@ -5104,10 +6541,8 @@ extension on TranslationsNl {
 			'settings.station.statusError' => 'Verbinding mislukt',
 			'settings.station.currentRadioSettings' => 'Huidige radio-instellingen',
 			'settings.station.notSupportedByThisRadio' => 'Niet ondersteund door deze radio',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Spraak',
-			_ => null,
-		} ?? switch (path) {
+			'settings.station.cwMessagesButton' => 'CW-berichten',
+			'settings.station.voiceMessagesButton' => 'Spraakberichten',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio',
 			'settings.station.antennaBands' => 'Banden',
 			'settings.station.antennaType' => 'Antennetype',
@@ -5116,7 +6551,7 @@ extension on TranslationsNl {
 			'settings.station.antennaTypes.vertical' => 'Verticaal',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
 			'settings.station.antennaTypes.loop' => 'Loop',
-			'settings.station.antennaTypes.longWire' => 'Long Wire / EFHW',
+			'settings.station.antennaTypes.longWire' => 'Langdraad / EFHW',
 			'settings.station.antennaTypes.other' => 'Andere',
 			'settings.station.keyType' => 'Type seinsleutel',
 			'settings.station.keyTypeRequired' => 'Kies een type seinsleutel',
@@ -5134,6 +6569,8 @@ extension on TranslationsNl {
 			'settings.station.newAntenna' => 'Nieuwe antenne',
 			'settings.station.newKey' => 'Nieuwe seinsleutel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL of compatibel)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Seinsleutel op ${device}',
 			'settings.station.trackStationInfo' => 'Stationsinfo per QSO bijhouden',
@@ -5185,7 +6622,7 @@ extension on TranslationsNl {
 			'settings.station.voiceDialectDescription' => 'Hoe deze radio zijn spraakgeheugens via CAT afspeelt. Geen betekent geen spraakgeheugens via CAT. Met een dialect en zonder aantal geldt het standaardaantal van het dialect.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590-stijl)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB en DA)',
-			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (schakeltikken)',
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (gesimuleerde knopdrukken)',
 			'settings.station.placeholderDiagnostic' => 'Gesimuleerd',
 			'settings.station.placeholderWholeNumberInvalid' => 'Moet een geheel getal zijn, 0 of meer',
 			'settings.station.placeholderFreqInvalid' => 'Moet een frequentie in kHz zijn, groter dan nul',
@@ -5212,6 +6649,43 @@ extension on TranslationsNl {
 			'settings.station.switchCurrentStateDescription' => 'Op welke antenne elke radiopoort nu staat. Wijzigingen werken meteen.',
 			'settings.station.switchWiringHeader' => 'Bedrading',
 			'settings.station.switchPortInhibitedHint' => 'zenden geblokkeerd',
+			'settings.station.rotatorAxes' => 'Assen',
+			'settings.station.rotatorAxesDescription' => 'Of de rotor alleen in azimut draait, of ook in elevatie (een G-5500 of vergelijkbaar).',
+			'settings.station.rotatorAxesAzimuth' => 'Alleen azimut',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Azimut en elevatie',
+			'settings.station.rotatorAzimuthOffset' => 'Azimutverschuiving',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Graden die worden opgeteld bij wat de controller uitleest, als zijn nulpunt niet het ware noorden is. Draaiopdrachten worden overeenkomstig gecorrigeerd.',
+			'settings.station.rotatorElevationOffset' => 'Elevatieverschuiving',
+			'settings.station.rotatorAzimuthMin' => 'Laagste azimut',
+			'settings.station.rotatorAzimuthMax' => 'Hoogste azimut',
+			'settings.station.rotatorAzimuthMaxDescription' => 'In de eigen graden van de controller. Boven 360 voor een rotor met overlap, die dan de kortste draai neemt.',
+			'settings.station.rotatorElevationMin' => 'Laagste elevatie',
+			'settings.station.rotatorElevationMax' => 'Hoogste elevatie',
+			'settings.station.rotatorElevationMaxDescription' => 'In de eigen graden van de controller. Boven 90 voor een rotor die over de kop kan.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Hele graden, ${min} tot ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'De laagste grens moet onder de hoogste liggen',
+			'settings.station.rotatorPollInterval' => 'Pollinginterval (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'Hoe vaak de rotor wordt gevraagd waar hij heen wijst. Laat leeg voor ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'Kies in welke assen de rotor draait',
+			'settings.station.rotatorRefused' => 'De controller weigerde een commando. Controleer of hij in GS-232-modus staat.',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator antwoordt pas als het ervoor is ingesteld, en zegt anders helemaal niets:\n\n- **Zet UDP Control aan** in het Setup-menu van PstRotator.\n- **Laat de poort overeenkomen**: Communication → UDP Control Port, 12000 tenzij gewijzigd. PstRotator antwoordt op de volgende poort (12001), die op dit apparaat vrij moet zijn.\n- **Verbind PstRotator met zijn controller.** Tot dan antwoordt het niets via UDP.\n- **Laat het door de firewall** op de pc waarop PstRotator draait, en op dit apparaat, dat naar de antwoorden luistert.\n- **Op een Mac, iPhone of iPad** heeft Ham2K Logger toegang tot het lokale netwerk nodig (Instellingen → Privacy en beveiliging → Lokaal netwerk).',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Huidige status: ${position}',
+			'settings.station.rotatorDisconnected' => 'niet verbonden',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimut',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevatie',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'Wachten tot de controller zijn positie meldt…',
+			'settings.station.rotatorNotResponding' => 'reageert niet',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Draait naar ${heading}, zover de grenzen van deze rotor het toelaten',
+			'settings.station.rotatorTargetAzimuth' => 'Draai naar azimut',
+			'settings.station.rotatorTargetAzimuthShort' => 'Draai naar az',
+			'settings.station.rotatorTargetElevation' => 'Draai naar elevatie',
+			'settings.station.rotatorTargetElevationShort' => 'Draai naar el',
+			'settings.station.rotatorAzimuthInvalid' => 'Moet 0 tot 360 zijn',
+			'settings.station.rotatorElevationInvalid' => 'Moet 0 tot 180 zijn',
+			'settings.station.rotatorTurn' => 'Draaien',
+			'settings.station.rotatorStop' => 'Stop',
 			'settings.station.configUnreadable' => 'De opgeslagen instellingen van deze radio konden niet worden gelezen. Open de instellingen en voer ze opnieuw in, of verwijder de radio en voeg hem opnieuw toe.',
 			'settings.station.autoConnectHeld' => 'HaLo reageerde niet meer de vorige keer dat het met deze radio verbond, dus het heeft deze keer niet vanzelf verbonden. Druk op Verbinden om het opnieuw te proberen.',
 			'settings.offlineData.title' => 'Offline gegevens',
@@ -5236,13 +6710,18 @@ extension on TranslationsNl {
 			'settings.profiles.name' => 'Naam',
 			'settings.profiles.email' => 'E-mail',
 			'settings.profiles.club' => 'Club',
-			'settings.profiles.arrlSection' => 'ARRL Sectie',
+			'settings.profiles.arrlSection' => 'ARRL-sectie',
 			'settings.profiles.racSection' => 'RAC Sectie',
 			'settings.profiles.section' => 'Sectie',
 			'settings.search.clear' => 'Wissen',
 			'settings.search.hint' => 'Instellingen zoeken',
 			'settings.developer.developerModeDescription' => 'Ontwikkelaarswaarschuwingen, debuglogs en hulpmiddelen inschakelen.',
 			'settings.developer.experiments' => 'Experimenten',
+			'settings.developer.showIdleMetrics' => 'Idle-statistieken tonen',
+			'settings.developer.showIdleMetricsDescription' => 'Toon in de statusbalk hoe idle de extensie-engine de afgelopen seconde was. Tik erop voor de gemiddelden over 10 en 60 seconden.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent}% idle',
+			'settings.developer.idleMetricsAverages' => 'Gem. idle:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}s ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} ingeschakeld', other: '${count} ingeschakeld', ), 
 			'settings.developer.patchTrack' => 'Code-push-kanaal',
 			'settings.developer.patchTrackDescription' => 'Welk over-the-air code-push-kanaal dit apparaat volgt. Avontuurlijkere kanalen krijgen fixes eerder, minder getest. Code-pushes worden bij de volgende herstart toegepast.',
@@ -5281,7 +6760,7 @@ extension on TranslationsNl {
 			'settings.developer.catalogDescription' => 'De catalogus van een andere server lezen — een lokale tijdens het werken aan de catalogus zelf. Leeg betekent catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Catalogusadres',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
-			'settings.developer.catalogSearchTracks' => 'Kanalen voor catalogus zoeken',
+			'settings.developer.catalogSearchTracks' => 'Zoekkanalen catalogus',
 			'settings.developer.catalogSearchStable' => 'Alleen stabiel',
 			'settings.developer.catalogSearchUnstable' => 'Onstabiel of beter',
 			'settings.developer.catalogSearchBleeding' => 'Bleeding of beter',
@@ -5298,7 +6777,7 @@ extension on TranslationsNl {
 			'settings.panels.extensionsDescription' => 'Activiteiten, contests, dashboardpanelen en meer functies',
 			'settings.panels.profilesDescription' => 'Roepnaam van de operator en stationsprofiel',
 			'settings.panels.stationProfiles' => 'Stationsprofielen',
-			'settings.panels.developerSettings' => 'Ontwikkelaar Instellingen',
+			'settings.panels.developerSettings' => 'Ontwikkelaarsinstellingen',
 			'settings.panels.developerSettingsDescription' => 'Hulpmiddelen voor debuggen en ontwikkeling',
 			'settings.panels.about' => 'Over',
 			'settings.panels.aboutDescription' => 'Versie, credits en juridische informatie',
@@ -5324,9 +6803,14 @@ extension on TranslationsNl {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ingeschakeld',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} uitgeschakeld',
 			'commands.sentryTestSent' => 'Testfoutrapport naar Sentry verzonden',
+			'commands.idleMetricsEnabled' => 'Idle-statistieken ingeschakeld in de statusbalk',
+			'commands.idleMetricsDisabled' => 'Idle-statistieken uitgeschakeld',
 			'commands.sentryTestLocalOnly' => 'Sentry is uitgeschakeld in deze build — testfout alleen lokaal gelogd',
 			'commands.noOperationOpen' => 'Dat commando vereist een geopende activatie',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Weet niet hoe een \'${kind}\' te markeren',
+			'commands.goUnavailable' => ({required Object place}) => '${place} staat niet aan in deze app',
+			'commands.goUnknown' => ({required Object to}) => 'Weet niet hoe naar \'${to}\' te gaan',
+			'commands.goBlocked' => 'Sluit eerst het geopende venster',
 			'commands.operationAlreadyStarted' => 'Deze activatie heeft al een startmarkering',
 			'commands.couldNotOpenLocation' => 'Pauze toegevoegd, maar kon het locatiescherm niet openen',
 			'commands.noTestOperations' => 'Geen testactivaties om op te ruimen',
@@ -5359,6 +6843,10 @@ extension on TranslationsNl {
 			'commands.cwSending' => ({required Object text}) => 'CW verzenden: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW-bericht F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW-bericht F${n} is niet verzonden: de extensies zijn nog niet klaar',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Spraakbericht M${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'de extensies zijn nog niet klaar',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Niets verzonden: Radio ${radio} kan dat niet keyen',
+			'commands.so2rNoRadioB' => 'Niets verzonden: kies een Radio B in Stationsconfiguratie om vanuit deze set te keyen',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” accepteerde die waarde niet',
 			'commandDialog.hint' => 'Zoek roepnamen of typ een commando',
 			'commandDialog.noResults' => ({required Object text}) => 'Niets gevonden voor “${text}”',
@@ -5372,8 +6860,101 @@ extension on TranslationsNl {
 			'commandDialog.sectionSuggestions' => 'Probeer',
 			'commandDialog.lookingUp' => 'Roepnaam opzoeken…',
 			'commandDialog.blockedByPane' => 'Kan geen commando\'s gebruiken zolang een paneel of venster open is',
+			'keyboardShortcuts.title' => 'Sneltoetsen',
+			'keyboardShortcuts.description' => 'Toetscombinaties aanpassen',
+			'keyboardShortcuts.search' => 'Zoek commando\'s en toetsen',
+			'keyboardShortcuts.import' => 'Importeren…',
+			'keyboardShortcuts.export' => 'Exporteren…',
+			'keyboardShortcuts.resetAll' => 'Alles resetten',
+			'keyboardShortcuts.resetAllTitle' => 'Elke sneltoets resetten?',
+			'keyboardShortcuts.resetAllBody' => 'Elk commando krijgt zijn standaardtoetsen terug, en de toetsen die aan getypte commando\'s zijn gekoppeld worden verwijderd.',
+			'keyboardShortcuts.reset' => 'Resetten',
+			'keyboardShortcuts.noKey' => 'Geen toets',
+			'keyboardShortcuts.changed' => 'Gewijzigd',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} is ook gekoppeld aan ${commands}',
+			'keyboardShortcuts.groupApp' => 'App',
+			'keyboardShortcuts.groupKeying' => 'Keying',
+			'keyboardShortcuts.groupLogging' => 'Loggen',
+			'keyboardShortcuts.groupCommands' => 'Commando\'s',
+			'keyboardShortcuts.groupFixed' => 'Vaste toetsen',
+			'keyboardShortcuts.contextApp' => 'Overal',
+			'keyboardShortcuts.contextLogView' => 'Weergaven Activatie, Jagen en Logboeken',
+			'keyboardShortcuts.contextOperation' => 'Activatieweergave, bij het keyen van een CAT-radio',
+			'keyboardShortcuts.contextLogging' => 'In het logpaneel',
+			'keyboardShortcuts.addCommand' => 'Commando toevoegen…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Onbekend commando: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Het commandovenster openen',
+			'keyboardShortcuts.command.toggleTheme' => 'Wisselen tussen licht en donker',
+			'keyboardShortcuts.command.toggleLanguage' => 'Wisselen tussen Engels en Spaans',
+			'keyboardShortcuts.command.fontScaleUp' => 'Grotere tekst',
+			'keyboardShortcuts.command.fontScaleDown' => 'Kleinere tekst',
+			'keyboardShortcuts.command.fontScaleReset' => 'Normale tekstgrootte',
+			'keyboardShortcuts.command.densityLooser' => 'Ruimere indeling',
+			'keyboardShortcuts.command.densityDenser' => 'Compactere indeling',
+			'keyboardShortcuts.command.densityAuto' => 'Automatische indelingsdichtheid',
+			'keyboardShortcuts.command.find' => 'Zoeken in het logboek',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Bericht ${n} verzenden',
+			'keyboardShortcuts.command.keyboardMode' => 'Toetsenbordmodus aan of uit',
+			'keyboardShortcuts.command.ptt' => 'Push-to-talk',
+			'keyboardShortcuts.command.wipe' => 'Het QSO dat je aan het loggen bent wissen',
+			'keyboardShortcuts.fixed.callsign' => 'Roepnamen typen',
+			'keyboardShortcuts.fixed.escape' => 'Stop met zenden, één stap terug, of sluiten',
+			'keyboardShortcuts.fixed.enter' => 'Het QSO loggen',
+			'keyboardShortcuts.fixed.space' => 'Volgend veld',
+			'keyboardShortcuts.fixed.tab' => 'Volgend of vorig veld',
+			'keyboardShortcuts.fixed.arrows' => 'Tussen velden, bedieningselementen en het logboek bewegen',
+			'keyboardShortcuts.fixed.walk' => 'Door het logboek bladeren, of naar het begin of einde gaan',
+			'keyboardShortcuts.fixed.undo' => 'Een wissen of verwijderen ongedaan maken',
+			'keyboardShortcuts.editor.addShortcut' => 'Sneltoets toevoegen',
+			'keyboardShortcuts.editor.listening' => 'Druk de toetsen voor de sneltoets in…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc stopt het luisteren',
+			'keyboardShortcuts.editor.add' => 'Toevoegen',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} hoort bij de logvelden of een venster en kan niet worden gewijzigd.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => 'Met ${keys} worden roepnamen getypt. Houd er Cmd, Ctrl of Alt bij ingedrukt.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'Het systeem kan ${keys} onderscheppen voordat de app het ziet.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} is al een van de toetsen van dit commando.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => '${keys} overnemen van “${command}”',
+			'keyboardShortcuts.editor.resetDefault' => 'Resetten naar standaard',
+			'keyboardShortcuts.editor.remove' => 'Verwijderen',
+			'keyboardShortcuts.editor.commandLabel' => 'Commando',
+			'keyboardShortcuts.editor.commandHint' => 'Voer een geldig commando in, of meerdere commando\'s gescheiden door ";"',
+			'keyboardShortcuts.editor.removeCommand' => 'Commando verwijderen',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Geen enkel commando heet “${text}”',
+			'keyboardShortcuts.editor.noShortcuts' => 'Nog geen toets',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Sneltoetsen opgeslagen in ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kon de sneltoetsen niet exporteren: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Kon het bestand niet openen: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} is geen sneltoetsenbestand dat deze app kan lezen: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'het is geen Ham2K-sneltoetsenbestand',
+			'keyboardShortcuts.file.problemNewerVersion' => 'het is geschreven door een nieuwere versie van de app',
+			'keyboardShortcuts.file.problemMalformed' => 'een deel ervan volgt het sneltoetsenformaat niet',
+			'keyboardShortcuts.file.problemTooLarge' => 'het is te groot',
+			'keyboardShortcuts.file.importTitle' => 'Sneltoetsen importeren',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Geschreven op ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'Het bestand zegt niet op welk toetsenbord het is geschreven.',
+			'keyboardShortcuts.file.translate' => 'Wat moet elk van deze toetsen op dit toetsenbord worden?',
+			'keyboardShortcuts.file.leaveOut' => 'Die sneltoetsen weglaten',
+			'keyboardShortcuts.file.replace' => 'Configuratie van dit apparaat vervangen',
+			'keyboardShortcuts.file.replaceHint' => 'Elke sneltoets die niet in het bestand staat, gaat terug naar de standaard.',
+			'keyboardShortcuts.file.merge' => 'Toevoegen aan de configuratie van dit apparaat',
+			'keyboardShortcuts.file.mergeHint' => 'De sneltoetsen uit het bestand vervangen die van dit apparaat voor dezelfde commando\'s; de rest blijft.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Onbekend in deze versie, dus weggelaten: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Geen sneltoetsen, dus weggelaten: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Toetsen die de app voor zichzelf houdt, dus weggelaten: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Na de import aan meer dan één commando gekoppeld: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'Importeren',
+			'keyboardShortcuts.file.imported' => 'Sneltoetsen geïmporteerd',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'Deze build is verlopen',
-			'expiredBuild.body' => 'Ga naar ham2k.com en haal een nieuwere versie.',
+			'expiredBuild.body' => 'Ga naar ham2k.com voor een nieuwere versie.',
 			'expiredBuild.visit' => 'Naar ham2k.com',
 			'expiredBuild.dismiss' => 'Toch doorgaan',
 			'staleness.codePushFloorTitle' => 'Er wacht een belangrijke update',
@@ -5385,9 +6966,11 @@ extension on TranslationsNl {
 			'spotting.noQsoYet' => 'Nog geen QSO gelogd om te spotten.',
 			'spotting.setFrequencyFirst' => 'Stel eerst een frequentie in.',
 			'spotting.nothingToSpot' => 'Niets te spotten — geen extensie biedt hier spotten aan.',
+			'spotting.incompleteCall' => 'Kan een onvolledige roepnaam niet spotten — maak de roepnaam eerst af.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} mislukt: ${message}',
 			'spotting.unknownError' => 'onbekende fout',
 			'spotting.notSent' => 'Spot niet verzonden.',
+			'spotting.allSkipped' => 'Spot niet verzonden: elke spotbron heeft hem overgeslagen.',
 			'spotting.notRefreshedOffline' => 'Geen verbinding — spots zijn niet ververst',
 			'dataFiles.downloading' => 'Downloaden…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Kon ${name} niet downloaden',
@@ -5395,6 +6978,8 @@ extension on TranslationsNl {
 			'dataFiles.downloadTimedOut' => 'De server deed er te lang over om te reageren. Probeer het later opnieuw.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} reageerde met een fout (HTTP ${status}). Probeer het later opnieuw.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} kon dit bestand niet leveren (HTTP ${status}). Controleer of het adres nog klopt.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM heeft geen Call History-bestand voor ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'De Call History-download van N1MM voor ${stem} is mislukt. Probeer het later opnieuw.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Kon ${name} niet verwerken',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'De download had maar ${imported} van de ${existing} records op dit apparaat, dus de weggelaten records zijn behouden. Ververs hem in Instellingen › Offline gegevens om hem toch te accepteren.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} record geïmporteerd voor ${label}.', other: '${count} records geïmporteerd voor ${label}.', ), 
@@ -5426,25 +7011,31 @@ extension on TranslationsNl {
 			'extensionService.validationError' => ({required Object error}) => 'Validatiefout: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Actie mislukt: ${error}',
 			'extensionService.commandFailed' => 'Het commando kon niet worden uitgevoerd',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} kan geen instellingen wijzigen: daar heeft het bij de installatie niet om gevraagd',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} kan de radio niet bedienen: daar heeft het bij de installatie niet om gevraagd',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} kan dat niet uitvoeren: het is een van de eigen ontwikkelaarscommando\'s van de app',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Meldingen kunnen nu niet worden verstuurd',
 			'extensionService.stashUnavailable' => 'Ham2K File Stash is nu niet bereikbaar',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => 'Geen antwoord van ${names} op het zoeken naar activiteiten, dus er kunnen resultaten ontbreken.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Sommige activiteitsextensies beantwoordden de zoekopdracht niet, dus er kunnen resultaten ontbreken.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} besteedde te veel tijd in zijn timers. Ze zijn gestopt tot de extensies herstarten.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'De timers van ${name} bleven mislukken. Ze zijn gestopt tot de extensies herstarten.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} bleef hangen in een timer. De timers zijn gestopt tot de extensies herstarten.',
-			'operationLocationScreen.title' => 'Activatie locatie',
+			'operationLocationScreen.title' => 'Activatielocatie',
 			'operationLocationScreen.selectedLocation' => 'Geselecteerde locatie',
 			'operationLocationScreen.gridSquare' => 'Grid square',
 			'operationLocationScreen.gridInvalid' => 'Vereist 4, 6, 8 of 10 tekens, zoals FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Voorgestelde locaties',
 			'operationLocationScreen.deviceGps' => 'GPS van apparaat',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS van ${device}',
-			'operationLocationScreen.locating' => 'Plaatsen…',
+			'operationLocationScreen.locating' => 'Locatie bepalen…',
 			'operationLocationScreen.gpsUnavailable' => 'Locatie niet beschikbaar',
 			'operationLocationScreen.permissionDenied' => 'Locatietoestemming geweigerd',
 			'operationLocationScreen.permissionBlocked' => 'Locatietoestemming geblokkeerd',
 			'operationLocationScreen.moreDetails' => 'Meer details',
 			'operationLocationScreen.stateOrProvince' => 'Staat of Provincie (optioneel)',
-			'operationLocationScreen.controlsUnavailableTitle' => 'Activiteitsbediening niet beschikbaar',
+			'operationLocationScreen.controlsUnavailableTitle' => 'Activiteitsvelden niet beschikbaar',
 			'operationLocationScreen.controlsUnavailableReason' => 'Deze referenties zijn nog bruikbaar; alleen hun activiteiten waren niet bereikbaar.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Opnieuw proberen',
 			'operationLocationScreen.county' => 'County (optioneel)',
@@ -5492,6 +7083,8 @@ extension on TranslationsNl {
 			'switchAccounts.linkWithSiblingDescription' => 'Je hebt een andere Ham2K-app geïnstalleerd. Koppel met het account dat daar in gebruik is.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Keur het verzoek goed in ${app} en kom dan hier terug.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} opnieuw openen',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Werkte het niet? Open het opnieuw, of ga terug en koppel op een andere manier.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kon ${app} niet openen.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'De link was verlopen en er staat een nieuwe klaar — open ${app} opnieuw.',
@@ -5521,6 +7114,17 @@ extension on TranslationsNl {
 			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
+			'qsonImport.title' => 'QSON-activatie importeren',
+			'qsonImport.description' => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.',
+			'qsonImport.dropHint' => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren',
+			'qsonImport.importing' => ({required Object filename}) => '${filename} importeren…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is geen UTF-8-tekst, dus geen QSON-bestand',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bevat geen QSON-activatie',
+			'qsonImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
+			'qsonImport.oneFileOnly' => 'Sleep één QSON-bestand tegelijk — elk bestand wordt een eigen activatie.',
 			'adifImport.title' => 'QSO\'s importeren uit ADIF',
 			'adifImport.reading' => ({required Object filename}) => '${filename} lezen…',
 			'adifImport.dropHint' => 'Sleep een ADIF-bestand hierheen om te importeren',
@@ -5549,18 +7153,20 @@ extension on TranslationsNl {
 			'adifImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
 			'adifImport.oneFileOnly' => 'Sleep één ADIF-bestand tegelijk — de volgorde waarin bestanden worden geïmporteerd bepaalt welke gegevens winnen.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s. Een ADIF in een activatie importeren is bedoeld om een paar QSO\'s toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.',
+			'adifImport.importAnyway' => 'Toch importeren',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: verbonden',
 			'offline.noRoute' => 'Helemaal geen netwerkverbinding.',
 			'offline.unreachable' => 'Het netwerk werkt, maar geen enkele server reageert — vaak een teken van een inlogpagina die in een browser wacht.',
 			'offline.reachable' => 'Alle diensten reageren zoals verwacht.',
-			'offline.whatStops' => 'Opzoeken, spots en gegevensbestanden zijn gepauzeerd. Loggen en synchronisatie in de buurt niet.',
+			'offline.whatStops' => 'Opzoeken, spots en gegevensbestanden zijn gepauzeerd. Loggen en synchronisatie met apparaten in de buurt niet.',
 			'offline.servicesTitle' => 'Diensten',
 			'offline.noServices' => 'Nog geen dienst heeft zich gemeld.',
 			'offline.lastSuccess' => ({required Object when}) => 'Reageerde ${when} geleden voor het laatst',
 			'offline.neverSucceeded' => 'Heeft nog niet gereageerd',
 			'offline.nextAttempt' => ({required Object when}) => 'Volgende poging over ${when}',
-			'offline.nextAttemptNow' => 'Volgende poging staat klaar',
+			'offline.nextAttemptNow' => 'Volgende poging is nu aan de beurt',
 			'offline.retry' => 'Nu opnieuw proberen',
 			'offline.retrying' => 'Proberen…',
 			'offline.retryReached' => 'Weer online.',
@@ -5588,9 +7194,9 @@ extension on TranslationsNl {
 			'exportSettings.defaults' => 'Standaardwaarden',
 			'exportSettings.includeLookupData' => 'Opzoekgegevens opnemen',
 			'exportSettings.customTemplates' => 'Aangepaste sjablonen',
-			'exportSettings.filenameTemplate' => 'Bestandsnaam sjabloon',
+			'exportSettings.filenameTemplate' => 'Bestandsnaamsjabloon',
 			'exportSettings.compactFilenameTemplate' => 'Sjabloon compacte bestandsnaam',
-			'exportSettings.titleTemplate' => 'Titel sjabloon',
+			'exportSettings.titleTemplate' => 'Titelsjabloon',
 			'exportSettings.adifNotesTemplate' => 'ADIF QSO Notities',
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO Opmerkingen',
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Bericht',

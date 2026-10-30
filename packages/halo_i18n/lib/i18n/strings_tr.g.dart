@@ -60,6 +60,7 @@ class TranslationsTr extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$tr settings = _Translations$settings$tr._(_root);
 	@override late final _Translations$commands$tr commands = _Translations$commands$tr._(_root);
 	@override late final _Translations$commandDialog$tr commandDialog = _Translations$commandDialog$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$tr keyboardShortcuts = _Translations$keyboardShortcuts$tr._(_root);
 	@override late final _Translations$expiredBuild$tr expiredBuild = _Translations$expiredBuild$tr._(_root);
 	@override late final _Translations$staleness$tr staleness = _Translations$staleness$tr._(_root);
 	@override late final _Translations$spotting$tr spotting = _Translations$spotting$tr._(_root);
@@ -73,6 +74,7 @@ class TranslationsTr extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$tr deepLink = _Translations$deepLink$tr._(_root);
 	@override late final _Translations$confirmDevice$tr confirmDevice = _Translations$confirmDevice$tr._(_root);
 	@override late final _Translations$switchAccounts$tr switchAccounts = _Translations$switchAccounts$tr._(_root);
+	@override late final _Translations$qsonImport$tr qsonImport = _Translations$qsonImport$tr._(_root);
 	@override late final _Translations$adifImport$tr adifImport = _Translations$adifImport$tr._(_root);
 	@override late final _Translations$offline$tr offline = _Translations$offline$tr._(_root);
 	@override late final _Translations$exportSettings$tr exportSettings = _Translations$exportSettings$tr._(_root);
@@ -97,6 +99,7 @@ class _Translations$common$tr extends Translations$common$en {
 	@override String get callsign => 'Çağrı İşareti';
 	@override String get clear => 'Temizle';
 	@override String get dismiss => 'Kapat';
+	@override String get copyDetails => 'Ayrıntıları kopyala';
 	@override String get expand => 'Genişlet';
 	@override String get collapse => 'Daralt';
 }
@@ -133,6 +136,12 @@ class _Translations$onboarding$tr extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'Bulut Senkronizasyonu';
+	@override String get syncBody => 'Ham2K Log Filer, günlüklerinizin bir yedeğini bulutta tutar ve bunları Ham2K uygulamalarını kullandığınız tüm cihazlar arasında senkronize eder.';
+	@override String get syncPricing => 'Ücretsiz! Ancak ücretli bir abonelik daha hızlı çalışmasını sağlar.';
+	@override String get syncLabel => 'Bulut Senkronizasyonunu Etkinleştir';
+	@override String get syncOffWarning => 'UYARI: bu, örneğin cihazınız çökerse veya kaybolursa operasyon verilerinizi kaybetme olasılığınızı artırır.';
+	@override String get notNow => 'Şimdi değil';
 	@override String get consentTitle => 'Veri ve Gizlilik';
 	@override String get consentUsageBody => 'Uygulamayı geliştirmemize yardımcı olmak için performans, çökme ve uygulama kullanım verilerini toplamak istiyoruz.';
 	@override String get consentUsageLabel => 'Uygulama kullanım verilerini paylaş';
@@ -173,6 +182,7 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Aktiviteler';
+	@override String get categoryAward => 'Ödüller';
 	@override String get categoryContest => 'Yarışmalar';
 	@override String get categoryLookup => 'Çağrı İşareti Sorguları';
 	@override String get categorySpots => 'Spot Kaynakları';
@@ -183,13 +193,23 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get noMatches => 'Aramanızla eşleşen uzantı yok';
 	@override String get installFromFile => 'Dosyadan yükle…';
 	@override String installVersion({required Object version}) => 'Sürüm ${version}';
-	@override String get canReach => 'Bu uzantının bağlanabildikleri';
+	@override String screenshotLabel({required Object n, required Object count}) => 'Ekran görüntüsü ${n} / ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'Önceki ekran görüntüsü';
+	@override String get nextScreenshot => 'Sonraki ekran görüntüsü';
+	@override String get screenshotUnavailable => 'Ekran görüntüsü yok';
+	@override String get canReach => 'Bu uzantı şunlara erişebilir';
 	@override String canHoldConnection({required Object host}) => '${host}, canlı bir bağlantı üzerinden';
 	@override String get canHoldLocalConnection => 'Yerel ağınızdaki cihazlar, canlı bir bağlantı üzerinden';
 	@override String get canUseLocation => 'Konumunuz';
 	@override String get canReadRadio => 'Radyonuz, frekansını ve modunu okumak için';
-	@override String get canControlRadio => 'Radyonuz, onu kontrol etmek ve onunla yayın yapmak için — ayar, güç, CW, ses hafızaları ve PTT';
-	@override String get canSetUserAgent => 'Sunuculara kendi adıyla tanıtma';
+	@override String get canControlRadio => 'Radyonuz, onu kontrol etmek ve onunla yayın yapmak için — frekans ayarı, güç, CW, ses hafızaları ve PTT';
+	@override String get canCommandRadioRaw => 'Radyonuz, ona kendi protokolünde herhangi bir komut göndermek için — yayın yapan veya ayarlarını değiştirenler dahil';
+	@override String get canReadCluster => 'DX cluster, hesabınızla oturum açarak, gönderdiklerini okumak için';
+	@override String get canSpotCluster => 'DX cluster, hesabınızla oturum açarak, sizin adınıza spot göndermek için';
+	@override String get canCommandCluster => 'DX cluster, hesabınızla oturum açarak, sizin adınıza herhangi bir komut göndermek için';
+	@override String get canSetUserAgent => 'Sunuculara kendini kendi adıyla tanıtma';
+	@override String get canChangeSettings => 'Ayarlarınız, komutlarıyla değiştirmek için: herhangi bir ayar, geliştirici modu ve denemeler';
 	@override String get noCapabilities => 'Uygulama dışında hiçbir şey istemiyor.';
 	@override String get sandboxNote => 'Uzantılar korumalı alanda çalışır: dosyalarınıza erişemez ve burada listelenenler dışında ağa çıkamaz.';
 	@override String get installAction => 'Yükle';
@@ -240,7 +260,7 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get upgradeDoneUnservedHint => 'Katalogda bunların doğrudan bir karşılığı yok; kullandıklarınızı kapsayan uzantılar için oraya bakın.';
 	@override String get retiredQp => 'QSO Partileri';
 	@override String get retiredStateparks => 'Eyalet Parkları Etkinlikleri';
-	@override String upgradeDoneMissing({required Object count}) => '${count} uzantınız henüz gelmedi. Uzantı kataloğuna bir sonraki ulaşılabildiğinde indirilecekler.';
+	@override String upgradeDoneMissing({required Object count}) => '${count} uzantınız henüz gelmedi. Uzantı kataloğuna bir sonraki erişimde indirilecekler.';
 	@override String get runtimeDeadBody => 'Uzantılarınız başlamadı. Uygulamayı yeniden başlatmak onları geri getirmeli.';
 	@override String get refusedTitle => 'Bazı uzantılar çalışmadı';
 	@override String get upgradeBusyTitle => 'Kurulum sürüyor';
@@ -261,6 +281,14 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get restoreRuntimeDeadBody => 'Onları yeniden yükledik, ancak uzantılarınız başlamadı. Uygulamayı yeniden başlatmak onları geri getirmeli.';
 	@override String revokedTitle({required Object name}) => '${name} geri çekildi';
 	@override String get revokedBody => 'Katalog bu sürümü geri çekti, bu yüzden devre dışı bırakıldı.';
+	@override String forceDisabledTitle({required Object name}) => '${name} devre dışı bırakıldı';
+	@override String get forceDisabledBody => 'Ham2K bu uzantıyı şimdilik devre dışı bıraktı.';
+	@override String replacedTitle({required Object name}) => '${name} başka bir uzantıyla değiştirildi';
+	@override String replacedBody({required Object replacement}) => 'Yerini ${replacement} aldı. Uzantılar bölümünden geçiş yapabilirsiniz.';
+	@override String replacedBy({required Object name}) => 'Yerini ${name} aldı';
+	@override String replacedByInstalled({required Object name}) => 'Yerini zaten sahip olduğunuz ${name} aldı';
+	@override String get replaceAction => 'Değiştir';
+	@override String replaceInstalledBody({required Object replacement}) => 'Ayarları, zaten sahip olduğunuz ${replacement} uzantısına taşınır. Günlükleriniz olduğu gibi kalır.';
 	@override String get downloadHashMismatch => 'Bu indirme, kataloğun tanımladığı uzantı değil.';
 	@override String catalogVersionUnknown({required Object key, required Object version}) => 'Katalogda ${key} için ${version} sürümü yok.';
 	@override String get catalogLinkUnknown => 'Bu katalog bağlantısı bir uzantı sürümü belirtmiyor.';
@@ -274,7 +302,8 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => 'Deneysel, kararsız ve kararlı sürümleri alır';
 	@override String get followStableAction => 'Yalnızca kararlı sürümleri takip et';
 	@override String get revokedBadge => 'Geri çekildi';
-	@override String get refusedBadge => 'Yüklenmedi';
+	@override String get forceDisabledBadge => 'Ham2K tarafından devre dışı';
+	@override String get refusedBadge => 'Çalışmadı';
 	@override String get downloadNotHttps => 'Bu indirme güvenli bir bağlantı üzerinden yapılmıyor.';
 	@override String downloadUnreachable({required Object source}) => 'Bu uzantı için ${source} kaynağına ulaşılamadı.';
 	@override String get detailsAction => 'Ayrıntılar';
@@ -290,6 +319,8 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spotlar';
 	@override String hookHunting({required Object program}) => '${program} avcılığı';
 	@override String hookActivating({required Object program}) => '${program} aktivasyonu';
+	@override String get suggestedSection => 'Önerilen';
+	@override String moreAvailableSection({required Object count}) => 'Daha fazlası (${count})';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class _Translations$chase$tr extends Translations$chase$en {
 	@override late final _Translations$chase$period$tr period = _Translations$chase$period$tr._(_root);
 	@override late final _Translations$chase$goals$tr goals = _Translations$chase$goals$tr._(_root);
 	@override late final _Translations$chase$panels$tr panels = _Translations$chase$panels$tr._(_root);
+	@override late final _Translations$chase$claims$tr claims = _Translations$chase$claims$tr._(_root);
+	@override late final _Translations$chase$notice$tr notice = _Translations$chase$notice$tr._(_root);
+	@override late final _Translations$chase$alerts$tr alerts = _Translations$chase$alerts$tr._(_root);
+	@override String get checklists => 'Avlama İlerlemesi';
+	@override late final _Translations$chase$imports$tr imports = _Translations$chase$imports$tr._(_root);
 }
 
 // Path: dialogs
@@ -340,6 +376,14 @@ class _Translations$dialogs$tr extends Translations$dialogs$en {
 	@override String get operationDetails => 'Operasyon ayrıntıları';
 	@override String get activities => 'Aktiviteler';
 	@override String get stationCallsign => 'İstasyon Çağrı İşareti';
+	@override String get advanced => 'Gelişmiş';
+	@override String get operatingPosition => 'Operasyon Pozisyonu (çok istasyonlu)';
+	@override String get assistance => 'Yardımlı çalışma';
+	@override String get assistanceDescription => 'Spot hizmetlerini ve diğer bilgi kaynaklarını kullan';
+	@override String get selfSpotting => 'Kendini spotlama';
+	@override String get selfSpottingDescription => 'Kendi frekans bilginizi bildiren özelliklere izin ver';
+	@override String disabledByRules({required Object rules}) => '${rules} kurallarına uymak için devre dışı';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$tr lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$tr._(_root);
 	@override String get notes => 'Notlar';
 	@override String get deleteOperationTitle => 'Operasyonu Sil';
 	@override String get purgeTestsTitle => 'Test Operasyonlarını Temizle';
@@ -412,6 +456,7 @@ class _Translations$map$tr extends Translations$map$en {
 	@override String get globe => 'Küre';
 	@override String get zoomIn => 'Yakınlaştır';
 	@override String get zoomOut => 'Uzaklaştır';
+	@override String get resetNorth => 'Kuzeyi yukarıya al';
 	@override late final _Translations$map$postcard$tr postcard = _Translations$map$postcard$tr._(_root);
 }
 
@@ -452,7 +497,7 @@ class _Translations$activitiesView$tr extends Translations$activitiesView$en {
 	@override String activitiesCountOther({required Object count}) => '${count} Aktivite';
 	@override String get empty => 'Henüz aktivite yok — eklemek için aşağıdaki Öneriler ve Arama\'yı kullanın';
 	@override String get removeActivity => 'Kaldır';
-	@override String openReferenceLink({required Object name}) => '${name} aç';
+	@override String openReferenceLink({required Object name}) => '${name} bağlantısını aç';
 	@override String get editActivity => 'Aktiviteyi düzenle';
 	@override String get manageExtensions => 'Uzantıları Yönet';
 	@override String get manage => 'Yönet';
@@ -462,7 +507,7 @@ class _Translations$activitiesView$tr extends Translations$activitiesView$en {
 	@override String get reference => 'Referans';
 	@override String get invalidReference => 'Geçersiz';
 	@override String get duplicateReference => 'Zaten eklendi';
-	@override String get searchHint => 'İsim, referans veya başka bir şeyle arayın…';
+	@override String get searchHint => 'Ad, referans veya başka bir şeyle arayın…';
 	@override String get noSuggestions => 'Eşleşme yok';
 	@override String get noSuggestionsHint => 'Yukarıda referans adı veya numarasıyla arayın';
 	@override String get noSuggestionsExample => '(örneğin \'trail\' veya \'4556\')';
@@ -472,13 +517,13 @@ class _Translations$activitiesView$tr extends Translations$activitiesView$en {
 	@override String get locationDeniedTitle => 'Konum izni reddedildi';
 	@override String get locationBlockedTitle => 'Konum izni engellendi';
 	@override String get noNearbyReason => 'Yakındaki referanslar belirlenemiyor';
-	@override String locationManualHint({required Object icon}) => 'Konumunuzu elle girmek için ${icon} simgesine dokunun\nveya referansları isimle arayın';
+	@override String locationManualHint({required Object icon}) => 'Konumunuzu elle girmek için ${icon} simgesine dokunun\nveya referansları adla arayın';
 	@override String get locationGrantAction => 'Konum erişimine izin ver';
 	@override String get locationSettingsAction => 'Ayarları Aç';
 	@override String get locationSettingsUnavailable => 'Sistem ayarlarınızdan konum erişimine izin verin';
 	@override String get locationGrantRefused => 'Hâlâ konum yok — sistem yine hayır dedi';
 	@override String get searchUnavailableTitle => 'Aktivite araması kullanılamıyor';
-	@override String get searchUnavailableReason => 'Hiçbir aktivite uzantısı aramayı çalıştıramadı. Birazdan tekrar deneyin.';
+	@override String get searchUnavailableReason => 'Bir aktivite uzantısı aramayı yanıtlayamadı. Birazdan tekrar deneyin.';
 	@override String get emptySheet => 'Eklemek için aşağıdaki öneriler ve aramayı kullanın';
 	@override String get exports => 'Dışa Aktarımlar';
 	@override String get exportLogs => 'Günlükleri Dışa Aktar';
@@ -495,12 +540,12 @@ class _Translations$activitiesView$tr extends Translations$activitiesView$en {
 	@override String get previousPick => 'Önceki eşleşme';
 	@override String get nextPick => 'Sonraki eşleşme';
 	@override String get retiredReference => 'Kullanımdan kalktı';
-	@override String enableExtension({required Object name}) => '${name} etkinleştir';
+	@override String enableExtension({required Object name}) => '${name} uzantısını etkinleştir';
 	@override String get enableExtensionHint => 'Bu uzantı aramanızla eşleşiyor, ancak şu anda etkin değil';
 	@override String get enableExtensionForRefHint => 'Bu uzantı bu operasyonun referanslarından birini işliyor, ancak şu anda etkin değil';
 	@override String extensionNotRunning({required Object name}) => '${name} çalışmıyor';
 	@override String get extensionNotRunningHint => 'Bu uzantı devre dışı bırakıldı; daha fazla bilgi için Uzantı Ayarları\'nı açın';
-	@override String installExtension({required Object name}) => '${name} yükle';
+	@override String installExtension({required Object name}) => '${name} uzantısını yükle';
 	@override String get installExtensionHint => 'Bu uzantı aramanızla eşleşiyor, ancak yüklü değil';
 	@override String get onlyCatalogMatches => 'Eşleşme yok\nKatalogdaki bazı uzantılarda sonuç olabilir.\nOnları aşağıdaki Aktivite Türleri\'nden yükleyin.';
 	@override String get setupUnavailable => 'Bu aktivitenin kurulumu yüklenemedi — Yönet\'ten tekrar deneyin';
@@ -528,6 +573,13 @@ class _Translations$loggingControls$tr extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Zaman (UTC)';
 	@override String get date => 'Tarih';
 	@override String get now => 'Şimdi';
+	@override String get manualTimeSettings => 'Manuel Zaman';
+	@override String get manualTimeIncrement => 'QSO başına artış';
+	@override String get manualTimeIncrementNone => 'Yok';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${count} dakika',
+		other: '${count} dakika',
+	);
 	@override String get frequency => 'Frekans';
 	@override String get mode => 'Mod';
 	@override String get theirCall => 'Onların çağrısı';
@@ -539,7 +591,7 @@ class _Translations$loggingControls$tr extends Translations$loggingControls$en {
 	@override String get revert => 'Geri Al';
 	@override String get undoDelete => 'Silmeyi geri al';
 	@override String get restore => 'Geri getir';
-	@override String get wipe => 'Sil';
+	@override String get wipe => 'Temizle';
 	@override String get undo => 'Geri Al';
 	@override String get pendingDeleteTapWarning => 'Bu QSO\'yu silmek için çöp kutusuna bir kez daha dokunun';
 	@override String get pendingDeleteClickWarning => 'Bu QSO\'yu silmek için çöp kutusuna bir kez daha tıklayın';
@@ -560,7 +612,20 @@ class _Translations$loggingControls$tr extends Translations$loggingControls$en {
 	@override String spotOtherAt({required Object call, required Object freq}) => '${call} istasyonunu ${freq} üzerinde spotla';
 	@override String spotTooLate({required Object call}) => '${call} istasyonunu spotlamak için çok geç';
 	@override String get spotNoFreq => 'Spotlamak için önce bir frekans ayarlayın';
+	@override String get selfSpotDisabled => 'Kendini spotlama devre dışı';
 	@override String get spotComment => 'Yorum';
+	@override String get spottingAutoControl => 'Otomatik yeniden spotlama';
+	@override String spotAutoEvery({required Object minutes}) => 'Her ${minutes} dakikada bir yeniden spotla';
+	@override String spotAutoNext({required Object time}) => '${time} sonra otomatik. Durdurulsun mu?';
+	@override String spotAutoInMinutes({required Object minutes}) => '${minutes} dk sonra otomatik';
+	@override String spotAutoInSeconds({required Object seconds}) => '${seconds} sn sonra otomatik';
+	@override String spotAutoInCount({required Object seconds}) => '${seconds} sonra otomatik';
+	@override String get spotAutoNotStarted => 'Otomatik yeniden spotlama başlatılmadı: spot gönderilemedi';
+	@override String get spotAutoMoved => 'Otomatik yeniden spotlama başlatılmadı: spotlama sırasında frekans değişti';
+	@override String get spotAutoStopped => 'Otomatik yeniden spotlama durduruldu';
+	@override String get spotAutoLeftFreq => 'Otomatik yeniden spotlama durduruldu: frekans değişti';
+	@override String get spotAutoNoFreq => 'Otomatik yeniden spotlama durduruldu: radyo frekans bildirmiyor';
+	@override String get spotBusy => 'Başka bir spot hâlâ gönderiliyor';
 	@override String get bandOrFreqRequired => 'Kaydetmeden önce bir frekans veya bant ayarlayın';
 	@override String get missingBand => 'Bant Yok';
 	@override String get missingMode => 'Mod Yok';
@@ -595,7 +660,8 @@ class _Translations$formChrome$tr extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'Doğrulama hatası: ${error}';
 	@override String transformationError({required Object error}) => 'Dönüştürme hatası: ${error}';
 	@override String actionError({required Object error}) => 'Hata: ${error}';
-	@override String get removeItem => 'Kaldır';
+	@override String get removeItem => 'Sil';
+	@override String deleteItemTitle({required Object name}) => '${name} silinsin mi?';
 	@override String get storageUnavailable => 'Girişler kullanılamıyor';
 }
 
@@ -609,7 +675,7 @@ class _Translations$qsoEditForm$tr extends Translations$qsoEditForm$en {
 	@override String get title => 'QSO\'yu Düzenle';
 	@override String get operatorCall => 'Operatör';
 	@override String get position => 'Pozisyon';
-	@override String get theirName => 'İsim';
+	@override String get theirName => 'Ad';
 	@override String get theirGrid => 'Grid';
 	@override String get theirState => 'Eyalet';
 	@override String get band => 'Bant';
@@ -641,6 +707,7 @@ class _Translations$qsoList$tr extends Translations$qsoList$en {
 	@override String get today => 'Bugün';
 	@override String get yesterday => 'Dün';
 	@override String get tomorrow => 'Yarın';
+	@override late final _Translations$qsoList$find$tr find = _Translations$qsoList$find$tr._(_root);
 }
 
 // Path: loggingPanel
@@ -710,9 +777,12 @@ class _Translations$settings$tr extends Translations$settings$en {
 	@override String get userInterface => 'Kullanıcı Arayüzü';
 	@override late final _Translations$settings$logging$tr logging = _Translations$settings$logging$tr._(_root);
 	@override late final _Translations$settings$catServer$tr catServer = _Translations$settings$catServer$tr._(_root);
+	@override late final _Translations$settings$cluster$tr cluster = _Translations$settings$cluster$tr._(_root);
+	@override late final _Translations$settings$spotting$tr spotting = _Translations$settings$spotting$tr._(_root);
 	@override late final _Translations$settings$radio$tr radio = _Translations$settings$radio$tr._(_root);
 	@override late final _Translations$settings$help$tr help = _Translations$settings$help$tr._(_root);
 	@override late final _Translations$settings$exports$tr exports = _Translations$settings$exports$tr._(_root);
+	@override late final _Translations$settings$extensionSections$tr extensionSections = _Translations$settings$extensionSections$tr._(_root);
 	@override late final _Translations$settings$map$tr map = _Translations$settings$map$tr._(_root);
 	@override late final _Translations$settings$privacy$tr privacy = _Translations$settings$privacy$tr._(_root);
 	@override String get operatorCall => 'Operatör Çağrı İşareti';
@@ -747,18 +817,23 @@ class _Translations$commands$tr extends Translations$commands$en {
 	@override String reloadFailed({required Object error}) => 'Yeniden yükleme başarısız: ${error}';
 	@override String get reloadingAll => 'Tüm veri dosyaları yeniden yükleniyor…';
 	@override String reloadingTarget({required Object target}) => '${target} veri dosyaları yeniden yükleniyor…';
-	@override String unknownExperiment({required Object token}) => 'Bilinmeyen deney "${token}"';
+	@override String unknownExperiment({required Object token}) => 'Bilinmeyen deneme "${token}"';
 	@override String experimentEnabled({required Object name}) => '${name} etkinleştirildi';
 	@override String experimentDisabled({required Object name}) => '${name} devre dışı bırakıldı';
 	@override String get sentryTestSent => 'Test hata raporu Sentry\'ye gönderildi';
+	@override String get idleMetricsEnabled => 'Boşta kalma ölçümleri durum çubuğunda etkinleştirildi';
+	@override String get idleMetricsDisabled => 'Boşta kalma ölçümleri devre dışı bırakıldı';
 	@override String get sentryTestLocalOnly => 'Bu sürümde Sentry devre dışı — test hatası yalnızca yerel olarak kaydedildi';
 	@override String get noOperationOpen => 'Bu komut açık bir operasyon gerektirir';
 	@override String unknownSegmentKind({required Object kind}) => '\'${kind}\' nasıl işaretleneceği bilinmiyor';
+	@override String goUnavailable({required Object place}) => '${place} bu uygulamada açık değil';
+	@override String goUnknown({required Object to}) => '\'${to}\' hedefine nasıl gidileceği bilinmiyor';
+	@override String get goBlocked => 'Önce açık pencereyi kapatın';
 	@override String get operationAlreadyStarted => 'Bu operasyonun zaten bir başlangıç işareti var';
 	@override String get couldNotOpenLocation => 'Ara eklendi, ancak konum ekranı açılamadı';
 	@override String get noTestOperations => 'Temizlenecek Test Operasyonu yok';
-	@override String get purgeTestsUnavailable => 'PURGETESTS bir onay penceresi göstermeli, ancak bu burada kullanılamıyor';
-	@override String get syncAllUnavailable => 'SYNCALL bir onay penceresi göstermeli, ancak bu burada kullanılamıyor';
+	@override String get purgeTestsUnavailable => 'PURGETESTS bir onay penceresi göstermeli, ancak burada bu mümkün değil';
+	@override String get syncAllUnavailable => 'SYNCALL bir onay penceresi göstermeli, ancak burada bu mümkün değil';
 	@override String testOperationsPurged({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		one: '${count} Test Operasyonu temizlendi',
 		other: '${count} Test Operasyonu temizlendi',
@@ -768,7 +843,7 @@ class _Translations$commands$tr extends Translations$commands$en {
 		one: 'Operasyonu olmayan ${count} test QSO\'su temizlendi',
 		other: 'Operasyonu olmayan ${count} test QSO\'su temizlendi',
 	);
-	@override String get purgeTestsContactsFailed => 'Test Operasyonları temizlendi, ancak operasyonu olmayan test QSO\'ları başarısız oldu; PURGETESTS\'i tekrar deneyin';
+	@override String get purgeTestsContactsFailed => 'Test Operasyonları temizlendi, ancak operasyonu olmayan test QSO\'ları temizlenemedi; PURGETESTS\'i tekrar deneyin';
 	@override String get purgeTestsNothingToDo => 'Hiçbir şey temizlenmedi';
 	@override String receivedPurgesSomeFailed({required Object total, required Object removed}) => '${total} Test Operasyonundan ${removed} tanesi kaldırıldı — geri kalanı başarısız oldu; İncele\'yi tekrar deneyin';
 	@override String get receivedPurgesFailed => 'Bu Test Operasyonları kaldırılamadı — İncele\'yi tekrar deneyin';
@@ -795,6 +870,10 @@ class _Translations$commands$tr extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'CW gönderiliyor: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW mesajı F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CW mesajı F${n} gönderilmedi: uzantılar hazır değil';
+	@override String voiceMessageError({required Object n, required Object error}) => 'Telefon mesajı M${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'uzantılar hazır değil';
+	@override String so2rRadioCannotKey({required Object radio}) => 'Hiçbir şey gönderilmedi: Radyo ${radio} bunu gönderemiyor';
+	@override String get so2rNoRadioB => 'Hiçbir şey gönderilmedi: bu setten göndermek için İstasyon Yapılandırması\'nda bir Radyo B seçin';
 	@override String settingNotStored({required Object label}) => '“${label}” bu değeri kabul etmedi';
 }
 
@@ -817,6 +896,44 @@ class _Translations$commandDialog$tr extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'Deneyin';
 	@override String get lookingUp => 'Çağrı işareti sorgulanıyor…';
 	@override String get blockedByPane => 'Bir panel veya pencere açıkken komutlar kullanılamaz';
+}
+
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$tr extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Klavye Kısayolları';
+	@override String get description => 'Tuş atamalarını özelleştirin';
+	@override String get search => 'Komutlarda ve tuşlarda ara';
+	@override String get import => 'İçe aktar…';
+	@override String get export => 'Dışa aktar…';
+	@override String get resetAll => 'Tümünü Sıfırla';
+	@override String get resetAllTitle => 'Tüm kısayollar sıfırlansın mı?';
+	@override String get resetAllBody => 'Her komut varsayılan tuşlarına döner ve yazılı komutlara atanmış tuşlar kaldırılır.';
+	@override String get reset => 'Sıfırla';
+	@override String get noKey => 'Tuş yok';
+	@override String get changed => 'Değiştirildi';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} ayrıca şuna da atanmış: ${commands}';
+	@override String get groupApp => 'Uygulama';
+	@override String get groupKeying => 'Gönderim';
+	@override String get groupLogging => 'Kayıt';
+	@override String get groupCommands => 'Komutlar';
+	@override String get groupFixed => 'Sabit Tuşlar';
+	@override String get contextApp => 'Her yerde';
+	@override String get contextLogView => 'Operasyon, Avlama ve Günlükler görünümleri';
+	@override String get contextOperation => 'Operasyon görünümünde, bir CAT radyosuyla gönderim yaparken';
+	@override String get contextLogging => 'Kayıt panelinde';
+	@override String get addCommand => 'Komut Ekle…';
+	@override String unknownCommand({required Object command}) => 'Bilinmeyen komut: ${command}';
+	@override late final _Translations$keyboardShortcuts$command$tr command = _Translations$keyboardShortcuts$command$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$tr fixed = _Translations$keyboardShortcuts$fixed$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$tr editor = _Translations$keyboardShortcuts$editor$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$file$tr file = _Translations$keyboardShortcuts$file$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$tr modifier = _Translations$keyboardShortcuts$modifier$tr._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$tr platform = _Translations$keyboardShortcuts$platform$tr._(_root);
 }
 
 // Path: expiredBuild
@@ -854,12 +971,14 @@ class _Translations$spotting$tr extends Translations$spotting$en {
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
-	@override String get noQsoYet => 'Spotlanacak kaydedilmiş QSO henüz yok.';
+	@override String get noQsoYet => 'Spotlanacak kayıtlı bir QSO henüz yok.';
 	@override String get setFrequencyFirst => 'Önce bir frekans ayarlayın.';
 	@override String get nothingToSpot => 'Spotlanacak bir şey yok — burada hiçbir uzantı spotlama sunmuyor.';
+	@override String get incompleteCall => 'Eksik bir çağrı spotlanamaz — önce çağrı işaretini tamamlayın.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} başarısız: ${message}';
 	@override String get unknownError => 'bilinmeyen hata';
 	@override String get notSent => 'Spot gönderilmedi.';
+	@override String get allSkipped => 'Spot gönderilmedi: tüm spot kaynakları onu atladı.';
 	@override String get notRefreshedOffline => 'Bağlantı yok — spotlar yenilenmedi';
 }
 
@@ -876,6 +995,8 @@ class _Translations$dataFiles$tr extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'Sunucunun yanıt vermesi çok uzun sürdü. Daha sonra tekrar deneyin.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} bir hatayla yanıt verdi (HTTP ${status}). Daha sonra tekrar deneyin.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} bu dosyayı sağlayamadı (HTTP ${status}). Adresinin hâlâ doğru olduğunu kontrol edin.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM\'de ${stem} için çağrı geçmişi dosyası yok.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => '${stem} için N1MM çağrı geçmişi indirmesi çalışmadı. Daha sonra tekrar deneyin.';
 	@override String processingFailedTitle({required Object name}) => '${name} işlenemedi';
 	@override String importTooSmall({required Object existing, required Object imported}) => 'İndirmede bu cihazdaki ${existing} kayıttan yalnızca ${imported} tanesi vardı, bu yüzden dışarıda bıraktıkları korundu. Ayarlar › Çevrimdışı Veri bölümünden yenilemek onu yine de kabul eder.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
@@ -931,8 +1052,14 @@ class _Translations$extensionService$tr extends Translations$extensionService$en
 	@override String validationError({required Object error}) => 'Doğrulama hatası: ${error}';
 	@override String actionFailed({required Object error}) => 'Eylem başarısız: ${error}';
 	@override String get commandFailed => 'Komut çalıştırılamadı';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} ayarları değiştiremez: kurulumda bunun için izin istemedi';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} radyoyu kontrol edemez: kurulumda bunun için izin istemedi';
+	@override String commandDeveloperOnly({required Object name}) => '${name} bunu çalıştıramaz: bu, uygulamanın kendi geliştirici komutlarından biri';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'Raporlar şu anda gönderilemiyor';
 	@override String get stashUnavailable => 'Ham2K File Stash\'e şu anda ulaşılamıyor';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names} aktivite aramasına yanıt vermedi, bu yüzden bazı sonuçlar eksik olabilir.';
+	@override String get activitySearchSomeSourcesFailed => 'Bazı aktivite uzantıları aramaya yanıt vermedi, bu yüzden bazı sonuçlar eksik olabilir.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} zamanlayıcılarında çok fazla zaman harcadı. Uzantılar yeniden başlayana kadar durduruldular.';
 	@override String timersSuspendedFailures({required Object name}) => '${name} zamanlayıcıları sürekli başarısız oldu. Uzantılar yeniden başlayana kadar durduruldular.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} bir zamanlayıcıda takıldı. Zamanlayıcıları uzantılar yeniden başlayana kadar durduruldu.';
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$tr extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$tr extends Translations$qsonImport$en {
+	_Translations$qsonImport$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'QSON Operasyonu İçe Aktar';
+	@override String get description => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.';
+	@override String get dropHint => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın';
+	@override String importing({required Object filename}) => '${filename} içe aktarılıyor…';
+	@override String failed({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}';
+	@override String pickerFailed({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} UTF-8 metin değil, dolayısıyla bir QSON dosyası değil';
+	@override String notJson({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil';
+	@override String notOperation({required Object filename}) => '${filename} bir QSON operasyonu içermiyor';
+	@override String get busy => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.';
+	@override String get oneFileOnly => 'Her seferinde bir QSON dosyası bırakın — her biri ayrı bir operasyon olarak açılır.';
+}
+
 // Path: adifImport
 class _Translations$adifImport$tr extends Translations$adifImport$en {
 	_Translations$adifImport$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$tr extends Translations$adifImport$en {
 	@override String get busy => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.';
 	@override String get oneFileOnly => 'Her seferinde bir ADIF dosyası bırakın — dosyaların içe aktarılma sırası hangi verinin geçerli olacağını belirler.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.';
+	@override String get importAnyway => 'Yine de içe aktar';
 }
 
 // Path: offline
@@ -1290,7 +1439,7 @@ class _Translations$home$logs$tr extends Translations$home$logs$en {
 	@override String get emptyCallsigns => 'Henüz kaydedilmiş QSO yok';
 	@override String emptyQsos({required Object call}) => '${call} için QSO yok';
 	@override String get mapNoSelection => 'Haritada görmek için bir QSO seçin';
-	@override String get searchHint => 'Çağrı işareti veya isim ara';
+	@override String get searchHint => 'Çağrı işareti veya ad ara';
 	@override String get noSearchMatches => 'Aramanızla eşleşen QSO yok';
 	@override String get titleAll => 'Tüm Günlükler';
 	@override String get allCallsigns => 'Tüm çağrı işaretleri';
@@ -1300,6 +1449,10 @@ class _Translations$home$logs$tr extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'Bu QSO silinmek üzere işaretlendi.';
 	@override String get editGone => 'Kaydedilmedi: o QSO artık bu günlükte değil.';
 	@override String get discard => 'Vazgeç';
+	@override late final _Translations$home$logs$sheet$tr sheet = _Translations$home$logs$sheet$tr._(_root);
+	@override late final _Translations$home$logs$groupBy$tr groupBy = _Translations$home$logs$groupBy$tr._(_root);
+	@override late final _Translations$home$logs$period$tr period = _Translations$home$logs$period$tr._(_root);
+	@override late final _Translations$home$logs$periodTitle$tr periodTitle = _Translations$home$logs$periodTitle$tr._(_root);
 	@override late final _Translations$home$logs$columns$tr columns = _Translations$home$logs$columns$tr._(_root);
 	@override late final _Translations$home$logs$panels$tr panels = _Translations$home$logs$panels$tr._(_root);
 	@override late final _Translations$home$logs$import$tr import = _Translations$home$logs$import$tr._(_root);
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$tr extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Avlama Hedefleri';
 	@override String remove({required Object name}) => '${name} avlamayı bırak';
-	@override String get extensionsTitle => 'Avlama içeren uzantılar';
+	@override String get extensionsTitle => 'Diğer avlama programları';
 }
 
 // Path: chase.panels
@@ -1384,6 +1537,80 @@ class _Translations$chase$panels$tr extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'Havada spotlanmış, avlanmaya hazır istasyonlar.';
 	@override String get map => 'Harita';
 	@override String get mapDescription => 'Dönemin QSO\'ları ve kaydedilen istasyon.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$tr extends Translations$chase$claims$en {
+	_Translations$chase$claims$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'QSO\'lar avlama için kontrol ediliyor';
+	@override String rebuilding({required Object program}) => 'Günlük ${program} için kontrol ediliyor';
+	@override String progress({required Object done, required Object total}) => '${done} / ${total} QSO';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$tr extends Translations$chase$notice$en {
+	_Translations$chase$notice$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'Yeni ${program}';
+	@override String newRefGuess({required Object program}) => 'Muhtemelen yeni ${program}';
+	@override String newBand({required Object program}) => 'Yeni ${program} bandı';
+	@override String newBandGuess({required Object program}) => 'Muhtemelen yeni ${program} bandı';
+	@override String newMode({required Object program}) => 'Yeni ${program} modu';
+	@override String newModeGuess({required Object program}) => 'Muhtemelen yeni ${program} modu';
+	@override String unconfirmed({required Object program}) => '${program} onaylanmamış';
+	@override String programGuess({required Object notice}) => 'Muhtemelen ${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$tr extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Uyarılar';
+	@override String get newRef => 'Yeni referans';
+	@override String get newBand => 'Yeni bant';
+	@override String get newMode => 'Yeni mod';
+	@override String get unconfirmed => 'Onaylanmamış';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$tr extends Translations$chase$imports$en {
+	_Translations$chase$imports$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => '${label} içe aktar';
+	@override String pickTitle({required Object file}) => '${file} dosyasını şu şekilde içe aktar';
+	@override String get dropHint => 'Bir avlama programına aktarmak için bir dosya bırakın';
+	@override String done({required Object file, required Object count, required Object program}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı';
+	@override String doneSkipped({required Object file, required Object count, required Object program, required Object skipped}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı, okunamayan ${skipped} kayıt atlandı';
+	@override String nothing({required Object file, required Object program}) => '${file} dosyasında ${program} için içe aktarılabilecek bir şey yok';
+	@override String failed({required Object program, required Object file}) => '${program}, ${file} dosyasını okuyamadı';
+	@override String unreadable({required Object program, required Object file, required Object skipped}) => '${program}, ${file} dosyasındaki ${skipped} kaydın hiçbirini okuyamadı';
+	@override String noProgram({required Object file}) => 'Hiçbir avlama programı ${file} dosyasını içe aktarmıyor';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$tr extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Çevrimiçi sorgulansın mı?';
+	@override String get body => 'Bu operasyon için yardımlı çalışma devre dışı. Tüm QSO\'ları sorgulamak, bu seferlik QRZ gibi çevrimiçi hizmetleri kullanacak.';
+	@override String bodyRules({required Object rules}) => 'Bu operasyon için yardımlı çalışma, ${rules} kurallarına uymak için devre dışı. Tüm QSO\'ları sorgulamak, bu seferlik QRZ gibi çevrimiçi hizmetleri kullanacak.';
+	@override String get action => 'Çevrimiçi Sorgula';
 }
 
 // Path: dialogs.callChange
@@ -1426,6 +1653,8 @@ class _Translations$operation$tabs$tr extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Uzak Ekran';
 	@override String get solar => 'Güneş';
 	@override String get radio => 'Radyo';
+	@override String get rotator => 'Rotor';
+	@override String get summaries => 'Operasyon Özetleri';
 }
 
 // Path: operation.positions
@@ -1459,7 +1688,7 @@ class _Translations$operation$menu$tr extends Translations$operation$menu$en {
 	@override String get showDeletedOps => 'Silinen operasyonları göster';
 	@override String get showQsoNumbers => 'QSO Numaralarını Göster';
 	@override String get lookupAllQsos => 'Tüm QSO\'ları sorgula';
-	@override String get loggingSettingsTitle => 'Kayıt Ayarları';
+	@override String get loggingSettingsTitle => 'Günlük Ayarları';
 	@override String get mapSettingsTitle => 'Harita Ayarları';
 	@override String get actionsSection => 'Eylemler';
 }
@@ -1495,16 +1724,33 @@ class _Translations$operation$layout$tr extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => '${panel} ekle';
 	@override String showPreview({required Object panel}) => '${panel} önizlemesi';
 	@override String missingExtension({required Object name}) => '"${name}" uzantısı eksik';
+	@override String get missingExtensionEnable => 'Etkinleştir';
+	@override String get missingExtensionInstall => 'Yükle…';
+	@override String get missingExtensionWontRun => 'Bu sürüm çalışmaz. Ayarlar › Uzantılar bölümünden güncelleyin.';
+	@override String get missingExtensionUnavailable => 'Bu uygulamada kullanılamıyor';
+	@override String get missingExtensionNotInCatalog => 'Katalogda yok';
+	@override String get missingExtensionCatalogUnreachable => 'Kataloğa ulaşılamadı. Tekrar deneyin';
+	@override String get missingExtensionFailed => 'Olmadı. Tekrar deneyin';
 	@override String get previewUnavailable => 'Bu panelin önizleme görüntüsü gösterilemedi.';
 	@override String get nestedPaneTitle => 'Diğer';
+	@override late final _Translations$operation$layout$layouts$tr layouts = _Translations$operation$layout$layouts$tr._(_root);
 	@override String get editLayout => 'Düzeni Düzenle';
 	@override String get saveLayout => 'Düzeni Kaydet';
-	@override String get revertLayout => 'Düzen değişikliklerini at';
+	@override String get revertLayout => 'Düzen değişikliklerinden vazgeç';
 	@override String get done => 'Tamamlandı';
 	@override String get layoutUnreadableTitle => 'Düzen okunamadı';
 	@override String get layoutUnreadableBody => 'Kayıtlı düzeniniz okunamadı, bu yüzden yerine varsayılan yerleşim gösteriliyor. Siz saklamayı seçene kadar orijinalinizin üzerine kaydedilmez.';
 	@override String get layoutUnreadableAction => 'Bu düzeni kullan';
 	@override String panelRenderFailed({required Object panel}) => '${panel} görüntülenemedi';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} görüntülenemedi: ${max} karakterden fazla gönderdi';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} görüntülenemedi: çizimi ${max} öğeden fazla içeriyor';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} görüntülenemedi: çizimi ${max} seviyeden derin iç içe geçiyor';
+	@override String panelNotArtwork({required Object panel}) => '${panel} görüntülenemedi: çizimi kendi başına bütün değil';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} katmandan fazla içeriyor';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} kontrolden fazla içeriyor';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} görüntülenemedi: bir sahne metni ${max} karakterden uzun';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} görüntülenemedi: düzeni ${max} seviyeden derin iç içe geçiyor';
 	@override String get panelRenderRetry => 'Tekrar dene';
 	@override String get panelActionFailed => 'Bu panel eylemi başarısız oldu. Tekrar deneyin.';
 	@override late final _Translations$operation$layout$panels$tr panels = _Translations$operation$layout$panels$tr._(_root);
@@ -1627,6 +1873,7 @@ class _Translations$operation$spots$tr extends Translations$operation$spots$en {
 		other: '${count} spot',
 	);
 	@override String spotsCountFiltered({required Object total, required Object count}) => '${total} spottan ${count} tanesi gösteriliyor';
+	@override String get spotsDisabled => 'Bu operasyon için spotlar devre dışı';
 	@override String ageMinutes({required Object minutes}) => '${minutes} dakika';
 	@override String get callsOfNote => 'Notlu Çağrılar';
 	@override String get yourSpots => 'Spotlarınız';
@@ -1666,7 +1913,7 @@ class _Translations$operation$import$tr extends Translations$operation$import$en
 	@override String get n1mmAddressValue => 'Herhangi (yayın)';
 	@override String get wsjtxProtocolName => 'WSJT-X UDP Server';
 	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → Broadcast Data sekmesi → QSO bilgisi için "Enable Broadcasts" seçeneğini işaretleyin. Aynı bilgisayarda çalışıyorsa IP adresini 127.0.0.1, mevcut yerel ağda yayın yapmak için 255.255.255.255 olarak ayarlayın.';
-	@override String get helpWsjtxSetup => 'File → Settings → Reporting sekmesi → UDP Server bölümü → "Accept UDP requests" seçeneğini işaretleyin. Aynı bilgisayarda çalışıyorsa UDP Server\'ı 127.0.0.1 veya 239.239.0.2 gibi bir çoklu yayın adresine ayarlayın ve bu uygulamadaki yukarıdaki yapılandırmada aynı adresi kullanın.';
+	@override String get helpWsjtxSetup => 'File → Settings → Reporting sekmesi → UDP Server bölümü → "Accept UDP requests" seçeneğini işaretleyin. UDP Server\'ı, aynı bilgisayarda çalışıyorsa 127.0.0.1 olarak ya da 239.239.0.2 gibi bir çoklu yayın adresi olarak ayarlayın ve bu uygulamadaki yukarıdaki yapılandırmada aynı adresi kullanın.';
 	@override String get listenTitle => 'Diğer uygulamalardan QSO dinle';
 	@override String get listenDescriptionOnN1mm => 'N1MM+ dinleniyor';
 	@override String get listenDescriptionOnWsjtx => 'WSJT-X dinleniyor';
@@ -1737,6 +1984,14 @@ class _Translations$map$postcard$tr extends Translations$map$postcard$en {
 	@override String get previousPage => 'Önceki sayfa';
 	@override String get nextPage => 'Sonraki sayfa';
 	@override String pageOf({required Object page, required Object count}) => 'Sayfa ${page} / ${count}';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${count} Q',
+		other: '${count} Q',
+	);
+	@override String get options => 'Kartpostal Seçenekleri';
+	@override String get bandLegend => 'Bant lejantını göster';
+	@override String get grayline => 'Grayline\'ı göster';
+	@override String get sectionsAndOrder => 'Özet Bölümleri ve Sıralama';
 	@override String get sectionDays => 'Her gün';
 	@override String get reset => 'Sıfırla';
 	@override String failed({required Object error}) => 'Kartpostal oluşturulamadı: ${error}';
@@ -1781,6 +2036,7 @@ class _Translations$loggingControls$info$tr extends Translations$loggingControls
 	@override String get noticeInvalidMode => 'Yanlış Mod';
 	@override String get noticeInvalidBand => 'Yanlış Bant';
 	@override String get noticeInvalidCategory => 'Çalışılamaz';
+	@override String get noticeOverTime => 'Süre Bitti';
 	@override String get noticeWorkedBefore => 'Daha Önce Çalışıldı';
 	@override String get noticeNewPark => 'Yeni Park';
 	@override String get noticeNewSection => 'Yeni Bölüm';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$tr extends Translations$loggingControls
 	@override String get noticeMissingExchange => 'Değişim Yok';
 	@override String get noticeInvalidExchange => 'Hatalı Değişim';
 	@override String get noticeUnknownEvent => 'Bilinmeyen Etkinlik';
+	@override String get noticeIncompleteCall => 'Eksik Çağrı — Puanlanmadı';
 	@override String get noticeOurGrid => 'Grid\'imizi Ayarla';
 	@override String get noticeRareCounty => 'Nadir İlçe!';
 	@override String get noticeOurLocation => 'İlçemizi Ayarla';
 	@override String get noticeShortGrid => 'Grid Çok Kısa';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$tr extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'Günlükte Bul (${shortcut})';
+	@override String get menuItemNoShortcut => 'Günlükte Bul';
+	@override String get hint => 'QSO numarası veya çağrı işareti';
+	@override String get noMatches => 'Eşleşme yok';
+	@override String get noOperationQsos => 'Bu operasyonda QSO yok';
+	@override String get noPeriodQsos => 'Bu dönemde QSO yok';
+	@override String get outsideQsosOne => 'Bu operasyon dışında 1 QSO';
+	@override String outsideQsosOther({required Object count}) => 'Bu operasyon dışında ${count} QSO';
+	@override String get pastQsosOne => '1 geçmiş QSO';
+	@override String pastQsosOther({required Object count}) => '${count} geçmiş QSO';
 }
 
 // Path: callInfo.history
@@ -1931,6 +2207,11 @@ class _Translations$settings$catServer$tr extends Translations$settings$catServe
 	@override String get openAccess => 'Açık erişim';
 	@override String get openAccessOn => 'Yerel ağdaki herhangi bir bilgisayar bağlanabilir.';
 	@override String get openAccessOff => 'Yalnızca bu bilgisayardaki uygulamalar bağlanabilir.';
+	@override String get allowTransmit => 'Uygulamaların yayın yapmasına izin ver';
+	@override String allowTransmitOn({required Object minutes}) => 'Uygulamalar radyoyu her seferinde en fazla ${minutes} dakika boyunca PTT\'ye alabilir.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'Yerel ağdaki herhangi bir bilgisayardaki uygulamalar radyoyu her seferinde en fazla ${minutes} dakika boyunca PTT\'ye alabilir.';
+	@override String get allowTransmitOff => 'Uygulamalar radyoyu PTT\'ye alamaz. VOX veya kendi PTT düzeneklerini kullanın.';
+	@override String get allowTransmitUnsupported => 'Ana VFO radyosu Ham2K Logger\'dan PTT\'ye alınamıyor, bu yüzden uygulamalar onun üzerinden yayın yapamaz.';
 	@override String get off => 'Kapalı.';
 	@override String starting({required Object protocol}) => '${protocol} başlatılıyor…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol}, ${port} portunda. Bağlı istemciler: ${clients}.';
@@ -1939,6 +2220,66 @@ class _Translations$settings$catServer$tr extends Translations$settings$catServe
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: başka bir program onu kullanıyor, çoğu zaman ${protocol} programının kendisi. O programı kapatın veya başka bir port seçin.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: bu bilgisayar buna izin vermiyor. 1024\'ün üzerinde bir port seçin.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$tr extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX Cluster';
+	@override String get description => 'Uzantıların, operatör olarak oturum açıp spot gönderdiği ve spot okuduğu sunucu.';
+	@override String get connect => 'Cluster\'a bağlan';
+	@override String get connectOn => 'Uzantılar gerektiğinde cluster\'a bağlanır';
+	@override String get connectOff => 'Hiçbir şey cluster\'a bağlanmaz';
+	@override String get console => 'Konsolu Göster';
+	@override String get consoleDescription => 'Cluster\'ın gönderdikleri ve komut yazmak için bir yer';
+	@override String get consoleTitle => 'Cluster Konsolu';
+	@override String get consoleConnect => 'Bağlan';
+	@override String get consoleDisconnect => 'Bağlantıyı Kes';
+	@override String get consoleCommand => 'Komut';
+	@override String get consoleEmpty => 'Henüz bir şey yok. Bağlanın ya da bir uzantının cluster\'ı kullanmasını bekleyin.';
+	@override String consoleRetry({required Object command}) => 'Yeniden gönderiliyor: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'Gönderilmedi: ${command} (${reason})';
+	@override String get server => 'Cluster Sunucusu';
+	@override String get selectServer => 'Sunucu Seç';
+	@override String get serverOther => 'Diğer';
+	@override String serverOtherIncomplete({required Object node}) => 'Henüz sunucu adı girilmedi, bu yüzden spotlar ${node} sunucusuna gidiyor';
+	@override String get customHost => 'Sunucu';
+	@override String get customPort => 'Port';
+	@override String get password => 'Şifre';
+	@override String get passwordDescription => 'Yalnızca gerekiyorsa';
+	@override String passwordStored({required Object node}) => '${node} için kayıtlı şifre var';
+	@override String get scrollback => 'Saklanan satır';
+	@override String scrollbackOpt({required Object count}) => '${count} satır';
+	@override String get connection => 'Bağlantı';
+	@override String get statusIdle => 'Bağlı değil. Bir uzantı gerektirdiğinde bağlanır. Test etmek için dokunun.';
+	@override String statusConnecting({required Object node}) => '${node} sunucusuna bağlanıyor…';
+	@override String statusConnected({required Object node, required Object call}) => '${node} sunucusuna ${call} olarak bağlı.';
+	@override String statusFailed({required Object node, required Object reason}) => '${node} sunucusuna bağlanılamadı: ${reason}';
+	@override String get statusUnsupported => 'Web sürümünde kullanılamaz.';
+	@override String get statusOff => 'Kapalı. Kullanmak için Cluster\'a bağlan seçeneğini açın.';
+	@override late final _Translations$settings$cluster$errors$tr errors = _Translations$settings$cluster$errors$tr._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$tr extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spotlama';
+	@override String get respotInterval => 'Otomatik yeniden spotlama aralığı';
+	@override String minutes({required Object minutes}) => '${minutes} dk';
+	@override String get autoRespotByDefault => 'Varsayılan olarak otomatik yeniden spotla';
+	@override String get autoRespotByDefaultOn => 'Herhangi bir spot gönderildikten sonra otomatik yeniden spotlamayı etkinleştir';
+	@override String get autoRespotByDefaultOff => 'Otomatik yeniden spotlamayı etkinleştirmek için kullanıcı eylemi gerekir';
+	@override String get pulseBeforeRespot => 'Her otomatik yeniden spottan önce yanıp sönsün';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'Spotlama etiketi her yeniden spottan önceki ${seconds} saniye boyunca mavi yanıp söner';
+	@override String get pulseBeforeRespotOff => 'Otomatik yeniden spot öncesinde yanıp sönme yok';
 }
 
 // Path: settings.radio
@@ -1950,7 +2291,7 @@ class _Translations$settings$radio$tr extends Translations$settings$radio$en {
 	// Translations
 	@override String get title => 'CAT Kontrolü';
 	@override String get loggingAndCat => 'Kayıt ve CAT';
-	@override String get tuningSection => 'Ayar';
+	@override String get tuningSection => 'Frekans Ayarı';
 	@override String get keyerSection => 'Keyer';
 	@override String get servicesSection => 'Hizmetler';
 	@override String get stationConfigurationSection => 'İstasyon Yapılandırması';
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$tr extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$tr enterSends = _Translations$settings$radio$enterSends$tr._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$tr keyerSpeed = _Translations$settings$radio$keyerSpeed$tr._(_root);
 	@override late final _Translations$settings$radio$cwMessages$tr cwMessages = _Translations$settings$radio$cwMessages$tr._(_root);
+	@override late final _Translations$settings$radio$keyerControl$tr keyerControl = _Translations$settings$radio$keyerControl$tr._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$tr voiceMessages = _Translations$settings$radio$voiceMessages$tr._(_root);
+	@override late final _Translations$settings$radio$voiceWords$tr voiceWords = _Translations$settings$radio$voiceWords$tr._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$tr avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$tr._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$tr zeroBeatRange = _Translations$settings$radio$zeroBeatRange$tr._(_root);
 }
@@ -2003,6 +2346,20 @@ class _Translations$settings$exports$tr extends Translations$settings$exports$en
 	@override String get title => 'Dışa Aktarımlar';
 }
 
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$tr extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'Aktiviteler';
+	@override String get hunting => 'Avlama';
+	@override String get contests => 'Yarışmalar';
+	@override String get lookups => 'Sorgular';
+	@override String get dashboard => 'Pano';
+}
+
 // Path: settings.map
 class _Translations$settings$map$tr extends Translations$settings$map$en {
 	_Translations$settings$map$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$tr extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'Haritalar';
 	@override late final _Translations$settings$map$style$tr style = _Translations$settings$map$style$tr._(_root);
+	@override late final _Translations$settings$map$showCallsigns$tr showCallsigns = _Translations$settings$map$showCallsigns$tr._(_root);
+	@override late final _Translations$settings$map$showGrayline$tr showGrayline = _Translations$settings$map$showGrayline$tr._(_root);
 	@override late final _Translations$settings$map$styleOpts$tr styleOpts = _Translations$settings$map$styleOpts$tr._(_root);
 }
 
@@ -2055,11 +2414,11 @@ class _Translations$settings$peers$tr extends Translations$settings$peers$en {
 	@override String get bleEnable => 'Bluetooth ile bağlan';
 	@override String get bleDescription => 'Yerel ağ olmasa bile bağlanmak için Bluetooth LE kullan';
 	@override String get thisDevice => 'Bu Cihaz';
-	@override String get deviceName => 'İsim';
+	@override String get deviceName => 'Ad';
 	@override String get deviceNameHint => 'Bu cihazın diğer cihazlarda nasıl göründüğü';
-	@override String get pairedDevices => 'Bağlı Cihazlar';
-	@override String get noPairedDevices => 'Henüz bağlı cihaz yok. Bağlamak için bunu bu ağdaki başka bir cihazda da açın.';
-	@override String deviceListProblem({required Object error}) => 'Bağlı cihazlarınız okunamıyor: ${error}';
+	@override String get pairedDevices => 'Eşleştirilmiş Cihazlar';
+	@override String get noPairedDevices => 'Henüz eşleştirilmiş cihaz yok. Eşleştirmek için bunu bu ağdaki başka bir cihazda da açın.';
+	@override String deviceListProblem({required Object error}) => 'Eşleştirilmiş cihazlarınız okunamıyor: ${error}';
 	@override String get nearby => 'Yakında';
 	@override String get connected => 'Bağlı';
 	@override String get viaBluetooth => 'Bluetooth üzerinden';
@@ -2069,22 +2428,22 @@ class _Translations$settings$peers$tr extends Translations$settings$peers$en {
 	@override String get notConnected => 'Bağlı değil';
 	@override String get wantsToPair => 'bu operasyonu paylaşmak istiyor';
 	@override String get allow => 'İzin ver';
-	@override String get link => 'Bağla';
+	@override String get link => 'Eşleştir';
 	@override String get reject => 'Reddet';
 	@override String get forget => 'Unut';
 	@override String forgetTitle({required Object name}) => '${name} unutulsun mu?';
 	@override String get forgetBody => 'Bu cihazla senkronizasyonu durduracak. Daha sonra yeniden izin verebilirsiniz; önceden kaydedilmiş QSO\'lar korunur.';
-	@override String pairTitle({required Object name}) => '${name} ile bağla';
+	@override String pairTitle({required Object name}) => '${name} ile eşleştir';
 	@override String get pairBody => 'Bu cihaz yerel ağınızda ve bağlanmak istiyor.';
 	@override String get pairBodyBle => 'Bu cihaz yakında ve Bluetooth LE üzerinden bağlanmak istiyor.';
 	@override String get pairIdLabel => 'Cihaz Kimliği';
-	@override String get pairWarning => 'Yalnızca tanıdığınız cihazlarla bağlantı kurun. Bu ağdaki herhangi bir cihaz istek gönderebilir.';
-	@override String get pairWarningBle => 'Yalnızca tanıdığınız cihazlarla bağlantı kurun. Yakındaki herhangi bir cihaz istek gönderebilir.';
+	@override String get pairWarning => 'Yalnızca tanıdığınız cihazlarla eşleştirin. Bu ağdaki herhangi bir cihaz istek gönderebilir.';
+	@override String get pairWarningBle => 'Yalnızca tanıdığınız cihazlarla eşleştirin. Yakındaki herhangi bir cihaz istek gönderebilir.';
 	@override String problem({required Object error}) => 'Yerel ağa ulaşılamıyor: ${error}';
 	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 	@override String statusConnected({required Object device}) => '${device} cihazına bağlandı';
 	@override String statusLost({required Object device}) => '${device} ile bağlantı kesildi';
-	@override String statusPerma({required Object linked, required Object connected}) => 'Eş Cihazlar: ${linked} cihazdan ${connected} tanesi bağlı';
+	@override String statusPerma({required Object linked, required Object connected}) => 'Eş Cihazlar: ${linked} eşleştirilmiş cihazdan ${connected} tanesi bağlı';
 	@override String get screenEnable => 'Ekranları ve pencereleri paylaş';
 	@override String get screenDescription => 'Diğer cihazların bu bilgisayardaki ekranları veya pencereleri göstermesine izin ver';
 	@override String get screenSources => 'Ekranlar ve Pencereler';
@@ -2224,7 +2583,7 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get detectedEquipment => 'Algılanan Ekipman';
 	@override String discoveryUnavailable({required Object error}) => 'Radyolar dinlenemiyor: ${error}';
 	@override String get edit => 'Ekipmanı düzenle';
-	@override String get name => 'İsim';
+	@override String get name => 'Ad';
 	@override String get nameDescription => 'Ona ne dediğiniz — "Sol Radyo". İsteğe bağlı.';
 	@override String get transport => 'Bağlantı';
 	@override String get host => 'Adres';
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'port ${n} / ${total}';
 	@override String get serialPortSuggested => 'önerilen';
 	@override String get serialPortJustNow => 'Yeni bağlandı';
+	@override String get serialPortNoDriver => 'sürücü yok';
 	@override String get serialDeviceRequest => 'USB cihazı ekle…';
+	@override String get bleDevice => 'Bluetooth LE cihazı';
+	@override String get bleDeviceDescription => 'Radyonuzun üzerinden bağlandığı seri köprü, örneğin Mode 4\'teki bir LiNK500MP veya bir BLE seri adaptörü.';
+	@override String get bleScan => 'Bluetooth LE cihazlarını tara…';
+	@override String get bleScanNoneFound => 'Bluetooth LE cihazı bulunamadı. Köprünün açık, yakında ve Bluetooth LE modunda (LiNK500MP\'de Mode 4) olduğunu kontrol edin.';
+	@override String bleScanFailed({required Object reason}) => 'Bluetooth LE taraması çalıştırılamadı: ${reason}';
+	@override String get bleOff => 'Bluetooth kapalı.';
+	@override String get bleDenied => 'Bluetooth izni verilmedi. Sistem ayarlarından izin verip tekrar deneyin.';
+	@override String get bleUnsupported => 'Bu cihazda Bluetooth LE yok.';
+	@override String get bleStarting => 'Bluetooth hâlâ başlıyor. Birazdan tekrar deneyin.';
+	@override String get bleConnectFailed => 'Bluetooth LE cihazına ulaşılamıyor. Açık, yakında ve başka bir uygulamaya bağlı olmadığını kontrol edin.';
+	@override String bleNoSerialService({required Object services}) => 'Bu Bluetooth LE cihazında uygulamanın tanıdığı bir seri hizmet yok. Lütfen hizmetleriyle birlikte bildirin: ${services}';
 	@override String get baudRate => 'Hız (baud)';
 	@override String get baudRateDescription => 'Radyonun CAT menüsüyle eşleşmelidir. Eşleşmezse radyo anlamsız veri döndürür ve hata vermez.';
 	@override String get serialRtsHigh => 'RTS\'yi yüksek tut';
 	@override String get serialRtsHighDescription => 'Yalnızca yanıt vermeden önce RTS bekleyen bir radyo için, örneğin CAT RTS açık bir Yaesu. Digirig, SignaLink ve çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak yayına geçirir.';
 	@override String get serialDtrHigh => 'DTR\'yi yüksek tut';
 	@override String get serialDtrHighDescription => 'Yalnızca gücünü DTR\'den alan bir CAT arayüzü için, örneğin FT-817 için bazı RS-232 kabloları. Birçok kabloda DTR, CW veya PTT\'yi tetikler ve onu yüksek tutmak yayına geçirir.';
+	@override String get serialUsbDriver => 'USB çip sürücüsü';
+	@override String get serialUsbDriverDescription => 'Otomatik çoğu adaptörü tanır. Çipi yalnızca port listesinin sürücüsü yok dediği bir adaptör için seçin — ambalajı veya bir USB cihaz listesi adını verir.';
+	@override String get serialUsbDriverAuto => 'Otomatik';
 	@override String get civAddress => 'Radyo CI-V adresi';
 	@override String get civAddressDescription => 'Radyonun CI-V menüsünde gösterildiği gibi onaltılık. IC-705 fabrikadan A4 olarak gelir.';
 	@override String get civAddressInvalid => 'CI-V adresi iki onaltılık basamaktır, 01 ile FF arası';
@@ -2298,8 +2672,37 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => 'Bu slice\'ın radyoda bir panadapter\'ı yok';
 	@override String spectrumStreamRefused({required Object code}) => 'Radyo bir DAX IQ akışını reddetti (hata ${code})';
 	@override String get spectrumNoUdp => 'Radyonun spektrum verisi bu cihaza ulaşamıyor';
+	@override String get spectrumK4Unavailable => 'K4\'ün LAN spektrumu alınamıyor. Yeniden deneniyor…';
+	@override String get spectrumK4RemoteUnavailable => 'K4\'ün uzak spektrumu alınamıyor';
 	@override String get spectrumScopeRefused => 'Radyo skop komutlarını reddetti';
 	@override String get spectrumOutOfRange => 'Radyonun skopu gösterebileceği aralığın dışına ayarlanmış';
+	@override String get spectrumBandUnsupported => 'Radyonun skopu bu bantta gösterilemiyor';
+	@override String get spectrumSdrNoRadio => 'Bağlı radyonun frekansı bekleniyor…';
+	@override String get spectrumSdrNotConnected => 'SDR bağlı değil';
+	@override String get spectrumSdrNoIf => 'Bu SDR\'ın ayarlarında radyonun IF frekansını belirleyin';
+	@override String get sdrRadio => 'Spektrumunu gösterdiği radyo';
+	@override String get sdrRadioDescription => 'Bu radyodaki spektrum görüntüsü, radyonun kendi skopu yerine bu alıcıdan beslenir.';
+	@override String get sdrRadioMain => 'Ana radyo';
+	@override String get sdrTuning => 'Anten girişi';
+	@override String get sdrTuningDescription => 'Alıcının sinyali nereden geliyor. Kendi anteninde radyoyu izlemek için kendini ayarlar; radyonun IF çıkışında IF\'te kalır.';
+	@override String get sdrTuningIndependent => 'Kendi anteni';
+	@override String get sdrTuningIfTap => 'Radyonun IF çıkışı';
+	@override String get sdrIfHz => 'IF frekansı (Hz)';
+	@override String get sdrIfHzDescription => 'Yalnızca IF çıkışı için: radyonun kadranının IF\'inde oturduğu frekans, örneğin FT-817\'de 68330000.';
+	@override String get sdrIfInverted => 'IF ters çevrilmiş';
+	@override String get sdrGainDb => 'Kazanç (dB)';
+	@override String get sdrGainDbDescription => 'Alıcının otomatik kazancı için boş bırakın.';
+	@override String get sdrOffsetHz => 'Frekans kayması (Hz)';
+	@override String get sdrOffsetHzDescription => 'Bir upconverter için alıcıya gönderilen her frekansa eklenir: Ham It Up için 125000000.';
+	@override String get sdrPpm => 'Frekans düzeltmesi (ppm)';
+	@override String get rtlDirectSampling => 'Doğrudan örnekleme';
+	@override String get rtlDirectSamplingDescription => 'Upconverter olmayan bir RTL-SDR V3\'te HF için. RTL-SDR V4 onsuz HF\'e ulaşır.';
+	@override String get rtlDirectSamplingOff => 'Kapalı';
+	@override String get rtlDirectSamplingI => 'I kolu';
+	@override String get rtlDirectSamplingQ => 'Q kolu';
+	@override String get rtlTcpNotAServer => 'Bu bir rtl_tcp sunucusu değil';
+	@override String get rtlTcpNotes => 'Bu, dongle\'ın takılı olduğu bilgisayarda **kendi çalıştırdığınız bir rtl_tcp sunucusuna** bağlanır.\n\n- **Başlatmak için** `rtl_tcp -a 0.0.0.0` kullanın, böylece diğer makineler ulaşabilir; aynı makinede yalnızca `rtl_tcp` yeter.\n- **Port**, `-p` ile başlatmadıysanız 1234\'tür.\n- **Aynı anda tek program:** rtl_tcp tek bir istemciye hizmet verir. Uygulama yalnızca bir spektrum görüntüsü gösterilirken bağlanır ve o kapandıktan birkaç saniye sonra bırakır.\n- **Android\'de** *SDR driver* uygulaması aynı sunucuyu telefonda çalıştırır.';
+	@override String get rspTcpNotes => 'Bu, RSP\'nin takılı olduğu ve SDRplay API\'sinin kurulu olduğu bilgisayarda **kendi çalıştırdığınız bir rsp_tcp sunucusuna** bağlanır.\n\n- **Başlatmak için** `rsp_tcp -a 0.0.0.0` kullanın.\n- **Port**, `-p` ile başlatmadıysanız 1234\'tür.\n- **Aynı anda tek program:** sunucu tek bir istemci alır. Uygulama yalnızca bir spektrum görüntüsü gösterilirken bağlanır.';
 	@override String get n3fjpNoRig => 'N3FJP\'de radyo arayüzü kurulu değil, bu yüzden bu bir radyoyu değil, N3FJP\'ye yazılanları izler';
 	@override String get winkeyerKeyPort => 'Anahtar çıkışı';
 	@override String get winkeyerKeyPortDescription => 'Radyonuzun keyer\'ın iki çıkış jakından hangisine takılı olduğu.';
@@ -2308,6 +2711,11 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get winkeyerPttDescription => 'Bir amplifikatör veya bunu gerektiren bir radyo için aynı jaktaki PTT hattını tetikler. Anahtar jakından tetiklenen bir radyo için kapalı bırakın.';
 	@override String get winkeyerNoAnswer => 'Bu portta hiçbir WinKeyer yanıt vermedi';
 	@override String get winkeyerStoppedAnswering => 'WinKeyer gönderim sırasında yanıt vermeyi bıraktı; mesaj iptal edildi';
+	@override String get icomControlPort => 'Kontrol portu (UDP)';
+	@override String get icomControlPortDescription => 'Radyonun Control Port (UDP) değeri — ağ ayarlarında değiştirilmediyse veya başka bir porta yönlendirilmediyse 50001.';
+	@override String get icomSerialPort => 'Seri port (UDP)';
+	@override String get icomSerialPortDescription => 'Radyonun Serial Port (UDP) değeri — ağ ayarlarında değiştirilmediyse veya başka bir porta yönlendirilmediyse 50002.';
+	@override String get icomPortsDiffer => 'Kontrol ve seri portları farklı olmalı';
 	@override String get radioUser => 'Radyo kullanıcı adı';
 	@override String get radioPass => 'Radyo şifresi';
 	@override String get radioLoginDescription => 'Radyonun Network → Remote girişi, WiFi şifreniz değil.';
@@ -2315,34 +2723,59 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get connectFailedBusy => 'Cihaz kullanımda';
 	@override String get connectFailedDenied => 'Erişim reddedildi';
 	@override String get connectFailedDevice => 'Cihaz bulunamadı';
+	@override String get connectFailedUnsupported => 'Hiçbir sürücü bu USB adaptörün çipini tanımıyor. Hangi çip olduğunu biliyorsanız, Gelişmiş Ayarlar\'daki USB çip sürücüsü altından seçin.';
 	@override String get connectFailedLines => 'RTS/DTR ayarlandığı gibi tutulamadı, bu yüzden port kapatıldı. Başka bir program donanım el sıkışmasını açık bırakmış olabilir — kabloyu çıkarıp yeniden takın.';
 	@override String get connectFailedNetwork => 'Radyo ağda bulunamıyor. Adresini, açık ve erişilebilir olduğunu kontrol edin.';
+	@override String connectFailedReplyPort({required Object port}) => 'Bu cihazdaki ${port} portu zaten kullanımda ve yanıtlar oraya geliyor. Onu dinleyen diğer her şeyi — başka bir PstRotator düğümü dahil — kapatın ya da portu değiştirin.';
 	@override String get connectFailedTimeout => 'Radyo zamanında yanıt vermedi. Açık ve erişilebilir olduğunu kontrol edin.';
 	@override late final _Translations$settings$station$models$tr models = _Translations$settings$station$models$tr._(_root);
 	@override late final _Translations$settings$station$transports$tr transports = _Translations$settings$station$transports$tr._(_root);
 	@override String get troubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
-	@override String get ft891Troubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT RTS radyoda OFF olmalı** (FT-891 menüsü **05-08**). Açıkken radyo, uygulamanın düşük tuttuğu bir el sıkışma hattını bekler. Digirig, SignaLink veya çoğu ev yapımı kabloda aynı hat PTT\'dir, bu yüzden onu yükseltmek vericinizi yayına geçirir. Radyonun kendi USB portunda alternatif, Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** seçeneğidir.\n- **Hız eşleşmeli**: radyonun CAT RATE ayarı (menü **05-06**). Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
+	@override String get ft891Troubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyoda CAT RTS kapalı ya da RTS\'yi yüksek tut açık olmalı.** **CAT RTS** açıkken (FT-891 menüsü **05-08**) radyo, RTS düşükken sessiz kalır — port açılırken bir kez yanıt verip sonra susabilir. Radyonun kendi USB portu seçilince Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** açılır. Digirig, SignaLink veya çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak vericinizi yayına geçirir: bunun yerine radyoda CAT RTS\'yi kapatın.\n- **Hız eşleşmeli**: radyonun CAT RATE ayarı (menü **05-06**). Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
 	@override String get yaesuBinaryTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
 	@override String get yaesuBinaryTroubleshooting => 'Bu radyo Yaesu\'nun eski beş baytlık CAT protokolünü konuşur ve bir şey yanlış olduğunda hiç yanıt vermez. Neredeyse her zaman şunlardan biridir:\n\n- **Kablo seviyeleri dönüştürmelidir.** Arkadaki CAT jakı RS-232 de USB de değildir; CT-62 veya eşdeğer bir adaptör gerekir. Düz bir ses veya veri kablosu CAT için çalışmaz.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü (FT-817\'de **#14**, FT-857 veya FT-897\'de **#19**). Eşleşmezse radyo hiçbir şey döndürmez, asla hata vermez.\n- **Bu portta hiçbir şeyin RTS veya DTR\'yi yükseltmesine izin vermeyin.** Bu radyolar için çoğu kabloda bu hatlar PTT ve manipülasyondur. DTR\'den beslenen eski bir arayüz istisnadır: onun için Gelişmiş Ayarlar altında **DTR\'yi yüksek tut** seçeneğini açın.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu sürücü Yaesu\'nun yayımladığı CAT tablosundan yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.';
+	@override String get tenTecTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
+	@override String get tenTecEagleTroubleshooting => '- **Arkadaki USB-B portu CAT bağlantısıdır.** Radyo bir USB seri port olarak görünür; Windows\'ta Ten-Tec\'in USB to UART sürücüsü gerekir, Aygıt Yöneticisi\'nde "USB to UART (COMx)" olarak görünür.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar, Ten-Tec\'in firmware güncelleyicisi de öyle.\n- **Filtre genişliğini uygulamadan ayarlamak, radyo kapatılıp açılana kadar onu BW düğmesinden alır.** Radyo böyle çalışır.\n\nBu sürücü Ten-Tec\'in programcı referans kılavuzundan yazıldı. Yarı yarıya çalışıyorsa, radyonun menüsündeki firmware sürümüyle birlikte bildirmeye değer.';
+	@override String get tenTecOrionTroubleshooting => '- **SERIAL DATA portuna düz bağlantılı bir DB-9 seri kablo kullanın**, null-modem değil.\n- **Bu giriş RTS\'yi yüksek tutar**, çünkü Orion el sıkışma için RTS ve CTS kullanır. Digirig gibi PTT\'yi RTS\'den tetikleyen bir arayüzde Gelişmiş Ayarlar altındaki RTS\'yi yüksek tut seçeneğini kapatın, yoksa uygulama bağlanır bağlanmaz radyo yayına geçer.\n- **Uygulamadan CW için radyonun dahili keyer\'ı açık olmalı.** Kapalıyken radyo uygulamanın gönderdiğini yok sayar.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu sürücü Ten-Tec\'in programcı referans kılavuzundan yazıldı ve bir Orion\'da çalıştırılmadı. Yarı yarıya çalışıyorsa, radyonun menüsündeki firmware sürümüyle birlikte bildirmeye değer.';
+	@override String get tenTecNoCw => 'Bu radyonun firmware\'i uygulamadan CW almıyor. Ten-Tec bunu Orion firmware 1.366\'da ekledi.';
+	@override String get tenTecKeyerOff => 'Radyonun dahili keyer\'ı kapalı, bu yüzden uygulamadan gönderilen CW\'yi yok sayıyor. Radyonun menüsünden keyer\'ı açın.';
 	@override String get guohetecTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
 	@override String get guohetecTroubleshooting => 'Q900\'ün iki CAT protokolü vardır ve bu giriş FT-817 taklidi yerine kendi yerel protokolünü kullanır. Burada FT-817\'yi değil, **Guohetec Q900**\'ü seçin — taklit daha az komut destekler ve radyo hangisini kullandığını söylemez.\n\n- **USB-C kablosu CAT bağlantısıdır** ve ses kartını da bağlar. Bu bağlantıda hız önemli değildir; port ne ayarlanırsa ayarlansın yok sayar.\n- **Bu portta hiçbir şeyin RTS veya DTR\'yi yükseltmesine izin vermeyin.** Seri kabloda bu hatlar PTT ve manipülasyondur.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **İkinci nesil bir radyo birinci nesilden farklı davranır.** Menu\'ye uzun basın, ardından About: HW 2.0 ikinci nesildir.\n\nBu sürücü üreticinin yayımladığı protokolden yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.';
 	@override String get yaesuTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
 	@override String get yaesuTroubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, uygulamanın düşük tuttuğu bir el sıkışma hattını bekler. Digirig, SignaLink veya çoğu ev yapımı kabloda aynı hat PTT\'dir, bu yüzden onu yükseltmek vericinizi yayına geçirir. Radyonun kendi USB portunda alternatif, Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** seçeneğidir. Bu ayarın yeri modele göre değişir (FT-891\'de menü **05-08**).\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Modlar FT-891\'in tablosunu izler.** Yaesu serisinin çoğu buna uyar, ancak modlarını farklı numaralandıran bir radyo bu modlar için yanlış olanı gösterir ve ayarlar. Frekans etkilenmez.';
+	@override String get ftdx3000Troubleshooting => '**Menü 037 CAT SELECT, radyonun USB portu üzerinden CAT için USB olmalı**; RS232C\'ye ayarlıysa CAT arkadaki jaktadır.\n\nBu giriş yayımlanmış CAT belgelerinden yazıldı ve bir FTDX3000\'de çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.';
 	@override String get yaesuRs232Troubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT jakı RS-232\'dir.** USB-seri adaptör ve düz bağlantılı bir DB-9 kablosu gerekir — null-modem kablosu hatları çaprazlar ve radyo hiçbir şey duymaz.\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, Gelişmiş Ayarlar altında **RTS\'yi yüksek tut** açık olmadıkça uygulamanın düşük tuttuğu bir el sıkışma hattını bekler.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu giriş yayımlanmış CAT belgelerinden yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.';
-	@override String get yaesuUsbTroubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyonun iki USB portundan ilkini kullanın.** CAT normalde ilkindedir (Windows\'ta **Enhanced** COM portu); ikincisi (**Standard**) PTT ve manipülasyon içindir. Seçici, ikisini ayırt edebildiği her yerde ilkini gösterir.\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, Gelişmiş Ayarlar altında **RTS\'yi yüksek tut** açık olmadıkça uygulamanın düşük tuttuğu bir el sıkışma hattını bekler.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
+	@override String get yaesuUsbTroubleshooting => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyonun iki USB portundan ilkini kullanın.** CAT normalde ilkindedir (Windows\'ta **Enhanced** COM portu); ikincisi (**Standard**) PTT ve manipülasyon içindir. Seçici, ikisini ayırt edebildiği her yerde ilkini gösterir.\n- **Radyoda CAT RTS kapalı ya da RTS\'yi yüksek tut açık olmalı.** Radyonun **CAT RTS** menüsü açıkken, RTS düşükken sessiz kalır — port açılırken bir kez yanıt verip sonra susabilir. Radyonun kendi USB portu seçilince Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** açılır. Digirig, SignaLink veya çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak vericinizi yayına geçirir: bunun yerine radyoda CAT RTS\'yi kapatın.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
 	@override String get k4SerialNotes => 'K4\'ün arkadaki USB-B (PC) soketini bağlayın. CAT için USB-PC1 veya USB-PC2 çalışır; kullanılmayan bir port seçin ve radyodaki Serial USB-PCn: Baud Rate ayarıyla eşleştirin. HaLo 38400 değerini önceden doldurur; gerekirse değiştirin. Başka bir uygulama diğer portu veya Ethernet\'i kullanmalıdır.\n\nBu bağlantı radyoyu ve keyer\'larını kontrol eder; HaLo\'ya ses göndermez.';
-	@override String get k4TcpNotes => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bu CAT kontrolüdür, 9204 portundaki ayrı uzak ses bağlantısı değildir.\n\nHaLo, ses veya panadapter verisi aktarmadan radyoyu ve keyer\'larını kontrol eder.';
+	@override String get k4TcpNotes => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bir panadapter veya şelale görünürken HaLo aynı ana makineyi sabit 9201 portunda kullanır; CAT portunu değiştirmek spektrum portunu değiştirmez.\n\nSpektrum ana alıcıyı gösterir. Yakınlaştırma, referans ayarı ve hız kontrolleri yalnızca HaLo\'nun görüntüsünü etkiler. Ses akışı desteklenmez.';
 	@override String get k4PowerTimeout => 'Radyo çıkış aralığını onaylamadığı için K4 gücü değiştirilmedi. Tekrar deneyin.';
+	@override String get k4RemoteNotes => 'K4\'ünüzde uzak erişimi etkinleştirin ve ağ şifresini girin. Main ve Sub, radyo kontrolü ve spektrum için tek bir şifreli bağlantıyı paylaşır. Varsayılan port 9204\'tür; uzaktan bağlanırken yönlendirdiğiniz portu girin.\n\nSes çalma ve mikrofon akışı desteklenmez.';
+	@override String get k4Receiver => 'Alıcı';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'Main veya Sub seçin';
+	@override String get k4ReceiverAlreadyConfigured => 'Bu alıcı bu K4 için zaten yapılandırılmış';
+	@override String get k4SubReceiverOff => 'K4\'ün Sub alıcısı kapalı';
+	@override String get k4RemotePasswordRequired => 'Güvenli bağlanmak için K4\'ün ağ şifresini girin.';
+	@override String get k4RemoteHandshakeFailed => 'K4 güvenli bir bağlantı kuramadı. Ağ şifresini ve uzak erişim ayarlarını kontrol edin.';
+	@override String get k4RemoteUnreachable => 'K4\'ün güvenli bağlantısına ulaşılamadı. Adresini, portunu ve uzak erişim ayarlarını kontrol edin.';
 	@override String get k4PowerRange => 'K4 gücü 0.1–110 W olmalıdır; transverter miliwatt çıkışı etkinken 0.0001–0.01 W.';
 	@override String get elecraftTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
 	@override String get elecraftTroubleshooting => 'Elecraft cihazları Kenwood CAT konuşur ve hem KX2 hem KX3 bu şekilde çalıştırıldı — her iki yönde VFO, mod değiştirme ve CW sıfır vuruşu çalışıyor.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun menüsünde **RS232** altında ayarlanan hız. Bu cihazlar 38400 ile gelir. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\n**Frekans doğru ama mod yanlışsa** bize bildirin. KX2 ve KX3 girişleri modu, radyonun durum yanıtında gördüğümüz cihazlardan belirlediğimiz bir konumdan okur; onu başka yere koyan bir yazılım ancak bir raporla bize ulaşır.\n\nK3 için henüz rapor yok, bu yüzden kullanıyorsanız ne olduğunu lütfen söyleyin. K4\'ün kendi girişi vardır.';
+	@override String get lab599TroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
+	@override String get lab599Troubleshooting => 'TX-500 serisi Kenwood CAT konuşur. Frekans ve mod bir LiNK500MP üzerinden çalıştırıldı; güç ve göstergeler Lab599\'un CAT referansından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\n- **Hız eşleşmeli**: radyonun CAT ayarı, değiştirmediyseniz 9600. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Radyoda CAT protokolünü seçin.** TS-2000 frekans, mod ve gücü kapsar. LAB599 ayrıca uygulamanın radyoyu DIG\'e geçirmesine, DIG\'de yayın yaptığını görmesine ve besleme voltajını okumasına izin verir.\n- **LiNK500MP üzerinden**, CAT kontrolünü arayüze devretmek için VFO düğmesine yaklaşık üç saniye basılı tutun.\n- **LiNK500MP\'nin modunu bağlantıya göre ayarlayın**: Bluetooth için Mode 3, Bluetooth LE için Mode 4. Başka bir modda Bluetooth LE taraması onu bulamaz.\n- **Bluetooth üzerinden** LiNK500MP iki seri port olarak eşleşir ve yalnızca biri CAT taşır. Radyo sessiz kalıyorsa diğerini seçin.';
+	@override String get lab599TroubleshootingIos => 'TX-500 serisi Kenwood CAT konuşur. Frekans ve mod bir LiNK500MP üzerinden çalıştırıldı; güç ve göstergeler Lab599\'un CAT referansından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\n- **Taramadan önce LiNK500MP\'yi Mode 4\'e**, yani Bluetooth LE moduna alın. Başka bir modda iPhone veya iPad onu bulamaz.\n- **CAT kontrolünü LiNK500MP\'ye devredin**: radyonun VFO düğmesine yaklaşık üç saniye basılı tutun.\n- **Radyoda CAT protokolünü seçin.** TS-2000 frekans, mod ve gücü kapsar. LAB599 ayrıca uygulamanın radyoyu DIG\'e geçirmesine, DIG\'de yayın yaptığını görmesine ve besleme voltajını okumasına izin verir.';
 	@override String get kenwoodTroubleshootingTitle => 'Radyo bağlanıyor ama frekans göstermiyorsa';
-	@override String get kenwoodTroubleshooting => 'Bu sürücü Kenwood TS-590SG ve TS-480, QRP Labs QMX ve QCX-mini ile Elecraft KX2 ve KX3 üzerinde doğrulandı. Serinin geri kalanı yayımlanmış CAT referanslarından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun CAT menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Bazı cihazlarda CAT** yanıt vermeden önce menüden etkinleştirilmelidir.\n\n**Birçok SDR ön ucu aynı protokolü konuşur**, bu yüzden bu giriş onlar için de denemeye değer; Elecraft cihazları ayrı olarak, Elecraft altında listelenir. Frekans doğru ama mod yanlış veya eksikse, seri boyunca farklılık gösteren tek kısım budur — uygulama modu radyodan çıkarır ve gerekirse doğrudan sorar, bu yüzden mod yalnızca gecikmeli gelebilir.';
+	@override String get kenwoodTroubleshooting => 'Bu sürücü Kenwood TS-590SG ve TS-480, QRP Labs QMX ve QCX-mini ile Elecraft KX2 ve KX3 üzerinde doğrulandı. Serinin geri kalanı yayımlanmış CAT referanslarından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun CAT menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Bazı cihazlarda CAT** yanıt vermeden önce menüden etkinleştirilmelidir.\n- **Kenwood radyoları RTS bekler**: CAT portları onu el sıkışma olarak kullanır, bu yüzden RTS\'yi yüksek tut (Gelişmiş Ayarlar altında) açık olmalı. Bu seçenek varsayılan olarak açılmadan önce kurulmuş bir bağlantıda kapalı olabilir. Digirig veya PTT\'yi RTS\'den tetikleyen başka bir kabloda kapatın, yoksa radyo yayına geçer.\n\n**Birçok SDR ön ucu aynı protokolü konuşur**, bu yüzden bu giriş onlar için de denemeye değer; Elecraft cihazları ayrı olarak, Elecraft altında listelenir. Frekans doğru ama mod yanlış veya eksikse, seri boyunca farklılık gösteren tek kısım budur — uygulama modu radyodan çıkarır ve gerekirse doğrudan sorar, bu yüzden mod yalnızca gecikmeli gelebilir.';
 	@override String get statusConnected => 'Bağlı';
 	@override String get statusLost => 'Bağlantı kesildi';
 	@override String get notConfigured => 'Yapılandırılmadı';
 	@override String get currentConfiguration => 'Mevcut Yapılandırma';
 	@override String get currentTransceiver => 'Mevcut Telsiz';
+	@override String get currentTransceivers => 'Mevcut Telsizler';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'Mesajlar araya girmek yerine sıraya alınır';
+	@override String get noRadioBSelected => 'Radyo B seçilmedi';
 	@override String get radioMode => 'Radyo Modu';
 	@override String get keyerNotSupported => 'Mevcut radyo desteklemiyor';
 	@override String get catControlPreferences => 'CAT Kontrol Tercihleri';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} başka bir cihazda';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'Bu radyo ${device} cihazına bağlı. Bağlantısı ve ayarları o cihazda yapılandırılır.';
 	@override String get antennaInUse => 'Kullanılan Anten';
-	@override String get keyInUse => 'Kullanılan Anahtar';
+	@override String get keyInUse => 'CW Gönderimi';
+	@override String get phoneKeying => 'Telefon Gönderimi';
+	@override String get phoneKeyingNone => 'Yok';
+	@override String phoneKeyingRadio({required Object radio}) => '${radio} içindeki hafızalar';
+	@override String get phoneKeyingComputer => 'Bu bilgisayardaki ses';
+	@override String get phoneKeyingOff => 'Telefon gönderimi kapalı';
+	@override String get computerVoiceSettings => 'Bilgisayar Sesi';
+	@override String get cwKeyingOptions => 'CW Gönderim Seçenekleri';
 	@override String get noneSelected => 'Yok';
 	@override String get moreSettings => 'Diğer Ayarlar';
 	@override String get icomCivTroubleshootingTitle => 'Aynı radyo için iki seri port görünüyorsa';
 	@override String get icomCivTroubleshooting => 'IC-705 dahil birçok Icom radyosu aynı anda **iki** USB seri port sunar (Icom bunlara Port A ve Port B der) ve ikisi de varsayılan olarak CI-V\'ye ayarlıdır. Ne bu uygulama ne de işletim sisteminiz bunları bunun ötesinde ayırt edebilir: aynı USB üretici/ürün kimliği iki kez görünür, burada bazen `#2` ekiyle işaretlenir. **Doğru olan genellikle Port A\'dır** — normalde işletim sisteminizin veya tarayıcınızın listelediği ilk port; bu uygulama iki portu ayırt edebildiğinde onu önerilen olarak işaretler. Komutlar gidiyor ama radyo hiç yanıt vermiyorsa diğer portu deneyin.';
 	@override String get civAddressTroubleshootingTitle => 'Radyo hiç yanıt vermiyorsa';
 	@override String get civAddressTroubleshooting => '- **CI-V adresi eşleşmeli**: radyonun menüsündekiyle aynı olmalı. Bu giriş, modelin fabrika adresini önceden doldurur, ancak bir CI-V veri yolunu paylaşan bir cihazda tam da bu değiştirilir. Yanlış adrese gönderilen bir çerçeve sessizce yok sayılır; bu da tıpkı ölü bir kablo gibi görünür.\n- **Hız eşleşmeli**: radyonun CI-V BAUD RATE ayarı (USB\'de CI-V USB Baud Rate). Radyoyu burada gösterilen sayıya ayarlayın, **Auto\'ya değil**. Auto\'da IC-7300 dahil bazı radyolar bağlanır ve bir dakika kadar sonra yanıt vermeyi bırakır.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **CI-V adresi eşleşmeli**: radyonun menüsündekiyle aynı olmalı. Bu giriş, modelin fabrika adresini önceden doldurur, ancak bir CI-V veri yolunu paylaşan bir cihazda tam da bu değiştirilir. Yanlış adrese gönderilen bir çerçeve sessizce yok sayılır; bu da tıpkı ölü bir kablo gibi görünür.\n${speed}\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.';
+	@override String get icomUsbSpeedFollows => '- **Ayarlanacak hız yok.** USB üzerinden bu radyo bilgisayarın kullandığı hızda konuşur ve bu giriş her zaman skopun gerektirdiği hız olan 115200\'ü kullanır.';
+	@override String get ic7610UsbSpeed => '- **CI-V USB Baud Rate\'i 115200\'e ayarlayın**, skop gerektirdiği için bu girişin her zaman kullandığı hız — **Auto değil**. Başka bir hıza ayarlı radyo sessizlikle yanıt verir.';
+	@override String get civTransceiveTitle => 'Uygulama radyoyu geç izliyorsa';
+	@override String get civTransceive => 'Uygulama, radyoda yapılan bir frekans veya mod değişikliğini göstermek için birkaç saniye alıyorsa radyonun **CI-V Transceive** ayarını açın (güncel modellerin çoğunda SET > Connectors > CI-V altında). Açıkken radyo her değişikliği olduğu anda bildirir. Kapalıyken uygulama değişikliği ancak bir sonraki sorduğunda, birkaç saniyede bir görür.';
 	@override String get ic7300Mk2Note => '\n- **IC-7300 MK2** burada önceden doldurulan `94` yerine `B6` adresiyle gelir — onun yerine IC-7300 MK2 girişini seçin.';
 	@override String get ic705PortNote => '\n- **IC-705** her ikisi de radyonun adını taşıyan iki USB seri port sunar. CI-V bunların **ilkindedir**; seçici, ikisini ayırt edebildiği her yerde onu gösterir.';
 	@override String get ic7760PortNote => '\n- **IC-7760**, sunduğu iki USB seri porttan **Port A** üzerinde CI-V konuşur.';
@@ -2393,7 +2838,8 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get commanderTroubleshootingTitle => 'Uygulama bağlanamıyorsa';
 	@override String get commanderTroubleshooting => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.';
 	@override String get ic705TroubleshootingTitle => 'Radyo hiç yanıt vermiyorsa';
-	@override String get ic705Troubleshooting => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.';
+	@override String get ic705Troubleshooting => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- **Portlar eşleşmeli**: radyonun Control Port ve Serial Port (UDP) değerleriyle ya da onlara yönlendirilen portlarla. Yanlış port, kapalı bir radyo gibi sessizlikle karşılanır.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.';
+	@override String get icomLanTroubleshooting => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview, RS-BA1 veya Icom\'un Remote Utility\'si o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** LAN portu bu cihazla aynı ağa bağlı olmalı, **Network Control** açık olmalı ve kullanıcı adı ile şifre radyoda bir ağ kullanıcısı olarak tanımlı olmalı.\n- **Portlar eşleşmeli**: radyonun Control Port ve Serial Port (UDP) değerleriyle ya da onlara yönlendirilen portlarla. Yanlış port, kapalı bir radyo gibi sessizlikle karşılanır.\n- **Bağlanıyor ama hiç yanıt vermiyorsa**, buradaki CI-V adresi radyonun CI-V ADDRESS menüsüyle eşleşmeli. Bu giriş, modelin fabrika adresini önceden doldurur.\n- Takılı kalırsa **radyoyu kapatıp açın**.';
 	@override String get statusStale => 'Yanıt vermiyor';
 	@override String get statusDisconnected => 'Bağlı değil';
 	@override String get statusConnecting => 'Bağlanıyor…';
@@ -2401,8 +2847,8 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get statusError => 'Bağlantı başarısız';
 	@override String get currentRadioSettings => 'Mevcut radyo ayarları';
 	@override String get notSupportedByThisRadio => 'Bu radyo desteklemiyor';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => 'Telefon';
+	@override String get cwMessagesButton => 'CW Mesajları';
+	@override String get voiceMessagesButton => 'Telefon Mesajları';
 	@override String voiceKeyerAvailable({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza';
 	@override String get antennaBands => 'Bantlar';
 	@override String get antennaType => 'Anten türü';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'Her radyo portunun şu anda hangi antende olduğu. Değişiklikler hemen geçerli olur.';
 	@override String get switchWiringHeader => 'Kablolama';
 	@override String get switchPortInhibitedHint => 'yayın engellendi';
+	@override String get rotatorAxes => 'Eksenler';
+	@override String get rotatorAxesDescription => 'Rotorun yalnızca azimutta mı, yoksa elevasyonda da mı (G-5500 veya benzeri) döndüğü.';
+	@override String get rotatorAxesAzimuth => 'Yalnızca azimut';
+	@override String get rotatorAxesAzimuthElevation => 'Azimut ve elevasyon';
+	@override String get rotatorAzimuthOffset => 'Azimut kayması';
+	@override String get rotatorAzimuthOffsetDescription => 'Kontrolcünün sıfırı gerçek kuzey değilken okuduğu değere eklenecek derece. Dönüşler buna göre düzeltilir.';
+	@override String get rotatorElevationOffset => 'Elevasyon kayması';
+	@override String get rotatorAzimuthMin => 'En düşük azimut';
+	@override String get rotatorAzimuthMax => 'En yüksek azimut';
+	@override String get rotatorAzimuthMaxDescription => 'Kontrolcünün kendi derecelerinde. Örtüşmeli bir rotor için 360\'ın üzerinde; rotor o zaman kısa dönüşü seçer.';
+	@override String get rotatorElevationMin => 'En düşük elevasyon';
+	@override String get rotatorElevationMax => 'En yüksek elevasyon';
+	@override String get rotatorElevationMaxDescription => 'Kontrolcünün kendi derecelerinde. Ters dönen bir rotor için 90\'ın üzerinde.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'Tam derece, ${min} ile ${max} arası';
+	@override String get rotatorLimitsInvalid => 'En düşük sınır en yükseğin altında olmalı';
+	@override String get rotatorPollInterval => 'Sorgulama aralığı (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'Rotora nereye baktığının ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.';
+	@override String get rotatorAxesRequired => 'Rotorun hangi eksenlerde döndüğünü seçin';
+	@override String get rotatorRefused => 'Kontrolcü bir komutu reddetti. GS-232 moduna ayarlı olduğunu kontrol edin.';
+	@override String get pstRotatorTroubleshooting => 'PstRotator yalnızca bunun için ayarlandıktan sonra yanıt verir, aksi halde hiçbir şey söylemez:\n\n- PstRotator\'ın Setup menüsünden **UDP Control\'ü açın**.\n- **Portu eşleştirin**: Communication → UDP Control Port, değiştirilmediyse 12000. PstRotator bir üst porttan (12001) yanıt verir; o port bu cihazda boş olmalı.\n- **PstRotator\'ı kontrolcüsüne bağlayın.** Bağlanmadan UDP üzerinden hiçbir şey yanıtlamaz.\n- PstRotator\'ı çalıştıran PC\'de ve yanıtları dinleyen bu cihazda **güvenlik duvarından geçmesine izin verin**.\n- **Mac, iPhone veya iPad\'de** Ham2K Logger\'ın Yerel Ağ erişimine ihtiyacı vardır (Ayarlar → Gizlilik ve Güvenlik → Yerel Ağ).';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'Mevcut Durum: ${position}';
+	@override String get rotatorDisconnected => 'bağlı değil';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimut';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° elevasyon';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'Kontrolcünün konumunu bildirmesi bekleniyor…';
+	@override String get rotatorNotResponding => 'yanıt vermiyor';
+	@override String rotatorHeldAtLimit({required Object heading}) => '${heading} yönüne dönülüyor, bu rotorun sınırlarının izin verdiği kadar';
+	@override String get rotatorTargetAzimuth => 'Azimuta dön';
+	@override String get rotatorTargetAzimuthShort => 'Az\'a dön';
+	@override String get rotatorTargetElevation => 'Elevasyona dön';
+	@override String get rotatorTargetElevationShort => 'El\'e dön';
+	@override String get rotatorAzimuthInvalid => '0 ile 360 arasında olmalı';
+	@override String get rotatorElevationInvalid => '0 ile 180 arasında olmalı';
+	@override String get rotatorTurn => 'Döndür';
+	@override String get rotatorStop => 'Durdur';
 	@override String get configUnreadable => 'Bu radyonun kayıtlı ayarları okunamadı. Ayarlarını açıp yeniden girin ya da kaldırıp tekrar ekleyin.';
 	@override String get autoConnectHeld => 'HaLo bu radyoya son bağlandığında yanıt vermeyi bıraktı, bu yüzden bu kez kendiliğinden bağlanmadı. Tekrar denemek için Bağlan\'a basın.';
 }
@@ -2534,7 +3017,7 @@ class _Translations$settings$profiles$tr extends Translations$settings$profiles$
 	@override String get notSet => 'Ayarlanmadı';
 	@override String get personalInfo => 'Kişisel Bilgiler';
 	@override String get personalInfoNote => 'Bu bilgiler, gönderimler için gerektiğinde oluşturulan günlüklere eklenebilir';
-	@override String get name => 'İsim';
+	@override String get name => 'Ad';
 	@override String get email => 'E-posta';
 	@override String get club => 'Kulüp';
 	@override String get arrlSection => 'ARRL Bölümü';
@@ -2561,7 +3044,12 @@ class _Translations$settings$developer$tr extends Translations$settings$develope
 
 	// Translations
 	@override String get developerModeDescription => 'Geliştirici uyarılarını, hata ayıklama günlüklerini ve araçlarını etkinleştir.';
-	@override String get experiments => 'Deneyler';
+	@override String get experiments => 'Denemeler';
+	@override String get showIdleMetrics => 'Boşta kalma ölçümlerini göster';
+	@override String get showIdleMetricsDescription => 'Uzantı motorunun son bir saniyede ne kadar boşta kaldığını durum çubuğunda göster. 10 ve 60 saniyelik ortalamalar için dokunun.';
+	@override String idleMetricsReadout({required Object percent}) => '%${percent} boşta';
+	@override String get idleMetricsAverages => 'Boşta ort.:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}sn %${percent}';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		one: '${count} etkin',
 		other: '${count} etkin',
@@ -2678,6 +3166,183 @@ class _Translations$settings$gridPrecisionDescription$tr extends Translations$se
 	@override String get eight => '8 hane';
 }
 
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$tr extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'Komut penceresini aç';
+	@override String get toggleTheme => 'Açık ve koyu tema arasında geçiş yap';
+	@override String get toggleLanguage => 'İngilizce ve İspanyolca arasında geçiş yap';
+	@override String get fontScaleUp => 'Daha büyük yazı';
+	@override String get fontScaleDown => 'Daha küçük yazı';
+	@override String get fontScaleReset => 'Normal yazı boyutu';
+	@override String get densityLooser => 'Daha ferah düzen';
+	@override String get densityDenser => 'Daha sık düzen';
+	@override String get densityAuto => 'Otomatik düzen yoğunluğu';
+	@override String get find => 'Günlükte bul';
+	@override String keyerMessage({required Object n}) => '${n} numaralı mesajı gönder';
+	@override String get keyboardMode => 'Klavye modunu aç veya kapat';
+	@override String get ptt => 'Bas-konuş (PTT)';
+	@override String get wipe => 'Kaydedilmekte olan QSO\'yu temizle';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$tr extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'Çağrı işareti yazma';
+	@override String get escape => 'Göndermeyi durdur, bir adım geri çık veya kapat';
+	@override String get enter => 'QSO\'yu kaydet';
+	@override String get space => 'Sonraki alan';
+	@override String get tab => 'Sonraki veya önceki alan';
+	@override String get arrows => 'Alanlar, kontroller ve günlük arasında dolaş';
+	@override String get walk => 'Günlükte sayfa sayfa ilerle ya da başına veya sonuna git';
+	@override String get undo => 'Bir temizlemeyi veya silmeyi geri al';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$tr extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'Kısayol Ekle';
+	@override String get listening => 'Kısayol için tuşlara basın…';
+	@override String get listeningHint => 'Esc dinlemeyi durdurur';
+	@override String get add => 'Ekle';
+	@override String refusedFixed({required Object keys}) => '${keys} kayıt alanlarına veya bir pencereye aittir ve değiştirilemez.';
+	@override String refusedCallsign({required Object keys}) => '${keys} çağrı işaretlerini yazmak için kullanılır. Onunla birlikte Cmd, Ctrl veya Alt tuşunu basılı tutun.';
+	@override String reserved({required Object keys}) => 'Sistem, ${keys} kısayolunu uygulama görmeden önce alabilir.';
+	@override String already({required Object keys}) => '${keys} zaten bu komutun tuşlarından biri.';
+	@override String takeIt({required Object keys, required Object command}) => '${keys} kısayolunu “${command}” komutundan al';
+	@override String get resetDefault => 'Varsayılana Sıfırla';
+	@override String get remove => 'Kaldır';
+	@override String get commandLabel => 'Komut';
+	@override String get commandHint => 'Geçerli bir komut ya da ";" ile ayrılmış birden fazla komut girin';
+	@override String get removeCommand => 'Komutu Kaldır';
+	@override String commandUnknown({required Object text}) => '“${text}” hiçbir komutla eşleşmiyor';
+	@override String get noShortcuts => 'Henüz tuş yok';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$tr extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'Kısayollar ${location} konumuna kaydedildi';
+	@override String exportFailed({required Object error}) => 'Kısayollar dışa aktarılamadı: ${error}';
+	@override String importPickerFailed({required Object error}) => 'Dosya açılamadı: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir kısayol dosyası değil: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'metin geçerli YAML değil (satır ${line})';
+	@override String get problemNotKeysFile => 'bir Ham2K klavye kısayolu dosyası değil';
+	@override String get problemNewerVersion => 'uygulamanın daha yeni bir sürümüyle yazılmış';
+	@override String get problemMalformed => 'bir kısmı kısayol biçimine uymuyor';
+	@override String get problemTooLarge => 'çok büyük';
+	@override String get importTitle => 'Kısayolları İçe Aktar';
+	@override String writtenOn({required Object platform}) => '${platform} üzerinde yazılmış.';
+	@override String get writtenOnUnknown => 'Dosya hangi klavyede yazıldığını belirtmiyor.';
+	@override String get translate => 'Bu tuşların her biri bu klavyede hangi tuş olmalı?';
+	@override String get leaveOut => 'O kısayolları dışarıda bırak';
+	@override String get replace => 'Bu cihazın yapılandırmasının yerine koy';
+	@override String get replaceHint => 'Dosyada olmayan her kısayol varsayılanına döner.';
+	@override String get merge => 'Bu cihazın yapılandırmasına ekle';
+	@override String get mergeHint => 'Aynı komutlar için dosyadaki kısayollar bu cihazdakilerin yerini alır, geri kalanlar olduğu gibi kalır.';
+	@override String unknown({required Object commands}) => 'Bu sürümde bilinmediği için dışarıda bırakıldı: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'Kısayol olmadığı için dışarıda bırakıldı: ${chords}';
+	@override String refusedChords({required Object chords}) => 'Uygulamanın kendine ayırdığı tuşlar olduğu için dışarıda bırakıldı: ${chords}';
+	@override String conflicts({required Object keys}) => 'İçe aktarmadan sonra birden fazla komuta atanmış: ${keys}';
+	@override String get importAction => 'İçe Aktar';
+	@override String get imported => 'Kısayollar içe aktarıldı';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$tr extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$tr extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$tr extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'İstasyon Çağrı İşaretleri';
+	@override String get groupBy => 'Gruplama';
+	@override String get period => 'Zaman Aralığı';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$tr extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'Gruplanmamış';
+	@override String get date => 'Tarih';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => 'Bilinmeyen kıta';
+	@override String get unknownEntity => 'Bilinmeyen varlık';
+	@override String get unknownDate => 'Tarihsiz';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$tr extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'Bu ay';
+	@override String get last3Months => 'Son 3 ay';
+	@override String get thisYear => 'Bu yıl';
+	@override String get lastYear => 'Geçen yıl';
+	@override String get allTime => 'Tüm zamanlar';
+	@override String get custom => 'Özel aralık';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$tr extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => '${span} içinde';
+	@override String get custom => 'Özel Aralık';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$tr extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -2690,7 +3355,7 @@ class _Translations$home$logs$columns$tr extends Translations$home$logs$columns$
 	@override String get freq => 'Frekans';
 	@override String get mode => 'Mod';
 	@override String get call => 'Çağrı';
-	@override String get name => 'İsim';
+	@override String get name => 'Ad';
 	@override String get station => 'İstasyon';
 	@override String get band => 'Bant';
 	@override String get sent => 'Gönd.';
@@ -2734,6 +3399,72 @@ class _Translations$home$logs$import$tr extends Translations$home$logs$import$en
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} / ${total} içe aktarıldı';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$tr extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'Varsayılan';
+	@override String untitledName({required Object number}) => 'Düzen ${number}';
+	@override String switcherLabel({required Object name}) => 'Düzen: ${name}';
+	@override String get menuNew => 'Yeni…';
+	@override String get menuExport => 'Dışa aktar…';
+	@override String get menuImport => 'İçe aktar…';
+	@override String get menuTitle => 'Düzenler';
+	@override String get newTitle => 'Yeni Düzen';
+	@override String get editTitle => 'Düzeni Düzenle';
+	@override String get edit => 'Düzenle';
+	@override String get duplicateCurrent => 'Geçerli düzeni çoğalt';
+	@override String get startFromDefault => 'Varsayılan düzenden başla';
+	@override String get nameLabel => 'Ad';
+	@override String get descriptionLabel => 'Açıklama';
+	@override String get create => 'Oluştur';
+	@override String leaveEditTitle({required Object name}) => '"${name}" düzenindeki değişiklikler kaydedilsin mi?';
+	@override String get leaveEditBody => 'Bu düzende kaydetmediğiniz değişiklikler var.';
+	@override String get discard => 'Vazgeç';
+	@override String get deleteTitle => 'Bu düzen silinsin mi?';
+	@override String deleteBody({required Object name}) => '"${name}" düzenini silmek istediğinizden emin misiniz?';
+	@override String get exportTitle => 'Düzeni Dışa Aktar';
+	@override String get exportPick => 'Dışa aktarılacak paneller';
+	@override String get tabSet => 'Sekme Grubu';
+	@override String get exportAction => 'Dışa Aktar';
+	@override String exported({required Object location}) => 'Düzen ${location} konumuna kaydedildi';
+	@override String exportFailed({required Object error}) => 'Düzen dışa aktarılamadı: ${error}';
+	@override String get importTitle => 'Düzeni İçe Aktar';
+	@override String importFromOtherView({required Object view}) => '${view} görünümü için yapılmış: yalnızca o görünümde bulunan paneller dışarıda bırakıldı.';
+	@override String get viewHome => 'Ana Sayfa';
+	@override String get viewOperation => 'Operasyon';
+	@override String get viewLogs => 'Günlükler';
+	@override String get viewChase => 'Avlama';
+	@override String get importAsNew => 'Yeni bir düzen olarak';
+	@override String get importReplace => 'Bu düzenin yerine';
+	@override String get importAdd => 'Bu düzene eklenerek';
+	@override String get importAddHint => 'Paneller sağda yeni bir sütuna gelir.';
+	@override String get importPick => 'İçe aktarılacak paneller';
+	@override String get importReplaceSettings => 'Burada zaten kurulu panellerin ayarlarını değiştir';
+	@override String get importAction => 'İçe Aktar';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir düzen değil: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'metin geçerli YAML değil (satır ${line})';
+	@override String get problemNotLayoutFile => 'bir Ham2K düzen dosyası değil';
+	@override String get problemNewerVersion => 'uygulamanın daha yeni bir sürümüyle yazılmış';
+	@override String get problemNoArrangement => 'hiç yerleşim içermiyor';
+	@override String get problemMalformed => 'bir kısmı düzen biçimine uymuyor';
+	@override String get problemTooLarge => 'çok büyük';
+	@override String importPickerFailed({required Object error}) => 'Dosya açılamadı: ${error}';
+	@override String importFailed({required Object error}) => 'Düzen içe aktarılamadı: ${error}';
+	@override String duplicateFailed({required Object error}) => 'Düzen kopyalanamadı: ${error}';
+	@override String get importNothing => 'Hiç panel seçilmedi, bu yüzden hiçbir şey içe aktarılmadı.';
+	@override String importSkipped({required Object panels}) => 'Dışarıda bırakıldı: ${panels}';
+	@override String importKeptPinned({required Object panels}) => '${panels} tutuldu: küçük ekran yerleşimi onsuz olmaz.';
+	@override String get notOffered => 'Bu görünümde kullanılamaz';
+	@override String get alreadyPlaced => 'Zaten bu düzende';
+	@override String needsExtension({required Object name}) => '${name} gerekir';
+	@override String get listRecoveredTitle => 'Düzen adları okunamadı';
+	@override String get listRecoveredBody => 'Bu görünümün düzen listesi okunamadı. Tüm düzenler hâlâ burada, adları yerine numaralandırılmış.';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$tr extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -2743,10 +3474,15 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	// Translations
 	@override String get loggingDescription => 'Günlük ve giriş alanları';
 	@override String get infoDescription => 'Çalışılan istasyon hakkında bildiklerimiz';
-	@override String get spotsDescription => 'Kümelerden ve aktivite programlarından spotlar';
+	@override String get spotsDescription => 'DX cluster\'lardan ve aktivite programlarından gelen spotlar';
 	@override String get mapDescription => 'QSO\'ların nerede olduğu';
+	@override String get summariesDescription => 'Operasyonun istatistikleri ve puanları, seçtiğiniz bölümler ve sırayla';
+	@override String get summariesSections => 'Bölümler ve Sıra';
+	@override String get summariesDays => 'Her gün';
+	@override String get summariesReset => 'Tümünü göster';
+	@override String get summariesAllHidden => 'Tüm bölümler gizli. Gösterilecekleri bu panelin ayarlarından seçin.';
 	@override String get clockDescription => 'Herhangi bir saat diliminde bir saat';
-	@override String get clockFace => 'Görünüm';
+	@override String get clockFace => 'Kadran';
 	@override String get clockFaceLcd => 'LCD';
 	@override String get clockFaceAnalog => 'Analog';
 	@override String get clockZone => 'Saat Dilimi';
@@ -2761,7 +3497,7 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	@override String weatherBadLocation({required Object location}) => '${location} konumu okunamadı. FN31pr gibi bir grid karesi veya 42.36,-71.06 kullanın.';
 	@override String get weatherUnreachable => 'Open-Meteo\'ya ulaşılamadı — ağ yok mu? Birazdan tekrar denenecek.';
 	@override String get weatherUnreadable => 'Open-Meteo yanıt verdi, ancak okunabilir bir şeyle değil. Birazdan tekrar denenecek.';
-	@override String weatherGusts({required Object speed}) => 'rüzgâr ${speed}';
+	@override String weatherGusts({required Object speed}) => 'hamle ${speed}';
 	@override String get panelAgeNow => 'az önce';
 	@override String panelAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		one: '${count} dk önce',
@@ -2777,8 +3513,8 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	@override String get websiteRefresh => 'Yenile';
 	@override String get websiteRefreshNever => 'Asla';
 	@override String get websiteRefresh1 => 'Her dakika';
-	@override String get websiteRefresh5 => 'Her 5 dakikada';
-	@override String get websiteRefresh15 => 'Her 15 dakikada';
+	@override String get websiteRefresh5 => 'Her 5 dakikada bir';
+	@override String get websiteRefresh15 => 'Her 15 dakikada bir';
 	@override String get websiteTitle => 'Panel Adı';
 	@override String get websiteRefreshNow => 'Şimdi Yenile';
 	@override String get websiteNoUrl => 'Henüz adres yok. Bir sayfa seçmek için bu panelin ayarlarını açın.';
@@ -2804,7 +3540,7 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	@override String get remoteScreenDetail => 'Ayrıntı';
 	@override String get remoteScreenDetailStandard => 'Standart';
 	@override String get remoteScreenDetailHigh => 'Yüksek';
-	@override String get remoteScreenDetailMaximum => 'En yüksek';
+	@override String get remoteScreenDetailMaximum => 'Maksimum';
 	@override String get remoteScreenAdjustDone => 'Tamam';
 	@override String get remoteScreenZoomIn => 'Yakınlaştır';
 	@override String get remoteScreenZoomOut => 'Uzaklaştır';
@@ -2845,6 +3581,30 @@ class _Translations$operation$layout$panels$tr extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'yüksek SWR';
+	@override String get rotatorDescription => 'Antenin nereye baktığı, istasyon merkezli bir haritada. Döndürmek için haritaya dokunun.';
+	@override String get rotatorRotator => 'Rotor';
+	@override String rotatorAutoNamed({required Object name}) => 'Otomatik — ${name}';
+	@override String get rotatorAutoNone => 'Otomatik — henüz rotor yok';
+	@override String get rotatorBeamWidth => 'Huzme genişliği';
+	@override String get rotatorBeamWidthDescription => 'Derece olarak, yön çizgisinin etrafına çizilir. 0 hiç çizmez.';
+	@override String get rotatorLocation => 'Konum';
+	@override String get rotatorLocationDescription => 'Haritayı ortalamak için bir grid karesi ya da enlem ve boylam. Boş bırakılırsa operasyonun konumu kullanılır.';
+	@override String get rotatorTheme => 'Tema';
+	@override String get rotatorThemeColor => 'Renkli';
+	@override String get rotatorThemeGray => 'Gri';
+	@override String get rotatorThemeMuted => 'Soluk';
+	@override String get rotatorGrayline => 'Grayline\'ı göster';
+	@override String get rotatorNoRotator => 'Gösterilecek rotor yok. Bu panelin ayarlarından birini seçin veya İstasyon Yapılandırması altında bir tane ekleyin.';
+	@override String get rotatorNoLocation => 'Haritayı ortalayacak konum yok. Bu panelin ayarlarından bir tane belirleyin.';
+	@override String get rotatorDisconnected => 'bağlı değil';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'yanıt vermiyor';
+	@override String get rotatorLocationInvalid => 'Bu panelin ayarlarındaki konum okunamıyor. Bir grid karesi ya da 40.7, -74.0 gibi bir enlem ve boylam kullanın.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'K';
+	@override String get rotatorEast => 'D';
+	@override String get rotatorSouth => 'G';
+	@override String get rotatorWest => 'B';
 }
 
 // Path: operation.export.compactFileNames
@@ -2940,8 +3700,10 @@ class _Translations$operation$spots$filters$tr extends Translations$operation$sp
 	@override String get sorting => 'Sıralama';
 	@override String get sortByTime => 'Spot Zamanına Göre';
 	@override String get sortByFrequency => 'Frekansa Göre';
+	@override String get sortByWanted => 'En Çok Aranan';
 	@override String get groupByBand => 'Banda Göre Grupla';
 	@override String get groupCallsWithNotes => 'Notlu Çağrıları Grupla';
+	@override String get alertingOnly => 'Yalnızca Uyarılı Spotlar';
 	@override String get sourceNoReply => 'Yanıt yok';
 	@override String get sourceError => 'Hata';
 }
@@ -2968,8 +3730,8 @@ class _Translations$settings$logging$leftieMode$tr extends Translations$settings
 
 	// Translations
 	@override String get title => 'Sol El Modu';
-	@override String get descriptionOn => 'Solak kullanıcılar için düzen kullanılıyor';
-	@override String get descriptionOff => 'Sağ elini kullananlar için düzen kullanılıyor';
+	@override String get descriptionOn => 'Sol elle kullanım düzeni kullanılıyor';
+	@override String get descriptionOff => 'Sağ elle kullanım düzeni kullanılıyor';
 }
 
 // Path: settings.logging.countryFlags
@@ -3097,7 +3859,7 @@ class _Translations$settings$logging$numbersRow$tr extends Translations$settings
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Sayı Satırı';
+	@override String get title => 'Sayılar Satırı';
 	@override String get description => 'Kayıt yaparken klavyenin üstünde bir sayı tuşları satırı göster';
 }
 
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$tr extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$tr extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'oturum açacak operatör çağrı işareti yok';
+	@override String get connectFailed => 'sunucuya ulaşılamadı';
+	@override String get needsPassword => 'sunucu şifre istiyor ve kayıtlı şifre yok';
+	@override String get loginFailed => 'sunucu oturum açmayı kabul etmedi';
+	@override String get disconnected => 'sunucu bağlantıyı kapattı';
+	@override String get timeout => 'sunucu yanıt vermedi';
+	@override String get off => 'Cluster\'a bağlan kapalı';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$tr extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$tr extends Translations$settings$radio
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'PTT\'yi Klavyeyle Kontrol Et';
+	@override late final _Translations$settings$radio$pttKey$modes$tr modes = _Translations$settings$radio$pttKey$modes$tr._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$tr descriptions = _Translations$settings$radio$pttKey$descriptions$tr._(_root);
+	@override String get key => 'PTT Tuşu';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Yayında';
 }
@@ -3256,8 +4038,8 @@ class _Translations$settings$radio$cwMessages$tr extends Translations$settings$r
 	// Translations
 	@override String get title => 'CW Keyer Mesajları';
 	@override String get notSupported => 'Mevcut radyo CW manipülasyonunu desteklemiyor';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'Mesaj (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Mesaj ${n}';
 	@override String get labelField => 'Etiket';
 	@override String labelKey({required Object n}) => 'F${n} etiketi';
 	@override String get details => 'Ayrıntılar';
@@ -3266,12 +4048,15 @@ class _Translations$settings$radio$cwMessages$tr extends Translations$settings$r
 	@override String get newSet => 'Yeni Set';
 	@override String get renameSet => 'Seti Yeniden Adlandır';
 	@override String get deleteSet => 'Seti Sil';
-	@override String get newSetName => 'İsim';
+	@override String get newSetName => 'Ad';
 	@override String get setDefault => 'Varsayılan';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM Mesajları';
 	@override String get setSaved => 'Mesajlarım';
-	@override String get repeat => '1 Numaralı Mesajı Tekrarla';
+	@override String get repeat => 'Mesaj 1\'i Tekrarla';
+	@override String get repeatShort => 'M1 Tekrarla';
+	@override String get cooldown => 'Tekrar öncesi bekleme';
+	@override String cooldownSeconds({required Object n}) => '${n} saniye';
 	@override String get repeatWait => 'Tekrarlanıyor';
 	@override String get keyboard => 'Göndermek için yazın';
 	@override String get keyboardField => 'Göndermek için yazın';
@@ -3297,11 +4082,24 @@ class _Translations$settings$radio$cwMessages$tr extends Translations$settings$r
 	@override String get helpEsmIntro => 'Enter Mesaj Gönderir açıkken Enter, N1MM\'de olduğu gibi mesajları fonksiyon tuşlarına göre gönderir. ESM Mesajları seti şunlarla başlar:';
 	@override String get helpEsmCq => 'Run\'da, çağrı alanı boşken Enter CQ çağırır';
 	@override String get helpEsmExchange => 'Değişiminiz: run\'da onların çağrısından sonra, S&P\'de onlar karşılık verdikten sonra';
-	@override String get helpEsmThanks => 'Teşekkür, QSO kaydedildikten sonra: yer tutucuları bu QSO\'yu değil, sonrakini belirtir';
+	@override String get helpEsmThanks => 'Teşekkür, QSO kaydedildikten sonra: qso kaydedilen QSO\'yu, next sıradakini belirtir';
 	@override String get helpEsmMyCall => 'S&P\'de, karşılık verdiğiniz istasyona çağrınız';
 	@override String get helpEsmHisCall => 'Run\'da, değişiminizden önce onların çağrısı';
 	@override String get helpEsmAgain => 'Değişimlerinden hiçbir şey alınamadığında tekrar sorar';
-	@override String get helpEsmStackThanks => '// yığınları için önerilen F3: TU, QSO kaydedildikten sonra gider; böylece teşekkür eder, ardından yığındaki sonraki istasyonu çağırıp değişiminizi gönderir ya da kısmi bir çağrıyı geri sorar (TU KR?); yığında kimse kalmadıysa yalnızca TU';
+	@override String get helpEsmStackThanks => '// yığınları için önerilen F3: teşekkür eder, ardından yığındaki sonraki istasyonu çağırıp değişiminizi gönderir ya da kısmi bir çağrıyı geri sorar (TU KR?); yığında kimse kalmadıysa yalnızca TU';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$tr extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'Keyer';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => 'Ses';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3314,7 +4112,7 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String get title => 'Telefon Keyer Mesajları';
 	@override String get notSupported => 'Mevcut radyo Telefon mesajlarını desteklemiyor';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'Ses hafızası (${n})';
+	@override String messageTitle({required Object n}) => 'Ses hafızası ${n}';
 	@override String get labelField => 'Etiket';
 	@override String labelKey({required Object n}) => 'Ses hafızası ${n} etiketi';
 	@override String durationSeconds({required Object n}) => '${n} sn';
@@ -3323,7 +4121,7 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String get playButton => 'Oynat';
 	@override String get recordButton => 'Kaydet';
 	@override String get stopButton => 'Durdur';
-	@override String get repeat => '1 Numaralı Mesajı Tekrarla';
+	@override String get repeat => 'Mesaj 1\'i Tekrarla';
 	@override String recordHelpTitle({required Object model}) => '${model} Notları:';
 	@override String namedOnDevice({required Object device}) => 'Bu hafızalar ${device} cihazının radyosunda. İsimleri ve uzunlukları o cihaza aittir.';
 	@override String get namedOnRadio => 'Radyoda kayıtlı; radyonun diğer istemcileri de görür.';
@@ -3340,6 +4138,89 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String recordingMemory({required Object label}) => '${label} kaydediliyor';
 	@override String get doubtful => 'Radyo bunu oynattı mı? Hemen boşta olduğunu bildirdi.';
 	@override String get recordOnRadio => 'Hafızaları radyonun kendisinde kaydetmeniz gerekir.';
+	@override String get sets => 'Mesaj Seti';
+	@override String get soundFilesSet => 'Bu bilgisayardaki ses dosyaları';
+	@override String get openFileButton => 'Dosya Aç';
+	@override String get newSet => 'Yeni Set';
+	@override String get renameSet => 'Seti Yeniden Adlandır';
+	@override String get deleteSet => 'Seti Sil';
+	@override String get newSetName => 'Ad';
+	@override String deleteSetConfirm({required Object name}) => '${name} ve kayıtları silinsin mi? Bu geri alınamaz.';
+	@override String get output => 'Sesi şuraya gönder';
+	@override String get input => 'Şuradan kaydet';
+	@override String get outputRadio => 'Ağ üzerinden radyoya gönder';
+	@override String get inputDefault => 'Sistem varsayılanı';
+	@override String get pickDevice => 'Bir ses cihazı seçin';
+	@override String deviceMissing({required Object name}) => '${name} (bağlı değil)';
+	@override String get lead => 'Yayın başı gecikmesi';
+	@override String get tail => 'Yayın sonu gecikmesi';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => 'Dinle';
+	@override String get notRecorded => 'Kaydedilmedi';
+	@override String get unplayable => 'Bu dosya oynatılamıyor';
+	@override String get problemNoOutput => 'Bir mesaj oynatmadan önce radyoyu besleyen ses cihazını seçin.';
+	@override String get problemOutputMissing => 'Radyoyu besleyen ses cihazı bağlı değil.';
+	@override String get problemInputMissing => 'Kayıt cihazı bağlı değil.';
+	@override String get problemDeviceFailed => 'Ses cihazı açılamadı.';
+	@override String get problemNotRecorded => 'Bu mesajın henüz kaydı yok.';
+	@override String get problemRecordingSilent => 'Kayıt cihazından hiçbir şey duyulmadı, bu yüzden mesaj olduğu gibi bırakıldı. Girişi ve uygulamanın mikrofonu kullanmasına izin verildiğini kontrol edin.';
+	@override String get problemRadioAudioUnavailable => 'Radyo şu anda uygulamadan ses almıyor. Radyoya ağ bağlantısı gerekir.';
+	@override String get problemSourceRefused => 'Radyo yayın sesini uygulamaya geçirmedi, bu yüzden mesaj durdu. Radyoyu uygulamanın sesini yayınlayacak şekilde ayarlayın.';
+	@override String get problemCannotKey => 'Bu radyo CAT üzerinden PTT\'ye alınamıyor, bu yüzden bilgisayar ona mesaj oynatamaz.';
+	@override String get problemUnplayable => 'Bu mesajın dosyası uygulamanın oynatabildiği bir ses dosyası değil. WAV, FLAC veya MP3 dosyası kullanın ya da yeniden kaydedin.';
+	@override String get problemRecordingFailed => 'Kayıt yarıda kesildi, bu yüzden mesaj olduğu gibi bırakıldı. Kayıt cihazının hâlâ bağlı olduğunu ve diskte yer olduğunu kontrol edin.';
+	@override String get problemFileFailed => 'Kayıt mesajın yerine kaydedilemedi, bu yüzden mesaj olduğu gibi bırakıldı.';
+	@override String problemWordsMissing({required Object words}) => 'Bu mesaj kaydetmediğiniz sözcükleri gerektiriyor: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'Bu mesajın şablonunda bir sorun var: ${error}';
+	@override String get problemNoOperation => 'Kendi sözcüklerinizle söylenen mesajlar, söylenecek bir QSO\'nun olduğu bir operasyonda oynatılır.';
+	@override String get problemNothingSaid => 'Bu mesaj bu QSO için hiçbir şey söylemiyor.';
+	@override String get templateField => 'Kendi sözcüklerimle söyle';
+	@override String get templateHelp => 'Kaydı oynatmak için boş bırakın. Aksi halde mesaj, her QSO için doldurularak, kaydettiğiniz sözcüklerle şu değerler kullanılarak söylenir:';
+	@override String get help => 'Yardım';
+	@override String get helpTitle => 'Mesajları Kendi Sözcüklerinizle Söylemek';
+	@override String get helpFullExample => 'Tam bir mesaj:';
+	@override String get helpExample => 'Onların çağrısı, raporu ve sizin “QSL?” kaydınız';
+	@override String get playOnRadio => 'Radyoda Oynat';
+	@override String get templateHelpCall => 'Onların çağrısı';
+	@override String get templateHelpReport => 'Onlara verdiğiniz rapor';
+	@override String get templateHelpMessage => 'Mesaj 2\'nin kaydı, kaydedildiği gibi oynatılır';
+	@override String get voiced => 'Kendi sözcüklerinizle söylenir';
+	@override String willSay({required Object words}) => 'Söyler: ${words}';
+	@override String willSayMissing({required Object words}) => 'Henüz kaydedilmedi: ${words}';
+	@override String get previewNoOperation => 'Ne söyleyeceğini görmek için bir operasyon açın.';
+	@override String get wordsDescription => 'Çağrılar, sayılar ve daha fazlası için kendi sesinizi kullanın.';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$tr extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sözcük Kayıtları';
+	@override String get callField => 'Şu operatör için sözcükler';
+	@override String get intro => 'Her sözcüğü veya sayıyı, bir çağrı işaretinde söylediğiniz gibi hızlıca art arda üç kez kaydedin. Daha uzun ifadeler yalnızca bir kez kaydedilir.';
+	@override String get recordAll => 'Tümünü Kaydet';
+	@override String get recordAllGuide => 'Her sözcüğü art arda üç kez, birkaç sözcüklük ifadeleri bir kez okuyun, satırlar arasında bir nefes alın. Sonuncudan sonra Durdur\'a basın.';
+	@override String recordingOne({required Object word}) => '“${word} ${word} ${word}” deyin, sonra Durdur\'a basın.';
+	@override String recordingOnce({required Object words}) => '“${words}” deyin, sonra Durdur\'a basın.';
+	@override String get recorded => 'Kaydedildi';
+	@override String get notRecorded => 'Kaydedilmedi';
+	@override String get addPhrase => 'İfade Ekle';
+	@override String get phraseField => 'İfade, bir mesajda yazdığınız gibi';
+	@override String get deletePhrase => 'İfadeyi sil';
+	@override String get tryField => 'Söylemeyi dene';
+	@override String get pauseLetters => 'Harfler arası duraklama';
+	@override String get pauseWords => 'Sözcükler arası duraklama';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'Hız';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'Gelişmiş Ayarlar';
+	@override String get splitSilent => 'Kayıtta hiçbir şey duyulmadı.';
+	@override String get splitNotThreeTakes => 'Üç tekrar bulunamadı. Sözcüğü art arda üç kez söyleyip tekrar deneyin.';
+	@override String get splitLineCount => 'Okumada her sözcük bulunamadı. Her birini üç kez okuyun, sözcükler arasında bir nefes alın.';
+	@override String get splitLinesTooClose => 'Sözcükler birbirinden ayrılamadı. Sözcükler arasında daha uzun bir nefes bırakın.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3373,6 +4254,28 @@ class _Translations$settings$map$style$tr extends Translations$settings$map$styl
 
 	// Translations
 	@override String get title => 'Harita Stili';
+}
+
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$tr extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Çağrı İşaretlerini Göster';
+	@override String get description => 'Her QSO, bandının renginde, çağrı işaretini taşıyan bir etiket olur';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$tr extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Grayline\'ı Göster';
+	@override String get description => 'Dünya\'nın gece tarafını gölgeler, alacakaranlık geçişli gösterilir';
 }
 
 // Path: settings.map.styleOpts
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$tr extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - Genel';
 	@override String get icomGeneric => 'Icom - Genel';
 	@override String get kenwoodGeneric => 'Kenwood - Genel';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$tr extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - Genel';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$tr extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'rigctld ile kontrol edilen radyo';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$tr extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => 'Radyom';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Koaksiyel Anahtar';
+	@override String get gs232a => 'Yaesu GS-232A Rotor Arayüzü';
+	@override String get pstRotator => 'PstRotator (UDP Kontrol)';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$tr extends Translations$settings
 
 	// Translations
 	@override String get network => 'Ağ/WiFi';
+	@override String get secureNetwork => 'Güvenli Ağ/WiFi';
 	@override String get usbSerial => 'USB Seri';
 	@override String get wifi => 'Ağ/WiFi';
 	@override String get bluetoothSerial => 'Bluetooth Seri';
+	@override String get bleSerial => 'Bluetooth LE';
 	@override String get placeholder => 'Yer Tutucu';
 }
 
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$tr extends Transla
 	@override String get thunderstormWithHail => 'Dolulu Fırtına';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$tr extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Hayır';
+	@override String get toggle => 'Aç/Kapat';
+	@override String get hold => 'Basılı Tut';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$tr extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Klavye radyoyu PTT\'ye almaz.';
+	@override String get toggle => 'Telefon modlarında PTT tuşu radyoyu PTT\'ye alır, tekrar basılınca bırakır. Bir dakika sonra kendiliğinden bırakır.';
+	@override String get hold => 'Telefon modlarında, PTT tuşu basılı tutulduğu sürece radyo yayın yapar, en fazla bir dakika.';
+}
+
 /// The flat map containing all translations for locale <tr>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3577,6 +4526,7 @@ extension on TranslationsTr {
 			'common.callsign' => 'Çağrı İşareti',
 			'common.clear' => 'Temizle',
 			'common.dismiss' => 'Kapat',
+			'common.copyDetails' => 'Ayrıntıları kopyala',
 			'common.expand' => 'Genişlet',
 			'common.collapse' => 'Daralt',
 			'onboarding.welcomeTitle' => 'Ham2K Portable Logger\'a hoş geldiniz!',
@@ -3604,6 +4554,12 @@ extension on TranslationsTr {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'Bulut Senkronizasyonu',
+			'onboarding.syncBody' => 'Ham2K Log Filer, günlüklerinizin bir yedeğini bulutta tutar ve bunları Ham2K uygulamalarını kullandığınız tüm cihazlar arasında senkronize eder.',
+			'onboarding.syncPricing' => 'Ücretsiz! Ancak ücretli bir abonelik daha hızlı çalışmasını sağlar.',
+			'onboarding.syncLabel' => 'Bulut Senkronizasyonunu Etkinleştir',
+			'onboarding.syncOffWarning' => 'UYARI: bu, örneğin cihazınız çökerse veya kaybolursa operasyon verilerinizi kaybetme olasılığınızı artırır.',
+			'onboarding.notNow' => 'Şimdi değil',
 			'onboarding.consentTitle' => 'Veri ve Gizlilik',
 			'onboarding.consentUsageBody' => 'Uygulamayı geliştirmemize yardımcı olmak için performans, çökme ve uygulama kullanım verilerini toplamak istiyoruz.',
 			'onboarding.consentUsageLabel' => 'Uygulama kullanım verilerini paylaş',
@@ -3617,6 +4573,7 @@ extension on TranslationsTr {
 			'testerOverlay.whatsNew' => ({required Object build}) => '${build} sürümündeki yenilikler',
 			'testerOverlay.thanks' => 'Bu uygulamayı daha iyi hale getirmemize yardımcı olmak için günlüğünüzü riske attığınız için teşekkürler!',
 			'extensionsPanel.categoryActivity' => 'Aktiviteler',
+			'extensionsPanel.categoryAward' => 'Ödüller',
 			'extensionsPanel.categoryContest' => 'Yarışmalar',
 			'extensionsPanel.categoryLookup' => 'Çağrı İşareti Sorguları',
 			'extensionsPanel.categorySpots' => 'Spot Kaynakları',
@@ -3627,13 +4584,23 @@ extension on TranslationsTr {
 			'extensionsPanel.noMatches' => 'Aramanızla eşleşen uzantı yok',
 			'extensionsPanel.installFromFile' => 'Dosyadan yükle…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Sürüm ${version}',
-			'extensionsPanel.canReach' => 'Bu uzantının bağlanabildikleri',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Ekran görüntüsü ${n} / ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Önceki ekran görüntüsü',
+			'extensionsPanel.nextScreenshot' => 'Sonraki ekran görüntüsü',
+			'extensionsPanel.screenshotUnavailable' => 'Ekran görüntüsü yok',
+			'extensionsPanel.canReach' => 'Bu uzantı şunlara erişebilir',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, canlı bir bağlantı üzerinden',
 			'extensionsPanel.canHoldLocalConnection' => 'Yerel ağınızdaki cihazlar, canlı bir bağlantı üzerinden',
 			'extensionsPanel.canUseLocation' => 'Konumunuz',
 			'extensionsPanel.canReadRadio' => 'Radyonuz, frekansını ve modunu okumak için',
-			'extensionsPanel.canControlRadio' => 'Radyonuz, onu kontrol etmek ve onunla yayın yapmak için — ayar, güç, CW, ses hafızaları ve PTT',
-			'extensionsPanel.canSetUserAgent' => 'Sunuculara kendi adıyla tanıtma',
+			'extensionsPanel.canControlRadio' => 'Radyonuz, onu kontrol etmek ve onunla yayın yapmak için — frekans ayarı, güç, CW, ses hafızaları ve PTT',
+			'extensionsPanel.canCommandRadioRaw' => 'Radyonuz, ona kendi protokolünde herhangi bir komut göndermek için — yayın yapan veya ayarlarını değiştirenler dahil',
+			'extensionsPanel.canReadCluster' => 'DX cluster, hesabınızla oturum açarak, gönderdiklerini okumak için',
+			'extensionsPanel.canSpotCluster' => 'DX cluster, hesabınızla oturum açarak, sizin adınıza spot göndermek için',
+			'extensionsPanel.canCommandCluster' => 'DX cluster, hesabınızla oturum açarak, sizin adınıza herhangi bir komut göndermek için',
+			'extensionsPanel.canSetUserAgent' => 'Sunuculara kendini kendi adıyla tanıtma',
+			'extensionsPanel.canChangeSettings' => 'Ayarlarınız, komutlarıyla değiştirmek için: herhangi bir ayar, geliştirici modu ve denemeler',
 			'extensionsPanel.noCapabilities' => 'Uygulama dışında hiçbir şey istemiyor.',
 			'extensionsPanel.sandboxNote' => 'Uzantılar korumalı alanda çalışır: dosyalarınıza erişemez ve burada listelenenler dışında ağa çıkamaz.',
 			'extensionsPanel.installAction' => 'Yükle',
@@ -3681,7 +4648,7 @@ extension on TranslationsTr {
 			'extensionsPanel.upgradeDoneUnservedHint' => 'Katalogda bunların doğrudan bir karşılığı yok; kullandıklarınızı kapsayan uzantılar için oraya bakın.',
 			'extensionsPanel.retiredQp' => 'QSO Partileri',
 			'extensionsPanel.retiredStateparks' => 'Eyalet Parkları Etkinlikleri',
-			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count} uzantınız henüz gelmedi. Uzantı kataloğuna bir sonraki ulaşılabildiğinde indirilecekler.',
+			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count} uzantınız henüz gelmedi. Uzantı kataloğuna bir sonraki erişimde indirilecekler.',
 			'extensionsPanel.runtimeDeadBody' => 'Uzantılarınız başlamadı. Uygulamayı yeniden başlatmak onları geri getirmeli.',
 			'extensionsPanel.refusedTitle' => 'Bazı uzantılar çalışmadı',
 			'extensionsPanel.upgradeBusyTitle' => 'Kurulum sürüyor',
@@ -3702,6 +4669,14 @@ extension on TranslationsTr {
 			'extensionsPanel.restoreRuntimeDeadBody' => 'Onları yeniden yükledik, ancak uzantılarınız başlamadı. Uygulamayı yeniden başlatmak onları geri getirmeli.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} geri çekildi',
 			'extensionsPanel.revokedBody' => 'Katalog bu sürümü geri çekti, bu yüzden devre dışı bırakıldı.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} devre dışı bırakıldı',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K bu uzantıyı şimdilik devre dışı bıraktı.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} başka bir uzantıyla değiştirildi',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => 'Yerini ${replacement} aldı. Uzantılar bölümünden geçiş yapabilirsiniz.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Yerini ${name} aldı',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Yerini zaten sahip olduğunuz ${name} aldı',
+			'extensionsPanel.replaceAction' => 'Değiştir',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'Ayarları, zaten sahip olduğunuz ${replacement} uzantısına taşınır. Günlükleriniz olduğu gibi kalır.',
 			'extensionsPanel.downloadHashMismatch' => 'Bu indirme, kataloğun tanımladığı uzantı değil.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object key, required Object version}) => 'Katalogda ${key} için ${version} sürümü yok.',
 			'extensionsPanel.catalogLinkUnknown' => 'Bu katalog bağlantısı bir uzantı sürümü belirtmiyor.',
@@ -3715,7 +4690,8 @@ extension on TranslationsTr {
 			'extensionsPanel.followsBleeding' => 'Deneysel, kararsız ve kararlı sürümleri alır',
 			'extensionsPanel.followStableAction' => 'Yalnızca kararlı sürümleri takip et',
 			'extensionsPanel.revokedBadge' => 'Geri çekildi',
-			'extensionsPanel.refusedBadge' => 'Yüklenmedi',
+			'extensionsPanel.forceDisabledBadge' => 'Ham2K tarafından devre dışı',
+			'extensionsPanel.refusedBadge' => 'Çalışmadı',
 			'extensionsPanel.downloadNotHttps' => 'Bu indirme güvenli bir bağlantı üzerinden yapılmıyor.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'Bu uzantı için ${source} kaynağına ulaşılamadı.',
 			'extensionsPanel.detailsAction' => 'Ayrıntılar',
@@ -3731,6 +4707,8 @@ extension on TranslationsTr {
 			'extensionsPanel.hookSpots' => 'Spotlar',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program} avcılığı',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program} aktivasyonu',
+			'extensionsPanel.suggestedSection' => 'Önerilen',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'Daha fazlası (${count})',
 			'home.title' => 'Taşınabilir Logger',
 			'home.newOperation' => 'Yeni operasyon',
 			'home.stationCallsign' => 'İstasyon çağrı işareti',
@@ -3752,7 +4730,7 @@ extension on TranslationsTr {
 			'home.logs.emptyCallsigns' => 'Henüz kaydedilmiş QSO yok',
 			'home.logs.emptyQsos' => ({required Object call}) => '${call} için QSO yok',
 			'home.logs.mapNoSelection' => 'Haritada görmek için bir QSO seçin',
-			'home.logs.searchHint' => 'Çağrı işareti veya isim ara',
+			'home.logs.searchHint' => 'Çağrı işareti veya ad ara',
 			'home.logs.noSearchMatches' => 'Aramanızla eşleşen QSO yok',
 			'home.logs.titleAll' => 'Tüm Günlükler',
 			'home.logs.allCallsigns' => 'Tüm çağrı işaretleri',
@@ -3762,12 +4740,29 @@ extension on TranslationsTr {
 			'home.logs.pendingDeleteBody' => 'Bu QSO silinmek üzere işaretlendi.',
 			'home.logs.editGone' => 'Kaydedilmedi: o QSO artık bu günlükte değil.',
 			'home.logs.discard' => 'Vazgeç',
+			'home.logs.sheet.callsigns' => 'İstasyon Çağrı İşaretleri',
+			'home.logs.sheet.groupBy' => 'Gruplama',
+			'home.logs.sheet.period' => 'Zaman Aralığı',
+			'home.logs.groupBy.none' => 'Gruplanmamış',
+			'home.logs.groupBy.date' => 'Tarih',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Bilinmeyen kıta',
+			'home.logs.groupBy.unknownEntity' => 'Bilinmeyen varlık',
+			'home.logs.groupBy.unknownDate' => 'Tarihsiz',
+			'home.logs.period.thisMonth' => 'Bu ay',
+			'home.logs.period.last3Months' => 'Son 3 ay',
+			'home.logs.period.thisYear' => 'Bu yıl',
+			'home.logs.period.lastYear' => 'Geçen yıl',
+			'home.logs.period.allTime' => 'Tüm zamanlar',
+			'home.logs.period.custom' => 'Özel aralık',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => '${span} içinde',
+			'home.logs.periodTitle.custom' => 'Özel Aralık',
 			'home.logs.columns.date' => 'Tarih',
 			'home.logs.columns.time' => 'Zaman',
 			'home.logs.columns.freq' => 'Frekans',
 			'home.logs.columns.mode' => 'Mod',
 			'home.logs.columns.call' => 'Çağrı',
-			'home.logs.columns.name' => 'İsim',
+			'home.logs.columns.name' => 'Ad',
 			'home.logs.columns.station' => 'İstasyon',
 			'home.logs.columns.band' => 'Bant',
 			'home.logs.columns.sent' => 'Gönd.',
@@ -3813,7 +4808,7 @@ extension on TranslationsTr {
 			'chase.period.thisMonth' => 'Bu Ay',
 			'chase.goals.title' => 'Avlama Hedefleri',
 			'chase.goals.remove' => ({required Object name}) => '${name} avlamayı bırak',
-			'chase.goals.extensionsTitle' => 'Avlama içeren uzantılar',
+			'chase.goals.extensionsTitle' => 'Diğer avlama programları',
 			'chase.panels.logging' => 'QSO\'lar',
 			'chase.panels.loggingDescription' => 'Dönem içinde avlanan QSO\'ların üstünde kayıt kontrolleri.',
 			'chase.panels.info' => 'Bilgi',
@@ -3822,9 +4817,46 @@ extension on TranslationsTr {
 			'chase.panels.spotsDescription' => 'Havada spotlanmış, avlanmaya hazır istasyonlar.',
 			'chase.panels.map' => 'Harita',
 			'chase.panels.mapDescription' => 'Dönemin QSO\'ları ve kaydedilen istasyon.',
+			'chase.claims.checking' => 'QSO\'lar avlama için kontrol ediliyor',
+			'chase.claims.rebuilding' => ({required Object program}) => 'Günlük ${program} için kontrol ediliyor',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} / ${total} QSO',
+			'chase.notice.newRef' => ({required Object program}) => 'Yeni ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'Muhtemelen yeni ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'Yeni ${program} bandı',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'Muhtemelen yeni ${program} bandı',
+			'chase.notice.newMode' => ({required Object program}) => 'Yeni ${program} modu',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'Muhtemelen yeni ${program} modu',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} onaylanmamış',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Muhtemelen ${notice}',
+			'chase.alerts.title' => 'Uyarılar',
+			'chase.alerts.newRef' => 'Yeni referans',
+			'chase.alerts.newBand' => 'Yeni bant',
+			'chase.alerts.newMode' => 'Yeni mod',
+			'chase.alerts.unconfirmed' => 'Onaylanmamış',
+			'chase.checklists' => 'Avlama İlerlemesi',
+			'chase.imports.importFrom' => ({required Object label}) => '${label} içe aktar',
+			'chase.imports.pickTitle' => ({required Object file}) => '${file} dosyasını şu şekilde içe aktar',
+			'chase.imports.dropHint' => 'Bir avlama programına aktarmak için bir dosya bırakın',
+			'chase.imports.done' => ({required Object file, required Object count, required Object program}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı',
+			'chase.imports.doneSkipped' => ({required Object file, required Object count, required Object program, required Object skipped}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı, okunamayan ${skipped} kayıt atlandı',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} dosyasında ${program} için içe aktarılabilecek bir şey yok',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program}, ${file} dosyasını okuyamadı',
+			'chase.imports.unreadable' => ({required Object program, required Object file, required Object skipped}) => '${program}, ${file} dosyasındaki ${skipped} kaydın hiçbirini okuyamadı',
+			'chase.imports.noProgram' => ({required Object file}) => 'Hiçbir avlama programı ${file} dosyasını içe aktarmıyor',
 			'dialogs.operationDetails' => 'Operasyon ayrıntıları',
 			'dialogs.activities' => 'Aktiviteler',
 			'dialogs.stationCallsign' => 'İstasyon Çağrı İşareti',
+			'dialogs.advanced' => 'Gelişmiş',
+			'dialogs.operatingPosition' => 'Operasyon Pozisyonu (çok istasyonlu)',
+			'dialogs.assistance' => 'Yardımlı çalışma',
+			'dialogs.assistanceDescription' => 'Spot hizmetlerini ve diğer bilgi kaynaklarını kullan',
+			'dialogs.selfSpotting' => 'Kendini spotlama',
+			'dialogs.selfSpottingDescription' => 'Kendi frekans bilginizi bildiren özelliklere izin ver',
+			'dialogs.disabledByRules' => ({required Object rules}) => '${rules} kurallarına uymak için devre dışı',
+			'dialogs.lookupDespiteAssistance.title' => 'Çevrimiçi sorgulansın mı?',
+			'dialogs.lookupDespiteAssistance.body' => 'Bu operasyon için yardımlı çalışma devre dışı. Tüm QSO\'ları sorgulamak, bu seferlik QRZ gibi çevrimiçi hizmetleri kullanacak.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'Bu operasyon için yardımlı çalışma, ${rules} kurallarına uymak için devre dışı. Tüm QSO\'ları sorgulamak, bu seferlik QRZ gibi çevrimiçi hizmetleri kullanacak.',
+			'dialogs.lookupDespiteAssistance.action' => 'Çevrimiçi Sorgula',
 			'dialogs.notes' => 'Notlar',
 			'dialogs.deleteOperationTitle' => 'Operasyonu Sil',
 			'dialogs.purgeTestsTitle' => 'Test Operasyonlarını Temizle',
@@ -3860,6 +4892,8 @@ extension on TranslationsTr {
 			'operation.tabs.remoteScreen' => 'Uzak Ekran',
 			'operation.tabs.solar' => 'Güneş',
 			'operation.tabs.radio' => 'Radyo',
+			'operation.tabs.rotator' => 'Rotor',
+			'operation.tabs.summaries' => 'Operasyon Özetleri',
 			'operation.positions.nobodyYet' => 'Henüz bu operasyonu paylaşan başka operasyon pozisyonu yok.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Poz: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
@@ -3885,7 +4919,7 @@ extension on TranslationsTr {
 			'operation.menu.showDeletedOps' => 'Silinen operasyonları göster',
 			'operation.menu.showQsoNumbers' => 'QSO Numaralarını Göster',
 			'operation.menu.lookupAllQsos' => 'Tüm QSO\'ları sorgula',
-			'operation.menu.loggingSettingsTitle' => 'Kayıt Ayarları',
+			'operation.menu.loggingSettingsTitle' => 'Günlük Ayarları',
 			'operation.menu.mapSettingsTitle' => 'Harita Ayarları',
 			'operation.menu.actionsSection' => 'Eylemler',
 			'operation.layout.title' => 'Panel Ekle',
@@ -3912,24 +4946,104 @@ extension on TranslationsTr {
 			'operation.layout.addPanel' => ({required Object panel}) => '${panel} ekle',
 			'operation.layout.showPreview' => ({required Object panel}) => '${panel} önizlemesi',
 			'operation.layout.missingExtension' => ({required Object name}) => '"${name}" uzantısı eksik',
+			'operation.layout.missingExtensionEnable' => 'Etkinleştir',
+			'operation.layout.missingExtensionInstall' => 'Yükle…',
+			'operation.layout.missingExtensionWontRun' => 'Bu sürüm çalışmaz. Ayarlar › Uzantılar bölümünden güncelleyin.',
+			'operation.layout.missingExtensionUnavailable' => 'Bu uygulamada kullanılamıyor',
+			'operation.layout.missingExtensionNotInCatalog' => 'Katalogda yok',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Kataloğa ulaşılamadı. Tekrar deneyin',
+			'operation.layout.missingExtensionFailed' => 'Olmadı. Tekrar deneyin',
 			'operation.layout.previewUnavailable' => 'Bu panelin önizleme görüntüsü gösterilemedi.',
 			'operation.layout.nestedPaneTitle' => 'Diğer',
+			'operation.layout.layouts.defaultName' => 'Varsayılan',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Düzen ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Düzen: ${name}',
+			'operation.layout.layouts.menuNew' => 'Yeni…',
+			'operation.layout.layouts.menuExport' => 'Dışa aktar…',
+			'operation.layout.layouts.menuImport' => 'İçe aktar…',
+			'operation.layout.layouts.menuTitle' => 'Düzenler',
+			'operation.layout.layouts.newTitle' => 'Yeni Düzen',
+			'operation.layout.layouts.editTitle' => 'Düzeni Düzenle',
+			'operation.layout.layouts.edit' => 'Düzenle',
+			'operation.layout.layouts.duplicateCurrent' => 'Geçerli düzeni çoğalt',
+			'operation.layout.layouts.startFromDefault' => 'Varsayılan düzenden başla',
+			'operation.layout.layouts.nameLabel' => 'Ad',
+			'operation.layout.layouts.descriptionLabel' => 'Açıklama',
+			'operation.layout.layouts.create' => 'Oluştur',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => '"${name}" düzenindeki değişiklikler kaydedilsin mi?',
+			'operation.layout.layouts.leaveEditBody' => 'Bu düzende kaydetmediğiniz değişiklikler var.',
+			'operation.layout.layouts.discard' => 'Vazgeç',
+			'operation.layout.layouts.deleteTitle' => 'Bu düzen silinsin mi?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => '"${name}" düzenini silmek istediğinizden emin misiniz?',
+			'operation.layout.layouts.exportTitle' => 'Düzeni Dışa Aktar',
+			'operation.layout.layouts.exportPick' => 'Dışa aktarılacak paneller',
+			'operation.layout.layouts.tabSet' => 'Sekme Grubu',
+			'operation.layout.layouts.exportAction' => 'Dışa Aktar',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Düzen ${location} konumuna kaydedildi',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Düzen dışa aktarılamadı: ${error}',
+			'operation.layout.layouts.importTitle' => 'Düzeni İçe Aktar',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '${view} görünümü için yapılmış: yalnızca o görünümde bulunan paneller dışarıda bırakıldı.',
+			'operation.layout.layouts.viewHome' => 'Ana Sayfa',
+			'operation.layout.layouts.viewOperation' => 'Operasyon',
+			'operation.layout.layouts.viewLogs' => 'Günlükler',
+			'operation.layout.layouts.viewChase' => 'Avlama',
+			'operation.layout.layouts.importAsNew' => 'Yeni bir düzen olarak',
+			'operation.layout.layouts.importReplace' => 'Bu düzenin yerine',
+			'operation.layout.layouts.importAdd' => 'Bu düzene eklenerek',
+			'operation.layout.layouts.importAddHint' => 'Paneller sağda yeni bir sütuna gelir.',
+			'operation.layout.layouts.importPick' => 'İçe aktarılacak paneller',
+			'operation.layout.layouts.importReplaceSettings' => 'Burada zaten kurulu panellerin ayarlarını değiştir',
+			'operation.layout.layouts.importAction' => 'İçe Aktar',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir düzen değil: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'metin geçerli YAML değil (satır ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'bir Ham2K düzen dosyası değil',
+			'operation.layout.layouts.problemNewerVersion' => 'uygulamanın daha yeni bir sürümüyle yazılmış',
+			'operation.layout.layouts.problemNoArrangement' => 'hiç yerleşim içermiyor',
+			'operation.layout.layouts.problemMalformed' => 'bir kısmı düzen biçimine uymuyor',
+			'operation.layout.layouts.problemTooLarge' => 'çok büyük',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Dosya açılamadı: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Düzen içe aktarılamadı: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Düzen kopyalanamadı: ${error}',
+			'operation.layout.layouts.importNothing' => 'Hiç panel seçilmedi, bu yüzden hiçbir şey içe aktarılmadı.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Dışarıda bırakıldı: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '${panels} tutuldu: küçük ekran yerleşimi onsuz olmaz.',
+			'operation.layout.layouts.notOffered' => 'Bu görünümde kullanılamaz',
+			'operation.layout.layouts.alreadyPlaced' => 'Zaten bu düzende',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => '${name} gerekir',
+			'operation.layout.layouts.listRecoveredTitle' => 'Düzen adları okunamadı',
+			'operation.layout.layouts.listRecoveredBody' => 'Bu görünümün düzen listesi okunamadı. Tüm düzenler hâlâ burada, adları yerine numaralandırılmış.',
 			'operation.layout.editLayout' => 'Düzeni Düzenle',
 			'operation.layout.saveLayout' => 'Düzeni Kaydet',
-			'operation.layout.revertLayout' => 'Düzen değişikliklerini at',
+			'operation.layout.revertLayout' => 'Düzen değişikliklerinden vazgeç',
 			'operation.layout.done' => 'Tamamlandı',
 			'operation.layout.layoutUnreadableTitle' => 'Düzen okunamadı',
 			'operation.layout.layoutUnreadableBody' => 'Kayıtlı düzeniniz okunamadı, bu yüzden yerine varsayılan yerleşim gösteriliyor. Siz saklamayı seçene kadar orijinalinizin üzerine kaydedilmez.',
 			'operation.layout.layoutUnreadableAction' => 'Bu düzeni kullan',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} görüntülenemedi',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: ${max} karakterden fazla gönderdi',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: çizimi ${max} öğeden fazla içeriyor',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: çizimi ${max} seviyeden derin iç içe geçiyor',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} görüntülenemedi: çizimi kendi başına bütün değil',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} katmandan fazla içeriyor',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} kontrolden fazla içeriyor',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: bir sahne metni ${max} karakterden uzun',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: düzeni ${max} seviyeden derin iç içe geçiyor',
 			'operation.layout.panelRenderRetry' => 'Tekrar dene',
 			'operation.layout.panelActionFailed' => 'Bu panel eylemi başarısız oldu. Tekrar deneyin.',
 			'operation.layout.panels.loggingDescription' => 'Günlük ve giriş alanları',
 			'operation.layout.panels.infoDescription' => 'Çalışılan istasyon hakkında bildiklerimiz',
-			'operation.layout.panels.spotsDescription' => 'Kümelerden ve aktivite programlarından spotlar',
+			'operation.layout.panels.spotsDescription' => 'DX cluster\'lardan ve aktivite programlarından gelen spotlar',
 			'operation.layout.panels.mapDescription' => 'QSO\'ların nerede olduğu',
+			'operation.layout.panels.summariesDescription' => 'Operasyonun istatistikleri ve puanları, seçtiğiniz bölümler ve sırayla',
+			'operation.layout.panels.summariesSections' => 'Bölümler ve Sıra',
+			'operation.layout.panels.summariesDays' => 'Her gün',
+			'operation.layout.panels.summariesReset' => 'Tümünü göster',
+			'operation.layout.panels.summariesAllHidden' => 'Tüm bölümler gizli. Gösterilecekleri bu panelin ayarlarından seçin.',
 			'operation.layout.panels.clockDescription' => 'Herhangi bir saat diliminde bir saat',
-			'operation.layout.panels.clockFace' => 'Görünüm',
+			'operation.layout.panels.clockFace' => 'Kadran',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'Analog',
 			'operation.layout.panels.clockZone' => 'Saat Dilimi',
@@ -3944,7 +5058,7 @@ extension on TranslationsTr {
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => '${location} konumu okunamadı. FN31pr gibi bir grid karesi veya 42.36,-71.06 kullanın.',
 			'operation.layout.panels.weatherUnreachable' => 'Open-Meteo\'ya ulaşılamadı — ağ yok mu? Birazdan tekrar denenecek.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo yanıt verdi, ancak okunabilir bir şeyle değil. Birazdan tekrar denenecek.',
-			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'rüzgâr ${speed}',
+			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'hamle ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'az önce',
 			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dk önce', other: '${count} dk önce', ), 
 			'operation.layout.panels.panelAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} sa önce', other: '${count} sa önce', ), 
@@ -3984,8 +5098,8 @@ extension on TranslationsTr {
 			'operation.layout.panels.websiteRefresh' => 'Yenile',
 			'operation.layout.panels.websiteRefreshNever' => 'Asla',
 			'operation.layout.panels.websiteRefresh1' => 'Her dakika',
-			'operation.layout.panels.websiteRefresh5' => 'Her 5 dakikada',
-			'operation.layout.panels.websiteRefresh15' => 'Her 15 dakikada',
+			'operation.layout.panels.websiteRefresh5' => 'Her 5 dakikada bir',
+			'operation.layout.panels.websiteRefresh15' => 'Her 15 dakikada bir',
 			'operation.layout.panels.websiteTitle' => 'Panel Adı',
 			'operation.layout.panels.websiteRefreshNow' => 'Şimdi Yenile',
 			'operation.layout.panels.websiteNoUrl' => 'Henüz adres yok. Bir sayfa seçmek için bu panelin ayarlarını açın.',
@@ -4011,7 +5125,7 @@ extension on TranslationsTr {
 			'operation.layout.panels.remoteScreenDetail' => 'Ayrıntı',
 			'operation.layout.panels.remoteScreenDetailStandard' => 'Standart',
 			'operation.layout.panels.remoteScreenDetailHigh' => 'Yüksek',
-			'operation.layout.panels.remoteScreenDetailMaximum' => 'En yüksek',
+			'operation.layout.panels.remoteScreenDetailMaximum' => 'Maksimum',
 			'operation.layout.panels.remoteScreenAdjustDone' => 'Tamam',
 			'operation.layout.panels.remoteScreenZoomIn' => 'Yakınlaştır',
 			'operation.layout.panels.remoteScreenZoomOut' => 'Uzaklaştır',
@@ -4052,6 +5166,30 @@ extension on TranslationsTr {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'yüksek SWR',
+			'operation.layout.panels.rotatorDescription' => 'Antenin nereye baktığı, istasyon merkezli bir haritada. Döndürmek için haritaya dokunun.',
+			'operation.layout.panels.rotatorRotator' => 'Rotor',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Otomatik — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Otomatik — henüz rotor yok',
+			'operation.layout.panels.rotatorBeamWidth' => 'Huzme genişliği',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'Derece olarak, yön çizgisinin etrafına çizilir. 0 hiç çizmez.',
+			'operation.layout.panels.rotatorLocation' => 'Konum',
+			'operation.layout.panels.rotatorLocationDescription' => 'Haritayı ortalamak için bir grid karesi ya da enlem ve boylam. Boş bırakılırsa operasyonun konumu kullanılır.',
+			'operation.layout.panels.rotatorTheme' => 'Tema',
+			'operation.layout.panels.rotatorThemeColor' => 'Renkli',
+			'operation.layout.panels.rotatorThemeGray' => 'Gri',
+			'operation.layout.panels.rotatorThemeMuted' => 'Soluk',
+			'operation.layout.panels.rotatorGrayline' => 'Grayline\'ı göster',
+			'operation.layout.panels.rotatorNoRotator' => 'Gösterilecek rotor yok. Bu panelin ayarlarından birini seçin veya İstasyon Yapılandırması altında bir tane ekleyin.',
+			'operation.layout.panels.rotatorNoLocation' => 'Haritayı ortalayacak konum yok. Bu panelin ayarlarından bir tane belirleyin.',
+			'operation.layout.panels.rotatorDisconnected' => 'bağlı değil',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'yanıt vermiyor',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Bu panelin ayarlarındaki konum okunamıyor. Bir grid karesi ya da 40.7, -74.0 gibi bir enlem ve boylam kullanın.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'K',
+			'operation.layout.panels.rotatorEast' => 'D',
+			'operation.layout.panels.rotatorSouth' => 'G',
+			'operation.layout.panels.rotatorWest' => 'B',
 			'operation.layout.htmlPanelUnsupported' => 'Bu panel, bu platformun sağlamadığı bir web görünümü gerektirir',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Bu panel, web sürümünün sağlayamadığı bir korumalı alan gerektirir',
 			'operation.export.title' => 'Operasyon Dışa Aktarımları',
@@ -4078,8 +5216,6 @@ extension on TranslationsTr {
 			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			'operation.export.shareOne' => ({required Object name}) => '${name} dosyasını paylaş',
 			'operation.export.exportOne' => ({required Object name}) => '${name} dosyasını dışa aktar',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name} dosyasını indir',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dosyayı Stash\'e kaydet', other: '${count} dosyayı Stash\'e kaydet', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', other: 'Birleştirilmiş ${count} dosyayı Stash\'e kaydet', ), 
@@ -4129,6 +5265,7 @@ extension on TranslationsTr {
 			'operation.spots.phoneAndCw' => 'Telefon ve CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} spot', other: '${count} spot', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object total, required Object count}) => '${total} spottan ${count} tanesi gösteriliyor',
+			'operation.spots.spotsDisabled' => 'Bu operasyon için spotlar devre dışı',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} dakika',
 			'operation.spots.callsOfNote' => 'Notlu Çağrılar',
 			'operation.spots.yourSpots' => 'Spotlarınız',
@@ -4149,8 +5286,10 @@ extension on TranslationsTr {
 			'operation.spots.filters.sorting' => 'Sıralama',
 			'operation.spots.filters.sortByTime' => 'Spot Zamanına Göre',
 			'operation.spots.filters.sortByFrequency' => 'Frekansa Göre',
+			'operation.spots.filters.sortByWanted' => 'En Çok Aranan',
 			'operation.spots.filters.groupByBand' => 'Banda Göre Grupla',
 			'operation.spots.filters.groupCallsWithNotes' => 'Notlu Çağrıları Grupla',
+			'operation.spots.filters.alertingOnly' => 'Yalnızca Uyarılı Spotlar',
 			'operation.spots.filters.sourceNoReply' => 'Yanıt yok',
 			'operation.spots.filters.sourceError' => 'Hata',
 			'operation.spots.unavailableTitle' => 'Spotlar kullanılamıyor',
@@ -4181,7 +5320,7 @@ extension on TranslationsTr {
 			'operation.import.n1mmAddressValue' => 'Herhangi (yayın)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data sekmesi → QSO bilgisi için "Enable Broadcasts" seçeneğini işaretleyin. Aynı bilgisayarda çalışıyorsa IP adresini 127.0.0.1, mevcut yerel ağda yayın yapmak için 255.255.255.255 olarak ayarlayın.',
-			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting sekmesi → UDP Server bölümü → "Accept UDP requests" seçeneğini işaretleyin. Aynı bilgisayarda çalışıyorsa UDP Server\'ı 127.0.0.1 veya 239.239.0.2 gibi bir çoklu yayın adresine ayarlayın ve bu uygulamadaki yukarıdaki yapılandırmada aynı adresi kullanın.',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting sekmesi → UDP Server bölümü → "Accept UDP requests" seçeneğini işaretleyin. UDP Server\'ı, aynı bilgisayarda çalışıyorsa 127.0.0.1 olarak ya da 239.239.0.2 gibi bir çoklu yayın adresi olarak ayarlayın ve bu uygulamadaki yukarıdaki yapılandırmada aynı adresi kullanın.',
 			'operation.import.listenTitle' => 'Diğer uygulamalardan QSO dinle',
 			'operation.import.listenDescriptionOnN1mm' => 'N1MM+ dinleniyor',
 			'operation.import.listenDescriptionOnWsjtx' => 'WSJT-X dinleniyor',
@@ -4227,6 +5366,7 @@ extension on TranslationsTr {
 			'map.globe' => 'Küre',
 			'map.zoomIn' => 'Yakınlaştır',
 			'map.zoomOut' => 'Uzaklaştır',
+			'map.resetNorth' => 'Kuzeyi yukarıya al',
 			'map.postcard.button' => 'Operasyon Kartpostalı',
 			'map.postcard.title' => ({required Object title}) => '${title} için kartpostal',
 			'map.postcard.portrait' => 'Dikey',
@@ -4249,6 +5389,11 @@ extension on TranslationsTr {
 			'map.postcard.previousPage' => 'Önceki sayfa',
 			'map.postcard.nextPage' => 'Sonraki sayfa',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Sayfa ${page} / ${count}',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} Q', other: '${count} Q', ), 
+			'map.postcard.options' => 'Kartpostal Seçenekleri',
+			'map.postcard.bandLegend' => 'Bant lejantını göster',
+			'map.postcard.grayline' => 'Grayline\'ı göster',
+			'map.postcard.sectionsAndOrder' => 'Özet Bölümleri ve Sıralama',
 			'map.postcard.sectionDays' => 'Her gün',
 			'map.postcard.reset' => 'Sıfırla',
 			'map.postcard.failed' => ({required Object error}) => 'Kartpostal oluşturulamadı: ${error}',
@@ -4275,7 +5420,7 @@ extension on TranslationsTr {
 			'activitiesView.activitiesCountOther' => ({required Object count}) => '${count} Aktivite',
 			'activitiesView.empty' => 'Henüz aktivite yok — eklemek için aşağıdaki Öneriler ve Arama\'yı kullanın',
 			'activitiesView.removeActivity' => 'Kaldır',
-			'activitiesView.openReferenceLink' => ({required Object name}) => '${name} aç',
+			'activitiesView.openReferenceLink' => ({required Object name}) => '${name} bağlantısını aç',
 			'activitiesView.editActivity' => 'Aktiviteyi düzenle',
 			'activitiesView.manageExtensions' => 'Uzantıları Yönet',
 			'activitiesView.manage' => 'Yönet',
@@ -4285,7 +5430,7 @@ extension on TranslationsTr {
 			'activitiesView.reference' => 'Referans',
 			'activitiesView.invalidReference' => 'Geçersiz',
 			'activitiesView.duplicateReference' => 'Zaten eklendi',
-			'activitiesView.searchHint' => 'İsim, referans veya başka bir şeyle arayın…',
+			'activitiesView.searchHint' => 'Ad, referans veya başka bir şeyle arayın…',
 			'activitiesView.noSuggestions' => 'Eşleşme yok',
 			'activitiesView.noSuggestionsHint' => 'Yukarıda referans adı veya numarasıyla arayın',
 			'activitiesView.noSuggestionsExample' => '(örneğin \'trail\' veya \'4556\')',
@@ -4295,13 +5440,13 @@ extension on TranslationsTr {
 			'activitiesView.locationDeniedTitle' => 'Konum izni reddedildi',
 			'activitiesView.locationBlockedTitle' => 'Konum izni engellendi',
 			'activitiesView.noNearbyReason' => 'Yakındaki referanslar belirlenemiyor',
-			'activitiesView.locationManualHint' => ({required Object icon}) => 'Konumunuzu elle girmek için ${icon} simgesine dokunun\nveya referansları isimle arayın',
+			'activitiesView.locationManualHint' => ({required Object icon}) => 'Konumunuzu elle girmek için ${icon} simgesine dokunun\nveya referansları adla arayın',
 			'activitiesView.locationGrantAction' => 'Konum erişimine izin ver',
 			'activitiesView.locationSettingsAction' => 'Ayarları Aç',
 			'activitiesView.locationSettingsUnavailable' => 'Sistem ayarlarınızdan konum erişimine izin verin',
 			'activitiesView.locationGrantRefused' => 'Hâlâ konum yok — sistem yine hayır dedi',
 			'activitiesView.searchUnavailableTitle' => 'Aktivite araması kullanılamıyor',
-			'activitiesView.searchUnavailableReason' => 'Hiçbir aktivite uzantısı aramayı çalıştıramadı. Birazdan tekrar deneyin.',
+			'activitiesView.searchUnavailableReason' => 'Bir aktivite uzantısı aramayı yanıtlayamadı. Birazdan tekrar deneyin.',
 			'activitiesView.emptySheet' => 'Eklemek için aşağıdaki öneriler ve aramayı kullanın',
 			'activitiesView.exports' => 'Dışa Aktarımlar',
 			'activitiesView.exportLogs' => 'Günlükleri Dışa Aktar',
@@ -4318,12 +5463,12 @@ extension on TranslationsTr {
 			'activitiesView.previousPick' => 'Önceki eşleşme',
 			'activitiesView.nextPick' => 'Sonraki eşleşme',
 			'activitiesView.retiredReference' => 'Kullanımdan kalktı',
-			'activitiesView.enableExtension' => ({required Object name}) => '${name} etkinleştir',
+			'activitiesView.enableExtension' => ({required Object name}) => '${name} uzantısını etkinleştir',
 			'activitiesView.enableExtensionHint' => 'Bu uzantı aramanızla eşleşiyor, ancak şu anda etkin değil',
 			'activitiesView.enableExtensionForRefHint' => 'Bu uzantı bu operasyonun referanslarından birini işliyor, ancak şu anda etkin değil',
 			'activitiesView.extensionNotRunning' => ({required Object name}) => '${name} çalışmıyor',
 			'activitiesView.extensionNotRunningHint' => 'Bu uzantı devre dışı bırakıldı; daha fazla bilgi için Uzantı Ayarları\'nı açın',
-			'activitiesView.installExtension' => ({required Object name}) => '${name} yükle',
+			'activitiesView.installExtension' => ({required Object name}) => '${name} uzantısını yükle',
 			'activitiesView.installExtensionHint' => 'Bu uzantı aramanızla eşleşiyor, ancak yüklü değil',
 			'activitiesView.onlyCatalogMatches' => 'Eşleşme yok\nKatalogdaki bazı uzantılarda sonuç olabilir.\nOnları aşağıdaki Aktivite Türleri\'nden yükleyin.',
 			'activitiesView.setupUnavailable' => 'Bu aktivitenin kurulumu yüklenemedi — Yönet\'ten tekrar deneyin',
@@ -4342,6 +5487,10 @@ extension on TranslationsTr {
 			'loggingControls.timeUtc' => 'Zaman (UTC)',
 			'loggingControls.date' => 'Tarih',
 			'loggingControls.now' => 'Şimdi',
+			'loggingControls.manualTimeSettings' => 'Manuel Zaman',
+			'loggingControls.manualTimeIncrement' => 'QSO başına artış',
+			'loggingControls.manualTimeIncrementNone' => 'Yok',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} dakika', other: '${count} dakika', ), 
 			'loggingControls.frequency' => 'Frekans',
 			'loggingControls.mode' => 'Mod',
 			'loggingControls.theirCall' => 'Onların çağrısı',
@@ -4353,7 +5502,7 @@ extension on TranslationsTr {
 			'loggingControls.revert' => 'Geri Al',
 			'loggingControls.undoDelete' => 'Silmeyi geri al',
 			'loggingControls.restore' => 'Geri getir',
-			'loggingControls.wipe' => 'Sil',
+			'loggingControls.wipe' => 'Temizle',
 			'loggingControls.undo' => 'Geri Al',
 			'loggingControls.pendingDeleteTapWarning' => 'Bu QSO\'yu silmek için çöp kutusuna bir kez daha dokunun',
 			'loggingControls.pendingDeleteClickWarning' => 'Bu QSO\'yu silmek için çöp kutusuna bir kez daha tıklayın',
@@ -4374,11 +5523,26 @@ extension on TranslationsTr {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => '${call} istasyonunu ${freq} üzerinde spotla',
 			'loggingControls.spotTooLate' => ({required Object call}) => '${call} istasyonunu spotlamak için çok geç',
 			'loggingControls.spotNoFreq' => 'Spotlamak için önce bir frekans ayarlayın',
+			'loggingControls.selfSpotDisabled' => 'Kendini spotlama devre dışı',
 			'loggingControls.spotComment' => 'Yorum',
+			'loggingControls.spottingAutoControl' => 'Otomatik yeniden spotlama',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Her ${minutes} dakikada bir yeniden spotla',
+			'loggingControls.spotAutoNext' => ({required Object time}) => '${time} sonra otomatik. Durdurulsun mu?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => '${minutes} dk sonra otomatik',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '${seconds} sn sonra otomatik',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => '${seconds} sonra otomatik',
+			'loggingControls.spotAutoNotStarted' => 'Otomatik yeniden spotlama başlatılmadı: spot gönderilemedi',
+			'loggingControls.spotAutoMoved' => 'Otomatik yeniden spotlama başlatılmadı: spotlama sırasında frekans değişti',
+			'loggingControls.spotAutoStopped' => 'Otomatik yeniden spotlama durduruldu',
+			'loggingControls.spotAutoLeftFreq' => 'Otomatik yeniden spotlama durduruldu: frekans değişti',
+			'loggingControls.spotAutoNoFreq' => 'Otomatik yeniden spotlama durduruldu: radyo frekans bildirmiyor',
+			'loggingControls.spotBusy' => 'Başka bir spot hâlâ gönderiliyor',
 			'loggingControls.bandOrFreqRequired' => 'Kaydetmeden önce bir frekans veya bant ayarlayın',
 			'loggingControls.missingBand' => 'Bant Yok',
 			'loggingControls.missingMode' => 'Mod Yok',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kaydedilemedi: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Silinemedi: ${error}',
 			'loggingControls.info.noQsos' => 'Henüz QSO yok... hadi havaya çıkalım!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4407,6 +5571,7 @@ extension on TranslationsTr {
 			'loggingControls.info.noticeInvalidMode' => 'Yanlış Mod',
 			'loggingControls.info.noticeInvalidBand' => 'Yanlış Bant',
 			'loggingControls.info.noticeInvalidCategory' => 'Çalışılamaz',
+			'loggingControls.info.noticeOverTime' => 'Süre Bitti',
 			'loggingControls.info.noticeWorkedBefore' => 'Daha Önce Çalışıldı',
 			'loggingControls.info.noticeNewPark' => 'Yeni Park',
 			'loggingControls.info.noticeNewSection' => 'Yeni Bölüm',
@@ -4414,6 +5579,7 @@ extension on TranslationsTr {
 			'loggingControls.info.noticeMissingExchange' => 'Değişim Yok',
 			'loggingControls.info.noticeInvalidExchange' => 'Hatalı Değişim',
 			'loggingControls.info.noticeUnknownEvent' => 'Bilinmeyen Etkinlik',
+			'loggingControls.info.noticeIncompleteCall' => 'Eksik Çağrı — Puanlanmadı',
 			'loggingControls.info.noticeOurGrid' => 'Grid\'imizi Ayarla',
 			'loggingControls.info.noticeRareCounty' => 'Nadir İlçe!',
 			'loggingControls.info.noticeOurLocation' => 'İlçemizi Ayarla',
@@ -4437,12 +5603,13 @@ extension on TranslationsTr {
 			'formChrome.validationError' => ({required Object error}) => 'Doğrulama hatası: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Dönüştürme hatası: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Hata: ${error}',
-			'formChrome.removeItem' => 'Kaldır',
+			'formChrome.removeItem' => 'Sil',
+			'formChrome.deleteItemTitle' => ({required Object name}) => '${name} silinsin mi?',
 			'formChrome.storageUnavailable' => 'Girişler kullanılamıyor',
 			'qsoEditForm.title' => 'QSO\'yu Düzenle',
 			'qsoEditForm.operatorCall' => 'Operatör',
 			'qsoEditForm.position' => 'Pozisyon',
-			'qsoEditForm.theirName' => 'İsim',
+			'qsoEditForm.theirName' => 'Ad',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'Eyalet',
 			'qsoEditForm.band' => 'Bant',
@@ -4465,6 +5632,16 @@ extension on TranslationsTr {
 			'qsoList.today' => 'Bugün',
 			'qsoList.yesterday' => 'Dün',
 			'qsoList.tomorrow' => 'Yarın',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Günlükte Bul (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Günlükte Bul',
+			'qsoList.find.hint' => 'QSO numarası veya çağrı işareti',
+			'qsoList.find.noMatches' => 'Eşleşme yok',
+			'qsoList.find.noOperationQsos' => 'Bu operasyonda QSO yok',
+			'qsoList.find.noPeriodQsos' => 'Bu dönemde QSO yok',
+			'qsoList.find.outsideQsosOne' => 'Bu operasyon dışında 1 QSO',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => 'Bu operasyon dışında ${count} QSO',
+			'qsoList.find.pastQsosOne' => '1 geçmiş QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} geçmiş QSO',
 			'loggingPanel.stats' => 'Operasyon İstatistikleri',
 			'loggingPanel.scoring' => 'Puanlama',
 			'loggingPanel.dxccEntities' => 'DXCC varlıkları',
@@ -4530,8 +5707,8 @@ extension on TranslationsTr {
 			'settings.userInterface' => 'Kullanıcı Arayüzü',
 			'settings.logging.title' => 'Kayıt',
 			'settings.logging.leftieMode.title' => 'Sol El Modu',
-			'settings.logging.leftieMode.descriptionOn' => 'Solak kullanıcılar için düzen kullanılıyor',
-			'settings.logging.leftieMode.descriptionOff' => 'Sağ elini kullananlar için düzen kullanılıyor',
+			'settings.logging.leftieMode.descriptionOn' => 'Sol elle kullanım düzeni kullanılıyor',
+			'settings.logging.leftieMode.descriptionOff' => 'Sağ elle kullanım düzeni kullanılıyor',
 			'settings.logging.countryFlags.title' => 'Ülke Bayrakları',
 			'settings.logging.countryFlags.dx' => 'Yalnızca DX QSO\'ları için göster',
 			'settings.logging.countryFlags.all' => 'Tüm QSO\'lar için bayrak göster',
@@ -4560,7 +5737,7 @@ extension on TranslationsTr {
 			'settings.logging.defaultReportCW.description' => 'CW, RTTY ve diğer veri modlarında Gönd. veya Alın. boş bırakıldığında kullanılır',
 			'settings.logging.defaultReportFT8.title' => 'Varsayılan rapor — FT8 ve FT4',
 			'settings.logging.defaultReportFT8.description' => 'FT modlarında Gönd. veya Alın. boş bırakıldığında kullanılır',
-			'settings.logging.numbersRow.title' => 'Sayı Satırı',
+			'settings.logging.numbersRow.title' => 'Sayılar Satırı',
 			'settings.logging.numbersRow.description' => 'Kayıt yaparken klavyenin üstünde bir sayı tuşları satırı göster',
 			'settings.logging.numbersRowExtra.title' => 'Eğik çizgi ve nokta tuşu',
 			'settings.logging.numbersRowExtra.description' => 'Bağlama göre bir tuş ekler: çağrı işaretleri için “/”, sayılar için “.”',
@@ -4580,6 +5757,11 @@ extension on TranslationsTr {
 			'settings.catServer.openAccess' => 'Açık erişim',
 			'settings.catServer.openAccessOn' => 'Yerel ağdaki herhangi bir bilgisayar bağlanabilir.',
 			'settings.catServer.openAccessOff' => 'Yalnızca bu bilgisayardaki uygulamalar bağlanabilir.',
+			'settings.catServer.allowTransmit' => 'Uygulamaların yayın yapmasına izin ver',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'Uygulamalar radyoyu her seferinde en fazla ${minutes} dakika boyunca PTT\'ye alabilir.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'Yerel ağdaki herhangi bir bilgisayardaki uygulamalar radyoyu her seferinde en fazla ${minutes} dakika boyunca PTT\'ye alabilir.',
+			'settings.catServer.allowTransmitOff' => 'Uygulamalar radyoyu PTT\'ye alamaz. VOX veya kendi PTT düzeneklerini kullanın.',
+			'settings.catServer.allowTransmitUnsupported' => 'Ana VFO radyosu Ham2K Logger\'dan PTT\'ye alınamıyor, bu yüzden uygulamalar onun üzerinden yayın yapamaz.',
 			'settings.catServer.off' => 'Kapalı.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol} başlatılıyor…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol}, ${port} portunda. Bağlı istemciler: ${clients}.',
@@ -4588,12 +5770,58 @@ extension on TranslationsTr {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: başka bir program onu kullanıyor, çoğu zaman ${protocol} programının kendisi. O programı kapatın veya başka bir port seçin.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: bu bilgisayar buna izin vermiyor. 1024\'ün üzerinde bir port seçin.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…',
+			'settings.cluster.title' => 'DX Cluster',
+			'settings.cluster.description' => 'Uzantıların, operatör olarak oturum açıp spot gönderdiği ve spot okuduğu sunucu.',
+			'settings.cluster.connect' => 'Cluster\'a bağlan',
+			'settings.cluster.connectOn' => 'Uzantılar gerektiğinde cluster\'a bağlanır',
+			'settings.cluster.connectOff' => 'Hiçbir şey cluster\'a bağlanmaz',
+			'settings.cluster.console' => 'Konsolu Göster',
+			'settings.cluster.consoleDescription' => 'Cluster\'ın gönderdikleri ve komut yazmak için bir yer',
+			'settings.cluster.consoleTitle' => 'Cluster Konsolu',
+			'settings.cluster.consoleConnect' => 'Bağlan',
+			'settings.cluster.consoleDisconnect' => 'Bağlantıyı Kes',
+			'settings.cluster.consoleCommand' => 'Komut',
+			'settings.cluster.consoleEmpty' => 'Henüz bir şey yok. Bağlanın ya da bir uzantının cluster\'ı kullanmasını bekleyin.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'Yeniden gönderiliyor: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Gönderilmedi: ${command} (${reason})',
+			'settings.cluster.server' => 'Cluster Sunucusu',
+			'settings.cluster.selectServer' => 'Sunucu Seç',
+			'settings.cluster.serverOther' => 'Diğer',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'Henüz sunucu adı girilmedi, bu yüzden spotlar ${node} sunucusuna gidiyor',
+			'settings.cluster.customHost' => 'Sunucu',
+			'settings.cluster.customPort' => 'Port',
+			'settings.cluster.password' => 'Şifre',
+			'settings.cluster.passwordDescription' => 'Yalnızca gerekiyorsa',
+			'settings.cluster.passwordStored' => ({required Object node}) => '${node} için kayıtlı şifre var',
+			'settings.cluster.scrollback' => 'Saklanan satır',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} satır',
+			'settings.cluster.connection' => 'Bağlantı',
+			'settings.cluster.statusIdle' => 'Bağlı değil. Bir uzantı gerektirdiğinde bağlanır. Test etmek için dokunun.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => '${node} sunucusuna bağlanıyor…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => '${node} sunucusuna ${call} olarak bağlı.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => '${node} sunucusuna bağlanılamadı: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Web sürümünde kullanılamaz.',
+			'settings.cluster.statusOff' => 'Kapalı. Kullanmak için Cluster\'a bağlan seçeneğini açın.',
+			'settings.cluster.errors.noCall' => 'oturum açacak operatör çağrı işareti yok',
+			'settings.cluster.errors.connectFailed' => 'sunucuya ulaşılamadı',
+			'settings.cluster.errors.needsPassword' => 'sunucu şifre istiyor ve kayıtlı şifre yok',
+			'settings.cluster.errors.loginFailed' => 'sunucu oturum açmayı kabul etmedi',
+			'settings.cluster.errors.disconnected' => 'sunucu bağlantıyı kapattı',
+			'settings.cluster.errors.timeout' => 'sunucu yanıt vermedi',
+			'settings.cluster.errors.off' => 'Cluster\'a bağlan kapalı',
+			'settings.spotting.title' => 'Spotlama',
+			'settings.spotting.respotInterval' => 'Otomatik yeniden spotlama aralığı',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} dk',
+			'settings.spotting.autoRespotByDefault' => 'Varsayılan olarak otomatik yeniden spotla',
+			'settings.spotting.autoRespotByDefaultOn' => 'Herhangi bir spot gönderildikten sonra otomatik yeniden spotlamayı etkinleştir',
+			'settings.spotting.autoRespotByDefaultOff' => 'Otomatik yeniden spotlamayı etkinleştirmek için kullanıcı eylemi gerekir',
+			'settings.spotting.pulseBeforeRespot' => 'Her otomatik yeniden spottan önce yanıp sönsün',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'Spotlama etiketi her yeniden spottan önceki ${seconds} saniye boyunca mavi yanıp söner',
+			'settings.spotting.pulseBeforeRespotOff' => 'Otomatik yeniden spot öncesinde yanıp sönme yok',
 			'settings.radio.title' => 'CAT Kontrolü',
 			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
-			'settings.radio.tuningSection' => 'Ayar',
+			'settings.radio.tuningSection' => 'Frekans Ayarı',
 			'settings.radio.keyerSection' => 'Keyer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Hizmetler',
 			'settings.radio.stationConfigurationSection' => 'İstasyon Yapılandırması',
 			'settings.radio.moreSettings' => 'Diğer istasyon yapılandırma ayarları',
@@ -4601,6 +5829,14 @@ extension on TranslationsTr {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'PTT\'yi Klavyeyle Kontrol Et',
+			'settings.radio.pttKey.modes.off' => 'Hayır',
+			'settings.radio.pttKey.modes.toggle' => 'Aç/Kapat',
+			'settings.radio.pttKey.modes.hold' => 'Basılı Tut',
+			'settings.radio.pttKey.descriptions.off' => 'Klavye radyoyu PTT\'ye almaz.',
+			'settings.radio.pttKey.descriptions.toggle' => 'Telefon modlarında PTT tuşu radyoyu PTT\'ye alır, tekrar basılınca bırakır. Bir dakika sonra kendiliğinden bırakır.',
+			'settings.radio.pttKey.descriptions.hold' => 'Telefon modlarında, PTT tuşu basılı tutulduğu sürece radyo yayın yapar, en fazla bir dakika.',
+			'settings.radio.pttKey.key' => 'PTT Tuşu',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Yayında',
 			'settings.radio.smartVfoSnap.title' => 'Akıllı VFO Yuvarlama',
@@ -4628,8 +5864,8 @@ extension on TranslationsTr {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CW Keyer Mesajları',
 			'settings.radio.cwMessages.notSupported' => 'Mevcut radyo CW manipülasyonunu desteklemiyor',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mesaj (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mesaj ${n}',
 			'settings.radio.cwMessages.labelField' => 'Etiket',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} etiketi',
 			'settings.radio.cwMessages.details' => 'Ayrıntılar',
@@ -4638,12 +5874,15 @@ extension on TranslationsTr {
 			'settings.radio.cwMessages.newSet' => 'Yeni Set',
 			'settings.radio.cwMessages.renameSet' => 'Seti Yeniden Adlandır',
 			'settings.radio.cwMessages.deleteSet' => 'Seti Sil',
-			'settings.radio.cwMessages.newSetName' => 'İsim',
+			'settings.radio.cwMessages.newSetName' => 'Ad',
 			'settings.radio.cwMessages.setDefault' => 'Varsayılan',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Mesajları',
 			'settings.radio.cwMessages.setSaved' => 'Mesajlarım',
-			'settings.radio.cwMessages.repeat' => '1 Numaralı Mesajı Tekrarla',
+			'settings.radio.cwMessages.repeat' => 'Mesaj 1\'i Tekrarla',
+			'settings.radio.cwMessages.repeatShort' => 'M1 Tekrarla',
+			'settings.radio.cwMessages.cooldown' => 'Tekrar öncesi bekleme',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} saniye',
 			'settings.radio.cwMessages.repeatWait' => 'Tekrarlanıyor',
 			'settings.radio.cwMessages.keyboard' => 'Göndermek için yazın',
 			'settings.radio.cwMessages.keyboardField' => 'Göndermek için yazın',
@@ -4669,15 +5908,19 @@ extension on TranslationsTr {
 			'settings.radio.cwMessages.helpEsmIntro' => 'Enter Mesaj Gönderir açıkken Enter, N1MM\'de olduğu gibi mesajları fonksiyon tuşlarına göre gönderir. ESM Mesajları seti şunlarla başlar:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Run\'da, çağrı alanı boşken Enter CQ çağırır',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Değişiminiz: run\'da onların çağrısından sonra, S&P\'de onlar karşılık verdikten sonra',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Teşekkür, QSO kaydedildikten sonra: yer tutucuları bu QSO\'yu değil, sonrakini belirtir',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Teşekkür, QSO kaydedildikten sonra: qso kaydedilen QSO\'yu, next sıradakini belirtir',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'S&P\'de, karşılık verdiğiniz istasyona çağrınız',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Run\'da, değişiminizden önce onların çağrısı',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Değişimlerinden hiçbir şey alınamadığında tekrar sorar',
-			'settings.radio.cwMessages.helpEsmStackThanks' => '// yığınları için önerilen F3: TU, QSO kaydedildikten sonra gider; böylece teşekkür eder, ardından yığındaki sonraki istasyonu çağırıp değişiminizi gönderir ya da kısmi bir çağrıyı geri sorar (TU KR?); yığında kimse kalmadıysa yalnızca TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => '// yığınları için önerilen F3: teşekkür eder, ardından yığındaki sonraki istasyonu çağırıp değişiminizi gönderir ya da kısmi bir çağrıyı geri sorar (TU KR?); yığında kimse kalmadıysa yalnızca TU',
+			'settings.radio.keyerControl.label' => 'Keyer',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Ses',
 			'settings.radio.voiceMessages.title' => 'Telefon Keyer Mesajları',
 			'settings.radio.voiceMessages.notSupported' => 'Mevcut radyo Telefon mesajlarını desteklemiyor',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Ses hafızası (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Ses hafızası ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Etiket',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Ses hafızası ${n} etiketi',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} sn',
@@ -4686,7 +5929,7 @@ extension on TranslationsTr {
 			'settings.radio.voiceMessages.playButton' => 'Oynat',
 			'settings.radio.voiceMessages.recordButton' => 'Kaydet',
 			'settings.radio.voiceMessages.stopButton' => 'Durdur',
-			'settings.radio.voiceMessages.repeat' => '1 Numaralı Mesajı Tekrarla',
+			'settings.radio.voiceMessages.repeat' => 'Mesaj 1\'i Tekrarla',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notları:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Bu hafızalar ${device} cihazının radyosunda. İsimleri ve uzunlukları o cihaza aittir.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Radyoda kayıtlı; radyonun diğer istemcileri de görür.',
@@ -4703,6 +5946,80 @@ extension on TranslationsTr {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label} kaydediliyor',
 			'settings.radio.voiceMessages.doubtful' => 'Radyo bunu oynattı mı? Hemen boşta olduğunu bildirdi.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Hafızaları radyonun kendisinde kaydetmeniz gerekir.',
+			'settings.radio.voiceMessages.sets' => 'Mesaj Seti',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Bu bilgisayardaki ses dosyaları',
+			'settings.radio.voiceMessages.openFileButton' => 'Dosya Aç',
+			'settings.radio.voiceMessages.newSet' => 'Yeni Set',
+			'settings.radio.voiceMessages.renameSet' => 'Seti Yeniden Adlandır',
+			'settings.radio.voiceMessages.deleteSet' => 'Seti Sil',
+			'settings.radio.voiceMessages.newSetName' => 'Ad',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name} ve kayıtları silinsin mi? Bu geri alınamaz.',
+			'settings.radio.voiceMessages.output' => 'Sesi şuraya gönder',
+			'settings.radio.voiceMessages.input' => 'Şuradan kaydet',
+			'settings.radio.voiceMessages.outputRadio' => 'Ağ üzerinden radyoya gönder',
+			'settings.radio.voiceMessages.inputDefault' => 'Sistem varsayılanı',
+			'settings.radio.voiceMessages.pickDevice' => 'Bir ses cihazı seçin',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (bağlı değil)',
+			'settings.radio.voiceMessages.lead' => 'Yayın başı gecikmesi',
+			'settings.radio.voiceMessages.tail' => 'Yayın sonu gecikmesi',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Dinle',
+			'settings.radio.voiceMessages.notRecorded' => 'Kaydedilmedi',
+			'settings.radio.voiceMessages.unplayable' => 'Bu dosya oynatılamıyor',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Bir mesaj oynatmadan önce radyoyu besleyen ses cihazını seçin.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'Radyoyu besleyen ses cihazı bağlı değil.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'Kayıt cihazı bağlı değil.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'Ses cihazı açılamadı.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'Bu mesajın henüz kaydı yok.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Kayıt cihazından hiçbir şey duyulmadı, bu yüzden mesaj olduğu gibi bırakıldı. Girişi ve uygulamanın mikrofonu kullanmasına izin verildiğini kontrol edin.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'Radyo şu anda uygulamadan ses almıyor. Radyoya ağ bağlantısı gerekir.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'Radyo yayın sesini uygulamaya geçirmedi, bu yüzden mesaj durdu. Radyoyu uygulamanın sesini yayınlayacak şekilde ayarlayın.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'Bu radyo CAT üzerinden PTT\'ye alınamıyor, bu yüzden bilgisayar ona mesaj oynatamaz.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'Bu mesajın dosyası uygulamanın oynatabildiği bir ses dosyası değil. WAV, FLAC veya MP3 dosyası kullanın ya da yeniden kaydedin.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'Kayıt yarıda kesildi, bu yüzden mesaj olduğu gibi bırakıldı. Kayıt cihazının hâlâ bağlı olduğunu ve diskte yer olduğunu kontrol edin.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'Kayıt mesajın yerine kaydedilemedi, bu yüzden mesaj olduğu gibi bırakıldı.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'Bu mesaj kaydetmediğiniz sözcükleri gerektiriyor: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'Bu mesajın şablonunda bir sorun var: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'Kendi sözcüklerinizle söylenen mesajlar, söylenecek bir QSO\'nun olduğu bir operasyonda oynatılır.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'Bu mesaj bu QSO için hiçbir şey söylemiyor.',
+			'settings.radio.voiceMessages.templateField' => 'Kendi sözcüklerimle söyle',
+			'settings.radio.voiceMessages.templateHelp' => 'Kaydı oynatmak için boş bırakın. Aksi halde mesaj, her QSO için doldurularak, kaydettiğiniz sözcüklerle şu değerler kullanılarak söylenir:',
+			'settings.radio.voiceMessages.help' => 'Yardım',
+			'settings.radio.voiceMessages.helpTitle' => 'Mesajları Kendi Sözcüklerinizle Söylemek',
+			'settings.radio.voiceMessages.helpFullExample' => 'Tam bir mesaj:',
+			'settings.radio.voiceMessages.helpExample' => 'Onların çağrısı, raporu ve sizin “QSL?” kaydınız',
+			'settings.radio.voiceMessages.playOnRadio' => 'Radyoda Oynat',
+			'settings.radio.voiceMessages.templateHelpCall' => 'Onların çağrısı',
+			'settings.radio.voiceMessages.templateHelpReport' => 'Onlara verdiğiniz rapor',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'Mesaj 2\'nin kaydı, kaydedildiği gibi oynatılır',
+			'settings.radio.voiceMessages.voiced' => 'Kendi sözcüklerinizle söylenir',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Söyler: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Henüz kaydedilmedi: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'Ne söyleyeceğini görmek için bir operasyon açın.',
+			'settings.radio.voiceMessages.wordsDescription' => 'Çağrılar, sayılar ve daha fazlası için kendi sesinizi kullanın.',
+			'settings.radio.voiceWords.title' => 'Sözcük Kayıtları',
+			'settings.radio.voiceWords.callField' => 'Şu operatör için sözcükler',
+			'settings.radio.voiceWords.intro' => 'Her sözcüğü veya sayıyı, bir çağrı işaretinde söylediğiniz gibi hızlıca art arda üç kez kaydedin. Daha uzun ifadeler yalnızca bir kez kaydedilir.',
+			'settings.radio.voiceWords.recordAll' => 'Tümünü Kaydet',
+			'settings.radio.voiceWords.recordAllGuide' => 'Her sözcüğü art arda üç kez, birkaç sözcüklük ifadeleri bir kez okuyun, satırlar arasında bir nefes alın. Sonuncudan sonra Durdur\'a basın.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '“${word} ${word} ${word}” deyin, sonra Durdur\'a basın.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '“${words}” deyin, sonra Durdur\'a basın.',
+			'settings.radio.voiceWords.recorded' => 'Kaydedildi',
+			'settings.radio.voiceWords.notRecorded' => 'Kaydedilmedi',
+			'settings.radio.voiceWords.addPhrase' => 'İfade Ekle',
+			'settings.radio.voiceWords.phraseField' => 'İfade, bir mesajda yazdığınız gibi',
+			'settings.radio.voiceWords.deletePhrase' => 'İfadeyi sil',
+			'settings.radio.voiceWords.tryField' => 'Söylemeyi dene',
+			'settings.radio.voiceWords.pauseLetters' => 'Harfler arası duraklama',
+			'settings.radio.voiceWords.pauseWords' => 'Sözcükler arası duraklama',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'Hız',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'Gelişmiş Ayarlar',
+			'settings.radio.voiceWords.splitSilent' => 'Kayıtta hiçbir şey duyulmadı.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'Üç tekrar bulunamadı. Sözcüğü art arda üç kez söyleyip tekrar deneyin.',
+			'settings.radio.voiceWords.splitLineCount' => 'Okumada her sözcük bulunamadı. Her birini üç kez okuyun, sözcükler arasında bir nefes alın.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'Sözcükler birbirinden ayrılamadı. Sözcükler arasında daha uzun bir nefes bırakın.',
 			'settings.radio.avoidZeroBeat.title' => 'Spotlarda Sıfır Vuruştan Kaçın',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Bir radyo bağlıyken, CW spotunun birkaç Hz yanına ayarlanıyor; böylece ona cevap veren herkes aynı notadan çağırmaz.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tam olarak spotlanan frekansa ayarlanıyor.',
@@ -4723,12 +6040,23 @@ extension on TranslationsTr {
 			'settings.help.contact' => 'İletişim',
 			'settings.help.contactDescription' => 'help@ham2k.com — ama önce Forumları veya Sohbeti deneyin!',
 			'settings.exports.title' => 'Dışa Aktarımlar',
+			'settings.extensionSections.activities' => 'Aktiviteler',
+			'settings.extensionSections.hunting' => 'Avlama',
+			'settings.extensionSections.contests' => 'Yarışmalar',
+			'settings.extensionSections.lookups' => 'Sorgular',
+			'settings.extensionSections.dashboard' => 'Pano',
 			'settings.map.title' => 'Haritalar',
 			'settings.map.style.title' => 'Harita Stili',
+			'settings.map.showCallsigns.title' => 'Çağrı İşaretlerini Göster',
+			'settings.map.showCallsigns.description' => 'Her QSO, bandının renginde, çağrı işaretini taşıyan bir etiket olur',
+			'settings.map.showGrayline.title' => 'Grayline\'ı Göster',
+			'settings.map.showGrayline.description' => 'Dünya\'nın gece tarafını gölgeler, alacakaranlık geçişli gösterilir',
 			'settings.map.styleOpts.automatic' => 'Otomatik',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Gizlilik',
@@ -4751,11 +6079,11 @@ extension on TranslationsTr {
 			'settings.peers.bleEnable' => 'Bluetooth ile bağlan',
 			'settings.peers.bleDescription' => 'Yerel ağ olmasa bile bağlanmak için Bluetooth LE kullan',
 			'settings.peers.thisDevice' => 'Bu Cihaz',
-			'settings.peers.deviceName' => 'İsim',
+			'settings.peers.deviceName' => 'Ad',
 			'settings.peers.deviceNameHint' => 'Bu cihazın diğer cihazlarda nasıl göründüğü',
-			'settings.peers.pairedDevices' => 'Bağlı Cihazlar',
-			'settings.peers.noPairedDevices' => 'Henüz bağlı cihaz yok. Bağlamak için bunu bu ağdaki başka bir cihazda da açın.',
-			'settings.peers.deviceListProblem' => ({required Object error}) => 'Bağlı cihazlarınız okunamıyor: ${error}',
+			'settings.peers.pairedDevices' => 'Eşleştirilmiş Cihazlar',
+			'settings.peers.noPairedDevices' => 'Henüz eşleştirilmiş cihaz yok. Eşleştirmek için bunu bu ağdaki başka bir cihazda da açın.',
+			'settings.peers.deviceListProblem' => ({required Object error}) => 'Eşleştirilmiş cihazlarınız okunamıyor: ${error}',
 			'settings.peers.nearby' => 'Yakında',
 			'settings.peers.connected' => 'Bağlı',
 			'settings.peers.viaBluetooth' => 'Bluetooth üzerinden',
@@ -4765,22 +6093,22 @@ extension on TranslationsTr {
 			'settings.peers.notConnected' => 'Bağlı değil',
 			'settings.peers.wantsToPair' => 'bu operasyonu paylaşmak istiyor',
 			'settings.peers.allow' => 'İzin ver',
-			'settings.peers.link' => 'Bağla',
+			'settings.peers.link' => 'Eşleştir',
 			'settings.peers.reject' => 'Reddet',
 			'settings.peers.forget' => 'Unut',
 			'settings.peers.forgetTitle' => ({required Object name}) => '${name} unutulsun mu?',
 			'settings.peers.forgetBody' => 'Bu cihazla senkronizasyonu durduracak. Daha sonra yeniden izin verebilirsiniz; önceden kaydedilmiş QSO\'lar korunur.',
-			'settings.peers.pairTitle' => ({required Object name}) => '${name} ile bağla',
+			'settings.peers.pairTitle' => ({required Object name}) => '${name} ile eşleştir',
 			'settings.peers.pairBody' => 'Bu cihaz yerel ağınızda ve bağlanmak istiyor.',
 			'settings.peers.pairBodyBle' => 'Bu cihaz yakında ve Bluetooth LE üzerinden bağlanmak istiyor.',
 			'settings.peers.pairIdLabel' => 'Cihaz Kimliği',
-			'settings.peers.pairWarning' => 'Yalnızca tanıdığınız cihazlarla bağlantı kurun. Bu ağdaki herhangi bir cihaz istek gönderebilir.',
-			'settings.peers.pairWarningBle' => 'Yalnızca tanıdığınız cihazlarla bağlantı kurun. Yakındaki herhangi bir cihaz istek gönderebilir.',
+			'settings.peers.pairWarning' => 'Yalnızca tanıdığınız cihazlarla eşleştirin. Bu ağdaki herhangi bir cihaz istek gönderebilir.',
+			'settings.peers.pairWarningBle' => 'Yalnızca tanıdığınız cihazlarla eşleştirin. Yakındaki herhangi bir cihaz istek gönderebilir.',
 			'settings.peers.problem' => ({required Object error}) => 'Yerel ağa ulaşılamıyor: ${error}',
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => '${device} cihazına bağlandı',
 			'settings.peers.statusLost' => ({required Object device}) => '${device} ile bağlantı kesildi',
-			'settings.peers.statusPerma' => ({required Object linked, required Object connected}) => 'Eş Cihazlar: ${linked} cihazdan ${connected} tanesi bağlı',
+			'settings.peers.statusPerma' => ({required Object linked, required Object connected}) => 'Eş Cihazlar: ${linked} eşleştirilmiş cihazdan ${connected} tanesi bağlı',
 			'settings.peers.screenEnable' => 'Ekranları ve pencereleri paylaş',
 			'settings.peers.screenDescription' => 'Diğer cihazların bu bilgisayardaki ekranları veya pencereleri göstermesine izin ver',
 			'settings.peers.screenSources' => 'Ekranlar ve Pencereler',
@@ -4885,7 +6213,7 @@ extension on TranslationsTr {
 			'settings.station.detectedEquipment' => 'Algılanan Ekipman',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Radyolar dinlenemiyor: ${error}',
 			'settings.station.edit' => 'Ekipmanı düzenle',
-			'settings.station.name' => 'İsim',
+			'settings.station.name' => 'Ad',
 			'settings.station.nameDescription' => 'Ona ne dediğiniz — "Sol Radyo". İsteğe bağlı.',
 			'settings.station.transport' => 'Bağlantı',
 			'settings.station.host' => 'Adres',
@@ -4932,13 +6260,28 @@ extension on TranslationsTr {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} / ${total}',
 			'settings.station.serialPortSuggested' => 'önerilen',
 			'settings.station.serialPortJustNow' => 'Yeni bağlandı',
+			'settings.station.serialPortNoDriver' => 'sürücü yok',
 			'settings.station.serialDeviceRequest' => 'USB cihazı ekle…',
+			'settings.station.bleDevice' => 'Bluetooth LE cihazı',
+			'settings.station.bleDeviceDescription' => 'Radyonuzun üzerinden bağlandığı seri köprü, örneğin Mode 4\'teki bir LiNK500MP veya bir BLE seri adaptörü.',
+			'settings.station.bleScan' => 'Bluetooth LE cihazlarını tara…',
+			'settings.station.bleScanNoneFound' => 'Bluetooth LE cihazı bulunamadı. Köprünün açık, yakında ve Bluetooth LE modunda (LiNK500MP\'de Mode 4) olduğunu kontrol edin.',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'Bluetooth LE taraması çalıştırılamadı: ${reason}',
+			'settings.station.bleOff' => 'Bluetooth kapalı.',
+			'settings.station.bleDenied' => 'Bluetooth izni verilmedi. Sistem ayarlarından izin verip tekrar deneyin.',
+			'settings.station.bleUnsupported' => 'Bu cihazda Bluetooth LE yok.',
+			'settings.station.bleStarting' => 'Bluetooth hâlâ başlıyor. Birazdan tekrar deneyin.',
+			'settings.station.bleConnectFailed' => 'Bluetooth LE cihazına ulaşılamıyor. Açık, yakında ve başka bir uygulamaya bağlı olmadığını kontrol edin.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'Bu Bluetooth LE cihazında uygulamanın tanıdığı bir seri hizmet yok. Lütfen hizmetleriyle birlikte bildirin: ${services}',
 			'settings.station.baudRate' => 'Hız (baud)',
 			'settings.station.baudRateDescription' => 'Radyonun CAT menüsüyle eşleşmelidir. Eşleşmezse radyo anlamsız veri döndürür ve hata vermez.',
 			'settings.station.serialRtsHigh' => 'RTS\'yi yüksek tut',
 			'settings.station.serialRtsHighDescription' => 'Yalnızca yanıt vermeden önce RTS bekleyen bir radyo için, örneğin CAT RTS açık bir Yaesu. Digirig, SignaLink ve çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak yayına geçirir.',
 			'settings.station.serialDtrHigh' => 'DTR\'yi yüksek tut',
 			'settings.station.serialDtrHighDescription' => 'Yalnızca gücünü DTR\'den alan bir CAT arayüzü için, örneğin FT-817 için bazı RS-232 kabloları. Birçok kabloda DTR, CW veya PTT\'yi tetikler ve onu yüksek tutmak yayına geçirir.',
+			'settings.station.serialUsbDriver' => 'USB çip sürücüsü',
+			'settings.station.serialUsbDriverDescription' => 'Otomatik çoğu adaptörü tanır. Çipi yalnızca port listesinin sürücüsü yok dediği bir adaptör için seçin — ambalajı veya bir USB cihaz listesi adını verir.',
+			'settings.station.serialUsbDriverAuto' => 'Otomatik',
 			'settings.station.civAddress' => 'Radyo CI-V adresi',
 			'settings.station.civAddressDescription' => 'Radyonun CI-V menüsünde gösterildiği gibi onaltılık. IC-705 fabrikadan A4 olarak gelir.',
 			'settings.station.civAddressInvalid' => 'CI-V adresi iki onaltılık basamaktır, 01 ile FF arası',
@@ -4959,8 +6302,37 @@ extension on TranslationsTr {
 			'settings.station.spectrumNoPanadapter' => 'Bu slice\'ın radyoda bir panadapter\'ı yok',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'Radyo bir DAX IQ akışını reddetti (hata ${code})',
 			'settings.station.spectrumNoUdp' => 'Radyonun spektrum verisi bu cihaza ulaşamıyor',
+			'settings.station.spectrumK4Unavailable' => 'K4\'ün LAN spektrumu alınamıyor. Yeniden deneniyor…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'K4\'ün uzak spektrumu alınamıyor',
 			'settings.station.spectrumScopeRefused' => 'Radyo skop komutlarını reddetti',
 			'settings.station.spectrumOutOfRange' => 'Radyonun skopu gösterebileceği aralığın dışına ayarlanmış',
+			'settings.station.spectrumBandUnsupported' => 'Radyonun skopu bu bantta gösterilemiyor',
+			'settings.station.spectrumSdrNoRadio' => 'Bağlı radyonun frekansı bekleniyor…',
+			'settings.station.spectrumSdrNotConnected' => 'SDR bağlı değil',
+			'settings.station.spectrumSdrNoIf' => 'Bu SDR\'ın ayarlarında radyonun IF frekansını belirleyin',
+			'settings.station.sdrRadio' => 'Spektrumunu gösterdiği radyo',
+			'settings.station.sdrRadioDescription' => 'Bu radyodaki spektrum görüntüsü, radyonun kendi skopu yerine bu alıcıdan beslenir.',
+			'settings.station.sdrRadioMain' => 'Ana radyo',
+			'settings.station.sdrTuning' => 'Anten girişi',
+			'settings.station.sdrTuningDescription' => 'Alıcının sinyali nereden geliyor. Kendi anteninde radyoyu izlemek için kendini ayarlar; radyonun IF çıkışında IF\'te kalır.',
+			'settings.station.sdrTuningIndependent' => 'Kendi anteni',
+			'settings.station.sdrTuningIfTap' => 'Radyonun IF çıkışı',
+			'settings.station.sdrIfHz' => 'IF frekansı (Hz)',
+			'settings.station.sdrIfHzDescription' => 'Yalnızca IF çıkışı için: radyonun kadranının IF\'inde oturduğu frekans, örneğin FT-817\'de 68330000.',
+			'settings.station.sdrIfInverted' => 'IF ters çevrilmiş',
+			'settings.station.sdrGainDb' => 'Kazanç (dB)',
+			'settings.station.sdrGainDbDescription' => 'Alıcının otomatik kazancı için boş bırakın.',
+			'settings.station.sdrOffsetHz' => 'Frekans kayması (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Bir upconverter için alıcıya gönderilen her frekansa eklenir: Ham It Up için 125000000.',
+			'settings.station.sdrPpm' => 'Frekans düzeltmesi (ppm)',
+			'settings.station.rtlDirectSampling' => 'Doğrudan örnekleme',
+			'settings.station.rtlDirectSamplingDescription' => 'Upconverter olmayan bir RTL-SDR V3\'te HF için. RTL-SDR V4 onsuz HF\'e ulaşır.',
+			'settings.station.rtlDirectSamplingOff' => 'Kapalı',
+			'settings.station.rtlDirectSamplingI' => 'I kolu',
+			'settings.station.rtlDirectSamplingQ' => 'Q kolu',
+			'settings.station.rtlTcpNotAServer' => 'Bu bir rtl_tcp sunucusu değil',
+			'settings.station.rtlTcpNotes' => 'Bu, dongle\'ın takılı olduğu bilgisayarda **kendi çalıştırdığınız bir rtl_tcp sunucusuna** bağlanır.\n\n- **Başlatmak için** `rtl_tcp -a 0.0.0.0` kullanın, böylece diğer makineler ulaşabilir; aynı makinede yalnızca `rtl_tcp` yeter.\n- **Port**, `-p` ile başlatmadıysanız 1234\'tür.\n- **Aynı anda tek program:** rtl_tcp tek bir istemciye hizmet verir. Uygulama yalnızca bir spektrum görüntüsü gösterilirken bağlanır ve o kapandıktan birkaç saniye sonra bırakır.\n- **Android\'de** *SDR driver* uygulaması aynı sunucuyu telefonda çalıştırır.',
+			'settings.station.rspTcpNotes' => 'Bu, RSP\'nin takılı olduğu ve SDRplay API\'sinin kurulu olduğu bilgisayarda **kendi çalıştırdığınız bir rsp_tcp sunucusuna** bağlanır.\n\n- **Başlatmak için** `rsp_tcp -a 0.0.0.0` kullanın.\n- **Port**, `-p` ile başlatmadıysanız 1234\'tür.\n- **Aynı anda tek program:** sunucu tek bir istemci alır. Uygulama yalnızca bir spektrum görüntüsü gösterilirken bağlanır.',
 			'settings.station.n3fjpNoRig' => 'N3FJP\'de radyo arayüzü kurulu değil, bu yüzden bu bir radyoyu değil, N3FJP\'ye yazılanları izler',
 			'settings.station.winkeyerKeyPort' => 'Anahtar çıkışı',
 			'settings.station.winkeyerKeyPortDescription' => 'Radyonuzun keyer\'ın iki çıkış jakından hangisine takılı olduğu.',
@@ -4969,6 +6341,11 @@ extension on TranslationsTr {
 			'settings.station.winkeyerPttDescription' => 'Bir amplifikatör veya bunu gerektiren bir radyo için aynı jaktaki PTT hattını tetikler. Anahtar jakından tetiklenen bir radyo için kapalı bırakın.',
 			'settings.station.winkeyerNoAnswer' => 'Bu portta hiçbir WinKeyer yanıt vermedi',
 			'settings.station.winkeyerStoppedAnswering' => 'WinKeyer gönderim sırasında yanıt vermeyi bıraktı; mesaj iptal edildi',
+			'settings.station.icomControlPort' => 'Kontrol portu (UDP)',
+			'settings.station.icomControlPortDescription' => 'Radyonun Control Port (UDP) değeri — ağ ayarlarında değiştirilmediyse veya başka bir porta yönlendirilmediyse 50001.',
+			'settings.station.icomSerialPort' => 'Seri port (UDP)',
+			'settings.station.icomSerialPortDescription' => 'Radyonun Serial Port (UDP) değeri — ağ ayarlarında değiştirilmediyse veya başka bir porta yönlendirilmediyse 50002.',
+			'settings.station.icomPortsDiffer' => 'Kontrol ve seri portları farklı olmalı',
 			'settings.station.radioUser' => 'Radyo kullanıcı adı',
 			'settings.station.radioPass' => 'Radyo şifresi',
 			'settings.station.radioLoginDescription' => 'Radyonun Network → Remote girişi, WiFi şifreniz değil.',
@@ -4976,8 +6353,10 @@ extension on TranslationsTr {
 			'settings.station.connectFailedBusy' => 'Cihaz kullanımda',
 			'settings.station.connectFailedDenied' => 'Erişim reddedildi',
 			'settings.station.connectFailedDevice' => 'Cihaz bulunamadı',
+			'settings.station.connectFailedUnsupported' => 'Hiçbir sürücü bu USB adaptörün çipini tanımıyor. Hangi çip olduğunu biliyorsanız, Gelişmiş Ayarlar\'daki USB çip sürücüsü altından seçin.',
 			'settings.station.connectFailedLines' => 'RTS/DTR ayarlandığı gibi tutulamadı, bu yüzden port kapatıldı. Başka bir program donanım el sıkışmasını açık bırakmış olabilir — kabloyu çıkarıp yeniden takın.',
 			'settings.station.connectFailedNetwork' => 'Radyo ağda bulunamıyor. Adresini, açık ve erişilebilir olduğunu kontrol edin.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Bu cihazdaki ${port} portu zaten kullanımda ve yanıtlar oraya geliyor. Onu dinleyen diğer her şeyi — başka bir PstRotator düğümü dahil — kapatın ya da portu değiştirin.',
 			'settings.station.connectFailedTimeout' => 'Radyo zamanında yanıt vermedi. Açık ve erişilebilir olduğunu kontrol edin.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsTr {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genel',
 			'settings.station.models.icomGeneric' => 'Icom - Genel',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genel',
@@ -4997,6 +6385,8 @@ extension on TranslationsTr {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Genel',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsTr {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'rigctld ile kontrol edilen radyo',
@@ -5028,34 +6422,64 @@ extension on TranslationsTr {
 			'settings.station.models.placeholderRadioNodeName' => 'Radyom',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Koaksiyel Anahtar',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotor Arayüzü',
+			'settings.station.models.pstRotator' => 'PstRotator (UDP Kontrol)',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Ağ/WiFi',
+			'settings.station.transports.secureNetwork' => 'Güvenli Ağ/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Seri',
 			'settings.station.transports.wifi' => 'Ağ/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth Seri',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
 			'settings.station.transports.placeholder' => 'Yer Tutucu',
 			'settings.station.troubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
-			'settings.station.ft891Troubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT RTS radyoda OFF olmalı** (FT-891 menüsü **05-08**). Açıkken radyo, uygulamanın düşük tuttuğu bir el sıkışma hattını bekler. Digirig, SignaLink veya çoğu ev yapımı kabloda aynı hat PTT\'dir, bu yüzden onu yükseltmek vericinizi yayına geçirir. Radyonun kendi USB portunda alternatif, Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** seçeneğidir.\n- **Hız eşleşmeli**: radyonun CAT RATE ayarı (menü **05-06**). Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
+			'settings.station.ft891Troubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyoda CAT RTS kapalı ya da RTS\'yi yüksek tut açık olmalı.** **CAT RTS** açıkken (FT-891 menüsü **05-08**) radyo, RTS düşükken sessiz kalır — port açılırken bir kez yanıt verip sonra susabilir. Radyonun kendi USB portu seçilince Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** açılır. Digirig, SignaLink veya çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak vericinizi yayına geçirir: bunun yerine radyoda CAT RTS\'yi kapatın.\n- **Hız eşleşmeli**: radyonun CAT RATE ayarı (menü **05-06**). Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
 			'settings.station.yaesuBinaryTroubleshooting' => 'Bu radyo Yaesu\'nun eski beş baytlık CAT protokolünü konuşur ve bir şey yanlış olduğunda hiç yanıt vermez. Neredeyse her zaman şunlardan biridir:\n\n- **Kablo seviyeleri dönüştürmelidir.** Arkadaki CAT jakı RS-232 de USB de değildir; CT-62 veya eşdeğer bir adaptör gerekir. Düz bir ses veya veri kablosu CAT için çalışmaz.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü (FT-817\'de **#14**, FT-857 veya FT-897\'de **#19**). Eşleşmezse radyo hiçbir şey döndürmez, asla hata vermez.\n- **Bu portta hiçbir şeyin RTS veya DTR\'yi yükseltmesine izin vermeyin.** Bu radyolar için çoğu kabloda bu hatlar PTT ve manipülasyondur. DTR\'den beslenen eski bir arayüz istisnadır: onun için Gelişmiş Ayarlar altında **DTR\'yi yüksek tut** seçeneğini açın.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu sürücü Yaesu\'nun yayımladığı CAT tablosundan yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
+			'settings.station.tenTecTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
+			'settings.station.tenTecEagleTroubleshooting' => '- **Arkadaki USB-B portu CAT bağlantısıdır.** Radyo bir USB seri port olarak görünür; Windows\'ta Ten-Tec\'in USB to UART sürücüsü gerekir, Aygıt Yöneticisi\'nde "USB to UART (COMx)" olarak görünür.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar, Ten-Tec\'in firmware güncelleyicisi de öyle.\n- **Filtre genişliğini uygulamadan ayarlamak, radyo kapatılıp açılana kadar onu BW düğmesinden alır.** Radyo böyle çalışır.\n\nBu sürücü Ten-Tec\'in programcı referans kılavuzundan yazıldı. Yarı yarıya çalışıyorsa, radyonun menüsündeki firmware sürümüyle birlikte bildirmeye değer.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **SERIAL DATA portuna düz bağlantılı bir DB-9 seri kablo kullanın**, null-modem değil.\n- **Bu giriş RTS\'yi yüksek tutar**, çünkü Orion el sıkışma için RTS ve CTS kullanır. Digirig gibi PTT\'yi RTS\'den tetikleyen bir arayüzde Gelişmiş Ayarlar altındaki RTS\'yi yüksek tut seçeneğini kapatın, yoksa uygulama bağlanır bağlanmaz radyo yayına geçer.\n- **Uygulamadan CW için radyonun dahili keyer\'ı açık olmalı.** Kapalıyken radyo uygulamanın gönderdiğini yok sayar.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu sürücü Ten-Tec\'in programcı referans kılavuzundan yazıldı ve bir Orion\'da çalıştırılmadı. Yarı yarıya çalışıyorsa, radyonun menüsündeki firmware sürümüyle birlikte bildirmeye değer.',
+			'settings.station.tenTecNoCw' => 'Bu radyonun firmware\'i uygulamadan CW almıyor. Ten-Tec bunu Orion firmware 1.366\'da ekledi.',
+			'settings.station.tenTecKeyerOff' => 'Radyonun dahili keyer\'ı kapalı, bu yüzden uygulamadan gönderilen CW\'yi yok sayıyor. Radyonun menüsünden keyer\'ı açın.',
 			'settings.station.guohetecTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
 			'settings.station.guohetecTroubleshooting' => 'Q900\'ün iki CAT protokolü vardır ve bu giriş FT-817 taklidi yerine kendi yerel protokolünü kullanır. Burada FT-817\'yi değil, **Guohetec Q900**\'ü seçin — taklit daha az komut destekler ve radyo hangisini kullandığını söylemez.\n\n- **USB-C kablosu CAT bağlantısıdır** ve ses kartını da bağlar. Bu bağlantıda hız önemli değildir; port ne ayarlanırsa ayarlansın yok sayar.\n- **Bu portta hiçbir şeyin RTS veya DTR\'yi yükseltmesine izin vermeyin.** Seri kabloda bu hatlar PTT ve manipülasyondur.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **İkinci nesil bir radyo birinci nesilden farklı davranır.** Menu\'ye uzun basın, ardından About: HW 2.0 ikinci nesildir.\n\nBu sürücü üreticinin yayımladığı protokolden yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
 			'settings.station.yaesuTroubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, uygulamanın düşük tuttuğu bir el sıkışma hattını bekler. Digirig, SignaLink veya çoğu ev yapımı kabloda aynı hat PTT\'dir, bu yüzden onu yükseltmek vericinizi yayına geçirir. Radyonun kendi USB portunda alternatif, Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** seçeneğidir. Bu ayarın yeri modele göre değişir (FT-891\'de menü **05-08**).\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Modlar FT-891\'in tablosunu izler.** Yaesu serisinin çoğu buna uyar, ancak modlarını farklı numaralandıran bir radyo bu modlar için yanlış olanı gösterir ve ayarlar. Frekans etkilenmez.',
+			'settings.station.ftdx3000Troubleshooting' => '**Menü 037 CAT SELECT, radyonun USB portu üzerinden CAT için USB olmalı**; RS232C\'ye ayarlıysa CAT arkadaki jaktadır.\n\nBu giriş yayımlanmış CAT belgelerinden yazıldı ve bir FTDX3000\'de çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.yaesuRs232Troubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **CAT jakı RS-232\'dir.** USB-seri adaptör ve düz bağlantılı bir DB-9 kablosu gerekir — null-modem kablosu hatları çaprazlar ve radyo hiçbir şey duymaz.\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, Gelişmiş Ayarlar altında **RTS\'yi yüksek tut** açık olmadıkça uygulamanın düşük tuttuğu bir el sıkışma hattını bekler.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\nBu giriş yayımlanmış CAT belgelerinden yazıldı ve bu radyolardan birinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
-			'settings.station.yaesuUsbTroubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyonun iki USB portundan ilkini kullanın.** CAT normalde ilkindedir (Windows\'ta **Enhanced** COM portu); ikincisi (**Standard**) PTT ve manipülasyon içindir. Seçici, ikisini ayırt edebildiği her yerde ilkini gösterir.\n- **CAT RTS radyoda OFF olmalı.** Açıkken radyo, Gelişmiş Ayarlar altında **RTS\'yi yüksek tut** açık olmadıkça uygulamanın düşük tuttuğu bir el sıkışma hattını bekler.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
+			'settings.station.yaesuUsbTroubleshooting' => 'Radyo komutları alıyor ama yanıt vermiyor. Neredeyse her zaman şunlardan biridir:\n\n- **Radyonun iki USB portundan ilkini kullanın.** CAT normalde ilkindedir (Windows\'ta **Enhanced** COM portu); ikincisi (**Standard**) PTT ve manipülasyon içindir. Seçici, ikisini ayırt edebildiği her yerde ilkini gösterir.\n- **Radyoda CAT RTS kapalı ya da RTS\'yi yüksek tut açık olmalı.** Radyonun **CAT RTS** menüsü açıkken, RTS düşükken sessiz kalır — port açılırken bir kez yanıt verip sonra susabilir. Radyonun kendi USB portu seçilince Gelişmiş Ayarlar altındaki **RTS\'yi yüksek tut** açılır. Digirig, SignaLink veya çoğu ev yapımı kabloda RTS, PTT\'dir ve onu yüksek tutmak vericinizi yayına geçirir: bunun yerine radyoda CAT RTS\'yi kapatın.\n- **Hız eşleşmeli**: radyonun CAT RATE menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
 			'settings.station.k4SerialNotes' => 'K4\'ün arkadaki USB-B (PC) soketini bağlayın. CAT için USB-PC1 veya USB-PC2 çalışır; kullanılmayan bir port seçin ve radyodaki Serial USB-PCn: Baud Rate ayarıyla eşleştirin. HaLo 38400 değerini önceden doldurur; gerekirse değiştirin. Başka bir uygulama diğer portu veya Ethernet\'i kullanmalıdır.\n\nBu bağlantı radyoyu ve keyer\'larını kontrol eder; HaLo\'ya ses göndermez.',
-			'settings.station.k4TcpNotes' => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bu CAT kontrolüdür, 9204 portundaki ayrı uzak ses bağlantısı değildir.\n\nHaLo, ses veya panadapter verisi aktarmadan radyoyu ve keyer\'larını kontrol eder.',
+			'settings.station.k4TcpNotes' => 'K4\'ün Ethernet soketini yerel ağınıza bağlayın. Ana makine adını veya IP adresini ve CAT portu 9200\'ü girin. Bir panadapter veya şelale görünürken HaLo aynı ana makineyi sabit 9201 portunda kullanır; CAT portunu değiştirmek spektrum portunu değiştirmez.\n\nSpektrum ana alıcıyı gösterir. Yakınlaştırma, referans ayarı ve hız kontrolleri yalnızca HaLo\'nun görüntüsünü etkiler. Ses akışı desteklenmez.',
 			'settings.station.k4PowerTimeout' => 'Radyo çıkış aralığını onaylamadığı için K4 gücü değiştirilmedi. Tekrar deneyin.',
+			'settings.station.k4RemoteNotes' => 'K4\'ünüzde uzak erişimi etkinleştirin ve ağ şifresini girin. Main ve Sub, radyo kontrolü ve spektrum için tek bir şifreli bağlantıyı paylaşır. Varsayılan port 9204\'tür; uzaktan bağlanırken yönlendirdiğiniz portu girin.\n\nSes çalma ve mikrofon akışı desteklenmez.',
+			'settings.station.k4Receiver' => 'Alıcı',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Main veya Sub seçin',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'Bu alıcı bu K4 için zaten yapılandırılmış',
+			'settings.station.k4SubReceiverOff' => 'K4\'ün Sub alıcısı kapalı',
+			'settings.station.k4RemotePasswordRequired' => 'Güvenli bağlanmak için K4\'ün ağ şifresini girin.',
+			'settings.station.k4RemoteHandshakeFailed' => 'K4 güvenli bir bağlantı kuramadı. Ağ şifresini ve uzak erişim ayarlarını kontrol edin.',
+			'settings.station.k4RemoteUnreachable' => 'K4\'ün güvenli bağlantısına ulaşılamadı. Adresini, portunu ve uzak erişim ayarlarını kontrol edin.',
 			'settings.station.k4PowerRange' => 'K4 gücü 0.1–110 W olmalıdır; transverter miliwatt çıkışı etkinken 0.0001–0.01 W.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft cihazları Kenwood CAT konuşur ve hem KX2 hem KX3 bu şekilde çalıştırıldı — her iki yönde VFO, mod değiştirme ve CW sıfır vuruşu çalışıyor.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun menüsünde **RS232** altında ayarlanan hız. Bu cihazlar 38400 ile gelir. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n\n**Frekans doğru ama mod yanlışsa** bize bildirin. KX2 ve KX3 girişleri modu, radyonun durum yanıtında gördüğümüz cihazlardan belirlediğimiz bir konumdan okur; onu başka yere koyan bir yazılım ancak bir raporla bize ulaşır.\n\nK3 için henüz rapor yok, bu yüzden kullanıyorsanız ne olduğunu lütfen söyleyin. K4\'ün kendi girişi vardır.',
+			'settings.station.lab599TroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
+			'settings.station.lab599Troubleshooting' => 'TX-500 serisi Kenwood CAT konuşur. Frekans ve mod bir LiNK500MP üzerinden çalıştırıldı; güç ve göstergeler Lab599\'un CAT referansından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\n- **Hız eşleşmeli**: radyonun CAT ayarı, değiştirmediyseniz 9600. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Radyoda CAT protokolünü seçin.** TS-2000 frekans, mod ve gücü kapsar. LAB599 ayrıca uygulamanın radyoyu DIG\'e geçirmesine, DIG\'de yayın yaptığını görmesine ve besleme voltajını okumasına izin verir.\n- **LiNK500MP üzerinden**, CAT kontrolünü arayüze devretmek için VFO düğmesine yaklaşık üç saniye basılı tutun.\n- **LiNK500MP\'nin modunu bağlantıya göre ayarlayın**: Bluetooth için Mode 3, Bluetooth LE için Mode 4. Başka bir modda Bluetooth LE taraması onu bulamaz.\n- **Bluetooth üzerinden** LiNK500MP iki seri port olarak eşleşir ve yalnızca biri CAT taşır. Radyo sessiz kalıyorsa diğerini seçin.',
+			'settings.station.lab599TroubleshootingIos' => 'TX-500 serisi Kenwood CAT konuşur. Frekans ve mod bir LiNK500MP üzerinden çalıştırıldı; güç ve göstergeler Lab599\'un CAT referansından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\n- **Taramadan önce LiNK500MP\'yi Mode 4\'e**, yani Bluetooth LE moduna alın. Başka bir modda iPhone veya iPad onu bulamaz.\n- **CAT kontrolünü LiNK500MP\'ye devredin**: radyonun VFO düğmesine yaklaşık üç saniye basılı tutun.\n- **Radyoda CAT protokolünü seçin.** TS-2000 frekans, mod ve gücü kapsar. LAB599 ayrıca uygulamanın radyoyu DIG\'e geçirmesine, DIG\'de yayın yaptığını görmesine ve besleme voltajını okumasına izin verir.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Radyo bağlanıyor ama frekans göstermiyorsa',
-			'settings.station.kenwoodTroubleshooting' => 'Bu sürücü Kenwood TS-590SG ve TS-480, QRP Labs QMX ve QCX-mini ile Elecraft KX2 ve KX3 üzerinde doğrulandı. Serinin geri kalanı yayımlanmış CAT referanslarından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun CAT menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Bazı cihazlarda CAT** yanıt vermeden önce menüden etkinleştirilmelidir.\n\n**Birçok SDR ön ucu aynı protokolü konuşur**, bu yüzden bu giriş onlar için de denemeye değer; Elecraft cihazları ayrı olarak, Elecraft altında listelenir. Frekans doğru ama mod yanlış veya eksikse, seri boyunca farklılık gösteren tek kısım budur — uygulama modu radyodan çıkarır ve gerekirse doğrudan sorar, bu yüzden mod yalnızca gecikmeli gelebilir.',
+			'settings.station.kenwoodTroubleshooting' => 'Bu sürücü Kenwood TS-590SG ve TS-480, QRP Labs QMX ve QCX-mini ile Elecraft KX2 ve KX3 üzerinde doğrulandı. Serinin geri kalanı yayımlanmış CAT referanslarından yazıldı, bu yüzden her iki durumda da ne olduğunu lütfen bildirin.\n\nRadyo yanıt vermiyorsa, neredeyse her zaman şunlardan biridir:\n\n- **Hız eşleşmeli**: radyonun CAT menüsü. Eşleşmezse radyo anlamsız veri döndürür ya da hiçbir şey döndürmez, asla hata vermez.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.\n- **Bazı cihazlarda CAT** yanıt vermeden önce menüden etkinleştirilmelidir.\n- **Kenwood radyoları RTS bekler**: CAT portları onu el sıkışma olarak kullanır, bu yüzden RTS\'yi yüksek tut (Gelişmiş Ayarlar altında) açık olmalı. Bu seçenek varsayılan olarak açılmadan önce kurulmuş bir bağlantıda kapalı olabilir. Digirig veya PTT\'yi RTS\'den tetikleyen başka bir kabloda kapatın, yoksa radyo yayına geçer.\n\n**Birçok SDR ön ucu aynı protokolü konuşur**, bu yüzden bu giriş onlar için de denemeye değer; Elecraft cihazları ayrı olarak, Elecraft altında listelenir. Frekans doğru ama mod yanlış veya eksikse, seri boyunca farklılık gösteren tek kısım budur — uygulama modu radyodan çıkarır ve gerekirse doğrudan sorar, bu yüzden mod yalnızca gecikmeli gelebilir.',
 			'settings.station.statusConnected' => 'Bağlı',
 			'settings.station.statusLost' => 'Bağlantı kesildi',
 			'settings.station.notConfigured' => 'Yapılandırılmadı',
 			'settings.station.currentConfiguration' => 'Mevcut Yapılandırma',
 			'settings.station.currentTransceiver' => 'Mevcut Telsiz',
+			'settings.station.currentTransceivers' => 'Mevcut Telsizler',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Mesajlar araya girmek yerine sıraya alınır',
+			'settings.station.noRadioBSelected' => 'Radyo B seçilmedi',
 			'settings.station.radioMode' => 'Radyo Modu',
 			'settings.station.keyerNotSupported' => 'Mevcut radyo desteklemiyor',
 			'settings.station.catControlPreferences' => 'CAT Kontrol Tercihleri',
@@ -5074,13 +6498,25 @@ extension on TranslationsTr {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} başka bir cihazda',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Bu radyo ${device} cihazına bağlı. Bağlantısı ve ayarları o cihazda yapılandırılır.',
 			'settings.station.antennaInUse' => 'Kullanılan Anten',
-			'settings.station.keyInUse' => 'Kullanılan Anahtar',
+			'settings.station.keyInUse' => 'CW Gönderimi',
+			'settings.station.phoneKeying' => 'Telefon Gönderimi',
+			'settings.station.phoneKeyingNone' => 'Yok',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '${radio} içindeki hafızalar',
+			'settings.station.phoneKeyingComputer' => 'Bu bilgisayardaki ses',
+			'settings.station.phoneKeyingOff' => 'Telefon gönderimi kapalı',
+			'settings.station.computerVoiceSettings' => 'Bilgisayar Sesi',
+			'settings.station.cwKeyingOptions' => 'CW Gönderim Seçenekleri',
 			'settings.station.noneSelected' => 'Yok',
 			'settings.station.moreSettings' => 'Diğer Ayarlar',
 			'settings.station.icomCivTroubleshootingTitle' => 'Aynı radyo için iki seri port görünüyorsa',
 			'settings.station.icomCivTroubleshooting' => 'IC-705 dahil birçok Icom radyosu aynı anda **iki** USB seri port sunar (Icom bunlara Port A ve Port B der) ve ikisi de varsayılan olarak CI-V\'ye ayarlıdır. Ne bu uygulama ne de işletim sisteminiz bunları bunun ötesinde ayırt edebilir: aynı USB üretici/ürün kimliği iki kez görünür, burada bazen `#2` ekiyle işaretlenir. **Doğru olan genellikle Port A\'dır** — normalde işletim sisteminizin veya tarayıcınızın listelediği ilk port; bu uygulama iki portu ayırt edebildiğinde onu önerilen olarak işaretler. Komutlar gidiyor ama radyo hiç yanıt vermiyorsa diğer portu deneyin.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
 			'settings.station.civAddressTroubleshooting' => '- **CI-V adresi eşleşmeli**: radyonun menüsündekiyle aynı olmalı. Bu giriş, modelin fabrika adresini önceden doldurur, ancak bir CI-V veri yolunu paylaşan bir cihazda tam da bu değiştirilir. Yanlış adrese gönderilen bir çerçeve sessizce yok sayılır; bu da tıpkı ölü bir kablo gibi görünür.\n- **Hız eşleşmeli**: radyonun CI-V BAUD RATE ayarı (USB\'de CI-V USB Baud Rate). Radyoyu burada gösterilen sayıya ayarlayın, **Auto\'ya değil**. Auto\'da IC-7300 dahil bazı radyolar bağlanır ve bir dakika kadar sonra yanıt vermeyi bırakır.\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **CI-V adresi eşleşmeli**: radyonun menüsündekiyle aynı olmalı. Bu giriş, modelin fabrika adresini önceden doldurur, ancak bir CI-V veri yolunu paylaşan bir cihazda tam da bu değiştirilir. Yanlış adrese gönderilen bir çerçeve sessizce yok sayılır; bu da tıpkı ölü bir kablo gibi görünür.\n${speed}\n- **Portu başka bir uygulama tutuyor olabilir**: WSJT-X, fldigi ve rigctld onu açık tutar.',
+			'settings.station.icomUsbSpeedFollows' => '- **Ayarlanacak hız yok.** USB üzerinden bu radyo bilgisayarın kullandığı hızda konuşur ve bu giriş her zaman skopun gerektirdiği hız olan 115200\'ü kullanır.',
+			'settings.station.ic7610UsbSpeed' => '- **CI-V USB Baud Rate\'i 115200\'e ayarlayın**, skop gerektirdiği için bu girişin her zaman kullandığı hız — **Auto değil**. Başka bir hıza ayarlı radyo sessizlikle yanıt verir.',
+			'settings.station.civTransceiveTitle' => 'Uygulama radyoyu geç izliyorsa',
+			'settings.station.civTransceive' => 'Uygulama, radyoda yapılan bir frekans veya mod değişikliğini göstermek için birkaç saniye alıyorsa radyonun **CI-V Transceive** ayarını açın (güncel modellerin çoğunda SET > Connectors > CI-V altında). Açıkken radyo her değişikliği olduğu anda bildirir. Kapalıyken uygulama değişikliği ancak bir sonraki sorduğunda, birkaç saniyede bir görür.',
 			'settings.station.ic7300Mk2Note' => '\n- **IC-7300 MK2** burada önceden doldurulan `94` yerine `B6` adresiyle gelir — onun yerine IC-7300 MK2 girişini seçin.',
 			'settings.station.ic705PortNote' => '\n- **IC-705** her ikisi de radyonun adını taşıyan iki USB seri port sunar. CI-V bunların **ilkindedir**; seçici, ikisini ayırt edebildiği her yerde onu gösterir.',
 			'settings.station.ic7760PortNote' => '\n- **IC-7760**, sunduğu iki USB seri porttan **Port A** üzerinde CI-V konuşur.',
@@ -5096,7 +6532,8 @@ extension on TranslationsTr {
 			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.ic705TroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
-			'settings.station.ic705Troubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.',
+			'settings.station.ic705Troubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- **Portlar eşleşmeli**: radyonun Control Port ve Serial Port (UDP) değerleriyle ya da onlara yönlendirilen portlarla. Yanlış port, kapalı bir radyo gibi sessizlikle karşılanır.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.',
+			'settings.station.icomLanTroubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview, RS-BA1 veya Icom\'un Remote Utility\'si o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** LAN portu bu cihazla aynı ağa bağlı olmalı, **Network Control** açık olmalı ve kullanıcı adı ile şifre radyoda bir ağ kullanıcısı olarak tanımlı olmalı.\n- **Portlar eşleşmeli**: radyonun Control Port ve Serial Port (UDP) değerleriyle ya da onlara yönlendirilen portlarla. Yanlış port, kapalı bir radyo gibi sessizlikle karşılanır.\n- **Bağlanıyor ama hiç yanıt vermiyorsa**, buradaki CI-V adresi radyonun CI-V ADDRESS menüsüyle eşleşmeli. Bu giriş, modelin fabrika adresini önceden doldurur.\n- Takılı kalırsa **radyoyu kapatıp açın**.',
 			'settings.station.statusStale' => 'Yanıt vermiyor',
 			'settings.station.statusDisconnected' => 'Bağlı değil',
 			'settings.station.statusConnecting' => 'Bağlanıyor…',
@@ -5104,10 +6541,8 @@ extension on TranslationsTr {
 			'settings.station.statusError' => 'Bağlantı başarısız',
 			'settings.station.currentRadioSettings' => 'Mevcut radyo ayarları',
 			'settings.station.notSupportedByThisRadio' => 'Bu radyo desteklemiyor',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Telefon',
-			_ => null,
-		} ?? switch (path) {
+			'settings.station.cwMessagesButton' => 'CW Mesajları',
+			'settings.station.voiceMessagesButton' => 'Telefon Mesajları',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza',
 			'settings.station.antennaBands' => 'Bantlar',
 			'settings.station.antennaType' => 'Anten türü',
@@ -5134,6 +6569,8 @@ extension on TranslationsTr {
 			'settings.station.newAntenna' => 'Yeni Anten',
 			'settings.station.newKey' => 'Yeni Anahtar',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL veya uyumlu)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} üzerindeki anahtar',
 			'settings.station.trackStationInfo' => 'Her QSO için İstasyon Bilgisini Kaydet',
@@ -5212,6 +6649,43 @@ extension on TranslationsTr {
 			'settings.station.switchCurrentStateDescription' => 'Her radyo portunun şu anda hangi antende olduğu. Değişiklikler hemen geçerli olur.',
 			'settings.station.switchWiringHeader' => 'Kablolama',
 			'settings.station.switchPortInhibitedHint' => 'yayın engellendi',
+			'settings.station.rotatorAxes' => 'Eksenler',
+			'settings.station.rotatorAxesDescription' => 'Rotorun yalnızca azimutta mı, yoksa elevasyonda da mı (G-5500 veya benzeri) döndüğü.',
+			'settings.station.rotatorAxesAzimuth' => 'Yalnızca azimut',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Azimut ve elevasyon',
+			'settings.station.rotatorAzimuthOffset' => 'Azimut kayması',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Kontrolcünün sıfırı gerçek kuzey değilken okuduğu değere eklenecek derece. Dönüşler buna göre düzeltilir.',
+			'settings.station.rotatorElevationOffset' => 'Elevasyon kayması',
+			'settings.station.rotatorAzimuthMin' => 'En düşük azimut',
+			'settings.station.rotatorAzimuthMax' => 'En yüksek azimut',
+			'settings.station.rotatorAzimuthMaxDescription' => 'Kontrolcünün kendi derecelerinde. Örtüşmeli bir rotor için 360\'ın üzerinde; rotor o zaman kısa dönüşü seçer.',
+			'settings.station.rotatorElevationMin' => 'En düşük elevasyon',
+			'settings.station.rotatorElevationMax' => 'En yüksek elevasyon',
+			'settings.station.rotatorElevationMaxDescription' => 'Kontrolcünün kendi derecelerinde. Ters dönen bir rotor için 90\'ın üzerinde.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Tam derece, ${min} ile ${max} arası',
+			'settings.station.rotatorLimitsInvalid' => 'En düşük sınır en yükseğin altında olmalı',
+			'settings.station.rotatorPollInterval' => 'Sorgulama aralığı (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'Rotora nereye baktığının ne sıklıkla sorulacağı. ${fallback} ms için boş bırakın.',
+			'settings.station.rotatorAxesRequired' => 'Rotorun hangi eksenlerde döndüğünü seçin',
+			'settings.station.rotatorRefused' => 'Kontrolcü bir komutu reddetti. GS-232 moduna ayarlı olduğunu kontrol edin.',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator yalnızca bunun için ayarlandıktan sonra yanıt verir, aksi halde hiçbir şey söylemez:\n\n- PstRotator\'ın Setup menüsünden **UDP Control\'ü açın**.\n- **Portu eşleştirin**: Communication → UDP Control Port, değiştirilmediyse 12000. PstRotator bir üst porttan (12001) yanıt verir; o port bu cihazda boş olmalı.\n- **PstRotator\'ı kontrolcüsüne bağlayın.** Bağlanmadan UDP üzerinden hiçbir şey yanıtlamaz.\n- PstRotator\'ı çalıştıran PC\'de ve yanıtları dinleyen bu cihazda **güvenlik duvarından geçmesine izin verin**.\n- **Mac, iPhone veya iPad\'de** Ham2K Logger\'ın Yerel Ağ erişimine ihtiyacı vardır (Ayarlar → Gizlilik ve Güvenlik → Yerel Ağ).',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Mevcut Durum: ${position}',
+			'settings.station.rotatorDisconnected' => 'bağlı değil',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimut',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevasyon',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'Kontrolcünün konumunu bildirmesi bekleniyor…',
+			'settings.station.rotatorNotResponding' => 'yanıt vermiyor',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '${heading} yönüne dönülüyor, bu rotorun sınırlarının izin verdiği kadar',
+			'settings.station.rotatorTargetAzimuth' => 'Azimuta dön',
+			'settings.station.rotatorTargetAzimuthShort' => 'Az\'a dön',
+			'settings.station.rotatorTargetElevation' => 'Elevasyona dön',
+			'settings.station.rotatorTargetElevationShort' => 'El\'e dön',
+			'settings.station.rotatorAzimuthInvalid' => '0 ile 360 arasında olmalı',
+			'settings.station.rotatorElevationInvalid' => '0 ile 180 arasında olmalı',
+			'settings.station.rotatorTurn' => 'Döndür',
+			'settings.station.rotatorStop' => 'Durdur',
 			'settings.station.configUnreadable' => 'Bu radyonun kayıtlı ayarları okunamadı. Ayarlarını açıp yeniden girin ya da kaldırıp tekrar ekleyin.',
 			'settings.station.autoConnectHeld' => 'HaLo bu radyoya son bağlandığında yanıt vermeyi bıraktı, bu yüzden bu kez kendiliğinden bağlanmadı. Tekrar denemek için Bağlan\'a basın.',
 			'settings.offlineData.title' => 'Çevrimdışı Veri',
@@ -5233,7 +6707,7 @@ extension on TranslationsTr {
 			'settings.profiles.notSet' => 'Ayarlanmadı',
 			'settings.profiles.personalInfo' => 'Kişisel Bilgiler',
 			'settings.profiles.personalInfoNote' => 'Bu bilgiler, gönderimler için gerektiğinde oluşturulan günlüklere eklenebilir',
-			'settings.profiles.name' => 'İsim',
+			'settings.profiles.name' => 'Ad',
 			'settings.profiles.email' => 'E-posta',
 			'settings.profiles.club' => 'Kulüp',
 			'settings.profiles.arrlSection' => 'ARRL Bölümü',
@@ -5242,7 +6716,12 @@ extension on TranslationsTr {
 			'settings.search.clear' => 'Temizle',
 			'settings.search.hint' => 'Tercihlerde ara',
 			'settings.developer.developerModeDescription' => 'Geliştirici uyarılarını, hata ayıklama günlüklerini ve araçlarını etkinleştir.',
-			'settings.developer.experiments' => 'Deneyler',
+			'settings.developer.experiments' => 'Denemeler',
+			'settings.developer.showIdleMetrics' => 'Boşta kalma ölçümlerini göster',
+			'settings.developer.showIdleMetricsDescription' => 'Uzantı motorunun son bir saniyede ne kadar boşta kaldığını durum çubuğunda göster. 10 ve 60 saniyelik ortalamalar için dokunun.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '%${percent} boşta',
+			'settings.developer.idleMetricsAverages' => 'Boşta ort.:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}sn %${percent}',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} etkin', other: '${count} etkin', ), 
 			'settings.developer.patchTrack' => 'Kod Yaması Kanalı',
 			'settings.developer.patchTrackDescription' => 'Bu cihazın izlediği kablosuz kod yaması halkası. Daha cesur halkalar düzeltmeleri daha erken ama daha az test edilmiş olarak alır. Kod yamaları bir sonraki yeniden başlatmada uygulanır.',
@@ -5320,22 +6799,27 @@ extension on TranslationsTr {
 			'commands.reloadFailed' => ({required Object error}) => 'Yeniden yükleme başarısız: ${error}',
 			'commands.reloadingAll' => 'Tüm veri dosyaları yeniden yükleniyor…',
 			'commands.reloadingTarget' => ({required Object target}) => '${target} veri dosyaları yeniden yükleniyor…',
-			'commands.unknownExperiment' => ({required Object token}) => 'Bilinmeyen deney "${token}"',
+			'commands.unknownExperiment' => ({required Object token}) => 'Bilinmeyen deneme "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} etkinleştirildi',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} devre dışı bırakıldı',
 			'commands.sentryTestSent' => 'Test hata raporu Sentry\'ye gönderildi',
+			'commands.idleMetricsEnabled' => 'Boşta kalma ölçümleri durum çubuğunda etkinleştirildi',
+			'commands.idleMetricsDisabled' => 'Boşta kalma ölçümleri devre dışı bırakıldı',
 			'commands.sentryTestLocalOnly' => 'Bu sürümde Sentry devre dışı — test hatası yalnızca yerel olarak kaydedildi',
 			'commands.noOperationOpen' => 'Bu komut açık bir operasyon gerektirir',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '\'${kind}\' nasıl işaretleneceği bilinmiyor',
+			'commands.goUnavailable' => ({required Object place}) => '${place} bu uygulamada açık değil',
+			'commands.goUnknown' => ({required Object to}) => '\'${to}\' hedefine nasıl gidileceği bilinmiyor',
+			'commands.goBlocked' => 'Önce açık pencereyi kapatın',
 			'commands.operationAlreadyStarted' => 'Bu operasyonun zaten bir başlangıç işareti var',
 			'commands.couldNotOpenLocation' => 'Ara eklendi, ancak konum ekranı açılamadı',
 			'commands.noTestOperations' => 'Temizlenecek Test Operasyonu yok',
-			'commands.purgeTestsUnavailable' => 'PURGETESTS bir onay penceresi göstermeli, ancak bu burada kullanılamıyor',
-			'commands.syncAllUnavailable' => 'SYNCALL bir onay penceresi göstermeli, ancak bu burada kullanılamıyor',
+			'commands.purgeTestsUnavailable' => 'PURGETESTS bir onay penceresi göstermeli, ancak burada bu mümkün değil',
+			'commands.syncAllUnavailable' => 'SYNCALL bir onay penceresi göstermeli, ancak burada bu mümkün değil',
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} Test Operasyonu temizlendi', other: '${count} Test Operasyonu temizlendi', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object total, required Object purged}) => '${total} Test Operasyonundan ${purged} tanesi temizlendi — geri kalanı başarısız oldu; PURGETESTS\'i tekrar deneyin',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Operasyonu olmayan ${count} test QSO\'su temizlendi', other: 'Operasyonu olmayan ${count} test QSO\'su temizlendi', ), 
-			'commands.purgeTestsContactsFailed' => 'Test Operasyonları temizlendi, ancak operasyonu olmayan test QSO\'ları başarısız oldu; PURGETESTS\'i tekrar deneyin',
+			'commands.purgeTestsContactsFailed' => 'Test Operasyonları temizlendi, ancak operasyonu olmayan test QSO\'ları temizlenemedi; PURGETESTS\'i tekrar deneyin',
 			'commands.purgeTestsNothingToDo' => 'Hiçbir şey temizlenmedi',
 			'commands.receivedPurgesSomeFailed' => ({required Object total, required Object removed}) => '${total} Test Operasyonundan ${removed} tanesi kaldırıldı — geri kalanı başarısız oldu; İncele\'yi tekrar deneyin',
 			'commands.receivedPurgesFailed' => 'Bu Test Operasyonları kaldırılamadı — İncele\'yi tekrar deneyin',
@@ -5359,6 +6843,10 @@ extension on TranslationsTr {
 			'commands.cwSending' => ({required Object text}) => 'CW gönderiliyor: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW mesajı F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW mesajı F${n} gönderilmedi: uzantılar hazır değil',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Telefon mesajı M${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'uzantılar hazır değil',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Hiçbir şey gönderilmedi: Radyo ${radio} bunu gönderemiyor',
+			'commands.so2rNoRadioB' => 'Hiçbir şey gönderilmedi: bu setten göndermek için İstasyon Yapılandırması\'nda bir Radyo B seçin',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” bu değeri kabul etmedi',
 			'commandDialog.hint' => 'Çağrı işareti arayın veya bir komut yazın',
 			'commandDialog.noResults' => ({required Object text}) => '“${text}” ile eşleşen bir şey yok',
@@ -5372,6 +6860,99 @@ extension on TranslationsTr {
 			'commandDialog.sectionSuggestions' => 'Deneyin',
 			'commandDialog.lookingUp' => 'Çağrı işareti sorgulanıyor…',
 			'commandDialog.blockedByPane' => 'Bir panel veya pencere açıkken komutlar kullanılamaz',
+			'keyboardShortcuts.title' => 'Klavye Kısayolları',
+			'keyboardShortcuts.description' => 'Tuş atamalarını özelleştirin',
+			'keyboardShortcuts.search' => 'Komutlarda ve tuşlarda ara',
+			'keyboardShortcuts.import' => 'İçe aktar…',
+			'keyboardShortcuts.export' => 'Dışa aktar…',
+			'keyboardShortcuts.resetAll' => 'Tümünü Sıfırla',
+			'keyboardShortcuts.resetAllTitle' => 'Tüm kısayollar sıfırlansın mı?',
+			'keyboardShortcuts.resetAllBody' => 'Her komut varsayılan tuşlarına döner ve yazılı komutlara atanmış tuşlar kaldırılır.',
+			'keyboardShortcuts.reset' => 'Sıfırla',
+			'keyboardShortcuts.noKey' => 'Tuş yok',
+			'keyboardShortcuts.changed' => 'Değiştirildi',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} ayrıca şuna da atanmış: ${commands}',
+			'keyboardShortcuts.groupApp' => 'Uygulama',
+			'keyboardShortcuts.groupKeying' => 'Gönderim',
+			'keyboardShortcuts.groupLogging' => 'Kayıt',
+			'keyboardShortcuts.groupCommands' => 'Komutlar',
+			'keyboardShortcuts.groupFixed' => 'Sabit Tuşlar',
+			'keyboardShortcuts.contextApp' => 'Her yerde',
+			'keyboardShortcuts.contextLogView' => 'Operasyon, Avlama ve Günlükler görünümleri',
+			'keyboardShortcuts.contextOperation' => 'Operasyon görünümünde, bir CAT radyosuyla gönderim yaparken',
+			'keyboardShortcuts.contextLogging' => 'Kayıt panelinde',
+			'keyboardShortcuts.addCommand' => 'Komut Ekle…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Bilinmeyen komut: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Komut penceresini aç',
+			'keyboardShortcuts.command.toggleTheme' => 'Açık ve koyu tema arasında geçiş yap',
+			'keyboardShortcuts.command.toggleLanguage' => 'İngilizce ve İspanyolca arasında geçiş yap',
+			'keyboardShortcuts.command.fontScaleUp' => 'Daha büyük yazı',
+			'keyboardShortcuts.command.fontScaleDown' => 'Daha küçük yazı',
+			'keyboardShortcuts.command.fontScaleReset' => 'Normal yazı boyutu',
+			'keyboardShortcuts.command.densityLooser' => 'Daha ferah düzen',
+			'keyboardShortcuts.command.densityDenser' => 'Daha sık düzen',
+			'keyboardShortcuts.command.densityAuto' => 'Otomatik düzen yoğunluğu',
+			'keyboardShortcuts.command.find' => 'Günlükte bul',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '${n} numaralı mesajı gönder',
+			'keyboardShortcuts.command.keyboardMode' => 'Klavye modunu aç veya kapat',
+			'keyboardShortcuts.command.ptt' => 'Bas-konuş (PTT)',
+			'keyboardShortcuts.command.wipe' => 'Kaydedilmekte olan QSO\'yu temizle',
+			'keyboardShortcuts.fixed.callsign' => 'Çağrı işareti yazma',
+			'keyboardShortcuts.fixed.escape' => 'Göndermeyi durdur, bir adım geri çık veya kapat',
+			'keyboardShortcuts.fixed.enter' => 'QSO\'yu kaydet',
+			'keyboardShortcuts.fixed.space' => 'Sonraki alan',
+			'keyboardShortcuts.fixed.tab' => 'Sonraki veya önceki alan',
+			'keyboardShortcuts.fixed.arrows' => 'Alanlar, kontroller ve günlük arasında dolaş',
+			'keyboardShortcuts.fixed.walk' => 'Günlükte sayfa sayfa ilerle ya da başına veya sonuna git',
+			'keyboardShortcuts.fixed.undo' => 'Bir temizlemeyi veya silmeyi geri al',
+			'keyboardShortcuts.editor.addShortcut' => 'Kısayol Ekle',
+			'keyboardShortcuts.editor.listening' => 'Kısayol için tuşlara basın…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc dinlemeyi durdurur',
+			'keyboardShortcuts.editor.add' => 'Ekle',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} kayıt alanlarına veya bir pencereye aittir ve değiştirilemez.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} çağrı işaretlerini yazmak için kullanılır. Onunla birlikte Cmd, Ctrl veya Alt tuşunu basılı tutun.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'Sistem, ${keys} kısayolunu uygulama görmeden önce alabilir.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} zaten bu komutun tuşlarından biri.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => '${keys} kısayolunu “${command}” komutundan al',
+			'keyboardShortcuts.editor.resetDefault' => 'Varsayılana Sıfırla',
+			'keyboardShortcuts.editor.remove' => 'Kaldır',
+			'keyboardShortcuts.editor.commandLabel' => 'Komut',
+			'keyboardShortcuts.editor.commandHint' => 'Geçerli bir komut ya da ";" ile ayrılmış birden fazla komut girin',
+			'keyboardShortcuts.editor.removeCommand' => 'Komutu Kaldır',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '“${text}” hiçbir komutla eşleşmiyor',
+			'keyboardShortcuts.editor.noShortcuts' => 'Henüz tuş yok',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Kısayollar ${location} konumuna kaydedildi',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kısayollar dışa aktarılamadı: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Dosya açılamadı: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir kısayol dosyası değil: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'metin geçerli YAML değil (satır ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'bir Ham2K klavye kısayolu dosyası değil',
+			'keyboardShortcuts.file.problemNewerVersion' => 'uygulamanın daha yeni bir sürümüyle yazılmış',
+			'keyboardShortcuts.file.problemMalformed' => 'bir kısmı kısayol biçimine uymuyor',
+			'keyboardShortcuts.file.problemTooLarge' => 'çok büyük',
+			'keyboardShortcuts.file.importTitle' => 'Kısayolları İçe Aktar',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '${platform} üzerinde yazılmış.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'Dosya hangi klavyede yazıldığını belirtmiyor.',
+			'keyboardShortcuts.file.translate' => 'Bu tuşların her biri bu klavyede hangi tuş olmalı?',
+			'keyboardShortcuts.file.leaveOut' => 'O kısayolları dışarıda bırak',
+			'keyboardShortcuts.file.replace' => 'Bu cihazın yapılandırmasının yerine koy',
+			'keyboardShortcuts.file.replaceHint' => 'Dosyada olmayan her kısayol varsayılanına döner.',
+			'keyboardShortcuts.file.merge' => 'Bu cihazın yapılandırmasına ekle',
+			'keyboardShortcuts.file.mergeHint' => 'Aynı komutlar için dosyadaki kısayollar bu cihazdakilerin yerini alır, geri kalanlar olduğu gibi kalır.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Bu sürümde bilinmediği için dışarıda bırakıldı: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Kısayol olmadığı için dışarıda bırakıldı: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Uygulamanın kendine ayırdığı tuşlar olduğu için dışarıda bırakıldı: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'İçe aktarmadan sonra birden fazla komuta atanmış: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'İçe Aktar',
+			'keyboardShortcuts.file.imported' => 'Kısayollar içe aktarıldı',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'Bu sürümün süresi doldu',
 			'expiredBuild.body' => 'Lütfen ham2k.com adresini ziyaret edip daha yeni bir sürüm edinin.',
 			'expiredBuild.visit' => 'ham2k.com\'u ziyaret et',
@@ -5382,12 +6963,14 @@ extension on TranslationsTr {
 			'staleness.quitAndReopen' => 'Uygulamak için uygulamadan çıkıp yeniden açın.',
 			'staleness.reopenToApply' => 'Uygulamak için uygulamayı kapatıp yeniden açın.',
 			'staleness.ignoreForNow' => 'Şimdilik yok say',
-			'spotting.noQsoYet' => 'Spotlanacak kaydedilmiş QSO henüz yok.',
+			'spotting.noQsoYet' => 'Spotlanacak kayıtlı bir QSO henüz yok.',
 			'spotting.setFrequencyFirst' => 'Önce bir frekans ayarlayın.',
 			'spotting.nothingToSpot' => 'Spotlanacak bir şey yok — burada hiçbir uzantı spotlama sunmuyor.',
+			'spotting.incompleteCall' => 'Eksik bir çağrı spotlanamaz — önce çağrı işaretini tamamlayın.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} başarısız: ${message}',
 			'spotting.unknownError' => 'bilinmeyen hata',
 			'spotting.notSent' => 'Spot gönderilmedi.',
+			'spotting.allSkipped' => 'Spot gönderilmedi: tüm spot kaynakları onu atladı.',
 			'spotting.notRefreshedOffline' => 'Bağlantı yok — spotlar yenilenmedi',
 			'dataFiles.downloading' => 'İndiriliyor…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '${name} indirilemedi',
@@ -5395,6 +6978,8 @@ extension on TranslationsTr {
 			'dataFiles.downloadTimedOut' => 'Sunucunun yanıt vermesi çok uzun sürdü. Daha sonra tekrar deneyin.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} bir hatayla yanıt verdi (HTTP ${status}). Daha sonra tekrar deneyin.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} bu dosyayı sağlayamadı (HTTP ${status}). Adresinin hâlâ doğru olduğunu kontrol edin.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM\'de ${stem} için çağrı geçmişi dosyası yok.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => '${stem} için N1MM çağrı geçmişi indirmesi çalışmadı. Daha sonra tekrar deneyin.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => '${name} işlenemedi',
 			'dataFiles.importTooSmall' => ({required Object existing, required Object imported}) => 'İndirmede bu cihazdaki ${existing} kayıttan yalnızca ${imported} tanesi vardı, bu yüzden dışarıda bıraktıkları korundu. Ayarlar › Çevrimdışı Veri bölümünden yenilemek onu yine de kabul eder.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${label} için ${count} kayıt içe aktarıldı.', other: '${label} için ${count} kayıt içe aktarıldı.', ), 
@@ -5426,8 +7011,14 @@ extension on TranslationsTr {
 			'extensionService.validationError' => ({required Object error}) => 'Doğrulama hatası: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Eylem başarısız: ${error}',
 			'extensionService.commandFailed' => 'Komut çalıştırılamadı',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} ayarları değiştiremez: kurulumda bunun için izin istemedi',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} radyoyu kontrol edemez: kurulumda bunun için izin istemedi',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} bunu çalıştıramaz: bu, uygulamanın kendi geliştirici komutlarından biri',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Raporlar şu anda gönderilemiyor',
 			'extensionService.stashUnavailable' => 'Ham2K File Stash\'e şu anda ulaşılamıyor',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} aktivite aramasına yanıt vermedi, bu yüzden bazı sonuçlar eksik olabilir.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Bazı aktivite uzantıları aramaya yanıt vermedi, bu yüzden bazı sonuçlar eksik olabilir.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} zamanlayıcılarında çok fazla zaman harcadı. Uzantılar yeniden başlayana kadar durduruldular.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name} zamanlayıcıları sürekli başarısız oldu. Uzantılar yeniden başlayana kadar durduruldular.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} bir zamanlayıcıda takıldı. Zamanlayıcıları uzantılar yeniden başlayana kadar durduruldu.',
@@ -5492,6 +7083,8 @@ extension on TranslationsTr {
 			'switchAccounts.linkWithSiblingDescription' => 'Yüklü başka bir Ham2K uygulamanız var. Orada kullanılan hesapla bağlayın.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'İsteği ${app} içinde onaylayın, ardından buraya geri dönün.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} uygulamasını yeniden aç',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Olmadı mı? Yeniden açın ya da geri dönüp başka bir yolla bağlayın.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} açılamadı.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Bağlantının süresi doldu ve yenisi hazır — ${app} uygulamasını yeniden açın.',
@@ -5521,6 +7114,17 @@ extension on TranslationsTr {
 			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
+			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',
+			'qsonImport.description' => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.',
+			'qsonImport.dropHint' => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın',
+			'qsonImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} UTF-8 metin değil, dolayısıyla bir QSON dosyası değil',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bir QSON operasyonu içermiyor',
+			'qsonImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
+			'qsonImport.oneFileOnly' => 'Her seferinde bir QSON dosyası bırakın — her biri ayrı bir operasyon olarak açılır.',
 			'adifImport.title' => 'ADIF\'ten QSO İçe Aktar',
 			'adifImport.reading' => ({required Object filename}) => '${filename} okunuyor…',
 			'adifImport.dropHint' => 'İçe aktarmak için bir ADIF dosyası bırakın',
@@ -5549,6 +7153,8 @@ extension on TranslationsTr {
 			'adifImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
 			'adifImport.oneFileOnly' => 'Her seferinde bir ADIF dosyası bırakın — dosyaların içe aktarılma sırası hangi verinin geçerli olacağını belirler.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.',
+			'adifImport.importAnyway' => 'Yine de içe aktar',
 			'offline.statusOffline' => 'İnternet: ÇEVRİMDIŞI',
 			'offline.statusOnline' => 'İnternet: bağlı',
 			'offline.noRoute' => 'Hiç ağ bağlantısı yok.',

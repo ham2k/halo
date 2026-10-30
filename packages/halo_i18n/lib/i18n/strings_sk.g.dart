@@ -60,6 +60,7 @@ class TranslationsSk extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$sk settings = _Translations$settings$sk._(_root);
 	@override late final _Translations$commands$sk commands = _Translations$commands$sk._(_root);
 	@override late final _Translations$commandDialog$sk commandDialog = _Translations$commandDialog$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$sk keyboardShortcuts = _Translations$keyboardShortcuts$sk._(_root);
 	@override late final _Translations$expiredBuild$sk expiredBuild = _Translations$expiredBuild$sk._(_root);
 	@override late final _Translations$staleness$sk staleness = _Translations$staleness$sk._(_root);
 	@override late final _Translations$spotting$sk spotting = _Translations$spotting$sk._(_root);
@@ -73,6 +74,7 @@ class TranslationsSk extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$sk deepLink = _Translations$deepLink$sk._(_root);
 	@override late final _Translations$confirmDevice$sk confirmDevice = _Translations$confirmDevice$sk._(_root);
 	@override late final _Translations$switchAccounts$sk switchAccounts = _Translations$switchAccounts$sk._(_root);
+	@override late final _Translations$qsonImport$sk qsonImport = _Translations$qsonImport$sk._(_root);
 	@override late final _Translations$adifImport$sk adifImport = _Translations$adifImport$sk._(_root);
 	@override late final _Translations$offline$sk offline = _Translations$offline$sk._(_root);
 	@override late final _Translations$exportSettings$sk exportSettings = _Translations$exportSettings$sk._(_root);
@@ -89,14 +91,15 @@ class _Translations$common$sk extends Translations$common$en {
 	@override String get save => 'Uložiť';
 	@override String get ok => 'OK';
 	@override String get cancel => 'Zrušiť';
-	@override String get delete => 'Odstrániť';
+	@override String get delete => 'Vymazať';
 	@override String get create => 'Vytvoriť';
 	@override String get error => 'Chyba';
 	@override String get close => 'Zatvoriť';
 	@override String get done => 'Hotovo';
 	@override String get callsign => 'Volací znak';
-	@override String get clear => 'Vymazať';
+	@override String get clear => 'Vyčistiť';
 	@override String get dismiss => 'Zavrieť';
+	@override String get copyDetails => 'Kopírovať podrobnosti';
 	@override String get expand => 'Rozbaliť';
 	@override String get collapse => 'Zbaliť';
 }
@@ -117,7 +120,7 @@ class _Translations$onboarding$sk extends Translations$onboarding$en {
 	@override String get next => 'Ďalej';
 	@override String get done => 'Hotovo';
 	@override String get callsignTitle => 'Aký je váš volací znak?';
-	@override String get callsignBody => 'Aby vám bola táto aplikácia užitočná, potrebujete licenciu rádioamatéra';
+	@override String get callsignBody => 'Aby vám bola táto aplikácia na niečo, potrebujete rádioamatérsku licenciu';
 	@override String get callsignLabel => 'Volací znak operátora';
 	@override String get alreadyHaveAccount => 'Už máte účet?';
 	@override String get foundSiblingTitle => 'Prepojiť existujúci účet?';
@@ -126,13 +129,19 @@ class _Translations$onboarding$sk extends Translations$onboarding$en {
 	@override String get foundSiblingsBody => 'Na tomto zariadení sme našli iné aplikácie Ham2K. Prepojte túto aplikáciu s účtom jednej z nich a prenesú sa váš volací znak aj denníky.';
 	@override String linkWithApp({required Object app}) => 'Prepojiť s ${app}';
 	@override String get linkWithPolo => 'Prepojiť s účtom zo staršej verzie';
-	@override String get setUpFresh => 'Nastaviť od začiatku';
+	@override String get setUpFresh => 'Začať odznova';
 	@override String get activitiesTitle => 'Obľúbené aktivity';
 	@override String get activitiesBody => 'Zaujímajú vás niektoré z týchto populárnych aktivačných programov?';
 	@override String get activitiesFooter => '(Ďalšie možnosti nájdete v Nastaveniach)';
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'Cloudová synchronizácia';
+	@override String get syncBody => 'Ham2K Log Filer uchováva zálohu vašich denníkov v cloude a synchronizuje ich medzi všetkými zariadeniami, na ktorých používate aplikácie Ham2K.';
+	@override String get syncPricing => 'Je to zadarmo! Platené predplatné to však zrýchli.';
+	@override String get syncLabel => 'Zapnúť cloudovú synchronizáciu';
+	@override String get syncOffWarning => 'UPOZORNENIE: zvyšuje to riziko straty údajov o prevádzke, napríklad ak sa vaše zariadenie pokazí alebo stratí.';
+	@override String get notNow => 'Teraz nie';
 	@override String get consentTitle => 'Údaje a súkromie';
 	@override String get consentUsageBody => 'Aby sme mohli aplikáciu zlepšovať, radi by sme zbierali údaje o výkone, zlyhaniach a používaní aplikácie.';
 	@override String get consentUsageLabel => 'Zdieľať údaje o používaní aplikácie';
@@ -173,9 +182,10 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Aktivity';
+	@override String get categoryAward => 'Diplomy';
 	@override String get categoryContest => 'Súťaže';
 	@override String get categoryLookup => 'Vyhľadávanie volacích znakov';
-	@override String get categorySpots => 'Zdroje spotov';
+	@override String get categorySpots => 'Zdroje pre spoty';
 	@override String get categoryDashboard => 'Panely prehľadu';
 	@override String get categoryOther => 'Ostatné rozšírenia';
 	@override String get searchHint => 'Hľadať rozšírenia';
@@ -183,13 +193,23 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get noMatches => 'Hľadaniu nezodpovedajú žiadne rozšírenia';
 	@override String get installFromFile => 'Inštalovať zo súboru…';
 	@override String installVersion({required Object version}) => 'Verzia ${version}';
-	@override String get canReach => 'Toto rozšírenie môže kontaktovať';
+	@override String screenshotLabel({required Object n, required Object count}) => 'Snímka obrazovky ${n} z ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'Predchádzajúca snímka obrazovky';
+	@override String get nextScreenshot => 'Ďalšia snímka obrazovky';
+	@override String get screenshotUnavailable => 'Snímka obrazovky nie je k dispozícii';
+	@override String get canReach => 'Toto rozšírenie môže použiť';
 	@override String canHoldConnection({required Object host}) => '${host}, cez trvalé spojenie';
 	@override String get canHoldLocalConnection => 'Zariadenia vo vašej lokálnej sieti, cez trvalé spojenie';
 	@override String get canUseLocation => 'Vašu polohu';
 	@override String get canReadRadio => 'Vašu rádiostanicu, na čítanie frekvencie a módu';
 	@override String get canControlRadio => 'Vašu rádiostanicu, na jej ovládanie a vysielanie — ladenie, výkon, CW, hlasové pamäte a PTT';
-	@override String get canSetUserAgent => 'Predstaviť sa serverom pod vlastným menom';
+	@override String get canCommandRadioRaw => 'Vašu rádiostanicu, na odoslanie ľubovoľného príkazu v jej vlastnom protokole — vrátane takých, ktoré vysielajú alebo menia jej nastavenia';
+	@override String get canReadCluster => 'DX cluster, prihlásené ako vy, na čítanie toho, čo posiela';
+	@override String get canSpotCluster => 'DX cluster, prihlásené ako vy, na odosielanie spotov vo vašom mene';
+	@override String get canCommandCluster => 'DX cluster, prihlásené ako vy, na odoslanie ľubovoľného príkazu vo vašom mene';
+	@override String get canSetUserAgent => 'Vlastné meno, keď sa predstavuje serverom';
+	@override String get canChangeSettings => 'Vaše nastavenia, na ich zmenu cez svoje príkazy: ľubovoľné nastavenie, režim vývojára a experimenty';
 	@override String get noCapabilities => 'Nepožaduje nič mimo aplikácie.';
 	@override String get sandboxNote => 'Rozšírenia bežia v izolovanom prostredí: bez prístupu k vašim súborom a bez siete okrem toho, čo je tu uvedené.';
 	@override String get installAction => 'Inštalovať';
@@ -199,8 +219,8 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get uninstallAction => 'Odstrániť';
 	@override String uninstallTitle({required Object name}) => 'Odstrániť ${name}?';
 	@override String get uninstallBody => 'Toto rozšírenie a jeho nastavenia budú odstránené. Vaše denníky zostanú nedotknuté.';
-	@override String installedMessage({required Object name}) => 'Nainštalované ${name}';
-	@override String get installDownloading => 'Sťahovanie…';
+	@override String installedMessage({required Object name}) => 'Nainštalované: ${name}';
+	@override String get installDownloading => 'Sťahuje sa…';
 	@override String get installWaiting => 'Čaká sa na inštaláciu…';
 	@override String get installInstalling => 'Inštalácia…';
 	@override String get installAwaitingApproval => 'Čaká sa na vaše schválenie…';
@@ -221,7 +241,7 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get updateAvailableBadge => 'Aktualizácia dostupná';
 	@override String get updatesAvailableTitle => 'Aktualizácie rozšírení';
 	@override String updateAvailableFor({required Object name}) => 'Pre ${name} je dostupná aktualizácia.';
-	@override String updatesAvailable({required Object names, required Object count}) => '${names} a ďalšie (${count}) potrebujú aktualizáciu.';
+	@override String updatesAvailable({required Object names, required Object count}) => '${names} a ďalších ${count} potrebujú aktualizáciu.';
 	@override String updatesAvailableFor({required Object names}) => '${names} potrebujú aktualizáciu.';
 	@override String get pendingUpdatesSection => 'Čakajúce aktualizácie';
 	@override String get updateAllAction => 'Aktualizovať všetko';
@@ -234,13 +254,13 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	);
 	@override String get upgradeDoneTitle => 'Vaše rozšírenia sú pripravené';
 	@override String get upgradeDoneBody => 'Teraz pochádzajú z katalógu rozšírení Ham2K, takže sa môžu aktualizovať bez čakania na novú verziu aplikácie.';
-	@override String upgradeDoneUnserved({required Object names}) => 'Neaktualizované: ${names}.';
+	@override String upgradeDoneUnserved({required Object names}) => 'Neprenesené: ${names}.';
 	@override String upgradeDoneRefused({required Object names}) => 'Nespustili sa: ${names}.';
 	@override String get upgradeDoneRefusedHint => 'Stále sú nainštalované a označené v Nastavenia › Rozšírenia — ich aktualizáciou tam ich obnovíte.';
 	@override String get upgradeDoneUnservedHint => 'Katalóg za ne nemá priamu náhradu, preto v ňom hľadajte rozšírenia, ktoré pokrývajú to, čo ste používali.';
 	@override String get retiredQp => 'QSO Parties';
 	@override String get retiredStateparks => 'Podujatia State Parks';
-	@override String upgradeDoneMissing({required Object count}) => 'Niektoré vaše rozšírenia (${count}) ešte nedorazili. Stiahnu sa, keď bude katalóg rozšírení nabudúce dostupný.';
+	@override String upgradeDoneMissing({required Object count}) => '${count} z vašich rozšírení ešte nedorazilo. Stiahnu sa, keď bude katalóg rozšírení nabudúce dostupný.';
 	@override String get runtimeDeadBody => 'Vaše rozšírenia sa nespustili. Reštart aplikácie by ich mal obnoviť.';
 	@override String get refusedTitle => 'Niektoré rozšírenia sa nespustili';
 	@override String get upgradeBusyTitle => 'Nastavenie stále prebieha';
@@ -259,8 +279,16 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String restoreFailed({required Object names}) => 'Nepodarilo sa nainštalovať: ${names}. Ponúkneme ich znova pri ďalšom otvorení aplikácie.';
 	@override String get restoreBusyBody => 'Aplikácia stále nastavuje vaše rozšírenia. Ponúkneme ich znova pri ďalšom otvorení aplikácie.';
 	@override String get restoreRuntimeDeadBody => 'Znova sme ich nainštalovali, ale vaše rozšírenia sa nespustili. Reštart aplikácie by ich mal obnoviť.';
-	@override String revokedTitle({required Object name}) => '${name} bolo stiahnuté';
+	@override String revokedTitle({required Object name}) => 'Rozšírenie ${name} bolo stiahnuté';
 	@override String get revokedBody => 'Katalóg túto verziu stiahol, preto bola vypnutá.';
+	@override String forceDisabledTitle({required Object name}) => 'Rozšírenie ${name} bolo vypnuté';
+	@override String get forceDisabledBody => 'Ham2K toto rozšírenie nateraz vypol.';
+	@override String replacedTitle({required Object name}) => 'Rozšírenie ${name} bolo nahradené';
+	@override String replacedBody({required Object replacement}) => 'Nahrádza ho ${replacement}. Prepnúť sa môžete v Rozšíreniach.';
+	@override String replacedBy({required Object name}) => 'Nahradené rozšírením ${name}';
+	@override String replacedByInstalled({required Object name}) => 'Nahradené rozšírením ${name}, ktoré už máte';
+	@override String get replaceAction => 'Nahradiť';
+	@override String replaceInstalledBody({required Object replacement}) => 'Jeho nastavenia sa presunú do ${replacement}, ktoré už máte. Vaše denníky zostanú nedotknuté.';
 	@override String get downloadHashMismatch => 'Toto sťahovanie nie je rozšírenie, ktoré opísal katalóg.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'Katalóg nemá verziu ${version} rozšírenia ${key}.';
 	@override String get catalogLinkUnknown => 'Tento odkaz do katalógu neurčuje verziu rozšírenia.';
@@ -274,6 +302,7 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => 'Dostáva vývojové, nestabilné a stabilné vydania';
 	@override String get followStableAction => 'Sledovať iba stabilné vydania';
 	@override String get revokedBadge => 'Stiahnuté';
+	@override String get forceDisabledBadge => 'Vypol Ham2K';
 	@override String get refusedBadge => 'Nenačítalo sa';
 	@override String get downloadNotHttps => 'Toto sťahovanie neprebieha cez zabezpečené spojenie.';
 	@override String downloadUnreachable({required Object source}) => '${source} pre toto rozšírenie nie je dostupný.';
@@ -290,6 +319,8 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String get hookSpots => 'Spoty';
 	@override String hookHunting({required Object program}) => 'Lov ${program}';
 	@override String hookActivating({required Object program}) => 'Aktivácia ${program}';
+	@override String get suggestedSection => 'Navrhované';
+	@override String moreAvailableSection({required Object count}) => 'Ďalšie dostupné (${count})';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class _Translations$chase$sk extends Translations$chase$en {
 	@override late final _Translations$chase$period$sk period = _Translations$chase$period$sk._(_root);
 	@override late final _Translations$chase$goals$sk goals = _Translations$chase$goals$sk._(_root);
 	@override late final _Translations$chase$panels$sk panels = _Translations$chase$panels$sk._(_root);
+	@override late final _Translations$chase$claims$sk claims = _Translations$chase$claims$sk._(_root);
+	@override late final _Translations$chase$notice$sk notice = _Translations$chase$notice$sk._(_root);
+	@override late final _Translations$chase$alerts$sk alerts = _Translations$chase$alerts$sk._(_root);
+	@override String get checklists => 'Postup lovu';
+	@override late final _Translations$chase$imports$sk imports = _Translations$chase$imports$sk._(_root);
 }
 
 // Path: dialogs
@@ -340,8 +376,16 @@ class _Translations$dialogs$sk extends Translations$dialogs$en {
 	@override String get operationDetails => 'Podrobnosti o prevádzke';
 	@override String get activities => 'Aktivity';
 	@override String get stationCallsign => 'Volací znak stanice';
+	@override String get advanced => 'Rozšírené';
+	@override String get operatingPosition => 'Pracovisko (viac staníc)';
+	@override String get assistance => 'Asistencia';
+	@override String get assistanceDescription => 'Používať spotovacie služby a iné zdroje informácií';
+	@override String get selfSpotting => 'Self-spotovanie';
+	@override String get selfSpottingDescription => 'Povoliť funkcie, ktoré hlásia informácie o vašej frekvencii';
+	@override String disabledByRules({required Object rules}) => 'Vypnuté kvôli pravidlám ${rules}';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$sk lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$sk._(_root);
 	@override String get notes => 'Poznámky';
-	@override String get deleteOperationTitle => 'Odstrániť prevádzku';
+	@override String get deleteOperationTitle => 'Vymazať prevádzku';
 	@override String get purgeTestsTitle => 'Vyčistiť testovacie prevádzky';
 	@override String get purgeTestsBody => 'Týmto sa natrvalo vymažú tieto testovacie prevádzky a ich QSO. Nedá sa to vrátiť späť.';
 	@override String purgeTestsLooseQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
@@ -374,7 +418,7 @@ class _Translations$operation$sk extends Translations$operation$en {
 	@override late final _Translations$operation$positions$sk positions = _Translations$operation$positions$sk._(_root);
 	@override String get stationCallsignNone => 'Bez volacieho znaku stanice';
 	@override String get titleNone => 'Bez názvu';
-	@override String get deleteOperation => 'Odstrániť prevádzku';
+	@override String get deleteOperation => 'Vymazať prevádzku';
 	@override String get loggingControlsStale => 'Polia aktivít môžu byť neaktuálne — znova otvorte prevádzku a obnovia sa';
 	@override String get locationNone => 'Nenastavené';
 	@override String get generalOperation => 'Všeobecná prevádzka';
@@ -412,6 +456,7 @@ class _Translations$map$sk extends Translations$map$en {
 	@override String get globe => 'Glóbus';
 	@override String get zoomIn => 'Priblížiť';
 	@override String get zoomOut => 'Oddialiť';
+	@override String get resetNorth => 'Otočiť severom nahor';
 	@override late final _Translations$map$postcard$sk postcard = _Translations$map$postcard$sk._(_root);
 }
 
@@ -431,7 +476,7 @@ class _Translations$mapsView$sk extends Translations$mapsView$en {
 	@override String get facilities => 'Zariadenia parkov';
 	@override String get boundaries => 'Hranice';
 	@override String get currentLocation => 'Aktuálna poloha';
-	@override String noMatches({required Object text}) => '„${text}“ nič nezodpovedá';
+	@override String noMatches({required Object text}) => 'Pre „${text}“ sa nič nenašlo';
 	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
 		one: '${count} referencia na ${where}',
 		other: '${count} referencií na ${where}',
@@ -478,7 +523,7 @@ class _Translations$activitiesView$sk extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => 'Povoľte prístup k polohe v systémových nastaveniach';
 	@override String get locationGrantRefused => 'Stále bez polohy — systém to znova zamietol';
 	@override String get searchUnavailableTitle => 'Vyhľadávanie aktivít nie je dostupné';
-	@override String get searchUnavailableReason => 'Žiadne rozšírenie aktivít nedokázalo vyhľadávanie spustiť. Skúste to o chvíľu znova.';
+	@override String get searchUnavailableReason => 'Rozšírenie aktivity nedokázalo odpovedať na hľadanie. Skúste to o chvíľu znova.';
 	@override String get emptySheet => 'Pridajte ju pomocou návrhov a vyhľadávania nižšie';
 	@override String get exports => 'Exporty';
 	@override String get exportLogs => 'Exportovať denníky';
@@ -487,7 +532,7 @@ class _Translations$activitiesView$sk extends Translations$activitiesView$en {
 	@override String get operationDetails => 'Podrobnosti o prevádzke';
 	@override String get share => 'Zdieľať';
 	@override String get archive => 'Archivovať';
-	@override String get deleteOperation => 'Odstrániť prevádzku';
+	@override String get deleteOperation => 'Vymazať prevádzku';
 	@override String get undeleteOperation => 'Obnoviť prevádzku';
 	@override String get alreadySelected => 'Už vybrané';
 	@override String get selected => 'Vybrané';
@@ -495,9 +540,9 @@ class _Translations$activitiesView$sk extends Translations$activitiesView$en {
 	@override String get previousPick => 'Predchádzajúca zhoda';
 	@override String get nextPick => 'Ďalšia zhoda';
 	@override String get retiredReference => 'Zrušená';
-	@override String enableExtension({required Object name}) => 'Povoliť ${name}';
-	@override String get enableExtensionHint => 'Toto rozšírenie zodpovedá vášmu hľadaniu, ale momentálne nie je povolené';
-	@override String get enableExtensionForRefHint => 'Toto rozšírenie spracúva jednu z referencií tejto prevádzky, ale momentálne nie je povolené';
+	@override String enableExtension({required Object name}) => 'Zapnúť ${name}';
+	@override String get enableExtensionHint => 'Toto rozšírenie zodpovedá vášmu hľadaniu, ale momentálne nie je zapnuté';
+	@override String get enableExtensionForRefHint => 'Toto rozšírenie spracúva jednu z referencií tejto prevádzky, ale momentálne nie je zapnuté';
 	@override String extensionNotRunning({required Object name}) => '${name} nebeží';
 	@override String get extensionNotRunningHint => 'Toto rozšírenie bolo vypnuté, viac informácií nájdete v nastaveniach rozšírení';
 	@override String installExtension({required Object name}) => 'Inštalovať ${name}';
@@ -507,7 +552,7 @@ class _Translations$activitiesView$sk extends Translations$activitiesView$en {
 	@override String get controlsUnavailableTitle => 'Ovládanie aktivity nie je dostupné';
 	@override String get controlsUnavailableReason => 'Vaše referencie sú v bezpečí, ale ich úprava momentálne nie je dostupná.';
 	@override String get controlsUnavailableRetry => 'Skúsiť znova';
-	@override String get onlyDisabledMatches => 'Žiadne zhody\nNiektoré dostupné rozšírenia môžu mať výsledky.\nPovoľte ich v časti Typy aktivít nižšie.';
+	@override String get onlyDisabledMatches => 'Žiadne zhody\nNiektoré dostupné rozšírenia môžu mať výsledky.\nZapnite ich v časti Typy aktivít nižšie.';
 	@override String get onlyNotRunningMatches => 'Žiadne zhody\nNiektoré rozšírenia, ktoré môžu mať výsledky, nebežia.\nPozrite si Typy aktivít nižšie.';
 	@override String get mapToggle => 'Mapa';
 	@override String get searchToggle => 'Hľadať';
@@ -528,6 +573,13 @@ class _Translations$loggingControls$sk extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Čas (UTC)';
 	@override String get date => 'Dátum';
 	@override String get now => 'Teraz';
+	@override String get manualTimeSettings => 'Ručný čas';
+	@override String get manualTimeIncrement => 'Prírastok na QSO';
+	@override String get manualTimeIncrementNone => 'Žiadny';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
+		one: '${count} minúta',
+		other: '${count} minút',
+	);
 	@override String get frequency => 'Frekvencia';
 	@override String get mode => 'Mód';
 	@override String get theirCall => 'Ich volací znak';
@@ -539,7 +591,7 @@ class _Translations$loggingControls$sk extends Translations$loggingControls$en {
 	@override String get revert => 'Vrátiť späť';
 	@override String get undoDelete => 'Zrušiť vymazanie';
 	@override String get restore => 'Obnoviť';
-	@override String get wipe => 'Vymazať';
+	@override String get wipe => 'Vyčistiť';
 	@override String get undo => 'Späť';
 	@override String get pendingDeleteTapWarning => 'Ťuknite na kôš ešte raz a toto QSO sa vymaže';
 	@override String get pendingDeleteClickWarning => 'Kliknite na kôš ešte raz a toto QSO sa vymaže';
@@ -560,7 +612,20 @@ class _Translations$loggingControls$sk extends Translations$loggingControls$en {
 	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} na ${freq}';
 	@override String spotTooLate({required Object call}) => 'Príliš neskoro na spot ${call}';
 	@override String get spotNoFreq => 'Najprv nastavte frekvenciu pre spot';
+	@override String get selfSpotDisabled => 'Self-spot vypnutý';
 	@override String get spotComment => 'Komentár';
+	@override String get spottingAutoControl => 'Auto re-spot';
+	@override String spotAutoEvery({required Object minutes}) => 'Re-spot každých ${minutes} min';
+	@override String spotAutoNext({required Object time}) => 'Auto za ${time}. Zastaviť?';
+	@override String spotAutoInMinutes({required Object minutes}) => 'Auto za ${minutes} min';
+	@override String spotAutoInSeconds({required Object seconds}) => 'Auto za ${seconds} s';
+	@override String spotAutoInCount({required Object seconds}) => 'Auto za ${seconds}';
+	@override String get spotAutoNotStarted => 'Auto re-spot sa nespustil: spot neprešiel';
+	@override String get spotAutoMoved => 'Auto re-spot sa nespustil: frekvencia sa počas spotovania zmenila';
+	@override String get spotAutoStopped => 'Auto re-spot zastavený';
+	@override String get spotAutoLeftFreq => 'Auto re-spot zastavený: frekvencia sa zmenila';
+	@override String get spotAutoNoFreq => 'Auto re-spot zastavený: rádiostanica nehlási frekvenciu';
+	@override String get spotBusy => 'Ešte sa odosiela iný spot';
 	@override String get bandOrFreqRequired => 'Pred zápisom nastavte frekvenciu alebo pásmo';
 	@override String get missingBand => 'Bez pásma';
 	@override String get missingMode => 'Bez módu';
@@ -582,7 +647,7 @@ class _Translations$formChrome$sk extends Translations$formChrome$en {
 	@override String get showFewer => 'Zobraziť menej';
 	@override String get defaults => 'Predvolené';
 	@override String get search => 'Hľadať';
-	@override String get clear => 'Vymazať';
+	@override String get clear => 'Vyčistiť';
 	@override String get openPage => 'Otvoriť stránku';
 	@override String get connected => 'Pripojené';
 	@override String get notConnected => 'Nepripojené';
@@ -595,7 +660,8 @@ class _Translations$formChrome$sk extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'Chyba overenia: ${error}';
 	@override String transformationError({required Object error}) => 'Chyba transformácie: ${error}';
 	@override String actionError({required Object error}) => 'Chyba: ${error}';
-	@override String get removeItem => 'Odstrániť';
+	@override String get removeItem => 'Vymazať';
+	@override String deleteItemTitle({required Object name}) => 'Vymazať ${name}?';
 	@override String get storageUnavailable => 'Prihlasovacie údaje nie sú dostupné';
 }
 
@@ -641,6 +707,7 @@ class _Translations$qsoList$sk extends Translations$qsoList$en {
 	@override String get today => 'Dnes';
 	@override String get yesterday => 'Včera';
 	@override String get tomorrow => 'Zajtra';
+	@override late final _Translations$qsoList$find$sk find = _Translations$qsoList$find$sk._(_root);
 }
 
 // Path: loggingPanel
@@ -710,9 +777,12 @@ class _Translations$settings$sk extends Translations$settings$en {
 	@override String get userInterface => 'Používateľské rozhranie';
 	@override late final _Translations$settings$logging$sk logging = _Translations$settings$logging$sk._(_root);
 	@override late final _Translations$settings$catServer$sk catServer = _Translations$settings$catServer$sk._(_root);
+	@override late final _Translations$settings$cluster$sk cluster = _Translations$settings$cluster$sk._(_root);
+	@override late final _Translations$settings$spotting$sk spotting = _Translations$settings$spotting$sk._(_root);
 	@override late final _Translations$settings$radio$sk radio = _Translations$settings$radio$sk._(_root);
 	@override late final _Translations$settings$help$sk help = _Translations$settings$help$sk._(_root);
 	@override late final _Translations$settings$exports$sk exports = _Translations$settings$exports$sk._(_root);
+	@override late final _Translations$settings$extensionSections$sk extensionSections = _Translations$settings$extensionSections$sk._(_root);
 	@override late final _Translations$settings$map$sk map = _Translations$settings$map$sk._(_root);
 	@override late final _Translations$settings$privacy$sk privacy = _Translations$settings$privacy$sk._(_root);
 	@override String get operatorCall => 'Volací znak operátora';
@@ -741,19 +811,24 @@ class _Translations$commands$sk extends Translations$commands$en {
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get enableSyncFirst => 'Najprv povoľte synchronizáciu v Nastaveniach.';
+	@override String get enableSyncFirst => 'Najprv zapnite synchronizáciu v Nastaveniach.';
 	@override String get fullResyncStarted => 'Úplná opätovná synchronizácia sa začala — lokálne údaje boli najprv zálohované.';
 	@override String noDataFilesMatched({required Object target}) => '„${target}“ nezodpovedajú žiadne dátové súbory.';
 	@override String reloadFailed({required Object error}) => 'Opätovné načítanie zlyhalo: ${error}';
 	@override String get reloadingAll => 'Znova sa načítavajú všetky dátové súbory…';
 	@override String reloadingTarget({required Object target}) => 'Znova sa načítavajú dátové súbory ${target}…';
 	@override String unknownExperiment({required Object token}) => 'Neznámy experiment „${token}“';
-	@override String experimentEnabled({required Object name}) => '${name} povolený';
+	@override String experimentEnabled({required Object name}) => '${name} zapnutý';
 	@override String experimentDisabled({required Object name}) => '${name} vypnutý';
 	@override String get sentryTestSent => 'Testovacie hlásenie chyby odoslané do Sentry';
+	@override String get idleMetricsEnabled => 'Metriky nečinnosti v stavovom riadku zapnuté';
+	@override String get idleMetricsDisabled => 'Metriky nečinnosti vypnuté';
 	@override String get sentryTestLocalOnly => 'Sentry je v tejto zostave vypnuté — testovacia chyba bola zaznamenaná iba lokálne';
 	@override String get noOperationOpen => 'Tento príkaz potrebuje otvorenú prevádzku';
 	@override String unknownSegmentKind({required Object kind}) => 'Nie je známe, ako označiť „${kind}“';
+	@override String goUnavailable({required Object place}) => '${place} nie je v tejto aplikácii zapnuté';
+	@override String goUnknown({required Object to}) => 'Nie je známe, ako prejsť na „${to}“';
+	@override String get goBlocked => 'Najprv zatvorte otvorený dialóg';
 	@override String get operationAlreadyStarted => 'Táto prevádzka už má značku začiatku';
 	@override String get couldNotOpenLocation => 'Prestávka bola pridaná, ale obrazovku polohy sa nepodarilo otvoriť';
 	@override String get noTestOperations => 'Žiadne testovacie prevádzky na vyčistenie';
@@ -795,6 +870,10 @@ class _Translations$commands$sk extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'Odosiela sa CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW správa F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CW správa F${n} nebola odoslaná: rozšírenia nie sú pripravené';
+	@override String voiceMessageError({required Object n, required Object error}) => 'Fóniová správa M${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'rozšírenia nie sú pripravené';
+	@override String so2rRadioCannotKey({required Object radio}) => 'Nič sa neodoslalo: rádiostanica ${radio} to nedokáže kľúčovať';
+	@override String get so2rNoRadioB => 'Nič sa neodoslalo: na kľúčovanie z tejto sady vyberte rádiostanicu B v Konfigurácii stanice';
 	@override String settingNotStored({required Object label}) => '„${label}“ túto hodnotu neprijalo';
 }
 
@@ -806,7 +885,7 @@ class _Translations$commandDialog$sk extends Translations$commandDialog$en {
 
 	// Translations
 	@override String get hint => 'Hľadajte volacie znaky alebo zadajte príkaz';
-	@override String noResults({required Object text}) => '„${text}“ nič nezodpovedá';
+	@override String noResults({required Object text}) => 'Pre „${text}“ sa nič nenašlo';
 	@override String get sectionCommands => 'Príkazy';
 	@override String get sectionGoTo => 'Prejsť na';
 	@override String get sectionOperations => 'Prevádzky';
@@ -817,6 +896,44 @@ class _Translations$commandDialog$sk extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'Skúste';
 	@override String get lookingUp => 'Vyhľadáva sa volací znak…';
 	@override String get blockedByPane => 'Príkazy sa nedajú použiť, kým je otvorený panel alebo dialóg';
+}
+
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$sk extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Klávesové skratky';
+	@override String get description => 'Prispôsobte si priradenie klávesov';
+	@override String get search => 'Hľadať príkazy a klávesy';
+	@override String get import => 'Importovať…';
+	@override String get export => 'Exportovať…';
+	@override String get resetAll => 'Resetovať všetko';
+	@override String get resetAllTitle => 'Resetovať všetky skratky?';
+	@override String get resetAllBody => 'Každý príkaz sa vráti k svojim predvoleným klávesom a klávesy priradené k zadaným príkazom sa odstránia.';
+	@override String get reset => 'Resetovať';
+	@override String get noKey => 'Bez klávesu';
+	@override String get changed => 'Zmenené';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} je priradené aj k ${commands}';
+	@override String get groupApp => 'Aplikácia';
+	@override String get groupKeying => 'Kľúčovanie';
+	@override String get groupLogging => 'Logovanie';
+	@override String get groupCommands => 'Príkazy';
+	@override String get groupFixed => 'Pevné klávesy';
+	@override String get contextApp => 'Kdekoľvek';
+	@override String get contextLogView => 'Zobrazenia Prevádzka, Lov a Denníky';
+	@override String get contextOperation => 'Zobrazenie Prevádzka, pri kľúčovaní CAT rádiostanice';
+	@override String get contextLogging => 'V logovacom paneli';
+	@override String get addCommand => 'Pridať príkaz…';
+	@override String unknownCommand({required Object command}) => 'Neznámy príkaz: ${command}';
+	@override late final _Translations$keyboardShortcuts$command$sk command = _Translations$keyboardShortcuts$command$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$sk fixed = _Translations$keyboardShortcuts$fixed$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$sk editor = _Translations$keyboardShortcuts$editor$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$file$sk file = _Translations$keyboardShortcuts$file$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$sk modifier = _Translations$keyboardShortcuts$modifier$sk._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$sk platform = _Translations$keyboardShortcuts$platform$sk._(_root);
 }
 
 // Path: expiredBuild
@@ -857,9 +974,11 @@ class _Translations$spotting$sk extends Translations$spotting$en {
 	@override String get noQsoYet => 'Zatiaľ nie je zapísané žiadne QSO na spotovanie.';
 	@override String get setFrequencyFirst => 'Najprv nastavte frekvenciu.';
 	@override String get nothingToSpot => 'Nie je čo spotovať — žiadne rozšírenie tu neponúka spotovanie.';
+	@override String get incompleteCall => 'Neúplný volací znak sa nedá spotovať — najprv ho dopíšte.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} zlyhal: ${message}';
 	@override String get unknownError => 'neznáma chyba';
 	@override String get notSent => 'Spot nebol odoslaný.';
+	@override String get allSkipped => 'Spot nebol odoslaný: každý zdroj spotov ho preskočil.';
 	@override String get notRefreshedOffline => 'Bez pripojenia — spoty neboli obnovené';
 }
 
@@ -876,6 +995,8 @@ class _Translations$dataFiles$sk extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'Server odpovedal príliš pomaly. Skúste to neskôr.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} odpovedal chybou (HTTP ${status}). Skúste to neskôr.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} nedokázal poskytnúť tento súbor (HTTP ${status}). Skontrolujte, či je jeho adresa stále správna.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM nemá súbor histórie volacích znakov pre ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'Sťahovanie histórie volacích znakov z N1MM pre ${stem} nevyšlo. Skúste to neskôr.';
 	@override String processingFailedTitle({required Object name}) => '${name} sa nepodarilo spracovať';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'Sťahovanie malo iba ${imported} z ${existing} záznamov na tomto zariadení, preto boli vynechané záznamy ponechané. Obnovením v Nastavenia › Offline údaje ho napriek tomu prijmete.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
@@ -925,14 +1046,20 @@ class _Translations$extensionService$sk extends Translations$extensionService$en
 	// Translations
 	@override String get runtimeNotReady => 'Prostredie rozšírení nie je pripravené.';
 	@override String testFailed({required Object error}) => 'Test zlyhal: ${error}';
-	@override String connectedAs({required Object identity}) => 'Pripojený ako ${identity}';
+	@override String connectedAs({required Object identity}) => 'Pripojené ako ${identity}';
 	@override String get invalidFieldConfiguration => 'Neplatná konfigurácia poľa';
 	@override String get invalidValue => 'Neplatná hodnota';
 	@override String validationError({required Object error}) => 'Chyba overenia: ${error}';
 	@override String actionFailed({required Object error}) => 'Akcia zlyhala: ${error}';
 	@override String get commandFailed => 'Príkaz sa nepodarilo spustiť';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} nemôže meniť nastavenia: pri inštalácii o to nepožiadalo';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} nemôže ovládať rádiostanicu: pri inštalácii o to nepožiadalo';
+	@override String commandDeveloperOnly({required Object name}) => '${name} to nemôže spustiť: je to jeden z vlastných vývojárskych príkazov aplikácie';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'Hlásenia sa momentálne nedajú odoslať';
 	@override String get stashUnavailable => 'Ham2K úschovňa súborov je momentálne nedostupná';
+	@override String activitySearchSourcesFailed({required Object names}) => 'Bez odpovede na hľadanie aktivít od ${names}, preto môžu niektoré výsledky chýbať.';
+	@override String get activitySearchSomeSourcesFailed => 'Niektoré rozšírenia aktivít neodpovedali na hľadanie, preto môžu niektoré výsledky chýbať.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} strávilo príliš veľa času v časovačoch. Sú zastavené, kým sa rozšírenia nereštartujú.';
 	@override String timersSuspendedFailures({required Object name}) => 'Časovače ${name} opakovane zlyhávali. Sú zastavené, kým sa rozšírenia nereštartujú.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} uviazlo v časovači. Jeho časovače sú zastavené, kým sa rozšírenia nereštartujú.';
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$sk extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$sk extends Translations$qsonImport$en {
+	_Translations$qsonImport$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Importovať prevádzku QSON';
+	@override String get description => 'Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.';
+	@override String get dropHint => 'Pustite sem súbor QSON a importuje sa ako nová prevádzka';
+	@override String importing({required Object filename}) => 'Importuje sa ${filename}…';
+	@override String failed({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}';
+	@override String pickerFailed({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} nie je text v UTF-8, takže to nie je súbor QSON';
+	@override String notJson({required Object filename}) => '${filename} nie je súbor JSON, takže to nie je súbor QSON';
+	@override String notOperation({required Object filename}) => '${filename} neobsahuje prevádzku QSON';
+	@override String get busy => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.';
+	@override String get oneFileOnly => 'Pustite naraz iba jeden súbor QSON — každý sa otvorí ako samostatná prevádzka.';
+}
+
 // Path: adifImport
 class _Translations$adifImport$sk extends Translations$adifImport$en {
 	_Translations$adifImport$sk._(TranslationsSk root) : this._root = root, super.internal(root);
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$sk extends Translations$adifImport$en {
 	@override String get busy => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.';
 	@override String get oneFileOnly => 'Pustite naraz iba jeden súbor ADIF — poradie importu súborov rozhoduje, ktoré údaje majú prednosť.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO. Import ADIF do prevádzky má pridať pár QSO, nie priniesť veľký denník — na to použite zobrazenie Denníky. Ak ste si istí, Režim vývojára vám ho dovolí importovať aj tak.';
+	@override String get importAnyway => 'Napriek tomu importovať';
 }
 
 // Path: offline
@@ -1240,10 +1389,10 @@ class _Translations$templateEditor$sk extends Translations$templateEditor$en {
 
 	// Translations
 	@override String get previewLabel => 'Náhľad:';
-	@override String get reset => 'Obnoviť';
+	@override String get reset => 'Resetovať';
 	@override String get docs => 'Dokumentácia šablón';
 	@override String get preview => 'Ukážkový náhľad';
-	@override String get reference => 'Referencia šablón';
+	@override String get reference => 'Príručka šablón';
 	@override String get attributes => 'Dostupné atribúty';
 	@override String get filters => 'Filtre';
 	@override String get flowControl => 'Riadenie toku';
@@ -1300,6 +1449,10 @@ class _Translations$home$logs$sk extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'Toto QSO je označené na vymazanie.';
 	@override String get editGone => 'Neuložené: toto QSO už nie je v tomto denníku.';
 	@override String get discard => 'Zahodiť';
+	@override late final _Translations$home$logs$sheet$sk sheet = _Translations$home$logs$sheet$sk._(_root);
+	@override late final _Translations$home$logs$groupBy$sk groupBy = _Translations$home$logs$groupBy$sk._(_root);
+	@override late final _Translations$home$logs$period$sk period = _Translations$home$logs$period$sk._(_root);
+	@override late final _Translations$home$logs$periodTitle$sk periodTitle = _Translations$home$logs$periodTitle$sk._(_root);
 	@override late final _Translations$home$logs$columns$sk columns = _Translations$home$logs$columns$sk._(_root);
 	@override late final _Translations$home$logs$panels$sk panels = _Translations$home$logs$panels$sk._(_root);
 	@override late final _Translations$home$logs$import$sk import = _Translations$home$logs$import$sk._(_root);
@@ -1312,7 +1465,7 @@ class _Translations$chase$station$sk extends Translations$chase$station$en {
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Loviaca stanica';
+	@override String get title => 'Stanica pre lov';
 	@override String get stationLabel => 'Stanica: ';
 	@override String get operatorLabel => 'Op: ';
 	@override String get noLocation => 'Bez polohy';
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$sk extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Ciele lovu';
 	@override String remove({required Object name}) => 'Prestať loviť ${name}';
-	@override String get extensionsTitle => 'Rozšírenia, ktoré zahŕňajú lov';
+	@override String get extensionsTitle => 'Ďalšie programy pre lov';
 }
 
 // Path: chase.panels
@@ -1384,6 +1537,80 @@ class _Translations$chase$panels$sk extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'Stanice spotované v éteri, pripravené na lov.';
 	@override String get map => 'Mapa';
 	@override String get mapDescription => 'QSO za obdobie a logovaná stanica.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$sk extends Translations$chase$claims$en {
+	_Translations$chase$claims$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'Kontrolujú sa QSO pre lov';
+	@override String rebuilding({required Object program}) => 'Kontroluje sa denník pre ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} z ${total} QSO';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$sk extends Translations$chase$notice$en {
+	_Translations$chase$notice$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'Nová ref. ${program}';
+	@override String newRefGuess({required Object program}) => 'Asi nová ref. ${program}';
+	@override String newBand({required Object program}) => 'Nové pásmo ${program}';
+	@override String newBandGuess({required Object program}) => 'Asi nové pásmo ${program}';
+	@override String newMode({required Object program}) => 'Nový mód ${program}';
+	@override String newModeGuess({required Object program}) => 'Asi nový mód ${program}';
+	@override String unconfirmed({required Object program}) => '${program} nepotvrdené';
+	@override String programGuess({required Object notice}) => 'Asi ${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$sk extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Upozornenia';
+	@override String get newRef => 'Nová referencia';
+	@override String get newBand => 'Nové pásmo';
+	@override String get newMode => 'Nový mód';
+	@override String get unconfirmed => 'Nepotvrdené';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$sk extends Translations$chase$imports$en {
+	_Translations$chase$imports$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => 'Importovať ${label}';
+	@override String pickTitle({required Object file}) => 'Importovať ${file} ako';
+	@override String get dropHint => 'Pustite sem súbor a importuje sa do programu pre lov';
+	@override String done({required Object count, required Object program, required Object file}) => 'Importovaných ${count} záznamov ${program} z ${file}';
+	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Importovaných ${count} záznamov ${program} z ${file}, preskočených ${skipped}, ktoré sa nedali prečítať';
+	@override String nothing({required Object file, required Object program}) => '${file} neobsahuje nič, čo by sa dalo importovať do ${program}';
+	@override String failed({required Object file, required Object program}) => 'Súbor ${file} sa pre ${program} nepodarilo prečítať';
+	@override String unreadable({required Object program, required Object skipped, required Object file}) => 'Pre ${program} sa nepodarilo prečítať žiadny z ${skipped} záznamov v ${file}';
+	@override String noProgram({required Object file}) => 'Súbor ${file} neimportuje žiadny program pre lov';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$sk extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Vyhľadať online?';
+	@override String get body => 'Asistencia je pre túto prevádzku vypnutá. Vyhľadanie všetkých QSO tentoraz použije online služby ako QRZ.';
+	@override String bodyRules({required Object rules}) => 'Asistencia je pre túto prevádzku vypnutá kvôli pravidlám ${rules}. Vyhľadanie všetkých QSO tentoraz použije online služby ako QRZ.';
+	@override String get action => 'Vyhľadať online';
 }
 
 // Path: dialogs.callChange
@@ -1426,6 +1653,8 @@ class _Translations$operation$tabs$sk extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Vzdialená obrazovka';
 	@override String get solar => 'Slnko';
 	@override String get radio => 'Rádio';
+	@override String get rotator => 'Rotátor';
+	@override String get summaries => 'Súhrny prevádzky';
 }
 
 // Path: operation.positions
@@ -1435,7 +1664,7 @@ class _Translations$operation$positions$sk extends Translations$operation$positi
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get nobodyYet => 'Túto prevádzku zatiaľ nezdieľajú žiadne iné operátorské pracoviská.';
+	@override String get nobodyYet => 'Túto prevádzku zatiaľ nezdieľajú žiadne ďalšie pracoviská.';
 	@override String positionLabel({required Object number}) => 'Prac.: ${number}';
 	@override String operatorLabel({required Object call}) => 'Op: ${call}';
 	@override String get unnamedPosition => 'Iné pracovisko';
@@ -1495,8 +1724,16 @@ class _Translations$operation$layout$sk extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => 'Pridať ${panel}';
 	@override String showPreview({required Object panel}) => 'Náhľad ${panel}';
 	@override String missingExtension({required Object name}) => 'Chýba rozšírenie „${name}“';
+	@override String get missingExtensionEnable => 'Zapnúť';
+	@override String get missingExtensionInstall => 'Inštalovať…';
+	@override String get missingExtensionWontRun => 'Táto verzia sa nespustí. Aktualizujte ju v Nastavenia › Rozšírenia.';
+	@override String get missingExtensionUnavailable => 'V tejto aplikácii nie je k dispozícii';
+	@override String get missingExtensionNotInCatalog => 'Nie je v katalógu';
+	@override String get missingExtensionCatalogUnreachable => 'Katalóg je nedostupný. Skúste to znova';
+	@override String get missingExtensionFailed => 'Nepodarilo sa. Skúste to znova';
 	@override String get previewUnavailable => 'Obrázok náhľadu tohto panelu sa nepodarilo zobraziť.';
 	@override String get nestedPaneTitle => 'Viac';
+	@override late final _Translations$operation$layout$layouts$sk layouts = _Translations$operation$layout$layouts$sk._(_root);
 	@override String get editLayout => 'Upraviť rozloženie';
 	@override String get saveLayout => 'Uložiť rozloženie';
 	@override String get revertLayout => 'Zahodiť zmeny rozloženia';
@@ -1505,6 +1742,15 @@ class _Translations$operation$layout$sk extends Translations$operation$layout$en
 	@override String get layoutUnreadableBody => 'Vaše uložené rozloženie sa nepodarilo prečítať, preto sa namiesto neho zobrazuje predvolené usporiadanie. Pôvodné rozloženie sa neprepíše, kým sa nerozhodnete toto ponechať.';
 	@override String get layoutUnreadableAction => 'Použiť toto rozloženie';
 	@override String panelRenderFailed({required Object panel}) => '${panel} sa nepodarilo zobraziť';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: poslal viac ako ${max} znakov';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho grafika má viac ako ${max} prvkov';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho grafika je vnorená hlbšie ako ${max} úrovní';
+	@override String panelNotArtwork({required Object panel}) => '${panel} sa nepodarilo zobraziť: jeho grafika nie je samostatná';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} vrstiev';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} ovládacích prvkov';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: časť jeho scény má viac ako ${max} položiek';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: reťazec scény je dlhší ako ${max} znakov';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho rozloženie je vnorené hlbšie ako ${max} úrovní';
 	@override String get panelRenderRetry => 'Skúsiť znova';
 	@override String get panelActionFailed => 'Akcia panelu zlyhala. Skúste to znova.';
 	@override late final _Translations$operation$layout$panels$sk panels = _Translations$operation$layout$panels$sk._(_root);
@@ -1621,12 +1867,13 @@ class _Translations$operation$spots$sk extends Translations$operation$spots$en {
 	@override String get any => 'Akékoľvek';
 	@override String get allBands => 'Všetky pásma';
 	@override String get allModes => 'Všetky módy';
-	@override String get phoneAndCw => 'Phone a CW';
+	@override String get phoneAndCw => 'Fónia a CW';
 	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
 		one: '${count} spot',
 		other: '${count} spotov',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'Zobrazuje sa ${count} z ${total} spotov';
+	@override String get spotsDisabled => 'Spoty sú pre túto prevádzku vypnuté';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minút';
 	@override String get callsOfNote => 'Poznámky k volacím znakom';
 	@override String get yourSpots => 'Vaše spoty';
@@ -1727,7 +1974,7 @@ class _Translations$map$postcard$sk extends Translations$map$postcard$en {
 	@override String get copied => 'Skopírované do schránky';
 	@override String saved({required Object path}) => 'Uložené do ${path}';
 	@override String downloaded({required Object name}) => 'Stiahnuté ${name}';
-	@override String savedMany({required Object count, required Object path}) => 'Obrázky (${count}) uložené do ${path}';
+	@override String savedMany({required Object count, required Object path}) => '${count} obrázkov uložených do ${path}';
 	@override String savedFiles({required Object names}) => 'Uložené ${names}';
 	@override String savePartial({required Object error, required Object names}) => '${error} — ${names} už boli uložené';
 	@override String downloadedMany({required Object count}) => 'Sťahuje sa ${count} obrázkov — povoľte ich, ak sa prehliadač opýta';
@@ -1737,8 +1984,16 @@ class _Translations$map$postcard$sk extends Translations$map$postcard$en {
 	@override String get previousPage => 'Predchádzajúca strana';
 	@override String get nextPage => 'Ďalšia strana';
 	@override String pageOf({required Object page, required Object count}) => 'Strana ${page} z ${count}';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
+		one: '${count} Q',
+		other: '${count} Q',
+	);
+	@override String get options => 'Možnosti pohľadnice';
+	@override String get bandLegend => 'Zobraziť legendu pásiem';
+	@override String get grayline => 'Zobraziť grayline';
+	@override String get sectionsAndOrder => 'Sekcie súhrnu a poradie';
 	@override String get sectionDays => 'Každý deň';
-	@override String get reset => 'Obnoviť';
+	@override String get reset => 'Resetovať';
 	@override String failed({required Object error}) => 'Pohľadnicu sa nepodarilo vytvoriť: ${error}';
 	@override String get mapNotReady => 'Mapa sa nestihla načítať. Skontrolujte pripojenie a skúste to znova.';
 	@override String saveFailed({required Object error}) => 'Pohľadnicu sa nepodarilo uložiť: ${error}';
@@ -1780,7 +2035,8 @@ class _Translations$loggingControls$info$sk extends Translations$loggingControls
 	@override String get noticeNewZone => 'Nová zóna';
 	@override String get noticeInvalidMode => 'Zlý mód';
 	@override String get noticeInvalidBand => 'Zlé pásmo';
-	@override String get noticeInvalidCategory => 'Nedá sa pracovať';
+	@override String get noticeInvalidCategory => 'Nedá sa robiť';
+	@override String get noticeOverTime => 'Po čase';
 	@override String get noticeWorkedBefore => 'Už robené';
 	@override String get noticeNewPark => 'Nový park';
 	@override String get noticeNewSection => 'Nová sekcia';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$sk extends Translations$loggingControls
 	@override String get noticeMissingExchange => 'Bez výmeny';
 	@override String get noticeInvalidExchange => 'Zlá výmena';
 	@override String get noticeUnknownEvent => 'Neznáma udalosť';
+	@override String get noticeIncompleteCall => 'Neúplná značka — nebodované';
 	@override String get noticeOurGrid => 'Nastavte náš lokátor';
 	@override String get noticeRareCounty => 'Vzácny kraj!';
 	@override String get noticeOurLocation => 'Nastavte náš kraj';
 	@override String get noticeShortGrid => 'Lokátor je príliš krátky';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$sk extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'Hľadať v denníku (${shortcut})';
+	@override String get menuItemNoShortcut => 'Hľadať v denníku';
+	@override String get hint => 'Číslo QSO alebo volací znak';
+	@override String get noMatches => 'Žiadna zhoda';
+	@override String get noOperationQsos => 'V tejto prevádzke nie sú žiadne QSO';
+	@override String get noPeriodQsos => 'V tomto období nie sú žiadne QSO';
+	@override String get outsideQsosOne => '1 QSO mimo tejto prevádzky';
+	@override String outsideQsosOther({required Object count}) => '${count} QSO mimo tejto prevádzky';
+	@override String get pastQsosOne => '1 staršie QSO';
+	@override String pastQsosOther({required Object count}) => '${count} starších QSO';
 }
 
 // Path: callInfo.history
@@ -1931,14 +2207,79 @@ class _Translations$settings$catServer$sk extends Translations$settings$catServe
 	@override String get openAccess => 'Otvorený prístup';
 	@override String get openAccessOn => 'Pripojiť sa môže ľubovoľný počítač v lokálnej sieti.';
 	@override String get openAccessOff => 'Pripojiť sa môžu iba aplikácie na tomto počítači.';
+	@override String get allowTransmit => 'Povoliť aplikáciám vysielať';
+	@override String allowTransmitOn({required Object minutes}) => 'Aplikácie môžu kľúčovať PTT rádiostanice, najviac ${minutes} minút naraz.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'Aplikácie na ľubovoľnom počítači v lokálnej sieti môžu kľúčovať PTT rádiostanice, najviac ${minutes} minút naraz.';
+	@override String get allowTransmitOff => 'Aplikácie nemôžu kľúčovať rádiostanicu. Použite VOX alebo ich vlastné nastavenie PTT.';
+	@override String get allowTransmitUnsupported => 'Rádiostanicu hlavného VFO nemožno z Ham2K Logger kľúčovať, takže aplikácie cez ňu nemôžu vysielať.';
 	@override String get off => 'Vypnuté.';
 	@override String starting({required Object protocol}) => '${protocol}, spúšťa sa…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} na porte ${port}. Pripojení klienti: ${clients}.';
-	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} na porte ${port}, ale nie je pripojená žiadna rádiostanica Hlavného VFO.';
+	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} na porte ${port}, ale nie je pripojená žiadna rádiostanica hlavného VFO.';
 	@override String failed({required Object protocol, required Object port, required Object error}) => '${protocol} nemôže počúvať na porte ${port}: ${error}';
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: používa ho iný program, často samotný ${protocol}. Zatvorte tento program alebo vyberte iný port.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: tento počítač to nepovoľuje. Vyberte port nad 1024.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} prestal počúvať na porte ${port}. Skúša sa znova…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$sk extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX cluster';
+	@override String get description => 'Server, na ktorý rozšírenia posielajú spoty a z ktorého ich čítajú, prihlásené ako operátor.';
+	@override String get connect => 'Pripájať sa k clustru';
+	@override String get connectOn => 'Rozšírenia sa k clustru pripoja, keď to potrebujú';
+	@override String get connectOff => 'K clustru sa nič nepripája';
+	@override String get console => 'Zobraziť konzolu';
+	@override String get consoleDescription => 'Čo cluster posiela, a miesto na zadávanie príkazov';
+	@override String get consoleTitle => 'Konzola clustra';
+	@override String get consoleConnect => 'Pripojiť';
+	@override String get consoleDisconnect => 'Odpojiť';
+	@override String get consoleCommand => 'Príkaz';
+	@override String get consoleEmpty => 'Zatiaľ nič. Pripojte sa alebo počkajte, kým cluster použije nejaké rozšírenie.';
+	@override String consoleRetry({required Object command}) => 'Posiela sa znova: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'Neodoslané: ${command} (${reason})';
+	@override String get server => 'Server clustra';
+	@override String get selectServer => 'Vybrať server';
+	@override String get serverOther => 'Iný';
+	@override String serverOtherIncomplete({required Object node}) => 'Zatiaľ nie je zadaný hostiteľ, spoty idú na ${node}';
+	@override String get customHost => 'Server';
+	@override String get customPort => 'Port';
+	@override String get password => 'Heslo';
+	@override String get passwordDescription => 'Iba ak je potrebné';
+	@override String passwordStored({required Object node}) => 'Heslo pre ${node} je uložené';
+	@override String get scrollback => 'Uchovávané riadky';
+	@override String scrollbackOpt({required Object count}) => '${count} riadkov';
+	@override String get connection => 'Pripojenie';
+	@override String get statusIdle => 'Nepripojené. Pripojí sa, keď to rozšírenie potrebuje. Ťuknutím otestujete.';
+	@override String statusConnecting({required Object node}) => 'Pripája sa k ${node}…';
+	@override String statusConnected({required Object node, required Object call}) => 'Pripojené k ${node} ako ${call}.';
+	@override String statusFailed({required Object node, required Object reason}) => 'Nepodarilo sa pripojiť k ${node}: ${reason}';
+	@override String get statusUnsupported => 'Vo webovej verzii nie je k dispozícii.';
+	@override String get statusOff => 'Vypnuté. Ak ho chcete používať, zapnite Pripájať sa k clustru.';
+	@override late final _Translations$settings$cluster$errors$sk errors = _Translations$settings$cluster$errors$sk._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$sk extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spotovanie';
+	@override String get respotInterval => 'Auto re-spot každých';
+	@override String minutes({required Object minutes}) => '${minutes} min';
+	@override String get autoRespotByDefault => 'Auto re-spot predvolene';
+	@override String get autoRespotByDefaultOn => 'Zapnúť auto re-spot po odoslaní akéhokoľvek spotu';
+	@override String get autoRespotByDefaultOff => 'Auto re-spot sa zapína iba ručne';
+	@override String get pulseBeforeRespot => 'Pulzovať pred každým auto re-spotom';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'Štítok Spotovanie pulzuje namodro ${seconds} sekúnd pred každým re-spotom';
+	@override String get pulseBeforeRespotOff => 'Pred auto re-spotom nič nepulzuje';
 }
 
 // Path: settings.radio
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$sk extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$sk enterSends = _Translations$settings$radio$enterSends$sk._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$sk keyerSpeed = _Translations$settings$radio$keyerSpeed$sk._(_root);
 	@override late final _Translations$settings$radio$cwMessages$sk cwMessages = _Translations$settings$radio$cwMessages$sk._(_root);
+	@override late final _Translations$settings$radio$keyerControl$sk keyerControl = _Translations$settings$radio$keyerControl$sk._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$sk voiceMessages = _Translations$settings$radio$voiceMessages$sk._(_root);
+	@override late final _Translations$settings$radio$voiceWords$sk voiceWords = _Translations$settings$radio$voiceWords$sk._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$sk avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$sk._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$sk zeroBeatRange = _Translations$settings$radio$zeroBeatRange$sk._(_root);
 }
@@ -2003,6 +2346,20 @@ class _Translations$settings$exports$sk extends Translations$settings$exports$en
 	@override String get title => 'Exporty';
 }
 
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$sk extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'Aktivity';
+	@override String get hunting => 'Lov';
+	@override String get contests => 'Súťaže';
+	@override String get lookups => 'Vyhľadávanie';
+	@override String get dashboard => 'Prehľad';
+}
+
 // Path: settings.map
 class _Translations$settings$map$sk extends Translations$settings$map$en {
 	_Translations$settings$map$sk._(TranslationsSk root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$sk extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'Mapy';
 	@override late final _Translations$settings$map$style$sk style = _Translations$settings$map$style$sk._(_root);
+	@override late final _Translations$settings$map$showCallsigns$sk showCallsigns = _Translations$settings$map$showCallsigns$sk._(_root);
+	@override late final _Translations$settings$map$showGrayline$sk showGrayline = _Translations$settings$map$showGrayline$sk._(_root);
 	@override late final _Translations$settings$map$styleOpts$sk styleOpts = _Translations$settings$map$styleOpts$sk._(_root);
 }
 
@@ -2038,7 +2397,7 @@ class _Translations$settings$sync$sk extends Translations$settings$sync$en {
 	// Translations
 	@override String get title => 'Cloudová synchronizácia';
 	@override String get moreSettings => 'Ďalšie nastavenia synchronizácie';
-	@override String get enable => 'Povoliť synchronizáciu';
+	@override String get enable => 'Zapnúť synchronizáciu';
 	@override String get deviceKey => 'Kľúč zariadenia';
 }
 
@@ -2177,12 +2536,12 @@ class _Translations$settings$accounts$sk extends Translations$settings$accounts$
 	@override String get connected => 'Pripojené';
 	@override String get cancelLogin => 'Zrušiť prihlásenie';
 	@override String get openInBrowser => 'Otvoriť v prehliadači';
-	@override String loggedInAs({required Object identity}) => 'Prihlásený ako ${identity}';
+	@override String loggedInAs({required Object identity}) => 'Prihlásené ako ${identity}';
 	@override String get pressSaveToKeep => 'Stlačte Uložiť, aby tento účet zostal pripojený.';
 	@override String connectedTo({required Object label}) => 'Pripojené k ${label}';
 	@override String get connect => 'Pripojiť';
 	@override String get disconnect => 'Odpojiť';
-	@override String get connectedAs => 'Pripojený ako';
+	@override String get connectedAs => 'Pripojené ako';
 	@override String get test => 'Test';
 	@override String saveFailed({required Object error}) => 'Uloženie zlyhalo: ${error}';
 	@override String loginFailed({required Object error}) => 'Prihlásenie zlyhalo: ${error}';
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'port ${n} z ${total}';
 	@override String get serialPortSuggested => 'odporúčaný';
 	@override String get serialPortJustNow => 'Nedávno pripojený';
+	@override String get serialPortNoDriver => 'bez ovládača';
 	@override String get serialDeviceRequest => 'Pridať USB zariadenie…';
+	@override String get bleDevice => 'Zariadenie Bluetooth LE';
+	@override String get bleDeviceDescription => 'Sériový most, cez ktorý je pripojená vaša rádiostanica, napríklad LiNK500MP v režime Mode 4 alebo sériový adaptér BLE.';
+	@override String get bleScan => 'Vyhľadať zariadenia Bluetooth LE…';
+	@override String get bleScanNoneFound => 'Nenašli sa žiadne zariadenia Bluetooth LE. Skontrolujte, či je most zapnutý, v blízkosti a v režime Bluetooth LE (Mode 4 na LiNK500MP).';
+	@override String bleScanFailed({required Object reason}) => 'Vyhľadávanie Bluetooth LE sa nepodarilo spustiť: ${reason}';
+	@override String get bleOff => 'Bluetooth je vypnutý.';
+	@override String get bleDenied => 'Povolenie pre Bluetooth nebolo udelené. Povoľte ho v systémových nastaveniach a skúste to znova.';
+	@override String get bleUnsupported => 'Toto zariadenie nemá Bluetooth LE.';
+	@override String get bleStarting => 'Bluetooth sa ešte spúšťa. Skúste to o chvíľu znova.';
+	@override String get bleConnectFailed => 'Zariadenie Bluetooth LE je nedostupné. Skontrolujte, či je zapnuté, v blízkosti a nie je pripojené k inej aplikácii.';
+	@override String bleNoSerialService({required Object services}) => 'Toto zariadenie Bluetooth LE nemá žiadnu sériovú službu, ktorú aplikácia pozná. Nahláste ho prosím aj s jeho službami: ${services}';
 	@override String get baudRate => 'Rýchlosť (baud)';
 	@override String get baudRateDescription => 'Musí zodpovedať menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly a žiadnu chybu.';
 	@override String get serialRtsHigh => 'Držať RTS vo vysokej úrovni';
 	@override String get serialRtsHighDescription => 'Iba pre rádiostanicu, ktorá pred odpoveďou čaká na RTS, napríklad Yaesu so zapnutým CAT RTS. Na Digirig, SignaLink a väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni spustí vysielanie.';
 	@override String get serialDtrHigh => 'Držať DTR vo vysokej úrovni';
 	@override String get serialDtrHighDescription => 'Iba pre rozhranie CAT, ktoré sa napája z DTR, napríklad niektoré káble RS-232 pre FT-817. Na mnohých kábloch DTR kľúčuje CW alebo PTT a jeho držanie vo vysokej úrovni spustí vysielanie.';
+	@override String get serialUsbDriver => 'Ovládač USB čipu';
+	@override String get serialUsbDriverDescription => 'Automaticky rozpozná väčšinu adaptérov. Čip vyberte iba pre adaptér, pri ktorom zoznam portov hlási, že nemá ovládač — jeho názov je na obale alebo v zozname USB zariadení.';
+	@override String get serialUsbDriverAuto => 'Automaticky';
 	@override String get civAddress => 'Adresa CI-V rádiostanice';
 	@override String get civAddressDescription => 'Hexadecimálne, ako ju zobrazuje menu CI-V rádiostanice. IC-705 sa dodáva s A4.';
 	@override String get civAddressInvalid => 'Adresa CI-V sú dve hexadecimálne číslice, 01 až FF';
@@ -2298,8 +2672,37 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => 'Tento slice nemá na rádiostanici panadapter';
 	@override String spectrumStreamRefused({required Object code}) => 'Rádiostanica odmietla stream DAX IQ (chyba ${code})';
 	@override String get spectrumNoUdp => 'Údaje o spektre z rádiostanice sa nedostanú k tomuto zariadeniu';
+	@override String get spectrumK4Unavailable => 'Nedá sa prijímať spektrum K4 cez LAN. Skúša sa znova…';
+	@override String get spectrumK4RemoteUnavailable => 'Nedá sa prijímať vzdialené spektrum K4';
 	@override String get spectrumScopeRefused => 'Rádiostanica odmietla príkazy pre scope';
 	@override String get spectrumOutOfRange => 'Scope rádiostanice je nastavený mimo rozsahu, ktorý dokáže zobraziť';
+	@override String get spectrumBandUnsupported => 'Scope rádiostanice sa na tomto pásme nedá zobraziť';
+	@override String get spectrumSdrNoRadio => 'Čaká sa na frekvenciu prepojenej rádiostanice…';
+	@override String get spectrumSdrNotConnected => 'SDR nie je pripojené';
+	@override String get spectrumSdrNoIf => 'Nastavte medzifrekvenciu rádiostanice v nastaveniach tohto SDR';
+	@override String get sdrRadio => 'Zobrazuje spektrum pre';
+	@override String get sdrRadioDescription => 'Zobrazenie spektra na tejto rádiostanici čerpá z tohto prijímača namiesto vlastného scope rádiostanice.';
+	@override String get sdrRadioMain => 'Hlavná rádiostanica';
+	@override String get sdrTuning => 'Anténny vstup';
+	@override String get sdrTuningDescription => 'Odkiaľ prichádza signál prijímača. Na vlastnej anténe sa ladí sám podľa rádiostanice; na výstupe medzifrekvencie rádiostanice zostáva na medzifrekvencii.';
+	@override String get sdrTuningIndependent => 'Vlastná anténa';
+	@override String get sdrTuningIfTap => 'Výstup medzifrekvencie rádiostanice';
+	@override String get sdrIfHz => 'Medzifrekvencia (Hz)';
+	@override String get sdrIfHzDescription => 'Iba pre výstup medzifrekvencie: frekvencia, na ktorej na medzifrekvencii leží naladená frekvencia rádiostanice, napríklad 68330000 na FT-817.';
+	@override String get sdrIfInverted => 'Medzifrekvencia je invertovaná';
+	@override String get sdrGainDb => 'Zisk (dB)';
+	@override String get sdrGainDbDescription => 'Nechajte prázdne pre automatický zisk prijímača.';
+	@override String get sdrOffsetHz => 'Frekvenčný posun (Hz)';
+	@override String get sdrOffsetHzDescription => 'Pripočíta sa ku každej frekvencii posielanej do prijímača, pre upconverter: 125000000 pre Ham It Up.';
+	@override String get sdrPpm => 'Korekcia frekvencie (ppm)';
+	@override String get rtlDirectSampling => 'Priame vzorkovanie';
+	@override String get rtlDirectSamplingDescription => 'Pre KV na RTL-SDR V3 bez upconvertera. RTL-SDR V4 dosiahne KV aj bez neho.';
+	@override String get rtlDirectSamplingOff => 'Vypnuté';
+	@override String get rtlDirectSamplingI => 'Vetva I';
+	@override String get rtlDirectSamplingQ => 'Vetva Q';
+	@override String get rtlTcpNotAServer => 'Toto nie je server rtl_tcp';
+	@override String get rtlTcpNotes => 'Toto sa pripája k **serveru rtl_tcp, ktorý si spustíte sami** na počítači, do ktorého je zapojený dongle.\n\n- **Spustite ho** príkazom `rtl_tcp -a 0.0.0.0`, aby sa k nemu dostali aj iné počítače; na tom istom počítači stačí samotné `rtl_tcp`.\n- **Port** je 1234, pokiaľ ste ho nespustili s `-p`.\n- **Jeden program naraz:** rtl_tcp obsluhuje jediného klienta. Aplikácia sa pripája iba vtedy, keď je zobrazené spektrum, a pár sekúnd po jeho zatvorení ho uvoľní.\n- **Na Androide** rovnaký server na telefóne spúšťa aplikácia *SDR driver*.';
+	@override String get rspTcpNotes => 'Toto sa pripája k **serveru rsp_tcp, ktorý si spustíte sami** na počítači, do ktorého je zapojený RSP a kde je nainštalované API od SDRplay.\n\n- **Spustite ho** príkazom `rsp_tcp -a 0.0.0.0`.\n- **Port** je 1234, pokiaľ ste ho nespustili s `-p`.\n- **Jeden program naraz:** server prijme jediného klienta. Aplikácia sa pripája iba vtedy, keď je zobrazené spektrum.';
 	@override String get n3fjpNoRig => 'N3FJP nemá nastavené rozhranie rádiostanice, takže toto sleduje to, čo sa zadá do N3FJP, nie rádiostanicu';
 	@override String get winkeyerKeyPort => 'Výstup kľúča';
 	@override String get winkeyerKeyPortDescription => 'Do ktorého z dvoch výstupných konektorov kľúčovača je pripojená vaša rádiostanica.';
@@ -2308,6 +2711,11 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get winkeyerPttDescription => 'Kľúčovať linku PTT na tom istom konektore, pre zosilňovač alebo rádiostanicu, ktorá to potrebuje. Nechajte vypnuté pre rádiostanicu kľúčovanú cez konektor kľúča.';
 	@override String get winkeyerNoAnswer => 'Na tomto porte neodpovedal žiadny WinKeyer';
 	@override String get winkeyerStoppedAnswering => 'WinKeyer počas vysielania prestal odpovedať; správa bola zahodená';
+	@override String get icomControlPort => 'Riadiaci port (UDP)';
+	@override String get icomControlPortDescription => 'Control Port (UDP) rádiostanice — 50001, pokiaľ nebol zmenený v jej sieťových nastaveniach alebo presmerovaný na iný.';
+	@override String get icomSerialPort => 'Sériový port (UDP)';
+	@override String get icomSerialPortDescription => 'Serial Port (UDP) rádiostanice — 50002, pokiaľ nebol zmenený v jej sieťových nastaveniach alebo presmerovaný na iný.';
+	@override String get icomPortsDiffer => 'Riadiaci a sériový port musia byť rôzne';
 	@override String get radioUser => 'Používateľské meno rádiostanice';
 	@override String get radioPass => 'Heslo rádiostanice';
 	@override String get radioLoginDescription => 'Prihlásenie z menu Network → Remote rádiostanice, nie vaše heslo k WiFi.';
@@ -2315,36 +2723,61 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get connectFailedBusy => 'Zariadenie sa používa';
 	@override String get connectFailedDenied => 'Prístup zamietnutý';
 	@override String get connectFailedDevice => 'Zariadenie sa nenašlo';
+	@override String get connectFailedUnsupported => 'Čip tohto USB adaptéra nerozpoznáva žiadny ovládač. Ak viete, o ktorý čip ide, vyberte ho v sekcii „Rozšírené nastavenia“ pod Ovládač USB čipu.';
 	@override String get connectFailedLines => 'RTS/DTR sa nepodarilo udržať podľa nastavenia, preto bol port zatvorený. Iný program mohol nechať zapnuté hardvérové riadenie toku — odpojte a znova pripojte kábel.';
 	@override String get connectFailedNetwork => 'Rádiostanicu sa nedarí nájsť v sieti. Skontrolujte jej adresu a či je zapnutá a dostupná.';
+	@override String connectFailedReplyPort({required Object port}) => 'Port ${port} na tomto zariadení sa už používa a odpovede prichádzajú práve naň. Zatvorte všetko ostatné, čo na ňom počúva — vrátane iného uzla PstRotator — alebo port zmeňte.';
 	@override String get connectFailedTimeout => 'Rádiostanica neodpovedala včas. Skontrolujte, či je zapnutá a dostupná.';
 	@override late final _Translations$settings$station$models$sk models = _Translations$settings$station$models$sk._(_root);
 	@override late final _Translations$settings$station$transports$sk transports = _Translations$settings$station$transports$sk._(_root);
 	@override String get troubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
-	@override String get ft891Troubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ** (menu FT-891 **05-08**). Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je ten istý signál PTT, takže jeho zdvihnutie by spustilo vysielanie. Na vlastnom USB porte rádiostanice je alternatívou **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** nastaveniu CAT RATE rádiostanice (menu **05-06**). Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
+	@override String get ft891Troubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS na rádiostanici vypnuté, alebo zapnuté Držať RTS vo vysokej úrovni.** So zapnutým **CAT RTS** (menu FT-891 **05-08**) rádiostanica mlčí, kým je RTS v nízkej úrovni — pri otvorení portu môže raz odpovedať, potom už nič. Výber vlastného USB portu rádiostanice zapne **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni zakľúčuje váš vysielač: radšej vypnite CAT RTS na rádiostanici.\n- **Rýchlosť musí zodpovedať** nastaveniu CAT RATE rádiostanice (menu **05-06**). Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
 	@override String get yaesuBinaryTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
 	@override String get yaesuBinaryTroubleshooting => 'Táto rádiostanica používa starší päťbajtový CAT od Yaesu a keď niečo nie je v poriadku, vôbec neodpovedá. Takmer vždy ide o jedno z:\n\n- **Kábel musí prevádzať úrovne.** Konektor CAT vzadu nie je RS-232 ani USB; potrebuje CT-62 alebo rovnocenný adaptér. Obyčajný audio alebo dátový kábel pre CAT nefunguje.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice (**#14** na FT-817, **#19** na FT-857 alebo FT-897). Pri nezhode rádiostanica nič neposiela, a nikdy chybu.\n- **Nikdy nedovoľte, aby niečo zdvihlo RTS alebo DTR na tomto porte.** Na väčšine káblov pre tieto rádiostanice sú tieto linky PTT a kľúčovanie. Výnimkou je staršie rozhranie napájané z DTR: preň zapnite **Držať DTR vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTento ovládač bol napísaný podľa zverejnenej tabuľky CAT od Yaesu a na žiadnej z týchto rádiostaníc ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť.';
+	@override String get tenTecTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
+	@override String get tenTecEagleTroubleshooting => '- **Konektor USB-B vzadu je linka CAT.** Rádiostanica sa zobrazí ako sériový USB port; vo Windows potrebuje ovládač Ten-Tec USB to UART, ktorý sa v Správcovi zariadení zobrazuje ako „USB to UART (COMx)“.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený, a rovnako aj aktualizátor firmvéru od Ten-Tec.\n- **Nastavenie šírky filtra z aplikácie ho odoberie gombíku BW**, kým sa rádiostanica nevypne a znova nezapne. Tak rádiostanica funguje.\n\nTento ovládač bol napísaný podľa programátorskej referenčnej príručky Ten-Tec. Ak funguje len napoly, oplatí sa to nahlásiť, spolu s verziou firmvéru z menu rádiostanice.';
+	@override String get tenTecOrionTroubleshooting => '- **Použite priamy sériový kábel DB-9** do portu SERIAL DATA, nie null-modem.\n- **Táto položka drží RTS vo vysokej úrovni**, pretože Orion používa RTS a CTS ako handshake. Na rozhraní, ktoré kľúčuje PTT z RTS, napríklad Digirig, vypnite Držať RTS vo vysokej úrovni v sekcii „Rozšírené nastavenia“, inak rádiostanica začne vysielať hneď po pripojení aplikácie.\n- **CW z aplikácie potrebuje zapnutý interný kľúčovač rádiostanice.** Keď je vypnutý, rádiostanica ignoruje, čo aplikácia posiela.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTento ovládač bol napísaný podľa programátorskej referenčnej príručky Ten-Tec a na Orione ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť, spolu s verziou firmvéru z menu rádiostanice.';
+	@override String get tenTecNoCw => 'Firmvér tejto rádiostanice neprijíma CW z aplikácie. Ten-Tec ho pridal vo firmvéri Orion 1.366.';
+	@override String get tenTecKeyerOff => 'Interný kľúčovač rádiostanice je vypnutý, preto ignoruje CW posielané z aplikácie. Zapnite kľúčovač v menu rádiostanice.';
 	@override String get guohetecTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
 	@override String get guohetecTroubleshooting => 'Q900 má dva protokoly CAT a táto položka používa jeho natívny namiesto napodobeniny FT-817. Vyberte tu **Guohetec Q900**, nie FT-817 — napodobenina podporuje menej príkazov a rádiostanica neoznamuje, ktorý používa.\n\n- **Kábel USB-C je linka CAT** a pripája aj zvukovú kartu. Rýchlosť na ňom nezáleží; port ignoruje, na čo je nastavený.\n- **Nikdy nedovoľte, aby niečo zdvihlo RTS alebo DTR na tomto porte.** Na sériovom kábli sú tieto linky PTT a kľúčovanie.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Rádiostanica druhej generácie sa správa inak** ako prvej. Dlho stlačte Menu, potom About: HW 2.0 je druhá generácia.\n\nTento ovládač bol napísaný podľa zverejneného protokolu výrobcu a na žiadnej z týchto rádiostaníc ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť.';
 	@override String get yaesuTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
 	@override String get yaesuTroubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je ten istý signál PTT, takže jeho zdvihnutie by spustilo vysielanie. Na vlastnom USB porte rádiostanice je alternatívou **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Kde sa toto nastavenie nachádza, závisí od modelu (menu **05-08** na FT-891).\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Módy sa riadia tabuľkou FT-891.** Väčšina rádiostaníc Yaesu jej zodpovedá, ale rádiostanica, ktorá čísluje módy inak, pri nich zobrazí a nastaví nesprávny mód. Frekvencia tým nie je ovplyvnená.';
+	@override String get ftdx3000Troubleshooting => '**Menu 037 CAT SELECT musí byť USB** pre CAT cez USB port rádiostanice; pri nastavení RS232C je CAT na konektore vzadu.\n\nTáto položka bola napísaná podľa zverejnenej dokumentácie CAT a na FTDX3000 ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
 	@override String get yaesuRs232Troubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Konektor CAT je RS-232.** Potrebuje prevodník USB na sériový port a priamy kábel DB-9 — kábel null-modem prehadzuje linky a rádiostanica nič nepočuje.\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni, pokiaľ nie je zapnuté **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTáto položka bola napísaná podľa zverejnenej dokumentácie CAT a na žiadnej z týchto rádiostaníc ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
-	@override String get yaesuUsbTroubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Použite prvý z dvoch USB portov rádiostanice.** CAT je zvyčajne na prvom (vo Windows port COM **Enhanced**); druhý (**Standard**) slúži na PTT a kľúčovanie. Výber ukazuje na prvý všade, kde ich dokáže rozlíšiť.\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni, pokiaľ nie je zapnuté **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
+	@override String get yaesuUsbTroubleshooting => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Použite prvý z dvoch USB portov rádiostanice.** CAT je zvyčajne na prvom (vo Windows port COM **Enhanced**); druhý (**Standard**) slúži na PTT a kľúčovanie. Výber ukazuje na prvý všade, kde ich dokáže rozlíšiť.\n- **CAT RTS na rádiostanici vypnuté, alebo zapnuté Držať RTS vo vysokej úrovni.** So zapnutým menu **CAT RTS** rádiostanica mlčí, kým je RTS v nízkej úrovni — pri otvorení portu môže raz odpovedať, potom už nič. Výber vlastného USB portu rádiostanice zapne **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni zakľúčuje váš vysielač: radšej vypnite CAT RTS na rádiostanici.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
 	@override String get k4SerialNotes => 'Pripojte zadný konektor USB-B (PC) na K4. Pre CAT funguje USB-PC1 aj USB-PC2; vyberte nepoužívaný port a nastavte na rádiostanici zodpovedajúce Serial USB-PCn: Baud Rate. HaLo predvyplní 38400; v prípade potreby to zmeňte. Iná aplikácia musí používať druhý port alebo Ethernet.\n\nToto pripojenie ovláda rádiostanicu a jej kľúčovače; neposiela zvuk do HaLo.';
-	@override String get k4TcpNotes => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Ide o ovládanie CAT, nie o samostatné pripojenie vzdialeného zvuku na porte 9204.\n\nHaLo ovláda rádiostanicu a jej kľúčovače bez streamovania zvuku alebo údajov panadaptera.';
+	@override String get k4TcpNotes => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Keď je viditeľný panadapter alebo vodopád, HaLo používa toho istého hostiteľa na pevnom porte 9201; zmena portu CAT nemení port spektra.\n\nSpektrum zobrazuje hlavný prijímač. Jeho zoom, nastavenie referencie a rýchlosti ovplyvňujú iba zobrazenie v HaLo. Streamovanie zvuku nie je podporované.';
 	@override String get k4PowerTimeout => 'Výkon K4 sa nezmenil, pretože rádiostanica nepotvrdila svoj výstupný rozsah. Skúste to znova.';
+	@override String get k4RemoteNotes => 'Zapnite na K4 vzdialený prístup a zadajte jeho sieťové heslo. Main a Sub zdieľajú jedno šifrované spojenie pre ovládanie rádiostanice a spektrum. Predvolený port je 9204; pri vzdialenom pripojení zadajte svoj presmerovaný port.\n\nPrehrávanie zvuku a streamovanie mikrofónu nie sú podporované.';
+	@override String get k4Receiver => 'Prijímač';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'Vyberte Main alebo Sub';
+	@override String get k4ReceiverAlreadyConfigured => 'Tento prijímač je pre tento K4 už nakonfigurovaný';
+	@override String get k4SubReceiverOff => 'Prijímač Sub na K4 je vypnutý';
+	@override String get k4RemotePasswordRequired => 'Na zabezpečené pripojenie zadajte sieťové heslo K4.';
+	@override String get k4RemoteHandshakeFailed => 'K4 nedokázal vytvoriť zabezpečené spojenie. Skontrolujte jeho sieťové heslo a nastavenia vzdialeného prístupu.';
+	@override String get k4RemoteUnreachable => 'Zabezpečené spojenie K4 je nedostupné. Skontrolujte jeho adresu, port a nastavenia vzdialeného prístupu.';
 	@override String get k4PowerRange => 'Výkon K4 musí byť 0,1–110 W, alebo 0,0001–0,01 W, keď je aktívny miliwattový výstup transvertora.';
 	@override String get elecraftTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
 	@override String get elecraftTroubleshooting => 'Rádiostanice Elecraft používajú Kenwood CAT a KX2 aj KX3 boli takto vyskúšané — VFO v oboch smeroch, prepínanie módov aj CW záznej fungujú.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** hodnote nastavenej v **RS232** v menu rádiostanice. Z výroby je to 38400. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\n**Ak je frekvencia správna, ale mód nie**, dajte nám vedieť. Položky KX2 a KX3 čítajú mód z pozície v stavovej odpovedi rádiostanice, ktorú sme určili podľa rádiostaníc, ktoré sme videli, a firmvér, ktorý ho dáva inam, sa k nám dostane iba cez hlásenie.\n\nO K3 zatiaľ nemáme žiadne hlásenie, preto ak ju používate, dajte nám vedieť, čo sa stane. K4 má vlastnú položku.';
+	@override String get lab599TroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
+	@override String get lab599Troubleshooting => 'Rad TX-500 používa Kenwood CAT. Frekvencia a mód boli vyskúšané cez LiNK500MP; výkon a merače sú napísané podľa referencie CAT od Lab599, preto nahláste, čo sa stane, v každom prípade.\n\n- **Rýchlosť musí zodpovedať** nastaveniu CAT rádiostanice, 9600, pokiaľ ste ho nezmenili. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Vyberte protokol CAT na rádiostanici.** TS-2000 pokrýva frekvenciu, mód a výkon. LAB599 navyše aplikácii umožní prepnúť rádiostanicu na DIG, vidieť jej vysielanie v DIG a čítať napájacie napätie.\n- **Cez LiNK500MP** stlačte a podržte gombík VFO približne tri sekundy, aby ste ovládanie CAT odovzdali rozhraniu.\n- **Nastavte režim LiNK500MP podľa pripojenia**: Mode 3 pre Bluetooth, Mode 4 pre Bluetooth LE. V inom režime ho vyhľadávanie Bluetooth LE nenájde.\n- **Cez Bluetooth** sa LiNK500MP spáruje ako dva sériové porty a CAT nesie iba jeden. Ak rádiostanica mlčí, vyberte ten druhý.';
+	@override String get lab599TroubleshootingIos => 'Rad TX-500 používa Kenwood CAT. Frekvencia a mód boli vyskúšané cez LiNK500MP; výkon a merače sú napísané podľa referencie CAT od Lab599, preto nahláste, čo sa stane, v každom prípade.\n\n- **Nastavte LiNK500MP na Mode 4**, jeho režim Bluetooth LE, skôr než ho začnete vyhľadávať. V inom režime ho iPhone ani iPad nenájde.\n- **Odovzdajte ovládanie CAT rozhraniu LiNK500MP**: stlačte a približne tri sekundy podržte gombík VFO rádiostanice.\n- **Vyberte protokol CAT na rádiostanici.** TS-2000 pokrýva frekvenciu, mód a výkon. LAB599 navyše aplikácii umožní prepnúť rádiostanicu na DIG, vidieť jej vysielanie v DIG a čítať napájacie napätie.';
 	@override String get kenwoodTroubleshootingTitle => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu';
-	@override String get kenwoodTroubleshooting => 'Tento ovládač je overený na Kenwood TS-590SG a TS-480, QRP Labs QMX a QCX-mini a Elecraft KX2 a KX3. Zvyšok radu je napísaný podľa zverejnených referencií CAT, preto nahláste, čo sa stane, v každom prípade.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Niektoré rádiostanice potrebujú povoliť CAT** v menu, inak vôbec neodpovedajú.\n\n**Viaceré SDR rozhrania používajú rovnaký protokol**, takže sa oplatí vyskúšať túto položku aj pre ne; rádiostanice Elecraft sú uvedené samostatne, pod Elecraft. Ak je frekvencia správna, ale mód je nesprávny alebo chýba, je to jediná časť, ktorá sa v rade líši — aplikácia ho zisťuje z rádiostanice a v náhradnom prípade sa pýta priamo, takže mód môže jednoducho meškať.';
+	@override String get kenwoodTroubleshooting => 'Tento ovládač je overený na Kenwood TS-590SG a TS-480, QRP Labs QMX a QCX-mini a Elecraft KX2 a KX3. Zvyšok radu je napísaný podľa zverejnených referencií CAT, preto nahláste, čo sa stane, v každom prípade.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Niektoré rádiostanice potrebujú zapnúť CAT** v menu, inak vôbec neodpovedajú.\n- **Rádiostanice Kenwood čakajú na RTS**: ich port CAT ho používa ako handshake, preto musí byť zapnuté Držať RTS vo vysokej úrovni (v sekcii „Rozšírené nastavenia“). Pripojenie nastavené skôr, než to bolo predvolene zapnuté, ho môže mať vypnuté. Na Digirig alebo inom kábli, ktorý kľúčuje PTT z RTS, ho vypnite, inak rádiostanica vysiela.\n\n**Viaceré SDR rozhrania používajú rovnaký protokol**, takže sa oplatí vyskúšať túto položku aj pre ne; rádiostanice Elecraft sú uvedené samostatne, pod Elecraft. Ak je frekvencia správna, ale mód je nesprávny alebo chýba, je to jediná časť, ktorá sa v rade líši — aplikácia ho zisťuje z rádiostanice a v náhradnom prípade sa pýta priamo, takže mód môže jednoducho meškať.';
 	@override String get statusConnected => 'Pripojené';
 	@override String get statusLost => 'Odpojené';
 	@override String get notConfigured => 'Nenakonfigurované';
 	@override String get currentConfiguration => 'Aktuálna konfigurácia';
 	@override String get currentTransceiver => 'Aktuálny transceiver';
+	@override String get currentTransceivers => 'Aktuálne transceivery';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'Správy sa zaradia do poradia namiesto prerušenia';
+	@override String get noRadioBSelected => 'Nie je vybraná žiadna rádiostanica B';
 	@override String get radioMode => 'Mód rádiostanice';
-	@override String get keyerNotSupported => 'Aktuálna rádiostanica nepodporuje';
+	@override String get keyerNotSupported => 'Aktuálna rádiostanica to nepodporuje';
 	@override String get catControlPreferences => 'Predvoľby ovládania CAT';
 	@override String get chooseTransceiver => 'Vybrať transceiver';
 	@override String get configurationSection => 'Konfigurácia';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} je na inom zariadení';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'Táto rádiostanica je pripojená k ${device}. Jej pripojenie a nastavenia sa konfigurujú na tom zariadení.';
 	@override String get antennaInUse => 'Používaná anténa';
-	@override String get keyInUse => 'Používaný kľúč';
+	@override String get keyInUse => 'Kľúčovanie CW';
+	@override String get phoneKeying => 'Fóniové kľúčovanie';
+	@override String get phoneKeyingNone => 'Žiadne';
+	@override String phoneKeyingRadio({required Object radio}) => 'Pamäte v ${radio}';
+	@override String get phoneKeyingComputer => 'Zvuk v tomto počítači';
+	@override String get phoneKeyingOff => 'Fóniové kľúčovanie je vypnuté';
+	@override String get computerVoiceSettings => 'Zvuk počítača';
+	@override String get cwKeyingOptions => 'Možnosti kľúčovania CW';
 	@override String get noneSelected => 'Žiadny';
 	@override String get moreSettings => 'Ďalšie nastavenia';
 	@override String get icomCivTroubleshootingTitle => 'Ak sa pre tú istú rádiostanicu zobrazia dva sériové porty';
 	@override String get icomCivTroubleshooting => 'Viaceré rádiostanice Icom, vrátane IC-705, poskytujú naraz **dva** sériové USB porty (Icom ich nazýva Port A a Port B), oba predvolene nastavené na CI-V. Ani táto aplikácia, ani váš OS ich inak nerozlíšia: rovnaké USB vendor/product ID sa jednoducho zobrazí dvakrát, niekedy tu s príponou `#2`. **Správny je zvyčajne Port A** — obvykle prvý, ktorý váš OS alebo prehliadač uvádza, a kde táto aplikácia dokáže porty rozlíšiť, označí ho ako odporúčaný. Ak príkazy odchádzajú a rádiostanica nikdy neodpovie, skúste potom druhý port.';
 	@override String get civAddressTroubleshootingTitle => 'Ak rádiostanica nikdy neodpovie';
 	@override String get civAddressTroubleshooting => '- **Adresa CI-V musí zodpovedať** menu rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva, ale práve pri rádiostanici zdieľajúcej zbernicu CI-V sa mení. Rámec odoslaný na nesprávnu adresu sa potichu ignoruje, čo vyzerá presne ako nefunkčný kábel.\n- **Rýchlosť musí zodpovedať** CI-V BAUD RATE rádiostanice (pri USB CI-V USB Baud Rate). Nastavte na rádiostanici rovnaké číslo, aké je zobrazené tu, **nie Auto**. Pri Auto sa niektoré rádiostanice, vrátane IC-7300, pripoja a asi po minúte prestanú odpovedať.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **Adresa CI-V musí zodpovedať** menu rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva, ale práve pri rádiostanici zdieľajúcej zbernicu CI-V sa mení. Rámec odoslaný na nesprávnu adresu sa potichu ignoruje, čo vyzerá presne ako nefunkčný kábel.\n${speed}\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.';
+	@override String get icomUsbSpeedFollows => '- **Nie je čo nastavovať pri rýchlosti.** Cez USB táto rádiostanica komunikuje rýchlosťou, ktorú používa počítač, a táto položka vždy používa 115200, rýchlosť, ktorú potrebuje scope.';
+	@override String get ic7610UsbSpeed => '- **Nastavte CI-V USB Baud Rate na 115200**, rýchlosť, ktorú táto položka vždy používa, pretože ju potrebuje scope — **nie Auto**. Rádiostanica nastavená na inú rýchlosť odpovedá mlčaním.';
+	@override String get civTransceiveTitle => 'Ak aplikácia pomaly sleduje rádiostanicu';
+	@override String get civTransceive => 'Ak aplikácii trvá niekoľko sekúnd, kým zobrazí zmenu frekvencie alebo módu urobenú na rádiostanici, zapnite na nej nastavenie **CI-V Transceive** (na väčšine súčasných modelov v SET > Connectors > CI-V). Keď je zapnuté, rádiostanica hlási každú zmenu hneď, ako nastane. Keď je vypnuté, aplikácia vidí zmenu až pri ďalšom dopyte, každých pár sekúnd.';
 	@override String get ic7300Mk2Note => '\n- **IC-7300 MK2** sa dodáva s adresou `B6`, nie `94` predvyplnenou tu — namiesto toho vyberte položku IC-7300 MK2.';
 	@override String get ic705PortNote => '\n- **IC-705** poskytuje dva sériové USB porty, oba pomenované podľa rádiostanice. CI-V je na **prvom** z nich, na ktorý výber ukazuje všade, kde ich dokáže rozlíšiť.';
 	@override String get ic7760PortNote => '\n- **IC-7760** používa CI-V na **Port A** z dvoch sériových USB portov, ktoré poskytuje.';
@@ -2387,22 +2832,23 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get flrigTroubleshootingTitle => 'Ak sa aplikácia nemôže pripojiť';
 	@override String get flrigTroubleshooting => 'Toto sa pripája k **programu flrig, ktorý spúšťate sami**, nie priamo k rádiostanici — flrig komunikuje s rádiostanicou a podporuje väčšinu značiek a modelov.\n\n- **flrig už musí bežať** s nakonfigurovaným a pripojeným transceiverom.\n- **Port** je 12345, pokiaľ ste ho nezmenili v konfigurácii flrig (Config → Setup → Server).\n- **Z iného počítača** sa uistite, že server flrig je dostupný. Počúva na všetkých rozhraniach, ale váš firewall s tým nemusí súhlasiť.\n- Po pripojení chýbajúca frekvencia zvyčajne znamená, že samotný flrig sa nedostane k rádiostanici. Skontrolujte, či displej flrig sleduje ladenie.';
 	@override String get hrdTroubleshootingTitle => 'Ak sa aplikácia nemôže pripojiť';
-	@override String get hrdTroubleshooting => 'Toto sa pripája k **Rig Control z Ham Radio Deluxe, ktorý beží na vašom počítači**, nie priamo k rádiostanici — HRD komunikuje s rádiostanicou.\n\n- **Rig Control už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho IP server musí byť povolený.** Rig Control komunikuje s inými programami iba cez neho.\n- **Port** je 7809, pokiaľ ste ho nezmenili v nastaveniach IP servera.\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených popisov protokolu HRD a s HRD ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
+	@override String get hrdTroubleshooting => 'Toto sa pripája k **Rig Control z Ham Radio Deluxe, ktorý beží na vašom počítači**, nie priamo k rádiostanici — HRD komunikuje s rádiostanicou.\n\n- **Rig Control už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho IP server musí byť zapnutý.** Rig Control komunikuje s inými programami iba cez neho.\n- **Port** je 7809, pokiaľ ste ho nezmenili v nastaveniach IP servera.\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených popisov protokolu HRD a s HRD ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
 	@override String get n3fjpTroubleshootingTitle => 'Ak sa aplikácia nemôže pripojiť';
 	@override String get n3fjpTroubleshooting => 'Toto sa pripája k **logovaciemu programu N3FJP, ktorý beží na vašom počítači**, nie priamo k rádiostanici — N3FJP komunikuje s rádiostanicou.\n\n- **API programu musí byť zapnuté**: Settings → Application Program Interface, zaškrtnite **TCP API Enabled**.\n- **Port** je 1100, pokiaľ ste ho tam nezmenili.\n- **N3FJP musí mať nastavené rozhranie rádiostanice**, aby mohol sledovať alebo ladiť rádiostanicu. Bez neho hlási iba to, čo sa zadá do jeho vstupného okna.\n- N3FJP hlási iba pásmo, mód a frekvenciu: žiadny výkon, žiadny stav vysielania.\n\nTáto položka bola napísaná podľa zverejneného API N3FJP a s N3FJP ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
 	@override String get commanderTroubleshootingTitle => 'Ak sa aplikácia nemôže pripojiť';
 	@override String get commanderTroubleshooting => 'Toto sa pripája k **DXLab Commander, ktorý beží na vašom počítači**, nie priamo k rádiostanici — Commander komunikuje s rádiostanicou.\n\n- **Commander už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho sieťová služba musí byť zapnutá**: tlačidlo **Net Serv** na paneli Radio v okne Configuration programu Commander.\n- **Port** je 52002, tretí port bloku začínajúceho na **Base Port** v Net Serv (52000, pokiaľ ste ho nezmenili).\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených TCP správ programu Commander a s Commanderom ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.';
 	@override String get ic705TroubleshootingTitle => 'Ak rádiostanica nikdy neodpovie';
-	@override String get ic705Troubleshooting => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť povolená.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo je výslovne odmietnuté**, nie prijaté mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.';
+	@override String get ic705Troubleshooting => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť zapnutá.\n- **Porty musia zodpovedať** Control Port a Serial Port (UDP) rádiostanice, alebo portom, ktoré sú na ne presmerované. Na nesprávny port odpovedá mlčanie, rovnako ako pri vypnutej rádiostanici.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo sa výslovne odmietne**, neodpovedá sa naň mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.';
+	@override String get icomLanTroubleshooting => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview, RS-BA1 alebo Remote Utility od Icomu pripojené k tej istej rádiostanici držia túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** Jej port LAN musí byť pripojený k tej istej sieti ako toto zariadenie, jej **Network Control** musí byť zapnuté a používateľské meno a heslo musia byť na rádiostanici nastavené ako sieťový používateľ.\n- **Porty musia zodpovedať** Control Port a Serial Port (UDP) rádiostanice, alebo portom, ktoré sú na ne presmerované. Na nesprávny port odpovedá mlčanie, rovnako ako pri vypnutej rádiostanici.\n- **Ak sa pripojí, ale nikdy neodpovie**, adresa CI-V tu musí zodpovedať menu CI-V ADDRESS rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva.\n- **Vypnite a zapnite rádiostanicu**, ak zostane zaseknutá.';
 	@override String get statusStale => 'Neodpovedá';
 	@override String get statusDisconnected => 'Nepripojené';
 	@override String get statusConnecting => 'Pripája sa…';
 	@override String get statusDisconnecting => 'Odpája sa…';
 	@override String get statusError => 'Pripojenie zlyhalo';
 	@override String get currentRadioSettings => 'Aktuálne nastavenia rádiostanice';
-	@override String get notSupportedByThisRadio => 'Táto rádiostanica nepodporuje';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => 'Fónia';
+	@override String get notSupportedByThisRadio => 'Táto rádiostanica to nepodporuje';
+	@override String get cwMessagesButton => 'CW správy';
+	@override String get voiceMessagesButton => 'Fóniové správy';
 	@override String voiceKeyerAvailable({required Object count}) => 'Hlasový kľúčovač: pamäte v rádiostanici (${count})';
 	@override String get antennaBands => 'Pásma';
 	@override String get antennaType => 'Typ antény';
@@ -2438,7 +2884,7 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get placeholderMode => 'Mód';
 	@override String get placeholderModeDescription => 'Mód, na ktorom zástupná rádiostanica začína, napr. USB, CW, FT8.';
 	@override String get placeholderPower => 'Výkon (watty)';
-	@override String get placeholderPurpose => 'Použite túto rádiostanicu na zaznamenávanie, ktorú rádiostanicu používate, na účely logovania';
+	@override String get placeholderPurpose => 'Použite túto rádiostanicu, aby sa pri logovaní zaznamenávalo, ktorú rádiostanicu práve používate';
 	@override String get placeholderReplyDelay => 'Oneskorenie odpovede (ms)';
 	@override String get placeholderReplyDelayDescription => 'Ako dlho trvá zástupnej rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.';
 	@override String get cwKeyerField => 'CAT CW kľúčovač';
@@ -2468,7 +2914,7 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get voiceDialectDescription => 'Ako táto rádiostanica prehráva hlasové pamäte cez CAT. Žiadny znamená bez hlasových pamätí cez CAT. S dialektom a bez počtu platí predvolený počet dialektu.';
 	@override String get voiceDialectPb => 'Kenwood (PB, štýl TS-590)';
 	@override String get voiceDialectK4 => 'Elecraft K4 (PB a DA)';
-	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (stlačenia prepínačov)';
+	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (stlačenia tlačidiel)';
 	@override String get placeholderDiagnostic => 'Simulované';
 	@override String get placeholderWholeNumberInvalid => 'Musí byť celé číslo, 0 alebo viac';
 	@override String get placeholderFreqInvalid => 'Musí byť frekvencia v kHz, väčšia ako nula';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'Na ktorej anténe je práve každý port rádiostanice. Zmeny sa prejavia okamžite.';
 	@override String get switchWiringHeader => 'Zapojenie';
 	@override String get switchPortInhibitedHint => 'vysielanie zablokované';
+	@override String get rotatorAxes => 'Osi';
+	@override String get rotatorAxesDescription => 'Či sa rotátor otáča iba v azimute, alebo aj v elevácii (G-5500 alebo podobný).';
+	@override String get rotatorAxesAzimuth => 'Iba azimut';
+	@override String get rotatorAxesAzimuthElevation => 'Azimut a elevácia';
+	@override String get rotatorAzimuthOffset => 'Posun azimutu';
+	@override String get rotatorAzimuthOffsetDescription => 'Koľko stupňov pripočítať k tomu, čo hlási ovládač, keď jeho nula nie je skutočný sever. Otáčanie sa podľa toho opraví.';
+	@override String get rotatorElevationOffset => 'Posun elevácie';
+	@override String get rotatorAzimuthMin => 'Najnižší azimut';
+	@override String get rotatorAzimuthMax => 'Najvyšší azimut';
+	@override String get rotatorAzimuthMaxDescription => 'V stupňoch samotného ovládača. Nad 360 pre rotátor s presahom, ktorý sa potom otáča kratšou cestou.';
+	@override String get rotatorElevationMin => 'Najnižšia elevácia';
+	@override String get rotatorElevationMax => 'Najvyššia elevácia';
+	@override String get rotatorElevationMaxDescription => 'V stupňoch samotného ovládača. Nad 90 pre rotátor, ktorý sa preklápa.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'Celé stupne, ${min} až ${max}';
+	@override String get rotatorLimitsInvalid => 'Dolná hranica musí byť nižšia ako horná';
+	@override String get rotatorPollInterval => 'Interval dopytovania (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'Ako často sa pýtať rotátora, kam mieri. Nechajte prázdne pre ${fallback} ms.';
+	@override String get rotatorAxesRequired => 'Vyberte, v ktorých osiach sa rotátor otáča';
+	@override String get rotatorRefused => 'Ovládač odmietol príkaz. Skontrolujte, či je nastavený na režim GS-232.';
+	@override String get pstRotatorTroubleshooting => 'PstRotator odpovedá, až keď je na to nastavený, inak nehovorí vôbec nič:\n\n- **Zapnite UDP Control** v menu Setup programu PstRotator.\n- **Port musí zodpovedať**: Communication → UDP Control Port, 12000, pokiaľ nebol zmenený. PstRotator odpovedá na nasledujúcom porte (12001), ktorý musí byť na tomto zariadení voľný.\n- **Pripojte PstRotator k jeho ovládaču.** Kým nie je pripojený, cez UDP neodpovedá nič.\n- **Povoľte ho vo firewalle** na PC, kde beží PstRotator, aj na tomto zariadení, ktoré počúva odpovede.\n- **Na Macu, iPhone alebo iPade** potrebuje Ham2K Logger prístup k lokálnej sieti (Nastavenia → Súkromie a bezpečnosť → Lokálna sieť).';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'Aktuálny stav: ${position}';
+	@override String get rotatorDisconnected => 'odpojený';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° azimut';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° elevácia';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'Čaká sa, kým ovládač nahlási svoju polohu…';
+	@override String get rotatorNotResponding => 'neodpovedá';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'Otáča sa na ${heading}, pokiaľ to limity tohto rotátora dovolia';
+	@override String get rotatorTargetAzimuth => 'Otočiť na azimut';
+	@override String get rotatorTargetAzimuthShort => 'Otočiť na az';
+	@override String get rotatorTargetElevation => 'Otočiť na eleváciu';
+	@override String get rotatorTargetElevationShort => 'Otočiť na el';
+	@override String get rotatorAzimuthInvalid => 'Musí byť 0 až 360';
+	@override String get rotatorElevationInvalid => 'Musí byť 0 až 180';
+	@override String get rotatorTurn => 'Otočiť';
+	@override String get rotatorStop => 'Stop';
 	@override String get configUnreadable => 'Uložené nastavenia tejto rádiostanice sa nepodarilo prečítať. Otvorte jej nastavenia a zadajte ich znova, alebo ju odstráňte a pridajte späť.';
 	@override String get autoConnectHeld => 'HaLo prestal odpovedať, keď sa naposledy pripájal k tejto rádiostanici, preto sa tentoraz nepripojil sám. Stlačte Pripojiť a skúste to znova.';
 }
@@ -2508,7 +2991,7 @@ class _Translations$settings$offlineData$sk extends Translations$settings$offlin
 	// Translations
 	@override String get title => 'Offline údaje';
 	@override String get noFiles => 'Žiadne dátové súbory';
-	@override String get noFilesDescription => 'Povoľte rozšírenia aktivít alebo vyhľadávania a ich offline údaje sa budú sťahovať sem.';
+	@override String get noFilesDescription => 'Zapnite rozšírenia aktivít alebo vyhľadávania a ich offline údaje sa budú sťahovať sem.';
 	@override String get refresh => 'Obnoviť';
 	@override String get refreshing => 'Obnovuje sa…';
 	@override String get updateAll => 'Aktualizovať všetko';
@@ -2533,7 +3016,7 @@ class _Translations$settings$profiles$sk extends Translations$settings$profiles$
 	// Translations
 	@override String get notSet => 'Nenastavené';
 	@override String get personalInfo => 'Osobné údaje';
-	@override String get personalInfoNote => 'Môžu byť zahrnuté do vygenerovaných denníkov, ak sú potrebné na odoslanie';
+	@override String get personalInfoNote => 'Môžu sa zahrnúť do vygenerovaných denníkov, keď ich odovzdanie denníka vyžaduje';
 	@override String get name => 'Meno';
 	@override String get email => 'E-mail';
 	@override String get club => 'Klub';
@@ -2549,7 +3032,7 @@ class _Translations$settings$search$sk extends Translations$settings$search$en {
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get clear => 'Vymazať';
+	@override String get clear => 'Vyčistiť';
 	@override String get hint => 'Hľadať v nastaveniach';
 }
 
@@ -2560,11 +3043,16 @@ class _Translations$settings$developer$sk extends Translations$settings$develope
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String get developerModeDescription => 'Povoliť upozornenia pre vývojárov, ladiace logy a nástroje.';
+	@override String get developerModeDescription => 'Zapnúť upozornenia pre vývojárov, ladiace logy a nástroje.';
 	@override String get experiments => 'Experimenty';
+	@override String get showIdleMetrics => 'Zobraziť metriky nečinnosti';
+	@override String get showIdleMetricsDescription => 'V stavovom riadku zobrazovať, ako veľmi bolo prostredie rozšírení za poslednú sekundu nečinné. Ťuknutím zobrazíte 10- a 60-sekundové priemery.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent} % nečinné';
+	@override String get idleMetricsAverages => 'Priemer nečinnosti:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds} s ${percent} %';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
-		one: '${count} povolený',
-		other: '${count} povolených',
+		one: '${count} zapnutý',
+		other: '${count} zapnutých',
 	);
 	@override String get patchTrack => 'Vetva Code Push';
 	@override String get patchTrackDescription => 'Ktorý okruh aktualizácií kódu cez internet toto zariadenie sleduje. Odvážnejšie okruhy dostávajú opravy skôr, ale menej otestované. Aktualizácie kódu sa uplatnia pri ďalšom reštarte.';
@@ -2678,6 +3166,183 @@ class _Translations$settings$gridPrecisionDescription$sk extends Translations$se
 	@override String get eight => '8 miest';
 }
 
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$sk extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'Otvoriť dialóg príkazov';
+	@override String get toggleTheme => 'Prepnúť medzi svetlou a tmavou témou';
+	@override String get toggleLanguage => 'Prepnúť medzi angličtinou a španielčinou';
+	@override String get fontScaleUp => 'Väčšie písmo';
+	@override String get fontScaleDown => 'Menšie písmo';
+	@override String get fontScaleReset => 'Normálna veľkosť písma';
+	@override String get densityLooser => 'Redšie rozloženie';
+	@override String get densityDenser => 'Hustejšie rozloženie';
+	@override String get densityAuto => 'Automatická hustota rozloženia';
+	@override String get find => 'Hľadať v denníku';
+	@override String keyerMessage({required Object n}) => 'Odoslať správu ${n}';
+	@override String get keyboardMode => 'Zapnúť alebo vypnúť režim klávesnice';
+	@override String get ptt => 'Push to talk (PTT)';
+	@override String get wipe => 'Vyčistiť práve zapisované spojenie';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$sk extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'Písanie volacích znakov';
+	@override String get escape => 'Zastaviť vysielanie, vrátiť sa o krok späť alebo zavrieť';
+	@override String get enter => 'Zapísať spojenie';
+	@override String get space => 'Ďalšie pole';
+	@override String get tab => 'Ďalšie alebo predchádzajúce pole';
+	@override String get arrows => 'Pohyb medzi poľami, ovládacími prvkami a denníkom';
+	@override String get walk => 'Listovať denníkom po stranách alebo prejsť na jeho začiatok či koniec';
+	@override String get undo => 'Vrátiť späť vyčistenie alebo vymazanie';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$sk extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'Pridať skratku';
+	@override String get listening => 'Stlačte klávesy pre skratku…';
+	@override String get listeningHint => 'Esc ukončí počúvanie';
+	@override String get add => 'Pridať';
+	@override String refusedFixed({required Object keys}) => '${keys} patrí logovacím poliam alebo dialógu a nedá sa zmeniť.';
+	@override String refusedCallsign({required Object keys}) => '${keys} slúži na písanie volacích znakov. Podržte s ním Cmd, Ctrl alebo Alt.';
+	@override String reserved({required Object keys}) => 'Systém môže ${keys} zachytiť skôr, než ho aplikácia uvidí.';
+	@override String already({required Object keys}) => '${keys} už je jedným z klávesov tohto príkazu.';
+	@override String takeIt({required Object keys, required Object command}) => 'Vziať ${keys} príkazu „${command}“';
+	@override String get resetDefault => 'Resetovať na predvolené';
+	@override String get remove => 'Odstrániť';
+	@override String get commandLabel => 'Príkaz';
+	@override String get commandHint => 'Zadajte ľubovoľný platný príkaz alebo viac príkazov oddelených „;“';
+	@override String get removeCommand => 'Odstrániť príkaz';
+	@override String commandUnknown({required Object text}) => 'Žiadny príkaz nerozumie „${text}“';
+	@override String get noShortcuts => 'Zatiaľ bez klávesu';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$sk extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'Skratky uložené do ${location}';
+	@override String exportFailed({required Object error}) => 'Skratky sa nepodarilo exportovať: ${error}';
+	@override String importPickerFailed({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} nie je súbor so skratkami, ktorý táto aplikácia dokáže prečítať: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'text nie je platný YAML (riadok ${line})';
+	@override String get problemNotKeysFile => 'nie je to súbor klávesových skratiek Ham2K';
+	@override String get problemNewerVersion => 'zapísala ho novšia verzia aplikácie';
+	@override String get problemMalformed => 'časť z neho nezodpovedá formátu skratiek';
+	@override String get problemTooLarge => 'je príliš veľký';
+	@override String get importTitle => 'Importovať skratky';
+	@override String writtenOn({required Object platform}) => 'Zapísané v systéme ${platform}.';
+	@override String get writtenOnUnknown => 'Súbor neuvádza, na akej klávesnici bol zapísaný.';
+	@override String get translate => 'Čím má byť každý z týchto klávesov na tejto klávesnici?';
+	@override String get leaveOut => 'Tieto skratky vynechať';
+	@override String get replace => 'Nahradiť konfiguráciu tohto zariadenia';
+	@override String get replaceHint => 'Každá skratka, ktorá nie je v súbore, sa vráti k predvolenej.';
+	@override String get merge => 'Pridať ku konfigurácii tohto zariadenia';
+	@override String get mergeHint => 'Skratky zo súboru nahradia skratky tohto zariadenia pre rovnaké príkazy, ostatné zostanú.';
+	@override String unknown({required Object commands}) => 'V tejto verzii neznáme, preto vynechané: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'Nie sú to skratky, preto vynechané: ${chords}';
+	@override String refusedChords({required Object chords}) => 'Klávesy, ktoré si aplikácia necháva pre seba, preto vynechané: ${chords}';
+	@override String conflicts({required Object keys}) => 'Po importe priradené k viac ako jednému príkazu: ${keys}';
+	@override String get importAction => 'Importovať';
+	@override String get imported => 'Skratky importované';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$sk extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$sk extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$sk extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'Volacie znaky staníc';
+	@override String get groupBy => 'Zoskupiť podľa';
+	@override String get period => 'Obdobie';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$sk extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'Nezoskupené';
+	@override String get date => 'Dátum';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => 'Neznámy kontinent';
+	@override String get unknownEntity => 'Neznáma entita';
+	@override String get unknownDate => 'Bez dátumu';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$sk extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'Tento mesiac';
+	@override String get last3Months => 'Posledné 3 mesiace';
+	@override String get thisYear => 'Tento rok';
+	@override String get lastYear => 'Minulý rok';
+	@override String get allTime => 'Celé obdobie';
+	@override String get custom => 'Vlastný rozsah';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$sk extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => 'za ${span}';
+	@override String get custom => 'Vlastný rozsah';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$sk extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$sk._(TranslationsSk root) : this._root = root, super.internal(root);
@@ -2725,13 +3390,79 @@ class _Translations$home$logs$import$sk extends Translations$home$logs$import$en
 	// Translations
 	@override String callsigns({required Object calls}) => 'Volacie znaky: ${calls}';
 	@override String get skippedOne => '1 záznam sa nepodarilo prečítať';
-	@override String skippedOther({required Object count}) => 'Nepodarilo sa prečítať záznamy: ${count}';
+	@override String skippedOther({required Object count}) => '${count} záznamov sa nepodarilo prečítať';
 	@override String get readingTitle => 'Číta sa súbor ADIF…';
 	@override String get checkingTitle => 'Kontrolujú sa duplikáty…';
 	@override String get importingTitle => 'Importujú sa QSO…';
 	@override String readingDetail({required Object kb}) => '${kb} Kb';
 	@override String checkingDetail({required Object done, required Object total}) => 'Skontrolované ${done} z ${total}';
 	@override String importingDetail({required Object imported, required Object total}) => 'Importované ${imported} z ${total}';
+}
+
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$sk extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'Predvolené';
+	@override String untitledName({required Object number}) => 'Rozloženie ${number}';
+	@override String switcherLabel({required Object name}) => 'Rozloženie: ${name}';
+	@override String get menuNew => 'Nové…';
+	@override String get menuExport => 'Exportovať…';
+	@override String get menuImport => 'Importovať…';
+	@override String get menuTitle => 'Rozloženia';
+	@override String get newTitle => 'Nové rozloženie';
+	@override String get editTitle => 'Upraviť rozloženie';
+	@override String get edit => 'Upraviť';
+	@override String get duplicateCurrent => 'Duplikovať aktuálne rozloženie';
+	@override String get startFromDefault => 'Začať z predvoleného rozloženia';
+	@override String get nameLabel => 'Názov';
+	@override String get descriptionLabel => 'Popis';
+	@override String get create => 'Vytvoriť';
+	@override String leaveEditTitle({required Object name}) => 'Uložiť zmeny v „${name}“?';
+	@override String get leaveEditBody => 'Toto rozloženie má zmeny, ktoré ste neuložili.';
+	@override String get discard => 'Zahodiť';
+	@override String get deleteTitle => 'Vymazať toto rozloženie?';
+	@override String deleteBody({required Object name}) => 'Naozaj chcete vymazať rozloženie „${name}“?';
+	@override String get exportTitle => 'Exportovať rozloženie';
+	@override String get exportPick => 'Panely na export';
+	@override String get tabSet => 'Sada kariet';
+	@override String get exportAction => 'Exportovať';
+	@override String exported({required Object location}) => 'Rozloženie uložené do ${location}';
+	@override String exportFailed({required Object error}) => 'Rozloženie sa nepodarilo exportovať: ${error}';
+	@override String get importTitle => 'Importovať rozloženie';
+	@override String importFromOtherView({required Object view}) => 'Vytvorené pre zobrazenie ${view}: panely, ktoré má iba toto zobrazenie, sa vynechajú.';
+	@override String get viewHome => 'Domov';
+	@override String get viewOperation => 'Prevádzka';
+	@override String get viewLogs => 'Denníky';
+	@override String get viewChase => 'Lov';
+	@override String get importAsNew => 'Ako nové rozloženie';
+	@override String get importReplace => 'Namiesto tohto rozloženia';
+	@override String get importAdd => 'Pridať do tohto rozloženia';
+	@override String get importAddHint => 'Panely sa pridajú do nového stĺpca vpravo.';
+	@override String get importPick => 'Panely na import';
+	@override String get importReplaceSettings => 'Nahradiť nastavenia panelov, ktoré sú tu už nastavené';
+	@override String get importAction => 'Importovať';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} nie je rozloženie, ktoré táto aplikácia vie prečítať: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'text nie je platný YAML (riadok ${line})';
+	@override String get problemNotLayoutFile => 'nie je to súbor rozloženia Ham2K';
+	@override String get problemNewerVersion => 'zapísala ho novšia verzia aplikácie';
+	@override String get problemNoArrangement => 'neobsahuje žiadne usporiadanie';
+	@override String get problemMalformed => 'časť z neho nezodpovedá formátu rozloženia';
+	@override String get problemTooLarge => 'je príliš veľký';
+	@override String importPickerFailed({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}';
+	@override String importFailed({required Object error}) => 'Rozloženie sa nepodarilo importovať: ${error}';
+	@override String duplicateFailed({required Object error}) => 'Rozloženie sa nepodarilo skopírovať: ${error}';
+	@override String get importNothing => 'Nebol vybraný žiadny panel, takže sa nič neimportovalo.';
+	@override String importSkipped({required Object panels}) => 'Vynechané: ${panels}';
+	@override String importKeptPinned({required Object panels}) => 'Ponechané ${panels}: usporiadanie pre malú obrazovku sa bez neho nezaobíde.';
+	@override String get notOffered => 'V tomto zobrazení nie je k dispozícii';
+	@override String get alreadyPlaced => 'Už je v tomto rozložení';
+	@override String needsExtension({required Object name}) => 'Vyžaduje ${name}';
+	@override String get listRecoveredTitle => 'Názvy rozložení sa nepodarilo prečítať';
+	@override String get listRecoveredBody => 'Zoznam rozložení tohto zobrazenia sa nepodarilo prečítať. Všetky rozloženia tu stále sú, namiesto názvu majú číslo.';
 }
 
 // Path: operation.layout.panels
@@ -2742,9 +3473,14 @@ class _Translations$operation$layout$panels$sk extends Translations$operation$la
 
 	// Translations
 	@override String get loggingDescription => 'Denník a vstupné polia';
-	@override String get infoDescription => 'Čo vieme o stanici, s ktorou pracujeme';
+	@override String get infoDescription => 'Čo vieme o protistanici';
 	@override String get spotsDescription => 'Spoty z clustrov a aktivačných programov';
 	@override String get mapDescription => 'Kde sú protistanice';
+	@override String get summariesDescription => 'Štatistiky a výsledky prevádzky, v sekciách a poradí podľa vášho výberu';
+	@override String get summariesSections => 'Sekcie a poradie';
+	@override String get summariesDays => 'Každý deň';
+	@override String get summariesReset => 'Zobraziť všetko';
+	@override String get summariesAllHidden => 'Všetky sekcie sú skryté. V nastaveniach tohto panelu vyberte tie, ktoré sa majú zobraziť.';
 	@override String get clockDescription => 'Hodiny v ľubovoľnom časovom pásme';
 	@override String get clockFace => 'Ciferník';
 	@override String get clockFaceLcd => 'LCD';
@@ -2760,7 +3496,7 @@ class _Translations$operation$layout$panels$sk extends Translations$operation$la
 	@override String get weatherNoLocation => 'Poloha nie je nastavená. Zadajte polohu v nastaveniach tohto panelu alebo ho umiestnite do prevádzky, ktorá polohu má.';
 	@override String weatherBadLocation({required Object location}) => 'Polohu ${location} sa nepodarilo prečítať. Použite lokátor ako FN31pr alebo 42.36,-71.06.';
 	@override String get weatherUnreachable => 'Open-Meteo je nedostupné — nie je sieť? Čoskoro to skúsime znova.';
-	@override String get weatherUnreadable => 'Open-Meteo odpovedalo, ale nič čitateľné. Čoskoro to skúsime znova.';
+	@override String get weatherUnreadable => 'Open-Meteo odpovedalo, ale ničím čitateľným. Čoskoro to skúsime znova.';
 	@override String weatherGusts({required Object speed}) => 'nárazy ${speed}';
 	@override String get panelAgeNow => 'práve teraz';
 	@override String panelAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
@@ -2839,12 +3575,36 @@ class _Translations$operation$layout$panels$sk extends Translations$operation$la
 	@override String get radioWatts => 'W';
 	@override String get radioConnect => 'Pripojiť túto rádiostanicu';
 	@override String get radioDisconnect => 'Odpojiť túto rádiostanicu';
-	@override String get radioStale => 'BEZ DÁT';
+	@override String get radioStale => 'BEZ ÚDAJOV';
 	@override String get radioTransmitting => 'TX';
 	@override String get radioSwr => 'SWR';
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'vysoké SWR';
+	@override String get rotatorDescription => 'Kam mieri anténa, na mape so stredom na stanici. Ťuknutím na mapu ju otočíte.';
+	@override String get rotatorRotator => 'Rotátor';
+	@override String rotatorAutoNamed({required Object name}) => 'Automaticky — ${name}';
+	@override String get rotatorAutoNone => 'Automaticky — zatiaľ žiadny rotátor';
+	@override String get rotatorBeamWidth => 'Šírka zväzku';
+	@override String get rotatorBeamWidthDescription => 'V stupňoch, kreslí sa okolo smeru. 0 nekreslí nič.';
+	@override String get rotatorLocation => 'Poloha';
+	@override String get rotatorLocationDescription => 'Lokátor alebo zemepisná šírka a dĺžka, na ktoré sa má mapa vycentrovať. Prázdne použije polohu prevádzky.';
+	@override String get rotatorTheme => 'Téma';
+	@override String get rotatorThemeColor => 'Farebná';
+	@override String get rotatorThemeGray => 'Sivá';
+	@override String get rotatorThemeMuted => 'Tlmená';
+	@override String get rotatorGrayline => 'Zobraziť grayline';
+	@override String get rotatorNoRotator => 'Žiadny rotátor na zobrazenie. Vyberte ho v nastaveniach tohto panelu alebo ho pridajte v Konfigurácii stanice.';
+	@override String get rotatorNoLocation => 'Žiadna poloha, na ktorú by sa dala mapa vycentrovať. Nastavte ju v nastaveniach tohto panelu.';
+	@override String get rotatorDisconnected => 'odpojený';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'neodpovedá';
+	@override String get rotatorLocationInvalid => 'Polohu v nastaveniach tohto panelu sa nedá prečítať. Použite lokátor alebo zemepisnú šírku a dĺžku ako 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'S';
+	@override String get rotatorEast => 'V';
+	@override String get rotatorSouth => 'J';
+	@override String get rotatorWest => 'Z';
 }
 
 // Path: operation.export.compactFileNames
@@ -2940,8 +3700,10 @@ class _Translations$operation$spots$filters$sk extends Translations$operation$sp
 	@override String get sorting => 'Triedenie';
 	@override String get sortByTime => 'Podľa času spotu';
 	@override String get sortByFrequency => 'Podľa frekvencie';
+	@override String get sortByWanted => 'Najžiadanejšie';
 	@override String get groupByBand => 'Zoskupiť podľa pásma';
 	@override String get groupCallsWithNotes => 'Zoskupiť volacie znaky s poznámkami';
+	@override String get alertingOnly => 'Iba spoty s upozorneniami';
 	@override String get sourceNoReply => 'Bez odpovede';
 	@override String get sourceError => 'Chyba';
 }
@@ -2957,7 +3719,7 @@ class _Translations$operation$spots$logConflict$sk extends Translations$operatio
 	@override String get editingBody => 'Upravujete zapísané spojenie. Zapísať namiesto toho tento spot, alebo sa vrátiť a dokončiť úpravu?';
 	@override String get composingBody => 'Začali ste zadávať spojenie. Zapísať namiesto toho tento spot, alebo sa vrátiť a dokončiť, čo ste písali?';
 	@override String get goBack => 'Vrátiť sa';
-	@override String get clearAndLog => 'Vymazať a zapísať spot';
+	@override String get clearAndLog => 'Vyčistiť a zapísať spot';
 }
 
 // Path: settings.logging.leftieMode
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$sk extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$sk extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'nie je volací znak operátora, ktorým sa dá prihlásiť';
+	@override String get connectFailed => 'uzol je nedostupný';
+	@override String get needsPassword => 'uzol žiada heslo a žiadne nie je uložené';
+	@override String get loginFailed => 'uzol neprijal prihlásenie';
+	@override String get disconnected => 'uzol ukončil spojenie';
+	@override String get timeout => 'uzol neodpovedal';
+	@override String get off => 'Pripájať sa k clustru je vypnuté';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$sk extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$sk._(TranslationsSk root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$sk extends Translations$settings$radio
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'Ovládať PTT klávesnicou';
+	@override late final _Translations$settings$radio$pttKey$modes$sk modes = _Translations$settings$radio$pttKey$modes$sk._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$sk descriptions = _Translations$settings$radio$pttKey$descriptions$sk._(_root);
+	@override String get key => 'Kláves PTT';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Vysiela sa';
 }
@@ -3214,7 +3996,7 @@ class _Translations$settings$radio$snapMinSpeed$sk extends Translations$settings
 
 	// Translations
 	@override String get title => 'Zaokrúhľovanie: najpomalší pohyb';
-	@override String get description => 'Ak otáčate gombíkom pomalšie, frekvencia sa nezaokrúhli, pokiaľ nešlo o dlhý pohyb.';
+	@override String get description => 'Ak otáčate gombíkom pomalšie ako táto hodnota, frekvencia sa nezaokrúhli, pokiaľ nešlo o dlhý pohyb.';
 }
 
 // Path: settings.radio.enterSends
@@ -3256,8 +4038,8 @@ class _Translations$settings$radio$cwMessages$sk extends Translations$settings$r
 	// Translations
 	@override String get title => 'Správy CW kľúčovača';
 	@override String get notSupported => 'Aktuálna rádiostanica nepodporuje kľúčovanie CW';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'Správa (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Správa ${n}';
 	@override String get labelField => 'Popis';
 	@override String labelKey({required Object n}) => 'Popis F${n}';
 	@override String get details => 'Podrobnosti';
@@ -3265,13 +4047,16 @@ class _Translations$settings$radio$cwMessages$sk extends Translations$settings$r
 	@override String get sets => 'Sada správ';
 	@override String get newSet => 'Nová sada';
 	@override String get renameSet => 'Premenovať sadu';
-	@override String get deleteSet => 'Odstrániť sadu';
+	@override String get deleteSet => 'Vymazať sadu';
 	@override String get newSetName => 'Názov';
 	@override String get setDefault => 'Predvolená';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Správy ESM';
 	@override String get setSaved => 'Moje správy';
-	@override String get repeat => 'Opakovať správu č. 1';
+	@override String get repeat => 'Opakovať správu 1';
+	@override String get repeatShort => 'Opakovať M1';
+	@override String get cooldown => 'Pauza pred opakovaním';
+	@override String cooldownSeconds({required Object n}) => '${n} sekúnd';
 	@override String get repeatWait => 'Opakuje sa';
 	@override String get keyboard => 'Píšte a odošle sa';
 	@override String get keyboardField => 'Píšte a odošle sa';
@@ -3297,11 +4082,24 @@ class _Translations$settings$radio$cwMessages$sk extends Translations$settings$r
 	@override String get helpEsmIntro => 'So zapnutým Enter odosiela správy kláves Enter vysiela správy podľa ich funkčného klávesu, ako v N1MM. Sada Správy ESM začína týmito:';
 	@override String get helpEsmCq => 'Pri Run Enter s prázdnym poľom volacieho znaku volá CQ';
 	@override String get helpEsmExchange => 'Vaša výmena: pri Run po ich volacom znaku, pri S&P potom, ako odpovedia';
-	@override String get helpEsmThanks => 'Poďakovanie po zapísaní spojenia: jeho zástupné symboly označujú ďalšie spojenie, nie toto';
+	@override String get helpEsmThanks => 'Poďakovanie po zapísaní spojenia: qso je zapísané spojenie, next to nasledujúce';
 	@override String get helpEsmMyCall => 'Pri S&P váš volací znak pre stanicu, ktorej odpovedáte';
 	@override String get helpEsmHisCall => 'Pri Run ich volací znak pred vašou výmenou';
 	@override String get helpEsmAgain => 'Opýta sa znova, keď z ich výmeny nebolo nič prijaté';
-	@override String get helpEsmStackThanks => 'Navrhované F3 pre zásobníky //: TU sa odošle po zapísaní spojenia, takže poďakuje, potom zavolá ďalšiu stanicu v zásobníku a odošle vašu výmenu, alebo sa opýta na čiastočný znak (TU KR?); ak už nič nezostáva, iba TU';
+	@override String get helpEsmStackThanks => 'Navrhované F3 pre zásobníky //: poďakuje, potom zavolá ďalšiu stanicu v zásobníku a odošle vašu výmenu, alebo sa opýta na čiastočný znak (TU KR?); ak už nič nezostáva, iba TU';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$sk extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'Kľúčovač';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => 'Hlas';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3314,7 +4112,7 @@ class _Translations$settings$radio$voiceMessages$sk extends Translations$setting
 	@override String get title => 'Správy fóniového kľúčovača';
 	@override String get notSupported => 'Aktuálna rádiostanica nepodporuje fóniové správy';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'Hlasová pamäť (${n})';
+	@override String messageTitle({required Object n}) => 'Hlasová pamäť ${n}';
 	@override String get labelField => 'Popis';
 	@override String labelKey({required Object n}) => 'Popis hlasovej pamäte ${n}';
 	@override String durationSeconds({required Object n}) => '${n} s';
@@ -3323,7 +4121,7 @@ class _Translations$settings$radio$voiceMessages$sk extends Translations$setting
 	@override String get playButton => 'Prehrať';
 	@override String get recordButton => 'Nahrať';
 	@override String get stopButton => 'Stop';
-	@override String get repeat => 'Opakovať správu č. 1';
+	@override String get repeat => 'Opakovať správu 1';
 	@override String recordHelpTitle({required Object model}) => 'Poznámky k ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Tieto pamäte sú v rádiostanici zariadenia ${device}. Ich názvy a dĺžky patria tomuto zariadeniu.';
 	@override String get namedOnRadio => 'Uložené v rádiostanici, kde ich vidia aj jej ostatní klienti.';
@@ -3340,6 +4138,89 @@ class _Translations$settings$radio$voiceMessages$sk extends Translations$setting
 	@override String recordingMemory({required Object label}) => 'Nahráva sa ${label}';
 	@override String get doubtful => 'Prehrala ju rádiostanica? Hneď hlásila, že je nečinná.';
 	@override String get recordOnRadio => 'Pamäte musíte nahrať priamo na rádiostanici.';
+	@override String get sets => 'Sada správ';
+	@override String get soundFilesSet => 'Zvukové súbory na tomto počítači';
+	@override String get openFileButton => 'Otvoriť súbor';
+	@override String get newSet => 'Nová sada';
+	@override String get renameSet => 'Premenovať sadu';
+	@override String get deleteSet => 'Vymazať sadu';
+	@override String get newSetName => 'Názov';
+	@override String deleteSetConfirm({required Object name}) => 'Vymazať ${name} a jej nahrávky? Nedá sa to vrátiť späť.';
+	@override String get output => 'Posielať zvuk do';
+	@override String get input => 'Nahrávať z';
+	@override String get outputRadio => 'Posielať do rádiostanice cez sieť';
+	@override String get inputDefault => 'Predvolené v systéme';
+	@override String get pickDevice => 'Vyberte zvukové zariadenie';
+	@override String deviceMissing({required Object name}) => '${name} (nepripojené)';
+	@override String get lead => 'Oneskorenie po zakľúčovaní';
+	@override String get tail => 'Oneskorenie pred odkľúčovaním';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => 'Vypočuť';
+	@override String get notRecorded => 'Nenahrané';
+	@override String get unplayable => 'Tento súbor sa nedá prehrať';
+	@override String get problemNoOutput => 'Pred prehraním správy vyberte zvukové zariadenie, ktoré napája rádiostanicu.';
+	@override String get problemOutputMissing => 'Zvukové zariadenie, ktoré napája rádiostanicu, nie je pripojené.';
+	@override String get problemInputMissing => 'Nahrávacie zariadenie nie je pripojené.';
+	@override String get problemDeviceFailed => 'Zvukové zariadenie sa nepodarilo otvoriť.';
+	@override String get problemNotRecorded => 'Táto správa ešte nemá nahrávku.';
+	@override String get problemRecordingSilent => 'Z nahrávacieho zariadenia nebolo nič počuť, správa preto zostala bez zmeny. Skontrolujte vstup a to, či aplikácia smie používať mikrofón.';
+	@override String get problemRadioAudioUnavailable => 'Rádiostanica teraz neberie zvuk z aplikácie. Potrebuje sieťové pripojenie k rádiostanici.';
+	@override String get problemSourceRefused => 'Rádiostanica neprepla vysielaný zvuk na aplikáciu, správa sa preto zastavila. Nastavte rádiostanicu tak, aby vysielala zvuk z aplikácie.';
+	@override String get problemCannotKey => 'Túto rádiostanicu nemožno kľúčovať cez CAT, takže počítač do nej nemôže prehrávať správy.';
+	@override String get problemUnplayable => 'Súbor tejto správy nie je zvukový súbor, ktorý aplikácia vie prehrať. Použite súbor WAV, FLAC alebo MP3, alebo správu nahrajte znova.';
+	@override String get problemRecordingFailed => 'Nahrávka sa predčasne skončila, správa preto zostala bez zmeny. Skontrolujte, či je nahrávacie zariadenie stále pripojené a či je na disku miesto.';
+	@override String get problemFileFailed => 'Nahrávku sa nepodarilo uložiť na miesto správy, správa preto zostala bez zmeny.';
+	@override String problemWordsMissing({required Object words}) => 'Táto správa potrebuje slová, ktoré ste nenahrali: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'Šablóna tejto správy má problém: ${error}';
+	@override String get problemNoOperation => 'Správy hovorené vašimi slovami sa prehrávajú v prevádzke, kde je spojenie, pre ktoré sa majú povedať.';
+	@override String get problemNothingSaid => 'Táto správa pre toto spojenie nič nehovorí.';
+	@override String get templateField => 'Povedať mojimi slovami';
+	@override String get templateHelp => 'Nechajte prázdne, ak sa má prehrať nahrávka. Inak sa správa povie slovami, ktoré ste nahrali, doplnenými pre každé spojenie, pomocou týchto hodnôt:';
+	@override String get help => 'Pomocník';
+	@override String get helpTitle => 'Správy hovorené vašimi slovami';
+	@override String get helpFullExample => 'Celá správa:';
+	@override String get helpExample => 'Ich značka, ich report a vaša nahrávka „QSL?“';
+	@override String get playOnRadio => 'Prehrať na rádiostanici';
+	@override String get templateHelpCall => 'Ich volací znak';
+	@override String get templateHelpReport => 'Report, ktorý im dávate';
+	@override String get templateHelpMessage => 'Nahrávka správy 2, prehraná tak, ako bola nahraná';
+	@override String get voiced => 'Hovorené vašimi slovami';
+	@override String willSay({required Object words}) => 'Povie: ${words}';
+	@override String willSayMissing({required Object words}) => 'Zatiaľ nenahrané: ${words}';
+	@override String get previewNoOperation => 'Otvorte prevádzku a uvidíte, čo povie.';
+	@override String get wordsDescription => 'Použite vlastný hlas pre volacie znaky, čísla a ďalšie.';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$sk extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Nahrávky slov';
+	@override String get callField => 'Slová pre operátora';
+	@override String get intro => 'Každé slovo alebo číslo nahrajte trikrát za sebou, rýchlo spojené, tak ako ho hovoríte vo volacom znaku. Dlhšie frázy sa nahrávajú iba raz.';
+	@override String get recordAll => 'Nahrať všetko';
+	@override String get recordAllGuide => 'Každé slovo prečítajte trikrát spojene a frázu z viacerých slov raz, medzi riadkami s nadýchnutím. Po poslednom stlačte Stop.';
+	@override String recordingOne({required Object word}) => 'Povedzte „${word} ${word} ${word}“ a potom stlačte Stop.';
+	@override String recordingOnce({required Object words}) => 'Povedzte „${words}“ a potom stlačte Stop.';
+	@override String get recorded => 'Nahrané';
+	@override String get notRecorded => 'Nenahrané';
+	@override String get addPhrase => 'Pridať frázu';
+	@override String get phraseField => 'Fráza, ako ju píšete v správe';
+	@override String get deletePhrase => 'Vymazať frázu';
+	@override String get tryField => 'Skúste povedať';
+	@override String get pauseLetters => 'Pauza medzi písmenami';
+	@override String get pauseWords => 'Pauza medzi slovami';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'Rýchlosť';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'Rozšírené nastavenia';
+	@override String get splitSilent => 'V nahrávke nebolo nič počuť.';
+	@override String get splitNotThreeTakes => 'Nepodarilo sa nájsť tri opakovania. Povedzte slovo trikrát spojene a skúste to znova.';
+	@override String get splitLineCount => 'V nahrávke sa nepodarilo nájsť každé slovo. Každé prečítajte trikrát, s nadýchnutím medzi slovami.';
+	@override String get splitLinesTooClose => 'Slová sa nedali rozlíšiť. Medzi slovami nechajte dlhšiu pauzu na nádych.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3373,6 +4254,28 @@ class _Translations$settings$map$style$sk extends Translations$settings$map$styl
 
 	// Translations
 	@override String get title => 'Štýl mapy';
+}
+
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$sk extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Zobraziť volacie znaky';
+	@override String get description => 'Každé spojenie je štítok s volacím znakom vo farbe svojho pásma';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$sk extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Zobraziť grayline';
+	@override String get description => 'Zatieni nočnú stranu Zeme, so súmrakom ako prechodom';
 }
 
 // Path: settings.map.styleOpts
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$sk extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - všeobecná';
 	@override String get icomGeneric => 'Icom - všeobecná';
 	@override String get kenwoodGeneric => 'Kenwood - všeobecná';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$sk extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - všeobecná';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$sk extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'Rádiostanica ovládaná cez rigctld';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$sk extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => 'Moja rádiostanica';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
+	@override String get gs232a => 'Rozhranie rotátora Yaesu GS-232A';
+	@override String get pstRotator => 'PstRotator (ovládanie cez UDP)';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$sk extends Translations$settings
 
 	// Translations
 	@override String get network => 'Sieť/WiFi';
+	@override String get secureNetwork => 'Zabezpečená sieť/WiFi';
 	@override String get usbSerial => 'USB sériový';
 	@override String get wifi => 'Sieť/WiFi';
 	@override String get bluetoothSerial => 'Bluetooth sériový';
+	@override String get bleSerial => 'Bluetooth LE';
 	@override String get placeholder => 'Zástupné';
 }
 
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$sk extends Transla
 	@override String get thunderstormWithHail => 'Búrka s krupobitím';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$sk extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Nie';
+	@override String get toggle => 'Prepínať';
+	@override String get hold => 'Držať';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$sk extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$sk._(TranslationsSk root) : this._root = root, super.internal(root);
+
+	final TranslationsSk _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Klávesnica rádiostanicu nekľúčuje.';
+	@override String get toggle => 'Pri fónii kláves PTT rádiostanicu zakľúčuje a ďalšie stlačenie ju odkľúčuje. Sama sa odkľúčuje po minúte.';
+	@override String get hold => 'Pri fónii rádiostanica vysiela, kým je kláves PTT stlačený, najviac minútu.';
+}
+
 /// The flat map containing all translations for locale <sk>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3569,14 +4518,15 @@ extension on TranslationsSk {
 			'common.save' => 'Uložiť',
 			'common.ok' => 'OK',
 			'common.cancel' => 'Zrušiť',
-			'common.delete' => 'Odstrániť',
+			'common.delete' => 'Vymazať',
 			'common.create' => 'Vytvoriť',
 			'common.error' => 'Chyba',
 			'common.close' => 'Zatvoriť',
 			'common.done' => 'Hotovo',
 			'common.callsign' => 'Volací znak',
-			'common.clear' => 'Vymazať',
+			'common.clear' => 'Vyčistiť',
 			'common.dismiss' => 'Zavrieť',
+			'common.copyDetails' => 'Kopírovať podrobnosti',
 			'common.expand' => 'Rozbaliť',
 			'common.collapse' => 'Zbaliť',
 			'onboarding.welcomeTitle' => 'Vitajte v Ham2K Portable Logger!',
@@ -3588,7 +4538,7 @@ extension on TranslationsSk {
 			'onboarding.next' => 'Ďalej',
 			'onboarding.done' => 'Hotovo',
 			'onboarding.callsignTitle' => 'Aký je váš volací znak?',
-			'onboarding.callsignBody' => 'Aby vám bola táto aplikácia užitočná, potrebujete licenciu rádioamatéra',
+			'onboarding.callsignBody' => 'Aby vám bola táto aplikácia na niečo, potrebujete rádioamatérsku licenciu',
 			'onboarding.callsignLabel' => 'Volací znak operátora',
 			'onboarding.alreadyHaveAccount' => 'Už máte účet?',
 			'onboarding.foundSiblingTitle' => 'Prepojiť existujúci účet?',
@@ -3597,13 +4547,19 @@ extension on TranslationsSk {
 			'onboarding.foundSiblingsBody' => 'Na tomto zariadení sme našli iné aplikácie Ham2K. Prepojte túto aplikáciu s účtom jednej z nich a prenesú sa váš volací znak aj denníky.',
 			'onboarding.linkWithApp' => ({required Object app}) => 'Prepojiť s ${app}',
 			'onboarding.linkWithPolo' => 'Prepojiť s účtom zo staršej verzie',
-			'onboarding.setUpFresh' => 'Nastaviť od začiatku',
+			'onboarding.setUpFresh' => 'Začať odznova',
 			'onboarding.activitiesTitle' => 'Obľúbené aktivity',
 			'onboarding.activitiesBody' => 'Zaujímajú vás niektoré z týchto populárnych aktivačných programov?',
 			'onboarding.activitiesFooter' => '(Ďalšie možnosti nájdete v Nastaveniach)',
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'Cloudová synchronizácia',
+			'onboarding.syncBody' => 'Ham2K Log Filer uchováva zálohu vašich denníkov v cloude a synchronizuje ich medzi všetkými zariadeniami, na ktorých používate aplikácie Ham2K.',
+			'onboarding.syncPricing' => 'Je to zadarmo! Platené predplatné to však zrýchli.',
+			'onboarding.syncLabel' => 'Zapnúť cloudovú synchronizáciu',
+			'onboarding.syncOffWarning' => 'UPOZORNENIE: zvyšuje to riziko straty údajov o prevádzke, napríklad ak sa vaše zariadenie pokazí alebo stratí.',
+			'onboarding.notNow' => 'Teraz nie',
 			'onboarding.consentTitle' => 'Údaje a súkromie',
 			'onboarding.consentUsageBody' => 'Aby sme mohli aplikáciu zlepšovať, radi by sme zbierali údaje o výkone, zlyhaniach a používaní aplikácie.',
 			'onboarding.consentUsageLabel' => 'Zdieľať údaje o používaní aplikácie',
@@ -3617,9 +4573,10 @@ extension on TranslationsSk {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Novinky v zostave ${build}',
 			'testerOverlay.thanks' => 'Ďakujeme, že riskujete svoj denník, aby ste nám pomohli túto aplikáciu zlepšiť!',
 			'extensionsPanel.categoryActivity' => 'Aktivity',
+			'extensionsPanel.categoryAward' => 'Diplomy',
 			'extensionsPanel.categoryContest' => 'Súťaže',
 			'extensionsPanel.categoryLookup' => 'Vyhľadávanie volacích znakov',
-			'extensionsPanel.categorySpots' => 'Zdroje spotov',
+			'extensionsPanel.categorySpots' => 'Zdroje pre spoty',
 			'extensionsPanel.categoryDashboard' => 'Panely prehľadu',
 			'extensionsPanel.categoryOther' => 'Ostatné rozšírenia',
 			'extensionsPanel.searchHint' => 'Hľadať rozšírenia',
@@ -3627,13 +4584,23 @@ extension on TranslationsSk {
 			'extensionsPanel.noMatches' => 'Hľadaniu nezodpovedajú žiadne rozšírenia',
 			'extensionsPanel.installFromFile' => 'Inštalovať zo súboru…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Verzia ${version}',
-			'extensionsPanel.canReach' => 'Toto rozšírenie môže kontaktovať',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Snímka obrazovky ${n} z ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Predchádzajúca snímka obrazovky',
+			'extensionsPanel.nextScreenshot' => 'Ďalšia snímka obrazovky',
+			'extensionsPanel.screenshotUnavailable' => 'Snímka obrazovky nie je k dispozícii',
+			'extensionsPanel.canReach' => 'Toto rozšírenie môže použiť',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, cez trvalé spojenie',
 			'extensionsPanel.canHoldLocalConnection' => 'Zariadenia vo vašej lokálnej sieti, cez trvalé spojenie',
 			'extensionsPanel.canUseLocation' => 'Vašu polohu',
 			'extensionsPanel.canReadRadio' => 'Vašu rádiostanicu, na čítanie frekvencie a módu',
 			'extensionsPanel.canControlRadio' => 'Vašu rádiostanicu, na jej ovládanie a vysielanie — ladenie, výkon, CW, hlasové pamäte a PTT',
-			'extensionsPanel.canSetUserAgent' => 'Predstaviť sa serverom pod vlastným menom',
+			'extensionsPanel.canCommandRadioRaw' => 'Vašu rádiostanicu, na odoslanie ľubovoľného príkazu v jej vlastnom protokole — vrátane takých, ktoré vysielajú alebo menia jej nastavenia',
+			'extensionsPanel.canReadCluster' => 'DX cluster, prihlásené ako vy, na čítanie toho, čo posiela',
+			'extensionsPanel.canSpotCluster' => 'DX cluster, prihlásené ako vy, na odosielanie spotov vo vašom mene',
+			'extensionsPanel.canCommandCluster' => 'DX cluster, prihlásené ako vy, na odoslanie ľubovoľného príkazu vo vašom mene',
+			'extensionsPanel.canSetUserAgent' => 'Vlastné meno, keď sa predstavuje serverom',
+			'extensionsPanel.canChangeSettings' => 'Vaše nastavenia, na ich zmenu cez svoje príkazy: ľubovoľné nastavenie, režim vývojára a experimenty',
 			'extensionsPanel.noCapabilities' => 'Nepožaduje nič mimo aplikácie.',
 			'extensionsPanel.sandboxNote' => 'Rozšírenia bežia v izolovanom prostredí: bez prístupu k vašim súborom a bez siete okrem toho, čo je tu uvedené.',
 			'extensionsPanel.installAction' => 'Inštalovať',
@@ -3643,8 +4610,8 @@ extension on TranslationsSk {
 			'extensionsPanel.uninstallAction' => 'Odstrániť',
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => 'Odstrániť ${name}?',
 			'extensionsPanel.uninstallBody' => 'Toto rozšírenie a jeho nastavenia budú odstránené. Vaše denníky zostanú nedotknuté.',
-			'extensionsPanel.installedMessage' => ({required Object name}) => 'Nainštalované ${name}',
-			'extensionsPanel.installDownloading' => 'Sťahovanie…',
+			'extensionsPanel.installedMessage' => ({required Object name}) => 'Nainštalované: ${name}',
+			'extensionsPanel.installDownloading' => 'Sťahuje sa…',
 			'extensionsPanel.installWaiting' => 'Čaká sa na inštaláciu…',
 			'extensionsPanel.installInstalling' => 'Inštalácia…',
 			'extensionsPanel.installAwaitingApproval' => 'Čaká sa na vaše schválenie…',
@@ -3665,7 +4632,7 @@ extension on TranslationsSk {
 			'extensionsPanel.updateAvailableBadge' => 'Aktualizácia dostupná',
 			'extensionsPanel.updatesAvailableTitle' => 'Aktualizácie rozšírení',
 			'extensionsPanel.updateAvailableFor' => ({required Object name}) => 'Pre ${name} je dostupná aktualizácia.',
-			'extensionsPanel.updatesAvailable' => ({required Object names, required Object count}) => '${names} a ďalšie (${count}) potrebujú aktualizáciu.',
+			'extensionsPanel.updatesAvailable' => ({required Object names, required Object count}) => '${names} a ďalších ${count} potrebujú aktualizáciu.',
 			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} potrebujú aktualizáciu.',
 			'extensionsPanel.pendingUpdatesSection' => 'Čakajúce aktualizácie',
 			'extensionsPanel.updateAllAction' => 'Aktualizovať všetko',
@@ -3675,13 +4642,13 @@ extension on TranslationsSk {
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Aktualizovať ${count} rozšírenie?', other: 'Aktualizovať ${count} rozšírení?', ), 
 			'extensionsPanel.upgradeDoneTitle' => 'Vaše rozšírenia sú pripravené',
 			'extensionsPanel.upgradeDoneBody' => 'Teraz pochádzajú z katalógu rozšírení Ham2K, takže sa môžu aktualizovať bez čakania na novú verziu aplikácie.',
-			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Neaktualizované: ${names}.',
+			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Neprenesené: ${names}.',
 			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'Nespustili sa: ${names}.',
 			'extensionsPanel.upgradeDoneRefusedHint' => 'Stále sú nainštalované a označené v Nastavenia › Rozšírenia — ich aktualizáciou tam ich obnovíte.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'Katalóg za ne nemá priamu náhradu, preto v ňom hľadajte rozšírenia, ktoré pokrývajú to, čo ste používali.',
 			'extensionsPanel.retiredQp' => 'QSO Parties',
 			'extensionsPanel.retiredStateparks' => 'Podujatia State Parks',
-			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => 'Niektoré vaše rozšírenia (${count}) ešte nedorazili. Stiahnu sa, keď bude katalóg rozšírení nabudúce dostupný.',
+			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count} z vašich rozšírení ešte nedorazilo. Stiahnu sa, keď bude katalóg rozšírení nabudúce dostupný.',
 			'extensionsPanel.runtimeDeadBody' => 'Vaše rozšírenia sa nespustili. Reštart aplikácie by ich mal obnoviť.',
 			'extensionsPanel.refusedTitle' => 'Niektoré rozšírenia sa nespustili',
 			'extensionsPanel.upgradeBusyTitle' => 'Nastavenie stále prebieha',
@@ -3700,8 +4667,16 @@ extension on TranslationsSk {
 			'extensionsPanel.restoreFailed' => ({required Object names}) => 'Nepodarilo sa nainštalovať: ${names}. Ponúkneme ich znova pri ďalšom otvorení aplikácie.',
 			'extensionsPanel.restoreBusyBody' => 'Aplikácia stále nastavuje vaše rozšírenia. Ponúkneme ich znova pri ďalšom otvorení aplikácie.',
 			'extensionsPanel.restoreRuntimeDeadBody' => 'Znova sme ich nainštalovali, ale vaše rozšírenia sa nespustili. Reštart aplikácie by ich mal obnoviť.',
-			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} bolo stiahnuté',
+			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Rozšírenie ${name} bolo stiahnuté',
 			'extensionsPanel.revokedBody' => 'Katalóg túto verziu stiahol, preto bola vypnutá.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => 'Rozšírenie ${name} bolo vypnuté',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K toto rozšírenie nateraz vypol.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => 'Rozšírenie ${name} bolo nahradené',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => 'Nahrádza ho ${replacement}. Prepnúť sa môžete v Rozšíreniach.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Nahradené rozšírením ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Nahradené rozšírením ${name}, ktoré už máte',
+			'extensionsPanel.replaceAction' => 'Nahradiť',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'Jeho nastavenia sa presunú do ${replacement}, ktoré už máte. Vaše denníky zostanú nedotknuté.',
 			'extensionsPanel.downloadHashMismatch' => 'Toto sťahovanie nie je rozšírenie, ktoré opísal katalóg.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'Katalóg nemá verziu ${version} rozšírenia ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'Tento odkaz do katalógu neurčuje verziu rozšírenia.',
@@ -3715,6 +4690,7 @@ extension on TranslationsSk {
 			'extensionsPanel.followsBleeding' => 'Dostáva vývojové, nestabilné a stabilné vydania',
 			'extensionsPanel.followStableAction' => 'Sledovať iba stabilné vydania',
 			'extensionsPanel.revokedBadge' => 'Stiahnuté',
+			'extensionsPanel.forceDisabledBadge' => 'Vypol Ham2K',
 			'extensionsPanel.refusedBadge' => 'Nenačítalo sa',
 			'extensionsPanel.downloadNotHttps' => 'Toto sťahovanie neprebieha cez zabezpečené spojenie.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} pre toto rozšírenie nie je dostupný.',
@@ -3731,6 +4707,8 @@ extension on TranslationsSk {
 			'extensionsPanel.hookSpots' => 'Spoty',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Lov ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Aktivácia ${program}',
+			'extensionsPanel.suggestedSection' => 'Navrhované',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'Ďalšie dostupné (${count})',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'Nová prevádzka',
 			'home.stationCallsign' => 'Volací znak stanice',
@@ -3762,6 +4740,23 @@ extension on TranslationsSk {
 			'home.logs.pendingDeleteBody' => 'Toto QSO je označené na vymazanie.',
 			'home.logs.editGone' => 'Neuložené: toto QSO už nie je v tomto denníku.',
 			'home.logs.discard' => 'Zahodiť',
+			'home.logs.sheet.callsigns' => 'Volacie znaky staníc',
+			'home.logs.sheet.groupBy' => 'Zoskupiť podľa',
+			'home.logs.sheet.period' => 'Obdobie',
+			'home.logs.groupBy.none' => 'Nezoskupené',
+			'home.logs.groupBy.date' => 'Dátum',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Neznámy kontinent',
+			'home.logs.groupBy.unknownEntity' => 'Neznáma entita',
+			'home.logs.groupBy.unknownDate' => 'Bez dátumu',
+			'home.logs.period.thisMonth' => 'Tento mesiac',
+			'home.logs.period.last3Months' => 'Posledné 3 mesiace',
+			'home.logs.period.thisYear' => 'Tento rok',
+			'home.logs.period.lastYear' => 'Minulý rok',
+			'home.logs.period.allTime' => 'Celé obdobie',
+			'home.logs.period.custom' => 'Vlastný rozsah',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'za ${span}',
+			'home.logs.periodTitle.custom' => 'Vlastný rozsah',
 			'home.logs.columns.date' => 'Dátum',
 			'home.logs.columns.time' => 'Čas',
 			'home.logs.columns.freq' => 'Frekvencia',
@@ -3784,7 +4779,7 @@ extension on TranslationsSk {
 			'home.logs.panels.mapDescription' => 'Poloha vybraného QSO.',
 			'home.logs.import.callsigns' => ({required Object calls}) => 'Volacie znaky: ${calls}',
 			'home.logs.import.skippedOne' => '1 záznam sa nepodarilo prečítať',
-			'home.logs.import.skippedOther' => ({required Object count}) => 'Nepodarilo sa prečítať záznamy: ${count}',
+			'home.logs.import.skippedOther' => ({required Object count}) => '${count} záznamov sa nepodarilo prečítať',
 			'home.logs.import.readingTitle' => 'Číta sa súbor ADIF…',
 			'home.logs.import.checkingTitle' => 'Kontrolujú sa duplikáty…',
 			'home.logs.import.importingTitle' => 'Importujú sa QSO…',
@@ -3795,7 +4790,7 @@ extension on TranslationsSk {
 			'chase.chasing' => 'loví',
 			'chase.goalsTwo' => ({required Object first, required Object second}) => '${first} a ${second}',
 			'chase.goalsMore' => ({required Object first, required Object second}) => '${first}, ${second} a ďalšie',
-			'chase.station.title' => 'Loviaca stanica',
+			'chase.station.title' => 'Stanica pre lov',
 			'chase.station.stationLabel' => 'Stanica: ',
 			'chase.station.operatorLabel' => 'Op: ',
 			'chase.station.noLocation' => 'Bez polohy',
@@ -3813,7 +4808,7 @@ extension on TranslationsSk {
 			'chase.period.thisMonth' => 'Tento mesiac',
 			'chase.goals.title' => 'Ciele lovu',
 			'chase.goals.remove' => ({required Object name}) => 'Prestať loviť ${name}',
-			'chase.goals.extensionsTitle' => 'Rozšírenia, ktoré zahŕňajú lov',
+			'chase.goals.extensionsTitle' => 'Ďalšie programy pre lov',
 			'chase.panels.logging' => 'QSO',
 			'chase.panels.loggingDescription' => 'Ovládanie logovania nad QSO ulovenými v danom období.',
 			'chase.panels.info' => 'Info',
@@ -3822,11 +4817,48 @@ extension on TranslationsSk {
 			'chase.panels.spotsDescription' => 'Stanice spotované v éteri, pripravené na lov.',
 			'chase.panels.map' => 'Mapa',
 			'chase.panels.mapDescription' => 'QSO za obdobie a logovaná stanica.',
+			'chase.claims.checking' => 'Kontrolujú sa QSO pre lov',
+			'chase.claims.rebuilding' => ({required Object program}) => 'Kontroluje sa denník pre ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} z ${total} QSO',
+			'chase.notice.newRef' => ({required Object program}) => 'Nová ref. ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'Asi nová ref. ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'Nové pásmo ${program}',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'Asi nové pásmo ${program}',
+			'chase.notice.newMode' => ({required Object program}) => 'Nový mód ${program}',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'Asi nový mód ${program}',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} nepotvrdené',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Asi ${notice}',
+			'chase.alerts.title' => 'Upozornenia',
+			'chase.alerts.newRef' => 'Nová referencia',
+			'chase.alerts.newBand' => 'Nové pásmo',
+			'chase.alerts.newMode' => 'Nový mód',
+			'chase.alerts.unconfirmed' => 'Nepotvrdené',
+			'chase.checklists' => 'Postup lovu',
+			'chase.imports.importFrom' => ({required Object label}) => 'Importovať ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => 'Importovať ${file} ako',
+			'chase.imports.dropHint' => 'Pustite sem súbor a importuje sa do programu pre lov',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Importovaných ${count} záznamov ${program} z ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Importovaných ${count} záznamov ${program} z ${file}, preskočených ${skipped}, ktoré sa nedali prečítať',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} neobsahuje nič, čo by sa dalo importovať do ${program}',
+			'chase.imports.failed' => ({required Object file, required Object program}) => 'Súbor ${file} sa pre ${program} nepodarilo prečítať',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => 'Pre ${program} sa nepodarilo prečítať žiadny z ${skipped} záznamov v ${file}',
+			'chase.imports.noProgram' => ({required Object file}) => 'Súbor ${file} neimportuje žiadny program pre lov',
 			'dialogs.operationDetails' => 'Podrobnosti o prevádzke',
 			'dialogs.activities' => 'Aktivity',
 			'dialogs.stationCallsign' => 'Volací znak stanice',
+			'dialogs.advanced' => 'Rozšírené',
+			'dialogs.operatingPosition' => 'Pracovisko (viac staníc)',
+			'dialogs.assistance' => 'Asistencia',
+			'dialogs.assistanceDescription' => 'Používať spotovacie služby a iné zdroje informácií',
+			'dialogs.selfSpotting' => 'Self-spotovanie',
+			'dialogs.selfSpottingDescription' => 'Povoliť funkcie, ktoré hlásia informácie o vašej frekvencii',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'Vypnuté kvôli pravidlám ${rules}',
+			'dialogs.lookupDespiteAssistance.title' => 'Vyhľadať online?',
+			'dialogs.lookupDespiteAssistance.body' => 'Asistencia je pre túto prevádzku vypnutá. Vyhľadanie všetkých QSO tentoraz použije online služby ako QRZ.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'Asistencia je pre túto prevádzku vypnutá kvôli pravidlám ${rules}. Vyhľadanie všetkých QSO tentoraz použije online služby ako QRZ.',
+			'dialogs.lookupDespiteAssistance.action' => 'Vyhľadať online',
 			'dialogs.notes' => 'Poznámky',
-			'dialogs.deleteOperationTitle' => 'Odstrániť prevádzku',
+			'dialogs.deleteOperationTitle' => 'Vymazať prevádzku',
 			'dialogs.purgeTestsTitle' => 'Vyčistiť testovacie prevádzky',
 			'dialogs.purgeTestsBody' => 'Týmto sa natrvalo vymažú tieto testovacie prevádzky a ich QSO. Nedá sa to vrátiť späť.',
 			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Plus ${count} testovacie spojenie, ktoré nepatrí do žiadnej prevádzky.', other: 'Plus ${count} testovacích spojení, ktoré nepatria do žiadnej prevádzky.', ), 
@@ -3860,7 +4892,9 @@ extension on TranslationsSk {
 			'operation.tabs.remoteScreen' => 'Vzdialená obrazovka',
 			'operation.tabs.solar' => 'Slnko',
 			'operation.tabs.radio' => 'Rádio',
-			'operation.positions.nobodyYet' => 'Túto prevádzku zatiaľ nezdieľajú žiadne iné operátorské pracoviská.',
+			'operation.tabs.rotator' => 'Rotátor',
+			'operation.tabs.summaries' => 'Súhrny prevádzky',
+			'operation.positions.nobodyYet' => 'Túto prevádzku zatiaľ nezdieľajú žiadne ďalšie pracoviská.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Prac.: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
 			'operation.positions.unnamedPosition' => 'Iné pracovisko',
@@ -3870,7 +4904,7 @@ extension on TranslationsSk {
 			'operation.positions.panelDescription' => 'Čo práve loguje každé pracovisko, ktoré zdieľa túto prevádzku.',
 			'operation.stationCallsignNone' => 'Bez volacieho znaku stanice',
 			'operation.titleNone' => 'Bez názvu',
-			'operation.deleteOperation' => 'Odstrániť prevádzku',
+			'operation.deleteOperation' => 'Vymazať prevádzku',
 			'operation.loggingControlsStale' => 'Polia aktivít môžu byť neaktuálne — znova otvorte prevádzku a obnovia sa',
 			'operation.locationNone' => 'Nenastavené',
 			'operation.generalOperation' => 'Všeobecná prevádzka',
@@ -3912,8 +4946,72 @@ extension on TranslationsSk {
 			'operation.layout.addPanel' => ({required Object panel}) => 'Pridať ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Náhľad ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Chýba rozšírenie „${name}“',
+			'operation.layout.missingExtensionEnable' => 'Zapnúť',
+			'operation.layout.missingExtensionInstall' => 'Inštalovať…',
+			'operation.layout.missingExtensionWontRun' => 'Táto verzia sa nespustí. Aktualizujte ju v Nastavenia › Rozšírenia.',
+			'operation.layout.missingExtensionUnavailable' => 'V tejto aplikácii nie je k dispozícii',
+			'operation.layout.missingExtensionNotInCatalog' => 'Nie je v katalógu',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Katalóg je nedostupný. Skúste to znova',
+			'operation.layout.missingExtensionFailed' => 'Nepodarilo sa. Skúste to znova',
 			'operation.layout.previewUnavailable' => 'Obrázok náhľadu tohto panelu sa nepodarilo zobraziť.',
 			'operation.layout.nestedPaneTitle' => 'Viac',
+			'operation.layout.layouts.defaultName' => 'Predvolené',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Rozloženie ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Rozloženie: ${name}',
+			'operation.layout.layouts.menuNew' => 'Nové…',
+			'operation.layout.layouts.menuExport' => 'Exportovať…',
+			'operation.layout.layouts.menuImport' => 'Importovať…',
+			'operation.layout.layouts.menuTitle' => 'Rozloženia',
+			'operation.layout.layouts.newTitle' => 'Nové rozloženie',
+			'operation.layout.layouts.editTitle' => 'Upraviť rozloženie',
+			'operation.layout.layouts.edit' => 'Upraviť',
+			'operation.layout.layouts.duplicateCurrent' => 'Duplikovať aktuálne rozloženie',
+			'operation.layout.layouts.startFromDefault' => 'Začať z predvoleného rozloženia',
+			'operation.layout.layouts.nameLabel' => 'Názov',
+			'operation.layout.layouts.descriptionLabel' => 'Popis',
+			'operation.layout.layouts.create' => 'Vytvoriť',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'Uložiť zmeny v „${name}“?',
+			'operation.layout.layouts.leaveEditBody' => 'Toto rozloženie má zmeny, ktoré ste neuložili.',
+			'operation.layout.layouts.discard' => 'Zahodiť',
+			'operation.layout.layouts.deleteTitle' => 'Vymazať toto rozloženie?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'Naozaj chcete vymazať rozloženie „${name}“?',
+			'operation.layout.layouts.exportTitle' => 'Exportovať rozloženie',
+			'operation.layout.layouts.exportPick' => 'Panely na export',
+			'operation.layout.layouts.tabSet' => 'Sada kariet',
+			'operation.layout.layouts.exportAction' => 'Exportovať',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Rozloženie uložené do ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Rozloženie sa nepodarilo exportovať: ${error}',
+			'operation.layout.layouts.importTitle' => 'Importovať rozloženie',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Vytvorené pre zobrazenie ${view}: panely, ktoré má iba toto zobrazenie, sa vynechajú.',
+			'operation.layout.layouts.viewHome' => 'Domov',
+			'operation.layout.layouts.viewOperation' => 'Prevádzka',
+			'operation.layout.layouts.viewLogs' => 'Denníky',
+			'operation.layout.layouts.viewChase' => 'Lov',
+			'operation.layout.layouts.importAsNew' => 'Ako nové rozloženie',
+			'operation.layout.layouts.importReplace' => 'Namiesto tohto rozloženia',
+			'operation.layout.layouts.importAdd' => 'Pridať do tohto rozloženia',
+			'operation.layout.layouts.importAddHint' => 'Panely sa pridajú do nového stĺpca vpravo.',
+			'operation.layout.layouts.importPick' => 'Panely na import',
+			'operation.layout.layouts.importReplaceSettings' => 'Nahradiť nastavenia panelov, ktoré sú tu už nastavené',
+			'operation.layout.layouts.importAction' => 'Importovať',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} nie je rozloženie, ktoré táto aplikácia vie prečítať: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'text nie je platný YAML (riadok ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'nie je to súbor rozloženia Ham2K',
+			'operation.layout.layouts.problemNewerVersion' => 'zapísala ho novšia verzia aplikácie',
+			'operation.layout.layouts.problemNoArrangement' => 'neobsahuje žiadne usporiadanie',
+			'operation.layout.layouts.problemMalformed' => 'časť z neho nezodpovedá formátu rozloženia',
+			'operation.layout.layouts.problemTooLarge' => 'je príliš veľký',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Rozloženie sa nepodarilo importovať: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Rozloženie sa nepodarilo skopírovať: ${error}',
+			'operation.layout.layouts.importNothing' => 'Nebol vybraný žiadny panel, takže sa nič neimportovalo.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Vynechané: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Ponechané ${panels}: usporiadanie pre malú obrazovku sa bez neho nezaobíde.',
+			'operation.layout.layouts.notOffered' => 'V tomto zobrazení nie je k dispozícii',
+			'operation.layout.layouts.alreadyPlaced' => 'Už je v tomto rozložení',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'Vyžaduje ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'Názvy rozložení sa nepodarilo prečítať',
+			'operation.layout.layouts.listRecoveredBody' => 'Zoznam rozložení tohto zobrazenia sa nepodarilo prečítať. Všetky rozloženia tu stále sú, namiesto názvu majú číslo.',
 			'operation.layout.editLayout' => 'Upraviť rozloženie',
 			'operation.layout.saveLayout' => 'Uložiť rozloženie',
 			'operation.layout.revertLayout' => 'Zahodiť zmeny rozloženia',
@@ -3922,12 +5020,28 @@ extension on TranslationsSk {
 			'operation.layout.layoutUnreadableBody' => 'Vaše uložené rozloženie sa nepodarilo prečítať, preto sa namiesto neho zobrazuje predvolené usporiadanie. Pôvodné rozloženie sa neprepíše, kým sa nerozhodnete toto ponechať.',
 			'operation.layout.layoutUnreadableAction' => 'Použiť toto rozloženie',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} sa nepodarilo zobraziť',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: poslal viac ako ${max} znakov',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho grafika má viac ako ${max} prvkov',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho grafika je vnorená hlbšie ako ${max} úrovní',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} sa nepodarilo zobraziť: jeho grafika nie je samostatná',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} vrstiev',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} ovládacích prvkov',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: časť jeho scény má viac ako ${max} položiek',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: reťazec scény je dlhší ako ${max} znakov',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho rozloženie je vnorené hlbšie ako ${max} úrovní',
 			'operation.layout.panelRenderRetry' => 'Skúsiť znova',
 			'operation.layout.panelActionFailed' => 'Akcia panelu zlyhala. Skúste to znova.',
 			'operation.layout.panels.loggingDescription' => 'Denník a vstupné polia',
-			'operation.layout.panels.infoDescription' => 'Čo vieme o stanici, s ktorou pracujeme',
+			'operation.layout.panels.infoDescription' => 'Čo vieme o protistanici',
 			'operation.layout.panels.spotsDescription' => 'Spoty z clustrov a aktivačných programov',
 			'operation.layout.panels.mapDescription' => 'Kde sú protistanice',
+			'operation.layout.panels.summariesDescription' => 'Štatistiky a výsledky prevádzky, v sekciách a poradí podľa vášho výberu',
+			'operation.layout.panels.summariesSections' => 'Sekcie a poradie',
+			'operation.layout.panels.summariesDays' => 'Každý deň',
+			'operation.layout.panels.summariesReset' => 'Zobraziť všetko',
+			'operation.layout.panels.summariesAllHidden' => 'Všetky sekcie sú skryté. V nastaveniach tohto panelu vyberte tie, ktoré sa majú zobraziť.',
 			'operation.layout.panels.clockDescription' => 'Hodiny v ľubovoľnom časovom pásme',
 			'operation.layout.panels.clockFace' => 'Ciferník',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -3943,7 +5057,7 @@ extension on TranslationsSk {
 			'operation.layout.panels.weatherNoLocation' => 'Poloha nie je nastavená. Zadajte polohu v nastaveniach tohto panelu alebo ho umiestnite do prevádzky, ktorá polohu má.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Polohu ${location} sa nepodarilo prečítať. Použite lokátor ako FN31pr alebo 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Open-Meteo je nedostupné — nie je sieť? Čoskoro to skúsime znova.',
-			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo odpovedalo, ale nič čitateľné. Čoskoro to skúsime znova.',
+			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo odpovedalo, ale ničím čitateľným. Čoskoro to skúsime znova.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'nárazy ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'práve teraz',
 			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'pred ${count} min', other: 'pred ${count} min', ), 
@@ -4046,12 +5160,36 @@ extension on TranslationsSk {
 			'operation.layout.panels.radioWatts' => 'W',
 			'operation.layout.panels.radioConnect' => 'Pripojiť túto rádiostanicu',
 			'operation.layout.panels.radioDisconnect' => 'Odpojiť túto rádiostanicu',
-			'operation.layout.panels.radioStale' => 'BEZ DÁT',
+			'operation.layout.panels.radioStale' => 'BEZ ÚDAJOV',
 			'operation.layout.panels.radioTransmitting' => 'TX',
 			'operation.layout.panels.radioSwr' => 'SWR',
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'vysoké SWR',
+			'operation.layout.panels.rotatorDescription' => 'Kam mieri anténa, na mape so stredom na stanici. Ťuknutím na mapu ju otočíte.',
+			'operation.layout.panels.rotatorRotator' => 'Rotátor',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automaticky — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Automaticky — zatiaľ žiadny rotátor',
+			'operation.layout.panels.rotatorBeamWidth' => 'Šírka zväzku',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'V stupňoch, kreslí sa okolo smeru. 0 nekreslí nič.',
+			'operation.layout.panels.rotatorLocation' => 'Poloha',
+			'operation.layout.panels.rotatorLocationDescription' => 'Lokátor alebo zemepisná šírka a dĺžka, na ktoré sa má mapa vycentrovať. Prázdne použije polohu prevádzky.',
+			'operation.layout.panels.rotatorTheme' => 'Téma',
+			'operation.layout.panels.rotatorThemeColor' => 'Farebná',
+			'operation.layout.panels.rotatorThemeGray' => 'Sivá',
+			'operation.layout.panels.rotatorThemeMuted' => 'Tlmená',
+			'operation.layout.panels.rotatorGrayline' => 'Zobraziť grayline',
+			'operation.layout.panels.rotatorNoRotator' => 'Žiadny rotátor na zobrazenie. Vyberte ho v nastaveniach tohto panelu alebo ho pridajte v Konfigurácii stanice.',
+			'operation.layout.panels.rotatorNoLocation' => 'Žiadna poloha, na ktorú by sa dala mapa vycentrovať. Nastavte ju v nastaveniach tohto panelu.',
+			'operation.layout.panels.rotatorDisconnected' => 'odpojený',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'neodpovedá',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Polohu v nastaveniach tohto panelu sa nedá prečítať. Použite lokátor alebo zemepisnú šírku a dĺžku ako 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'S',
+			'operation.layout.panels.rotatorEast' => 'V',
+			'operation.layout.panels.rotatorSouth' => 'J',
+			'operation.layout.panels.rotatorWest' => 'Z',
 			'operation.layout.htmlPanelUnsupported' => 'Tento panel potrebuje webové zobrazenie, ktoré táto platforma neposkytuje',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Tento panel potrebuje izolované prostredie, ktoré webová verzia nedokáže poskytnúť',
 			'operation.export.title' => 'Exporty prevádzky',
@@ -4078,8 +5216,6 @@ extension on TranslationsSk {
 			'operation.export.saveOne' => ({required Object name}) => 'Uložiť ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Zdieľať ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportovať ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Stiahnuť ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Uschovať ${count} súbor', other: 'Uschovať ${count} súborov', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Uschovať ${count} zlúčený súbor', other: 'Uschovať ${count} zlúčených súborov', ), 
@@ -4126,9 +5262,10 @@ extension on TranslationsSk {
 			'operation.spots.any' => 'Akékoľvek',
 			'operation.spots.allBands' => 'Všetky pásma',
 			'operation.spots.allModes' => 'Všetky módy',
-			'operation.spots.phoneAndCw' => 'Phone a CW',
+			'operation.spots.phoneAndCw' => 'Fónia a CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} spot', other: '${count} spotov', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Zobrazuje sa ${count} z ${total} spotov',
+			'operation.spots.spotsDisabled' => 'Spoty sú pre túto prevádzku vypnuté',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minút',
 			'operation.spots.callsOfNote' => 'Poznámky k volacím znakom',
 			'operation.spots.yourSpots' => 'Vaše spoty',
@@ -4149,8 +5286,10 @@ extension on TranslationsSk {
 			'operation.spots.filters.sorting' => 'Triedenie',
 			'operation.spots.filters.sortByTime' => 'Podľa času spotu',
 			'operation.spots.filters.sortByFrequency' => 'Podľa frekvencie',
+			'operation.spots.filters.sortByWanted' => 'Najžiadanejšie',
 			'operation.spots.filters.groupByBand' => 'Zoskupiť podľa pásma',
 			'operation.spots.filters.groupCallsWithNotes' => 'Zoskupiť volacie znaky s poznámkami',
+			'operation.spots.filters.alertingOnly' => 'Iba spoty s upozorneniami',
 			'operation.spots.filters.sourceNoReply' => 'Bez odpovede',
 			'operation.spots.filters.sourceError' => 'Chyba',
 			'operation.spots.unavailableTitle' => 'Spoty nie sú dostupné',
@@ -4164,7 +5303,7 @@ extension on TranslationsSk {
 			'operation.spots.logConflict.editingBody' => 'Upravujete zapísané spojenie. Zapísať namiesto toho tento spot, alebo sa vrátiť a dokončiť úpravu?',
 			'operation.spots.logConflict.composingBody' => 'Začali ste zadávať spojenie. Zapísať namiesto toho tento spot, alebo sa vrátiť a dokončiť, čo ste písali?',
 			'operation.spots.logConflict.goBack' => 'Vrátiť sa',
-			'operation.spots.logConflict.clearAndLog' => 'Vymazať a zapísať spot',
+			'operation.spots.logConflict.clearAndLog' => 'Vyčistiť a zapísať spot',
 			'operation.import.title' => 'Importovať údaje do prevádzky',
 			'operation.import.importAdifAction' => 'Importovať QSO z ADIF',
 			'operation.import.settingsButton' => 'Nastavenia počúvania',
@@ -4227,6 +5366,7 @@ extension on TranslationsSk {
 			'map.globe' => 'Glóbus',
 			'map.zoomIn' => 'Priblížiť',
 			'map.zoomOut' => 'Oddialiť',
+			'map.resetNorth' => 'Otočiť severom nahor',
 			'map.postcard.button' => 'Pohľadnica z prevádzky',
 			'map.postcard.title' => ({required Object title}) => 'Pohľadnica pre ${title}',
 			'map.postcard.portrait' => 'Na výšku',
@@ -4239,7 +5379,7 @@ extension on TranslationsSk {
 			'map.postcard.copied' => 'Skopírované do schránky',
 			'map.postcard.saved' => ({required Object path}) => 'Uložené do ${path}',
 			'map.postcard.downloaded' => ({required Object name}) => 'Stiahnuté ${name}',
-			'map.postcard.savedMany' => ({required Object count, required Object path}) => 'Obrázky (${count}) uložené do ${path}',
+			'map.postcard.savedMany' => ({required Object count, required Object path}) => '${count} obrázkov uložených do ${path}',
 			'map.postcard.savedFiles' => ({required Object names}) => 'Uložené ${names}',
 			'map.postcard.savePartial' => ({required Object error, required Object names}) => '${error} — ${names} už boli uložené',
 			'map.postcard.downloadedMany' => ({required Object count}) => 'Sťahuje sa ${count} obrázkov — povoľte ich, ak sa prehliadač opýta',
@@ -4249,8 +5389,13 @@ extension on TranslationsSk {
 			'map.postcard.previousPage' => 'Predchádzajúca strana',
 			'map.postcard.nextPage' => 'Ďalšia strana',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Strana ${page} z ${count}',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} Q', other: '${count} Q', ), 
+			'map.postcard.options' => 'Možnosti pohľadnice',
+			'map.postcard.bandLegend' => 'Zobraziť legendu pásiem',
+			'map.postcard.grayline' => 'Zobraziť grayline',
+			'map.postcard.sectionsAndOrder' => 'Sekcie súhrnu a poradie',
 			'map.postcard.sectionDays' => 'Každý deň',
-			'map.postcard.reset' => 'Obnoviť',
+			'map.postcard.reset' => 'Resetovať',
 			'map.postcard.failed' => ({required Object error}) => 'Pohľadnicu sa nepodarilo vytvoriť: ${error}',
 			'map.postcard.mapNotReady' => 'Mapa sa nestihla načítať. Skontrolujte pripojenie a skúste to znova.',
 			'map.postcard.saveFailed' => ({required Object error}) => 'Pohľadnicu sa nepodarilo uložiť: ${error}',
@@ -4266,7 +5411,7 @@ extension on TranslationsSk {
 			'mapsView.facilities' => 'Zariadenia parkov',
 			'mapsView.boundaries' => 'Hranice',
 			'mapsView.currentLocation' => 'Aktuálna poloha',
-			'mapsView.noMatches' => ({required Object text}) => '„${text}“ nič nezodpovedá',
+			'mapsView.noMatches' => ({required Object text}) => 'Pre „${text}“ sa nič nenašlo',
 			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} referencia na ${where}', other: '${count} referencií na ${where}', ), 
 			'mapsView.startOperation' => 'Začať prevádzku s týmito referenciami',
 			'activitiesView.title' => 'Aktivity',
@@ -4301,7 +5446,7 @@ extension on TranslationsSk {
 			'activitiesView.locationSettingsUnavailable' => 'Povoľte prístup k polohe v systémových nastaveniach',
 			'activitiesView.locationGrantRefused' => 'Stále bez polohy — systém to znova zamietol',
 			'activitiesView.searchUnavailableTitle' => 'Vyhľadávanie aktivít nie je dostupné',
-			'activitiesView.searchUnavailableReason' => 'Žiadne rozšírenie aktivít nedokázalo vyhľadávanie spustiť. Skúste to o chvíľu znova.',
+			'activitiesView.searchUnavailableReason' => 'Rozšírenie aktivity nedokázalo odpovedať na hľadanie. Skúste to o chvíľu znova.',
 			'activitiesView.emptySheet' => 'Pridajte ju pomocou návrhov a vyhľadávania nižšie',
 			'activitiesView.exports' => 'Exporty',
 			'activitiesView.exportLogs' => 'Exportovať denníky',
@@ -4310,7 +5455,7 @@ extension on TranslationsSk {
 			'activitiesView.operationDetails' => 'Podrobnosti o prevádzke',
 			'activitiesView.share' => 'Zdieľať',
 			'activitiesView.archive' => 'Archivovať',
-			'activitiesView.deleteOperation' => 'Odstrániť prevádzku',
+			'activitiesView.deleteOperation' => 'Vymazať prevádzku',
 			'activitiesView.undeleteOperation' => 'Obnoviť prevádzku',
 			'activitiesView.alreadySelected' => 'Už vybrané',
 			'activitiesView.selected' => 'Vybrané',
@@ -4318,9 +5463,9 @@ extension on TranslationsSk {
 			'activitiesView.previousPick' => 'Predchádzajúca zhoda',
 			'activitiesView.nextPick' => 'Ďalšia zhoda',
 			'activitiesView.retiredReference' => 'Zrušená',
-			'activitiesView.enableExtension' => ({required Object name}) => 'Povoliť ${name}',
-			'activitiesView.enableExtensionHint' => 'Toto rozšírenie zodpovedá vášmu hľadaniu, ale momentálne nie je povolené',
-			'activitiesView.enableExtensionForRefHint' => 'Toto rozšírenie spracúva jednu z referencií tejto prevádzky, ale momentálne nie je povolené',
+			'activitiesView.enableExtension' => ({required Object name}) => 'Zapnúť ${name}',
+			'activitiesView.enableExtensionHint' => 'Toto rozšírenie zodpovedá vášmu hľadaniu, ale momentálne nie je zapnuté',
+			'activitiesView.enableExtensionForRefHint' => 'Toto rozšírenie spracúva jednu z referencií tejto prevádzky, ale momentálne nie je zapnuté',
 			'activitiesView.extensionNotRunning' => ({required Object name}) => '${name} nebeží',
 			'activitiesView.extensionNotRunningHint' => 'Toto rozšírenie bolo vypnuté, viac informácií nájdete v nastaveniach rozšírení',
 			'activitiesView.installExtension' => ({required Object name}) => 'Inštalovať ${name}',
@@ -4330,7 +5475,7 @@ extension on TranslationsSk {
 			'activitiesView.controlsUnavailableTitle' => 'Ovládanie aktivity nie je dostupné',
 			'activitiesView.controlsUnavailableReason' => 'Vaše referencie sú v bezpečí, ale ich úprava momentálne nie je dostupná.',
 			'activitiesView.controlsUnavailableRetry' => 'Skúsiť znova',
-			'activitiesView.onlyDisabledMatches' => 'Žiadne zhody\nNiektoré dostupné rozšírenia môžu mať výsledky.\nPovoľte ich v časti Typy aktivít nižšie.',
+			'activitiesView.onlyDisabledMatches' => 'Žiadne zhody\nNiektoré dostupné rozšírenia môžu mať výsledky.\nZapnite ich v časti Typy aktivít nižšie.',
 			'activitiesView.onlyNotRunningMatches' => 'Žiadne zhody\nNiektoré rozšírenia, ktoré môžu mať výsledky, nebežia.\nPozrite si Typy aktivít nižšie.',
 			'activitiesView.mapToggle' => 'Mapa',
 			'activitiesView.searchToggle' => 'Hľadať',
@@ -4342,6 +5487,10 @@ extension on TranslationsSk {
 			'loggingControls.timeUtc' => 'Čas (UTC)',
 			'loggingControls.date' => 'Dátum',
 			'loggingControls.now' => 'Teraz',
+			'loggingControls.manualTimeSettings' => 'Ručný čas',
+			'loggingControls.manualTimeIncrement' => 'Prírastok na QSO',
+			'loggingControls.manualTimeIncrementNone' => 'Žiadny',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} minúta', other: '${count} minút', ), 
 			'loggingControls.frequency' => 'Frekvencia',
 			'loggingControls.mode' => 'Mód',
 			'loggingControls.theirCall' => 'Ich volací znak',
@@ -4353,7 +5502,7 @@ extension on TranslationsSk {
 			'loggingControls.revert' => 'Vrátiť späť',
 			'loggingControls.undoDelete' => 'Zrušiť vymazanie',
 			'loggingControls.restore' => 'Obnoviť',
-			'loggingControls.wipe' => 'Vymazať',
+			'loggingControls.wipe' => 'Vyčistiť',
 			'loggingControls.undo' => 'Späť',
 			'loggingControls.pendingDeleteTapWarning' => 'Ťuknite na kôš ešte raz a toto QSO sa vymaže',
 			'loggingControls.pendingDeleteClickWarning' => 'Kliknite na kôš ešte raz a toto QSO sa vymaže',
@@ -4374,11 +5523,26 @@ extension on TranslationsSk {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} na ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Príliš neskoro na spot ${call}',
 			'loggingControls.spotNoFreq' => 'Najprv nastavte frekvenciu pre spot',
+			'loggingControls.selfSpotDisabled' => 'Self-spot vypnutý',
 			'loggingControls.spotComment' => 'Komentár',
+			'loggingControls.spottingAutoControl' => 'Auto re-spot',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot každých ${minutes} min',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto za ${time}. Zastaviť?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto za ${minutes} min',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto za ${seconds} s',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto za ${seconds}',
+			'loggingControls.spotAutoNotStarted' => 'Auto re-spot sa nespustil: spot neprešiel',
+			'loggingControls.spotAutoMoved' => 'Auto re-spot sa nespustil: frekvencia sa počas spotovania zmenila',
+			'loggingControls.spotAutoStopped' => 'Auto re-spot zastavený',
+			'loggingControls.spotAutoLeftFreq' => 'Auto re-spot zastavený: frekvencia sa zmenila',
+			'loggingControls.spotAutoNoFreq' => 'Auto re-spot zastavený: rádiostanica nehlási frekvenciu',
+			'loggingControls.spotBusy' => 'Ešte sa odosiela iný spot',
 			'loggingControls.bandOrFreqRequired' => 'Pred zápisom nastavte frekvenciu alebo pásmo',
 			'loggingControls.missingBand' => 'Bez pásma',
 			'loggingControls.missingMode' => 'Bez módu',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Nepodarilo sa uložiť: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nepodarilo sa vymazať: ${error}',
 			'loggingControls.info.noQsos' => 'Zatiaľ žiadne QSO... poďme do éteru!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4406,7 +5570,8 @@ extension on TranslationsSk {
 			'loggingControls.info.noticeNewZone' => 'Nová zóna',
 			'loggingControls.info.noticeInvalidMode' => 'Zlý mód',
 			'loggingControls.info.noticeInvalidBand' => 'Zlé pásmo',
-			'loggingControls.info.noticeInvalidCategory' => 'Nedá sa pracovať',
+			'loggingControls.info.noticeInvalidCategory' => 'Nedá sa robiť',
+			'loggingControls.info.noticeOverTime' => 'Po čase',
 			'loggingControls.info.noticeWorkedBefore' => 'Už robené',
 			'loggingControls.info.noticeNewPark' => 'Nový park',
 			'loggingControls.info.noticeNewSection' => 'Nová sekcia',
@@ -4414,6 +5579,7 @@ extension on TranslationsSk {
 			'loggingControls.info.noticeMissingExchange' => 'Bez výmeny',
 			'loggingControls.info.noticeInvalidExchange' => 'Zlá výmena',
 			'loggingControls.info.noticeUnknownEvent' => 'Neznáma udalosť',
+			'loggingControls.info.noticeIncompleteCall' => 'Neúplná značka — nebodované',
 			'loggingControls.info.noticeOurGrid' => 'Nastavte náš lokátor',
 			'loggingControls.info.noticeRareCounty' => 'Vzácny kraj!',
 			'loggingControls.info.noticeOurLocation' => 'Nastavte náš kraj',
@@ -4424,7 +5590,7 @@ extension on TranslationsSk {
 			'formChrome.showFewer' => 'Zobraziť menej',
 			'formChrome.defaults' => 'Predvolené',
 			'formChrome.search' => 'Hľadať',
-			'formChrome.clear' => 'Vymazať',
+			'formChrome.clear' => 'Vyčistiť',
 			'formChrome.openPage' => 'Otvoriť stránku',
 			'formChrome.connected' => 'Pripojené',
 			'formChrome.notConnected' => 'Nepripojené',
@@ -4437,7 +5603,8 @@ extension on TranslationsSk {
 			'formChrome.validationError' => ({required Object error}) => 'Chyba overenia: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Chyba transformácie: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Chyba: ${error}',
-			'formChrome.removeItem' => 'Odstrániť',
+			'formChrome.removeItem' => 'Vymazať',
+			'formChrome.deleteItemTitle' => ({required Object name}) => 'Vymazať ${name}?',
 			'formChrome.storageUnavailable' => 'Prihlasovacie údaje nie sú dostupné',
 			'qsoEditForm.title' => 'Upraviť QSO',
 			'qsoEditForm.operatorCall' => 'Operátor',
@@ -4465,6 +5632,16 @@ extension on TranslationsSk {
 			'qsoList.today' => 'Dnes',
 			'qsoList.yesterday' => 'Včera',
 			'qsoList.tomorrow' => 'Zajtra',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Hľadať v denníku (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Hľadať v denníku',
+			'qsoList.find.hint' => 'Číslo QSO alebo volací znak',
+			'qsoList.find.noMatches' => 'Žiadna zhoda',
+			'qsoList.find.noOperationQsos' => 'V tejto prevádzke nie sú žiadne QSO',
+			'qsoList.find.noPeriodQsos' => 'V tomto období nie sú žiadne QSO',
+			'qsoList.find.outsideQsosOne' => '1 QSO mimo tejto prevádzky',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} QSO mimo tejto prevádzky',
+			'qsoList.find.pastQsosOne' => '1 staršie QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} starších QSO',
 			'loggingPanel.stats' => 'Štatistiky prevádzky',
 			'loggingPanel.scoring' => 'Bodovanie',
 			'loggingPanel.dxccEntities' => 'Entity DXCC',
@@ -4580,20 +5757,71 @@ extension on TranslationsSk {
 			'settings.catServer.openAccess' => 'Otvorený prístup',
 			'settings.catServer.openAccessOn' => 'Pripojiť sa môže ľubovoľný počítač v lokálnej sieti.',
 			'settings.catServer.openAccessOff' => 'Pripojiť sa môžu iba aplikácie na tomto počítači.',
+			'settings.catServer.allowTransmit' => 'Povoliť aplikáciám vysielať',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'Aplikácie môžu kľúčovať PTT rádiostanice, najviac ${minutes} minút naraz.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'Aplikácie na ľubovoľnom počítači v lokálnej sieti môžu kľúčovať PTT rádiostanice, najviac ${minutes} minút naraz.',
+			'settings.catServer.allowTransmitOff' => 'Aplikácie nemôžu kľúčovať rádiostanicu. Použite VOX alebo ich vlastné nastavenie PTT.',
+			'settings.catServer.allowTransmitUnsupported' => 'Rádiostanicu hlavného VFO nemožno z Ham2K Logger kľúčovať, takže aplikácie cez ňu nemôžu vysielať.',
 			'settings.catServer.off' => 'Vypnuté.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, spúšťa sa…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} na porte ${port}. Pripojení klienti: ${clients}.',
-			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} na porte ${port}, ale nie je pripojená žiadna rádiostanica Hlavného VFO.',
+			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} na porte ${port}, ale nie je pripojená žiadna rádiostanica hlavného VFO.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} nemôže počúvať na porte ${port}: ${error}',
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: používa ho iný program, často samotný ${protocol}. Zatvorte tento program alebo vyberte iný port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: tento počítač to nepovoľuje. Vyberte port nad 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} prestal počúvať na porte ${port}. Skúša sa znova…',
+			'settings.cluster.title' => 'DX cluster',
+			'settings.cluster.description' => 'Server, na ktorý rozšírenia posielajú spoty a z ktorého ich čítajú, prihlásené ako operátor.',
+			'settings.cluster.connect' => 'Pripájať sa k clustru',
+			'settings.cluster.connectOn' => 'Rozšírenia sa k clustru pripoja, keď to potrebujú',
+			'settings.cluster.connectOff' => 'K clustru sa nič nepripája',
+			'settings.cluster.console' => 'Zobraziť konzolu',
+			'settings.cluster.consoleDescription' => 'Čo cluster posiela, a miesto na zadávanie príkazov',
+			'settings.cluster.consoleTitle' => 'Konzola clustra',
+			'settings.cluster.consoleConnect' => 'Pripojiť',
+			'settings.cluster.consoleDisconnect' => 'Odpojiť',
+			'settings.cluster.consoleCommand' => 'Príkaz',
+			'settings.cluster.consoleEmpty' => 'Zatiaľ nič. Pripojte sa alebo počkajte, kým cluster použije nejaké rozšírenie.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'Posiela sa znova: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Neodoslané: ${command} (${reason})',
+			'settings.cluster.server' => 'Server clustra',
+			'settings.cluster.selectServer' => 'Vybrať server',
+			'settings.cluster.serverOther' => 'Iný',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'Zatiaľ nie je zadaný hostiteľ, spoty idú na ${node}',
+			'settings.cluster.customHost' => 'Server',
+			'settings.cluster.customPort' => 'Port',
+			'settings.cluster.password' => 'Heslo',
+			'settings.cluster.passwordDescription' => 'Iba ak je potrebné',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'Heslo pre ${node} je uložené',
+			'settings.cluster.scrollback' => 'Uchovávané riadky',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} riadkov',
+			'settings.cluster.connection' => 'Pripojenie',
+			'settings.cluster.statusIdle' => 'Nepripojené. Pripojí sa, keď to rozšírenie potrebuje. Ťuknutím otestujete.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'Pripája sa k ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Pripojené k ${node} ako ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Nepodarilo sa pripojiť k ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Vo webovej verzii nie je k dispozícii.',
+			'settings.cluster.statusOff' => 'Vypnuté. Ak ho chcete používať, zapnite Pripájať sa k clustru.',
+			'settings.cluster.errors.noCall' => 'nie je volací znak operátora, ktorým sa dá prihlásiť',
+			'settings.cluster.errors.connectFailed' => 'uzol je nedostupný',
+			'settings.cluster.errors.needsPassword' => 'uzol žiada heslo a žiadne nie je uložené',
+			'settings.cluster.errors.loginFailed' => 'uzol neprijal prihlásenie',
+			'settings.cluster.errors.disconnected' => 'uzol ukončil spojenie',
+			'settings.cluster.errors.timeout' => 'uzol neodpovedal',
+			'settings.cluster.errors.off' => 'Pripájať sa k clustru je vypnuté',
+			'settings.spotting.title' => 'Spotovanie',
+			'settings.spotting.respotInterval' => 'Auto re-spot každých',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'Auto re-spot predvolene',
+			'settings.spotting.autoRespotByDefaultOn' => 'Zapnúť auto re-spot po odoslaní akéhokoľvek spotu',
+			'settings.spotting.autoRespotByDefaultOff' => 'Auto re-spot sa zapína iba ručne',
+			'settings.spotting.pulseBeforeRespot' => 'Pulzovať pred každým auto re-spotom',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'Štítok Spotovanie pulzuje namodro ${seconds} sekúnd pred každým re-spotom',
+			'settings.spotting.pulseBeforeRespotOff' => 'Pred auto re-spotom nič nepulzuje',
 			'settings.radio.title' => 'Ovládanie CAT',
 			'settings.radio.loggingAndCat' => 'Logovanie a CAT',
 			'settings.radio.tuningSection' => 'Ladenie',
 			'settings.radio.keyerSection' => 'Kľúčovač',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Služby',
 			'settings.radio.stationConfigurationSection' => 'Konfigurácia stanice',
 			'settings.radio.moreSettings' => 'Ďalšie nastavenia konfigurácie stanice',
@@ -4601,6 +5829,14 @@ extension on TranslationsSk {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'Ovládať PTT klávesnicou',
+			'settings.radio.pttKey.modes.off' => 'Nie',
+			'settings.radio.pttKey.modes.toggle' => 'Prepínať',
+			'settings.radio.pttKey.modes.hold' => 'Držať',
+			'settings.radio.pttKey.descriptions.off' => 'Klávesnica rádiostanicu nekľúčuje.',
+			'settings.radio.pttKey.descriptions.toggle' => 'Pri fónii kláves PTT rádiostanicu zakľúčuje a ďalšie stlačenie ju odkľúčuje. Sama sa odkľúčuje po minúte.',
+			'settings.radio.pttKey.descriptions.hold' => 'Pri fónii rádiostanica vysiela, kým je kláves PTT stlačený, najviac minútu.',
+			'settings.radio.pttKey.key' => 'Kláves PTT',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Vysiela sa',
 			'settings.radio.smartVfoSnap.title' => 'Inteligentné zaokrúhľovanie VFO',
@@ -4613,7 +5849,7 @@ extension on TranslationsSk {
 			'settings.radio.snapMinMove.title' => 'Zaokrúhľovanie: najmenší pohyb',
 			'settings.radio.snapMinMove.description' => 'Pri pohybe menšom ako táto hodnota sa frekvencia nezaokrúhli, takže jemné ladenie zostane nedotknuté.',
 			'settings.radio.snapMinSpeed.title' => 'Zaokrúhľovanie: najpomalší pohyb',
-			'settings.radio.snapMinSpeed.description' => 'Ak otáčate gombíkom pomalšie, frekvencia sa nezaokrúhli, pokiaľ nešlo o dlhý pohyb.',
+			'settings.radio.snapMinSpeed.description' => 'Ak otáčate gombíkom pomalšie ako táto hodnota, frekvencia sa nezaokrúhli, pokiaľ nešlo o dlhý pohyb.',
 			'settings.radio.enterSends.pillOff' => 'ESM vyp.',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
@@ -4628,8 +5864,8 @@ extension on TranslationsSk {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'Správy CW kľúčovača',
 			'settings.radio.cwMessages.notSupported' => 'Aktuálna rádiostanica nepodporuje kľúčovanie CW',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Správa (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Správa ${n}',
 			'settings.radio.cwMessages.labelField' => 'Popis',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Popis F${n}',
 			'settings.radio.cwMessages.details' => 'Podrobnosti',
@@ -4637,13 +5873,16 @@ extension on TranslationsSk {
 			'settings.radio.cwMessages.sets' => 'Sada správ',
 			'settings.radio.cwMessages.newSet' => 'Nová sada',
 			'settings.radio.cwMessages.renameSet' => 'Premenovať sadu',
-			'settings.radio.cwMessages.deleteSet' => 'Odstrániť sadu',
+			'settings.radio.cwMessages.deleteSet' => 'Vymazať sadu',
 			'settings.radio.cwMessages.newSetName' => 'Názov',
 			'settings.radio.cwMessages.setDefault' => 'Predvolená',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Správy ESM',
 			'settings.radio.cwMessages.setSaved' => 'Moje správy',
-			'settings.radio.cwMessages.repeat' => 'Opakovať správu č. 1',
+			'settings.radio.cwMessages.repeat' => 'Opakovať správu 1',
+			'settings.radio.cwMessages.repeatShort' => 'Opakovať M1',
+			'settings.radio.cwMessages.cooldown' => 'Pauza pred opakovaním',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} sekúnd',
 			'settings.radio.cwMessages.repeatWait' => 'Opakuje sa',
 			'settings.radio.cwMessages.keyboard' => 'Píšte a odošle sa',
 			'settings.radio.cwMessages.keyboardField' => 'Píšte a odošle sa',
@@ -4669,15 +5908,19 @@ extension on TranslationsSk {
 			'settings.radio.cwMessages.helpEsmIntro' => 'So zapnutým Enter odosiela správy kláves Enter vysiela správy podľa ich funkčného klávesu, ako v N1MM. Sada Správy ESM začína týmito:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Pri Run Enter s prázdnym poľom volacieho znaku volá CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Vaša výmena: pri Run po ich volacom znaku, pri S&P potom, ako odpovedia',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Poďakovanie po zapísaní spojenia: jeho zástupné symboly označujú ďalšie spojenie, nie toto',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Poďakovanie po zapísaní spojenia: qso je zapísané spojenie, next to nasledujúce',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'Pri S&P váš volací znak pre stanicu, ktorej odpovedáte',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Pri Run ich volací znak pred vašou výmenou',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Opýta sa znova, keď z ich výmeny nebolo nič prijaté',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'Navrhované F3 pre zásobníky //: TU sa odošle po zapísaní spojenia, takže poďakuje, potom zavolá ďalšiu stanicu v zásobníku a odošle vašu výmenu, alebo sa opýta na čiastočný znak (TU KR?); ak už nič nezostáva, iba TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'Navrhované F3 pre zásobníky //: poďakuje, potom zavolá ďalšiu stanicu v zásobníku a odošle vašu výmenu, alebo sa opýta na čiastočný znak (TU KR?); ak už nič nezostáva, iba TU',
+			'settings.radio.keyerControl.label' => 'Kľúčovač',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Hlas',
 			'settings.radio.voiceMessages.title' => 'Správy fóniového kľúčovača',
 			'settings.radio.voiceMessages.notSupported' => 'Aktuálna rádiostanica nepodporuje fóniové správy',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Hlasová pamäť (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Hlasová pamäť ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Popis',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Popis hlasovej pamäte ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
@@ -4686,7 +5929,7 @@ extension on TranslationsSk {
 			'settings.radio.voiceMessages.playButton' => 'Prehrať',
 			'settings.radio.voiceMessages.recordButton' => 'Nahrať',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
-			'settings.radio.voiceMessages.repeat' => 'Opakovať správu č. 1',
+			'settings.radio.voiceMessages.repeat' => 'Opakovať správu 1',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Poznámky k ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Tieto pamäte sú v rádiostanici zariadenia ${device}. Ich názvy a dĺžky patria tomuto zariadeniu.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Uložené v rádiostanici, kde ich vidia aj jej ostatní klienti.',
@@ -4703,6 +5946,80 @@ extension on TranslationsSk {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Nahráva sa ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Prehrala ju rádiostanica? Hneď hlásila, že je nečinná.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Pamäte musíte nahrať priamo na rádiostanici.',
+			'settings.radio.voiceMessages.sets' => 'Sada správ',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Zvukové súbory na tomto počítači',
+			'settings.radio.voiceMessages.openFileButton' => 'Otvoriť súbor',
+			'settings.radio.voiceMessages.newSet' => 'Nová sada',
+			'settings.radio.voiceMessages.renameSet' => 'Premenovať sadu',
+			'settings.radio.voiceMessages.deleteSet' => 'Vymazať sadu',
+			'settings.radio.voiceMessages.newSetName' => 'Názov',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Vymazať ${name} a jej nahrávky? Nedá sa to vrátiť späť.',
+			'settings.radio.voiceMessages.output' => 'Posielať zvuk do',
+			'settings.radio.voiceMessages.input' => 'Nahrávať z',
+			'settings.radio.voiceMessages.outputRadio' => 'Posielať do rádiostanice cez sieť',
+			'settings.radio.voiceMessages.inputDefault' => 'Predvolené v systéme',
+			'settings.radio.voiceMessages.pickDevice' => 'Vyberte zvukové zariadenie',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (nepripojené)',
+			'settings.radio.voiceMessages.lead' => 'Oneskorenie po zakľúčovaní',
+			'settings.radio.voiceMessages.tail' => 'Oneskorenie pred odkľúčovaním',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Vypočuť',
+			'settings.radio.voiceMessages.notRecorded' => 'Nenahrané',
+			'settings.radio.voiceMessages.unplayable' => 'Tento súbor sa nedá prehrať',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Pred prehraním správy vyberte zvukové zariadenie, ktoré napája rádiostanicu.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'Zvukové zariadenie, ktoré napája rádiostanicu, nie je pripojené.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'Nahrávacie zariadenie nie je pripojené.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'Zvukové zariadenie sa nepodarilo otvoriť.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'Táto správa ešte nemá nahrávku.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Z nahrávacieho zariadenia nebolo nič počuť, správa preto zostala bez zmeny. Skontrolujte vstup a to, či aplikácia smie používať mikrofón.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'Rádiostanica teraz neberie zvuk z aplikácie. Potrebuje sieťové pripojenie k rádiostanici.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'Rádiostanica neprepla vysielaný zvuk na aplikáciu, správa sa preto zastavila. Nastavte rádiostanicu tak, aby vysielala zvuk z aplikácie.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'Túto rádiostanicu nemožno kľúčovať cez CAT, takže počítač do nej nemôže prehrávať správy.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'Súbor tejto správy nie je zvukový súbor, ktorý aplikácia vie prehrať. Použite súbor WAV, FLAC alebo MP3, alebo správu nahrajte znova.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'Nahrávka sa predčasne skončila, správa preto zostala bez zmeny. Skontrolujte, či je nahrávacie zariadenie stále pripojené a či je na disku miesto.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'Nahrávku sa nepodarilo uložiť na miesto správy, správa preto zostala bez zmeny.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'Táto správa potrebuje slová, ktoré ste nenahrali: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'Šablóna tejto správy má problém: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'Správy hovorené vašimi slovami sa prehrávajú v prevádzke, kde je spojenie, pre ktoré sa majú povedať.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'Táto správa pre toto spojenie nič nehovorí.',
+			'settings.radio.voiceMessages.templateField' => 'Povedať mojimi slovami',
+			'settings.radio.voiceMessages.templateHelp' => 'Nechajte prázdne, ak sa má prehrať nahrávka. Inak sa správa povie slovami, ktoré ste nahrali, doplnenými pre každé spojenie, pomocou týchto hodnôt:',
+			'settings.radio.voiceMessages.help' => 'Pomocník',
+			'settings.radio.voiceMessages.helpTitle' => 'Správy hovorené vašimi slovami',
+			'settings.radio.voiceMessages.helpFullExample' => 'Celá správa:',
+			'settings.radio.voiceMessages.helpExample' => 'Ich značka, ich report a vaša nahrávka „QSL?“',
+			'settings.radio.voiceMessages.playOnRadio' => 'Prehrať na rádiostanici',
+			'settings.radio.voiceMessages.templateHelpCall' => 'Ich volací znak',
+			'settings.radio.voiceMessages.templateHelpReport' => 'Report, ktorý im dávate',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'Nahrávka správy 2, prehraná tak, ako bola nahraná',
+			'settings.radio.voiceMessages.voiced' => 'Hovorené vašimi slovami',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Povie: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Zatiaľ nenahrané: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'Otvorte prevádzku a uvidíte, čo povie.',
+			'settings.radio.voiceMessages.wordsDescription' => 'Použite vlastný hlas pre volacie znaky, čísla a ďalšie.',
+			'settings.radio.voiceWords.title' => 'Nahrávky slov',
+			'settings.radio.voiceWords.callField' => 'Slová pre operátora',
+			'settings.radio.voiceWords.intro' => 'Každé slovo alebo číslo nahrajte trikrát za sebou, rýchlo spojené, tak ako ho hovoríte vo volacom znaku. Dlhšie frázy sa nahrávajú iba raz.',
+			'settings.radio.voiceWords.recordAll' => 'Nahrať všetko',
+			'settings.radio.voiceWords.recordAllGuide' => 'Každé slovo prečítajte trikrát spojene a frázu z viacerých slov raz, medzi riadkami s nadýchnutím. Po poslednom stlačte Stop.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Povedzte „${word} ${word} ${word}“ a potom stlačte Stop.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Povedzte „${words}“ a potom stlačte Stop.',
+			'settings.radio.voiceWords.recorded' => 'Nahrané',
+			'settings.radio.voiceWords.notRecorded' => 'Nenahrané',
+			'settings.radio.voiceWords.addPhrase' => 'Pridať frázu',
+			'settings.radio.voiceWords.phraseField' => 'Fráza, ako ju píšete v správe',
+			'settings.radio.voiceWords.deletePhrase' => 'Vymazať frázu',
+			'settings.radio.voiceWords.tryField' => 'Skúste povedať',
+			'settings.radio.voiceWords.pauseLetters' => 'Pauza medzi písmenami',
+			'settings.radio.voiceWords.pauseWords' => 'Pauza medzi slovami',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'Rýchlosť',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'Rozšírené nastavenia',
+			'settings.radio.voiceWords.splitSilent' => 'V nahrávke nebolo nič počuť.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'Nepodarilo sa nájsť tri opakovania. Povedzte slovo trikrát spojene a skúste to znova.',
+			'settings.radio.voiceWords.splitLineCount' => 'V nahrávke sa nepodarilo nájsť každé slovo. Každé prečítajte trikrát, s nadýchnutím medzi slovami.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'Slová sa nedali rozlíšiť. Medzi slovami nechajte dlhšiu pauzu na nádych.',
 			'settings.radio.avoidZeroBeat.title' => 'Vyhnúť sa zázneju na spotoch',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'S pripojenou rádiostanicou sa ladí o pár Hz vedľa CW spotu, aby všetci, ktorí naň odpovedajú, nevolali na rovnakom tóne.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Ladí sa presne na spotovanú frekvenciu.',
@@ -4723,12 +6040,23 @@ extension on TranslationsSk {
 			'settings.help.contact' => 'Kontaktujte nás',
 			'settings.help.contactDescription' => 'help@ham2k.com — ale najprv skúste Fóra alebo Chat!',
 			'settings.exports.title' => 'Exporty',
+			'settings.extensionSections.activities' => 'Aktivity',
+			'settings.extensionSections.hunting' => 'Lov',
+			'settings.extensionSections.contests' => 'Súťaže',
+			'settings.extensionSections.lookups' => 'Vyhľadávanie',
+			'settings.extensionSections.dashboard' => 'Prehľad',
 			'settings.map.title' => 'Mapy',
 			'settings.map.style.title' => 'Štýl mapy',
+			'settings.map.showCallsigns.title' => 'Zobraziť volacie znaky',
+			'settings.map.showCallsigns.description' => 'Každé spojenie je štítok s volacím znakom vo farbe svojho pásma',
+			'settings.map.showGrayline.title' => 'Zobraziť grayline',
+			'settings.map.showGrayline.description' => 'Zatieni nočnú stranu Zeme, so súmrakom ako prechodom',
 			'settings.map.styleOpts.automatic' => 'Automatický',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Súkromie',
@@ -4743,7 +6071,7 @@ extension on TranslationsSk {
 			'settings.operatorCall' => 'Volací znak operátora',
 			'settings.sync.title' => 'Cloudová synchronizácia',
 			'settings.sync.moreSettings' => 'Ďalšie nastavenia synchronizácie',
-			'settings.sync.enable' => 'Povoliť synchronizáciu',
+			'settings.sync.enable' => 'Zapnúť synchronizáciu',
 			'settings.sync.deviceKey' => 'Kľúč zariadenia',
 			'settings.peers.title' => 'Partnerské zariadenia',
 			'settings.peers.enable' => 'Pripájať sa k iným zariadeniam',
@@ -4847,12 +6175,12 @@ extension on TranslationsSk {
 			'settings.accounts.connected' => 'Pripojené',
 			'settings.accounts.cancelLogin' => 'Zrušiť prihlásenie',
 			'settings.accounts.openInBrowser' => 'Otvoriť v prehliadači',
-			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Prihlásený ako ${identity}',
+			'settings.accounts.loggedInAs' => ({required Object identity}) => 'Prihlásené ako ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'Stlačte Uložiť, aby tento účet zostal pripojený.',
 			'settings.accounts.connectedTo' => ({required Object label}) => 'Pripojené k ${label}',
 			'settings.accounts.connect' => 'Pripojiť',
 			'settings.accounts.disconnect' => 'Odpojiť',
-			'settings.accounts.connectedAs' => 'Pripojený ako',
+			'settings.accounts.connectedAs' => 'Pripojené ako',
 			'settings.accounts.test' => 'Test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Uloženie zlyhalo: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Prihlásenie zlyhalo: ${error}',
@@ -4932,13 +6260,28 @@ extension on TranslationsSk {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} z ${total}',
 			'settings.station.serialPortSuggested' => 'odporúčaný',
 			'settings.station.serialPortJustNow' => 'Nedávno pripojený',
+			'settings.station.serialPortNoDriver' => 'bez ovládača',
 			'settings.station.serialDeviceRequest' => 'Pridať USB zariadenie…',
+			'settings.station.bleDevice' => 'Zariadenie Bluetooth LE',
+			'settings.station.bleDeviceDescription' => 'Sériový most, cez ktorý je pripojená vaša rádiostanica, napríklad LiNK500MP v režime Mode 4 alebo sériový adaptér BLE.',
+			'settings.station.bleScan' => 'Vyhľadať zariadenia Bluetooth LE…',
+			'settings.station.bleScanNoneFound' => 'Nenašli sa žiadne zariadenia Bluetooth LE. Skontrolujte, či je most zapnutý, v blízkosti a v režime Bluetooth LE (Mode 4 na LiNK500MP).',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'Vyhľadávanie Bluetooth LE sa nepodarilo spustiť: ${reason}',
+			'settings.station.bleOff' => 'Bluetooth je vypnutý.',
+			'settings.station.bleDenied' => 'Povolenie pre Bluetooth nebolo udelené. Povoľte ho v systémových nastaveniach a skúste to znova.',
+			'settings.station.bleUnsupported' => 'Toto zariadenie nemá Bluetooth LE.',
+			'settings.station.bleStarting' => 'Bluetooth sa ešte spúšťa. Skúste to o chvíľu znova.',
+			'settings.station.bleConnectFailed' => 'Zariadenie Bluetooth LE je nedostupné. Skontrolujte, či je zapnuté, v blízkosti a nie je pripojené k inej aplikácii.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'Toto zariadenie Bluetooth LE nemá žiadnu sériovú službu, ktorú aplikácia pozná. Nahláste ho prosím aj s jeho službami: ${services}',
 			'settings.station.baudRate' => 'Rýchlosť (baud)',
 			'settings.station.baudRateDescription' => 'Musí zodpovedať menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly a žiadnu chybu.',
 			'settings.station.serialRtsHigh' => 'Držať RTS vo vysokej úrovni',
 			'settings.station.serialRtsHighDescription' => 'Iba pre rádiostanicu, ktorá pred odpoveďou čaká na RTS, napríklad Yaesu so zapnutým CAT RTS. Na Digirig, SignaLink a väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni spustí vysielanie.',
 			'settings.station.serialDtrHigh' => 'Držať DTR vo vysokej úrovni',
 			'settings.station.serialDtrHighDescription' => 'Iba pre rozhranie CAT, ktoré sa napája z DTR, napríklad niektoré káble RS-232 pre FT-817. Na mnohých kábloch DTR kľúčuje CW alebo PTT a jeho držanie vo vysokej úrovni spustí vysielanie.',
+			'settings.station.serialUsbDriver' => 'Ovládač USB čipu',
+			'settings.station.serialUsbDriverDescription' => 'Automaticky rozpozná väčšinu adaptérov. Čip vyberte iba pre adaptér, pri ktorom zoznam portov hlási, že nemá ovládač — jeho názov je na obale alebo v zozname USB zariadení.',
+			'settings.station.serialUsbDriverAuto' => 'Automaticky',
 			'settings.station.civAddress' => 'Adresa CI-V rádiostanice',
 			'settings.station.civAddressDescription' => 'Hexadecimálne, ako ju zobrazuje menu CI-V rádiostanice. IC-705 sa dodáva s A4.',
 			'settings.station.civAddressInvalid' => 'Adresa CI-V sú dve hexadecimálne číslice, 01 až FF',
@@ -4959,8 +6302,37 @@ extension on TranslationsSk {
 			'settings.station.spectrumNoPanadapter' => 'Tento slice nemá na rádiostanici panadapter',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'Rádiostanica odmietla stream DAX IQ (chyba ${code})',
 			'settings.station.spectrumNoUdp' => 'Údaje o spektre z rádiostanice sa nedostanú k tomuto zariadeniu',
+			'settings.station.spectrumK4Unavailable' => 'Nedá sa prijímať spektrum K4 cez LAN. Skúša sa znova…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'Nedá sa prijímať vzdialené spektrum K4',
 			'settings.station.spectrumScopeRefused' => 'Rádiostanica odmietla príkazy pre scope',
 			'settings.station.spectrumOutOfRange' => 'Scope rádiostanice je nastavený mimo rozsahu, ktorý dokáže zobraziť',
+			'settings.station.spectrumBandUnsupported' => 'Scope rádiostanice sa na tomto pásme nedá zobraziť',
+			'settings.station.spectrumSdrNoRadio' => 'Čaká sa na frekvenciu prepojenej rádiostanice…',
+			'settings.station.spectrumSdrNotConnected' => 'SDR nie je pripojené',
+			'settings.station.spectrumSdrNoIf' => 'Nastavte medzifrekvenciu rádiostanice v nastaveniach tohto SDR',
+			'settings.station.sdrRadio' => 'Zobrazuje spektrum pre',
+			'settings.station.sdrRadioDescription' => 'Zobrazenie spektra na tejto rádiostanici čerpá z tohto prijímača namiesto vlastného scope rádiostanice.',
+			'settings.station.sdrRadioMain' => 'Hlavná rádiostanica',
+			'settings.station.sdrTuning' => 'Anténny vstup',
+			'settings.station.sdrTuningDescription' => 'Odkiaľ prichádza signál prijímača. Na vlastnej anténe sa ladí sám podľa rádiostanice; na výstupe medzifrekvencie rádiostanice zostáva na medzifrekvencii.',
+			'settings.station.sdrTuningIndependent' => 'Vlastná anténa',
+			'settings.station.sdrTuningIfTap' => 'Výstup medzifrekvencie rádiostanice',
+			'settings.station.sdrIfHz' => 'Medzifrekvencia (Hz)',
+			'settings.station.sdrIfHzDescription' => 'Iba pre výstup medzifrekvencie: frekvencia, na ktorej na medzifrekvencii leží naladená frekvencia rádiostanice, napríklad 68330000 na FT-817.',
+			'settings.station.sdrIfInverted' => 'Medzifrekvencia je invertovaná',
+			'settings.station.sdrGainDb' => 'Zisk (dB)',
+			'settings.station.sdrGainDbDescription' => 'Nechajte prázdne pre automatický zisk prijímača.',
+			'settings.station.sdrOffsetHz' => 'Frekvenčný posun (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Pripočíta sa ku každej frekvencii posielanej do prijímača, pre upconverter: 125000000 pre Ham It Up.',
+			'settings.station.sdrPpm' => 'Korekcia frekvencie (ppm)',
+			'settings.station.rtlDirectSampling' => 'Priame vzorkovanie',
+			'settings.station.rtlDirectSamplingDescription' => 'Pre KV na RTL-SDR V3 bez upconvertera. RTL-SDR V4 dosiahne KV aj bez neho.',
+			'settings.station.rtlDirectSamplingOff' => 'Vypnuté',
+			'settings.station.rtlDirectSamplingI' => 'Vetva I',
+			'settings.station.rtlDirectSamplingQ' => 'Vetva Q',
+			'settings.station.rtlTcpNotAServer' => 'Toto nie je server rtl_tcp',
+			'settings.station.rtlTcpNotes' => 'Toto sa pripája k **serveru rtl_tcp, ktorý si spustíte sami** na počítači, do ktorého je zapojený dongle.\n\n- **Spustite ho** príkazom `rtl_tcp -a 0.0.0.0`, aby sa k nemu dostali aj iné počítače; na tom istom počítači stačí samotné `rtl_tcp`.\n- **Port** je 1234, pokiaľ ste ho nespustili s `-p`.\n- **Jeden program naraz:** rtl_tcp obsluhuje jediného klienta. Aplikácia sa pripája iba vtedy, keď je zobrazené spektrum, a pár sekúnd po jeho zatvorení ho uvoľní.\n- **Na Androide** rovnaký server na telefóne spúšťa aplikácia *SDR driver*.',
+			'settings.station.rspTcpNotes' => 'Toto sa pripája k **serveru rsp_tcp, ktorý si spustíte sami** na počítači, do ktorého je zapojený RSP a kde je nainštalované API od SDRplay.\n\n- **Spustite ho** príkazom `rsp_tcp -a 0.0.0.0`.\n- **Port** je 1234, pokiaľ ste ho nespustili s `-p`.\n- **Jeden program naraz:** server prijme jediného klienta. Aplikácia sa pripája iba vtedy, keď je zobrazené spektrum.',
 			'settings.station.n3fjpNoRig' => 'N3FJP nemá nastavené rozhranie rádiostanice, takže toto sleduje to, čo sa zadá do N3FJP, nie rádiostanicu',
 			'settings.station.winkeyerKeyPort' => 'Výstup kľúča',
 			'settings.station.winkeyerKeyPortDescription' => 'Do ktorého z dvoch výstupných konektorov kľúčovača je pripojená vaša rádiostanica.',
@@ -4969,6 +6341,11 @@ extension on TranslationsSk {
 			'settings.station.winkeyerPttDescription' => 'Kľúčovať linku PTT na tom istom konektore, pre zosilňovač alebo rádiostanicu, ktorá to potrebuje. Nechajte vypnuté pre rádiostanicu kľúčovanú cez konektor kľúča.',
 			'settings.station.winkeyerNoAnswer' => 'Na tomto porte neodpovedal žiadny WinKeyer',
 			'settings.station.winkeyerStoppedAnswering' => 'WinKeyer počas vysielania prestal odpovedať; správa bola zahodená',
+			'settings.station.icomControlPort' => 'Riadiaci port (UDP)',
+			'settings.station.icomControlPortDescription' => 'Control Port (UDP) rádiostanice — 50001, pokiaľ nebol zmenený v jej sieťových nastaveniach alebo presmerovaný na iný.',
+			'settings.station.icomSerialPort' => 'Sériový port (UDP)',
+			'settings.station.icomSerialPortDescription' => 'Serial Port (UDP) rádiostanice — 50002, pokiaľ nebol zmenený v jej sieťových nastaveniach alebo presmerovaný na iný.',
+			'settings.station.icomPortsDiffer' => 'Riadiaci a sériový port musia byť rôzne',
 			'settings.station.radioUser' => 'Používateľské meno rádiostanice',
 			'settings.station.radioPass' => 'Heslo rádiostanice',
 			'settings.station.radioLoginDescription' => 'Prihlásenie z menu Network → Remote rádiostanice, nie vaše heslo k WiFi.',
@@ -4976,8 +6353,10 @@ extension on TranslationsSk {
 			'settings.station.connectFailedBusy' => 'Zariadenie sa používa',
 			'settings.station.connectFailedDenied' => 'Prístup zamietnutý',
 			'settings.station.connectFailedDevice' => 'Zariadenie sa nenašlo',
+			'settings.station.connectFailedUnsupported' => 'Čip tohto USB adaptéra nerozpoznáva žiadny ovládač. Ak viete, o ktorý čip ide, vyberte ho v sekcii „Rozšírené nastavenia“ pod Ovládač USB čipu.',
 			'settings.station.connectFailedLines' => 'RTS/DTR sa nepodarilo udržať podľa nastavenia, preto bol port zatvorený. Iný program mohol nechať zapnuté hardvérové riadenie toku — odpojte a znova pripojte kábel.',
 			'settings.station.connectFailedNetwork' => 'Rádiostanicu sa nedarí nájsť v sieti. Skontrolujte jej adresu a či je zapnutá a dostupná.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Port ${port} na tomto zariadení sa už používa a odpovede prichádzajú práve naň. Zatvorte všetko ostatné, čo na ňom počúva — vrátane iného uzla PstRotator — alebo port zmeňte.',
 			'settings.station.connectFailedTimeout' => 'Rádiostanica neodpovedala včas. Skontrolujte, či je zapnutá a dostupná.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsSk {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - všeobecná',
 			'settings.station.models.icomGeneric' => 'Icom - všeobecná',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - všeobecná',
@@ -4997,6 +6385,8 @@ extension on TranslationsSk {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - všeobecná',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsSk {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Rádiostanica ovládaná cez rigctld',
@@ -5028,36 +6422,66 @@ extension on TranslationsSk {
 			'settings.station.models.placeholderRadioNodeName' => 'Moja rádiostanica',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
+			'settings.station.models.gs232a' => 'Rozhranie rotátora Yaesu GS-232A',
+			'settings.station.models.pstRotator' => 'PstRotator (ovládanie cez UDP)',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Sieť/WiFi',
+			'settings.station.transports.secureNetwork' => 'Zabezpečená sieť/WiFi',
 			'settings.station.transports.usbSerial' => 'USB sériový',
 			'settings.station.transports.wifi' => 'Sieť/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth sériový',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
 			'settings.station.transports.placeholder' => 'Zástupné',
 			'settings.station.troubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
-			'settings.station.ft891Troubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ** (menu FT-891 **05-08**). Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je ten istý signál PTT, takže jeho zdvihnutie by spustilo vysielanie. Na vlastnom USB porte rádiostanice je alternatívou **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** nastaveniu CAT RATE rádiostanice (menu **05-06**). Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
+			'settings.station.ft891Troubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS na rádiostanici vypnuté, alebo zapnuté Držať RTS vo vysokej úrovni.** So zapnutým **CAT RTS** (menu FT-891 **05-08**) rádiostanica mlčí, kým je RTS v nízkej úrovni — pri otvorení portu môže raz odpovedať, potom už nič. Výber vlastného USB portu rádiostanice zapne **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni zakľúčuje váš vysielač: radšej vypnite CAT RTS na rádiostanici.\n- **Rýchlosť musí zodpovedať** nastaveniu CAT RATE rádiostanice (menu **05-06**). Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
 			'settings.station.yaesuBinaryTroubleshooting' => 'Táto rádiostanica používa starší päťbajtový CAT od Yaesu a keď niečo nie je v poriadku, vôbec neodpovedá. Takmer vždy ide o jedno z:\n\n- **Kábel musí prevádzať úrovne.** Konektor CAT vzadu nie je RS-232 ani USB; potrebuje CT-62 alebo rovnocenný adaptér. Obyčajný audio alebo dátový kábel pre CAT nefunguje.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice (**#14** na FT-817, **#19** na FT-857 alebo FT-897). Pri nezhode rádiostanica nič neposiela, a nikdy chybu.\n- **Nikdy nedovoľte, aby niečo zdvihlo RTS alebo DTR na tomto porte.** Na väčšine káblov pre tieto rádiostanice sú tieto linky PTT a kľúčovanie. Výnimkou je staršie rozhranie napájané z DTR: preň zapnite **Držať DTR vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTento ovládač bol napísaný podľa zverejnenej tabuľky CAT od Yaesu a na žiadnej z týchto rádiostaníc ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť.',
+			'settings.station.tenTecTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
+			'settings.station.tenTecEagleTroubleshooting' => '- **Konektor USB-B vzadu je linka CAT.** Rádiostanica sa zobrazí ako sériový USB port; vo Windows potrebuje ovládač Ten-Tec USB to UART, ktorý sa v Správcovi zariadení zobrazuje ako „USB to UART (COMx)“.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený, a rovnako aj aktualizátor firmvéru od Ten-Tec.\n- **Nastavenie šírky filtra z aplikácie ho odoberie gombíku BW**, kým sa rádiostanica nevypne a znova nezapne. Tak rádiostanica funguje.\n\nTento ovládač bol napísaný podľa programátorskej referenčnej príručky Ten-Tec. Ak funguje len napoly, oplatí sa to nahlásiť, spolu s verziou firmvéru z menu rádiostanice.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **Použite priamy sériový kábel DB-9** do portu SERIAL DATA, nie null-modem.\n- **Táto položka drží RTS vo vysokej úrovni**, pretože Orion používa RTS a CTS ako handshake. Na rozhraní, ktoré kľúčuje PTT z RTS, napríklad Digirig, vypnite Držať RTS vo vysokej úrovni v sekcii „Rozšírené nastavenia“, inak rádiostanica začne vysielať hneď po pripojení aplikácie.\n- **CW z aplikácie potrebuje zapnutý interný kľúčovač rádiostanice.** Keď je vypnutý, rádiostanica ignoruje, čo aplikácia posiela.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTento ovládač bol napísaný podľa programátorskej referenčnej príručky Ten-Tec a na Orione ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť, spolu s verziou firmvéru z menu rádiostanice.',
+			'settings.station.tenTecNoCw' => 'Firmvér tejto rádiostanice neprijíma CW z aplikácie. Ten-Tec ho pridal vo firmvéri Orion 1.366.',
+			'settings.station.tenTecKeyerOff' => 'Interný kľúčovač rádiostanice je vypnutý, preto ignoruje CW posielané z aplikácie. Zapnite kľúčovač v menu rádiostanice.',
 			'settings.station.guohetecTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
 			'settings.station.guohetecTroubleshooting' => 'Q900 má dva protokoly CAT a táto položka používa jeho natívny namiesto napodobeniny FT-817. Vyberte tu **Guohetec Q900**, nie FT-817 — napodobenina podporuje menej príkazov a rádiostanica neoznamuje, ktorý používa.\n\n- **Kábel USB-C je linka CAT** a pripája aj zvukovú kartu. Rýchlosť na ňom nezáleží; port ignoruje, na čo je nastavený.\n- **Nikdy nedovoľte, aby niečo zdvihlo RTS alebo DTR na tomto porte.** Na sériovom kábli sú tieto linky PTT a kľúčovanie.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Rádiostanica druhej generácie sa správa inak** ako prvej. Dlho stlačte Menu, potom About: HW 2.0 je druhá generácia.\n\nTento ovládač bol napísaný podľa zverejneného protokolu výrobcu a na žiadnej z týchto rádiostaníc ešte nebežal. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
 			'settings.station.yaesuTroubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je ten istý signál PTT, takže jeho zdvihnutie by spustilo vysielanie. Na vlastnom USB porte rádiostanice je alternatívou **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Kde sa toto nastavenie nachádza, závisí od modelu (menu **05-08** na FT-891).\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Módy sa riadia tabuľkou FT-891.** Väčšina rádiostaníc Yaesu jej zodpovedá, ale rádiostanica, ktorá čísluje módy inak, pri nich zobrazí a nastaví nesprávny mód. Frekvencia tým nie je ovplyvnená.',
+			'settings.station.ftdx3000Troubleshooting' => '**Menu 037 CAT SELECT musí byť USB** pre CAT cez USB port rádiostanice; pri nastavení RS232C je CAT na konektore vzadu.\n\nTáto položka bola napísaná podľa zverejnenej dokumentácie CAT a na FTDX3000 ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.yaesuRs232Troubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Konektor CAT je RS-232.** Potrebuje prevodník USB na sériový port a priamy kábel DB-9 — kábel null-modem prehadzuje linky a rádiostanica nič nepočuje.\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni, pokiaľ nie je zapnuté **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\nTáto položka bola napísaná podľa zverejnenej dokumentácie CAT a na žiadnej z týchto rádiostaníc ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
-			'settings.station.yaesuUsbTroubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Použite prvý z dvoch USB portov rádiostanice.** CAT je zvyčajne na prvom (vo Windows port COM **Enhanced**); druhý (**Standard**) slúži na PTT a kľúčovanie. Výber ukazuje na prvý všade, kde ich dokáže rozlíšiť.\n- **CAT RTS musí byť na rádiostanici VYPNUTÉ.** Ak je zapnuté, rádiostanica čaká na signál handshake, ktorý aplikácia drží v nízkej úrovni, pokiaľ nie je zapnuté **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
+			'settings.station.yaesuUsbTroubleshooting' => 'Rádiostanica prijíma príkazy, ale neodpovedá. Takmer vždy ide o jedno z:\n\n- **Použite prvý z dvoch USB portov rádiostanice.** CAT je zvyčajne na prvom (vo Windows port COM **Enhanced**); druhý (**Standard**) slúži na PTT a kľúčovanie. Výber ukazuje na prvý všade, kde ich dokáže rozlíšiť.\n- **CAT RTS na rádiostanici vypnuté, alebo zapnuté Držať RTS vo vysokej úrovni.** So zapnutým menu **CAT RTS** rádiostanica mlčí, kým je RTS v nízkej úrovni — pri otvorení portu môže raz odpovedať, potom už nič. Výber vlastného USB portu rádiostanice zapne **Držať RTS vo vysokej úrovni** v sekcii „Rozšírené nastavenia“. Na Digirig, SignaLink alebo väčšine domácky vyrobených káblov je RTS signál PTT a jeho držanie vo vysokej úrovni zakľúčuje váš vysielač: radšej vypnite CAT RTS na rádiostanici.\n- **Rýchlosť musí zodpovedať** menu CAT RATE rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
 			'settings.station.k4SerialNotes' => 'Pripojte zadný konektor USB-B (PC) na K4. Pre CAT funguje USB-PC1 aj USB-PC2; vyberte nepoužívaný port a nastavte na rádiostanici zodpovedajúce Serial USB-PCn: Baud Rate. HaLo predvyplní 38400; v prípade potreby to zmeňte. Iná aplikácia musí používať druhý port alebo Ethernet.\n\nToto pripojenie ovláda rádiostanicu a jej kľúčovače; neposiela zvuk do HaLo.',
-			'settings.station.k4TcpNotes' => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Ide o ovládanie CAT, nie o samostatné pripojenie vzdialeného zvuku na porte 9204.\n\nHaLo ovláda rádiostanicu a jej kľúčovače bez streamovania zvuku alebo údajov panadaptera.',
+			'settings.station.k4TcpNotes' => 'Pripojte ethernetový konektor K4 do lokálnej siete. Zadajte jeho názov hostiteľa alebo IP adresu a port CAT 9200. Keď je viditeľný panadapter alebo vodopád, HaLo používa toho istého hostiteľa na pevnom porte 9201; zmena portu CAT nemení port spektra.\n\nSpektrum zobrazuje hlavný prijímač. Jeho zoom, nastavenie referencie a rýchlosti ovplyvňujú iba zobrazenie v HaLo. Streamovanie zvuku nie je podporované.',
 			'settings.station.k4PowerTimeout' => 'Výkon K4 sa nezmenil, pretože rádiostanica nepotvrdila svoj výstupný rozsah. Skúste to znova.',
+			'settings.station.k4RemoteNotes' => 'Zapnite na K4 vzdialený prístup a zadajte jeho sieťové heslo. Main a Sub zdieľajú jedno šifrované spojenie pre ovládanie rádiostanice a spektrum. Predvolený port je 9204; pri vzdialenom pripojení zadajte svoj presmerovaný port.\n\nPrehrávanie zvuku a streamovanie mikrofónu nie sú podporované.',
+			'settings.station.k4Receiver' => 'Prijímač',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Vyberte Main alebo Sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'Tento prijímač je pre tento K4 už nakonfigurovaný',
+			'settings.station.k4SubReceiverOff' => 'Prijímač Sub na K4 je vypnutý',
+			'settings.station.k4RemotePasswordRequired' => 'Na zabezpečené pripojenie zadajte sieťové heslo K4.',
+			'settings.station.k4RemoteHandshakeFailed' => 'K4 nedokázal vytvoriť zabezpečené spojenie. Skontrolujte jeho sieťové heslo a nastavenia vzdialeného prístupu.',
+			'settings.station.k4RemoteUnreachable' => 'Zabezpečené spojenie K4 je nedostupné. Skontrolujte jeho adresu, port a nastavenia vzdialeného prístupu.',
 			'settings.station.k4PowerRange' => 'Výkon K4 musí byť 0,1–110 W, alebo 0,0001–0,01 W, keď je aktívny miliwattový výstup transvertora.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
 			'settings.station.elecraftTroubleshooting' => 'Rádiostanice Elecraft používajú Kenwood CAT a KX2 aj KX3 boli takto vyskúšané — VFO v oboch smeroch, prepínanie módov aj CW záznej fungujú.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** hodnote nastavenej v **RS232** v menu rádiostanice. Z výroby je to 38400. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n\n**Ak je frekvencia správna, ale mód nie**, dajte nám vedieť. Položky KX2 a KX3 čítajú mód z pozície v stavovej odpovedi rádiostanice, ktorú sme určili podľa rádiostaníc, ktoré sme videli, a firmvér, ktorý ho dáva inam, sa k nám dostane iba cez hlásenie.\n\nO K3 zatiaľ nemáme žiadne hlásenie, preto ak ju používate, dajte nám vedieť, čo sa stane. K4 má vlastnú položku.',
+			'settings.station.lab599TroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
+			'settings.station.lab599Troubleshooting' => 'Rad TX-500 používa Kenwood CAT. Frekvencia a mód boli vyskúšané cez LiNK500MP; výkon a merače sú napísané podľa referencie CAT od Lab599, preto nahláste, čo sa stane, v každom prípade.\n\n- **Rýchlosť musí zodpovedať** nastaveniu CAT rádiostanice, 9600, pokiaľ ste ho nezmenili. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Vyberte protokol CAT na rádiostanici.** TS-2000 pokrýva frekvenciu, mód a výkon. LAB599 navyše aplikácii umožní prepnúť rádiostanicu na DIG, vidieť jej vysielanie v DIG a čítať napájacie napätie.\n- **Cez LiNK500MP** stlačte a podržte gombík VFO približne tri sekundy, aby ste ovládanie CAT odovzdali rozhraniu.\n- **Nastavte režim LiNK500MP podľa pripojenia**: Mode 3 pre Bluetooth, Mode 4 pre Bluetooth LE. V inom režime ho vyhľadávanie Bluetooth LE nenájde.\n- **Cez Bluetooth** sa LiNK500MP spáruje ako dva sériové porty a CAT nesie iba jeden. Ak rádiostanica mlčí, vyberte ten druhý.',
+			'settings.station.lab599TroubleshootingIos' => 'Rad TX-500 používa Kenwood CAT. Frekvencia a mód boli vyskúšané cez LiNK500MP; výkon a merače sú napísané podľa referencie CAT od Lab599, preto nahláste, čo sa stane, v každom prípade.\n\n- **Nastavte LiNK500MP na Mode 4**, jeho režim Bluetooth LE, skôr než ho začnete vyhľadávať. V inom režime ho iPhone ani iPad nenájde.\n- **Odovzdajte ovládanie CAT rozhraniu LiNK500MP**: stlačte a približne tri sekundy podržte gombík VFO rádiostanice.\n- **Vyberte protokol CAT na rádiostanici.** TS-2000 pokrýva frekvenciu, mód a výkon. LAB599 navyše aplikácii umožní prepnúť rádiostanicu na DIG, vidieť jej vysielanie v DIG a čítať napájacie napätie.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Ak sa rádiostanica pripojí, ale nezobrazuje frekvenciu',
-			'settings.station.kenwoodTroubleshooting' => 'Tento ovládač je overený na Kenwood TS-590SG a TS-480, QRP Labs QMX a QCX-mini a Elecraft KX2 a KX3. Zvyšok radu je napísaný podľa zverejnených referencií CAT, preto nahláste, čo sa stane, v každom prípade.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Niektoré rádiostanice potrebujú povoliť CAT** v menu, inak vôbec neodpovedajú.\n\n**Viaceré SDR rozhrania používajú rovnaký protokol**, takže sa oplatí vyskúšať túto položku aj pre ne; rádiostanice Elecraft sú uvedené samostatne, pod Elecraft. Ak je frekvencia správna, ale mód je nesprávny alebo chýba, je to jediná časť, ktorá sa v rade líši — aplikácia ho zisťuje z rádiostanice a v náhradnom prípade sa pýta priamo, takže mód môže jednoducho meškať.',
+			'settings.station.kenwoodTroubleshooting' => 'Tento ovládač je overený na Kenwood TS-590SG a TS-480, QRP Labs QMX a QCX-mini a Elecraft KX2 a KX3. Zvyšok radu je napísaný podľa zverejnených referencií CAT, preto nahláste, čo sa stane, v každom prípade.\n\nAk rádiostanica neodpovedá, takmer vždy ide o jedno z:\n\n- **Rýchlosť musí zodpovedať** menu CAT rádiostanice. Pri nezhode rádiostanica posiela nezmysly alebo nič, a nikdy chybu.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.\n- **Niektoré rádiostanice potrebujú zapnúť CAT** v menu, inak vôbec neodpovedajú.\n- **Rádiostanice Kenwood čakajú na RTS**: ich port CAT ho používa ako handshake, preto musí byť zapnuté Držať RTS vo vysokej úrovni (v sekcii „Rozšírené nastavenia“). Pripojenie nastavené skôr, než to bolo predvolene zapnuté, ho môže mať vypnuté. Na Digirig alebo inom kábli, ktorý kľúčuje PTT z RTS, ho vypnite, inak rádiostanica vysiela.\n\n**Viaceré SDR rozhrania používajú rovnaký protokol**, takže sa oplatí vyskúšať túto položku aj pre ne; rádiostanice Elecraft sú uvedené samostatne, pod Elecraft. Ak je frekvencia správna, ale mód je nesprávny alebo chýba, je to jediná časť, ktorá sa v rade líši — aplikácia ho zisťuje z rádiostanice a v náhradnom prípade sa pýta priamo, takže mód môže jednoducho meškať.',
 			'settings.station.statusConnected' => 'Pripojené',
 			'settings.station.statusLost' => 'Odpojené',
 			'settings.station.notConfigured' => 'Nenakonfigurované',
 			'settings.station.currentConfiguration' => 'Aktuálna konfigurácia',
 			'settings.station.currentTransceiver' => 'Aktuálny transceiver',
+			'settings.station.currentTransceivers' => 'Aktuálne transceivery',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Správy sa zaradia do poradia namiesto prerušenia',
+			'settings.station.noRadioBSelected' => 'Nie je vybraná žiadna rádiostanica B',
 			'settings.station.radioMode' => 'Mód rádiostanice',
-			'settings.station.keyerNotSupported' => 'Aktuálna rádiostanica nepodporuje',
+			'settings.station.keyerNotSupported' => 'Aktuálna rádiostanica to nepodporuje',
 			'settings.station.catControlPreferences' => 'Predvoľby ovládania CAT',
 			'settings.station.chooseTransceiver' => 'Vybrať transceiver',
 			'settings.station.configurationSection' => 'Konfigurácia',
@@ -5074,13 +6498,25 @@ extension on TranslationsSk {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} je na inom zariadení',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Táto rádiostanica je pripojená k ${device}. Jej pripojenie a nastavenia sa konfigurujú na tom zariadení.',
 			'settings.station.antennaInUse' => 'Používaná anténa',
-			'settings.station.keyInUse' => 'Používaný kľúč',
+			'settings.station.keyInUse' => 'Kľúčovanie CW',
+			'settings.station.phoneKeying' => 'Fóniové kľúčovanie',
+			'settings.station.phoneKeyingNone' => 'Žiadne',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Pamäte v ${radio}',
+			'settings.station.phoneKeyingComputer' => 'Zvuk v tomto počítači',
+			'settings.station.phoneKeyingOff' => 'Fóniové kľúčovanie je vypnuté',
+			'settings.station.computerVoiceSettings' => 'Zvuk počítača',
+			'settings.station.cwKeyingOptions' => 'Možnosti kľúčovania CW',
 			'settings.station.noneSelected' => 'Žiadny',
 			'settings.station.moreSettings' => 'Ďalšie nastavenia',
 			'settings.station.icomCivTroubleshootingTitle' => 'Ak sa pre tú istú rádiostanicu zobrazia dva sériové porty',
 			'settings.station.icomCivTroubleshooting' => 'Viaceré rádiostanice Icom, vrátane IC-705, poskytujú naraz **dva** sériové USB porty (Icom ich nazýva Port A a Port B), oba predvolene nastavené na CI-V. Ani táto aplikácia, ani váš OS ich inak nerozlíšia: rovnaké USB vendor/product ID sa jednoducho zobrazí dvakrát, niekedy tu s príponou `#2`. **Správny je zvyčajne Port A** — obvykle prvý, ktorý váš OS alebo prehliadač uvádza, a kde táto aplikácia dokáže porty rozlíšiť, označí ho ako odporúčaný. Ak príkazy odchádzajú a rádiostanica nikdy neodpovie, skúste potom druhý port.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Ak rádiostanica nikdy neodpovie',
 			'settings.station.civAddressTroubleshooting' => '- **Adresa CI-V musí zodpovedať** menu rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva, ale práve pri rádiostanici zdieľajúcej zbernicu CI-V sa mení. Rámec odoslaný na nesprávnu adresu sa potichu ignoruje, čo vyzerá presne ako nefunkčný kábel.\n- **Rýchlosť musí zodpovedať** CI-V BAUD RATE rádiostanice (pri USB CI-V USB Baud Rate). Nastavte na rádiostanici rovnaké číslo, aké je zobrazené tu, **nie Auto**. Pri Auto sa niektoré rádiostanice, vrátane IC-7300, pripoja a asi po minúte prestanú odpovedať.\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **Adresa CI-V musí zodpovedať** menu rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva, ale práve pri rádiostanici zdieľajúcej zbernicu CI-V sa mení. Rámec odoslaný na nesprávnu adresu sa potichu ignoruje, čo vyzerá presne ako nefunkčný kábel.\n${speed}\n- **Port môže držať iná aplikácia**: WSJT-X, fldigi aj rigctld ho nechávajú otvorený.',
+			'settings.station.icomUsbSpeedFollows' => '- **Nie je čo nastavovať pri rýchlosti.** Cez USB táto rádiostanica komunikuje rýchlosťou, ktorú používa počítač, a táto položka vždy používa 115200, rýchlosť, ktorú potrebuje scope.',
+			'settings.station.ic7610UsbSpeed' => '- **Nastavte CI-V USB Baud Rate na 115200**, rýchlosť, ktorú táto položka vždy používa, pretože ju potrebuje scope — **nie Auto**. Rádiostanica nastavená na inú rýchlosť odpovedá mlčaním.',
+			'settings.station.civTransceiveTitle' => 'Ak aplikácia pomaly sleduje rádiostanicu',
+			'settings.station.civTransceive' => 'Ak aplikácii trvá niekoľko sekúnd, kým zobrazí zmenu frekvencie alebo módu urobenú na rádiostanici, zapnite na nej nastavenie **CI-V Transceive** (na väčšine súčasných modelov v SET > Connectors > CI-V). Keď je zapnuté, rádiostanica hlási každú zmenu hneď, ako nastane. Keď je vypnuté, aplikácia vidí zmenu až pri ďalšom dopyte, každých pár sekúnd.',
 			'settings.station.ic7300Mk2Note' => '\n- **IC-7300 MK2** sa dodáva s adresou `B6`, nie `94` predvyplnenou tu — namiesto toho vyberte položku IC-7300 MK2.',
 			'settings.station.ic705PortNote' => '\n- **IC-705** poskytuje dva sériové USB porty, oba pomenované podľa rádiostanice. CI-V je na **prvom** z nich, na ktorý výber ukazuje všade, kde ich dokáže rozlíšiť.',
 			'settings.station.ic7760PortNote' => '\n- **IC-7760** používa CI-V na **Port A** z dvoch sériových USB portov, ktoré poskytuje.',
@@ -5090,24 +6526,23 @@ extension on TranslationsSk {
 			'settings.station.flrigTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.flrigTroubleshooting' => 'Toto sa pripája k **programu flrig, ktorý spúšťate sami**, nie priamo k rádiostanici — flrig komunikuje s rádiostanicou a podporuje väčšinu značiek a modelov.\n\n- **flrig už musí bežať** s nakonfigurovaným a pripojeným transceiverom.\n- **Port** je 12345, pokiaľ ste ho nezmenili v konfigurácii flrig (Config → Setup → Server).\n- **Z iného počítača** sa uistite, že server flrig je dostupný. Počúva na všetkých rozhraniach, ale váš firewall s tým nemusí súhlasiť.\n- Po pripojení chýbajúca frekvencia zvyčajne znamená, že samotný flrig sa nedostane k rádiostanici. Skontrolujte, či displej flrig sleduje ladenie.',
 			'settings.station.hrdTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
-			'settings.station.hrdTroubleshooting' => 'Toto sa pripája k **Rig Control z Ham Radio Deluxe, ktorý beží na vašom počítači**, nie priamo k rádiostanici — HRD komunikuje s rádiostanicou.\n\n- **Rig Control už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho IP server musí byť povolený.** Rig Control komunikuje s inými programami iba cez neho.\n- **Port** je 7809, pokiaľ ste ho nezmenili v nastaveniach IP servera.\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených popisov protokolu HRD a s HRD ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
+			'settings.station.hrdTroubleshooting' => 'Toto sa pripája k **Rig Control z Ham Radio Deluxe, ktorý beží na vašom počítači**, nie priamo k rádiostanici — HRD komunikuje s rádiostanicou.\n\n- **Rig Control už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho IP server musí byť zapnutý.** Rig Control komunikuje s inými programami iba cez neho.\n- **Port** je 7809, pokiaľ ste ho nezmenili v nastaveniach IP servera.\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených popisov protokolu HRD a s HRD ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.n3fjpTroubleshooting' => 'Toto sa pripája k **logovaciemu programu N3FJP, ktorý beží na vašom počítači**, nie priamo k rádiostanici — N3FJP komunikuje s rádiostanicou.\n\n- **API programu musí byť zapnuté**: Settings → Application Program Interface, zaškrtnite **TCP API Enabled**.\n- **Port** je 1100, pokiaľ ste ho tam nezmenili.\n- **N3FJP musí mať nastavené rozhranie rádiostanice**, aby mohol sledovať alebo ladiť rádiostanicu. Bez neho hlási iba to, čo sa zadá do jeho vstupného okna.\n- N3FJP hlási iba pásmo, mód a frekvenciu: žiadny výkon, žiadny stav vysielania.\n\nTáto položka bola napísaná podľa zverejneného API N3FJP a s N3FJP ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.commanderTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.commanderTroubleshooting' => 'Toto sa pripája k **DXLab Commander, ktorý beží na vašom počítači**, nie priamo k rádiostanici — Commander komunikuje s rádiostanicou.\n\n- **Commander už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho sieťová služba musí byť zapnutá**: tlačidlo **Net Serv** na paneli Radio v okne Configuration programu Commander.\n- **Port** je 52002, tretí port bloku začínajúceho na **Base Port** v Net Serv (52000, pokiaľ ste ho nezmenili).\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených TCP správ programu Commander a s Commanderom ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.ic705TroubleshootingTitle' => 'Ak rádiostanica nikdy neodpovie',
-			'settings.station.ic705Troubleshooting' => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť povolená.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo je výslovne odmietnuté**, nie prijaté mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.',
+			'settings.station.ic705Troubleshooting' => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť zapnutá.\n- **Porty musia zodpovedať** Control Port a Serial Port (UDP) rádiostanice, alebo portom, ktoré sú na ne presmerované. Na nesprávny port odpovedá mlčanie, rovnako ako pri vypnutej rádiostanici.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo sa výslovne odmietne**, neodpovedá sa naň mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.',
+			'settings.station.icomLanTroubleshooting' => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview, RS-BA1 alebo Remote Utility od Icomu pripojené k tej istej rádiostanici držia túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** Jej port LAN musí byť pripojený k tej istej sieti ako toto zariadenie, jej **Network Control** musí byť zapnuté a používateľské meno a heslo musia byť na rádiostanici nastavené ako sieťový používateľ.\n- **Porty musia zodpovedať** Control Port a Serial Port (UDP) rádiostanice, alebo portom, ktoré sú na ne presmerované. Na nesprávny port odpovedá mlčanie, rovnako ako pri vypnutej rádiostanici.\n- **Ak sa pripojí, ale nikdy neodpovie**, adresa CI-V tu musí zodpovedať menu CI-V ADDRESS rádiostanice. Táto položka predvyplní adresu, s ktorou sa model dodáva.\n- **Vypnite a zapnite rádiostanicu**, ak zostane zaseknutá.',
 			'settings.station.statusStale' => 'Neodpovedá',
 			'settings.station.statusDisconnected' => 'Nepripojené',
 			'settings.station.statusConnecting' => 'Pripája sa…',
 			'settings.station.statusDisconnecting' => 'Odpája sa…',
 			'settings.station.statusError' => 'Pripojenie zlyhalo',
 			'settings.station.currentRadioSettings' => 'Aktuálne nastavenia rádiostanice',
-			'settings.station.notSupportedByThisRadio' => 'Táto rádiostanica nepodporuje',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Fónia',
-			_ => null,
-		} ?? switch (path) {
+			'settings.station.notSupportedByThisRadio' => 'Táto rádiostanica to nepodporuje',
+			'settings.station.cwMessagesButton' => 'CW správy',
+			'settings.station.voiceMessagesButton' => 'Fóniové správy',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Hlasový kľúčovač: pamäte v rádiostanici (${count})',
 			'settings.station.antennaBands' => 'Pásma',
 			'settings.station.antennaType' => 'Typ antény',
@@ -5134,6 +6569,8 @@ extension on TranslationsSk {
 			'settings.station.newAntenna' => 'Nová anténa',
 			'settings.station.newKey' => 'Nový kľúč',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL alebo kompatibilný)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT kľúčovač v ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Kľúč na ${device}',
 			'settings.station.trackStationInfo' => 'Zaznamenávať informácie o stanici pre každé QSO',
@@ -5155,7 +6592,7 @@ extension on TranslationsSk {
 			'settings.station.placeholderMode' => 'Mód',
 			'settings.station.placeholderModeDescription' => 'Mód, na ktorom zástupná rádiostanica začína, napr. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Výkon (watty)',
-			'settings.station.placeholderPurpose' => 'Použite túto rádiostanicu na zaznamenávanie, ktorú rádiostanicu používate, na účely logovania',
+			'settings.station.placeholderPurpose' => 'Použite túto rádiostanicu, aby sa pri logovaní zaznamenávalo, ktorú rádiostanicu práve používate',
 			'settings.station.placeholderReplyDelay' => 'Oneskorenie odpovede (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'Ako dlho trvá zástupnej rádiostanici nahlásiť zmenu. Prázdne alebo 0 odpovie okamžite.',
 			'settings.station.cwKeyerField' => 'CAT CW kľúčovač',
@@ -5185,7 +6622,7 @@ extension on TranslationsSk {
 			'settings.station.voiceDialectDescription' => 'Ako táto rádiostanica prehráva hlasové pamäte cez CAT. Žiadny znamená bez hlasových pamätí cez CAT. S dialektom a bez počtu platí predvolený počet dialektu.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, štýl TS-590)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB a DA)',
-			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (stlačenia prepínačov)',
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (stlačenia tlačidiel)',
 			'settings.station.placeholderDiagnostic' => 'Simulované',
 			'settings.station.placeholderWholeNumberInvalid' => 'Musí byť celé číslo, 0 alebo viac',
 			'settings.station.placeholderFreqInvalid' => 'Musí byť frekvencia v kHz, väčšia ako nula',
@@ -5212,11 +6649,48 @@ extension on TranslationsSk {
 			'settings.station.switchCurrentStateDescription' => 'Na ktorej anténe je práve každý port rádiostanice. Zmeny sa prejavia okamžite.',
 			'settings.station.switchWiringHeader' => 'Zapojenie',
 			'settings.station.switchPortInhibitedHint' => 'vysielanie zablokované',
+			'settings.station.rotatorAxes' => 'Osi',
+			'settings.station.rotatorAxesDescription' => 'Či sa rotátor otáča iba v azimute, alebo aj v elevácii (G-5500 alebo podobný).',
+			'settings.station.rotatorAxesAzimuth' => 'Iba azimut',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Azimut a elevácia',
+			'settings.station.rotatorAzimuthOffset' => 'Posun azimutu',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Koľko stupňov pripočítať k tomu, čo hlási ovládač, keď jeho nula nie je skutočný sever. Otáčanie sa podľa toho opraví.',
+			'settings.station.rotatorElevationOffset' => 'Posun elevácie',
+			'settings.station.rotatorAzimuthMin' => 'Najnižší azimut',
+			'settings.station.rotatorAzimuthMax' => 'Najvyšší azimut',
+			'settings.station.rotatorAzimuthMaxDescription' => 'V stupňoch samotného ovládača. Nad 360 pre rotátor s presahom, ktorý sa potom otáča kratšou cestou.',
+			'settings.station.rotatorElevationMin' => 'Najnižšia elevácia',
+			'settings.station.rotatorElevationMax' => 'Najvyššia elevácia',
+			'settings.station.rotatorElevationMaxDescription' => 'V stupňoch samotného ovládača. Nad 90 pre rotátor, ktorý sa preklápa.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Celé stupne, ${min} až ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'Dolná hranica musí byť nižšia ako horná',
+			'settings.station.rotatorPollInterval' => 'Interval dopytovania (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'Ako často sa pýtať rotátora, kam mieri. Nechajte prázdne pre ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'Vyberte, v ktorých osiach sa rotátor otáča',
+			'settings.station.rotatorRefused' => 'Ovládač odmietol príkaz. Skontrolujte, či je nastavený na režim GS-232.',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator odpovedá, až keď je na to nastavený, inak nehovorí vôbec nič:\n\n- **Zapnite UDP Control** v menu Setup programu PstRotator.\n- **Port musí zodpovedať**: Communication → UDP Control Port, 12000, pokiaľ nebol zmenený. PstRotator odpovedá na nasledujúcom porte (12001), ktorý musí byť na tomto zariadení voľný.\n- **Pripojte PstRotator k jeho ovládaču.** Kým nie je pripojený, cez UDP neodpovedá nič.\n- **Povoľte ho vo firewalle** na PC, kde beží PstRotator, aj na tomto zariadení, ktoré počúva odpovede.\n- **Na Macu, iPhone alebo iPade** potrebuje Ham2K Logger prístup k lokálnej sieti (Nastavenia → Súkromie a bezpečnosť → Lokálna sieť).',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Aktuálny stav: ${position}',
+			'settings.station.rotatorDisconnected' => 'odpojený',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° azimut',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevácia',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'Čaká sa, kým ovládač nahlási svoju polohu…',
+			'settings.station.rotatorNotResponding' => 'neodpovedá',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Otáča sa na ${heading}, pokiaľ to limity tohto rotátora dovolia',
+			'settings.station.rotatorTargetAzimuth' => 'Otočiť na azimut',
+			'settings.station.rotatorTargetAzimuthShort' => 'Otočiť na az',
+			'settings.station.rotatorTargetElevation' => 'Otočiť na eleváciu',
+			'settings.station.rotatorTargetElevationShort' => 'Otočiť na el',
+			'settings.station.rotatorAzimuthInvalid' => 'Musí byť 0 až 360',
+			'settings.station.rotatorElevationInvalid' => 'Musí byť 0 až 180',
+			'settings.station.rotatorTurn' => 'Otočiť',
+			'settings.station.rotatorStop' => 'Stop',
 			'settings.station.configUnreadable' => 'Uložené nastavenia tejto rádiostanice sa nepodarilo prečítať. Otvorte jej nastavenia a zadajte ich znova, alebo ju odstráňte a pridajte späť.',
 			'settings.station.autoConnectHeld' => 'HaLo prestal odpovedať, keď sa naposledy pripájal k tejto rádiostanici, preto sa tentoraz nepripojil sám. Stlačte Pripojiť a skúste to znova.',
 			'settings.offlineData.title' => 'Offline údaje',
 			'settings.offlineData.noFiles' => 'Žiadne dátové súbory',
-			'settings.offlineData.noFilesDescription' => 'Povoľte rozšírenia aktivít alebo vyhľadávania a ich offline údaje sa budú sťahovať sem.',
+			'settings.offlineData.noFilesDescription' => 'Zapnite rozšírenia aktivít alebo vyhľadávania a ich offline údaje sa budú sťahovať sem.',
 			'settings.offlineData.refresh' => 'Obnoviť',
 			'settings.offlineData.refreshing' => 'Obnovuje sa…',
 			'settings.offlineData.updateAll' => 'Aktualizovať všetko',
@@ -5232,18 +6706,23 @@ extension on TranslationsSk {
 			'settings.offlineData.extensionsSection' => 'Rozšírenia',
 			'settings.profiles.notSet' => 'Nenastavené',
 			'settings.profiles.personalInfo' => 'Osobné údaje',
-			'settings.profiles.personalInfoNote' => 'Môžu byť zahrnuté do vygenerovaných denníkov, ak sú potrebné na odoslanie',
+			'settings.profiles.personalInfoNote' => 'Môžu sa zahrnúť do vygenerovaných denníkov, keď ich odovzdanie denníka vyžaduje',
 			'settings.profiles.name' => 'Meno',
 			'settings.profiles.email' => 'E-mail',
 			'settings.profiles.club' => 'Klub',
 			'settings.profiles.arrlSection' => 'ARRL sekcia',
 			'settings.profiles.racSection' => 'RAC sekcia',
 			'settings.profiles.section' => 'Sekcia',
-			'settings.search.clear' => 'Vymazať',
+			'settings.search.clear' => 'Vyčistiť',
 			'settings.search.hint' => 'Hľadať v nastaveniach',
-			'settings.developer.developerModeDescription' => 'Povoliť upozornenia pre vývojárov, ladiace logy a nástroje.',
+			'settings.developer.developerModeDescription' => 'Zapnúť upozornenia pre vývojárov, ladiace logy a nástroje.',
 			'settings.developer.experiments' => 'Experimenty',
-			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} povolený', other: '${count} povolených', ), 
+			'settings.developer.showIdleMetrics' => 'Zobraziť metriky nečinnosti',
+			'settings.developer.showIdleMetricsDescription' => 'V stavovom riadku zobrazovať, ako veľmi bolo prostredie rozšírení za poslednú sekundu nečinné. Ťuknutím zobrazíte 10- a 60-sekundové priemery.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent} % nečinné',
+			'settings.developer.idleMetricsAverages' => 'Priemer nečinnosti:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds} s ${percent} %',
+			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} zapnutý', other: '${count} zapnutých', ), 
 			'settings.developer.patchTrack' => 'Vetva Code Push',
 			'settings.developer.patchTrackDescription' => 'Ktorý okruh aktualizácií kódu cez internet toto zariadenie sleduje. Odvážnejšie okruhy dostávajú opravy skôr, ale menej otestované. Aktualizácie kódu sa uplatnia pri ďalšom reštarte.',
 			'settings.developer.trackStable' => 'Stabilná',
@@ -5314,19 +6793,24 @@ extension on TranslationsSk {
 			'settings.gridPrecisionOpts.eight' => '8 miest (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 miest',
 			'settings.gridPrecisionDescription.eight' => '8 miest',
-			'commands.enableSyncFirst' => 'Najprv povoľte synchronizáciu v Nastaveniach.',
+			'commands.enableSyncFirst' => 'Najprv zapnite synchronizáciu v Nastaveniach.',
 			'commands.fullResyncStarted' => 'Úplná opätovná synchronizácia sa začala — lokálne údaje boli najprv zálohované.',
 			'commands.noDataFilesMatched' => ({required Object target}) => '„${target}“ nezodpovedajú žiadne dátové súbory.',
 			'commands.reloadFailed' => ({required Object error}) => 'Opätovné načítanie zlyhalo: ${error}',
 			'commands.reloadingAll' => 'Znova sa načítavajú všetky dátové súbory…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Znova sa načítavajú dátové súbory ${target}…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Neznámy experiment „${token}“',
-			'commands.experimentEnabled' => ({required Object name}) => '${name} povolený',
+			'commands.experimentEnabled' => ({required Object name}) => '${name} zapnutý',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} vypnutý',
 			'commands.sentryTestSent' => 'Testovacie hlásenie chyby odoslané do Sentry',
+			'commands.idleMetricsEnabled' => 'Metriky nečinnosti v stavovom riadku zapnuté',
+			'commands.idleMetricsDisabled' => 'Metriky nečinnosti vypnuté',
 			'commands.sentryTestLocalOnly' => 'Sentry je v tejto zostave vypnuté — testovacia chyba bola zaznamenaná iba lokálne',
 			'commands.noOperationOpen' => 'Tento príkaz potrebuje otvorenú prevádzku',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Nie je známe, ako označiť „${kind}“',
+			'commands.goUnavailable' => ({required Object place}) => '${place} nie je v tejto aplikácii zapnuté',
+			'commands.goUnknown' => ({required Object to}) => 'Nie je známe, ako prejsť na „${to}“',
+			'commands.goBlocked' => 'Najprv zatvorte otvorený dialóg',
 			'commands.operationAlreadyStarted' => 'Táto prevádzka už má značku začiatku',
 			'commands.couldNotOpenLocation' => 'Prestávka bola pridaná, ale obrazovku polohy sa nepodarilo otvoriť',
 			'commands.noTestOperations' => 'Žiadne testovacie prevádzky na vyčistenie',
@@ -5359,9 +6843,13 @@ extension on TranslationsSk {
 			'commands.cwSending' => ({required Object text}) => 'Odosiela sa CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW správa F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW správa F${n} nebola odoslaná: rozšírenia nie sú pripravené',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Fóniová správa M${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'rozšírenia nie sú pripravené',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Nič sa neodoslalo: rádiostanica ${radio} to nedokáže kľúčovať',
+			'commands.so2rNoRadioB' => 'Nič sa neodoslalo: na kľúčovanie z tejto sady vyberte rádiostanicu B v Konfigurácii stanice',
 			'commands.settingNotStored' => ({required Object label}) => '„${label}“ túto hodnotu neprijalo',
 			'commandDialog.hint' => 'Hľadajte volacie znaky alebo zadajte príkaz',
-			'commandDialog.noResults' => ({required Object text}) => '„${text}“ nič nezodpovedá',
+			'commandDialog.noResults' => ({required Object text}) => 'Pre „${text}“ sa nič nenašlo',
 			'commandDialog.sectionCommands' => 'Príkazy',
 			'commandDialog.sectionGoTo' => 'Prejsť na',
 			'commandDialog.sectionOperations' => 'Prevádzky',
@@ -5372,6 +6860,99 @@ extension on TranslationsSk {
 			'commandDialog.sectionSuggestions' => 'Skúste',
 			'commandDialog.lookingUp' => 'Vyhľadáva sa volací znak…',
 			'commandDialog.blockedByPane' => 'Príkazy sa nedajú použiť, kým je otvorený panel alebo dialóg',
+			'keyboardShortcuts.title' => 'Klávesové skratky',
+			'keyboardShortcuts.description' => 'Prispôsobte si priradenie klávesov',
+			'keyboardShortcuts.search' => 'Hľadať príkazy a klávesy',
+			'keyboardShortcuts.import' => 'Importovať…',
+			'keyboardShortcuts.export' => 'Exportovať…',
+			'keyboardShortcuts.resetAll' => 'Resetovať všetko',
+			'keyboardShortcuts.resetAllTitle' => 'Resetovať všetky skratky?',
+			'keyboardShortcuts.resetAllBody' => 'Každý príkaz sa vráti k svojim predvoleným klávesom a klávesy priradené k zadaným príkazom sa odstránia.',
+			'keyboardShortcuts.reset' => 'Resetovať',
+			'keyboardShortcuts.noKey' => 'Bez klávesu',
+			'keyboardShortcuts.changed' => 'Zmenené',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} je priradené aj k ${commands}',
+			'keyboardShortcuts.groupApp' => 'Aplikácia',
+			'keyboardShortcuts.groupKeying' => 'Kľúčovanie',
+			'keyboardShortcuts.groupLogging' => 'Logovanie',
+			'keyboardShortcuts.groupCommands' => 'Príkazy',
+			'keyboardShortcuts.groupFixed' => 'Pevné klávesy',
+			'keyboardShortcuts.contextApp' => 'Kdekoľvek',
+			'keyboardShortcuts.contextLogView' => 'Zobrazenia Prevádzka, Lov a Denníky',
+			'keyboardShortcuts.contextOperation' => 'Zobrazenie Prevádzka, pri kľúčovaní CAT rádiostanice',
+			'keyboardShortcuts.contextLogging' => 'V logovacom paneli',
+			'keyboardShortcuts.addCommand' => 'Pridať príkaz…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Neznámy príkaz: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Otvoriť dialóg príkazov',
+			'keyboardShortcuts.command.toggleTheme' => 'Prepnúť medzi svetlou a tmavou témou',
+			'keyboardShortcuts.command.toggleLanguage' => 'Prepnúť medzi angličtinou a španielčinou',
+			'keyboardShortcuts.command.fontScaleUp' => 'Väčšie písmo',
+			'keyboardShortcuts.command.fontScaleDown' => 'Menšie písmo',
+			'keyboardShortcuts.command.fontScaleReset' => 'Normálna veľkosť písma',
+			'keyboardShortcuts.command.densityLooser' => 'Redšie rozloženie',
+			'keyboardShortcuts.command.densityDenser' => 'Hustejšie rozloženie',
+			'keyboardShortcuts.command.densityAuto' => 'Automatická hustota rozloženia',
+			'keyboardShortcuts.command.find' => 'Hľadať v denníku',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Odoslať správu ${n}',
+			'keyboardShortcuts.command.keyboardMode' => 'Zapnúť alebo vypnúť režim klávesnice',
+			'keyboardShortcuts.command.ptt' => 'Push to talk (PTT)',
+			'keyboardShortcuts.command.wipe' => 'Vyčistiť práve zapisované spojenie',
+			'keyboardShortcuts.fixed.callsign' => 'Písanie volacích znakov',
+			'keyboardShortcuts.fixed.escape' => 'Zastaviť vysielanie, vrátiť sa o krok späť alebo zavrieť',
+			'keyboardShortcuts.fixed.enter' => 'Zapísať spojenie',
+			'keyboardShortcuts.fixed.space' => 'Ďalšie pole',
+			'keyboardShortcuts.fixed.tab' => 'Ďalšie alebo predchádzajúce pole',
+			'keyboardShortcuts.fixed.arrows' => 'Pohyb medzi poľami, ovládacími prvkami a denníkom',
+			'keyboardShortcuts.fixed.walk' => 'Listovať denníkom po stranách alebo prejsť na jeho začiatok či koniec',
+			'keyboardShortcuts.fixed.undo' => 'Vrátiť späť vyčistenie alebo vymazanie',
+			'keyboardShortcuts.editor.addShortcut' => 'Pridať skratku',
+			'keyboardShortcuts.editor.listening' => 'Stlačte klávesy pre skratku…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc ukončí počúvanie',
+			'keyboardShortcuts.editor.add' => 'Pridať',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} patrí logovacím poliam alebo dialógu a nedá sa zmeniť.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} slúži na písanie volacích znakov. Podržte s ním Cmd, Ctrl alebo Alt.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'Systém môže ${keys} zachytiť skôr, než ho aplikácia uvidí.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} už je jedným z klávesov tohto príkazu.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Vziať ${keys} príkazu „${command}“',
+			'keyboardShortcuts.editor.resetDefault' => 'Resetovať na predvolené',
+			'keyboardShortcuts.editor.remove' => 'Odstrániť',
+			'keyboardShortcuts.editor.commandLabel' => 'Príkaz',
+			'keyboardShortcuts.editor.commandHint' => 'Zadajte ľubovoľný platný príkaz alebo viac príkazov oddelených „;“',
+			'keyboardShortcuts.editor.removeCommand' => 'Odstrániť príkaz',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Žiadny príkaz nerozumie „${text}“',
+			'keyboardShortcuts.editor.noShortcuts' => 'Zatiaľ bez klávesu',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Skratky uložené do ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Skratky sa nepodarilo exportovať: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} nie je súbor so skratkami, ktorý táto aplikácia dokáže prečítať: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'text nie je platný YAML (riadok ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'nie je to súbor klávesových skratiek Ham2K',
+			'keyboardShortcuts.file.problemNewerVersion' => 'zapísala ho novšia verzia aplikácie',
+			'keyboardShortcuts.file.problemMalformed' => 'časť z neho nezodpovedá formátu skratiek',
+			'keyboardShortcuts.file.problemTooLarge' => 'je príliš veľký',
+			'keyboardShortcuts.file.importTitle' => 'Importovať skratky',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Zapísané v systéme ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'Súbor neuvádza, na akej klávesnici bol zapísaný.',
+			'keyboardShortcuts.file.translate' => 'Čím má byť každý z týchto klávesov na tejto klávesnici?',
+			'keyboardShortcuts.file.leaveOut' => 'Tieto skratky vynechať',
+			'keyboardShortcuts.file.replace' => 'Nahradiť konfiguráciu tohto zariadenia',
+			'keyboardShortcuts.file.replaceHint' => 'Každá skratka, ktorá nie je v súbore, sa vráti k predvolenej.',
+			'keyboardShortcuts.file.merge' => 'Pridať ku konfigurácii tohto zariadenia',
+			'keyboardShortcuts.file.mergeHint' => 'Skratky zo súboru nahradia skratky tohto zariadenia pre rovnaké príkazy, ostatné zostanú.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'V tejto verzii neznáme, preto vynechané: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Nie sú to skratky, preto vynechané: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Klávesy, ktoré si aplikácia necháva pre seba, preto vynechané: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Po importe priradené k viac ako jednému príkazu: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'Importovať',
+			'keyboardShortcuts.file.imported' => 'Skratky importované',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'Platnosť tejto zostavy vypršala',
 			'expiredBuild.body' => 'Navštívte ham2k.com a stiahnite si novšiu verziu.',
 			'expiredBuild.visit' => 'Navštíviť ham2k.com',
@@ -5385,9 +6966,11 @@ extension on TranslationsSk {
 			'spotting.noQsoYet' => 'Zatiaľ nie je zapísané žiadne QSO na spotovanie.',
 			'spotting.setFrequencyFirst' => 'Najprv nastavte frekvenciu.',
 			'spotting.nothingToSpot' => 'Nie je čo spotovať — žiadne rozšírenie tu neponúka spotovanie.',
+			'spotting.incompleteCall' => 'Neúplný volací znak sa nedá spotovať — najprv ho dopíšte.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} zlyhal: ${message}',
 			'spotting.unknownError' => 'neznáma chyba',
 			'spotting.notSent' => 'Spot nebol odoslaný.',
+			'spotting.allSkipped' => 'Spot nebol odoslaný: každý zdroj spotov ho preskočil.',
 			'spotting.notRefreshedOffline' => 'Bez pripojenia — spoty neboli obnovené',
 			'dataFiles.downloading' => 'Sťahuje sa…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '${name} sa nepodarilo stiahnuť',
@@ -5395,6 +6978,8 @@ extension on TranslationsSk {
 			'dataFiles.downloadTimedOut' => 'Server odpovedal príliš pomaly. Skúste to neskôr.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} odpovedal chybou (HTTP ${status}). Skúste to neskôr.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} nedokázal poskytnúť tento súbor (HTTP ${status}). Skontrolujte, či je jeho adresa stále správna.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM nemá súbor histórie volacích znakov pre ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'Sťahovanie histórie volacích znakov z N1MM pre ${stem} nevyšlo. Skúste to neskôr.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => '${name} sa nepodarilo spracovať',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'Sťahovanie malo iba ${imported} z ${existing} záznamov na tomto zariadení, preto boli vynechané záznamy ponechané. Obnovením v Nastavenia › Offline údaje ho napriek tomu prijmete.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Importovaný ${count} záznam pre ${label}.', other: 'Importovaných ${count} záznamov pre ${label}.', ), 
@@ -5420,14 +7005,20 @@ extension on TranslationsSk {
 			'updates.automaticChecksDescription' => 'Hľadať nové verzie na pozadí, od ďalšieho spustenia aplikácie',
 			'extensionService.runtimeNotReady' => 'Prostredie rozšírení nie je pripravené.',
 			'extensionService.testFailed' => ({required Object error}) => 'Test zlyhal: ${error}',
-			'extensionService.connectedAs' => ({required Object identity}) => 'Pripojený ako ${identity}',
+			'extensionService.connectedAs' => ({required Object identity}) => 'Pripojené ako ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Neplatná konfigurácia poľa',
 			'extensionService.invalidValue' => 'Neplatná hodnota',
 			'extensionService.validationError' => ({required Object error}) => 'Chyba overenia: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Akcia zlyhala: ${error}',
 			'extensionService.commandFailed' => 'Príkaz sa nepodarilo spustiť',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} nemôže meniť nastavenia: pri inštalácii o to nepožiadalo',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} nemôže ovládať rádiostanicu: pri inštalácii o to nepožiadalo',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} to nemôže spustiť: je to jeden z vlastných vývojárskych príkazov aplikácie',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Hlásenia sa momentálne nedajú odoslať',
 			'extensionService.stashUnavailable' => 'Ham2K úschovňa súborov je momentálne nedostupná',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => 'Bez odpovede na hľadanie aktivít od ${names}, preto môžu niektoré výsledky chýbať.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Niektoré rozšírenia aktivít neodpovedali na hľadanie, preto môžu niektoré výsledky chýbať.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} strávilo príliš veľa času v časovačoch. Sú zastavené, kým sa rozšírenia nereštartujú.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'Časovače ${name} opakovane zlyhávali. Sú zastavené, kým sa rozšírenia nereštartujú.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} uviazlo v časovači. Jeho časovače sú zastavené, kým sa rozšírenia nereštartujú.',
@@ -5492,6 +7083,8 @@ extension on TranslationsSk {
 			'switchAccounts.linkWithSiblingDescription' => 'Máte nainštalovanú inú aplikáciu Ham2K. Prepojte sa s účtom, ktorý sa používa tam.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Schváľte žiadosť v ${app} a potom sa vráťte sem.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Znova otvoriť ${app}',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Nefungovalo to? Otvorte ju znova alebo sa vráťte a prepojte sa inak.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} sa nepodarilo otvoriť.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Platnosť odkazu vypršala a nový je pripravený — znova otvorte ${app}.',
@@ -5521,6 +7114,17 @@ extension on TranslationsSk {
 			'switchAccounts.requestFailed' => 'Pri komunikácii so synchronizačným serverom sa niečo pokazilo. Skúste to neskôr.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} prevádzka', other: '${count} prevádzok', ), 
+			'qsonImport.title' => 'Importovať prevádzku QSON',
+			'qsonImport.description' => 'Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.',
+			'qsonImport.dropHint' => 'Pustite sem súbor QSON a importuje sa ako nová prevádzka',
+			'qsonImport.importing' => ({required Object filename}) => 'Importuje sa ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} nie je text v UTF-8, takže to nie je súbor QSON',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} nie je súbor JSON, takže to nie je súbor QSON',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} neobsahuje prevádzku QSON',
+			'qsonImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
+			'qsonImport.oneFileOnly' => 'Pustite naraz iba jeden súbor QSON — každý sa otvorí ako samostatná prevádzka.',
 			'adifImport.title' => 'Importovať QSO z ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Číta sa ${filename}…',
 			'adifImport.dropHint' => 'Pustite sem súbor ADIF a importuje sa',
@@ -5549,6 +7153,8 @@ extension on TranslationsSk {
 			'adifImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
 			'adifImport.oneFileOnly' => 'Pustite naraz iba jeden súbor ADIF — poradie importu súborov rozhoduje, ktoré údaje majú prednosť.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO. Import ADIF do prevádzky má pridať pár QSO, nie priniesť veľký denník — na to použite zobrazenie Denníky. Ak ste si istí, Režim vývojára vám ho dovolí importovať aj tak.',
+			'adifImport.importAnyway' => 'Napriek tomu importovať',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: pripojené',
 			'offline.noRoute' => 'Žiadne sieťové pripojenie.',
@@ -5597,10 +7203,10 @@ extension on TranslationsSk {
 			'exportSettings.shared' => 'Nastavenia platia pre každé rozšírenie, ktoré používa tento typ exportu.',
 			'exportSettings.defaultTemplates' => 'Ak chcete upraviť šablóny tohto typu, zapnite Vlastné šablóny.',
 			'templateEditor.previewLabel' => 'Náhľad:',
-			'templateEditor.reset' => 'Obnoviť',
+			'templateEditor.reset' => 'Resetovať',
 			'templateEditor.docs' => 'Dokumentácia šablón',
 			'templateEditor.preview' => 'Ukážkový náhľad',
-			'templateEditor.reference' => 'Referencia šablón',
+			'templateEditor.reference' => 'Príručka šablón',
 			'templateEditor.attributes' => 'Dostupné atribúty',
 			'templateEditor.filters' => 'Filtre',
 			'templateEditor.flowControl' => 'Riadenie toku',

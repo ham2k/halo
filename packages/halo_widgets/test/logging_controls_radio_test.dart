@@ -311,7 +311,7 @@ void main() {
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 300));
-      expect(messages.last, 'Define una frecuencia o banda antes de registrar');
+      expect(messages.last, t.loggingControls.bandOrFreqRequired);
     });
 
     testWidgets('refuses the contact, says so, and opens the Radio control to ask', (tester) async {

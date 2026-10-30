@@ -60,6 +60,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$nb settings = _Translations$settings$nb._(_root);
 	@override late final _Translations$commands$nb commands = _Translations$commands$nb._(_root);
 	@override late final _Translations$commandDialog$nb commandDialog = _Translations$commandDialog$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$nb keyboardShortcuts = _Translations$keyboardShortcuts$nb._(_root);
 	@override late final _Translations$expiredBuild$nb expiredBuild = _Translations$expiredBuild$nb._(_root);
 	@override late final _Translations$staleness$nb staleness = _Translations$staleness$nb._(_root);
 	@override late final _Translations$spotting$nb spotting = _Translations$spotting$nb._(_root);
@@ -73,6 +74,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$nb deepLink = _Translations$deepLink$nb._(_root);
 	@override late final _Translations$confirmDevice$nb confirmDevice = _Translations$confirmDevice$nb._(_root);
 	@override late final _Translations$switchAccounts$nb switchAccounts = _Translations$switchAccounts$nb._(_root);
+	@override late final _Translations$qsonImport$nb qsonImport = _Translations$qsonImport$nb._(_root);
 	@override late final _Translations$adifImport$nb adifImport = _Translations$adifImport$nb._(_root);
 	@override late final _Translations$offline$nb offline = _Translations$offline$nb._(_root);
 	@override late final _Translations$exportSettings$nb exportSettings = _Translations$exportSettings$nb._(_root);
@@ -97,6 +99,7 @@ class _Translations$common$nb extends Translations$common$en {
 	@override String get callsign => 'Kallesignal';
 	@override String get clear => 'Tøm';
 	@override String get dismiss => 'Lukk';
+	@override String get copyDetails => 'Kopier detaljer';
 	@override String get expand => 'Utvid';
 	@override String get collapse => 'Skjul';
 }
@@ -133,9 +136,15 @@ class _Translations$onboarding$nb extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'Skysynkronisering';
+	@override String get syncBody => 'Ham2K Log Filer tar sikkerhetskopi av loggene dine i skyen og synkroniserer dem mellom alle enhetene der du bruker Ham2K-apper.';
+	@override String get syncPricing => 'Det er gratis! Men et betalt abonnement gjør det raskere.';
+	@override String get syncLabel => 'Aktiver skysynkronisering';
+	@override String get syncOffWarning => 'ADVARSEL: dette øker sjansen for å miste operasjonsdata, for eksempel hvis enheten din krasjer eller blir borte.';
+	@override String get notNow => 'Ikke nå';
 	@override String get consentTitle => 'Data og personvern';
 	@override String get consentUsageBody => 'For å hjelpe oss å gjøre appen bedre vil vi gjerne samle inn ytelses-, krasj- og bruksdata.';
-	@override String get consentUsageLabel => 'Del data om appbruk';
+	@override String get consentUsageLabel => 'Del data om bruken din';
 	@override String get consentOperationBody => 'Noen funksjoner kan innebære at operasjonsdataene dine deles med andre brukere. Du kan reservere deg når som helst.';
 	@override String get consentOperationLabel => 'Del operasjonsdata';
 	@override String get finishingSetup => 'Fullfører oppsettet — laster ned referansedata…';
@@ -173,6 +182,7 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Aktiviteter';
+	@override String get categoryAward => 'Diplomer';
 	@override String get categoryContest => 'Konkurranser';
 	@override String get categoryLookup => 'Kallesignaloppslag';
 	@override String get categorySpots => 'Spot-kilder';
@@ -183,13 +193,23 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String get noMatches => 'Ingen utvidelser samsvarer med søket';
 	@override String get installFromFile => 'Installer fra fil…';
 	@override String installVersion({required Object version}) => 'Versjon ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => 'Skjermbilde ${n} av ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'Forrige skjermbilde';
+	@override String get nextScreenshot => 'Neste skjermbilde';
+	@override String get screenshotUnavailable => 'Skjermbilde utilgjengelig';
 	@override String get canReach => 'Denne utvidelsen kan kontakte';
 	@override String canHoldConnection({required Object host}) => '${host}, over en åpen tilkobling';
 	@override String get canHoldLocalConnection => 'Enheter på det lokale nettverket ditt, over en åpen tilkobling';
 	@override String get canUseLocation => 'Posisjonen din';
 	@override String get canReadRadio => 'Radioen din, for å lese frekvens og modus';
-	@override String get canControlRadio => 'Radioen din, for å styre den og sende med den — avstemming, effekt, CW, talememorier og PTT';
+	@override String get canControlRadio => 'Radioen din, for å styre den og sende med den — avstemming, effekt, CW, taleminner og PTT';
+	@override String get canCommandRadioRaw => 'Radioen din, for å sende den hvilken som helst kommando i dens egen protokoll — også kommandoer som sender eller endrer innstillingene dens';
+	@override String get canReadCluster => 'DX-clusteret, innlogget som deg, for å lese det det sender';
+	@override String get canSpotCluster => 'DX-clusteret, innlogget som deg, for å legge ut spotter i ditt navn';
+	@override String get canCommandCluster => 'DX-clusteret, innlogget som deg, for å sende det hvilken som helst kommando i ditt navn';
 	@override String get canSetUserAgent => 'Identifisere seg overfor servere med sitt eget navn';
+	@override String get canChangeSettings => 'Innstillingene dine, for å endre dem gjennom kommandoene sine: alle innstillinger, utviklermodus og eksperimenter';
 	@override String get noCapabilities => 'Den ber ikke om noe utenfor appen.';
 	@override String get sandboxNote => 'Utvidelser kjører i sandkasse: ingen tilgang til filene dine, og ikke noe nettverk utover det som står her.';
 	@override String get installAction => 'Installer';
@@ -261,6 +281,14 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String get restoreRuntimeDeadBody => 'Vi installerte dem på nytt, men utvidelsene dine ville ikke starte. En omstart av appen bør få dem tilbake.';
 	@override String revokedTitle({required Object name}) => '${name} ble trukket tilbake';
 	@override String get revokedBody => 'Katalogen trakk tilbake denne versjonen, så den er deaktivert.';
+	@override String forceDisabledTitle({required Object name}) => '${name} ble deaktivert';
+	@override String get forceDisabledBody => 'Ham2K har deaktivert denne utvidelsen inntil videre.';
+	@override String replacedTitle({required Object name}) => '${name} er erstattet';
+	@override String replacedBody({required Object replacement}) => '${replacement} tar over. Du kan bytte over i Utvidelser.';
+	@override String replacedBy({required Object name}) => 'Erstattet av ${name}';
+	@override String replacedByInstalled({required Object name}) => 'Erstattet av ${name}, som du allerede har';
+	@override String get replaceAction => 'Erstatt';
+	@override String replaceInstalledBody({required Object replacement}) => 'Innstillingene flyttes til ${replacement}, som du allerede har. Loggene dine forblir urørt.';
 	@override String get downloadHashMismatch => 'Den nedlastingen er ikke utvidelsen katalogen beskrev.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'Katalogen har ingen versjon ${version} av ${key}.';
 	@override String get catalogLinkUnknown => 'Den kataloglenken peker ikke på en versjon av en utvidelse.';
@@ -274,6 +302,7 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => 'Får dagsferske, ustabile og stabile utgivelser';
 	@override String get followStableAction => 'Følg bare stabile utgivelser';
 	@override String get revokedBadge => 'Trukket tilbake';
+	@override String get forceDisabledBadge => 'Deaktivert av Ham2K';
 	@override String get refusedBadge => 'Ble ikke lastet';
 	@override String get downloadNotHttps => 'Den nedlastingen går ikke over en sikker tilkobling.';
 	@override String downloadUnreachable({required Object source}) => '${source} kunne ikke nås for den utvidelsen.';
@@ -287,9 +316,11 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String get hookExport => 'Eksport';
 	@override String get hookLookup => 'Kallesignaloppslag';
 	@override String get hookScoring => 'Poengberegning';
-	@override String get hookSpots => 'Spots';
+	@override String get hookSpots => 'Spotter';
 	@override String hookHunting({required Object program}) => 'Jakter ${program}';
 	@override String hookActivating({required Object program}) => 'Aktiverer ${program}';
+	@override String get suggestedSection => 'Foreslått';
+	@override String moreAvailableSection({required Object count}) => 'Flere tilgjengelige (${count})';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class _Translations$chase$nb extends Translations$chase$en {
 	@override late final _Translations$chase$period$nb period = _Translations$chase$period$nb._(_root);
 	@override late final _Translations$chase$goals$nb goals = _Translations$chase$goals$nb._(_root);
 	@override late final _Translations$chase$panels$nb panels = _Translations$chase$panels$nb._(_root);
+	@override late final _Translations$chase$claims$nb claims = _Translations$chase$claims$nb._(_root);
+	@override late final _Translations$chase$notice$nb notice = _Translations$chase$notice$nb._(_root);
+	@override late final _Translations$chase$alerts$nb alerts = _Translations$chase$alerts$nb._(_root);
+	@override String get checklists => 'Jaktfremdrift';
+	@override late final _Translations$chase$imports$nb imports = _Translations$chase$imports$nb._(_root);
 }
 
 // Path: dialogs
@@ -340,6 +376,14 @@ class _Translations$dialogs$nb extends Translations$dialogs$en {
 	@override String get operationDetails => 'Operasjonsdetaljer';
 	@override String get activities => 'Aktiviteter';
 	@override String get stationCallsign => 'Stasjonskallesignal';
+	@override String get advanced => 'Avansert';
+	@override String get operatingPosition => 'Operatørplass (multistasjon)';
+	@override String get assistance => 'Assistanse';
+	@override String get assistanceDescription => 'Bruk spottetjenester og andre informasjonskilder';
+	@override String get selfSpotting => 'Selvspotting';
+	@override String get selfSpottingDescription => 'Tillat funksjoner som rapporterer din egen frekvensinfo';
+	@override String disabledByRules({required Object rules}) => 'Deaktivert for å følge ${rules}-reglene';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$nb lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$nb._(_root);
 	@override String get notes => 'Notater';
 	@override String get deleteOperationTitle => 'Slett operasjon';
 	@override String get purgeTestsTitle => 'Fjern testoperasjoner';
@@ -376,7 +420,7 @@ class _Translations$operation$nb extends Translations$operation$en {
 	@override String get titleNone => 'Ingen tittel';
 	@override String get deleteOperation => 'Slett operasjon';
 	@override String get loggingControlsStale => 'Aktivitetsfeltene kan være utdatert — åpne operasjonen på nytt for å oppdatere dem';
-	@override String get locationNone => 'Ikke satt';
+	@override String get locationNone => 'Ikke angitt';
 	@override String get generalOperation => 'Vanlig operasjon';
 	@override String titleFor({required Object value}) => 'for ${value}';
 	@override String titleAt({required Object value}) => 'på ${value}';
@@ -403,7 +447,7 @@ class _Translations$map$nb extends Translations$map$en {
 	@override String facilitiesCredit({required Object sources}) => 'Fasiliteter: ${sources}';
 	@override String get fullCredits => 'Fullstendige datakilder';
 	@override String get fewerCredits => 'Færre kilder';
-	@override String get emptyState => 'Ingen QSO-posisjoner ennå.\nQSOer med grid-rute, stat eller land vises her.';
+	@override String get emptyState => 'Ingen QSO-plasseringer ennå.\nQSOer med Maidenhead-rute, stat eller land vises her.';
 	@override String get unavailable => 'Kartet er ikke tilgjengelig akkurat nå.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
 	@override String distanceKm({required Object distance}) => '${distance} km';
@@ -412,6 +456,7 @@ class _Translations$map$nb extends Translations$map$en {
 	@override String get globe => 'Globus';
 	@override String get zoomIn => 'Zoom inn';
 	@override String get zoomOut => 'Zoom ut';
+	@override String get resetNorth => 'Tilbakestill til nord opp';
 	@override late final _Translations$map$postcard$nb postcard = _Translations$map$postcard$nb._(_root);
 }
 
@@ -423,7 +468,7 @@ class _Translations$mapsView$nb extends Translations$mapsView$en {
 
 	// Translations
 	@override String get title => 'Kart';
-	@override String get searchHint => 'Søk etter parker, toppunkter og mer';
+	@override String get searchHint => 'Søk etter parker, topper og mer';
 	@override String get activities => 'Aktiviteter';
 	@override String get layers => 'Lag';
 	@override String get baseMap => 'Grunnkart';
@@ -478,7 +523,7 @@ class _Translations$activitiesView$nb extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => 'Gi tilgang til posisjon i systeminnstillingene';
 	@override String get locationGrantRefused => 'Fortsatt ingen posisjon — systemet sa nei igjen';
 	@override String get searchUnavailableTitle => 'Aktivitetssøk utilgjengelig';
-	@override String get searchUnavailableReason => 'Ingen aktivitetsutvidelse kunne kjøre søket. Prøv igjen om et øyeblikk.';
+	@override String get searchUnavailableReason => 'En aktivitetsutvidelse kunne ikke svare på søket. Prøv igjen om et øyeblikk.';
 	@override String get emptySheet => 'Bruk forslag og søk nedenfor for å legge til en';
 	@override String get exports => 'Eksporter';
 	@override String get exportLogs => 'Eksporter logger';
@@ -528,6 +573,13 @@ class _Translations$loggingControls$nb extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Tid (UTC)';
 	@override String get date => 'Dato';
 	@override String get now => 'Nå';
+	@override String get manualTimeSettings => 'Manuell tid';
+	@override String get manualTimeIncrement => 'Økning per QSO';
+	@override String get manualTimeIncrementNone => 'Ingen';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: '${count} minutt',
+		other: '${count} minutter',
+	);
 	@override String get frequency => 'Frekvens';
 	@override String get mode => 'Modus';
 	@override String get theirCall => 'Deres kallesignal';
@@ -556,11 +608,24 @@ class _Translations$loggingControls$nb extends Translations$loggingControls$en {
 	@override String get controlSettings => 'Loggekontroller';
 	@override String get spottingControl => 'Spotting';
 	@override String get spottingSelfControl => 'Selvspotting';
-	@override String spotSelfAt({required Object freq}) => 'Selvspot på ${freq}';
+	@override String spotSelfAt({required Object freq}) => 'Spot deg selv på ${freq}';
 	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} på ${freq}';
 	@override String spotTooLate({required Object call}) => 'For sent å spotte ${call}';
-	@override String get spotNoFreq => 'Angi en frekvens å spotte først';
+	@override String get spotNoFreq => 'Angi frekvens først';
+	@override String get selfSpotDisabled => 'Selvspotting deaktivert';
 	@override String get spotComment => 'Kommentar';
+	@override String get spottingAutoControl => 'Automatisk omspotting';
+	@override String spotAutoEvery({required Object minutes}) => 'Omspotting hvert ${minutes} min';
+	@override String spotAutoNext({required Object time}) => 'Auto om ${time}. Stoppe?';
+	@override String spotAutoInMinutes({required Object minutes}) => 'Auto om ${minutes}m';
+	@override String spotAutoInSeconds({required Object seconds}) => 'Auto om ${seconds}s';
+	@override String spotAutoInCount({required Object seconds}) => 'Auto om ${seconds}';
+	@override String get spotAutoNotStarted => 'Automatisk omspotting ikke startet: spoten gikk ikke gjennom';
+	@override String get spotAutoMoved => 'Automatisk omspotting ikke startet: frekvensen endret seg under spottingen';
+	@override String get spotAutoStopped => 'Automatisk omspotting stoppet';
+	@override String get spotAutoLeftFreq => 'Automatisk omspotting stoppet: frekvensen endret seg';
+	@override String get spotAutoNoFreq => 'Automatisk omspotting stoppet: radioen rapporterer ingen frekvens';
+	@override String get spotBusy => 'En annen spot sendes fortsatt';
 	@override String get bandOrFreqRequired => 'Angi frekvens eller bånd før du logger';
 	@override String get missingBand => 'Ingen bånd';
 	@override String get missingMode => 'Ingen modus';
@@ -595,7 +660,8 @@ class _Translations$formChrome$nb extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'Valideringsfeil: ${error}';
 	@override String transformationError({required Object error}) => 'Transformasjonsfeil: ${error}';
 	@override String actionError({required Object error}) => 'Feil: ${error}';
-	@override String get removeItem => 'Fjern';
+	@override String get removeItem => 'Slett';
+	@override String deleteItemTitle({required Object name}) => 'Slette ${name}?';
 	@override String get storageUnavailable => 'Innlogginger utilgjengelige';
 }
 
@@ -610,7 +676,7 @@ class _Translations$qsoEditForm$nb extends Translations$qsoEditForm$en {
 	@override String get operatorCall => 'Operatør';
 	@override String get position => 'Operatørplass';
 	@override String get theirName => 'Navn';
-	@override String get theirGrid => 'Grid';
+	@override String get theirGrid => 'Rutenett';
 	@override String get theirState => 'Stat';
 	@override String get band => 'Bånd';
 	@override String get notes => 'Notater';
@@ -620,7 +686,7 @@ class _Translations$qsoEditForm$nb extends Translations$qsoEditForm$en {
 	@override String get sectionNotes => 'Notater';
 	@override String get theirCity => 'By';
 	@override String get theirCounty => 'Fylke';
-	@override String get theirEntity => 'Entitet';
+	@override String get theirEntity => 'Enhet';
 	@override String get theirCqZone => 'CQ-sone';
 	@override String get theirItuZone => 'ITU-sone';
 	@override String get theirArrlSection => 'ARRL-seksjon';
@@ -641,6 +707,7 @@ class _Translations$qsoList$nb extends Translations$qsoList$en {
 	@override String get today => 'I dag';
 	@override String get yesterday => 'I går';
 	@override String get tomorrow => 'I morgen';
+	@override late final _Translations$qsoList$find$nb find = _Translations$qsoList$find$nb._(_root);
 }
 
 // Path: loggingPanel
@@ -652,7 +719,7 @@ class _Translations$loggingPanel$nb extends Translations$loggingPanel$en {
 	// Translations
 	@override String get stats => 'Operasjonsstatistikk';
 	@override String get scoring => 'Poengberegning';
-	@override String get dxccEntities => 'DXCC-entiteter';
+	@override String get dxccEntities => 'DXCC-enheter';
 	@override String get statesWorked => 'Stater';
 	@override String get provincesWorked => 'Provinser';
 	@override String get duplicates => 'Duplikater';
@@ -710,9 +777,12 @@ class _Translations$settings$nb extends Translations$settings$en {
 	@override String get userInterface => 'Brukergrensesnitt';
 	@override late final _Translations$settings$logging$nb logging = _Translations$settings$logging$nb._(_root);
 	@override late final _Translations$settings$catServer$nb catServer = _Translations$settings$catServer$nb._(_root);
+	@override late final _Translations$settings$cluster$nb cluster = _Translations$settings$cluster$nb._(_root);
+	@override late final _Translations$settings$spotting$nb spotting = _Translations$settings$spotting$nb._(_root);
 	@override late final _Translations$settings$radio$nb radio = _Translations$settings$radio$nb._(_root);
 	@override late final _Translations$settings$help$nb help = _Translations$settings$help$nb._(_root);
 	@override late final _Translations$settings$exports$nb exports = _Translations$settings$exports$nb._(_root);
+	@override late final _Translations$settings$extensionSections$nb extensionSections = _Translations$settings$extensionSections$nb._(_root);
 	@override late final _Translations$settings$map$nb map = _Translations$settings$map$nb._(_root);
 	@override late final _Translations$settings$privacy$nb privacy = _Translations$settings$privacy$nb._(_root);
 	@override String get operatorCall => 'Operatørkallesignal';
@@ -729,7 +799,7 @@ class _Translations$settings$nb extends Translations$settings$en {
 	@override late final _Translations$settings$about$nb about = _Translations$settings$about$nb._(_root);
 	@override late final _Translations$settings$panels$nb panels = _Translations$settings$panels$nb._(_root);
 	@override String get showMoreSettings => 'Vis flere innstillinger';
-	@override String get gridPrecision => 'Grid-presisjon';
+	@override String get gridPrecision => 'Rutenettpresisjon';
 	@override late final _Translations$settings$gridPrecisionOpts$nb gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$nb._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$nb gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$nb._(_root);
 }
@@ -743,19 +813,24 @@ class _Translations$commands$nb extends Translations$commands$en {
 	// Translations
 	@override String get enableSyncFirst => 'Aktiver synkronisering i Innstillinger først.';
 	@override String get fullResyncStarted => 'Full ny synkronisering startet — lokale data ble sikkerhetskopiert først.';
-	@override String noDataFilesMatched({required Object target}) => 'Ingen datafiler samsvarte med "${target}".';
+	@override String noDataFilesMatched({required Object target}) => 'Ingen datafiler samsvarte med «${target}».';
 	@override String reloadFailed({required Object error}) => 'Ny innlasting mislyktes: ${error}';
 	@override String get reloadingAll => 'Laster inn alle datafiler på nytt…';
 	@override String reloadingTarget({required Object target}) => 'Laster inn datafiler for ${target} på nytt…';
-	@override String unknownExperiment({required Object token}) => 'Ukjent eksperiment "${token}"';
+	@override String unknownExperiment({required Object token}) => 'Ukjent eksperiment «${token}»';
 	@override String experimentEnabled({required Object name}) => '${name} aktivert';
 	@override String experimentDisabled({required Object name}) => '${name} deaktivert';
 	@override String get sentryTestSent => 'Testfeilrapport sendt til Sentry';
+	@override String get idleMetricsEnabled => 'Hvilemålinger slått på i statuslinjen';
+	@override String get idleMetricsDisabled => 'Hvilemålinger slått av';
 	@override String get sentryTestLocalOnly => 'Sentry er deaktivert i denne versjonen — testfeilen ble bare logget lokalt';
 	@override String get noOperationOpen => 'Den kommandoen krever en åpen operasjon';
 	@override String unknownSegmentKind({required Object kind}) => 'Vet ikke hvordan en \'${kind}\' skal markeres';
+	@override String goUnavailable({required Object place}) => '${place} er ikke slått på i denne appen';
+	@override String goUnknown({required Object to}) => 'Vet ikke hvordan man går til \'${to}\'';
+	@override String get goBlocked => 'Lukk den åpne dialogen først';
 	@override String get operationAlreadyStarted => 'Denne operasjonen har allerede en startmarkør';
-	@override String get couldNotOpenLocation => 'La til pausen, men kunne ikke åpne posisjonsskjermen';
+	@override String get couldNotOpenLocation => 'La til pausen, men kunne ikke åpne plasseringsskjermen';
 	@override String get noTestOperations => 'Ingen testoperasjoner å fjerne';
 	@override String get purgeTestsUnavailable => 'PURGETESTS må vise en bekreftelsesdialog, og det er ikke mulig her';
 	@override String get syncAllUnavailable => 'SYNCALL må vise en bekreftelsesdialog, og det er ikke mulig her';
@@ -788,13 +863,17 @@ class _Translations$commands$nb extends Translations$commands$en {
 	@override String get settingExpectsNumber => 'et tall';
 	@override String settingVanished({required Object label}) => '«${label}» er ikke lenger tilgjengelig';
 	@override String get noCwKeyer => 'Ingen tilkoblet radio kan sende CW';
-	@override String get noKeyer => 'Ingen tilkoblet radio kan sende CW eller spille av talememorier';
+	@override String get noKeyer => 'Ingen tilkoblet radio kan sende CW eller spille av taleminner';
 	@override String get keyerNeedsOperation => 'Åpne en operasjon for å bruke CW-keyeren';
 	@override String get keyerExperimentOff => 'CW-nøkling er av — slå det på med EXP KEYER';
 	@override String get esmExperimentOff => 'Enter sender meldinger er av — slå det på med EXP ESM';
 	@override String cwSending({required Object text}) => 'Sender CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW-melding F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CW-melding F${n} ble ikke sendt: utvidelsene er ikke klare';
+	@override String voiceMessageError({required Object n, required Object error}) => 'Talemelding M${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'utvidelsene er ikke klare';
+	@override String so2rRadioCannotKey({required Object radio}) => 'Ingenting sendt: Radio ${radio} kan ikke nøkle det';
+	@override String get so2rNoRadioB => 'Ingenting sendt: velg en Radio B i Stasjonsoppsett for å nøkle fra dette settet';
 	@override String settingNotStored({required Object label}) => '«${label}» godtok ikke den verdien';
 }
 
@@ -817,6 +896,44 @@ class _Translations$commandDialog$nb extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'Prøv';
 	@override String get lookingUp => 'Slår opp kallesignal…';
 	@override String get blockedByPane => 'Kan ikke bruke kommandoer mens et panel eller en dialog er åpen';
+}
+
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$nb extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Tastatursnarveier';
+	@override String get description => 'Tilpass tastetilordninger';
+	@override String get search => 'Søk i kommandoer og taster';
+	@override String get import => 'Importer…';
+	@override String get export => 'Eksporter…';
+	@override String get resetAll => 'Tilbakestill alle';
+	@override String get resetAllTitle => 'Tilbakestille alle snarveier?';
+	@override String get resetAllBody => 'Alle kommandoer går tilbake til standardtastene sine, og tastene som er knyttet til skrevne kommandoer, fjernes.';
+	@override String get reset => 'Tilbakestill';
+	@override String get noKey => 'Ingen tast';
+	@override String get changed => 'Endret';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} er også knyttet til ${commands}';
+	@override String get groupApp => 'App';
+	@override String get groupKeying => 'Nøkling';
+	@override String get groupLogging => 'Logging';
+	@override String get groupCommands => 'Kommandoer';
+	@override String get groupFixed => 'Faste taster';
+	@override String get contextApp => 'Overalt';
+	@override String get contextLogView => 'Visningene Operasjon, Jakt og Logger';
+	@override String get contextOperation => 'Operasjonsvisningen, ved nøkling av en CAT-radio';
+	@override String get contextLogging => 'I loggepanelet';
+	@override String get addCommand => 'Legg til en kommando…';
+	@override String unknownCommand({required Object command}) => 'Ukjent kommando: ${command}';
+	@override late final _Translations$keyboardShortcuts$command$nb command = _Translations$keyboardShortcuts$command$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$nb fixed = _Translations$keyboardShortcuts$fixed$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$nb editor = _Translations$keyboardShortcuts$editor$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$file$nb file = _Translations$keyboardShortcuts$file$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$nb modifier = _Translations$keyboardShortcuts$modifier$nb._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$nb platform = _Translations$keyboardShortcuts$platform$nb._(_root);
 }
 
 // Path: expiredBuild
@@ -857,10 +974,12 @@ class _Translations$spotting$nb extends Translations$spotting$en {
 	@override String get noQsoYet => 'Ingen QSO logget ennå å spotte.';
 	@override String get setFrequencyFirst => 'Angi en frekvens først.';
 	@override String get nothingToSpot => 'Ingenting å spotte — ingen utvidelse tilbyr spotting her.';
+	@override String get incompleteCall => 'Kan ikke spotte et ufullstendig kallesignal — fullfør kallesignalet først.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} mislyktes: ${message}';
 	@override String get unknownError => 'ukjent feil';
 	@override String get notSent => 'Spot ikke sendt.';
-	@override String get notRefreshedOffline => 'Ingen forbindelse — spots ble ikke oppdatert';
+	@override String get allSkipped => 'Spot ikke sendt: alle spot-kildene hoppet over den.';
+	@override String get notRefreshedOffline => 'Ingen forbindelse — spotter ble ikke oppdatert';
 }
 
 // Path: dataFiles
@@ -876,6 +995,8 @@ class _Translations$dataFiles$nb extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'Serveren brukte for lang tid på å svare. Prøv igjen senere.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} svarte med en feil (HTTP ${status}). Prøv igjen senere.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} kunne ikke levere denne filen (HTTP ${status}). Sjekk at adressen fortsatt er riktig.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM har ingen Call History-fil for ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'Nedlastingen av N1MMs Call History for ${stem} virket ikke. Prøv igjen senere.';
 	@override String processingFailedTitle({required Object name}) => 'Kunne ikke behandle ${name}';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'Nedlastingen hadde bare ${imported} av de ${existing} postene på denne enheten, så de som manglet, ble beholdt. Oppdater den i Innstillinger › Offlinedata for å godta den likevel.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
@@ -931,8 +1052,14 @@ class _Translations$extensionService$nb extends Translations$extensionService$en
 	@override String validationError({required Object error}) => 'Valideringsfeil: ${error}';
 	@override String actionFailed({required Object error}) => 'Handlingen mislyktes: ${error}';
 	@override String get commandFailed => 'Kommandoen kunne ikke kjøres';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} kan ikke endre innstillinger: den ba ikke om det ved installasjon';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} kan ikke styre radioen: den ba ikke om det ved installasjon';
+	@override String commandDeveloperOnly({required Object name}) => '${name} kan ikke kjøre det: det er en av appens egne utviklerkommandoer';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'Rapporter kan ikke sendes akkurat nå';
 	@override String get stashUnavailable => 'Ham2K File Stash kan ikke nås akkurat nå';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names} svarte ikke på aktivitetssøket, så noen resultater kan mangle.';
+	@override String get activitySearchSomeSourcesFailed => 'Noen aktivitetsutvidelser svarte ikke på søket, så noen resultater kan mangle.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} brukte for mye tid i tidtakerne sine. De er stoppet til utvidelsene starter på nytt.';
 	@override String timersSuspendedFailures({required Object name}) => 'Tidtakerne til ${name} feilet gang på gang. De er stoppet til utvidelsene starter på nytt.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} ble sittende fast i en tidtaker. Tidtakerne er stoppet til utvidelsene starter på nytt.';
@@ -947,7 +1074,7 @@ class _Translations$operationLocationScreen$nb extends Translations$operationLoc
 	// Translations
 	@override String get title => 'Plassering';
 	@override String get selectedLocation => 'Valgt plassering';
-	@override String get gridSquare => 'Maidenhead-lokator';
+	@override String get gridSquare => 'Maidenhead-rute (lokator)';
 	@override String get gridInvalid => 'Trenger 4, 6, 8 eller 10 tegn, som FN31pr';
 	@override String get suggestedLocations => 'Foreslåtte plasseringer';
 	@override String get deviceGps => 'Enhetens GPS';
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$nb extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$nb extends Translations$qsonImport$en {
+	_Translations$qsonImport$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Importer QSON-operasjon';
+	@override String get description => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.';
+	@override String get dropHint => 'Slipp en QSON-fil her for å importere den som en ny operasjon';
+	@override String importing({required Object filename}) => 'Importerer ${filename}…';
+	@override String failed({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}';
+	@override String pickerFailed({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} er ikke UTF-8-tekst, så det er ikke en QSON-fil';
+	@override String notJson({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil';
+	@override String notOperation({required Object filename}) => '${filename} inneholder ingen QSON-operasjon';
+	@override String get busy => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.';
+	@override String get oneFileOnly => 'Slipp én QSON-fil om gangen — hver av dem åpnes som sin egen operasjon.';
+}
+
 // Path: adifImport
 class _Translations$adifImport$nb extends Translations$adifImport$en {
 	_Translations$adifImport$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$nb extends Translations$adifImport$en {
 	@override String get busy => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.';
 	@override String get oneFileOnly => 'Slipp én ADIF-fil om gangen — rekkefølgen filene importeres i, avgjør hvilke data som vinner.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.';
+	@override String get importAnyway => 'Importer likevel';
 }
 
 // Path: offline
@@ -1179,7 +1328,7 @@ class _Translations$offline$nb extends Translations$offline$en {
 	@override String get noRoute => 'Ingen nettverkstilkobling i det hele tatt.';
 	@override String get unreachable => 'Nettverket er oppe, men ingen server svarer — ofte et tegn på at en innloggingsside venter i en nettleser.';
 	@override String get reachable => 'Alle tjenester svarer som forventet.';
-	@override String get whatStops => 'Oppslag, spots og datafiler er satt på pause. Logging og synkronisering i nærheten er det ikke.';
+	@override String get whatStops => 'Oppslag, spotter og datafiler er satt på pause. Logging og synkronisering i nærheten er det ikke.';
 	@override String get servicesTitle => 'Tjenester';
 	@override String get noServices => 'Ingen tjeneste har rapportert inn ennå.';
 	@override String lastSuccess({required Object when}) => 'Svarte sist for ${when} siden';
@@ -1212,8 +1361,8 @@ class _Translations$exportSettings$nb extends Translations$exportSettings$en {
 	@override String get retry => 'Prøv igjen';
 	@override String get compactFileNamesDescriptionOn => 'Kompakte filnavn, som N0CALL@US-1234-20260715.adi.';
 	@override String get compactFileNamesDescriptionOff => 'Beskrivende filnavn, som 2026-07-15 N0CALL at US-1234.adi.';
-	@override String get includePrivateDataDescriptionOn => 'Tar med navn, adresser, e-poster, notater og nøyaktige posisjoner i ADIF-filer.';
-	@override String get includePrivateDataDescriptionOff => 'Utelater navn, adresser, e-poster og notater; begrenser posisjoner til grid med seks tegn.';
+	@override String get includePrivateDataDescriptionOn => 'Tar med navn, adresser, e-poster, notater og nøyaktige plasseringer i ADIF-filer.';
+	@override String get includePrivateDataDescriptionOff => 'Utelater navn, adresser, e-poster og notater; begrenser plasseringer til rutenett med seks tegn.';
 	@override String get includeLookupDataDescriptionOn => 'Tar med informasjon fra tjenester for kallesignaloppslag.';
 	@override String get includeLookupDataDescriptionOff => 'Utelater informasjon fra tjenester for kallesignaloppslag; beholder manuelt inntastede verdier.';
 	@override String get customTemplatesDescriptionOn => 'De egendefinerte malene dine er aktive og kan redigeres nedenfor.';
@@ -1300,6 +1449,10 @@ class _Translations$home$logs$nb extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'Denne QSOen er merket for sletting.';
 	@override String get editGone => 'Ikke lagret: den QSOen finnes ikke lenger i denne loggen.';
 	@override String get discard => 'Forkast';
+	@override late final _Translations$home$logs$sheet$nb sheet = _Translations$home$logs$sheet$nb._(_root);
+	@override late final _Translations$home$logs$groupBy$nb groupBy = _Translations$home$logs$groupBy$nb._(_root);
+	@override late final _Translations$home$logs$period$nb period = _Translations$home$logs$period$nb._(_root);
+	@override late final _Translations$home$logs$periodTitle$nb periodTitle = _Translations$home$logs$periodTitle$nb._(_root);
 	@override late final _Translations$home$logs$columns$nb columns = _Translations$home$logs$columns$nb._(_root);
 	@override late final _Translations$home$logs$panels$nb panels = _Translations$home$logs$panels$nb._(_root);
 	@override late final _Translations$home$logs$import$nb import = _Translations$home$logs$import$nb._(_root);
@@ -1315,7 +1468,7 @@ class _Translations$chase$station$nb extends Translations$chase$station$en {
 	@override String get title => 'Jaktstasjon';
 	@override String get stationLabel => 'Stasjon: ';
 	@override String get operatorLabel => 'Op: ';
-	@override String get noLocation => 'Ingen posisjon';
+	@override String get noLocation => 'Ingen plassering';
 }
 
 // Path: chase.periodInline
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$nb extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Jaktmål';
 	@override String remove({required Object name}) => 'Slutt å jakte ${name}';
-	@override String get extensionsTitle => 'Utvidelser som støtter jakt';
+	@override String get extensionsTitle => 'Flere jaktprogrammer';
 }
 
 // Path: chase.panels
@@ -1380,10 +1533,84 @@ class _Translations$chase$panels$nb extends Translations$chase$panels$en {
 	@override String get loggingDescription => 'Loggekontroller over QSOene jaktet i perioden.';
 	@override String get info => 'Info';
 	@override String get infoDescription => 'Kallesignalet som logges, eller statistikken for perioden.';
-	@override String get spots => 'Spots';
+	@override String get spots => 'Spotter';
 	@override String get spotsDescription => 'Stasjoner spottet på lufta, klare til å jaktes.';
 	@override String get map => 'Kart';
 	@override String get mapDescription => 'Periodens QSOer og stasjonen som logges.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$nb extends Translations$chase$claims$en {
+	_Translations$chase$claims$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'Sjekker QSOer for jakt';
+	@override String rebuilding({required Object program}) => 'Sjekker loggen for ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} av ${total} QSOer';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$nb extends Translations$chase$notice$en {
+	_Translations$chase$notice$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'Ny ${program}';
+	@override String newRefGuess({required Object program}) => 'Trolig ny ${program}';
+	@override String newBand({required Object program}) => 'Nytt ${program}-bånd';
+	@override String newBandGuess({required Object program}) => 'Trolig nytt ${program}-bånd';
+	@override String newMode({required Object program}) => 'Ny ${program}-modus';
+	@override String newModeGuess({required Object program}) => 'Trolig ny ${program}-modus';
+	@override String unconfirmed({required Object program}) => '${program} ubekreftet';
+	@override String programGuess({required Object notice}) => 'Trolig ${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$nb extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Varsler';
+	@override String get newRef => 'Ny referanse';
+	@override String get newBand => 'Nytt bånd';
+	@override String get newMode => 'Ny modus';
+	@override String get unconfirmed => 'Ubekreftet';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$nb extends Translations$chase$imports$en {
+	_Translations$chase$imports$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => 'Importer ${label}';
+	@override String pickTitle({required Object file}) => 'Importer ${file} som';
+	@override String get dropHint => 'Slipp en fil her for å importere den til et jaktprogram';
+	@override String done({required Object count, required Object program, required Object file}) => 'Importerte ${count} ${program}-oppføringer fra ${file}';
+	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Importerte ${count} ${program}-oppføringer fra ${file}, hoppet over ${skipped} som ikke kunne leses';
+	@override String nothing({required Object file, required Object program}) => '${file} har ingenting ${program} kan importere';
+	@override String failed({required Object program, required Object file}) => '${program} kunne ikke lese ${file}';
+	@override String unreadable({required Object program, required Object skipped, required Object file}) => '${program} kunne ikke lese noen av de ${skipped} postene i ${file}';
+	@override String noProgram({required Object file}) => 'Ingen jaktprogrammer importerer ${file}';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$nb extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Slå opp på nett?';
+	@override String get body => 'Assistanse er deaktivert for denne operasjonen. Å slå opp alle QSOer bruker nettjenester som QRZ for denne ene gangen.';
+	@override String bodyRules({required Object rules}) => 'Assistanse er deaktivert for denne operasjonen for å følge ${rules}-reglene. Å slå opp alle QSOer bruker nettjenester som QRZ for denne ene gangen.';
+	@override String get action => 'Slå opp på nett';
 }
 
 // Path: dialogs.callChange
@@ -1417,7 +1644,7 @@ class _Translations$operation$tabs$nb extends Translations$operation$tabs$en {
 	// Translations
 	@override String qsos({required Object count}) => '${count} QSOer';
 	@override String get info => 'INFO';
-	@override String get spots => 'SPOTS';
+	@override String get spots => 'SPOTTER';
 	@override String get map => 'KART';
 	@override String get qsosPlain => 'QSOer';
 	@override String get clock => 'Klokke';
@@ -1426,6 +1653,8 @@ class _Translations$operation$tabs$nb extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Fjernskjerm';
 	@override String get solar => 'Sol';
 	@override String get radio => 'Radio';
+	@override String get rotator => 'Rotor';
+	@override String get summaries => 'Operasjonssammendrag';
 }
 
 // Path: operation.positions
@@ -1454,7 +1683,7 @@ class _Translations$operation$menu$nb extends Translations$operation$menu$en {
 	// Translations
 	@override String get showRstFields => 'Vis RST-felt';
 	@override String get showStateField => 'Vis stat-felt';
-	@override String get showGridField => 'Vis grid-felt';
+	@override String get showGridField => 'Vis rutenettfelt';
 	@override String get showDeletedQsos => 'Vis slettede QSOer';
 	@override String get showDeletedOps => 'Vis slettede operasjoner';
 	@override String get showQsoNumbers => 'Vis QSO-nummer';
@@ -1495,8 +1724,16 @@ class _Translations$operation$layout$nb extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => 'Legg til ${panel}';
 	@override String showPreview({required Object panel}) => 'Forhåndsvis ${panel}';
 	@override String missingExtension({required Object name}) => 'Utvidelsen "${name}" mangler';
+	@override String get missingExtensionEnable => 'Aktiver';
+	@override String get missingExtensionInstall => 'Installer…';
+	@override String get missingExtensionWontRun => 'Denne versjonen kjører ikke. Oppdater den i Innstillinger › Utvidelser.';
+	@override String get missingExtensionUnavailable => 'Ikke tilgjengelig i denne appen';
+	@override String get missingExtensionNotInCatalog => 'Ikke i katalogen';
+	@override String get missingExtensionCatalogUnreachable => 'Fikk ikke kontakt med katalogen. Prøv igjen';
+	@override String get missingExtensionFailed => 'Det gikk ikke. Prøv igjen';
 	@override String get previewUnavailable => 'Forhåndsvisningen av dette panelet kunne ikke vises.';
 	@override String get nestedPaneTitle => 'Mer';
+	@override late final _Translations$operation$layout$layouts$nb layouts = _Translations$operation$layout$layouts$nb._(_root);
 	@override String get editLayout => 'Rediger oppsett';
 	@override String get saveLayout => 'Lagre oppsett';
 	@override String get revertLayout => 'Forkast endringer i oppsettet';
@@ -1505,6 +1742,15 @@ class _Translations$operation$layout$nb extends Translations$operation$layout$en
 	@override String get layoutUnreadableBody => 'Det lagrede oppsettet ditt kunne ikke leses, så standardoppsettet vises i stedet. Originalen blir ikke overskrevet før du velger å beholde dette.';
 	@override String get layoutUnreadableAction => 'Bruk dette oppsettet';
 	@override String panelRenderFailed({required Object panel}) => '${panel} kunne ikke vises';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} kunne ikke vises: det sendte mer enn ${max} tegn';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} kunne ikke vises: grafikken har mer enn ${max} elementer';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} kunne ikke vises: grafikken er nøstet mer enn ${max} nivåer dypt';
+	@override String panelNotArtwork({required Object panel}) => '${panel} kunne ikke vises: grafikken er ikke selvstendig';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} lag';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} kontroller';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} kunne ikke vises: en scenestreng er lengre enn ${max} tegn';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} kunne ikke vises: oppsettet er nøstet mer enn ${max} nivåer dypt';
 	@override String get panelRenderRetry => 'Prøv igjen';
 	@override String get panelActionFailed => 'Panelhandlingen mislyktes. Prøv igjen.';
 	@override late final _Translations$operation$layout$panels$nb panels = _Translations$operation$layout$panels$nb._(_root);
@@ -1612,8 +1858,8 @@ class _Translations$operation$spots$nb extends Translations$operation$spots$en {
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get empty => 'Ingen spots samsvarer med filtrene dine';
-	@override String error({required Object error}) => 'Kunne ikke laste spots: ${error}';
+	@override String get empty => 'Ingen spotter samsvarer med filtrene dine';
+	@override String error({required Object error}) => 'Kunne ikke laste spotter: ${error}';
 	@override String get unknownBand => 'Annet';
 	@override String get auto => 'Automatisk';
 	@override String autoValue({required Object value}) => 'Automatisk (for øyeblikket ${value})';
@@ -1624,16 +1870,17 @@ class _Translations$operation$spots$nb extends Translations$operation$spots$en {
 	@override String get phoneAndCw => 'Telefoni og CW';
 	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
 		one: '${count} spot',
-		other: '${count} spots',
+		other: '${count} spotter',
 	);
-	@override String spotsCountFiltered({required Object count, required Object total}) => 'Viser ${count} av ${total} spots';
+	@override String spotsCountFiltered({required Object count, required Object total}) => 'Viser ${count} av ${total} spotter';
+	@override String get spotsDisabled => 'Spotter deaktivert for denne operasjonen';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutter';
 	@override String get callsOfNote => 'Kjente kallesignaler';
-	@override String get yourSpots => 'Dine spots';
-	@override String get allSpots => 'Alle spots';
+	@override String get yourSpots => 'Dine spotter';
+	@override String get allSpots => 'Alle spotter';
 	@override late final _Translations$operation$spots$continents$nb continents = _Translations$operation$spots$continents$nb._(_root);
 	@override late final _Translations$operation$spots$filters$nb filters = _Translations$operation$spots$filters$nb._(_root);
-	@override String get unavailableTitle => 'Spots utilgjengelige';
+	@override String get unavailableTitle => 'Spotter utilgjengelige';
 	@override String unavailableText({required Object sources}) => '${sources} svarte ikke.';
 	@override String get failedTitle => 'Feil fra spot-kilde';
 	@override String failedText({required Object sources}) => '${sources} returnerte en feil.';
@@ -1737,6 +1984,14 @@ class _Translations$map$postcard$nb extends Translations$map$postcard$en {
 	@override String get previousPage => 'Forrige side';
 	@override String get nextPage => 'Neste side';
 	@override String pageOf({required Object page, required Object count}) => 'Side ${page} av ${count}';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: '${count} Q',
+		other: '${count} Q',
+	);
+	@override String get options => 'Postkortalternativer';
+	@override String get bandLegend => 'Vis båndforklaring';
+	@override String get grayline => 'Vis grålinjen';
+	@override String get sectionsAndOrder => 'Sammendragsseksjoner og rekkefølge';
 	@override String get sectionDays => 'Hver dag';
 	@override String get reset => 'Tilbakestill';
 	@override String failed({required Object error}) => 'Kunne ikke lage postkortet: ${error}';
@@ -1781,6 +2036,7 @@ class _Translations$loggingControls$info$nb extends Translations$loggingControls
 	@override String get noticeInvalidMode => 'Feil modus';
 	@override String get noticeInvalidBand => 'Feil bånd';
 	@override String get noticeInvalidCategory => 'Kan ikke kjøres';
+	@override String get noticeOverTime => 'Utenfor tiden';
 	@override String get noticeWorkedBefore => 'Kjørt før';
 	@override String get noticeNewPark => 'Ny park';
 	@override String get noticeNewSection => 'Ny seksjon';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$nb extends Translations$loggingControls
 	@override String get noticeMissingExchange => 'Ingen utveksling';
 	@override String get noticeInvalidExchange => 'Ugyldig utveksling';
 	@override String get noticeUnknownEvent => 'Ukjent arrangement';
-	@override String get noticeOurGrid => 'Angi vår grid';
+	@override String get noticeIncompleteCall => 'Ufullstendig kallesignal — telles ikke';
+	@override String get noticeOurGrid => 'Angi vårt rutenett';
 	@override String get noticeRareCounty => 'Sjeldent fylke!';
 	@override String get noticeOurLocation => 'Angi vårt fylke';
-	@override String get noticeShortGrid => 'Grid for kort';
+	@override String get noticeShortGrid => 'Rutenett for kort';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$nb extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'Finn i loggen (${shortcut})';
+	@override String get menuItemNoShortcut => 'Finn i loggen';
+	@override String get hint => 'QSO-nummer eller kallesignal';
+	@override String get noMatches => 'Ingen treff';
+	@override String get noOperationQsos => 'Ingen QSOer i denne operasjonen';
+	@override String get noPeriodQsos => 'Ingen QSOer i denne perioden';
+	@override String get outsideQsosOne => '1 QSO utenfor denne operasjonen';
+	@override String outsideQsosOther({required Object count}) => '${count} QSOer utenfor denne operasjonen';
+	@override String get pastQsosOne => '1 tidligere QSO';
+	@override String pastQsosOther({required Object count}) => '${count} tidligere QSOer';
 }
 
 // Path: callInfo.history
@@ -1931,14 +2207,79 @@ class _Translations$settings$catServer$nb extends Translations$settings$catServe
 	@override String get openAccess => 'Åpen tilgang';
 	@override String get openAccessOn => 'Alle datamaskiner på det lokale nettverket kan koble til.';
 	@override String get openAccessOff => 'Bare apper på denne datamaskinen kan koble til.';
+	@override String get allowTransmit => 'La apper sende';
+	@override String allowTransmitOn({required Object minutes}) => 'Apper kan nøkle radioens PTT, i opptil ${minutes} minutter om gangen.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'Apper på alle datamaskiner på det lokale nettverket kan nøkle radioens PTT, i opptil ${minutes} minutter om gangen.';
+	@override String get allowTransmitOff => 'Apper kan ikke nøkle radioen. Bruk VOX eller deres eget PTT-oppsett.';
+	@override String get allowTransmitUnsupported => 'Hoved-VFO-radioen kan ikke nøkles fra Ham2K Logger, så apper kan ikke sende gjennom den.';
 	@override String get off => 'Av.';
 	@override String starting({required Object protocol}) => '${protocol}, starter…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} på port ${port}. Tilkoblede klienter: ${clients}.';
-	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} på port ${port}, men ingen Main VFO-radio er tilkoblet.';
+	@override String listeningNoRadio({required Object protocol, required Object port}) => '${protocol} på port ${port}, men ingen hoved-VFO-radio er tilkoblet.';
 	@override String failed({required Object protocol, required Object port, required Object error}) => '${protocol} kan ikke lytte på port ${port}: ${error}';
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: et annet program bruker den, ofte ${protocol} selv. Lukk det programmet eller velg en annen port.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: denne datamaskinen tillater det ikke. Velg en port over 1024.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$nb extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX-cluster';
+	@override String get description => 'Serveren utvidelser legger ut spotter på og leser spotter fra, innlogget som operatøren.';
+	@override String get connect => 'Koble til cluster';
+	@override String get connectOn => 'Utvidelser kobler til clusteret når de trenger det';
+	@override String get connectOff => 'Ingenting kobler til clusteret';
+	@override String get console => 'Vis konsoll';
+	@override String get consoleDescription => 'Det clusteret sender, og et sted å skrive kommandoer';
+	@override String get consoleTitle => 'Clusterkonsoll';
+	@override String get consoleConnect => 'Koble til';
+	@override String get consoleDisconnect => 'Koble fra';
+	@override String get consoleCommand => 'Kommando';
+	@override String get consoleEmpty => 'Ingenting ennå. Koble til, eller vent på at en utvidelse bruker clusteret.';
+	@override String consoleRetry({required Object command}) => 'Sender igjen: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'Ikke sendt: ${command} (${reason})';
+	@override String get server => 'Clusterserver';
+	@override String get selectServer => 'Velg server';
+	@override String get serverOther => 'Annen';
+	@override String serverOtherIncomplete({required Object node}) => 'Ingen vert angitt ennå, så spotter går til ${node}';
+	@override String get customHost => 'Server';
+	@override String get customPort => 'Port';
+	@override String get password => 'Passord';
+	@override String get passwordDescription => 'Bare om nødvendig';
+	@override String passwordStored({required Object node}) => 'Passord lagret for ${node}';
+	@override String get scrollback => 'Linjer som beholdes';
+	@override String scrollbackOpt({required Object count}) => '${count} linjer';
+	@override String get connection => 'Tilkobling';
+	@override String get statusIdle => 'Ikke tilkoblet. Kobler til når en utvidelse trenger det. Trykk for å teste.';
+	@override String statusConnecting({required Object node}) => 'Kobler til ${node}…';
+	@override String statusConnected({required Object node, required Object call}) => 'Tilkoblet ${node} som ${call}.';
+	@override String statusFailed({required Object node, required Object reason}) => 'Kunne ikke koble til ${node}: ${reason}';
+	@override String get statusUnsupported => 'Ikke tilgjengelig i nettversjonen.';
+	@override String get statusOff => 'Av. Slå på Koble til cluster for å bruke det.';
+	@override late final _Translations$settings$cluster$errors$nb errors = _Translations$settings$cluster$errors$nb._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$nb extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spotting';
+	@override String get respotInterval => 'Automatisk omspotting hvert';
+	@override String minutes({required Object minutes}) => '${minutes} min';
+	@override String get autoRespotByDefault => 'Automatisk omspotting som standard';
+	@override String get autoRespotByDefaultOn => 'Slå på automatisk omspotting etter at en spot er lagt ut';
+	@override String get autoRespotByDefaultOff => 'Krev at brukeren slår på automatisk omspotting selv';
+	@override String get pulseBeforeRespot => 'Puls før hver automatiske omspotting';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'Spotting-brikken pulserer blått i ${seconds} sekunder før hver omspotting';
+	@override String get pulseBeforeRespotOff => 'Ingen pulsering før automatisk omspotting';
 }
 
 // Path: settings.radio
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$nb extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$nb enterSends = _Translations$settings$radio$enterSends$nb._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$nb keyerSpeed = _Translations$settings$radio$keyerSpeed$nb._(_root);
 	@override late final _Translations$settings$radio$cwMessages$nb cwMessages = _Translations$settings$radio$cwMessages$nb._(_root);
+	@override late final _Translations$settings$radio$keyerControl$nb keyerControl = _Translations$settings$radio$keyerControl$nb._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$nb voiceMessages = _Translations$settings$radio$voiceMessages$nb._(_root);
+	@override late final _Translations$settings$radio$voiceWords$nb voiceWords = _Translations$settings$radio$voiceWords$nb._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$nb avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$nb._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$nb zeroBeatRange = _Translations$settings$radio$zeroBeatRange$nb._(_root);
 }
@@ -2003,6 +2346,20 @@ class _Translations$settings$exports$nb extends Translations$settings$exports$en
 	@override String get title => 'Eksport';
 }
 
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$nb extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'Aktiviteter';
+	@override String get hunting => 'Jakt';
+	@override String get contests => 'Konkurranser';
+	@override String get lookups => 'Oppslag';
+	@override String get dashboard => 'Dashbord';
+}
+
 // Path: settings.map
 class _Translations$settings$map$nb extends Translations$settings$map$en {
 	_Translations$settings$map$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$nb extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'Kart';
 	@override late final _Translations$settings$map$style$nb style = _Translations$settings$map$style$nb._(_root);
+	@override late final _Translations$settings$map$showCallsigns$nb showCallsigns = _Translations$settings$map$showCallsigns$nb._(_root);
+	@override late final _Translations$settings$map$showGrayline$nb showGrayline = _Translations$settings$map$showGrayline$nb._(_root);
 	@override late final _Translations$settings$map$styleOpts$nb styleOpts = _Translations$settings$map$styleOpts$nb._(_root);
 }
 
@@ -2188,12 +2547,12 @@ class _Translations$settings$accounts$nb extends Translations$settings$accounts$
 	@override String loginFailed({required Object error}) => 'Innlogging mislyktes: ${error}';
 	@override String get lookupFailed => 'Kontoer er utilgjengelige akkurat nå — prøv igjen om et øyeblikk';
 	@override String get browserLoginTitle => 'Fullfør innloggingen i nettleseren';
-	@override String browserLoginSteps({required Object prefix}) => 'Når du er ferdig, prøver nettleseren å åpne en lenke som begynner med "${prefix}". Datamaskinen din har mest sannsynlig ikke noe registrert for å åpne den, så kopier lenken (fra adressefeltet, eller fra feilsiden nettleseren viser) og lim den inn her.';
-	@override String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger kunne ikke åpne nettleseren din. Kopier innloggingslenken nedenfor og åpne den selv, kopier deretter lenken den sender deg til (den begynner med "${prefix}") og lim den inn her.';
+	@override String browserLoginSteps({required Object prefix}) => 'Når du er ferdig, prøver nettleseren å åpne en lenke som begynner med «${prefix}». Datamaskinen din har mest sannsynlig ikke noe registrert for å åpne den, så kopier lenken (fra adressefeltet, eller fra feilsiden nettleseren viser) og lim den inn her.';
+	@override String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger kunne ikke åpne nettleseren din. Kopier innloggingslenken nedenfor og åpne den selv, kopier deretter lenken den sender deg til (den begynner med «${prefix}») og lim den inn her.';
 	@override String get copyLoginLink => 'Kopier innloggingslenke';
 	@override String get pastedLinkLabel => 'Lim inn lenken her';
 	@override String get finishLogin => 'Fullfør innlogging';
-	@override String pastedLinkNotARedirect({required Object prefix}) => 'Det er ikke innloggingslenken — den skal begynne med "${prefix}".';
+	@override String pastedLinkNotARedirect({required Object prefix}) => 'Det er ikke innloggingslenken — den skal begynne med «${prefix}».';
 	@override String get pastedLinkWrongLogin => 'Den lenken hører til et annet innloggingsforsøk. Lukk denne siden og koble til på nytt.';
 	@override String get pastedLinkNoCode => 'Den lenken har ingen innloggingskode. Fullfør innloggingen først, og kopier så lenken den sender deg til.';
 	@override String get pastedLinkMalformed => 'Den lenken ser ut til å være avkortet. Kopier hele lenken og lim den inn på nytt.';
@@ -2237,7 +2596,7 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get remove => 'Fjern';
 	@override String removeTitle({required Object name}) => 'Fjerne ${name}?';
 	@override String get removeMessage => 'Dette fjerner det bare fra appen. Innstillingene i utstyret forblir som de er.';
-	@override String unknownType({required Object typeKey}) => 'Ukjent utstyrstype "${typeKey}"';
+	@override String unknownType({required Object typeKey}) => 'Ukjent utstyrstype «${typeKey}»';
 	@override String get report => 'Rapporter';
 	@override String get reportTitle => 'Rapporter denne radioen';
 	@override String get reportIntro => 'Fortell oss hvilken radio dette egentlig er, og hvordan det gikk. Rapporten din blir et kort som Ham2K-teamet leser, og det du skriver om hvordan du fikk den til å virke, kan komme til å hjelpe neste operatør med samme rigg.';
@@ -2245,7 +2604,7 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get reportManufacturerDescription => 'Hvem som lager den — Icom, Yaesu, Kenwood, Elecraft…';
 	@override String get reportManufacturerRequired => 'En produsent er påkrevd';
 	@override String get reportModel => 'Modell';
-	@override String get reportModelDescription => 'Modellen, slik radioen selv kaller den — "IC-7300", "FT-991A".';
+	@override String get reportModelDescription => 'Modellen, slik radioen selv kaller den — «IC-7300», «FT-991A».';
 	@override String get reportModelRequired => 'En modell er påkrevd';
 	@override String get reportOutcome => 'Hvordan gikk det?';
 	@override String get reportOutcomeWorks => 'Virket bra';
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'port ${n} av ${total}';
 	@override String get serialPortSuggested => 'foreslått';
 	@override String get serialPortJustNow => 'Nylig tilkoblet';
+	@override String get serialPortNoDriver => 'ingen driver';
 	@override String get serialDeviceRequest => 'Legg til en USB-enhet…';
+	@override String get bleDevice => 'Bluetooth LE-enhet';
+	@override String get bleDeviceDescription => 'Seriellbroen radioen din er koblet til gjennom, for eksempel en LiNK500MP i Mode 4 eller en BLE-serielladapter.';
+	@override String get bleScan => 'Søk etter Bluetooth LE-enheter…';
+	@override String get bleScanNoneFound => 'Fant ingen Bluetooth LE-enheter. Sjekk at broen er på, i nærheten og i Bluetooth LE-modus (Mode 4 på en LiNK500MP).';
+	@override String bleScanFailed({required Object reason}) => 'Bluetooth LE-søket kunne ikke kjøres: ${reason}';
+	@override String get bleOff => 'Bluetooth er slått av.';
+	@override String get bleDenied => 'Bluetooth-tillatelse ble ikke gitt. Tillat det i systeminnstillingene, og prøv igjen.';
+	@override String get bleUnsupported => 'Denne enheten har ikke Bluetooth LE.';
+	@override String get bleStarting => 'Bluetooth starter fortsatt opp. Prøv igjen om et øyeblikk.';
+	@override String get bleConnectFailed => 'Får ikke kontakt med Bluetooth LE-enheten. Sjekk at den er på, i nærheten og ikke koblet til en annen app.';
+	@override String bleNoSerialService({required Object services}) => 'Denne Bluetooth LE-enheten har ingen serielltjeneste appen kjenner igjen. Rapporter den gjerne med tjenestene dens: ${services}';
 	@override String get baudRate => 'Hastighet (baud)';
 	@override String get baudRateDescription => 'Må samsvare med radioens CAT-meny. Ved avvik sender radioen tilbake søppel og ingen feilmelding.';
 	@override String get serialRtsHigh => 'Hold RTS høy';
 	@override String get serialRtsHighDescription => 'Bare for en radio som venter på RTS før den svarer, som en Yaesu med CAT RTS slått på. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy gir sending.';
 	@override String get serialDtrHigh => 'Hold DTR høy';
 	@override String get serialDtrHighDescription => 'Bare for et CAT-grensesnitt som henter strøm fra DTR, som enkelte RS-232-kabler for FT-817. På mange kabler nøkler DTR CW eller PTT, og å holde den høy gir sending.';
+	@override String get serialUsbDriver => 'USB-brikkedriver';
+	@override String get serialUsbDriverDescription => 'Automatisk kjenner igjen de fleste adaptere. Velg brikken bare for en adapter portlisten sier mangler driver — emballasjen eller en USB-enhetsliste oppgir den.';
+	@override String get serialUsbDriverAuto => 'Automatisk';
 	@override String get civAddress => 'Radioens CI-V-adresse';
 	@override String get civAddressDescription => 'Heksadesimal, slik den vises i radioens CI-V-meny. IC-705 leveres med A4.';
 	@override String get civAddressInvalid => 'En CI-V-adresse er to heksadesimale sifre, 01 til FF';
@@ -2298,8 +2672,37 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => 'Denne slicen har ingen panadapter på radioen';
 	@override String spectrumStreamRefused({required Object code}) => 'Radioen avviste en DAX IQ-strøm (feil ${code})';
 	@override String get spectrumNoUdp => 'Spektrumdataene fra radioen når ikke fram til denne enheten';
+	@override String get spectrumK4Unavailable => 'Kan ikke motta K4-ens LAN-spektrum. Prøver igjen…';
+	@override String get spectrumK4RemoteUnavailable => 'Kan ikke motta K4-ens fjernspektrum';
 	@override String get spectrumScopeRefused => 'Radioen avviste scope-kommandoene';
 	@override String get spectrumOutOfRange => 'Radioens scope er satt utenfor området den kan vise';
+	@override String get spectrumBandUnsupported => 'Radioens scope kan ikke vises på dette båndet';
+	@override String get spectrumSdrNoRadio => 'Venter på frekvensen til den tilknyttede radioen…';
+	@override String get spectrumSdrNotConnected => 'SDR-en er ikke tilkoblet';
+	@override String get spectrumSdrNoIf => 'Angi radioens IF-frekvens i innstillingene for denne SDR-en';
+	@override String get sdrRadio => 'Viser spekteret for';
+	@override String get sdrRadioDescription => 'En spektrumvisning på denne radioen hentes fra denne mottakeren i stedet for radioens eget scope.';
+	@override String get sdrRadioMain => 'Hovedradioen';
+	@override String get sdrTuning => 'Antenneinngang';
+	@override String get sdrTuningDescription => 'Hvor mottakerens signal kommer fra. På egen antenne stiller den seg selv inn for å følge radioen; på radioens IF-utgang blir den stående på IF.';
+	@override String get sdrTuningIndependent => 'Egen antenne';
+	@override String get sdrTuningIfTap => 'Radioens IF-utgang';
+	@override String get sdrIfHz => 'IF-frekvens (Hz)';
+	@override String get sdrIfHzDescription => 'Bare for en IF-utgang: frekvensen radioens skala ligger på i IF, for eksempel 68330000 på en FT-817.';
+	@override String get sdrIfInverted => 'IF er invertert';
+	@override String get sdrGainDb => 'Forsterkning (dB)';
+	@override String get sdrGainDbDescription => 'La stå tomt for mottakerens automatiske forsterkning.';
+	@override String get sdrOffsetHz => 'Frekvensoffset (Hz)';
+	@override String get sdrOffsetHzDescription => 'Legges til hver frekvens som sendes til mottakeren, for en upconverter: 125000000 for en Ham It Up.';
+	@override String get sdrPpm => 'Frekvenskorreksjon (ppm)';
+	@override String get rtlDirectSampling => 'Direkte sampling';
+	@override String get rtlDirectSamplingDescription => 'For HF på en RTL-SDR V3 uten upconverter. En RTL-SDR V4 når HF uten.';
+	@override String get rtlDirectSamplingOff => 'Av';
+	@override String get rtlDirectSamplingI => 'I-gren';
+	@override String get rtlDirectSamplingQ => 'Q-gren';
+	@override String get rtlTcpNotAServer => 'Dette er ikke en rtl_tcp-server';
+	@override String get rtlTcpNotes => 'Dette kobler til en **rtl_tcp-server du kjører selv** på datamaskinen donglen er plugget inn i.\n\n- **Start den** med `rtl_tcp -a 0.0.0.0` så andre maskiner kan nå den; på samme maskin er `rtl_tcp` alene nok.\n- **Port** er 1234 med mindre du startet den med `-p`.\n- **Ett program om gangen:** rtl_tcp betjener én klient. Appen kobler til bare mens en spektrumvisning vises, og slipper noen sekunder etter at den lukkes.\n- **På Android** kjører appen *SDR driver* den samme serveren på telefonen.';
+	@override String get rspTcpNotes => 'Dette kobler til en **rsp_tcp-server du kjører selv** på datamaskinen RSP-en er plugget inn i, med SDRplays API installert der.\n\n- **Start den** med `rsp_tcp -a 0.0.0.0`.\n- **Port** er 1234 med mindre du startet den med `-p`.\n- **Ett program om gangen:** serveren tar én klient. Appen kobler til bare mens en spektrumvisning vises.';
 	@override String get n3fjpNoRig => 'N3FJP har ikke satt opp noe radiogrensesnitt, så dette følger det som skrives inn i N3FJP, ikke en radio';
 	@override String get winkeyerKeyPort => 'Nøkleutgang';
 	@override String get winkeyerKeyPortDescription => 'Hvilken av keyerens to utganger radioen din er koblet til.';
@@ -2308,6 +2711,11 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get winkeyerPttDescription => 'Nøkle PTT-linjen på samme kontakt, for et forsterkertrinn eller en radio som trenger det. La være av for en radio som nøkles på nøkkelkontakten.';
 	@override String get winkeyerNoAnswer => 'Ingen WinKeyer svarte på denne porten';
 	@override String get winkeyerStoppedAnswering => 'WinKeyer sluttet å svare under sending; meldingen ble forkastet';
+	@override String get icomControlPort => 'Kontrollport (UDP)';
+	@override String get icomControlPortDescription => 'Radioens Control Port (UDP) — 50001 med mindre den er endret i nettverksinnstillingene, eller videresendt til en annen.';
+	@override String get icomSerialPort => 'Seriellport (UDP)';
+	@override String get icomSerialPortDescription => 'Radioens Serial Port (UDP) — 50002 med mindre den er endret i nettverksinnstillingene, eller videresendt til en annen.';
+	@override String get icomPortsDiffer => 'Kontroll- og seriellporten må være forskjellige';
 	@override String get radioUser => 'Brukernavn på radioen';
 	@override String get radioPass => 'Passord på radioen';
 	@override String get radioLoginDescription => 'Radioens Network → Remote-innlogging, ikke WiFi-passordet ditt.';
@@ -2315,34 +2723,59 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get connectFailedBusy => 'Enheten er i bruk';
 	@override String get connectFailedDenied => 'Ingen tilgang';
 	@override String get connectFailedDevice => 'Fant ikke enheten';
+	@override String get connectFailedUnsupported => 'Ingen driver kjenner igjen brikken i denne USB-adapteren. Hvis du vet hvilken brikke det er, velg den under USB-brikkedriver i Avanserte innstillinger.';
 	@override String get connectFailedLines => 'RTS/DTR kunne ikke holdes som angitt, så porten ble lukket. Et annet program kan ha latt maskinvare-handshake stå på — koble kabelen fra og til igjen.';
 	@override String get connectFailedNetwork => 'Finner ikke radioen på nettverket. Sjekk adressen, og at den er slått på og kan nås.';
+	@override String connectFailedReplyPort({required Object port}) => 'Port ${port} på denne enheten er allerede i bruk, og svarene kommer dit. Lukk det andre som lytter på den — også en annen PstRotator-node — eller bytt port.';
 	@override String get connectFailedTimeout => 'Radioen svarte ikke i tide. Sjekk at den er slått på og kan nås.';
 	@override late final _Translations$settings$station$models$nb models = _Translations$settings$station$models$nb._(_root);
 	@override late final _Translations$settings$station$transports$nb transports = _Translations$settings$station$transports$nb._(_root);
 	@override String get troubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
-	@override String get ft891Troubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS må være AV på radioen** (FT-891-meny **05-08**). Når den er på, venter radioen på en handshake-linje som appen holder lav. På Digirig, SignaLink og de fleste hjemmelagde kabler er den samme linjen PTT, så å heve den ville nøkle senderen. På radioens egen USB-port er **Hold RTS høy** under Avanserte innstillinger alternativet.\n- **Hastigheten må samsvare** med radioens CAT RATE (meny **05-06**). Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
+	@override String get ft891Troubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS av på radioen, eller Hold RTS høy på.** Med **CAT RTS** på (FT-891-meny **05-08**) er radioen stille så lenge RTS er lav — den kan svare én gang når porten åpnes, og så ingenting. Velger du radioens egen USB-port, slås **Hold RTS høy** på under Avanserte innstillinger. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy nøkler senderen: slå heller CAT RTS av på radioen.\n- **Hastigheten må samsvare** med radioens CAT RATE (meny **05-06**). Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
 	@override String get yaesuBinaryTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
 	@override String get yaesuBinaryTroubleshooting => 'Denne radioen bruker Yaesus eldre CAT med fem byte, og den svarer ikke i det hele tatt når noe er feil. Nesten alltid en av disse:\n\n- **Kabelen må konvertere nivåer.** CAT-kontakten bak er verken RS-232 eller USB; den trenger en CT-62 eller en tilsvarende adapter. En vanlig lyd- eller datakabel virker ikke for CAT.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny (**#14** på FT-817, **#19** på FT-857 eller FT-897). Ved avvik sender radioen ingenting tilbake, og aldri en feilmelding.\n- **La aldri noe heve RTS eller DTR på denne porten.** På de fleste kabler for disse radioene er de linjene PTT og nøkling. Et eldre grensesnitt som får strøm fra DTR, er unntaket: slå på **Hold DTR høy** under Avanserte innstillinger for det.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne driveren er skrevet etter Yaesus publiserte CAT-tabell og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.';
+	@override String get tenTecTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
+	@override String get tenTecEagleTroubleshooting => '- **USB-B-porten bak er CAT-forbindelsen.** Radioen vises som en USB-seriellport; på Windows trenger den Ten-Tecs USB til UART-driver, som vises i Enhetsbehandling som «USB to UART (COMx)».\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen, og det gjør Ten-Tecs fastvareoppdaterer også.\n- **Å sette filterbredden fra appen tar den fra BW-knappen** til radioen slås av og på igjen. Det er slik radioen virker.\n\nDenne driveren er skrevet etter Ten-Tecs programmeringsreferanse. Hvis den halvveis virker, er det verdt å rapportere, med fastvareversjonen fra radioens meny.';
+	@override String get tenTecOrionTroubleshooting => '- **Bruk en rett DB-9-seriellkabel** til SERIAL DATA-porten, ikke en nullmodemkabel.\n- **Denne oppføringen holder RTS høy**, fordi Orion bruker RTS og CTS som handshake. På et grensesnitt som nøkler PTT fra RTS, som en Digirig, slå av Hold RTS høy under Avanserte innstillinger, ellers sender radioen så snart appen kobler til.\n- **CW fra appen krever at radioens interne keyer er på.** Med den av ignorerer radioen det appen sender.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne driveren er skrevet etter Ten-Tecs programmeringsreferanse og har ikke blitt kjørt mot en Orion. Hvis den halvveis virker, er det verdt å rapportere, med fastvareversjonen fra radioens meny.';
+	@override String get tenTecNoCw => 'Fastvaren i denne radioen tar ikke CW fra appen. Ten-Tec la det til i Orion-fastvare 1.366.';
+	@override String get tenTecKeyerOff => 'Radioens interne keyer er av, så den ignorerer CW sendt fra appen. Slå på keyeren i radioens meny.';
 	@override String get guohetecTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
 	@override String get guohetecTroubleshooting => 'Q900 har to CAT-protokoller, og denne oppføringen bruker den opprinnelige i stedet for FT-817-etterligningen. Velg **Guohetec Q900** her, ikke en FT-817 — etterligningen støtter færre kommandoer, og radioen sier ikke hvilken den bruker.\n\n- **USB-C-kabelen er CAT-forbindelsen**, og den kobler til lydkortet også. Hastigheten spiller ingen rolle på den; porten ignorerer hva den er satt til.\n- **La aldri noe heve RTS eller DTR på denne porten.** På en seriellkabel er de linjene PTT og nøkling.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **En radio av andre generasjon oppfører seg annerledes** enn en av første. Trykk lenge på Menu, deretter About: HW 2.0 er andre generasjon.\n\nDenne driveren er skrevet etter produsentens publiserte protokoll og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.';
 	@override String get yaesuTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
 	@override String get yaesuTroubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav. På Digirig, SignaLink og de fleste hjemmelagde kabler er den samme linjen PTT, så å heve den ville nøkle senderen. På radioens egen USB-port er **Hold RTS høy** under Avanserte innstillinger alternativet. Hvor den innstillingen ligger, varierer mellom modeller (meny **05-08** på FT-891).\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Modusene følger tabellen for FT-891.** Det meste av Yaesu-serien samsvarer med den, men en radio som nummererer modusene sine annerledes, vil vise og sette feil modus for disse. Frekvensen påvirkes ikke.';
+	@override String get ftdx3000Troubleshooting => '**Meny 037 CAT SELECT må være USB** for CAT over radioens USB-port; satt til RS232C ligger CAT på kontakten bak.\n\nDenne oppføringen er skrevet etter publisert CAT-dokumentasjon og har ikke blitt kjørt mot en FTDX3000. Hvis den halvveis virker, er det verdt å rapportere.';
 	@override String get yaesuRs232Troubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT-kontakten er RS-232.** Den trenger en USB-til-seriell-adapter og en rett DB-9-kabel — en nullmodemkabel bytter om linjene, og radioen hører aldri noe.\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav, med mindre **Hold RTS høy** er slått på under Avanserte innstillinger.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne oppføringen er skrevet etter publisert CAT-dokumentasjon og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.';
-	@override String get yaesuUsbTroubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **Bruk den første av radioens to USB-porter.** CAT ligger normalt på den første (**Enhanced** COM-porten på Windows); den andre (**Standard**) er for PTT og nøkling. Velgeren peker på den første der den kan skille de to fra hverandre.\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav, med mindre **Hold RTS høy** er slått på under Avanserte innstillinger.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
+	@override String get yaesuUsbTroubleshooting => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **Bruk den første av radioens to USB-porter.** CAT ligger normalt på den første (**Enhanced** COM-porten på Windows); den andre (**Standard**) er for PTT og nøkling. Velgeren peker på den første der den kan skille de to fra hverandre.\n- **CAT RTS av på radioen, eller Hold RTS høy på.** Med radioens **CAT RTS**-meny på er den stille så lenge RTS er lav — den kan svare én gang når porten åpnes, og så ingenting. Velger du radioens egen USB-port, slås **Hold RTS høy** på under Avanserte innstillinger. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy nøkler senderen: slå heller CAT RTS av på radioen.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
 	@override String get k4SerialNotes => 'Koble til K4-ens USB-B-kontakt (PC) bak. Både USB-PC1 og USB-PC2 virker for CAT; velg en ledig port og sett Serial USB-PCn: Baud Rate på radioen til samme verdi. HaLo fyller inn 38400; endre ved behov. Et annet program må bruke den andre porten eller Ethernet.\n\nDenne tilkoblingen styrer radioen og keyerne dens; den sender ikke lyd til HaLo.';
-	@override String get k4TcpNotes => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. Dette er CAT-styring, ikke den separate tilkoblingen for fjernlyd på port 9204.\n\nHaLo styrer radioen og keyerne dens uten å strømme lyd eller panadapterdata.';
+	@override String get k4TcpNotes => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. HaLo bruker samme vert på fast port 9201 når en panadapter eller et vannfall vises; å endre CAT-porten endrer ikke spektrumporten.\n\nSpekteret viser hovedmottakeren. Zoom, referansejustering og hastighetskontrollene påvirker bare HaLos visning. Lydstrømming støttes ikke.';
 	@override String get k4PowerTimeout => 'K4-effekten ble ikke endret fordi radioen ikke bekreftet utgangsområdet sitt. Prøv igjen.';
+	@override String get k4RemoteNotes => 'Aktiver fjerntilgang på K4-en og oppgi nettverkspassordet dens. Main og Sub deler én kryptert tilkobling for radiostyring og spektrum. Standardporten er 9204; oppgi den videresendte porten din når du kobler til eksternt.\n\nLydavspilling og mikrofonstrømming støttes ikke.';
+	@override String get k4Receiver => 'Mottaker';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'Velg Main eller Sub';
+	@override String get k4ReceiverAlreadyConfigured => 'Den mottakeren er allerede satt opp for denne K4-en';
+	@override String get k4SubReceiverOff => 'K4-ens submottaker er av';
+	@override String get k4RemotePasswordRequired => 'Oppgi K4-ens nettverkspassord for å koble til sikkert.';
+	@override String get k4RemoteHandshakeFailed => 'K4-en kunne ikke opprette en sikker tilkobling. Sjekk nettverkspassordet og innstillingene for fjerntilgang.';
+	@override String get k4RemoteUnreachable => 'K4-ens sikre tilkobling kunne ikke nås. Sjekk adressen, porten og innstillingene for fjerntilgang.';
 	@override String get k4PowerRange => 'K4-effekten må være 0,1–110 W, eller 0,0001–0,01 W når transverterens milliwatt-utgang er aktiv.';
 	@override String get elecraftTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
 	@override String get elecraftTroubleshooting => 'Elecraft-rigger bruker Kenwood CAT, og både en KX2 og en KX3 har blitt kjørt på denne måten — VFO i begge retninger, modusbytte og CW-nullsvevning virker.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med verdien under **RS232** i radioens meny. 38400 er det de leveres med. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\n**Hvis frekvensen er riktig, men modusen feil**, si fra til oss. Oppføringene for KX2 og KX3 leser modusen fra en posisjon i radioens statussvar som vi har fastsatt ut fra riggene vi har sett, og fastvare som legger den et annet sted, får vi bare vite om gjennom en rapport.\n\nK3 har ikke blitt rapportert verken den ene eller andre veien, så fortell hva som skjer hvis du bruker en. K4 har sin egen oppføring.';
+	@override String get lab599TroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
+	@override String get lab599Troubleshooting => 'TX-500-serien bruker Kenwood CAT. Frekvens og modus har blitt kjørt gjennom en LiNK500MP; effekt og metere er skrevet etter Lab599s CAT-referanse, så rapporter hva som skjer uansett utfall.\n\n- **Hastigheten må samsvare** med radioens CAT-innstilling, 9600 med mindre du har endret den. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **Velg CAT-protokoll på radioen.** TS-2000 dekker frekvens, modus og effekt. LAB599 lar i tillegg appen sette radioen i DIG, se at den sender i DIG, og lese forsyningsspenningen.\n- **Gjennom en LiNK500MP**, hold inne VFO-knappen i omtrent tre sekunder for å gi CAT-styringen til grensesnittet.\n- **Sett LiNK500MP-ens modus etter tilkoblingen**: Mode 3 for Bluetooth, Mode 4 for Bluetooth LE. I alle andre moduser finner ikke et Bluetooth LE-søk den.\n- **Over Bluetooth** pares LiNK500MP som to seriellporter, og bare én bærer CAT. Hvis radioen er stille, velg den andre.';
+	@override String get lab599TroubleshootingIos => 'TX-500-serien bruker Kenwood CAT. Frekvens og modus har blitt kjørt gjennom en LiNK500MP; effekt og metere er skrevet etter Lab599s CAT-referanse, så rapporter hva som skjer uansett utfall.\n\n- **Sett LiNK500MP i Mode 4**, Bluetooth LE-modusen, før du søker etter den. I alle andre moduser kan ikke en iPhone eller iPad finne den.\n- **Gi CAT-styringen til LiNK500MP**: hold inne radioens VFO-knapp i omtrent tre sekunder.\n- **Velg CAT-protokoll på radioen.** TS-2000 dekker frekvens, modus og effekt. LAB599 lar i tillegg appen sette radioen i DIG, se at den sender i DIG, og lese forsyningsspenningen.';
 	@override String get kenwoodTroubleshootingTitle => 'Hvis radioen kobler til, men ikke viser noen frekvens';
-	@override String get kenwoodTroubleshooting => 'Denne driveren er bekreftet mot Kenwoods TS-590SG og TS-480, QRP Labs\' QMX og QCX-mini, og Elecrafts KX2 og KX3. Resten av serien er skrevet etter publiserte CAT-referanser, så rapporter hva som skjer uansett utfall.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med radioens CAT-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Noen rigger må ha CAT aktivert** i menyen før de svarer i det hele tatt.\n\n**Flere SDR-programmer bruker den samme protokollen**, så denne oppføringen er verdt å prøve for dem også; Elecraft-rigger står for seg selv, under Elecraft. Hvis frekvensen er riktig, men modusen er feil eller mangler, er det den ene delen som varierer i serien — appen finner den ut fra radioen og spør direkte som reserve, så modusen kan rett og slett komme litt etter.';
+	@override String get kenwoodTroubleshooting => 'Denne driveren er bekreftet mot Kenwoods TS-590SG og TS-480, QRP Labs\' QMX og QCX-mini, og Elecrafts KX2 og KX3. Resten av serien er skrevet etter publiserte CAT-referanser, så rapporter hva som skjer uansett utfall.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med radioens CAT-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Noen rigger må ha CAT aktivert** i menyen før de svarer i det hele tatt.\n- **Kenwood-radioer venter på RTS**: CAT-porten bruker den som handshake, så Hold RTS høy (under Avanserte innstillinger) må være på. En tilkobling som ble satt opp før det var på som standard, kan ha den av. På en Digirig eller en annen kabel som nøkler PTT fra RTS, slå den av, ellers sender radioen.\n\n**Flere SDR-frontender bruker den samme protokollen**, så denne oppføringen er verdt å prøve for dem også; Elecraft-rigger står for seg selv, under Elecraft. Hvis frekvensen er riktig, men modusen er feil eller mangler, er det den ene delen som varierer i serien — appen finner den ut fra radioen og spør direkte som reserve, så modusen kan rett og slett komme litt etter.';
 	@override String get statusConnected => 'Tilkoblet';
 	@override String get statusLost => 'Frakoblet';
 	@override String get notConfigured => 'Ikke satt opp';
 	@override String get currentConfiguration => 'Gjeldende oppsett';
 	@override String get currentTransceiver => 'Gjeldende transceiver';
+	@override String get currentTransceivers => 'Gjeldende transceivere';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'Meldinger settes i kø i stedet for å avbryte';
+	@override String get noRadioBSelected => 'Ingen Radio B valgt';
 	@override String get radioMode => 'Radiomodus';
 	@override String get keyerNotSupported => 'Støttes ikke av gjeldende radio';
 	@override String get catControlPreferences => 'Innstillinger for CAT-styring';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} er på en annen enhet';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'Denne radioen er koblet til ${device}. Tilkoblingen og innstillingene settes opp på den enheten.';
 	@override String get antennaInUse => 'Antenne i bruk';
-	@override String get keyInUse => 'Nøkkel i bruk';
+	@override String get keyInUse => 'CW-nøkling';
+	@override String get phoneKeying => 'Talemeldinger';
+	@override String get phoneKeyingNone => 'Ingen';
+	@override String phoneKeyingRadio({required Object radio}) => 'Minner i ${radio}';
+	@override String get phoneKeyingComputer => 'Lyd i denne datamaskinen';
+	@override String get phoneKeyingOff => 'Talemeldinger er av';
+	@override String get computerVoiceSettings => 'Datamaskinlyd';
+	@override String get cwKeyingOptions => 'Alternativer for CW-nøkling';
 	@override String get noneSelected => 'Ingen';
 	@override String get moreSettings => 'Flere innstillinger';
 	@override String get icomCivTroubleshootingTitle => 'Hvis to seriellporter vises for samme radio';
 	@override String get icomCivTroubleshooting => 'Flere Icom-radioer, blant dem IC-705, viser **to** USB-seriellporter samtidig (Icom kaller dem Port A og Port B), begge satt til CI-V som standard. Verken denne appen eller operativsystemet kan skille dem fra hverandre utover det: samme USB-leverandør-/produkt-ID vises bare to ganger, noen ganger merket med et `#2`-suffiks her. **Port A er vanligvis den riktige** — normalt den første som operativsystemet eller nettleseren lister opp, og der denne appen kan skille de to portene, merker den den som foreslått. Hvis kommandoer går ut og radioen aldri svarer, prøv den andre porten.';
 	@override String get civAddressTroubleshootingTitle => 'Hvis radioen aldri svarer';
 	@override String get civAddressTroubleshooting => '- **CI-V-adressen må samsvare** med radioens meny. Denne oppføringen fyller inn adressen modellen leveres med, men en rigg som deler en CI-V-buss, er nettopp der den blir endret. En ramme sendt til feil adresse ignoreres i stillhet, noe som ser akkurat ut som en død kabel.\n- **Hastigheten må samsvare** med radioens CI-V BAUD RATE (på USB, CI-V USB Baud Rate). Sett radioen til samme tall som vises her, **ikke Auto**. På Auto kobler noen radioer, blant dem IC-7300, til og slutter så å svare etter et minutt eller så.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **CI-V-adressen må samsvare** med radioens meny. Denne oppføringen fyller inn adressen modellen leveres med, men en rigg som deler en CI-V-buss, er nettopp der den blir endret. En ramme sendt til feil adresse ignoreres i stillhet, noe som ser akkurat ut som en død kabel.\n${speed}\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.';
+	@override String get icomUsbSpeedFollows => '- **Det er ingen hastighet å sette.** Over USB snakker denne radioen i den hastigheten datamaskinen bruker, og denne oppføringen bruker alltid 115200, hastigheten scopet trenger.';
+	@override String get ic7610UsbSpeed => '- **Sett CI-V USB Baud Rate til 115200**, hastigheten denne oppføringen alltid bruker, siden scopet trenger den — **ikke Auto**. En radio satt til en annen hastighet svarer med stillhet.';
+	@override String get civTransceiveTitle => 'Hvis appen er treg til å følge radioen';
+	@override String get civTransceive => 'Hvis appen bruker flere sekunder på å vise en frekvens- eller modusendring gjort på radioen, slå på radioens **CI-V Transceive**-innstilling (på de fleste nyere modeller under SET > Connectors > CI-V). Med den på rapporterer radioen hver endring i samme øyeblikk den skjer. Med den av ser appen en endring først neste gang den spør, med noen sekunders mellomrom.';
 	@override String get ic7300Mk2Note => '\n- **IC-7300 MK2** leveres med adresse `B6`, ikke `94` som fylles inn her — velg oppføringen for IC-7300 MK2 i stedet.';
 	@override String get ic705PortNote => '\n- **IC-705** viser to USB-seriellporter, begge oppkalt etter radioen. CI-V ligger på den **første** av dem, som velgeren peker på der den kan skille de to fra hverandre.';
 	@override String get ic7760PortNote => '\n- **IC-7760** bruker CI-V på **Port A** av de to USB-seriellportene den viser.';
@@ -2393,7 +2838,8 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get commanderTroubleshootingTitle => 'Hvis appen ikke kan koble til';
 	@override String get commanderTroubleshooting => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.';
 	@override String get ic705TroubleshootingTitle => 'Hvis radioen aldri svarer';
-	@override String get ic705Troubleshooting => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.';
+	@override String get ic705Troubleshooting => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Portene må samsvare** med radioens Control Port og Serial Port (UDP), eller portene som er videresendt til dem. Feil port møtes med stillhet, akkurat som en radio som er av.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.';
+	@override String get icomLanTroubleshooting => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview, RS-BA1 eller Icoms Remote Utility koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** LAN-porten må være koblet til samme nettverk som denne enheten, **Network Control** må være på, og brukernavnet og passordet må være satt opp som en nettverksbruker på radioen.\n- **Portene må samsvare** med radioens Control Port og Serial Port (UDP), eller portene som er videresendt til dem. Feil port møtes med stillhet, akkurat som en radio som er av.\n- **Hvis den kobler til, men aldri svarer**, må CI-V-adressen her samsvare med radioens CI-V ADDRESS-meny. Denne oppføringen fyller inn adressen modellen leveres med.\n- **Slå radioen av og på** hvis den blir hengende.';
 	@override String get statusStale => 'Svarer ikke';
 	@override String get statusDisconnected => 'Ikke tilkoblet';
 	@override String get statusConnecting => 'Kobler til…';
@@ -2401,9 +2847,9 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get statusError => 'Tilkoblingen mislyktes';
 	@override String get currentRadioSettings => 'Gjeldende radioinnstillinger';
 	@override String get notSupportedByThisRadio => 'Støttes ikke av denne radioen';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => 'Telefoni';
-	@override String voiceKeyerAvailable({required Object count}) => 'Talekeyer: ${count} memorier i radioen';
+	@override String get cwMessagesButton => 'CW-meldinger';
+	@override String get voiceMessagesButton => 'Talemeldinger';
+	@override String voiceKeyerAvailable({required Object count}) => 'Talekeyer: ${count} minner i radioen';
 	@override String get antennaBands => 'Bånd';
 	@override String get antennaType => 'Antennetype';
 	@override String get antennaTypeRequired => 'Velg en antennetype';
@@ -2443,8 +2889,8 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get placeholderReplyDelayDescription => 'Hvor lang tid plassholderradioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.';
 	@override String get cwKeyerField => 'CAT CW-keyer';
 	@override String get cwKeyerFieldDescription => 'Om denne radioen sender CW fra tekst over CAT. Av for en rigg appen ikke kjenner.';
-	@override String get voiceMemories => 'Talememorier';
-	@override String get voiceMemoriesDescription => 'Hvor mange talememorier radioen spiller av over CAT. 0 for ingen.';
+	@override String get voiceMemories => 'Taleminner';
+	@override String get voiceMemoriesDescription => 'Hvor mange taleminner radioen spiller av over CAT. 0 for ingen.';
 	@override String get voiceMemoriesInvalid => 'Et heltall, 0 eller mer';
 	@override String get yaesuMeterCapture => 'Registrer måleravlesninger';
 	@override String get yaesuBinaryMeterCaptureDescription => 'Leser radioens måler for utgangseffekt og flagg for høy SWR under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.';
@@ -2465,7 +2911,7 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get cwDialectKenwood => 'Kenwood (KY, fylt ut til 24)';
 	@override String get cwDialectElecraft => 'Elecraft (KY-tekst)';
 	@override String get voiceDialect => 'Dialekt for talekeyer';
-	@override String get voiceDialectDescription => 'Hvordan denne radioen spiller av talememoriene over CAT. Ingen betyr ingen talememorier over CAT. Med en dialekt og uten antall gjelder dialektens standardantall.';
+	@override String get voiceDialectDescription => 'Hvordan denne radioen spiller av taleminnene over CAT. Ingen betyr ingen taleminner over CAT. Med en dialekt og uten antall gjelder dialektens standardantall.';
 	@override String get voiceDialectPb => 'Kenwood (PB, TS-590-stil)';
 	@override String get voiceDialectK4 => 'Elecraft K4 (PB og DA)';
 	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (bryterklikk)';
@@ -2476,7 +2922,7 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get switchLayout => 'Oppsett';
 	@override String get switchLayoutDescription => 'Hvilken side av bryteren radioene dine er koblet til.';
 	@override String get switchLayoutRequired => 'Velg hvordan bryteren er koblet';
-	@override String switchCommandRefused({required Object command, required Object code}) => 'Bryteren avviste "${command}" (feil ${code})';
+	@override String switchCommandRefused({required Object command, required Object code}) => 'Bryteren avviste «${command}» (feil ${code})';
 	@override String get switchBusyTransmitting => 'Den porten sender — antennen ble ikke byttet';
 	@override String get switchNoAntenna => 'Ingen';
 	@override String switchAntennaFor({required Object port}) => 'Antenne på port ${port}';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'Hvilken antenne hver radioport er på akkurat nå. Endringer trer i kraft umiddelbart.';
 	@override String get switchWiringHeader => 'Kabling';
 	@override String get switchPortInhibitedHint => 'sending sperret';
+	@override String get rotatorAxes => 'Akser';
+	@override String get rotatorAxesDescription => 'Om rotoren dreier bare i asimut, eller i elevasjon også (en G-5500 eller lignende).';
+	@override String get rotatorAxesAzimuth => 'Bare asimut';
+	@override String get rotatorAxesAzimuthElevation => 'Asimut og elevasjon';
+	@override String get rotatorAzimuthOffset => 'Asimutoffset';
+	@override String get rotatorAzimuthOffsetDescription => 'Grader som legges til det kontrolleren leser, når nullpunktet ikke er rett nord. Dreiinger korrigeres tilsvarende.';
+	@override String get rotatorElevationOffset => 'Elevasjonsoffset';
+	@override String get rotatorAzimuthMin => 'Laveste asimut';
+	@override String get rotatorAzimuthMax => 'Høyeste asimut';
+	@override String get rotatorAzimuthMaxDescription => 'I kontrollerens egne grader. Over 360 for en rotor med overlapp, som da tar den korteste dreiingen.';
+	@override String get rotatorElevationMin => 'Laveste elevasjon';
+	@override String get rotatorElevationMax => 'Høyeste elevasjon';
+	@override String get rotatorElevationMaxDescription => 'I kontrollerens egne grader. Over 90 for en rotor som vipper over.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'Hele grader, ${min} til ${max}';
+	@override String get rotatorLimitsInvalid => 'Den laveste grensen må være under den høyeste';
+	@override String get rotatorPollInterval => 'Spørreintervall (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'Hvor ofte rotoren spørres om hvor den peker. La stå tomt for ${fallback} ms.';
+	@override String get rotatorAxesRequired => 'Velg hvilke akser rotoren dreier';
+	@override String get rotatorRefused => 'Kontrolleren avviste en kommando. Sjekk at den er satt til GS-232-modus.';
+	@override String get pstRotatorTroubleshooting => 'PstRotator svarer først når den er satt opp for det, og sier ellers ingenting:\n\n- **Slå på UDP Control** i PstRotators Setup-meny.\n- **Bruk samme port**: Communication → UDP Control Port, 12000 med mindre den er endret. PstRotator svarer på porten over (12001), som må være ledig på denne enheten.\n- **Koble PstRotator til kontrolleren sin.** Før det er gjort, svarer den ingenting over UDP.\n- **Slipp den gjennom brannmuren** på PC-en som kjører PstRotator, og på denne enheten, som lytter etter svarene.\n- **På Mac, iPhone eller iPad** trenger Ham2K Logger tilgang til lokalt nettverk (Innstillinger → Personvern og sikkerhet → Lokalt nettverk).';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'Gjeldende tilstand: ${position}';
+	@override String get rotatorDisconnected => 'frakoblet';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° asimut';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° elevasjon';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'Venter på at kontrolleren rapporterer posisjonen sin…';
+	@override String get rotatorNotResponding => 'svarer ikke';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'Dreier til ${heading}, så langt grensene for denne rotoren tillater';
+	@override String get rotatorTargetAzimuth => 'Drei til asimut';
+	@override String get rotatorTargetAzimuthShort => 'Drei til az';
+	@override String get rotatorTargetElevation => 'Drei til elevasjon';
+	@override String get rotatorTargetElevationShort => 'Drei til el';
+	@override String get rotatorAzimuthInvalid => 'Må være 0 til 360';
+	@override String get rotatorElevationInvalid => 'Må være 0 til 180';
+	@override String get rotatorTurn => 'Drei';
+	@override String get rotatorStop => 'Stopp';
 	@override String get configUnreadable => 'De lagrede innstillingene for denne radioen kunne ikke leses. Åpne innstillingene og legg dem inn på nytt, eller fjern radioen og legg den til igjen.';
 	@override String get autoConnectHeld => 'HaLo sluttet å svare forrige gang den koblet til denne radioen, så den koblet ikke til av seg selv denne gangen. Trykk Koble til for å prøve igjen.';
 }
@@ -2531,7 +3014,7 @@ class _Translations$settings$profiles$nb extends Translations$settings$profiles$
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get notSet => 'Ikke satt';
+	@override String get notSet => 'Ikke angitt';
 	@override String get personalInfo => 'Personlig info';
 	@override String get personalInfoNote => 'Dette kan bli tatt med i genererte logger når det er relevant for innsending';
 	@override String get name => 'Navn';
@@ -2562,6 +3045,11 @@ class _Translations$settings$developer$nb extends Translations$settings$develope
 	// Translations
 	@override String get developerModeDescription => 'Aktiver utvikleradvarsler, feilsøkingslogger og verktøy.';
 	@override String get experiments => 'Eksperimenter';
+	@override String get showIdleMetrics => 'Vis hvilemålinger';
+	@override String get showIdleMetricsDescription => 'Vis i statuslinjen hvor mye utvidelsesmotoren har vært i hvile det siste sekundet. Trykk for gjennomsnittet over 10 og 60 sekunder.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent} % i hvile';
+	@override String get idleMetricsAverages => 'Snitt i hvile:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}s ${percent} %';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
 		one: '${count} aktivert',
 		other: '${count} aktivert',
@@ -2571,9 +3059,9 @@ class _Translations$settings$developer$nb extends Translations$settings$develope
 	@override String get trackStable => 'Stabil';
 	@override String get trackUnstable => 'Ustabil';
 	@override String get trackBleeding => 'Dagsfersk';
-	@override String checkingTrack({required Object track}) => 'Ser etter kodeoppdatering på "${track}"…';
+	@override String checkingTrack({required Object track}) => 'Ser etter kodeoppdatering på «${track}»…';
 	@override String get patchDownloaded => 'Kodeoppdatering lastet ned — start appen på nytt for å ta den i bruk.';
-	@override String noNewPatch({required Object track}) => 'Ingen ny kodeoppdatering på "${track}".';
+	@override String noNewPatch({required Object track}) => 'Ingen ny kodeoppdatering på «${track}».';
 	@override String get noPatchInstalled => 'Ingen kodeoppdatering installert — kjører utgivelsesversjonen.';
 	@override String runningPatch({required Object patch}) => 'Kjører kodeoppdatering #${patch}.';
 	@override String get deepLinks => 'Dyplenker';
@@ -2678,6 +3166,183 @@ class _Translations$settings$gridPrecisionDescription$nb extends Translations$se
 	@override String get eight => '8 tegn';
 }
 
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$nb extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'Åpne kommandodialogen';
+	@override String get toggleTheme => 'Bytt mellom lyst og mørkt';
+	@override String get toggleLanguage => 'Bytt mellom engelsk og spansk';
+	@override String get fontScaleUp => 'Større tekst';
+	@override String get fontScaleDown => 'Mindre tekst';
+	@override String get fontScaleReset => 'Normal tekststørrelse';
+	@override String get densityLooser => 'Luftigere oppsett';
+	@override String get densityDenser => 'Tettere oppsett';
+	@override String get densityAuto => 'Automatisk tetthet i oppsettet';
+	@override String get find => 'Finn i loggen';
+	@override String keyerMessage({required Object n}) => 'Send melding ${n}';
+	@override String get keyboardMode => 'Tastaturmodus på eller av';
+	@override String get ptt => 'Trykk for å snakke (PTT)';
+	@override String get wipe => 'Tøm kontakten som logges';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$nb extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'Skriving av kallesignaler';
+	@override String get escape => 'Stopp sending, gå ett steg tilbake, eller lukk';
+	@override String get enter => 'Logg kontakten';
+	@override String get space => 'Neste felt';
+	@override String get tab => 'Neste eller forrige felt';
+	@override String get arrows => 'Flytt mellom felt, kontroller og loggen';
+	@override String get walk => 'Bla sidevis i loggen, eller gå til endene';
+	@override String get undo => 'Ta tilbake en tømming eller en sletting';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$nb extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'Legg til snarvei';
+	@override String get listening => 'Trykk tastene for snarveien…';
+	@override String get listeningHint => 'Esc avbryter';
+	@override String get add => 'Legg til';
+	@override String refusedFixed({required Object keys}) => '${keys} tilhører loggefeltene eller en dialog, og kan ikke endres.';
+	@override String refusedCallsign({required Object keys}) => '${keys} er slik kallesignaler skrives. Hold Cmd, Ctrl eller Alt sammen med den.';
+	@override String reserved({required Object keys}) => 'Systemet kan ta ${keys} før appen ser den.';
+	@override String already({required Object keys}) => '${keys} er allerede en av tastene for denne kommandoen.';
+	@override String takeIt({required Object keys, required Object command}) => 'Ta ${keys} fra «${command}»';
+	@override String get resetDefault => 'Tilbakestill til standard';
+	@override String get remove => 'Fjern';
+	@override String get commandLabel => 'Kommando';
+	@override String get commandHint => 'Skriv en gyldig kommando, eller flere kommandoer atskilt med «;»';
+	@override String get removeCommand => 'Fjern kommando';
+	@override String commandUnknown({required Object text}) => 'Ingen kommando leser «${text}»';
+	@override String get noShortcuts => 'Ingen tast ennå';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$nb extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'Snarveier lagret i ${location}';
+	@override String exportFailed({required Object error}) => 'Kunne ikke eksportere snarveiene: ${error}';
+	@override String importPickerFailed({required Object error}) => 'Kunne ikke åpne filen: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} er ikke en snarveifil denne appen kan lese: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})';
+	@override String get problemNotKeysFile => 'det er ikke en Ham2K-fil med tastatursnarveier';
+	@override String get problemNewerVersion => 'det ble skrevet av en nyere versjon av appen';
+	@override String get problemMalformed => 'deler av det følger ikke snarveiformatet';
+	@override String get problemTooLarge => 'det er for stort';
+	@override String get importTitle => 'Importer snarveier';
+	@override String writtenOn({required Object platform}) => 'Skrevet på ${platform}.';
+	@override String get writtenOnUnknown => 'Filen sier ikke hvilket tastatur den ble skrevet på.';
+	@override String get translate => 'Hva skal hver av disse tastene være på dette tastaturet?';
+	@override String get leaveOut => 'Utelat de snarveiene';
+	@override String get replace => 'Erstatt oppsettet på denne enheten';
+	@override String get replaceHint => 'Alle snarveier som ikke er i filen, går tilbake til standard.';
+	@override String get merge => 'Legg til i oppsettet på denne enheten';
+	@override String get mergeHint => 'Filens snarveier erstatter enhetens for de samme kommandoene, og resten beholdes.';
+	@override String unknown({required Object commands}) => 'Ukjent i denne versjonen, så utelatt: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'Ikke snarveier, så utelatt: ${chords}';
+	@override String refusedChords({required Object chords}) => 'Taster appen holder for seg selv, så utelatt: ${chords}';
+	@override String conflicts({required Object keys}) => 'Knyttet til mer enn én kommando etter importen: ${keys}';
+	@override String get importAction => 'Importer';
+	@override String get imported => 'Snarveier importert';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$nb extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Kommando';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$nb extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$nb extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'Stasjonskallesignaler';
+	@override String get groupBy => 'Grupper etter';
+	@override String get period => 'Tidsrom';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$nb extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'Ikke gruppert';
+	@override String get date => 'Dato';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => 'Ukjent kontinent';
+	@override String get unknownEntity => 'Ukjent enhet';
+	@override String get unknownDate => 'Uten dato';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$nb extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'Denne måneden';
+	@override String get last3Months => 'Siste 3 måneder';
+	@override String get thisYear => 'I år';
+	@override String get lastYear => 'I fjor';
+	@override String get allTime => 'Alle tider';
+	@override String get custom => 'Tilpasset periode';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$nb extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => 'i ${span}';
+	@override String get custom => 'Tilpasset periode';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$nb extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -2695,7 +3360,7 @@ class _Translations$home$logs$columns$nb extends Translations$home$logs$columns$
 	@override String get band => 'Bånd';
 	@override String get sent => 'Sendt';
 	@override String get rcvd => 'Mottatt';
-	@override String get grid => 'Grid';
+	@override String get grid => 'Rutenett';
 	@override String get state => 'Stat';
 	@override String get country => 'Land';
 	@override String get refs => 'Ref.';
@@ -2713,7 +3378,7 @@ class _Translations$home$logs$panels$nb extends Translations$home$logs$panels$en
 	@override String get info => 'Info';
 	@override String get infoDescription => 'Totalt antall QSOer, eller kallesignaloppslaget for den valgte QSOen.';
 	@override String get map => 'Kart';
-	@override String get mapDescription => 'Posisjonen til den valgte QSOen.';
+	@override String get mapDescription => 'Plasseringen til den valgte QSOen.';
 }
 
 // Path: home.logs.import
@@ -2734,6 +3399,72 @@ class _Translations$home$logs$import$nb extends Translations$home$logs$import$en
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} importert, av ${total}';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$nb extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'Standard';
+	@override String untitledName({required Object number}) => 'Oppsett ${number}';
+	@override String switcherLabel({required Object name}) => 'Oppsett: ${name}';
+	@override String get menuNew => 'Nytt…';
+	@override String get menuExport => 'Eksporter…';
+	@override String get menuImport => 'Importer…';
+	@override String get menuTitle => 'Oppsett';
+	@override String get newTitle => 'Nytt oppsett';
+	@override String get editTitle => 'Rediger oppsett';
+	@override String get edit => 'Rediger';
+	@override String get duplicateCurrent => 'Dupliser gjeldende oppsett';
+	@override String get startFromDefault => 'Start fra standardoppsettet';
+	@override String get nameLabel => 'Navn';
+	@override String get descriptionLabel => 'Beskrivelse';
+	@override String get create => 'Opprett';
+	@override String leaveEditTitle({required Object name}) => 'Lagre endringer i «${name}»?';
+	@override String get leaveEditBody => 'Dette oppsettet har endringer du ikke har lagret.';
+	@override String get discard => 'Forkast';
+	@override String get deleteTitle => 'Slette dette oppsettet?';
+	@override String deleteBody({required Object name}) => 'Er du sikker på at du vil slette oppsettet «${name}»?';
+	@override String get exportTitle => 'Eksporter oppsett';
+	@override String get exportPick => 'Paneler som skal eksporteres';
+	@override String get tabSet => 'Fanegruppe';
+	@override String get exportAction => 'Eksporter';
+	@override String exported({required Object location}) => 'Oppsett lagret i ${location}';
+	@override String exportFailed({required Object error}) => 'Kunne ikke eksportere oppsettet: ${error}';
+	@override String get importTitle => 'Importer oppsett';
+	@override String importFromOtherView({required Object view}) => 'Laget for ${view}-visningen: paneler som bare den visningen har, er utelatt.';
+	@override String get viewHome => 'Hjem';
+	@override String get viewOperation => 'Operasjon';
+	@override String get viewLogs => 'Logger';
+	@override String get viewChase => 'Jakt';
+	@override String get importAsNew => 'Som et nytt oppsett';
+	@override String get importReplace => 'I stedet for dette oppsettet';
+	@override String get importAdd => 'Lagt til i dette oppsettet';
+	@override String get importAddHint => 'Panelene kommer i en ny kolonne til høyre.';
+	@override String get importPick => 'Paneler som skal importeres';
+	@override String get importReplaceSettings => 'Erstatt innstillingene for paneler som allerede er satt opp her';
+	@override String get importAction => 'Importer';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} er ikke et oppsett denne appen kan lese: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})';
+	@override String get problemNotLayoutFile => 'det er ikke en Ham2K-oppsettfil';
+	@override String get problemNewerVersion => 'det ble skrevet av en nyere versjon av appen';
+	@override String get problemNoArrangement => 'det inneholder ingen panelplassering';
+	@override String get problemMalformed => 'deler av det følger ikke oppsettformatet';
+	@override String get problemTooLarge => 'det er for stort';
+	@override String importPickerFailed({required Object error}) => 'Kunne ikke åpne filen: ${error}';
+	@override String importFailed({required Object error}) => 'Kunne ikke importere oppsettet: ${error}';
+	@override String duplicateFailed({required Object error}) => 'Kunne ikke kopiere oppsettet: ${error}';
+	@override String get importNothing => 'Ingen paneler valgt, så ingenting ble importert.';
+	@override String importSkipped({required Object panels}) => 'Utelatt: ${panels}';
+	@override String importKeptPinned({required Object panels}) => 'Beholdt ${panels}: oppsettet for små skjermer klarer seg ikke uten.';
+	@override String get notOffered => 'Ikke tilgjengelig i denne visningen';
+	@override String get alreadyPlaced => 'Allerede i dette oppsettet';
+	@override String needsExtension({required Object name}) => 'Trenger ${name}';
+	@override String get listRecoveredTitle => 'Oppsettnavnene kunne ikke leses';
+	@override String get listRecoveredBody => 'Listen over oppsett for denne visningen kunne ikke leses. Alle oppsettene er her fortsatt, nummerert i stedet for navngitt.';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$nb extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -2743,8 +3474,13 @@ class _Translations$operation$layout$panels$nb extends Translations$operation$la
 	// Translations
 	@override String get loggingDescription => 'Loggen og registreringsfeltene';
 	@override String get infoDescription => 'Det vi vet om stasjonen vi har kontakt med';
-	@override String get spotsDescription => 'Spots fra clusterne og aktivitetsprogrammene';
+	@override String get spotsDescription => 'Spotter fra clusterne og aktivitetsprogrammene';
 	@override String get mapDescription => 'Hvor kontaktene er';
+	@override String get summariesDescription => 'Operasjonens statistikk og poeng, i de seksjonene og den rekkefølgen du velger';
+	@override String get summariesSections => 'Seksjoner og rekkefølge';
+	@override String get summariesDays => 'Hver dag';
+	@override String get summariesReset => 'Vis alle';
+	@override String get summariesAllHidden => 'Alle seksjonene er skjult. Velg hvilke som skal vises, i innstillingene for dette panelet.';
 	@override String get clockDescription => 'En klokke, i hvilken som helst tidssone';
 	@override String get clockFace => 'Urskive';
 	@override String get clockFaceLcd => 'LCD';
@@ -2754,11 +3490,11 @@ class _Translations$operation$layout$panels$nb extends Translations$operation$la
 	@override String get clockZoneDevice => 'Denne enheten';
 	@override String get clockShowSeconds => 'Vis sekunder';
 	@override String get weatherDescription => 'Forholdene nå og de neste åtte timene, der du er QRV';
-	@override String get weatherUseOperationLocation => 'Bruk posisjonen til operasjonen';
-	@override String get weatherLocation => 'Posisjon';
-	@override String get weatherLocationDescription => 'En grid-rute (FN31pr) eller lat,lon. Ignoreres mens «Bruk posisjonen til operasjonen» er avkrysset.';
-	@override String get weatherNoLocation => 'Ingen posisjon satt. Gi dette panelet en posisjon i innstillingene, eller plasser det i en operasjon som har en.';
-	@override String weatherBadLocation({required Object location}) => 'Kunne ikke lese posisjonen ${location}. Bruk en grid-rute som FN31pr, eller 42.36,-71.06.';
+	@override String get weatherUseOperationLocation => 'Bruk operasjonens plassering';
+	@override String get weatherLocation => 'Plassering';
+	@override String get weatherLocationDescription => 'En Maidenhead-rute (FN31pr) eller lat,lon. Ignoreres mens «Bruk operasjonens plassering» er avkrysset.';
+	@override String get weatherNoLocation => 'Ingen plassering angitt. Gi dette panelet en plassering i innstillingene, eller plasser det i en operasjon som har en.';
+	@override String weatherBadLocation({required Object location}) => 'Kunne ikke lese plasseringen ${location}. Bruk en Maidenhead-rute som FN31pr, eller 42.36,-71.06.';
 	@override String get weatherUnreachable => 'Kunne ikke nå Open-Meteo — ikke noe nettverk? Prøver igjen snart.';
 	@override String get weatherUnreadable => 'Open-Meteo svarte, men ikke med noe som kunne leses. Prøver igjen snart.';
 	@override String weatherGusts({required Object speed}) => 'kast ${speed}';
@@ -2845,6 +3581,30 @@ class _Translations$operation$layout$panels$nb extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'høy SWR';
+	@override String get rotatorDescription => 'Hvor antennen peker, på et kart sentrert på stasjonen. Trykk på kartet for å dreie den.';
+	@override String get rotatorRotator => 'Rotor';
+	@override String rotatorAutoNamed({required Object name}) => 'Automatisk — ${name}';
+	@override String get rotatorAutoNone => 'Automatisk — ingen rotor ennå';
+	@override String get rotatorBeamWidth => 'Åpningsvinkel';
+	@override String get rotatorBeamWidthDescription => 'I grader, tegnet rundt retningen. 0 tegner ingen.';
+	@override String get rotatorLocation => 'Plassering';
+	@override String get rotatorLocationDescription => 'En Maidenhead-rute, eller bredde- og lengdegrad, som kartet sentreres på. Tomt bruker operasjonens plassering.';
+	@override String get rotatorTheme => 'Tema';
+	@override String get rotatorThemeColor => 'Farge';
+	@override String get rotatorThemeGray => 'Grå';
+	@override String get rotatorThemeMuted => 'Dempet';
+	@override String get rotatorGrayline => 'Vis grålinjen';
+	@override String get rotatorNoRotator => 'Ingen rotor å vise. Velg en i innstillingene for dette panelet, eller legg til en under Stasjonsoppsett.';
+	@override String get rotatorNoLocation => 'Ingen plassering å sentrere kartet på. Angi en i innstillingene for dette panelet.';
+	@override String get rotatorDisconnected => 'frakoblet';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'svarer ikke';
+	@override String get rotatorLocationInvalid => 'Kan ikke lese plasseringen i innstillingene for dette panelet. Bruk en Maidenhead-rute, eller bredde- og lengdegrad som 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'N';
+	@override String get rotatorEast => 'Ø';
+	@override String get rotatorSouth => 'S';
+	@override String get rotatorWest => 'V';
 }
 
 // Path: operation.export.compactFileNames
@@ -2867,8 +3627,8 @@ class _Translations$operation$export$includePrivateData$nb extends Translations$
 
 	// Translations
 	@override String get title => 'Inkluder privat info';
-	@override String get descriptionOn => 'Navn, adresser, e-poster, grid-ruter og notater tas med';
-	@override String get descriptionOff => 'Navn, adresser, e-poster, grid-ruter og notater utelates';
+	@override String get descriptionOn => 'Navn, adresser, e-poster, rutenett og notater tas med';
+	@override String get descriptionOff => 'Navn, adresser, e-poster, rutenett og notater utelates';
 	@override String get note => 'Full ADIF-eksport tar alltid med alt';
 }
 
@@ -2931,7 +3691,7 @@ class _Translations$operation$spots$filters$nb extends Translations$operation$sp
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Filtrer spots';
+	@override String get title => 'Filtrer spotter';
 	@override String get band => 'Bånd';
 	@override String get mode => 'Modus';
 	@override String get age => 'Alder';
@@ -2940,8 +3700,10 @@ class _Translations$operation$spots$filters$nb extends Translations$operation$sp
 	@override String get sorting => 'Sortering';
 	@override String get sortByTime => 'Etter spot-tid';
 	@override String get sortByFrequency => 'Etter frekvens';
+	@override String get sortByWanted => 'Mest ettertraktet';
 	@override String get groupByBand => 'Grupper etter bånd';
 	@override String get groupCallsWithNotes => 'Grupper kallesignaler med notater';
+	@override String get alertingOnly => 'Bare spotter med varsler';
 	@override String get sourceNoReply => 'Ikke noe svar';
 	@override String get sourceError => 'Feil';
 }
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$nb extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$nb extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'ingen operatørkallesignal å logge inn med';
+	@override String get connectFailed => 'noden kunne ikke nås';
+	@override String get needsPassword => 'noden ber om passord, og ingen er lagret';
+	@override String get loginFailed => 'noden godtok ikke innloggingen';
+	@override String get disconnected => 'noden lukket tilkoblingen';
+	@override String get timeout => 'noden svarte ikke';
+	@override String get off => 'Koble til cluster er av';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$nb extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$nb extends Translations$settings$radio
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'Styr PTT med tastaturet';
+	@override late final _Translations$settings$radio$pttKey$modes$nb modes = _Translations$settings$radio$pttKey$modes$nb._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$nb descriptions = _Translations$settings$radio$pttKey$descriptions$nb._(_root);
+	@override String get key => 'PTT-tast';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'Sender';
 }
@@ -3256,8 +4038,8 @@ class _Translations$settings$radio$cwMessages$nb extends Translations$settings$r
 	// Translations
 	@override String get title => 'CW-keyermeldinger';
 	@override String get notSupported => 'Gjeldende radio støtter ikke CW-nøkling';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'Melding (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Melding ${n}';
 	@override String get labelField => 'Etikett';
 	@override String labelKey({required Object n}) => 'Etikett for F${n}';
 	@override String get details => 'Detaljer';
@@ -3271,7 +4053,10 @@ class _Translations$settings$radio$cwMessages$nb extends Translations$settings$r
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM-meldinger';
 	@override String get setSaved => 'Mine meldinger';
-	@override String get repeat => 'Gjenta melding #1';
+	@override String get repeat => 'Gjenta melding 1';
+	@override String get repeatShort => 'Gjenta M1';
+	@override String get cooldown => 'Pause før gjentakelse';
+	@override String cooldownSeconds({required Object n}) => '${n} sekunder';
 	@override String get repeatWait => 'Gjentar';
 	@override String get keyboard => 'Skriv for å sende';
 	@override String get keyboardField => 'Skriv for å sende';
@@ -3297,11 +4082,24 @@ class _Translations$settings$radio$cwMessages$nb extends Translations$settings$r
 	@override String get helpEsmIntro => 'Med Enter sender meldinger på, sender Enter meldinger etter funksjonstasten deres, slik N1MM gjør. Meldingssettet ESM-meldinger starter med disse:';
 	@override String get helpEsmCq => 'Ved Run roper Enter CQ når kallesignalfeltet er tomt';
 	@override String get helpEsmExchange => 'Utvekslingen din: etter kallesignalet deres ved Run, etter at de svarer ved S&P';
-	@override String get helpEsmThanks => 'Takk, når kontakten er logget: plassholderne gjelder neste kontakt, ikke denne';
+	@override String get helpEsmThanks => 'Takk, når kontakten er logget: qso er kontakten slik den ble logget, next den som står for tur';
 	@override String get helpEsmMyCall => 'Ved S&P, kallesignalet ditt til stasjonen du svarer';
 	@override String get helpEsmHisCall => 'Ved Run, kallesignalet deres foran utvekslingen din';
 	@override String get helpEsmAgain => 'Spør igjen når ingenting av utvekslingen deres ble mottatt';
-	@override String get helpEsmStackThanks => 'Foreslått F3 for //-stabler: TU sendes etter at kontakten er logget, så den takker, roper så neste stasjon i stabelen og sender utvekslingen din, eller spør tilbake etter et delvis kallesignal (TU KR?); når ingenting er igjen, bare TU';
+	@override String get helpEsmStackThanks => 'Foreslått F3 for //-stabler: den takker, roper så neste stasjon i stabelen og sender utvekslingen din, eller spør tilbake etter et delvis kallesignal (TU KR?); når ingenting er igjen, bare TU';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$nb extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'Keyer';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => 'Tale';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3314,32 +4112,115 @@ class _Translations$settings$radio$voiceMessages$nb extends Translations$setting
 	@override String get title => 'Talemeldinger';
 	@override String get notSupported => 'Gjeldende radio støtter ikke talemeldinger';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'Talememori (${n})';
+	@override String messageTitle({required Object n}) => 'Taleminne ${n}';
 	@override String get labelField => 'Etikett';
-	@override String labelKey({required Object n}) => 'Etikett for talememori ${n}';
+	@override String labelKey({required Object n}) => 'Etikett for taleminne ${n}';
 	@override String durationSeconds({required Object n}) => '${n} s';
 	@override String get emptyOnRadio => 'Tom';
 	@override String get notMeasured => 'Ukjent lengde';
 	@override String get playButton => 'Spill av';
 	@override String get recordButton => 'Ta opp';
 	@override String get stopButton => 'Stopp';
-	@override String get repeat => 'Gjenta melding #1';
+	@override String get repeat => 'Gjenta melding 1';
 	@override String recordHelpTitle({required Object model}) => 'Merknader for ${model}:';
-	@override String namedOnDevice({required Object device}) => 'Disse memoriene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.';
+	@override String namedOnDevice({required Object device}) => 'Disse minnene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.';
 	@override String get namedOnRadio => 'Lagret i radioen, der de andre klientene også ser det.';
 	@override String get recordHelpYaesuDvs => 'Vent på [REC]-indikatoren på radioen, hold så inne PTT-knappen og ta opp meldingen. Avslutt ved å trykke på STOPP-knappen her i appen før du slipper PTT, for å unngå uønskede klikk.';
 	@override String get recordHelpFt891 => 'Vent til [REC]-indikatoren har blinket minst fire ganger, hold så inne PTT-knappen og ta opp meldingen. Avslutt ved å trykke på STOPP-knappen her i appen før du slipper PTT, for å unngå uønskede klikk.';
 	@override String get pill => 'Tale';
-	@override String play({required Object n}) => 'Spill av memori ${n}';
+	@override String play({required Object n}) => 'Spill av minne ${n}';
 	@override String get stop => 'Stopp';
-	@override String record({required Object n}) => 'Ta opp memori ${n}';
+	@override String record({required Object n}) => 'Ta opp minne ${n}';
 	@override String get stopRecording => 'Stopp opptak';
 	@override String get playing => 'Spiller av…';
 	@override String get recording => 'Tar opp…';
 	@override String playingMemory({required Object label}) => 'Spiller av ${label}';
 	@override String recordingMemory({required Object label}) => 'Tar opp ${label}';
 	@override String get doubtful => 'Spilte radioen den av? Den meldte at den var ledig med en gang.';
-	@override String get recordOnRadio => 'Du må ta opp memoriene på selve radioen.';
+	@override String get recordOnRadio => 'Du må ta opp minnene på selve radioen.';
+	@override String get sets => 'Meldingssett';
+	@override String get soundFilesSet => 'Lydfiler på denne datamaskinen';
+	@override String get openFileButton => 'Åpne fil';
+	@override String get newSet => 'Nytt sett';
+	@override String get renameSet => 'Gi nytt navn til sett';
+	@override String get deleteSet => 'Slett sett';
+	@override String get newSetName => 'Navn';
+	@override String deleteSetConfirm({required Object name}) => 'Slette ${name} og opptakene? Dette kan ikke angres.';
+	@override String get output => 'Send lyd til';
+	@override String get input => 'Ta opp fra';
+	@override String get outputRadio => 'Send til radioen over nettverket';
+	@override String get inputDefault => 'Systemstandard';
+	@override String get pickDevice => 'Velg en lydenhet';
+	@override String deviceMissing({required Object name}) => '${name} (ikke tilkoblet)';
+	@override String get lead => 'Forsinkelse etter nøkling';
+	@override String get tail => 'Forsinkelse før slipp';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => 'Lytt';
+	@override String get notRecorded => 'Ikke tatt opp';
+	@override String get unplayable => 'Kan ikke spille av denne filen';
+	@override String get problemNoOutput => 'Velg lydenheten som mater radioen før du spiller av en melding.';
+	@override String get problemOutputMissing => 'Lydenheten som mater radioen er ikke tilkoblet.';
+	@override String get problemInputMissing => 'Opptaksenheten er ikke tilkoblet.';
+	@override String get problemDeviceFailed => 'Lydenheten kunne ikke åpnes.';
+	@override String get problemNotRecorded => 'Den meldingen har ikke noe opptak ennå.';
+	@override String get problemRecordingSilent => 'Ingenting ble hørt fra opptaksenheten, så meldingen ble ikke endret. Sjekk inngangen, og at appen har lov til å bruke mikrofonen.';
+	@override String get problemRadioAudioUnavailable => 'Radioen tar ikke lyd fra appen akkurat nå. Det krever en nettverkstilkobling til radioen.';
+	@override String get problemSourceRefused => 'Radioen ville ikke bytte sendelyden til appen, så meldingen stoppet. Still radioen til å sende appens lyd.';
+	@override String get problemCannotKey => 'Denne radioen kan ikke nøkles over CAT, så datamaskinen kan ikke spille av meldinger inn i den.';
+	@override String get problemUnplayable => 'Filen til den meldingen er ikke en lydfil appen kan spille av. Bruk en WAV-, FLAC- eller MP3-fil, eller ta den opp igjen.';
+	@override String get problemRecordingFailed => 'Opptaket ble avbrutt, så meldingen ble ikke endret. Sjekk at opptaksenheten fortsatt er tilkoblet og at det er plass på disken.';
+	@override String get problemFileFailed => 'Opptaket kunne ikke lagres på meldingens plass, så meldingen ble ikke endret.';
+	@override String problemWordsMissing({required Object words}) => 'Den meldingen trenger ord du ikke har tatt opp: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'Malen til den meldingen har et problem: ${error}';
+	@override String get problemNoOperation => 'Meldinger som sies med dine ord spilles av i en operasjon, der det finnes en kontakt å si dem for.';
+	@override String get problemNothingSaid => 'Den meldingen sier ingenting for denne kontakten.';
+	@override String get templateField => 'Si med mine ord';
+	@override String get templateHelp => 'La stå tomt for å spille av opptaket. Ellers sies meldingen med ordene du har tatt opp, fylt ut for hver kontakt, med disse verdiene:';
+	@override String get help => 'Hjelp';
+	@override String get helpTitle => 'Si meldinger med dine egne ord';
+	@override String get helpFullExample => 'En hel melding:';
+	@override String get helpExample => 'Kallesignalet deres, rapporten deres og opptaket ditt av «QSL?»';
+	@override String get playOnRadio => 'Spill av på radioen';
+	@override String get templateHelpCall => 'Kallesignalet deres';
+	@override String get templateHelpReport => 'Rapporten du gir dem';
+	@override String get templateHelpMessage => 'Opptaket til melding 2, spilt av som det ble tatt opp';
+	@override String get voiced => 'Sagt med dine ord';
+	@override String willSay({required Object words}) => 'Sier: ${words}';
+	@override String willSayMissing({required Object words}) => 'Ikke tatt opp ennå: ${words}';
+	@override String get previewNoOperation => 'Åpne en operasjon for å se hva den vil si.';
+	@override String get wordsDescription => 'Bruk din egen stemme til kallesignaler, tall og mer.';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$nb extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Ordopptak';
+	@override String get callField => 'Ord for operatør';
+	@override String get intro => 'Ta opp hvert ord eller tall tre ganger, raskt etter hverandre, slik du sier det i et kallesignal. Lengre fraser tas opp bare én gang.';
+	@override String get recordAll => 'Ta opp alle';
+	@override String get recordAllGuide => 'Les hvert ord tre ganger, raskt etter hverandre, og en frase på flere ord én gang, med et pust mellom linjene. Trykk Stopp etter det siste.';
+	@override String recordingOne({required Object word}) => 'Si «${word} ${word} ${word}», og trykk så Stopp.';
+	@override String recordingOnce({required Object words}) => 'Si «${words}», og trykk så Stopp.';
+	@override String get recorded => 'Tatt opp';
+	@override String get notRecorded => 'Ikke tatt opp';
+	@override String get addPhrase => 'Legg til frase';
+	@override String get phraseField => 'Frase, slik du skriver den i en melding';
+	@override String get deletePhrase => 'Slett frase';
+	@override String get tryField => 'Prøv å si';
+	@override String get pauseLetters => 'Pause mellom bokstaver';
+	@override String get pauseWords => 'Pause mellom ord';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'Hastighet';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'Avanserte innstillinger';
+	@override String get splitSilent => 'Ingenting ble hørt i opptaket.';
+	@override String get splitNotThreeTakes => 'Fant ikke tre opptak. Si ordet tre ganger, raskt etter hverandre, og prøv igjen.';
+	@override String get splitLineCount => 'Fant ikke alle ordene i innlesingen. Les hvert ord tre ganger, med et pust mellom ordene.';
+	@override String get splitLinesTooClose => 'Kunne ikke skille ordene fra hverandre. Ta et lengre pust mellom ordene.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3349,7 +4230,7 @@ class _Translations$settings$radio$avoidZeroBeat$nb extends Translations$setting
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Unngå nullsvevning på spots';
+	@override String get title => 'Unngå nullsvevning på spotter';
 	@override String get descriptionOn => 'Med en radio tilkoblet stilles det inn noen Hz ved siden av en CW-spot, så ikke alle som svarer, roper på samme tone.';
 	@override String get descriptionOff => 'Stiller inn nøyaktig på den spottede frekvensen.';
 }
@@ -3375,6 +4256,28 @@ class _Translations$settings$map$style$nb extends Translations$settings$map$styl
 	@override String get title => 'Kartstil';
 }
 
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$nb extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Vis kallesignaler';
+	@override String get description => 'Hver kontakt vises som en brikke med kallesignalet, i båndets farge';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$nb extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Vis grålinjen';
+	@override String get description => 'Skyggelegger nattsiden av jorda, med tussmørket som en gradient';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$nb extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$nb._(TranslationsNb root) : this._root = root, super.internal(root);
@@ -3397,7 +4300,7 @@ class _Translations$settings$privacy$shareAppData$nb extends Translations$settin
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Del data om appbruk';
+	@override String get title => 'Del data om bruken din';
 	@override String get descriptionOn => 'Hjelper oss å forbedre appen ved å dele bruks-, oppsett-, krasj- og ytelsesdata';
 	@override String get descriptionOff => 'Holder appbruksdata private.\nHam2K-teamet vil ikke kunne oppdage krasj eller andre problemer.';
 }
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$nb extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - Generell';
 	@override String get icomGeneric => 'Icom - Generell';
 	@override String get kenwoodGeneric => 'Kenwood - Generell';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$nb extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - Generell';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$nb extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'Radio styrt via rigctld';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$nb extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => 'Min radio';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 koaksbryter';
+	@override String get gs232a => 'Yaesu GS-232A rotorgrensesnitt';
+	@override String get pstRotator => 'PstRotator (UDP Control)';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$nb extends Translations$settings
 
 	// Translations
 	@override String get network => 'Nettverk/WiFi';
+	@override String get secureNetwork => 'Sikkert nettverk/WiFi';
 	@override String get usbSerial => 'USB-seriell';
 	@override String get wifi => 'Nettverk/WiFi';
 	@override String get bluetoothSerial => 'Bluetooth-seriell';
+	@override String get bleSerial => 'Bluetooth LE';
 	@override String get placeholder => 'Plassholder';
 }
 
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$nb extends Transla
 	@override String get thunderstormWithHail => 'Tordenvær med hagl';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$nb extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Nei';
+	@override String get toggle => 'Veksle';
+	@override String get hold => 'Hold';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$nb extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Tastaturet nøkler ikke radioen.';
+	@override String get toggle => 'I telefonimoduser nøkler PTT-tasten radioen, og et nytt trykk slipper den. Den slipper av seg selv etter ett minutt.';
+	@override String get hold => 'I telefonimoduser sender radioen så lenge PTT-tasten holdes nede, i opptil ett minutt.';
+}
+
 /// The flat map containing all translations for locale <nb>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3577,6 +4526,7 @@ extension on TranslationsNb {
 			'common.callsign' => 'Kallesignal',
 			'common.clear' => 'Tøm',
 			'common.dismiss' => 'Lukk',
+			'common.copyDetails' => 'Kopier detaljer',
 			'common.expand' => 'Utvid',
 			'common.collapse' => 'Skjul',
 			'onboarding.welcomeTitle' => 'Velkommen til Ham2K Portable Logger!',
@@ -3604,9 +4554,15 @@ extension on TranslationsNb {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'Skysynkronisering',
+			'onboarding.syncBody' => 'Ham2K Log Filer tar sikkerhetskopi av loggene dine i skyen og synkroniserer dem mellom alle enhetene der du bruker Ham2K-apper.',
+			'onboarding.syncPricing' => 'Det er gratis! Men et betalt abonnement gjør det raskere.',
+			'onboarding.syncLabel' => 'Aktiver skysynkronisering',
+			'onboarding.syncOffWarning' => 'ADVARSEL: dette øker sjansen for å miste operasjonsdata, for eksempel hvis enheten din krasjer eller blir borte.',
+			'onboarding.notNow' => 'Ikke nå',
 			'onboarding.consentTitle' => 'Data og personvern',
 			'onboarding.consentUsageBody' => 'For å hjelpe oss å gjøre appen bedre vil vi gjerne samle inn ytelses-, krasj- og bruksdata.',
-			'onboarding.consentUsageLabel' => 'Del data om appbruk',
+			'onboarding.consentUsageLabel' => 'Del data om bruken din',
 			'onboarding.consentOperationBody' => 'Noen funksjoner kan innebære at operasjonsdataene dine deles med andre brukere. Du kan reservere deg når som helst.',
 			'onboarding.consentOperationLabel' => 'Del operasjonsdata',
 			'onboarding.finishingSetup' => 'Fullfører oppsettet — laster ned referansedata…',
@@ -3617,6 +4573,7 @@ extension on TranslationsNb {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Nytt i build ${build}',
 			'testerOverlay.thanks' => 'Takk for at du setter loggen din på spill for å hjelpe oss å gjøre denne appen bedre!',
 			'extensionsPanel.categoryActivity' => 'Aktiviteter',
+			'extensionsPanel.categoryAward' => 'Diplomer',
 			'extensionsPanel.categoryContest' => 'Konkurranser',
 			'extensionsPanel.categoryLookup' => 'Kallesignaloppslag',
 			'extensionsPanel.categorySpots' => 'Spot-kilder',
@@ -3627,13 +4584,23 @@ extension on TranslationsNb {
 			'extensionsPanel.noMatches' => 'Ingen utvidelser samsvarer med søket',
 			'extensionsPanel.installFromFile' => 'Installer fra fil…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versjon ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Skjermbilde ${n} av ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Forrige skjermbilde',
+			'extensionsPanel.nextScreenshot' => 'Neste skjermbilde',
+			'extensionsPanel.screenshotUnavailable' => 'Skjermbilde utilgjengelig',
 			'extensionsPanel.canReach' => 'Denne utvidelsen kan kontakte',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, over en åpen tilkobling',
 			'extensionsPanel.canHoldLocalConnection' => 'Enheter på det lokale nettverket ditt, over en åpen tilkobling',
 			'extensionsPanel.canUseLocation' => 'Posisjonen din',
 			'extensionsPanel.canReadRadio' => 'Radioen din, for å lese frekvens og modus',
-			'extensionsPanel.canControlRadio' => 'Radioen din, for å styre den og sende med den — avstemming, effekt, CW, talememorier og PTT',
+			'extensionsPanel.canControlRadio' => 'Radioen din, for å styre den og sende med den — avstemming, effekt, CW, taleminner og PTT',
+			'extensionsPanel.canCommandRadioRaw' => 'Radioen din, for å sende den hvilken som helst kommando i dens egen protokoll — også kommandoer som sender eller endrer innstillingene dens',
+			'extensionsPanel.canReadCluster' => 'DX-clusteret, innlogget som deg, for å lese det det sender',
+			'extensionsPanel.canSpotCluster' => 'DX-clusteret, innlogget som deg, for å legge ut spotter i ditt navn',
+			'extensionsPanel.canCommandCluster' => 'DX-clusteret, innlogget som deg, for å sende det hvilken som helst kommando i ditt navn',
 			'extensionsPanel.canSetUserAgent' => 'Identifisere seg overfor servere med sitt eget navn',
+			'extensionsPanel.canChangeSettings' => 'Innstillingene dine, for å endre dem gjennom kommandoene sine: alle innstillinger, utviklermodus og eksperimenter',
 			'extensionsPanel.noCapabilities' => 'Den ber ikke om noe utenfor appen.',
 			'extensionsPanel.sandboxNote' => 'Utvidelser kjører i sandkasse: ingen tilgang til filene dine, og ikke noe nettverk utover det som står her.',
 			'extensionsPanel.installAction' => 'Installer',
@@ -3702,6 +4669,14 @@ extension on TranslationsNb {
 			'extensionsPanel.restoreRuntimeDeadBody' => 'Vi installerte dem på nytt, men utvidelsene dine ville ikke starte. En omstart av appen bør få dem tilbake.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} ble trukket tilbake',
 			'extensionsPanel.revokedBody' => 'Katalogen trakk tilbake denne versjonen, så den er deaktivert.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} ble deaktivert',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K har deaktivert denne utvidelsen inntil videre.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} er erstattet',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} tar over. Du kan bytte over i Utvidelser.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Erstattet av ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Erstattet av ${name}, som du allerede har',
+			'extensionsPanel.replaceAction' => 'Erstatt',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'Innstillingene flyttes til ${replacement}, som du allerede har. Loggene dine forblir urørt.',
 			'extensionsPanel.downloadHashMismatch' => 'Den nedlastingen er ikke utvidelsen katalogen beskrev.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'Katalogen har ingen versjon ${version} av ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'Den kataloglenken peker ikke på en versjon av en utvidelse.',
@@ -3715,6 +4690,7 @@ extension on TranslationsNb {
 			'extensionsPanel.followsBleeding' => 'Får dagsferske, ustabile og stabile utgivelser',
 			'extensionsPanel.followStableAction' => 'Følg bare stabile utgivelser',
 			'extensionsPanel.revokedBadge' => 'Trukket tilbake',
+			'extensionsPanel.forceDisabledBadge' => 'Deaktivert av Ham2K',
 			'extensionsPanel.refusedBadge' => 'Ble ikke lastet',
 			'extensionsPanel.downloadNotHttps' => 'Den nedlastingen går ikke over en sikker tilkobling.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} kunne ikke nås for den utvidelsen.',
@@ -3728,9 +4704,11 @@ extension on TranslationsNb {
 			'extensionsPanel.hookExport' => 'Eksport',
 			'extensionsPanel.hookLookup' => 'Kallesignaloppslag',
 			'extensionsPanel.hookScoring' => 'Poengberegning',
-			'extensionsPanel.hookSpots' => 'Spots',
+			'extensionsPanel.hookSpots' => 'Spotter',
 			'extensionsPanel.hookHunting' => ({required Object program}) => 'Jakter ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => 'Aktiverer ${program}',
+			'extensionsPanel.suggestedSection' => 'Foreslått',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'Flere tilgjengelige (${count})',
 			'home.title' => 'Portabel logger',
 			'home.newOperation' => 'Ny operasjon',
 			'home.stationCallsign' => 'Stasjonskallesignal',
@@ -3762,6 +4740,23 @@ extension on TranslationsNb {
 			'home.logs.pendingDeleteBody' => 'Denne QSOen er merket for sletting.',
 			'home.logs.editGone' => 'Ikke lagret: den QSOen finnes ikke lenger i denne loggen.',
 			'home.logs.discard' => 'Forkast',
+			'home.logs.sheet.callsigns' => 'Stasjonskallesignaler',
+			'home.logs.sheet.groupBy' => 'Grupper etter',
+			'home.logs.sheet.period' => 'Tidsrom',
+			'home.logs.groupBy.none' => 'Ikke gruppert',
+			'home.logs.groupBy.date' => 'Dato',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Ukjent kontinent',
+			'home.logs.groupBy.unknownEntity' => 'Ukjent enhet',
+			'home.logs.groupBy.unknownDate' => 'Uten dato',
+			'home.logs.period.thisMonth' => 'Denne måneden',
+			'home.logs.period.last3Months' => 'Siste 3 måneder',
+			'home.logs.period.thisYear' => 'I år',
+			'home.logs.period.lastYear' => 'I fjor',
+			'home.logs.period.allTime' => 'Alle tider',
+			'home.logs.period.custom' => 'Tilpasset periode',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'i ${span}',
+			'home.logs.periodTitle.custom' => 'Tilpasset periode',
 			'home.logs.columns.date' => 'Dato',
 			'home.logs.columns.time' => 'Tid',
 			'home.logs.columns.freq' => 'Frekvens',
@@ -3772,7 +4767,7 @@ extension on TranslationsNb {
 			'home.logs.columns.band' => 'Bånd',
 			'home.logs.columns.sent' => 'Sendt',
 			'home.logs.columns.rcvd' => 'Mottatt',
-			'home.logs.columns.grid' => 'Grid',
+			'home.logs.columns.grid' => 'Rutenett',
 			'home.logs.columns.state' => 'Stat',
 			'home.logs.columns.country' => 'Land',
 			'home.logs.columns.refs' => 'Ref.',
@@ -3781,7 +4776,7 @@ extension on TranslationsNb {
 			'home.logs.panels.info' => 'Info',
 			'home.logs.panels.infoDescription' => 'Totalt antall QSOer, eller kallesignaloppslaget for den valgte QSOen.',
 			'home.logs.panels.map' => 'Kart',
-			'home.logs.panels.mapDescription' => 'Posisjonen til den valgte QSOen.',
+			'home.logs.panels.mapDescription' => 'Plasseringen til den valgte QSOen.',
 			'home.logs.import.callsigns' => ({required Object calls}) => 'Kallesignaler: ${calls}',
 			'home.logs.import.skippedOne' => '1 post kunne ikke leses',
 			'home.logs.import.skippedOther' => ({required Object count}) => '${count} poster kunne ikke leses',
@@ -3798,7 +4793,7 @@ extension on TranslationsNb {
 			'chase.station.title' => 'Jaktstasjon',
 			'chase.station.stationLabel' => 'Stasjon: ',
 			'chase.station.operatorLabel' => 'Op: ',
-			'chase.station.noLocation' => 'Ingen posisjon',
+			'chase.station.noLocation' => 'Ingen plassering',
 			'chase.periodInline.today' => 'i dag',
 			'chase.periodInline.thisWeek' => 'denne uken',
 			'chase.periodInline.last14Days' => 'de siste 14 dagene',
@@ -3813,18 +4808,55 @@ extension on TranslationsNb {
 			'chase.period.thisMonth' => 'Denne måneden',
 			'chase.goals.title' => 'Jaktmål',
 			'chase.goals.remove' => ({required Object name}) => 'Slutt å jakte ${name}',
-			'chase.goals.extensionsTitle' => 'Utvidelser som støtter jakt',
+			'chase.goals.extensionsTitle' => 'Flere jaktprogrammer',
 			'chase.panels.logging' => 'QSOer',
 			'chase.panels.loggingDescription' => 'Loggekontroller over QSOene jaktet i perioden.',
 			'chase.panels.info' => 'Info',
 			'chase.panels.infoDescription' => 'Kallesignalet som logges, eller statistikken for perioden.',
-			'chase.panels.spots' => 'Spots',
+			'chase.panels.spots' => 'Spotter',
 			'chase.panels.spotsDescription' => 'Stasjoner spottet på lufta, klare til å jaktes.',
 			'chase.panels.map' => 'Kart',
 			'chase.panels.mapDescription' => 'Periodens QSOer og stasjonen som logges.',
+			'chase.claims.checking' => 'Sjekker QSOer for jakt',
+			'chase.claims.rebuilding' => ({required Object program}) => 'Sjekker loggen for ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} av ${total} QSOer',
+			'chase.notice.newRef' => ({required Object program}) => 'Ny ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'Trolig ny ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'Nytt ${program}-bånd',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'Trolig nytt ${program}-bånd',
+			'chase.notice.newMode' => ({required Object program}) => 'Ny ${program}-modus',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'Trolig ny ${program}-modus',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} ubekreftet',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Trolig ${notice}',
+			'chase.alerts.title' => 'Varsler',
+			'chase.alerts.newRef' => 'Ny referanse',
+			'chase.alerts.newBand' => 'Nytt bånd',
+			'chase.alerts.newMode' => 'Ny modus',
+			'chase.alerts.unconfirmed' => 'Ubekreftet',
+			'chase.checklists' => 'Jaktfremdrift',
+			'chase.imports.importFrom' => ({required Object label}) => 'Importer ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => 'Importer ${file} som',
+			'chase.imports.dropHint' => 'Slipp en fil her for å importere den til et jaktprogram',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Importerte ${count} ${program}-oppføringer fra ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Importerte ${count} ${program}-oppføringer fra ${file}, hoppet over ${skipped} som ikke kunne leses',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} har ingenting ${program} kan importere',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} kunne ikke lese ${file}',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => '${program} kunne ikke lese noen av de ${skipped} postene i ${file}',
+			'chase.imports.noProgram' => ({required Object file}) => 'Ingen jaktprogrammer importerer ${file}',
 			'dialogs.operationDetails' => 'Operasjonsdetaljer',
 			'dialogs.activities' => 'Aktiviteter',
 			'dialogs.stationCallsign' => 'Stasjonskallesignal',
+			'dialogs.advanced' => 'Avansert',
+			'dialogs.operatingPosition' => 'Operatørplass (multistasjon)',
+			'dialogs.assistance' => 'Assistanse',
+			'dialogs.assistanceDescription' => 'Bruk spottetjenester og andre informasjonskilder',
+			'dialogs.selfSpotting' => 'Selvspotting',
+			'dialogs.selfSpottingDescription' => 'Tillat funksjoner som rapporterer din egen frekvensinfo',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'Deaktivert for å følge ${rules}-reglene',
+			'dialogs.lookupDespiteAssistance.title' => 'Slå opp på nett?',
+			'dialogs.lookupDespiteAssistance.body' => 'Assistanse er deaktivert for denne operasjonen. Å slå opp alle QSOer bruker nettjenester som QRZ for denne ene gangen.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'Assistanse er deaktivert for denne operasjonen for å følge ${rules}-reglene. Å slå opp alle QSOer bruker nettjenester som QRZ for denne ene gangen.',
+			'dialogs.lookupDespiteAssistance.action' => 'Slå opp på nett',
 			'dialogs.notes' => 'Notater',
 			'dialogs.deleteOperationTitle' => 'Slett operasjon',
 			'dialogs.purgeTestsTitle' => 'Fjern testoperasjoner',
@@ -3851,7 +4883,7 @@ extension on TranslationsNb {
 			'operation.deletedReadOnly' => 'Denne operasjonen er slettet. Gjenopprett den for å logge eller gjøre endringer.',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOer',
 			'operation.tabs.info' => 'INFO',
-			'operation.tabs.spots' => 'SPOTS',
+			'operation.tabs.spots' => 'SPOTTER',
 			'operation.tabs.map' => 'KART',
 			'operation.tabs.qsosPlain' => 'QSOer',
 			'operation.tabs.clock' => 'Klokke',
@@ -3860,6 +4892,8 @@ extension on TranslationsNb {
 			'operation.tabs.remoteScreen' => 'Fjernskjerm',
 			'operation.tabs.solar' => 'Sol',
 			'operation.tabs.radio' => 'Radio',
+			'operation.tabs.rotator' => 'Rotor',
+			'operation.tabs.summaries' => 'Operasjonssammendrag',
 			'operation.positions.nobodyYet' => 'Ingen andre operatørplasser deler denne operasjonen ennå.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Plass: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
@@ -3872,7 +4906,7 @@ extension on TranslationsNb {
 			'operation.titleNone' => 'Ingen tittel',
 			'operation.deleteOperation' => 'Slett operasjon',
 			'operation.loggingControlsStale' => 'Aktivitetsfeltene kan være utdatert — åpne operasjonen på nytt for å oppdatere dem',
-			'operation.locationNone' => 'Ikke satt',
+			'operation.locationNone' => 'Ikke angitt',
 			'operation.generalOperation' => 'Vanlig operasjon',
 			'operation.titleFor' => ({required Object value}) => 'for ${value}',
 			'operation.titleAt' => ({required Object value}) => 'på ${value}',
@@ -3880,7 +4914,7 @@ extension on TranslationsNb {
 			'operation.testOperationSuffix' => 'Test',
 			'operation.menu.showRstFields' => 'Vis RST-felt',
 			'operation.menu.showStateField' => 'Vis stat-felt',
-			'operation.menu.showGridField' => 'Vis grid-felt',
+			'operation.menu.showGridField' => 'Vis rutenettfelt',
 			'operation.menu.showDeletedQsos' => 'Vis slettede QSOer',
 			'operation.menu.showDeletedOps' => 'Vis slettede operasjoner',
 			'operation.menu.showQsoNumbers' => 'Vis QSO-nummer',
@@ -3912,8 +4946,72 @@ extension on TranslationsNb {
 			'operation.layout.addPanel' => ({required Object panel}) => 'Legg til ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Forhåndsvis ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Utvidelsen "${name}" mangler',
+			'operation.layout.missingExtensionEnable' => 'Aktiver',
+			'operation.layout.missingExtensionInstall' => 'Installer…',
+			'operation.layout.missingExtensionWontRun' => 'Denne versjonen kjører ikke. Oppdater den i Innstillinger › Utvidelser.',
+			'operation.layout.missingExtensionUnavailable' => 'Ikke tilgjengelig i denne appen',
+			'operation.layout.missingExtensionNotInCatalog' => 'Ikke i katalogen',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Fikk ikke kontakt med katalogen. Prøv igjen',
+			'operation.layout.missingExtensionFailed' => 'Det gikk ikke. Prøv igjen',
 			'operation.layout.previewUnavailable' => 'Forhåndsvisningen av dette panelet kunne ikke vises.',
 			'operation.layout.nestedPaneTitle' => 'Mer',
+			'operation.layout.layouts.defaultName' => 'Standard',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Oppsett ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Oppsett: ${name}',
+			'operation.layout.layouts.menuNew' => 'Nytt…',
+			'operation.layout.layouts.menuExport' => 'Eksporter…',
+			'operation.layout.layouts.menuImport' => 'Importer…',
+			'operation.layout.layouts.menuTitle' => 'Oppsett',
+			'operation.layout.layouts.newTitle' => 'Nytt oppsett',
+			'operation.layout.layouts.editTitle' => 'Rediger oppsett',
+			'operation.layout.layouts.edit' => 'Rediger',
+			'operation.layout.layouts.duplicateCurrent' => 'Dupliser gjeldende oppsett',
+			'operation.layout.layouts.startFromDefault' => 'Start fra standardoppsettet',
+			'operation.layout.layouts.nameLabel' => 'Navn',
+			'operation.layout.layouts.descriptionLabel' => 'Beskrivelse',
+			'operation.layout.layouts.create' => 'Opprett',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'Lagre endringer i «${name}»?',
+			'operation.layout.layouts.leaveEditBody' => 'Dette oppsettet har endringer du ikke har lagret.',
+			'operation.layout.layouts.discard' => 'Forkast',
+			'operation.layout.layouts.deleteTitle' => 'Slette dette oppsettet?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'Er du sikker på at du vil slette oppsettet «${name}»?',
+			'operation.layout.layouts.exportTitle' => 'Eksporter oppsett',
+			'operation.layout.layouts.exportPick' => 'Paneler som skal eksporteres',
+			'operation.layout.layouts.tabSet' => 'Fanegruppe',
+			'operation.layout.layouts.exportAction' => 'Eksporter',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Oppsett lagret i ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Kunne ikke eksportere oppsettet: ${error}',
+			'operation.layout.layouts.importTitle' => 'Importer oppsett',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Laget for ${view}-visningen: paneler som bare den visningen har, er utelatt.',
+			'operation.layout.layouts.viewHome' => 'Hjem',
+			'operation.layout.layouts.viewOperation' => 'Operasjon',
+			'operation.layout.layouts.viewLogs' => 'Logger',
+			'operation.layout.layouts.viewChase' => 'Jakt',
+			'operation.layout.layouts.importAsNew' => 'Som et nytt oppsett',
+			'operation.layout.layouts.importReplace' => 'I stedet for dette oppsettet',
+			'operation.layout.layouts.importAdd' => 'Lagt til i dette oppsettet',
+			'operation.layout.layouts.importAddHint' => 'Panelene kommer i en ny kolonne til høyre.',
+			'operation.layout.layouts.importPick' => 'Paneler som skal importeres',
+			'operation.layout.layouts.importReplaceSettings' => 'Erstatt innstillingene for paneler som allerede er satt opp her',
+			'operation.layout.layouts.importAction' => 'Importer',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} er ikke et oppsett denne appen kan lese: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'det er ikke en Ham2K-oppsettfil',
+			'operation.layout.layouts.problemNewerVersion' => 'det ble skrevet av en nyere versjon av appen',
+			'operation.layout.layouts.problemNoArrangement' => 'det inneholder ingen panelplassering',
+			'operation.layout.layouts.problemMalformed' => 'deler av det følger ikke oppsettformatet',
+			'operation.layout.layouts.problemTooLarge' => 'det er for stort',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Kunne ikke åpne filen: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Kunne ikke importere oppsettet: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Kunne ikke kopiere oppsettet: ${error}',
+			'operation.layout.layouts.importNothing' => 'Ingen paneler valgt, så ingenting ble importert.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Utelatt: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Beholdt ${panels}: oppsettet for små skjermer klarer seg ikke uten.',
+			'operation.layout.layouts.notOffered' => 'Ikke tilgjengelig i denne visningen',
+			'operation.layout.layouts.alreadyPlaced' => 'Allerede i dette oppsettet',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'Trenger ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'Oppsettnavnene kunne ikke leses',
+			'operation.layout.layouts.listRecoveredBody' => 'Listen over oppsett for denne visningen kunne ikke leses. Alle oppsettene er her fortsatt, nummerert i stedet for navngitt.',
 			'operation.layout.editLayout' => 'Rediger oppsett',
 			'operation.layout.saveLayout' => 'Lagre oppsett',
 			'operation.layout.revertLayout' => 'Forkast endringer i oppsettet',
@@ -3922,12 +5020,28 @@ extension on TranslationsNb {
 			'operation.layout.layoutUnreadableBody' => 'Det lagrede oppsettet ditt kunne ikke leses, så standardoppsettet vises i stedet. Originalen blir ikke overskrevet før du velger å beholde dette.',
 			'operation.layout.layoutUnreadableAction' => 'Bruk dette oppsettet',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} kunne ikke vises',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: det sendte mer enn ${max} tegn',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: grafikken har mer enn ${max} elementer',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: grafikken er nøstet mer enn ${max} nivåer dypt',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kunne ikke vises: grafikken er ikke selvstendig',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} lag',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} kontroller',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en scenestreng er lengre enn ${max} tegn',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: oppsettet er nøstet mer enn ${max} nivåer dypt',
 			'operation.layout.panelRenderRetry' => 'Prøv igjen',
 			'operation.layout.panelActionFailed' => 'Panelhandlingen mislyktes. Prøv igjen.',
 			'operation.layout.panels.loggingDescription' => 'Loggen og registreringsfeltene',
 			'operation.layout.panels.infoDescription' => 'Det vi vet om stasjonen vi har kontakt med',
-			'operation.layout.panels.spotsDescription' => 'Spots fra clusterne og aktivitetsprogrammene',
+			'operation.layout.panels.spotsDescription' => 'Spotter fra clusterne og aktivitetsprogrammene',
 			'operation.layout.panels.mapDescription' => 'Hvor kontaktene er',
+			'operation.layout.panels.summariesDescription' => 'Operasjonens statistikk og poeng, i de seksjonene og den rekkefølgen du velger',
+			'operation.layout.panels.summariesSections' => 'Seksjoner og rekkefølge',
+			'operation.layout.panels.summariesDays' => 'Hver dag',
+			'operation.layout.panels.summariesReset' => 'Vis alle',
+			'operation.layout.panels.summariesAllHidden' => 'Alle seksjonene er skjult. Velg hvilke som skal vises, i innstillingene for dette panelet.',
 			'operation.layout.panels.clockDescription' => 'En klokke, i hvilken som helst tidssone',
 			'operation.layout.panels.clockFace' => 'Urskive',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -3937,11 +5051,11 @@ extension on TranslationsNb {
 			'operation.layout.panels.clockZoneDevice' => 'Denne enheten',
 			'operation.layout.panels.clockShowSeconds' => 'Vis sekunder',
 			'operation.layout.panels.weatherDescription' => 'Forholdene nå og de neste åtte timene, der du er QRV',
-			'operation.layout.panels.weatherUseOperationLocation' => 'Bruk posisjonen til operasjonen',
-			'operation.layout.panels.weatherLocation' => 'Posisjon',
-			'operation.layout.panels.weatherLocationDescription' => 'En grid-rute (FN31pr) eller lat,lon. Ignoreres mens «Bruk posisjonen til operasjonen» er avkrysset.',
-			'operation.layout.panels.weatherNoLocation' => 'Ingen posisjon satt. Gi dette panelet en posisjon i innstillingene, eller plasser det i en operasjon som har en.',
-			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Kunne ikke lese posisjonen ${location}. Bruk en grid-rute som FN31pr, eller 42.36,-71.06.',
+			'operation.layout.panels.weatherUseOperationLocation' => 'Bruk operasjonens plassering',
+			'operation.layout.panels.weatherLocation' => 'Plassering',
+			'operation.layout.panels.weatherLocationDescription' => 'En Maidenhead-rute (FN31pr) eller lat,lon. Ignoreres mens «Bruk operasjonens plassering» er avkrysset.',
+			'operation.layout.panels.weatherNoLocation' => 'Ingen plassering angitt. Gi dette panelet en plassering i innstillingene, eller plasser det i en operasjon som har en.',
+			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Kunne ikke lese plasseringen ${location}. Bruk en Maidenhead-rute som FN31pr, eller 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Kunne ikke nå Open-Meteo — ikke noe nettverk? Prøver igjen snart.',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo svarte, men ikke med noe som kunne leses. Prøver igjen snart.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'kast ${speed}',
@@ -4052,6 +5166,30 @@ extension on TranslationsNb {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'høy SWR',
+			'operation.layout.panels.rotatorDescription' => 'Hvor antennen peker, på et kart sentrert på stasjonen. Trykk på kartet for å dreie den.',
+			'operation.layout.panels.rotatorRotator' => 'Rotor',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automatisk — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Automatisk — ingen rotor ennå',
+			'operation.layout.panels.rotatorBeamWidth' => 'Åpningsvinkel',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'I grader, tegnet rundt retningen. 0 tegner ingen.',
+			'operation.layout.panels.rotatorLocation' => 'Plassering',
+			'operation.layout.panels.rotatorLocationDescription' => 'En Maidenhead-rute, eller bredde- og lengdegrad, som kartet sentreres på. Tomt bruker operasjonens plassering.',
+			'operation.layout.panels.rotatorTheme' => 'Tema',
+			'operation.layout.panels.rotatorThemeColor' => 'Farge',
+			'operation.layout.panels.rotatorThemeGray' => 'Grå',
+			'operation.layout.panels.rotatorThemeMuted' => 'Dempet',
+			'operation.layout.panels.rotatorGrayline' => 'Vis grålinjen',
+			'operation.layout.panels.rotatorNoRotator' => 'Ingen rotor å vise. Velg en i innstillingene for dette panelet, eller legg til en under Stasjonsoppsett.',
+			'operation.layout.panels.rotatorNoLocation' => 'Ingen plassering å sentrere kartet på. Angi en i innstillingene for dette panelet.',
+			'operation.layout.panels.rotatorDisconnected' => 'frakoblet',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'svarer ikke',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Kan ikke lese plasseringen i innstillingene for dette panelet. Bruk en Maidenhead-rute, eller bredde- og lengdegrad som 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'Ø',
+			'operation.layout.panels.rotatorSouth' => 'S',
+			'operation.layout.panels.rotatorWest' => 'V',
 			'operation.layout.htmlPanelUnsupported' => 'Dette panelet trenger en nettvisning, som denne plattformen ikke har',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Dette panelet trenger en sandkasse som nettversjonen ikke kan tilby',
 			'operation.export.title' => 'Eksport av operasjon',
@@ -4078,8 +5216,6 @@ extension on TranslationsNb {
 			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Del ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Eksporter ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Last ned ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} fil i Stash', other: 'Legg ${count} filer i Stash', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Legg ${count} samlet fil i Stash', other: 'Legg ${count} samlede filer i Stash', ), 
@@ -4089,8 +5225,8 @@ extension on TranslationsNb {
 			'operation.export.compactFileNames.descriptionOn' => 'Korte navn laget for opplastingsverktøy, som N0CALL@US-1234-20260727.adi',
 			'operation.export.compactFileNames.descriptionOff' => 'Lesbare navn, som 2026-07-27 N0CALL at US-1234.adi',
 			'operation.export.includePrivateData.title' => 'Inkluder privat info',
-			'operation.export.includePrivateData.descriptionOn' => 'Navn, adresser, e-poster, grid-ruter og notater tas med',
-			'operation.export.includePrivateData.descriptionOff' => 'Navn, adresser, e-poster, grid-ruter og notater utelates',
+			'operation.export.includePrivateData.descriptionOn' => 'Navn, adresser, e-poster, rutenett og notater tas med',
+			'operation.export.includePrivateData.descriptionOff' => 'Navn, adresser, e-poster, rutenett og notater utelates',
 			'operation.export.includePrivateData.note' => 'Full ADIF-eksport tar alltid med alt',
 			'operation.export.resultTitle' => 'Eksport fullført',
 			'operation.export.resultFailedTitle' => 'Eksport mislyktes',
@@ -4117,8 +5253,8 @@ extension on TranslationsNb {
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Kunne ikke sende e-posten: ${error}',
 			'operation.export.stash.freeTier' => 'Gratiskontoer kan bare beholde én stash om gangen. Abonnenter kan beholde så mange de vil.',
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Sendte ${count} fil til Ham2K File Stash (stash.ham2k.net)', other: 'Sendte ${count} filer til Ham2K File Stash (stash.ham2k.net)', ), 
-			'operation.spots.empty' => 'Ingen spots samsvarer med filtrene dine',
-			'operation.spots.error' => ({required Object error}) => 'Kunne ikke laste spots: ${error}',
+			'operation.spots.empty' => 'Ingen spotter samsvarer med filtrene dine',
+			'operation.spots.error' => ({required Object error}) => 'Kunne ikke laste spotter: ${error}',
 			'operation.spots.unknownBand' => 'Annet',
 			'operation.spots.auto' => 'Automatisk',
 			'operation.spots.autoValue' => ({required Object value}) => 'Automatisk (for øyeblikket ${value})',
@@ -4127,12 +5263,13 @@ extension on TranslationsNb {
 			'operation.spots.allBands' => 'Alle bånd',
 			'operation.spots.allModes' => 'Alle moduser',
 			'operation.spots.phoneAndCw' => 'Telefoni og CW',
-			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} spot', other: '${count} spots', ), 
-			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Viser ${count} av ${total} spots',
+			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} spot', other: '${count} spotter', ), 
+			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Viser ${count} av ${total} spotter',
+			'operation.spots.spotsDisabled' => 'Spotter deaktivert for denne operasjonen',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutter',
 			'operation.spots.callsOfNote' => 'Kjente kallesignaler',
-			'operation.spots.yourSpots' => 'Dine spots',
-			'operation.spots.allSpots' => 'Alle spots',
+			'operation.spots.yourSpots' => 'Dine spotter',
+			'operation.spots.allSpots' => 'Alle spotter',
 			'operation.spots.continents.af' => 'Afrika',
 			'operation.spots.continents.as' => 'Asia',
 			'operation.spots.continents.eu' => 'Europa',
@@ -4140,7 +5277,7 @@ extension on TranslationsNb {
 			'operation.spots.continents.oc' => 'Oseania',
 			'operation.spots.continents.sa' => 'Sør-Amerika',
 			'operation.spots.continents.an' => 'Antarktis',
-			'operation.spots.filters.title' => 'Filtrer spots',
+			'operation.spots.filters.title' => 'Filtrer spotter',
 			'operation.spots.filters.band' => 'Bånd',
 			'operation.spots.filters.mode' => 'Modus',
 			'operation.spots.filters.age' => 'Alder',
@@ -4149,11 +5286,13 @@ extension on TranslationsNb {
 			'operation.spots.filters.sorting' => 'Sortering',
 			'operation.spots.filters.sortByTime' => 'Etter spot-tid',
 			'operation.spots.filters.sortByFrequency' => 'Etter frekvens',
+			'operation.spots.filters.sortByWanted' => 'Mest ettertraktet',
 			'operation.spots.filters.groupByBand' => 'Grupper etter bånd',
 			'operation.spots.filters.groupCallsWithNotes' => 'Grupper kallesignaler med notater',
+			'operation.spots.filters.alertingOnly' => 'Bare spotter med varsler',
 			'operation.spots.filters.sourceNoReply' => 'Ikke noe svar',
 			'operation.spots.filters.sourceError' => 'Feil',
-			'operation.spots.unavailableTitle' => 'Spots utilgjengelige',
+			'operation.spots.unavailableTitle' => 'Spotter utilgjengelige',
 			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} svarte ikke.',
 			'operation.spots.failedTitle' => 'Feil fra spot-kilde',
 			'operation.spots.failedText' => ({required Object sources}) => '${sources} returnerte en feil.',
@@ -4218,7 +5357,7 @@ extension on TranslationsNb {
 			'map.facilitiesCredit' => ({required Object sources}) => 'Fasiliteter: ${sources}',
 			'map.fullCredits' => 'Fullstendige datakilder',
 			'map.fewerCredits' => 'Færre kilder',
-			'map.emptyState' => 'Ingen QSO-posisjoner ennå.\nQSOer med grid-rute, stat eller land vises her.',
+			'map.emptyState' => 'Ingen QSO-plasseringer ennå.\nQSOer med Maidenhead-rute, stat eller land vises her.',
 			'map.unavailable' => 'Kartet er ikke tilgjengelig akkurat nå.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
@@ -4227,6 +5366,7 @@ extension on TranslationsNb {
 			'map.globe' => 'Globus',
 			'map.zoomIn' => 'Zoom inn',
 			'map.zoomOut' => 'Zoom ut',
+			'map.resetNorth' => 'Tilbakestill til nord opp',
 			'map.postcard.button' => 'Operasjonspostkort',
 			'map.postcard.title' => ({required Object title}) => 'Postkort for ${title}',
 			'map.postcard.portrait' => 'Stående',
@@ -4249,6 +5389,11 @@ extension on TranslationsNb {
 			'map.postcard.previousPage' => 'Forrige side',
 			'map.postcard.nextPage' => 'Neste side',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Side ${page} av ${count}',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} Q', other: '${count} Q', ), 
+			'map.postcard.options' => 'Postkortalternativer',
+			'map.postcard.bandLegend' => 'Vis båndforklaring',
+			'map.postcard.grayline' => 'Vis grålinjen',
+			'map.postcard.sectionsAndOrder' => 'Sammendragsseksjoner og rekkefølge',
 			'map.postcard.sectionDays' => 'Hver dag',
 			'map.postcard.reset' => 'Tilbakestill',
 			'map.postcard.failed' => ({required Object error}) => 'Kunne ikke lage postkortet: ${error}',
@@ -4258,7 +5403,7 @@ extension on TranslationsNb {
 			'map.postcard.shareFailed' => 'Kunne ikke dele postkortet. Prøv igjen.',
 			'map.postcard.fileName' => 'postkort',
 			'mapsView.title' => 'Kart',
-			'mapsView.searchHint' => 'Søk etter parker, toppunkter og mer',
+			'mapsView.searchHint' => 'Søk etter parker, topper og mer',
 			'mapsView.activities' => 'Aktiviteter',
 			'mapsView.layers' => 'Lag',
 			'mapsView.baseMap' => 'Grunnkart',
@@ -4301,7 +5446,7 @@ extension on TranslationsNb {
 			'activitiesView.locationSettingsUnavailable' => 'Gi tilgang til posisjon i systeminnstillingene',
 			'activitiesView.locationGrantRefused' => 'Fortsatt ingen posisjon — systemet sa nei igjen',
 			'activitiesView.searchUnavailableTitle' => 'Aktivitetssøk utilgjengelig',
-			'activitiesView.searchUnavailableReason' => 'Ingen aktivitetsutvidelse kunne kjøre søket. Prøv igjen om et øyeblikk.',
+			'activitiesView.searchUnavailableReason' => 'En aktivitetsutvidelse kunne ikke svare på søket. Prøv igjen om et øyeblikk.',
 			'activitiesView.emptySheet' => 'Bruk forslag og søk nedenfor for å legge til en',
 			'activitiesView.exports' => 'Eksporter',
 			'activitiesView.exportLogs' => 'Eksporter logger',
@@ -4342,6 +5487,10 @@ extension on TranslationsNb {
 			'loggingControls.timeUtc' => 'Tid (UTC)',
 			'loggingControls.date' => 'Dato',
 			'loggingControls.now' => 'Nå',
+			'loggingControls.manualTimeSettings' => 'Manuell tid',
+			'loggingControls.manualTimeIncrement' => 'Økning per QSO',
+			'loggingControls.manualTimeIncrementNone' => 'Ingen',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} minutt', other: '${count} minutter', ), 
 			'loggingControls.frequency' => 'Frekvens',
 			'loggingControls.mode' => 'Modus',
 			'loggingControls.theirCall' => 'Deres kallesignal',
@@ -4370,15 +5519,30 @@ extension on TranslationsNb {
 			'loggingControls.controlSettings' => 'Loggekontroller',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Selvspotting',
-			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Selvspot på ${freq}',
+			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Spot deg selv på ${freq}',
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} på ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'For sent å spotte ${call}',
-			'loggingControls.spotNoFreq' => 'Angi en frekvens å spotte først',
+			'loggingControls.spotNoFreq' => 'Angi frekvens først',
+			'loggingControls.selfSpotDisabled' => 'Selvspotting deaktivert',
 			'loggingControls.spotComment' => 'Kommentar',
+			'loggingControls.spottingAutoControl' => 'Automatisk omspotting',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Omspotting hvert ${minutes} min',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto om ${time}. Stoppe?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto om ${minutes}m',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto om ${seconds}s',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto om ${seconds}',
+			'loggingControls.spotAutoNotStarted' => 'Automatisk omspotting ikke startet: spoten gikk ikke gjennom',
+			'loggingControls.spotAutoMoved' => 'Automatisk omspotting ikke startet: frekvensen endret seg under spottingen',
+			'loggingControls.spotAutoStopped' => 'Automatisk omspotting stoppet',
+			'loggingControls.spotAutoLeftFreq' => 'Automatisk omspotting stoppet: frekvensen endret seg',
+			'loggingControls.spotAutoNoFreq' => 'Automatisk omspotting stoppet: radioen rapporterer ingen frekvens',
+			'loggingControls.spotBusy' => 'En annen spot sendes fortsatt',
 			'loggingControls.bandOrFreqRequired' => 'Angi frekvens eller bånd før du logger',
 			'loggingControls.missingBand' => 'Ingen bånd',
 			'loggingControls.missingMode' => 'Ingen modus',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kunne ikke lagre: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kunne ikke slette: ${error}',
 			'loggingControls.info.noQsos' => 'Ingen QSOer ennå... la oss gå på lufta!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4407,6 +5571,7 @@ extension on TranslationsNb {
 			'loggingControls.info.noticeInvalidMode' => 'Feil modus',
 			'loggingControls.info.noticeInvalidBand' => 'Feil bånd',
 			'loggingControls.info.noticeInvalidCategory' => 'Kan ikke kjøres',
+			'loggingControls.info.noticeOverTime' => 'Utenfor tiden',
 			'loggingControls.info.noticeWorkedBefore' => 'Kjørt før',
 			'loggingControls.info.noticeNewPark' => 'Ny park',
 			'loggingControls.info.noticeNewSection' => 'Ny seksjon',
@@ -4414,10 +5579,11 @@ extension on TranslationsNb {
 			'loggingControls.info.noticeMissingExchange' => 'Ingen utveksling',
 			'loggingControls.info.noticeInvalidExchange' => 'Ugyldig utveksling',
 			'loggingControls.info.noticeUnknownEvent' => 'Ukjent arrangement',
-			'loggingControls.info.noticeOurGrid' => 'Angi vår grid',
+			'loggingControls.info.noticeIncompleteCall' => 'Ufullstendig kallesignal — telles ikke',
+			'loggingControls.info.noticeOurGrid' => 'Angi vårt rutenett',
 			'loggingControls.info.noticeRareCounty' => 'Sjeldent fylke!',
 			'loggingControls.info.noticeOurLocation' => 'Angi vårt fylke',
-			'loggingControls.info.noticeShortGrid' => 'Grid for kort',
+			'loggingControls.info.noticeShortGrid' => 'Rutenett for kort',
 			'formChrome.untitled' => '(uten tittel)',
 			'formChrome.showMore' => 'Vis mer',
 			'formChrome.showAll' => 'Vis alle',
@@ -4437,13 +5603,14 @@ extension on TranslationsNb {
 			'formChrome.validationError' => ({required Object error}) => 'Valideringsfeil: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Transformasjonsfeil: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Feil: ${error}',
-			'formChrome.removeItem' => 'Fjern',
+			'formChrome.removeItem' => 'Slett',
+			'formChrome.deleteItemTitle' => ({required Object name}) => 'Slette ${name}?',
 			'formChrome.storageUnavailable' => 'Innlogginger utilgjengelige',
 			'qsoEditForm.title' => 'Rediger QSO',
 			'qsoEditForm.operatorCall' => 'Operatør',
 			'qsoEditForm.position' => 'Operatørplass',
 			'qsoEditForm.theirName' => 'Navn',
-			'qsoEditForm.theirGrid' => 'Grid',
+			'qsoEditForm.theirGrid' => 'Rutenett',
 			'qsoEditForm.theirState' => 'Stat',
 			'qsoEditForm.band' => 'Bånd',
 			'qsoEditForm.notes' => 'Notater',
@@ -4453,7 +5620,7 @@ extension on TranslationsNb {
 			'qsoEditForm.sectionNotes' => 'Notater',
 			'qsoEditForm.theirCity' => 'By',
 			'qsoEditForm.theirCounty' => 'Fylke',
-			'qsoEditForm.theirEntity' => 'Entitet',
+			'qsoEditForm.theirEntity' => 'Enhet',
 			'qsoEditForm.theirCqZone' => 'CQ-sone',
 			'qsoEditForm.theirItuZone' => 'ITU-sone',
 			'qsoEditForm.theirArrlSection' => 'ARRL-seksjon',
@@ -4465,9 +5632,19 @@ extension on TranslationsNb {
 			'qsoList.today' => 'I dag',
 			'qsoList.yesterday' => 'I går',
 			'qsoList.tomorrow' => 'I morgen',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Finn i loggen (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Finn i loggen',
+			'qsoList.find.hint' => 'QSO-nummer eller kallesignal',
+			'qsoList.find.noMatches' => 'Ingen treff',
+			'qsoList.find.noOperationQsos' => 'Ingen QSOer i denne operasjonen',
+			'qsoList.find.noPeriodQsos' => 'Ingen QSOer i denne perioden',
+			'qsoList.find.outsideQsosOne' => '1 QSO utenfor denne operasjonen',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} QSOer utenfor denne operasjonen',
+			'qsoList.find.pastQsosOne' => '1 tidligere QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} tidligere QSOer',
 			'loggingPanel.stats' => 'Operasjonsstatistikk',
 			'loggingPanel.scoring' => 'Poengberegning',
-			'loggingPanel.dxccEntities' => 'DXCC-entiteter',
+			'loggingPanel.dxccEntities' => 'DXCC-enheter',
 			'loggingPanel.statesWorked' => 'Stater',
 			'loggingPanel.provincesWorked' => 'Provinser',
 			'loggingPanel.duplicates' => 'Duplikater',
@@ -4580,20 +5757,71 @@ extension on TranslationsNb {
 			'settings.catServer.openAccess' => 'Åpen tilgang',
 			'settings.catServer.openAccessOn' => 'Alle datamaskiner på det lokale nettverket kan koble til.',
 			'settings.catServer.openAccessOff' => 'Bare apper på denne datamaskinen kan koble til.',
+			'settings.catServer.allowTransmit' => 'La apper sende',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'Apper kan nøkle radioens PTT, i opptil ${minutes} minutter om gangen.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'Apper på alle datamaskiner på det lokale nettverket kan nøkle radioens PTT, i opptil ${minutes} minutter om gangen.',
+			'settings.catServer.allowTransmitOff' => 'Apper kan ikke nøkle radioen. Bruk VOX eller deres eget PTT-oppsett.',
+			'settings.catServer.allowTransmitUnsupported' => 'Hoved-VFO-radioen kan ikke nøkles fra Ham2K Logger, så apper kan ikke sende gjennom den.',
 			'settings.catServer.off' => 'Av.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, starter…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} på port ${port}. Tilkoblede klienter: ${clients}.',
-			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} på port ${port}, men ingen Main VFO-radio er tilkoblet.',
+			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} på port ${port}, men ingen hoved-VFO-radio er tilkoblet.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} kan ikke lytte på port ${port}: ${error}',
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: et annet program bruker den, ofte ${protocol} selv. Lukk det programmet eller velg en annen port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: denne datamaskinen tillater det ikke. Velg en port over 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…',
+			'settings.cluster.title' => 'DX-cluster',
+			'settings.cluster.description' => 'Serveren utvidelser legger ut spotter på og leser spotter fra, innlogget som operatøren.',
+			'settings.cluster.connect' => 'Koble til cluster',
+			'settings.cluster.connectOn' => 'Utvidelser kobler til clusteret når de trenger det',
+			'settings.cluster.connectOff' => 'Ingenting kobler til clusteret',
+			'settings.cluster.console' => 'Vis konsoll',
+			'settings.cluster.consoleDescription' => 'Det clusteret sender, og et sted å skrive kommandoer',
+			'settings.cluster.consoleTitle' => 'Clusterkonsoll',
+			'settings.cluster.consoleConnect' => 'Koble til',
+			'settings.cluster.consoleDisconnect' => 'Koble fra',
+			'settings.cluster.consoleCommand' => 'Kommando',
+			'settings.cluster.consoleEmpty' => 'Ingenting ennå. Koble til, eller vent på at en utvidelse bruker clusteret.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'Sender igjen: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Ikke sendt: ${command} (${reason})',
+			'settings.cluster.server' => 'Clusterserver',
+			'settings.cluster.selectServer' => 'Velg server',
+			'settings.cluster.serverOther' => 'Annen',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'Ingen vert angitt ennå, så spotter går til ${node}',
+			'settings.cluster.customHost' => 'Server',
+			'settings.cluster.customPort' => 'Port',
+			'settings.cluster.password' => 'Passord',
+			'settings.cluster.passwordDescription' => 'Bare om nødvendig',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'Passord lagret for ${node}',
+			'settings.cluster.scrollback' => 'Linjer som beholdes',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} linjer',
+			'settings.cluster.connection' => 'Tilkobling',
+			'settings.cluster.statusIdle' => 'Ikke tilkoblet. Kobler til når en utvidelse trenger det. Trykk for å teste.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'Kobler til ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Tilkoblet ${node} som ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Kunne ikke koble til ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Ikke tilgjengelig i nettversjonen.',
+			'settings.cluster.statusOff' => 'Av. Slå på Koble til cluster for å bruke det.',
+			'settings.cluster.errors.noCall' => 'ingen operatørkallesignal å logge inn med',
+			'settings.cluster.errors.connectFailed' => 'noden kunne ikke nås',
+			'settings.cluster.errors.needsPassword' => 'noden ber om passord, og ingen er lagret',
+			'settings.cluster.errors.loginFailed' => 'noden godtok ikke innloggingen',
+			'settings.cluster.errors.disconnected' => 'noden lukket tilkoblingen',
+			'settings.cluster.errors.timeout' => 'noden svarte ikke',
+			'settings.cluster.errors.off' => 'Koble til cluster er av',
+			'settings.spotting.title' => 'Spotting',
+			'settings.spotting.respotInterval' => 'Automatisk omspotting hvert',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'Automatisk omspotting som standard',
+			'settings.spotting.autoRespotByDefaultOn' => 'Slå på automatisk omspotting etter at en spot er lagt ut',
+			'settings.spotting.autoRespotByDefaultOff' => 'Krev at brukeren slår på automatisk omspotting selv',
+			'settings.spotting.pulseBeforeRespot' => 'Puls før hver automatiske omspotting',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'Spotting-brikken pulserer blått i ${seconds} sekunder før hver omspotting',
+			'settings.spotting.pulseBeforeRespotOff' => 'Ingen pulsering før automatisk omspotting',
 			'settings.radio.title' => 'CAT-styring',
 			'settings.radio.loggingAndCat' => 'Logging og CAT',
 			'settings.radio.tuningSection' => 'Avstemming',
 			'settings.radio.keyerSection' => 'Keyer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Tjenester',
 			'settings.radio.stationConfigurationSection' => 'Stasjonsoppsett',
 			'settings.radio.moreSettings' => 'Flere innstillinger for stasjonsoppsett',
@@ -4601,6 +5829,14 @@ extension on TranslationsNb {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'Styr PTT med tastaturet',
+			'settings.radio.pttKey.modes.off' => 'Nei',
+			'settings.radio.pttKey.modes.toggle' => 'Veksle',
+			'settings.radio.pttKey.modes.hold' => 'Hold',
+			'settings.radio.pttKey.descriptions.off' => 'Tastaturet nøkler ikke radioen.',
+			'settings.radio.pttKey.descriptions.toggle' => 'I telefonimoduser nøkler PTT-tasten radioen, og et nytt trykk slipper den. Den slipper av seg selv etter ett minutt.',
+			'settings.radio.pttKey.descriptions.hold' => 'I telefonimoduser sender radioen så lenge PTT-tasten holdes nede, i opptil ett minutt.',
+			'settings.radio.pttKey.key' => 'PTT-tast',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'Sender',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO-avrunding',
@@ -4628,8 +5864,8 @@ extension on TranslationsNb {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CW-keyermeldinger',
 			'settings.radio.cwMessages.notSupported' => 'Gjeldende radio støtter ikke CW-nøkling',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Melding (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Melding ${n}',
 			'settings.radio.cwMessages.labelField' => 'Etikett',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Etikett for F${n}',
 			'settings.radio.cwMessages.details' => 'Detaljer',
@@ -4643,7 +5879,10 @@ extension on TranslationsNb {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM-meldinger',
 			'settings.radio.cwMessages.setSaved' => 'Mine meldinger',
-			'settings.radio.cwMessages.repeat' => 'Gjenta melding #1',
+			'settings.radio.cwMessages.repeat' => 'Gjenta melding 1',
+			'settings.radio.cwMessages.repeatShort' => 'Gjenta M1',
+			'settings.radio.cwMessages.cooldown' => 'Pause før gjentakelse',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} sekunder',
 			'settings.radio.cwMessages.repeatWait' => 'Gjentar',
 			'settings.radio.cwMessages.keyboard' => 'Skriv for å sende',
 			'settings.radio.cwMessages.keyboardField' => 'Skriv for å sende',
@@ -4669,41 +5908,119 @@ extension on TranslationsNb {
 			'settings.radio.cwMessages.helpEsmIntro' => 'Med Enter sender meldinger på, sender Enter meldinger etter funksjonstasten deres, slik N1MM gjør. Meldingssettet ESM-meldinger starter med disse:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Ved Run roper Enter CQ når kallesignalfeltet er tomt',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Utvekslingen din: etter kallesignalet deres ved Run, etter at de svarer ved S&P',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Takk, når kontakten er logget: plassholderne gjelder neste kontakt, ikke denne',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Takk, når kontakten er logget: qso er kontakten slik den ble logget, next den som står for tur',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'Ved S&P, kallesignalet ditt til stasjonen du svarer',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Ved Run, kallesignalet deres foran utvekslingen din',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Spør igjen når ingenting av utvekslingen deres ble mottatt',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'Foreslått F3 for //-stabler: TU sendes etter at kontakten er logget, så den takker, roper så neste stasjon i stabelen og sender utvekslingen din, eller spør tilbake etter et delvis kallesignal (TU KR?); når ingenting er igjen, bare TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'Foreslått F3 for //-stabler: den takker, roper så neste stasjon i stabelen og sender utvekslingen din, eller spør tilbake etter et delvis kallesignal (TU KR?); når ingenting er igjen, bare TU',
+			'settings.radio.keyerControl.label' => 'Keyer',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Tale',
 			'settings.radio.voiceMessages.title' => 'Talemeldinger',
 			'settings.radio.voiceMessages.notSupported' => 'Gjeldende radio støtter ikke talemeldinger',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Talememori (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Taleminne ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Etikett',
-			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etikett for talememori ${n}',
+			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etikett for taleminne ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.emptyOnRadio' => 'Tom',
 			'settings.radio.voiceMessages.notMeasured' => 'Ukjent lengde',
 			'settings.radio.voiceMessages.playButton' => 'Spill av',
 			'settings.radio.voiceMessages.recordButton' => 'Ta opp',
 			'settings.radio.voiceMessages.stopButton' => 'Stopp',
-			'settings.radio.voiceMessages.repeat' => 'Gjenta melding #1',
+			'settings.radio.voiceMessages.repeat' => 'Gjenta melding 1',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Merknader for ${model}:',
-			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Disse memoriene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.',
+			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Disse minnene ligger i radioen til ${device}. Navnene og lengdene hører til den enheten.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Lagret i radioen, der de andre klientene også ser det.',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Vent på [REC]-indikatoren på radioen, hold så inne PTT-knappen og ta opp meldingen. Avslutt ved å trykke på STOPP-knappen her i appen før du slipper PTT, for å unngå uønskede klikk.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Vent til [REC]-indikatoren har blinket minst fire ganger, hold så inne PTT-knappen og ta opp meldingen. Avslutt ved å trykke på STOPP-knappen her i appen før du slipper PTT, for å unngå uønskede klikk.',
 			'settings.radio.voiceMessages.pill' => 'Tale',
-			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Spill av memori ${n}',
+			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Spill av minne ${n}',
 			'settings.radio.voiceMessages.stop' => 'Stopp',
-			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Ta opp memori ${n}',
+			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Ta opp minne ${n}',
 			'settings.radio.voiceMessages.stopRecording' => 'Stopp opptak',
 			'settings.radio.voiceMessages.playing' => 'Spiller av…',
 			'settings.radio.voiceMessages.recording' => 'Tar opp…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Spiller av ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Tar opp ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Spilte radioen den av? Den meldte at den var ledig med en gang.',
-			'settings.radio.voiceMessages.recordOnRadio' => 'Du må ta opp memoriene på selve radioen.',
-			'settings.radio.avoidZeroBeat.title' => 'Unngå nullsvevning på spots',
+			'settings.radio.voiceMessages.recordOnRadio' => 'Du må ta opp minnene på selve radioen.',
+			'settings.radio.voiceMessages.sets' => 'Meldingssett',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Lydfiler på denne datamaskinen',
+			'settings.radio.voiceMessages.openFileButton' => 'Åpne fil',
+			'settings.radio.voiceMessages.newSet' => 'Nytt sett',
+			'settings.radio.voiceMessages.renameSet' => 'Gi nytt navn til sett',
+			'settings.radio.voiceMessages.deleteSet' => 'Slett sett',
+			'settings.radio.voiceMessages.newSetName' => 'Navn',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Slette ${name} og opptakene? Dette kan ikke angres.',
+			'settings.radio.voiceMessages.output' => 'Send lyd til',
+			'settings.radio.voiceMessages.input' => 'Ta opp fra',
+			'settings.radio.voiceMessages.outputRadio' => 'Send til radioen over nettverket',
+			'settings.radio.voiceMessages.inputDefault' => 'Systemstandard',
+			'settings.radio.voiceMessages.pickDevice' => 'Velg en lydenhet',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (ikke tilkoblet)',
+			'settings.radio.voiceMessages.lead' => 'Forsinkelse etter nøkling',
+			'settings.radio.voiceMessages.tail' => 'Forsinkelse før slipp',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Lytt',
+			'settings.radio.voiceMessages.notRecorded' => 'Ikke tatt opp',
+			'settings.radio.voiceMessages.unplayable' => 'Kan ikke spille av denne filen',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Velg lydenheten som mater radioen før du spiller av en melding.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'Lydenheten som mater radioen er ikke tilkoblet.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'Opptaksenheten er ikke tilkoblet.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'Lydenheten kunne ikke åpnes.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'Den meldingen har ikke noe opptak ennå.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Ingenting ble hørt fra opptaksenheten, så meldingen ble ikke endret. Sjekk inngangen, og at appen har lov til å bruke mikrofonen.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'Radioen tar ikke lyd fra appen akkurat nå. Det krever en nettverkstilkobling til radioen.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'Radioen ville ikke bytte sendelyden til appen, så meldingen stoppet. Still radioen til å sende appens lyd.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'Denne radioen kan ikke nøkles over CAT, så datamaskinen kan ikke spille av meldinger inn i den.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'Filen til den meldingen er ikke en lydfil appen kan spille av. Bruk en WAV-, FLAC- eller MP3-fil, eller ta den opp igjen.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'Opptaket ble avbrutt, så meldingen ble ikke endret. Sjekk at opptaksenheten fortsatt er tilkoblet og at det er plass på disken.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'Opptaket kunne ikke lagres på meldingens plass, så meldingen ble ikke endret.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'Den meldingen trenger ord du ikke har tatt opp: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'Malen til den meldingen har et problem: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'Meldinger som sies med dine ord spilles av i en operasjon, der det finnes en kontakt å si dem for.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'Den meldingen sier ingenting for denne kontakten.',
+			'settings.radio.voiceMessages.templateField' => 'Si med mine ord',
+			'settings.radio.voiceMessages.templateHelp' => 'La stå tomt for å spille av opptaket. Ellers sies meldingen med ordene du har tatt opp, fylt ut for hver kontakt, med disse verdiene:',
+			'settings.radio.voiceMessages.help' => 'Hjelp',
+			'settings.radio.voiceMessages.helpTitle' => 'Si meldinger med dine egne ord',
+			'settings.radio.voiceMessages.helpFullExample' => 'En hel melding:',
+			'settings.radio.voiceMessages.helpExample' => 'Kallesignalet deres, rapporten deres og opptaket ditt av «QSL?»',
+			'settings.radio.voiceMessages.playOnRadio' => 'Spill av på radioen',
+			'settings.radio.voiceMessages.templateHelpCall' => 'Kallesignalet deres',
+			'settings.radio.voiceMessages.templateHelpReport' => 'Rapporten du gir dem',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'Opptaket til melding 2, spilt av som det ble tatt opp',
+			'settings.radio.voiceMessages.voiced' => 'Sagt med dine ord',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Sier: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Ikke tatt opp ennå: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'Åpne en operasjon for å se hva den vil si.',
+			'settings.radio.voiceMessages.wordsDescription' => 'Bruk din egen stemme til kallesignaler, tall og mer.',
+			'settings.radio.voiceWords.title' => 'Ordopptak',
+			'settings.radio.voiceWords.callField' => 'Ord for operatør',
+			'settings.radio.voiceWords.intro' => 'Ta opp hvert ord eller tall tre ganger, raskt etter hverandre, slik du sier det i et kallesignal. Lengre fraser tas opp bare én gang.',
+			'settings.radio.voiceWords.recordAll' => 'Ta opp alle',
+			'settings.radio.voiceWords.recordAllGuide' => 'Les hvert ord tre ganger, raskt etter hverandre, og en frase på flere ord én gang, med et pust mellom linjene. Trykk Stopp etter det siste.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Si «${word} ${word} ${word}», og trykk så Stopp.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Si «${words}», og trykk så Stopp.',
+			'settings.radio.voiceWords.recorded' => 'Tatt opp',
+			'settings.radio.voiceWords.notRecorded' => 'Ikke tatt opp',
+			'settings.radio.voiceWords.addPhrase' => 'Legg til frase',
+			'settings.radio.voiceWords.phraseField' => 'Frase, slik du skriver den i en melding',
+			'settings.radio.voiceWords.deletePhrase' => 'Slett frase',
+			'settings.radio.voiceWords.tryField' => 'Prøv å si',
+			'settings.radio.voiceWords.pauseLetters' => 'Pause mellom bokstaver',
+			'settings.radio.voiceWords.pauseWords' => 'Pause mellom ord',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'Hastighet',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'Avanserte innstillinger',
+			'settings.radio.voiceWords.splitSilent' => 'Ingenting ble hørt i opptaket.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'Fant ikke tre opptak. Si ordet tre ganger, raskt etter hverandre, og prøv igjen.',
+			'settings.radio.voiceWords.splitLineCount' => 'Fant ikke alle ordene i innlesingen. Les hvert ord tre ganger, med et pust mellom ordene.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'Kunne ikke skille ordene fra hverandre. Ta et lengre pust mellom ordene.',
+			'settings.radio.avoidZeroBeat.title' => 'Unngå nullsvevning på spotter',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Med en radio tilkoblet stilles det inn noen Hz ved siden av en CW-spot, så ikke alle som svarer, roper på samme tone.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Stiller inn nøyaktig på den spottede frekvensen.',
 			'settings.radio.zeroBeatRange.title' => 'Nullsvevning: Avviksområde',
@@ -4723,16 +6040,27 @@ extension on TranslationsNb {
 			'settings.help.contact' => 'Kontakt oss',
 			'settings.help.contactDescription' => 'help@ham2k.com — men prøv forumet eller chatten først!',
 			'settings.exports.title' => 'Eksport',
+			'settings.extensionSections.activities' => 'Aktiviteter',
+			'settings.extensionSections.hunting' => 'Jakt',
+			'settings.extensionSections.contests' => 'Konkurranser',
+			'settings.extensionSections.lookups' => 'Oppslag',
+			'settings.extensionSections.dashboard' => 'Dashbord',
 			'settings.map.title' => 'Kart',
 			'settings.map.style.title' => 'Kartstil',
+			'settings.map.showCallsigns.title' => 'Vis kallesignaler',
+			'settings.map.showCallsigns.description' => 'Hver kontakt vises som en brikke med kallesignalet, i båndets farge',
+			'settings.map.showGrayline.title' => 'Vis grålinjen',
+			'settings.map.showGrayline.description' => 'Skyggelegger nattsiden av jorda, med tussmørket som en gradient',
 			'settings.map.styleOpts.automatic' => 'Automatisk',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Personvern',
-			'settings.privacy.shareAppData.title' => 'Del data om appbruk',
+			'settings.privacy.shareAppData.title' => 'Del data om bruken din',
 			'settings.privacy.shareAppData.descriptionOn' => 'Hjelper oss å forbedre appen ved å dele bruks-, oppsett-, krasj- og ytelsesdata',
 			'settings.privacy.shareAppData.descriptionOff' => 'Holder appbruksdata private.\nHam2K-teamet vil ikke kunne oppdage krasj eller andre problemer.',
 			'settings.privacy.shareOpData.title' => 'Del operasjonsdata',
@@ -4858,12 +6186,12 @@ extension on TranslationsNb {
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Innlogging mislyktes: ${error}',
 			'settings.accounts.lookupFailed' => 'Kontoer er utilgjengelige akkurat nå — prøv igjen om et øyeblikk',
 			'settings.accounts.browserLoginTitle' => 'Fullfør innloggingen i nettleseren',
-			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Når du er ferdig, prøver nettleseren å åpne en lenke som begynner med "${prefix}". Datamaskinen din har mest sannsynlig ikke noe registrert for å åpne den, så kopier lenken (fra adressefeltet, eller fra feilsiden nettleseren viser) og lim den inn her.',
-			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger kunne ikke åpne nettleseren din. Kopier innloggingslenken nedenfor og åpne den selv, kopier deretter lenken den sender deg til (den begynner med "${prefix}") og lim den inn her.',
+			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Når du er ferdig, prøver nettleseren å åpne en lenke som begynner med «${prefix}». Datamaskinen din har mest sannsynlig ikke noe registrert for å åpne den, så kopier lenken (fra adressefeltet, eller fra feilsiden nettleseren viser) og lim den inn her.',
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger kunne ikke åpne nettleseren din. Kopier innloggingslenken nedenfor og åpne den selv, kopier deretter lenken den sender deg til (den begynner med «${prefix}») og lim den inn her.',
 			'settings.accounts.copyLoginLink' => 'Kopier innloggingslenke',
 			'settings.accounts.pastedLinkLabel' => 'Lim inn lenken her',
 			'settings.accounts.finishLogin' => 'Fullfør innlogging',
-			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Det er ikke innloggingslenken — den skal begynne med "${prefix}".',
+			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Det er ikke innloggingslenken — den skal begynne med «${prefix}».',
 			'settings.accounts.pastedLinkWrongLogin' => 'Den lenken hører til et annet innloggingsforsøk. Lukk denne siden og koble til på nytt.',
 			'settings.accounts.pastedLinkNoCode' => 'Den lenken har ingen innloggingskode. Fullfør innloggingen først, og kopier så lenken den sender deg til.',
 			'settings.accounts.pastedLinkMalformed' => 'Den lenken ser ut til å være avkortet. Kopier hele lenken og lim den inn på nytt.',
@@ -4898,7 +6226,7 @@ extension on TranslationsNb {
 			'settings.station.remove' => 'Fjern',
 			'settings.station.removeTitle' => ({required Object name}) => 'Fjerne ${name}?',
 			'settings.station.removeMessage' => 'Dette fjerner det bare fra appen. Innstillingene i utstyret forblir som de er.',
-			'settings.station.unknownType' => ({required Object typeKey}) => 'Ukjent utstyrstype "${typeKey}"',
+			'settings.station.unknownType' => ({required Object typeKey}) => 'Ukjent utstyrstype «${typeKey}»',
 			'settings.station.report' => 'Rapporter',
 			'settings.station.reportTitle' => 'Rapporter denne radioen',
 			'settings.station.reportIntro' => 'Fortell oss hvilken radio dette egentlig er, og hvordan det gikk. Rapporten din blir et kort som Ham2K-teamet leser, og det du skriver om hvordan du fikk den til å virke, kan komme til å hjelpe neste operatør med samme rigg.',
@@ -4906,7 +6234,7 @@ extension on TranslationsNb {
 			'settings.station.reportManufacturerDescription' => 'Hvem som lager den — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'En produsent er påkrevd',
 			'settings.station.reportModel' => 'Modell',
-			'settings.station.reportModelDescription' => 'Modellen, slik radioen selv kaller den — "IC-7300", "FT-991A".',
+			'settings.station.reportModelDescription' => 'Modellen, slik radioen selv kaller den — «IC-7300», «FT-991A».',
 			'settings.station.reportModelRequired' => 'En modell er påkrevd',
 			'settings.station.reportOutcome' => 'Hvordan gikk det?',
 			'settings.station.reportOutcomeWorks' => 'Virket bra',
@@ -4932,13 +6260,28 @@ extension on TranslationsNb {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} av ${total}',
 			'settings.station.serialPortSuggested' => 'foreslått',
 			'settings.station.serialPortJustNow' => 'Nylig tilkoblet',
+			'settings.station.serialPortNoDriver' => 'ingen driver',
 			'settings.station.serialDeviceRequest' => 'Legg til en USB-enhet…',
+			'settings.station.bleDevice' => 'Bluetooth LE-enhet',
+			'settings.station.bleDeviceDescription' => 'Seriellbroen radioen din er koblet til gjennom, for eksempel en LiNK500MP i Mode 4 eller en BLE-serielladapter.',
+			'settings.station.bleScan' => 'Søk etter Bluetooth LE-enheter…',
+			'settings.station.bleScanNoneFound' => 'Fant ingen Bluetooth LE-enheter. Sjekk at broen er på, i nærheten og i Bluetooth LE-modus (Mode 4 på en LiNK500MP).',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'Bluetooth LE-søket kunne ikke kjøres: ${reason}',
+			'settings.station.bleOff' => 'Bluetooth er slått av.',
+			'settings.station.bleDenied' => 'Bluetooth-tillatelse ble ikke gitt. Tillat det i systeminnstillingene, og prøv igjen.',
+			'settings.station.bleUnsupported' => 'Denne enheten har ikke Bluetooth LE.',
+			'settings.station.bleStarting' => 'Bluetooth starter fortsatt opp. Prøv igjen om et øyeblikk.',
+			'settings.station.bleConnectFailed' => 'Får ikke kontakt med Bluetooth LE-enheten. Sjekk at den er på, i nærheten og ikke koblet til en annen app.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'Denne Bluetooth LE-enheten har ingen serielltjeneste appen kjenner igjen. Rapporter den gjerne med tjenestene dens: ${services}',
 			'settings.station.baudRate' => 'Hastighet (baud)',
 			'settings.station.baudRateDescription' => 'Må samsvare med radioens CAT-meny. Ved avvik sender radioen tilbake søppel og ingen feilmelding.',
 			'settings.station.serialRtsHigh' => 'Hold RTS høy',
 			'settings.station.serialRtsHighDescription' => 'Bare for en radio som venter på RTS før den svarer, som en Yaesu med CAT RTS slått på. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy gir sending.',
 			'settings.station.serialDtrHigh' => 'Hold DTR høy',
 			'settings.station.serialDtrHighDescription' => 'Bare for et CAT-grensesnitt som henter strøm fra DTR, som enkelte RS-232-kabler for FT-817. På mange kabler nøkler DTR CW eller PTT, og å holde den høy gir sending.',
+			'settings.station.serialUsbDriver' => 'USB-brikkedriver',
+			'settings.station.serialUsbDriverDescription' => 'Automatisk kjenner igjen de fleste adaptere. Velg brikken bare for en adapter portlisten sier mangler driver — emballasjen eller en USB-enhetsliste oppgir den.',
+			'settings.station.serialUsbDriverAuto' => 'Automatisk',
 			'settings.station.civAddress' => 'Radioens CI-V-adresse',
 			'settings.station.civAddressDescription' => 'Heksadesimal, slik den vises i radioens CI-V-meny. IC-705 leveres med A4.',
 			'settings.station.civAddressInvalid' => 'En CI-V-adresse er to heksadesimale sifre, 01 til FF',
@@ -4959,8 +6302,37 @@ extension on TranslationsNb {
 			'settings.station.spectrumNoPanadapter' => 'Denne slicen har ingen panadapter på radioen',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'Radioen avviste en DAX IQ-strøm (feil ${code})',
 			'settings.station.spectrumNoUdp' => 'Spektrumdataene fra radioen når ikke fram til denne enheten',
+			'settings.station.spectrumK4Unavailable' => 'Kan ikke motta K4-ens LAN-spektrum. Prøver igjen…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'Kan ikke motta K4-ens fjernspektrum',
 			'settings.station.spectrumScopeRefused' => 'Radioen avviste scope-kommandoene',
 			'settings.station.spectrumOutOfRange' => 'Radioens scope er satt utenfor området den kan vise',
+			'settings.station.spectrumBandUnsupported' => 'Radioens scope kan ikke vises på dette båndet',
+			'settings.station.spectrumSdrNoRadio' => 'Venter på frekvensen til den tilknyttede radioen…',
+			'settings.station.spectrumSdrNotConnected' => 'SDR-en er ikke tilkoblet',
+			'settings.station.spectrumSdrNoIf' => 'Angi radioens IF-frekvens i innstillingene for denne SDR-en',
+			'settings.station.sdrRadio' => 'Viser spekteret for',
+			'settings.station.sdrRadioDescription' => 'En spektrumvisning på denne radioen hentes fra denne mottakeren i stedet for radioens eget scope.',
+			'settings.station.sdrRadioMain' => 'Hovedradioen',
+			'settings.station.sdrTuning' => 'Antenneinngang',
+			'settings.station.sdrTuningDescription' => 'Hvor mottakerens signal kommer fra. På egen antenne stiller den seg selv inn for å følge radioen; på radioens IF-utgang blir den stående på IF.',
+			'settings.station.sdrTuningIndependent' => 'Egen antenne',
+			'settings.station.sdrTuningIfTap' => 'Radioens IF-utgang',
+			'settings.station.sdrIfHz' => 'IF-frekvens (Hz)',
+			'settings.station.sdrIfHzDescription' => 'Bare for en IF-utgang: frekvensen radioens skala ligger på i IF, for eksempel 68330000 på en FT-817.',
+			'settings.station.sdrIfInverted' => 'IF er invertert',
+			'settings.station.sdrGainDb' => 'Forsterkning (dB)',
+			'settings.station.sdrGainDbDescription' => 'La stå tomt for mottakerens automatiske forsterkning.',
+			'settings.station.sdrOffsetHz' => 'Frekvensoffset (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Legges til hver frekvens som sendes til mottakeren, for en upconverter: 125000000 for en Ham It Up.',
+			'settings.station.sdrPpm' => 'Frekvenskorreksjon (ppm)',
+			'settings.station.rtlDirectSampling' => 'Direkte sampling',
+			'settings.station.rtlDirectSamplingDescription' => 'For HF på en RTL-SDR V3 uten upconverter. En RTL-SDR V4 når HF uten.',
+			'settings.station.rtlDirectSamplingOff' => 'Av',
+			'settings.station.rtlDirectSamplingI' => 'I-gren',
+			'settings.station.rtlDirectSamplingQ' => 'Q-gren',
+			'settings.station.rtlTcpNotAServer' => 'Dette er ikke en rtl_tcp-server',
+			'settings.station.rtlTcpNotes' => 'Dette kobler til en **rtl_tcp-server du kjører selv** på datamaskinen donglen er plugget inn i.\n\n- **Start den** med `rtl_tcp -a 0.0.0.0` så andre maskiner kan nå den; på samme maskin er `rtl_tcp` alene nok.\n- **Port** er 1234 med mindre du startet den med `-p`.\n- **Ett program om gangen:** rtl_tcp betjener én klient. Appen kobler til bare mens en spektrumvisning vises, og slipper noen sekunder etter at den lukkes.\n- **På Android** kjører appen *SDR driver* den samme serveren på telefonen.',
+			'settings.station.rspTcpNotes' => 'Dette kobler til en **rsp_tcp-server du kjører selv** på datamaskinen RSP-en er plugget inn i, med SDRplays API installert der.\n\n- **Start den** med `rsp_tcp -a 0.0.0.0`.\n- **Port** er 1234 med mindre du startet den med `-p`.\n- **Ett program om gangen:** serveren tar én klient. Appen kobler til bare mens en spektrumvisning vises.',
 			'settings.station.n3fjpNoRig' => 'N3FJP har ikke satt opp noe radiogrensesnitt, så dette følger det som skrives inn i N3FJP, ikke en radio',
 			'settings.station.winkeyerKeyPort' => 'Nøkleutgang',
 			'settings.station.winkeyerKeyPortDescription' => 'Hvilken av keyerens to utganger radioen din er koblet til.',
@@ -4969,6 +6341,11 @@ extension on TranslationsNb {
 			'settings.station.winkeyerPttDescription' => 'Nøkle PTT-linjen på samme kontakt, for et forsterkertrinn eller en radio som trenger det. La være av for en radio som nøkles på nøkkelkontakten.',
 			'settings.station.winkeyerNoAnswer' => 'Ingen WinKeyer svarte på denne porten',
 			'settings.station.winkeyerStoppedAnswering' => 'WinKeyer sluttet å svare under sending; meldingen ble forkastet',
+			'settings.station.icomControlPort' => 'Kontrollport (UDP)',
+			'settings.station.icomControlPortDescription' => 'Radioens Control Port (UDP) — 50001 med mindre den er endret i nettverksinnstillingene, eller videresendt til en annen.',
+			'settings.station.icomSerialPort' => 'Seriellport (UDP)',
+			'settings.station.icomSerialPortDescription' => 'Radioens Serial Port (UDP) — 50002 med mindre den er endret i nettverksinnstillingene, eller videresendt til en annen.',
+			'settings.station.icomPortsDiffer' => 'Kontroll- og seriellporten må være forskjellige',
 			'settings.station.radioUser' => 'Brukernavn på radioen',
 			'settings.station.radioPass' => 'Passord på radioen',
 			'settings.station.radioLoginDescription' => 'Radioens Network → Remote-innlogging, ikke WiFi-passordet ditt.',
@@ -4976,8 +6353,10 @@ extension on TranslationsNb {
 			'settings.station.connectFailedBusy' => 'Enheten er i bruk',
 			'settings.station.connectFailedDenied' => 'Ingen tilgang',
 			'settings.station.connectFailedDevice' => 'Fant ikke enheten',
+			'settings.station.connectFailedUnsupported' => 'Ingen driver kjenner igjen brikken i denne USB-adapteren. Hvis du vet hvilken brikke det er, velg den under USB-brikkedriver i Avanserte innstillinger.',
 			'settings.station.connectFailedLines' => 'RTS/DTR kunne ikke holdes som angitt, så porten ble lukket. Et annet program kan ha latt maskinvare-handshake stå på — koble kabelen fra og til igjen.',
 			'settings.station.connectFailedNetwork' => 'Finner ikke radioen på nettverket. Sjekk adressen, og at den er slått på og kan nås.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'Port ${port} på denne enheten er allerede i bruk, og svarene kommer dit. Lukk det andre som lytter på den — også en annen PstRotator-node — eller bytt port.',
 			'settings.station.connectFailedTimeout' => 'Radioen svarte ikke i tide. Sjekk at den er slått på og kan nås.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsNb {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generell',
 			'settings.station.models.icomGeneric' => 'Icom - Generell',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generell',
@@ -4997,6 +6385,8 @@ extension on TranslationsNb {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generell',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsNb {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio styrt via rigctld',
@@ -5028,34 +6422,64 @@ extension on TranslationsNb {
 			'settings.station.models.placeholderRadioNodeName' => 'Min radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 koaksbryter',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A rotorgrensesnitt',
+			'settings.station.models.pstRotator' => 'PstRotator (UDP Control)',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Nettverk/WiFi',
+			'settings.station.transports.secureNetwork' => 'Sikkert nettverk/WiFi',
 			'settings.station.transports.usbSerial' => 'USB-seriell',
 			'settings.station.transports.wifi' => 'Nettverk/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth-seriell',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
 			'settings.station.transports.placeholder' => 'Plassholder',
 			'settings.station.troubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
-			'settings.station.ft891Troubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS må være AV på radioen** (FT-891-meny **05-08**). Når den er på, venter radioen på en handshake-linje som appen holder lav. På Digirig, SignaLink og de fleste hjemmelagde kabler er den samme linjen PTT, så å heve den ville nøkle senderen. På radioens egen USB-port er **Hold RTS høy** under Avanserte innstillinger alternativet.\n- **Hastigheten må samsvare** med radioens CAT RATE (meny **05-06**). Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
+			'settings.station.ft891Troubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS av på radioen, eller Hold RTS høy på.** Med **CAT RTS** på (FT-891-meny **05-08**) er radioen stille så lenge RTS er lav — den kan svare én gang når porten åpnes, og så ingenting. Velger du radioens egen USB-port, slås **Hold RTS høy** på under Avanserte innstillinger. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy nøkler senderen: slå heller CAT RTS av på radioen.\n- **Hastigheten må samsvare** med radioens CAT RATE (meny **05-06**). Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
 			'settings.station.yaesuBinaryTroubleshooting' => 'Denne radioen bruker Yaesus eldre CAT med fem byte, og den svarer ikke i det hele tatt når noe er feil. Nesten alltid en av disse:\n\n- **Kabelen må konvertere nivåer.** CAT-kontakten bak er verken RS-232 eller USB; den trenger en CT-62 eller en tilsvarende adapter. En vanlig lyd- eller datakabel virker ikke for CAT.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny (**#14** på FT-817, **#19** på FT-857 eller FT-897). Ved avvik sender radioen ingenting tilbake, og aldri en feilmelding.\n- **La aldri noe heve RTS eller DTR på denne porten.** På de fleste kabler for disse radioene er de linjene PTT og nøkling. Et eldre grensesnitt som får strøm fra DTR, er unntaket: slå på **Hold DTR høy** under Avanserte innstillinger for det.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne driveren er skrevet etter Yaesus publiserte CAT-tabell og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.',
+			'settings.station.tenTecTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
+			'settings.station.tenTecEagleTroubleshooting' => '- **USB-B-porten bak er CAT-forbindelsen.** Radioen vises som en USB-seriellport; på Windows trenger den Ten-Tecs USB til UART-driver, som vises i Enhetsbehandling som «USB to UART (COMx)».\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen, og det gjør Ten-Tecs fastvareoppdaterer også.\n- **Å sette filterbredden fra appen tar den fra BW-knappen** til radioen slås av og på igjen. Det er slik radioen virker.\n\nDenne driveren er skrevet etter Ten-Tecs programmeringsreferanse. Hvis den halvveis virker, er det verdt å rapportere, med fastvareversjonen fra radioens meny.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **Bruk en rett DB-9-seriellkabel** til SERIAL DATA-porten, ikke en nullmodemkabel.\n- **Denne oppføringen holder RTS høy**, fordi Orion bruker RTS og CTS som handshake. På et grensesnitt som nøkler PTT fra RTS, som en Digirig, slå av Hold RTS høy under Avanserte innstillinger, ellers sender radioen så snart appen kobler til.\n- **CW fra appen krever at radioens interne keyer er på.** Med den av ignorerer radioen det appen sender.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne driveren er skrevet etter Ten-Tecs programmeringsreferanse og har ikke blitt kjørt mot en Orion. Hvis den halvveis virker, er det verdt å rapportere, med fastvareversjonen fra radioens meny.',
+			'settings.station.tenTecNoCw' => 'Fastvaren i denne radioen tar ikke CW fra appen. Ten-Tec la det til i Orion-fastvare 1.366.',
+			'settings.station.tenTecKeyerOff' => 'Radioens interne keyer er av, så den ignorerer CW sendt fra appen. Slå på keyeren i radioens meny.',
 			'settings.station.guohetecTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
 			'settings.station.guohetecTroubleshooting' => 'Q900 har to CAT-protokoller, og denne oppføringen bruker den opprinnelige i stedet for FT-817-etterligningen. Velg **Guohetec Q900** her, ikke en FT-817 — etterligningen støtter færre kommandoer, og radioen sier ikke hvilken den bruker.\n\n- **USB-C-kabelen er CAT-forbindelsen**, og den kobler til lydkortet også. Hastigheten spiller ingen rolle på den; porten ignorerer hva den er satt til.\n- **La aldri noe heve RTS eller DTR på denne porten.** På en seriellkabel er de linjene PTT og nøkling.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **En radio av andre generasjon oppfører seg annerledes** enn en av første. Trykk lenge på Menu, deretter About: HW 2.0 er andre generasjon.\n\nDenne driveren er skrevet etter produsentens publiserte protokoll og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
 			'settings.station.yaesuTroubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav. På Digirig, SignaLink og de fleste hjemmelagde kabler er den samme linjen PTT, så å heve den ville nøkle senderen. På radioens egen USB-port er **Hold RTS høy** under Avanserte innstillinger alternativet. Hvor den innstillingen ligger, varierer mellom modeller (meny **05-08** på FT-891).\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Modusene følger tabellen for FT-891.** Det meste av Yaesu-serien samsvarer med den, men en radio som nummererer modusene sine annerledes, vil vise og sette feil modus for disse. Frekvensen påvirkes ikke.',
+			'settings.station.ftdx3000Troubleshooting' => '**Meny 037 CAT SELECT må være USB** for CAT over radioens USB-port; satt til RS232C ligger CAT på kontakten bak.\n\nDenne oppføringen er skrevet etter publisert CAT-dokumentasjon og har ikke blitt kjørt mot en FTDX3000. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.yaesuRs232Troubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **CAT-kontakten er RS-232.** Den trenger en USB-til-seriell-adapter og en rett DB-9-kabel — en nullmodemkabel bytter om linjene, og radioen hører aldri noe.\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav, med mindre **Hold RTS høy** er slått på under Avanserte innstillinger.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\nDenne oppføringen er skrevet etter publisert CAT-dokumentasjon og har ikke blitt kjørt mot en av disse radioene. Hvis den halvveis virker, er det verdt å rapportere.',
-			'settings.station.yaesuUsbTroubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **Bruk den første av radioens to USB-porter.** CAT ligger normalt på den første (**Enhanced** COM-porten på Windows); den andre (**Standard**) er for PTT og nøkling. Velgeren peker på den første der den kan skille de to fra hverandre.\n- **CAT RTS må være AV på radioen.** Når den er på, venter radioen på en handshake-linje som appen holder lav, med mindre **Hold RTS høy** er slått på under Avanserte innstillinger.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
+			'settings.station.yaesuUsbTroubleshooting' => 'Radioen mottar kommandoer, men svarer ikke. Nesten alltid en av disse:\n\n- **Bruk den første av radioens to USB-porter.** CAT ligger normalt på den første (**Enhanced** COM-porten på Windows); den andre (**Standard**) er for PTT og nøkling. Velgeren peker på den første der den kan skille de to fra hverandre.\n- **CAT RTS av på radioen, eller Hold RTS høy på.** Med radioens **CAT RTS**-meny på er den stille så lenge RTS er lav — den kan svare én gang når porten åpnes, og så ingenting. Velger du radioens egen USB-port, slås **Hold RTS høy** på under Avanserte innstillinger. På Digirig, SignaLink og de fleste hjemmelagde kabler er RTS PTT, og å holde den høy nøkler senderen: slå heller CAT RTS av på radioen.\n- **Hastigheten må samsvare** med radioens CAT RATE-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
 			'settings.station.k4SerialNotes' => 'Koble til K4-ens USB-B-kontakt (PC) bak. Både USB-PC1 og USB-PC2 virker for CAT; velg en ledig port og sett Serial USB-PCn: Baud Rate på radioen til samme verdi. HaLo fyller inn 38400; endre ved behov. Et annet program må bruke den andre porten eller Ethernet.\n\nDenne tilkoblingen styrer radioen og keyerne dens; den sender ikke lyd til HaLo.',
-			'settings.station.k4TcpNotes' => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. Dette er CAT-styring, ikke den separate tilkoblingen for fjernlyd på port 9204.\n\nHaLo styrer radioen og keyerne dens uten å strømme lyd eller panadapterdata.',
+			'settings.station.k4TcpNotes' => 'Koble K4-ens Ethernet-kontakt til det lokale nettverket. Oppgi vertsnavnet eller IP-adressen og CAT-port 9200. HaLo bruker samme vert på fast port 9201 når en panadapter eller et vannfall vises; å endre CAT-porten endrer ikke spektrumporten.\n\nSpekteret viser hovedmottakeren. Zoom, referansejustering og hastighetskontrollene påvirker bare HaLos visning. Lydstrømming støttes ikke.',
 			'settings.station.k4PowerTimeout' => 'K4-effekten ble ikke endret fordi radioen ikke bekreftet utgangsområdet sitt. Prøv igjen.',
+			'settings.station.k4RemoteNotes' => 'Aktiver fjerntilgang på K4-en og oppgi nettverkspassordet dens. Main og Sub deler én kryptert tilkobling for radiostyring og spektrum. Standardporten er 9204; oppgi den videresendte porten din når du kobler til eksternt.\n\nLydavspilling og mikrofonstrømming støttes ikke.',
+			'settings.station.k4Receiver' => 'Mottaker',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Velg Main eller Sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'Den mottakeren er allerede satt opp for denne K4-en',
+			'settings.station.k4SubReceiverOff' => 'K4-ens submottaker er av',
+			'settings.station.k4RemotePasswordRequired' => 'Oppgi K4-ens nettverkspassord for å koble til sikkert.',
+			'settings.station.k4RemoteHandshakeFailed' => 'K4-en kunne ikke opprette en sikker tilkobling. Sjekk nettverkspassordet og innstillingene for fjerntilgang.',
+			'settings.station.k4RemoteUnreachable' => 'K4-ens sikre tilkobling kunne ikke nås. Sjekk adressen, porten og innstillingene for fjerntilgang.',
 			'settings.station.k4PowerRange' => 'K4-effekten må være 0,1–110 W, eller 0,0001–0,01 W når transverterens milliwatt-utgang er aktiv.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft-rigger bruker Kenwood CAT, og både en KX2 og en KX3 har blitt kjørt på denne måten — VFO i begge retninger, modusbytte og CW-nullsvevning virker.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med verdien under **RS232** i radioens meny. 38400 er det de leveres med. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n\n**Hvis frekvensen er riktig, men modusen feil**, si fra til oss. Oppføringene for KX2 og KX3 leser modusen fra en posisjon i radioens statussvar som vi har fastsatt ut fra riggene vi har sett, og fastvare som legger den et annet sted, får vi bare vite om gjennom en rapport.\n\nK3 har ikke blitt rapportert verken den ene eller andre veien, så fortell hva som skjer hvis du bruker en. K4 har sin egen oppføring.',
+			'settings.station.lab599TroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
+			'settings.station.lab599Troubleshooting' => 'TX-500-serien bruker Kenwood CAT. Frekvens og modus har blitt kjørt gjennom en LiNK500MP; effekt og metere er skrevet etter Lab599s CAT-referanse, så rapporter hva som skjer uansett utfall.\n\n- **Hastigheten må samsvare** med radioens CAT-innstilling, 9600 med mindre du har endret den. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **Velg CAT-protokoll på radioen.** TS-2000 dekker frekvens, modus og effekt. LAB599 lar i tillegg appen sette radioen i DIG, se at den sender i DIG, og lese forsyningsspenningen.\n- **Gjennom en LiNK500MP**, hold inne VFO-knappen i omtrent tre sekunder for å gi CAT-styringen til grensesnittet.\n- **Sett LiNK500MP-ens modus etter tilkoblingen**: Mode 3 for Bluetooth, Mode 4 for Bluetooth LE. I alle andre moduser finner ikke et Bluetooth LE-søk den.\n- **Over Bluetooth** pares LiNK500MP som to seriellporter, og bare én bærer CAT. Hvis radioen er stille, velg den andre.',
+			'settings.station.lab599TroubleshootingIos' => 'TX-500-serien bruker Kenwood CAT. Frekvens og modus har blitt kjørt gjennom en LiNK500MP; effekt og metere er skrevet etter Lab599s CAT-referanse, så rapporter hva som skjer uansett utfall.\n\n- **Sett LiNK500MP i Mode 4**, Bluetooth LE-modusen, før du søker etter den. I alle andre moduser kan ikke en iPhone eller iPad finne den.\n- **Gi CAT-styringen til LiNK500MP**: hold inne radioens VFO-knapp i omtrent tre sekunder.\n- **Velg CAT-protokoll på radioen.** TS-2000 dekker frekvens, modus og effekt. LAB599 lar i tillegg appen sette radioen i DIG, se at den sender i DIG, og lese forsyningsspenningen.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Hvis radioen kobler til, men ikke viser noen frekvens',
-			'settings.station.kenwoodTroubleshooting' => 'Denne driveren er bekreftet mot Kenwoods TS-590SG og TS-480, QRP Labs\' QMX og QCX-mini, og Elecrafts KX2 og KX3. Resten av serien er skrevet etter publiserte CAT-referanser, så rapporter hva som skjer uansett utfall.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med radioens CAT-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Noen rigger må ha CAT aktivert** i menyen før de svarer i det hele tatt.\n\n**Flere SDR-programmer bruker den samme protokollen**, så denne oppføringen er verdt å prøve for dem også; Elecraft-rigger står for seg selv, under Elecraft. Hvis frekvensen er riktig, men modusen er feil eller mangler, er det den ene delen som varierer i serien — appen finner den ut fra radioen og spør direkte som reserve, så modusen kan rett og slett komme litt etter.',
+			'settings.station.kenwoodTroubleshooting' => 'Denne driveren er bekreftet mot Kenwoods TS-590SG og TS-480, QRP Labs\' QMX og QCX-mini, og Elecrafts KX2 og KX3. Resten av serien er skrevet etter publiserte CAT-referanser, så rapporter hva som skjer uansett utfall.\n\nHvis radioen ikke svarer, er det nesten alltid en av disse:\n\n- **Hastigheten må samsvare** med radioens CAT-meny. Ved avvik sender radioen tilbake søppel eller ingenting, og aldri en feilmelding.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.\n- **Noen rigger må ha CAT aktivert** i menyen før de svarer i det hele tatt.\n- **Kenwood-radioer venter på RTS**: CAT-porten bruker den som handshake, så Hold RTS høy (under Avanserte innstillinger) må være på. En tilkobling som ble satt opp før det var på som standard, kan ha den av. På en Digirig eller en annen kabel som nøkler PTT fra RTS, slå den av, ellers sender radioen.\n\n**Flere SDR-frontender bruker den samme protokollen**, så denne oppføringen er verdt å prøve for dem også; Elecraft-rigger står for seg selv, under Elecraft. Hvis frekvensen er riktig, men modusen er feil eller mangler, er det den ene delen som varierer i serien — appen finner den ut fra radioen og spør direkte som reserve, så modusen kan rett og slett komme litt etter.',
 			'settings.station.statusConnected' => 'Tilkoblet',
 			'settings.station.statusLost' => 'Frakoblet',
 			'settings.station.notConfigured' => 'Ikke satt opp',
 			'settings.station.currentConfiguration' => 'Gjeldende oppsett',
 			'settings.station.currentTransceiver' => 'Gjeldende transceiver',
+			'settings.station.currentTransceivers' => 'Gjeldende transceivere',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Meldinger settes i kø i stedet for å avbryte',
+			'settings.station.noRadioBSelected' => 'Ingen Radio B valgt',
 			'settings.station.radioMode' => 'Radiomodus',
 			'settings.station.keyerNotSupported' => 'Støttes ikke av gjeldende radio',
 			'settings.station.catControlPreferences' => 'Innstillinger for CAT-styring',
@@ -5074,13 +6498,25 @@ extension on TranslationsNb {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} er på en annen enhet',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Denne radioen er koblet til ${device}. Tilkoblingen og innstillingene settes opp på den enheten.',
 			'settings.station.antennaInUse' => 'Antenne i bruk',
-			'settings.station.keyInUse' => 'Nøkkel i bruk',
+			'settings.station.keyInUse' => 'CW-nøkling',
+			'settings.station.phoneKeying' => 'Talemeldinger',
+			'settings.station.phoneKeyingNone' => 'Ingen',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Minner i ${radio}',
+			'settings.station.phoneKeyingComputer' => 'Lyd i denne datamaskinen',
+			'settings.station.phoneKeyingOff' => 'Talemeldinger er av',
+			'settings.station.computerVoiceSettings' => 'Datamaskinlyd',
+			'settings.station.cwKeyingOptions' => 'Alternativer for CW-nøkling',
 			'settings.station.noneSelected' => 'Ingen',
 			'settings.station.moreSettings' => 'Flere innstillinger',
 			'settings.station.icomCivTroubleshootingTitle' => 'Hvis to seriellporter vises for samme radio',
 			'settings.station.icomCivTroubleshooting' => 'Flere Icom-radioer, blant dem IC-705, viser **to** USB-seriellporter samtidig (Icom kaller dem Port A og Port B), begge satt til CI-V som standard. Verken denne appen eller operativsystemet kan skille dem fra hverandre utover det: samme USB-leverandør-/produkt-ID vises bare to ganger, noen ganger merket med et `#2`-suffiks her. **Port A er vanligvis den riktige** — normalt den første som operativsystemet eller nettleseren lister opp, og der denne appen kan skille de to portene, merker den den som foreslått. Hvis kommandoer går ut og radioen aldri svarer, prøv den andre porten.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Hvis radioen aldri svarer',
 			'settings.station.civAddressTroubleshooting' => '- **CI-V-adressen må samsvare** med radioens meny. Denne oppføringen fyller inn adressen modellen leveres med, men en rigg som deler en CI-V-buss, er nettopp der den blir endret. En ramme sendt til feil adresse ignoreres i stillhet, noe som ser akkurat ut som en død kabel.\n- **Hastigheten må samsvare** med radioens CI-V BAUD RATE (på USB, CI-V USB Baud Rate). Sett radioen til samme tall som vises her, **ikke Auto**. På Auto kobler noen radioer, blant dem IC-7300, til og slutter så å svare etter et minutt eller så.\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **CI-V-adressen må samsvare** med radioens meny. Denne oppføringen fyller inn adressen modellen leveres med, men en rigg som deler en CI-V-buss, er nettopp der den blir endret. En ramme sendt til feil adresse ignoreres i stillhet, noe som ser akkurat ut som en død kabel.\n${speed}\n- **En annen app kan holde porten**: WSJT-X, fldigi og rigctld holder den alle åpen.',
+			'settings.station.icomUsbSpeedFollows' => '- **Det er ingen hastighet å sette.** Over USB snakker denne radioen i den hastigheten datamaskinen bruker, og denne oppføringen bruker alltid 115200, hastigheten scopet trenger.',
+			'settings.station.ic7610UsbSpeed' => '- **Sett CI-V USB Baud Rate til 115200**, hastigheten denne oppføringen alltid bruker, siden scopet trenger den — **ikke Auto**. En radio satt til en annen hastighet svarer med stillhet.',
+			'settings.station.civTransceiveTitle' => 'Hvis appen er treg til å følge radioen',
+			'settings.station.civTransceive' => 'Hvis appen bruker flere sekunder på å vise en frekvens- eller modusendring gjort på radioen, slå på radioens **CI-V Transceive**-innstilling (på de fleste nyere modeller under SET > Connectors > CI-V). Med den på rapporterer radioen hver endring i samme øyeblikk den skjer. Med den av ser appen en endring først neste gang den spør, med noen sekunders mellomrom.',
 			'settings.station.ic7300Mk2Note' => '\n- **IC-7300 MK2** leveres med adresse `B6`, ikke `94` som fylles inn her — velg oppføringen for IC-7300 MK2 i stedet.',
 			'settings.station.ic705PortNote' => '\n- **IC-705** viser to USB-seriellporter, begge oppkalt etter radioen. CI-V ligger på den **første** av dem, som velgeren peker på der den kan skille de to fra hverandre.',
 			'settings.station.ic7760PortNote' => '\n- **IC-7760** bruker CI-V på **Port A** av de to USB-seriellportene den viser.',
@@ -5096,7 +6532,8 @@ extension on TranslationsNb {
 			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.ic705TroubleshootingTitle' => 'Hvis radioen aldri svarer',
-			'settings.station.ic705Troubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.',
+			'settings.station.ic705Troubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Portene må samsvare** med radioens Control Port og Serial Port (UDP), eller portene som er videresendt til dem. Feil port møtes med stillhet, akkurat som en radio som er av.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.',
+			'settings.station.icomLanTroubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview, RS-BA1 eller Icoms Remote Utility koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** LAN-porten må være koblet til samme nettverk som denne enheten, **Network Control** må være på, og brukernavnet og passordet må være satt opp som en nettverksbruker på radioen.\n- **Portene må samsvare** med radioens Control Port og Serial Port (UDP), eller portene som er videresendt til dem. Feil port møtes med stillhet, akkurat som en radio som er av.\n- **Hvis den kobler til, men aldri svarer**, må CI-V-adressen her samsvare med radioens CI-V ADDRESS-meny. Denne oppføringen fyller inn adressen modellen leveres med.\n- **Slå radioen av og på** hvis den blir hengende.',
 			'settings.station.statusStale' => 'Svarer ikke',
 			'settings.station.statusDisconnected' => 'Ikke tilkoblet',
 			'settings.station.statusConnecting' => 'Kobler til…',
@@ -5104,11 +6541,9 @@ extension on TranslationsNb {
 			'settings.station.statusError' => 'Tilkoblingen mislyktes',
 			'settings.station.currentRadioSettings' => 'Gjeldende radioinnstillinger',
 			'settings.station.notSupportedByThisRadio' => 'Støttes ikke av denne radioen',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Telefoni',
-			_ => null,
-		} ?? switch (path) {
-			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Talekeyer: ${count} memorier i radioen',
+			'settings.station.cwMessagesButton' => 'CW-meldinger',
+			'settings.station.voiceMessagesButton' => 'Talemeldinger',
+			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Talekeyer: ${count} minner i radioen',
 			'settings.station.antennaBands' => 'Bånd',
 			'settings.station.antennaType' => 'Antennetype',
 			'settings.station.antennaTypeRequired' => 'Velg en antennetype',
@@ -5134,6 +6569,8 @@ extension on TranslationsNb {
 			'settings.station.newAntenna' => 'Ny antenne',
 			'settings.station.newKey' => 'Ny nøkkel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL eller kompatibel)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Nøkkel på ${device}',
 			'settings.station.trackStationInfo' => 'Registrer stasjonsinfo for hver QSO',
@@ -5160,8 +6597,8 @@ extension on TranslationsNb {
 			'settings.station.placeholderReplyDelayDescription' => 'Hvor lang tid plassholderradioen bruker på å rapportere en endring tilbake. Tomt eller 0 svarer umiddelbart.',
 			'settings.station.cwKeyerField' => 'CAT CW-keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Om denne radioen sender CW fra tekst over CAT. Av for en rigg appen ikke kjenner.',
-			'settings.station.voiceMemories' => 'Talememorier',
-			'settings.station.voiceMemoriesDescription' => 'Hvor mange talememorier radioen spiller av over CAT. 0 for ingen.',
+			'settings.station.voiceMemories' => 'Taleminner',
+			'settings.station.voiceMemoriesDescription' => 'Hvor mange taleminner radioen spiller av over CAT. 0 for ingen.',
 			'settings.station.voiceMemoriesInvalid' => 'Et heltall, 0 eller mer',
 			'settings.station.yaesuMeterCapture' => 'Registrer måleravlesninger',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Leser radioens måler for utgangseffekt og flagg for høy SWR under sending og skriver råverdiene til loggen. For å bygge skalaen Yaesu ikke publiserer — verdiene vises ikke som målere.',
@@ -5182,7 +6619,7 @@ extension on TranslationsNb {
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, fylt ut til 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY-tekst)',
 			'settings.station.voiceDialect' => 'Dialekt for talekeyer',
-			'settings.station.voiceDialectDescription' => 'Hvordan denne radioen spiller av talememoriene over CAT. Ingen betyr ingen talememorier over CAT. Med en dialekt og uten antall gjelder dialektens standardantall.',
+			'settings.station.voiceDialectDescription' => 'Hvordan denne radioen spiller av taleminnene over CAT. Ingen betyr ingen taleminner over CAT. Med en dialekt og uten antall gjelder dialektens standardantall.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590-stil)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB og DA)',
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (bryterklikk)',
@@ -5193,7 +6630,7 @@ extension on TranslationsNb {
 			'settings.station.switchLayout' => 'Oppsett',
 			'settings.station.switchLayoutDescription' => 'Hvilken side av bryteren radioene dine er koblet til.',
 			'settings.station.switchLayoutRequired' => 'Velg hvordan bryteren er koblet',
-			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Bryteren avviste "${command}" (feil ${code})',
+			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'Bryteren avviste «${command}» (feil ${code})',
 			'settings.station.switchBusyTransmitting' => 'Den porten sender — antennen ble ikke byttet',
 			'settings.station.switchNoAntenna' => 'Ingen',
 			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antenne på port ${port}',
@@ -5212,6 +6649,43 @@ extension on TranslationsNb {
 			'settings.station.switchCurrentStateDescription' => 'Hvilken antenne hver radioport er på akkurat nå. Endringer trer i kraft umiddelbart.',
 			'settings.station.switchWiringHeader' => 'Kabling',
 			'settings.station.switchPortInhibitedHint' => 'sending sperret',
+			'settings.station.rotatorAxes' => 'Akser',
+			'settings.station.rotatorAxesDescription' => 'Om rotoren dreier bare i asimut, eller i elevasjon også (en G-5500 eller lignende).',
+			'settings.station.rotatorAxesAzimuth' => 'Bare asimut',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Asimut og elevasjon',
+			'settings.station.rotatorAzimuthOffset' => 'Asimutoffset',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Grader som legges til det kontrolleren leser, når nullpunktet ikke er rett nord. Dreiinger korrigeres tilsvarende.',
+			'settings.station.rotatorElevationOffset' => 'Elevasjonsoffset',
+			'settings.station.rotatorAzimuthMin' => 'Laveste asimut',
+			'settings.station.rotatorAzimuthMax' => 'Høyeste asimut',
+			'settings.station.rotatorAzimuthMaxDescription' => 'I kontrollerens egne grader. Over 360 for en rotor med overlapp, som da tar den korteste dreiingen.',
+			'settings.station.rotatorElevationMin' => 'Laveste elevasjon',
+			'settings.station.rotatorElevationMax' => 'Høyeste elevasjon',
+			'settings.station.rotatorElevationMaxDescription' => 'I kontrollerens egne grader. Over 90 for en rotor som vipper over.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Hele grader, ${min} til ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'Den laveste grensen må være under den høyeste',
+			'settings.station.rotatorPollInterval' => 'Spørreintervall (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'Hvor ofte rotoren spørres om hvor den peker. La stå tomt for ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'Velg hvilke akser rotoren dreier',
+			'settings.station.rotatorRefused' => 'Kontrolleren avviste en kommando. Sjekk at den er satt til GS-232-modus.',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator svarer først når den er satt opp for det, og sier ellers ingenting:\n\n- **Slå på UDP Control** i PstRotators Setup-meny.\n- **Bruk samme port**: Communication → UDP Control Port, 12000 med mindre den er endret. PstRotator svarer på porten over (12001), som må være ledig på denne enheten.\n- **Koble PstRotator til kontrolleren sin.** Før det er gjort, svarer den ingenting over UDP.\n- **Slipp den gjennom brannmuren** på PC-en som kjører PstRotator, og på denne enheten, som lytter etter svarene.\n- **På Mac, iPhone eller iPad** trenger Ham2K Logger tilgang til lokalt nettverk (Innstillinger → Personvern og sikkerhet → Lokalt nettverk).',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Gjeldende tilstand: ${position}',
+			'settings.station.rotatorDisconnected' => 'frakoblet',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° asimut',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° elevasjon',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'Venter på at kontrolleren rapporterer posisjonen sin…',
+			'settings.station.rotatorNotResponding' => 'svarer ikke',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'Dreier til ${heading}, så langt grensene for denne rotoren tillater',
+			'settings.station.rotatorTargetAzimuth' => 'Drei til asimut',
+			'settings.station.rotatorTargetAzimuthShort' => 'Drei til az',
+			'settings.station.rotatorTargetElevation' => 'Drei til elevasjon',
+			'settings.station.rotatorTargetElevationShort' => 'Drei til el',
+			'settings.station.rotatorAzimuthInvalid' => 'Må være 0 til 360',
+			'settings.station.rotatorElevationInvalid' => 'Må være 0 til 180',
+			'settings.station.rotatorTurn' => 'Drei',
+			'settings.station.rotatorStop' => 'Stopp',
 			'settings.station.configUnreadable' => 'De lagrede innstillingene for denne radioen kunne ikke leses. Åpne innstillingene og legg dem inn på nytt, eller fjern radioen og legg den til igjen.',
 			'settings.station.autoConnectHeld' => 'HaLo sluttet å svare forrige gang den koblet til denne radioen, så den koblet ikke til av seg selv denne gangen. Trykk Koble til for å prøve igjen.',
 			'settings.offlineData.title' => 'Offlinedata',
@@ -5230,7 +6704,7 @@ extension on TranslationsNb {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Oppdatert for ${minutes}m siden',
 			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'Den siste nedlastingen hadde bare ${imported} av ${existing} poster og ble ikke brukt. Oppdater for å godta den.',
 			'settings.offlineData.extensionsSection' => 'Utvidelser',
-			'settings.profiles.notSet' => 'Ikke satt',
+			'settings.profiles.notSet' => 'Ikke angitt',
 			'settings.profiles.personalInfo' => 'Personlig info',
 			'settings.profiles.personalInfoNote' => 'Dette kan bli tatt med i genererte logger når det er relevant for innsending',
 			'settings.profiles.name' => 'Navn',
@@ -5243,15 +6717,20 @@ extension on TranslationsNb {
 			'settings.search.hint' => 'Søk i innstillinger',
 			'settings.developer.developerModeDescription' => 'Aktiver utvikleradvarsler, feilsøkingslogger og verktøy.',
 			'settings.developer.experiments' => 'Eksperimenter',
+			'settings.developer.showIdleMetrics' => 'Vis hvilemålinger',
+			'settings.developer.showIdleMetricsDescription' => 'Vis i statuslinjen hvor mye utvidelsesmotoren har vært i hvile det siste sekundet. Trykk for gjennomsnittet over 10 og 60 sekunder.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent} % i hvile',
+			'settings.developer.idleMetricsAverages' => 'Snitt i hvile:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}s ${percent} %',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} aktivert', other: '${count} aktivert', ), 
 			'settings.developer.patchTrack' => 'Spor for kodeoppdateringer',
 			'settings.developer.patchTrackDescription' => 'Hvilken ring for trådløse kodeoppdateringer denne enheten følger. Mer eventyrlystne ringer får rettelser tidligere, men mindre testet. Kodeoppdateringer tas i bruk ved neste omstart.',
 			'settings.developer.trackStable' => 'Stabil',
 			'settings.developer.trackUnstable' => 'Ustabil',
 			'settings.developer.trackBleeding' => 'Dagsfersk',
-			'settings.developer.checkingTrack' => ({required Object track}) => 'Ser etter kodeoppdatering på "${track}"…',
+			'settings.developer.checkingTrack' => ({required Object track}) => 'Ser etter kodeoppdatering på «${track}»…',
 			'settings.developer.patchDownloaded' => 'Kodeoppdatering lastet ned — start appen på nytt for å ta den i bruk.',
-			'settings.developer.noNewPatch' => ({required Object track}) => 'Ingen ny kodeoppdatering på "${track}".',
+			'settings.developer.noNewPatch' => ({required Object track}) => 'Ingen ny kodeoppdatering på «${track}».',
 			'settings.developer.noPatchInstalled' => 'Ingen kodeoppdatering installert — kjører utgivelsesversjonen.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Kjører kodeoppdatering #${patch}.',
 			'settings.developer.deepLinks' => 'Dyplenker',
@@ -5309,26 +6788,31 @@ extension on TranslationsNb {
 			'settings.panels.peers' => 'Andre enheter',
 			'settings.panels.peersDescription' => 'Koble til andre enheter i nærheten',
 			'settings.showMoreSettings' => 'Vis flere innstillinger',
-			'settings.gridPrecision' => 'Grid-presisjon',
+			'settings.gridPrecision' => 'Rutenettpresisjon',
 			'settings.gridPrecisionOpts.six' => '6 tegn (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 tegn (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 tegn',
 			'settings.gridPrecisionDescription.eight' => '8 tegn',
 			'commands.enableSyncFirst' => 'Aktiver synkronisering i Innstillinger først.',
 			'commands.fullResyncStarted' => 'Full ny synkronisering startet — lokale data ble sikkerhetskopiert først.',
-			'commands.noDataFilesMatched' => ({required Object target}) => 'Ingen datafiler samsvarte med "${target}".',
+			'commands.noDataFilesMatched' => ({required Object target}) => 'Ingen datafiler samsvarte med «${target}».',
 			'commands.reloadFailed' => ({required Object error}) => 'Ny innlasting mislyktes: ${error}',
 			'commands.reloadingAll' => 'Laster inn alle datafiler på nytt…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Laster inn datafiler for ${target} på nytt…',
-			'commands.unknownExperiment' => ({required Object token}) => 'Ukjent eksperiment "${token}"',
+			'commands.unknownExperiment' => ({required Object token}) => 'Ukjent eksperiment «${token}»',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} aktivert',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} deaktivert',
 			'commands.sentryTestSent' => 'Testfeilrapport sendt til Sentry',
+			'commands.idleMetricsEnabled' => 'Hvilemålinger slått på i statuslinjen',
+			'commands.idleMetricsDisabled' => 'Hvilemålinger slått av',
 			'commands.sentryTestLocalOnly' => 'Sentry er deaktivert i denne versjonen — testfeilen ble bare logget lokalt',
 			'commands.noOperationOpen' => 'Den kommandoen krever en åpen operasjon',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Vet ikke hvordan en \'${kind}\' skal markeres',
+			'commands.goUnavailable' => ({required Object place}) => '${place} er ikke slått på i denne appen',
+			'commands.goUnknown' => ({required Object to}) => 'Vet ikke hvordan man går til \'${to}\'',
+			'commands.goBlocked' => 'Lukk den åpne dialogen først',
 			'commands.operationAlreadyStarted' => 'Denne operasjonen har allerede en startmarkør',
-			'commands.couldNotOpenLocation' => 'La til pausen, men kunne ikke åpne posisjonsskjermen',
+			'commands.couldNotOpenLocation' => 'La til pausen, men kunne ikke åpne plasseringsskjermen',
 			'commands.noTestOperations' => 'Ingen testoperasjoner å fjerne',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS må vise en bekreftelsesdialog, og det er ikke mulig her',
 			'commands.syncAllUnavailable' => 'SYNCALL må vise en bekreftelsesdialog, og det er ikke mulig her',
@@ -5352,13 +6836,17 @@ extension on TranslationsNb {
 			'commands.settingExpectsNumber' => 'et tall',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» er ikke lenger tilgjengelig',
 			'commands.noCwKeyer' => 'Ingen tilkoblet radio kan sende CW',
-			'commands.noKeyer' => 'Ingen tilkoblet radio kan sende CW eller spille av talememorier',
+			'commands.noKeyer' => 'Ingen tilkoblet radio kan sende CW eller spille av taleminner',
 			'commands.keyerNeedsOperation' => 'Åpne en operasjon for å bruke CW-keyeren',
 			'commands.keyerExperimentOff' => 'CW-nøkling er av — slå det på med EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter sender meldinger er av — slå det på med EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sender CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW-melding F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW-melding F${n} ble ikke sendt: utvidelsene er ikke klare',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Talemelding M${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'utvidelsene er ikke klare',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Ingenting sendt: Radio ${radio} kan ikke nøkle det',
+			'commands.so2rNoRadioB' => 'Ingenting sendt: velg en Radio B i Stasjonsoppsett for å nøkle fra dette settet',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» godtok ikke den verdien',
 			'commandDialog.hint' => 'Søk etter kallesignaler eller skriv en kommando',
 			'commandDialog.noResults' => ({required Object text}) => 'Ingenting samsvarer med «${text}»',
@@ -5372,6 +6860,99 @@ extension on TranslationsNb {
 			'commandDialog.sectionSuggestions' => 'Prøv',
 			'commandDialog.lookingUp' => 'Slår opp kallesignal…',
 			'commandDialog.blockedByPane' => 'Kan ikke bruke kommandoer mens et panel eller en dialog er åpen',
+			'keyboardShortcuts.title' => 'Tastatursnarveier',
+			'keyboardShortcuts.description' => 'Tilpass tastetilordninger',
+			'keyboardShortcuts.search' => 'Søk i kommandoer og taster',
+			'keyboardShortcuts.import' => 'Importer…',
+			'keyboardShortcuts.export' => 'Eksporter…',
+			'keyboardShortcuts.resetAll' => 'Tilbakestill alle',
+			'keyboardShortcuts.resetAllTitle' => 'Tilbakestille alle snarveier?',
+			'keyboardShortcuts.resetAllBody' => 'Alle kommandoer går tilbake til standardtastene sine, og tastene som er knyttet til skrevne kommandoer, fjernes.',
+			'keyboardShortcuts.reset' => 'Tilbakestill',
+			'keyboardShortcuts.noKey' => 'Ingen tast',
+			'keyboardShortcuts.changed' => 'Endret',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} er også knyttet til ${commands}',
+			'keyboardShortcuts.groupApp' => 'App',
+			'keyboardShortcuts.groupKeying' => 'Nøkling',
+			'keyboardShortcuts.groupLogging' => 'Logging',
+			'keyboardShortcuts.groupCommands' => 'Kommandoer',
+			'keyboardShortcuts.groupFixed' => 'Faste taster',
+			'keyboardShortcuts.contextApp' => 'Overalt',
+			'keyboardShortcuts.contextLogView' => 'Visningene Operasjon, Jakt og Logger',
+			'keyboardShortcuts.contextOperation' => 'Operasjonsvisningen, ved nøkling av en CAT-radio',
+			'keyboardShortcuts.contextLogging' => 'I loggepanelet',
+			'keyboardShortcuts.addCommand' => 'Legg til en kommando…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Ukjent kommando: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Åpne kommandodialogen',
+			'keyboardShortcuts.command.toggleTheme' => 'Bytt mellom lyst og mørkt',
+			'keyboardShortcuts.command.toggleLanguage' => 'Bytt mellom engelsk og spansk',
+			'keyboardShortcuts.command.fontScaleUp' => 'Større tekst',
+			'keyboardShortcuts.command.fontScaleDown' => 'Mindre tekst',
+			'keyboardShortcuts.command.fontScaleReset' => 'Normal tekststørrelse',
+			'keyboardShortcuts.command.densityLooser' => 'Luftigere oppsett',
+			'keyboardShortcuts.command.densityDenser' => 'Tettere oppsett',
+			'keyboardShortcuts.command.densityAuto' => 'Automatisk tetthet i oppsettet',
+			'keyboardShortcuts.command.find' => 'Finn i loggen',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send melding ${n}',
+			'keyboardShortcuts.command.keyboardMode' => 'Tastaturmodus på eller av',
+			'keyboardShortcuts.command.ptt' => 'Trykk for å snakke (PTT)',
+			'keyboardShortcuts.command.wipe' => 'Tøm kontakten som logges',
+			'keyboardShortcuts.fixed.callsign' => 'Skriving av kallesignaler',
+			'keyboardShortcuts.fixed.escape' => 'Stopp sending, gå ett steg tilbake, eller lukk',
+			'keyboardShortcuts.fixed.enter' => 'Logg kontakten',
+			'keyboardShortcuts.fixed.space' => 'Neste felt',
+			'keyboardShortcuts.fixed.tab' => 'Neste eller forrige felt',
+			'keyboardShortcuts.fixed.arrows' => 'Flytt mellom felt, kontroller og loggen',
+			'keyboardShortcuts.fixed.walk' => 'Bla sidevis i loggen, eller gå til endene',
+			'keyboardShortcuts.fixed.undo' => 'Ta tilbake en tømming eller en sletting',
+			'keyboardShortcuts.editor.addShortcut' => 'Legg til snarvei',
+			'keyboardShortcuts.editor.listening' => 'Trykk tastene for snarveien…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc avbryter',
+			'keyboardShortcuts.editor.add' => 'Legg til',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} tilhører loggefeltene eller en dialog, og kan ikke endres.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} er slik kallesignaler skrives. Hold Cmd, Ctrl eller Alt sammen med den.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'Systemet kan ta ${keys} før appen ser den.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} er allerede en av tastene for denne kommandoen.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Ta ${keys} fra «${command}»',
+			'keyboardShortcuts.editor.resetDefault' => 'Tilbakestill til standard',
+			'keyboardShortcuts.editor.remove' => 'Fjern',
+			'keyboardShortcuts.editor.commandLabel' => 'Kommando',
+			'keyboardShortcuts.editor.commandHint' => 'Skriv en gyldig kommando, eller flere kommandoer atskilt med «;»',
+			'keyboardShortcuts.editor.removeCommand' => 'Fjern kommando',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Ingen kommando leser «${text}»',
+			'keyboardShortcuts.editor.noShortcuts' => 'Ingen tast ennå',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Snarveier lagret i ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kunne ikke eksportere snarveiene: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Kunne ikke åpne filen: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} er ikke en snarveifil denne appen kan lese: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'det er ikke en Ham2K-fil med tastatursnarveier',
+			'keyboardShortcuts.file.problemNewerVersion' => 'det ble skrevet av en nyere versjon av appen',
+			'keyboardShortcuts.file.problemMalformed' => 'deler av det følger ikke snarveiformatet',
+			'keyboardShortcuts.file.problemTooLarge' => 'det er for stort',
+			'keyboardShortcuts.file.importTitle' => 'Importer snarveier',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Skrevet på ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'Filen sier ikke hvilket tastatur den ble skrevet på.',
+			'keyboardShortcuts.file.translate' => 'Hva skal hver av disse tastene være på dette tastaturet?',
+			'keyboardShortcuts.file.leaveOut' => 'Utelat de snarveiene',
+			'keyboardShortcuts.file.replace' => 'Erstatt oppsettet på denne enheten',
+			'keyboardShortcuts.file.replaceHint' => 'Alle snarveier som ikke er i filen, går tilbake til standard.',
+			'keyboardShortcuts.file.merge' => 'Legg til i oppsettet på denne enheten',
+			'keyboardShortcuts.file.mergeHint' => 'Filens snarveier erstatter enhetens for de samme kommandoene, og resten beholdes.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Ukjent i denne versjonen, så utelatt: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Ikke snarveier, så utelatt: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Taster appen holder for seg selv, så utelatt: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Knyttet til mer enn én kommando etter importen: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'Importer',
+			'keyboardShortcuts.file.imported' => 'Snarveier importert',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Kommando',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'Denne versjonen er utløpt',
 			'expiredBuild.body' => 'Gå til ham2k.com og hent en nyere versjon.',
 			'expiredBuild.visit' => 'Gå til ham2k.com',
@@ -5385,16 +6966,20 @@ extension on TranslationsNb {
 			'spotting.noQsoYet' => 'Ingen QSO logget ennå å spotte.',
 			'spotting.setFrequencyFirst' => 'Angi en frekvens først.',
 			'spotting.nothingToSpot' => 'Ingenting å spotte — ingen utvidelse tilbyr spotting her.',
+			'spotting.incompleteCall' => 'Kan ikke spotte et ufullstendig kallesignal — fullfør kallesignalet først.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} mislyktes: ${message}',
 			'spotting.unknownError' => 'ukjent feil',
 			'spotting.notSent' => 'Spot ikke sendt.',
-			'spotting.notRefreshedOffline' => 'Ingen forbindelse — spots ble ikke oppdatert',
+			'spotting.allSkipped' => 'Spot ikke sendt: alle spot-kildene hoppet over den.',
+			'spotting.notRefreshedOffline' => 'Ingen forbindelse — spotter ble ikke oppdatert',
 			'dataFiles.downloading' => 'Laster ned…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Kunne ikke laste ned ${name}',
 			'dataFiles.downloadFailedWebHint' => 'Dette kan være et nettverksproblem, eller verten for denne lenken støtter kanskje ikke direkte nedlasting fra en nettleser. Prøv skrivebords- eller mobilappen, eller et annet lagringssted.',
 			'dataFiles.downloadTimedOut' => 'Serveren brukte for lang tid på å svare. Prøv igjen senere.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} svarte med en feil (HTTP ${status}). Prøv igjen senere.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} kunne ikke levere denne filen (HTTP ${status}). Sjekk at adressen fortsatt er riktig.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM har ingen Call History-fil for ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'Nedlastingen av N1MMs Call History for ${stem} virket ikke. Prøv igjen senere.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Kunne ikke behandle ${name}',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'Nedlastingen hadde bare ${imported} av de ${existing} postene på denne enheten, så de som manglet, ble beholdt. Oppdater den i Innstillinger › Offlinedata for å godta den likevel.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Importerte ${count} post for ${label}.', other: 'Importerte ${count} poster for ${label}.', ), 
@@ -5426,14 +7011,20 @@ extension on TranslationsNb {
 			'extensionService.validationError' => ({required Object error}) => 'Valideringsfeil: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Handlingen mislyktes: ${error}',
 			'extensionService.commandFailed' => 'Kommandoen kunne ikke kjøres',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} kan ikke endre innstillinger: den ba ikke om det ved installasjon',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} kan ikke styre radioen: den ba ikke om det ved installasjon',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} kan ikke kjøre det: det er en av appens egne utviklerkommandoer',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Rapporter kan ikke sendes akkurat nå',
 			'extensionService.stashUnavailable' => 'Ham2K File Stash kan ikke nås akkurat nå',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} svarte ikke på aktivitetssøket, så noen resultater kan mangle.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Noen aktivitetsutvidelser svarte ikke på søket, så noen resultater kan mangle.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} brukte for mye tid i tidtakerne sine. De er stoppet til utvidelsene starter på nytt.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'Tidtakerne til ${name} feilet gang på gang. De er stoppet til utvidelsene starter på nytt.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} ble sittende fast i en tidtaker. Tidtakerne er stoppet til utvidelsene starter på nytt.',
 			'operationLocationScreen.title' => 'Plassering',
 			'operationLocationScreen.selectedLocation' => 'Valgt plassering',
-			'operationLocationScreen.gridSquare' => 'Maidenhead-lokator',
+			'operationLocationScreen.gridSquare' => 'Maidenhead-rute (lokator)',
 			'operationLocationScreen.gridInvalid' => 'Trenger 4, 6, 8 eller 10 tegn, som FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Foreslåtte plasseringer',
 			'operationLocationScreen.deviceGps' => 'Enhetens GPS',
@@ -5492,6 +7083,8 @@ extension on TranslationsNb {
 			'switchAccounts.linkWithSiblingDescription' => 'Du har en annen Ham2K-app installert. Koble til kontoen som brukes der.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Godkjenn forespørselen i ${app}, og kom så tilbake hit.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Åpne ${app} igjen',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Virket det ikke? Åpne den igjen, eller gå tilbake og koble til på en annen måte.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kunne ikke åpne ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Lenken utløp, og en ny er klar — åpne ${app} igjen.',
@@ -5521,6 +7114,17 @@ extension on TranslationsNb {
 			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO', other: '${count} QSOer', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
+			'qsonImport.title' => 'Importer QSON-operasjon',
+			'qsonImport.description' => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.',
+			'qsonImport.dropHint' => 'Slipp en QSON-fil her for å importere den som en ny operasjon',
+			'qsonImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} er ikke UTF-8-tekst, så det er ikke en QSON-fil',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} inneholder ingen QSON-operasjon',
+			'qsonImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
+			'qsonImport.oneFileOnly' => 'Slipp én QSON-fil om gangen — hver av dem åpnes som sin egen operasjon.',
 			'adifImport.title' => 'Importer QSOer fra ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leser ${filename}…',
 			'adifImport.dropHint' => 'Slipp en ADIF-fil her for å importere',
@@ -5549,12 +7153,14 @@ extension on TranslationsNb {
 			'adifImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
 			'adifImport.oneFileOnly' => 'Slipp én ADIF-fil om gangen — rekkefølgen filene importeres i, avgjør hvilke data som vinner.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.',
+			'adifImport.importAnyway' => 'Importer likevel',
 			'offline.statusOffline' => 'Internett: FRAKOBLET',
 			'offline.statusOnline' => 'Internett: tilkoblet',
 			'offline.noRoute' => 'Ingen nettverkstilkobling i det hele tatt.',
 			'offline.unreachable' => 'Nettverket er oppe, men ingen server svarer — ofte et tegn på at en innloggingsside venter i en nettleser.',
 			'offline.reachable' => 'Alle tjenester svarer som forventet.',
-			'offline.whatStops' => 'Oppslag, spots og datafiler er satt på pause. Logging og synkronisering i nærheten er det ikke.',
+			'offline.whatStops' => 'Oppslag, spotter og datafiler er satt på pause. Logging og synkronisering i nærheten er det ikke.',
 			'offline.servicesTitle' => 'Tjenester',
 			'offline.noServices' => 'Ingen tjeneste har rapportert inn ennå.',
 			'offline.lastSuccess' => ({required Object when}) => 'Svarte sist for ${when} siden',
@@ -5578,8 +7184,8 @@ extension on TranslationsNb {
 			'exportSettings.retry' => 'Prøv igjen',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Kompakte filnavn, som N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Beskrivende filnavn, som 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'Tar med navn, adresser, e-poster, notater og nøyaktige posisjoner i ADIF-filer.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'Utelater navn, adresser, e-poster og notater; begrenser posisjoner til grid med seks tegn.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Tar med navn, adresser, e-poster, notater og nøyaktige plasseringer i ADIF-filer.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Utelater navn, adresser, e-poster og notater; begrenser plasseringer til rutenett med seks tegn.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Tar med informasjon fra tjenester for kallesignaloppslag.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Utelater informasjon fra tjenester for kallesignaloppslag; beholder manuelt inntastede verdier.',
 			'exportSettings.customTemplatesDescriptionOn' => 'De egendefinerte malene dine er aktive og kan redigeres nedenfor.',

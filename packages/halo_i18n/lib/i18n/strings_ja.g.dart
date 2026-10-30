@@ -60,6 +60,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$ja settings = _Translations$settings$ja._(_root);
 	@override late final _Translations$commands$ja commands = _Translations$commands$ja._(_root);
 	@override late final _Translations$commandDialog$ja commandDialog = _Translations$commandDialog$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$ja keyboardShortcuts = _Translations$keyboardShortcuts$ja._(_root);
 	@override late final _Translations$expiredBuild$ja expiredBuild = _Translations$expiredBuild$ja._(_root);
 	@override late final _Translations$staleness$ja staleness = _Translations$staleness$ja._(_root);
 	@override late final _Translations$spotting$ja spotting = _Translations$spotting$ja._(_root);
@@ -73,6 +74,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$ja deepLink = _Translations$deepLink$ja._(_root);
 	@override late final _Translations$confirmDevice$ja confirmDevice = _Translations$confirmDevice$ja._(_root);
 	@override late final _Translations$switchAccounts$ja switchAccounts = _Translations$switchAccounts$ja._(_root);
+	@override late final _Translations$qsonImport$ja qsonImport = _Translations$qsonImport$ja._(_root);
 	@override late final _Translations$adifImport$ja adifImport = _Translations$adifImport$ja._(_root);
 	@override late final _Translations$offline$ja offline = _Translations$offline$ja._(_root);
 	@override late final _Translations$exportSettings$ja exportSettings = _Translations$exportSettings$ja._(_root);
@@ -97,6 +99,7 @@ class _Translations$common$ja extends Translations$common$en {
 	@override String get callsign => 'コールサイン';
 	@override String get clear => 'クリア';
 	@override String get dismiss => '閉じる';
+	@override String get copyDetails => '詳細をコピー';
 	@override String get expand => '展開';
 	@override String get collapse => '折りたたむ';
 }
@@ -133,6 +136,12 @@ class _Translations$onboarding$ja extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'クラウド同期';
+	@override String get syncBody => 'Ham2K Log Filerはログのバックアップをクラウドに保存し、Ham2Kアプリを使っているすべてのデバイス間で同期します。';
+	@override String get syncPricing => '無料です！有料サブスクリプションにすると、さらに高速になります。';
+	@override String get syncLabel => 'クラウド同期を有効にする';
+	@override String get syncOffWarning => '警告：デバイスの故障や紛失などでオペレーションデータを失う可能性が高くなります。';
+	@override String get notNow => '今はしない';
 	@override String get consentTitle => 'データとプライバシー';
 	@override String get consentUsageBody => 'アプリの改善に役立てるため、パフォーマンス、クラッシュ、アプリ使用状況のデータを収集させてください。';
 	@override String get consentUsageLabel => 'アプリ使用データを共有';
@@ -160,7 +169,7 @@ class _Translations$testerOverlay$ja extends Translations$testerOverlay$en {
 	// Translations
 	@override String get tape => '注意：工事中';
 	@override String get warningTitle => 'このアプリは開発中です';
-	@override String get warningBody => 'ほとんどの機能は路面が不安定で、あちこちに段差があります。定期的に更新を確認してください。';
+	@override String get warningBody => 'ほとんどの機能はまだ路面が凸凹で、あちこちに段差があります。定期的にアップデートを確認してください。';
 	@override String whatsNew({required Object build}) => 'ビルド${build}の新機能';
 	@override String get thanks => 'このアプリの改善のために、ご自身のログを危険にさらしてくださりありがとうございます！';
 }
@@ -173,6 +182,7 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'アクティビティ';
+	@override String get categoryAward => 'アワード';
 	@override String get categoryContest => 'コンテスト';
 	@override String get categoryLookup => 'コールサイン検索';
 	@override String get categorySpots => 'スポットソース';
@@ -183,13 +193,23 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String get noMatches => '検索に一致する拡張機能はありません';
 	@override String get installFromFile => 'ファイルからインストール…';
 	@override String installVersion({required Object version}) => 'バージョン ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => 'スクリーンショット ${n}/${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => '前のスクリーンショット';
+	@override String get nextScreenshot => '次のスクリーンショット';
+	@override String get screenshotUnavailable => 'スクリーンショットを表示できません';
 	@override String get canReach => 'この拡張機能がアクセスできるもの';
 	@override String canHoldConnection({required Object host}) => '${host}（常時接続）';
 	@override String get canHoldLocalConnection => 'ローカルネットワーク上のデバイス（常時接続）';
 	@override String get canUseLocation => 'あなたの位置情報';
 	@override String get canReadRadio => '無線機（周波数とモードの読み取り）';
 	@override String get canControlRadio => '無線機（制御と送信：チューニング、出力、CW、ボイスメモリー、PTT）';
-	@override String get canSetUserAgent => '独自の名前でサーバーに名乗る';
+	@override String get canCommandRadioRaw => '無線機（固有プロトコルでの任意のコマンド送信。送信や設定変更を行うものも含む）';
+	@override String get canReadCluster => 'DXクラスター（あなたとしてログインし、受信内容の読み取り）';
+	@override String get canSpotCluster => 'DXクラスター（あなたとしてログインし、あなたの名前でのスポット投稿）';
+	@override String get canCommandCluster => 'DXクラスター（あなたとしてログインし、あなたの名前での任意のコマンド送信）';
+	@override String get canSetUserAgent => 'サーバーに対して独自の名前を名乗る';
+	@override String get canChangeSettings => '設定（コマンドによる変更：あらゆる設定、開発者モード、実験）';
 	@override String get noCapabilities => 'アプリ外へのアクセスは一切要求しません。';
 	@override String get sandboxNote => '拡張機能はサンドボックス内で動作します。ファイルにはアクセスできず、ここに記載されたもの以外のネットワークにも接続できません。';
 	@override String get installAction => 'インストール';
@@ -212,7 +232,7 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String get dropHint => '.h2kext拡張機能をドロップしてインストール';
 	@override String get dropOneOnly => '拡張機能は1つずつドロップしてください。';
 	@override String downloadFailed({required Object source, required Object status}) => 'その拡張機能について${source}が${status}を返しました。';
-	@override String get downloadTooLarge => 'ダウンロードが大きすぎるため、拡張機能ではありません。';
+	@override String get downloadTooLarge => 'そのダウンロードは拡張機能としては大きすぎます。';
 	@override String get downloadNotSecure => 'ダウンロードが安全でない場所にリダイレクトされました。';
 	@override String get catalogSection => 'カタログ';
 	@override String get catalogLoading => 'カタログを読み込み中…';
@@ -236,31 +256,39 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String get upgradeDoneBody => '拡張機能はHam2K拡張機能カタログから提供されるようになったため、アプリの新バージョンを待たずにアップデートできます。';
 	@override String upgradeDoneUnserved({required Object names}) => 'アップグレードされなかったもの：${names}。';
 	@override String upgradeDoneRefused({required Object names}) => '動作しなかったもの：${names}。';
-	@override String get upgradeDoneRefusedHint => 'これらはインストールされたまま、設定 › 拡張機能 で印が付いています。そこでアップデートすると復活します。';
+	@override String get upgradeDoneRefusedHint => 'これらはインストールされたままで、設定 › 拡張機能に印が付いています。そこでアップデートすると復活します。';
 	@override String get upgradeDoneUnservedHint => 'カタログにはこれらの直接の後継がありません。使っていた機能をカバーする拡張機能をカタログで探してください。';
 	@override String get retiredQp => 'QSOパーティー';
 	@override String get retiredStateparks => '州立公園イベント';
 	@override String upgradeDoneMissing({required Object count}) => '${count}件の拡張機能がまだ届いていません。次に拡張機能カタログに接続できたときにダウンロードされます。';
 	@override String get runtimeDeadBody => '拡張機能が起動しませんでした。アプリを再起動すると復活するはずです。';
 	@override String get refusedTitle => '一部の拡張機能が動作しませんでした';
-	@override String get upgradeBusyTitle => 'セットアップ中';
+	@override String get upgradeBusyTitle => 'まだセットアップ中です';
 	@override String get upgradeRuntimeDeadTitle => '拡張機能が動作していません';
 	@override String get restoreTitle => '一部の拡張機能が見つかりません';
 	@override String get restoreBody => 'インストールしたこれらの拡張機能がこのデバイスにありません。Ham2K拡張機能カタログから再ダウンロードできます：';
-	@override String get restoreFromFile => 'ファイルからインストールしたもの。ファイルから再インストールするか、忘れてください：';
+	@override String get restoreFromFile => 'ファイルからインストールしたもの。ファイルから再インストールするか、登録を解除してください：';
 	@override String get restoreOtherCatalog => '別の拡張機能カタログからインストールしたため、ここでは利用できません：';
-	@override String get restoreForget => '忘れる';
+	@override String get restoreForget => '登録解除';
 	@override String get restoreInstall => 'インストール';
 	@override String get restoreLater => '後で';
 	@override String get restoreInstalling => '拡張機能をインストール中…';
 	@override String get restoreDoneTitle => '拡張機能が戻りました';
-	@override String restoreDoneBody({required Object names}) => '再インストール：${names}。';
+	@override String restoreDoneBody({required Object names}) => '再インストールしました：${names}。';
 	@override String get restorePartialTitle => '一部の拡張機能をインストールできませんでした';
 	@override String restoreFailed({required Object names}) => 'インストールできませんでした：${names}。次回アプリを開いたときに再度提案します。';
 	@override String get restoreBusyBody => 'アプリは拡張機能をセットアップ中です。次回アプリを開いたときに再度提案します。';
 	@override String get restoreRuntimeDeadBody => '再インストールしましたが、拡張機能が起動しませんでした。アプリを再起動すると復活するはずです。';
 	@override String revokedTitle({required Object name}) => '${name}は取り下げられました';
 	@override String get revokedBody => 'カタログがこのバージョンを取り下げたため、無効化されました。';
+	@override String forceDisabledTitle({required Object name}) => '${name}は無効化されました';
+	@override String get forceDisabledBody => 'Ham2Kがこの拡張機能を当面のあいだ無効化しました。';
+	@override String replacedTitle({required Object name}) => '${name}は置き換えられました';
+	@override String replacedBody({required Object replacement}) => '代わりに${replacement}が提供されています。拡張機能画面で切り替えられます。';
+	@override String replacedBy({required Object name}) => '${name}に置き換えられました';
+	@override String replacedByInstalled({required Object name}) => 'すでにお持ちの${name}に置き換えられました';
+	@override String get replaceAction => '置き換える';
+	@override String replaceInstalledBody({required Object replacement}) => '設定はすでにお持ちの${replacement}に引き継がれます。ログはそのまま残ります。';
 	@override String get downloadHashMismatch => 'ダウンロードした内容がカタログに記載された拡張機能と一致しません。';
 	@override String catalogVersionUnknown({required Object key, required Object version}) => 'カタログに${key}のバージョン${version}はありません。';
 	@override String get catalogLinkUnknown => 'そのカタログリンクは拡張機能のバージョンを示していません。';
@@ -274,22 +302,25 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => 'ブリーディングエッジ版、不安定版、安定版のリリースを受け取ります';
 	@override String get followStableAction => '安定版リリースのみ受け取る';
 	@override String get revokedBadge => '取り下げ済み';
+	@override String get forceDisabledBadge => 'Ham2Kにより無効化';
 	@override String get refusedBadge => '読み込み失敗';
 	@override String get downloadNotHttps => 'そのダウンロードは安全な接続ではありません。';
 	@override String downloadUnreachable({required Object source}) => 'その拡張機能について${source}に接続できませんでした。';
 	@override String get detailsAction => '詳細';
 	@override String get installedFromFile => 'ファイルからインストール済み';
-	@override String get detailsWhatItDoes => '対応内容';
-	@override String get installedPreloaded => 'プリインストール';
-	@override String get hookAccount => 'アカウントのサインイン';
+	@override String get detailsWhatItDoes => '提供する機能';
+	@override String get installedPreloaded => 'プリインストール済み';
+	@override String get hookAccount => 'アカウントのログイン';
 	@override String get hookCallNotes => 'コールサインノート';
 	@override String get hookDataFile => 'オフラインデータ';
 	@override String get hookExport => 'エクスポート';
 	@override String get hookLookup => 'コールサイン検索';
-	@override String get hookScoring => 'スコア計算';
+	@override String get hookScoring => 'スコア';
 	@override String get hookSpots => 'スポット';
 	@override String hookHunting({required Object program}) => '${program}のハンティング';
 	@override String hookActivating({required Object program}) => '${program}のアクティベーション';
+	@override String get suggestedSection => 'おすすめ';
+	@override String moreAvailableSection({required Object count}) => '他にも${count}件';
 }
 
 // Path: home
@@ -320,7 +351,7 @@ class _Translations$chase$ja extends Translations$chase$en {
 	// Translations
 	@override String get operatorPrefix => 'op';
 	@override String get chasing => 'チェイス中';
-	@override String goalsTwo({required Object first, required Object second}) => '${first}・${second}';
+	@override String goalsTwo({required Object first, required Object second}) => '${first}と${second}';
 	@override String goalsMore({required Object first, required Object second}) => '${first}、${second}など';
 	@override late final _Translations$chase$station$ja station = _Translations$chase$station$ja._(_root);
 	@override late final _Translations$chase$periodInline$ja periodInline = _Translations$chase$periodInline$ja._(_root);
@@ -328,6 +359,11 @@ class _Translations$chase$ja extends Translations$chase$en {
 	@override late final _Translations$chase$period$ja period = _Translations$chase$period$ja._(_root);
 	@override late final _Translations$chase$goals$ja goals = _Translations$chase$goals$ja._(_root);
 	@override late final _Translations$chase$panels$ja panels = _Translations$chase$panels$ja._(_root);
+	@override late final _Translations$chase$claims$ja claims = _Translations$chase$claims$ja._(_root);
+	@override late final _Translations$chase$notice$ja notice = _Translations$chase$notice$ja._(_root);
+	@override late final _Translations$chase$alerts$ja alerts = _Translations$chase$alerts$ja._(_root);
+	@override String get checklists => 'チェイスの進捗';
+	@override late final _Translations$chase$imports$ja imports = _Translations$chase$imports$ja._(_root);
 }
 
 // Path: dialogs
@@ -340,7 +376,15 @@ class _Translations$dialogs$ja extends Translations$dialogs$en {
 	@override String get operationDetails => 'オペレーション詳細';
 	@override String get activities => 'アクティビティ';
 	@override String get stationCallsign => 'ステーションコールサイン';
-	@override String get notes => 'ノート';
+	@override String get advanced => '詳細設定';
+	@override String get operatingPosition => '運用ポジション（マルチステーション）';
+	@override String get assistance => 'アシスタンス';
+	@override String get assistanceDescription => 'スポットサービスなどの情報源を利用する';
+	@override String get selfSpotting => 'セルフスポッティング';
+	@override String get selfSpottingDescription => '自局の周波数情報を報告する機能を許可する';
+	@override String disabledByRules({required Object rules}) => '${rules}のルールに従うため無効';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$ja lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$ja._(_root);
+	@override String get notes => 'メモ';
 	@override String get deleteOperationTitle => 'オペレーションを削除';
 	@override String get purgeTestsTitle => 'テストオペレーションを完全削除';
 	@override String get purgeTestsBody => 'これらのテストオペレーションとそのQSOを完全に削除します。元に戻せません。';
@@ -352,8 +396,8 @@ class _Translations$dialogs$ja extends Translations$dialogs$en {
 	@override String get syncAllTitle => 'このデバイスのログを置き換えますか？';
 	@override String syncAllBody({required Object qsos}) => 'SYNCALLはこのデバイスの${qsos}をバックアップしてから消去し、アカウントのログをサーバーから再ダウンロードします。バックアップはこのデバイスのデータベースに残ります。';
 	@override String syncAllUnsynced({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${n}件のQSOがまだ同期されていません。サーバーは受信していないため、元に戻りません。',
-		other: '${n}件のQSOがまだ同期されていません。サーバーは受信していないため、元に戻りません。',
+		one: '${n}件のQSOはまだ同期されていません。サーバーには届いていないため、復元されません。',
+		other: '${n}件のQSOはまだ同期されていません。サーバーには届いていないため、復元されません。',
 	);
 	@override String get syncAllAction => '消去して再同期';
 	@override String get receivedPurgesTitle => '他のデバイスで削除されたテストオペレーション';
@@ -412,6 +456,7 @@ class _Translations$map$ja extends Translations$map$en {
 	@override String get globe => '地球儀';
 	@override String get zoomIn => '拡大';
 	@override String get zoomOut => '縮小';
+	@override String get resetNorth => '北を上にリセット';
 	@override late final _Translations$map$postcard$ja postcard = _Translations$map$postcard$ja._(_root);
 }
 
@@ -427,16 +472,16 @@ class _Translations$mapsView$ja extends Translations$mapsView$en {
 	@override String get activities => 'アクティビティ';
 	@override String get layers => 'レイヤー';
 	@override String get baseMap => 'ベースマップ';
-	@override String get satellite => '衛星写真 (Esri)';
+	@override String get satellite => '衛星写真（Esri）';
 	@override String get facilities => '公園の施設';
 	@override String get boundaries => '行政境界';
 	@override String get currentLocation => '現在地';
 	@override String noMatches({required Object text}) => '「${text}」に一致するものはありません';
 	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${where} の参照コード ${count} 件',
-		other: '${where} の参照コード ${count} 件',
+		one: '${where}のリファレンス${count}件',
+		other: '${where}のリファレンス${count}件',
 	);
-	@override String get startOperation => 'これらの参照コードでオペレーションを開始';
+	@override String get startOperation => 'これらのリファレンスでオペレーションを開始';
 }
 
 // Path: activitiesView
@@ -457,28 +502,28 @@ class _Translations$activitiesView$ja extends Translations$activitiesView$en {
 	@override String get manageExtensions => '拡張機能を管理';
 	@override String get manage => '管理';
 	@override String activitiesTitle1({required Object first}) => 'アクティビティの種類：${first}';
-	@override String activitiesTitle2({required Object first, required Object second}) => 'アクティビティの種類：${first}、${second}';
+	@override String activitiesTitle2({required Object first, required Object second}) => 'アクティビティの種類：${first}と${second}';
 	@override String activitiesTitleMore({required Object first, required Object second, required Object more}) => 'アクティビティの種類：${first}、${second}、他${more}件';
-	@override String get reference => '参照コード';
+	@override String get reference => 'リファレンス';
 	@override String get invalidReference => '無効';
 	@override String get duplicateReference => '追加済み';
-	@override String get searchHint => '名前、参照コードなどで検索…';
+	@override String get searchHint => '名前、リファレンスなどで検索…';
 	@override String get noSuggestions => '一致なし';
-	@override String get noSuggestionsHint => '上で参照名または番号を検索してください';
+	@override String get noSuggestionsHint => '上でリファレンスの名前または番号を検索してください';
 	@override String get noSuggestionsExample => '（例：「trail」や「4556」）';
 	@override String get allOptions => 'アクティビティの種類';
-	@override String get determiningLocation => '現在地を特定しています…\n近くの参照コードを探すためにGPSの測位を待っています';
+	@override String get determiningLocation => '現在地を特定しています…\n近くのリファレンスを探すためにGPSの測位を待っています';
 	@override String get locationUnavailableTitle => '位置情報を利用できません';
 	@override String get locationDeniedTitle => '位置情報の許可が拒否されました';
 	@override String get locationBlockedTitle => '位置情報の許可がブロックされています';
-	@override String get noNearbyReason => '近くの参照コードを特定できません';
-	@override String locationManualHint({required Object icon}) => '${icon}をタップして手動で位置を入力するか、\n名前で参照コードを検索してください';
+	@override String get noNearbyReason => '近くのリファレンスを特定できません';
+	@override String locationManualHint({required Object icon}) => '${icon}をタップして手動で位置を入力するか、\n名前でリファレンスを検索してください';
 	@override String get locationGrantAction => '位置情報へのアクセスを許可';
 	@override String get locationSettingsAction => '設定を開く';
 	@override String get locationSettingsUnavailable => 'システム設定で位置情報へのアクセスを許可してください';
 	@override String get locationGrantRefused => '位置情報がまだありません。システムに再び拒否されました';
 	@override String get searchUnavailableTitle => 'アクティビティ検索を利用できません';
-	@override String get searchUnavailableReason => '検索を実行できるアクティビティ拡張機能がありませんでした。しばらくしてから再試行してください。';
+	@override String get searchUnavailableReason => 'アクティビティ拡張機能が検索に応答できませんでした。しばらくしてから再試行してください。';
 	@override String get emptySheet => '下の候補と検索から追加してください';
 	@override String get exports => 'エクスポート';
 	@override String get exportLogs => 'ログをエクスポート';
@@ -492,12 +537,12 @@ class _Translations$activitiesView$ja extends Translations$activitiesView$en {
 	@override String get alreadySelected => '選択済み';
 	@override String get selected => '選択中';
 	@override String pickPosition({required Object index, required Object count}) => '${index} / ${count}';
-	@override String get previousPick => '前の一致';
-	@override String get nextPick => '次の一致';
+	@override String get previousPick => '前の候補';
+	@override String get nextPick => '次の候補';
 	@override String get retiredReference => '廃止';
 	@override String enableExtension({required Object name}) => '${name}を有効化';
 	@override String get enableExtensionHint => 'この拡張機能は検索に一致しますが、現在有効になっていません';
-	@override String get enableExtensionForRefHint => 'この拡張機能はこのオペレーションの参照コードの1つを扱いますが、現在有効になっていません';
+	@override String get enableExtensionForRefHint => 'この拡張機能はこのオペレーションのリファレンスの1つを扱いますが、現在有効になっていません';
 	@override String extensionNotRunning({required Object name}) => '${name}は動作していません';
 	@override String get extensionNotRunningHint => 'この拡張機能は無効化されています。詳細は拡張機能の設定を開いてください';
 	@override String installExtension({required Object name}) => '${name}をインストール';
@@ -505,7 +550,7 @@ class _Translations$activitiesView$ja extends Translations$activitiesView$en {
 	@override String get onlyCatalogMatches => '一致なし\nカタログの一部の拡張機能に結果があるかもしれません。\n下のアクティビティの種類からインストールしてください。';
 	@override String get setupUnavailable => 'このアクティビティの設定を読み込めませんでした。管理から再試行してください';
 	@override String get controlsUnavailableTitle => 'アクティビティの操作を利用できません';
-	@override String get controlsUnavailableReason => '参照コードは安全ですが、現在編集できません。';
+	@override String get controlsUnavailableReason => 'リファレンスは安全ですが、現在編集できません。';
 	@override String get controlsUnavailableRetry => '再試行';
 	@override String get onlyDisabledMatches => '一致なし\n利用可能な一部の拡張機能に結果があるかもしれません。\n下のアクティビティの種類で有効にしてください。';
 	@override String get onlyNotRunningMatches => '一致なし\n結果があるかもしれない一部の拡張機能が動作していません。\n下のアクティビティの種類を確認してください。';
@@ -528,10 +573,17 @@ class _Translations$loggingControls$ja extends Translations$loggingControls$en {
 	@override String get timeUtc => '時刻（UTC）';
 	@override String get date => '日付';
 	@override String get now => '現在';
+	@override String get manualTimeSettings => '手動時刻';
+	@override String get manualTimeIncrement => 'QSOごとの増分';
+	@override String get manualTimeIncrementNone => 'なし';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${count}分',
+		other: '${count}分',
+	);
 	@override String get frequency => '周波数';
 	@override String get mode => 'モード';
 	@override String get theirCall => '相手のコール';
-	@override String get noteField => 'ノート';
+	@override String get noteField => 'メモ';
 	@override String get todoField => 'To-Do';
 	@override String get sent => '送信';
 	@override String get rcvd => '受信';
@@ -549,9 +601,9 @@ class _Translations$loggingControls$ja extends Translations$loggingControls$en {
 	@override String deletedEventWarning({required Object kind}) => '削除された${kind}';
 	@override String get timeControl => '時刻';
 	@override String get radioControl => '無線機';
-	@override String get powerControl => '出力';
-	@override String get notesControl => 'ノート';
-	@override String get power => '出力';
+	@override String get powerControl => 'パワー';
+	@override String get notesControl => 'メモ';
+	@override String get power => 'パワー';
 	@override String get powerUnit => 'W';
 	@override String get controlSettings => 'ロギング操作';
 	@override String get spottingControl => 'スポッティング';
@@ -560,7 +612,20 @@ class _Translations$loggingControls$ja extends Translations$loggingControls$en {
 	@override String spotOtherAt({required Object call, required Object freq}) => '${call}を${freq}でスポット';
 	@override String spotTooLate({required Object call}) => '${call}のスポットには遅すぎます';
 	@override String get spotNoFreq => '最初に周波数を設定してください';
+	@override String get selfSpotDisabled => 'セルフスポット無効';
 	@override String get spotComment => 'コメント';
+	@override String get spottingAutoControl => '自動再スポット';
+	@override String spotAutoEvery({required Object minutes}) => '${minutes}分ごとに再スポット';
+	@override String spotAutoNext({required Object time}) => '${time}後に自動。停止しますか？';
+	@override String spotAutoInMinutes({required Object minutes}) => '${minutes}分後に自動';
+	@override String spotAutoInSeconds({required Object seconds}) => '${seconds}秒後に自動';
+	@override String spotAutoInCount({required Object seconds}) => '${seconds}後に自動';
+	@override String get spotAutoNotStarted => '自動再スポットを開始できませんでした：スポットが送信されませんでした';
+	@override String get spotAutoMoved => '自動再スポットを開始できませんでした：スポット中に周波数が変わりました';
+	@override String get spotAutoStopped => '自動再スポットを停止しました';
+	@override String get spotAutoLeftFreq => '自動再スポットを停止しました：周波数が変わりました';
+	@override String get spotAutoNoFreq => '自動再スポットを停止しました：無線機から周波数が得られません';
+	@override String get spotBusy => '別のスポットをまだ送信中です';
 	@override String get bandOrFreqRequired => '記録する前に周波数またはバンドを設定してください';
 	@override String get missingBand => 'バンドなし';
 	@override String get missingMode => 'モードなし';
@@ -596,6 +661,7 @@ class _Translations$formChrome$ja extends Translations$formChrome$en {
 	@override String transformationError({required Object error}) => '変換エラー：${error}';
 	@override String actionError({required Object error}) => 'エラー：${error}';
 	@override String get removeItem => '削除';
+	@override String deleteItemTitle({required Object name}) => '${name}を削除しますか？';
 	@override String get storageUnavailable => 'ログイン情報を利用できません';
 }
 
@@ -613,11 +679,11 @@ class _Translations$qsoEditForm$ja extends Translations$qsoEditForm$en {
 	@override String get theirGrid => 'グリッド';
 	@override String get theirState => '州';
 	@override String get band => 'バンド';
-	@override String get notes => 'ノート';
+	@override String get notes => 'メモ';
 	@override String get sectionQso => 'QSO';
 	@override String get sectionTheir => '相手の情報';
 	@override String get sectionOur => '自局の情報';
-	@override String get sectionNotes => 'ノート';
+	@override String get sectionNotes => 'メモ';
 	@override String get theirCity => '都市';
 	@override String get theirCounty => '郡';
 	@override String get theirEntity => 'エンティティ';
@@ -626,7 +692,7 @@ class _Translations$qsoEditForm$ja extends Translations$qsoEditForm$en {
 	@override String get theirArrlSection => 'ARRLセクション';
 	@override String get theirLat => '緯度';
 	@override String get theirLon => '経度';
-	@override String get theirPower => '相手の出力';
+	@override String get theirPower => '相手のパワー';
 }
 
 // Path: qsoList
@@ -641,6 +707,7 @@ class _Translations$qsoList$ja extends Translations$qsoList$en {
 	@override String get today => '今日';
 	@override String get yesterday => '昨日';
 	@override String get tomorrow => '明日';
+	@override late final _Translations$qsoList$find$ja find = _Translations$qsoList$find$ja._(_root);
 }
 
 // Path: loggingPanel
@@ -669,17 +736,17 @@ class _Translations$callInfo$ja extends Translations$callInfo$en {
 	@override String get showImage => '画像を表示';
 	@override String get imageUnavailable => '写真を利用できません';
 	@override String get photo => '写真';
-	@override String get notes => 'ノート';
+	@override String get notes => 'メモ';
 	@override String distanceTo({required Object distance}) => '${distance} →';
 	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance}（${bearing}°）→';
 	@override String distanceBearingsTo({required Object distance, required Object bearing, required Object reverse}) => '${distance}（${bearing}° / ${reverse}°）→';
 	@override String distanceAway({required Object distance}) => '${distance} 離れた所';
 	@override String distanceBearingAway({required Object distance, required Object bearing}) => '${distance}（${bearing}°）離れた所';
 	@override String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => '${distance}（${bearing}° / ${reverse}°）離れた所';
-	@override String get thisOpCountOne => '現在のオペレーションでのQSO数：1 QSO';
-	@override String thisOpCountOther({required Object count}) => '現在のオペレーションでのQSO数：${count} QSO';
-	@override String get otherOpsCountOne => '他のオペレーションでのQSO数：1 QSO';
-	@override String otherOpsCountOther({required Object count}) => '他のオペレーションでのQSO数：${count} QSO';
+	@override String get thisOpCountOne => 'このオペレーションでのQSO：1件';
+	@override String thisOpCountOther({required Object count}) => 'このオペレーションでのQSO：${count}件';
+	@override String get otherOpsCountOne => '他のオペレーションでのQSO：1件';
+	@override String otherOpsCountOther({required Object count}) => '他のオペレーションでのQSO：${count}件';
 	@override String andMore({required Object count}) => '…さらに${count}件';
 	@override String withCall({required Object call}) => '${call}と共に';
 	@override String fromOperation({required Object where}) => '${where}から';
@@ -695,7 +762,7 @@ class _Translations$settings$ja extends Translations$settings$en {
 	// Translations
 	@override String get title => '設定';
 	@override String get language => '言語';
-	@override String languageSystem({required Object language}) => 'システム設定に従う (${language})';
+	@override String languageSystem({required Object language}) => 'システム設定に従う（${language}）';
 	@override late final _Translations$settings$theme$ja theme = _Translations$settings$theme$ja._(_root);
 	@override late final _Translations$settings$themeDescription$ja themeDescription = _Translations$settings$themeDescription$ja._(_root);
 	@override String get fontScale => 'フォントサイズ';
@@ -710,9 +777,12 @@ class _Translations$settings$ja extends Translations$settings$en {
 	@override String get userInterface => 'ユーザーインターフェース';
 	@override late final _Translations$settings$logging$ja logging = _Translations$settings$logging$ja._(_root);
 	@override late final _Translations$settings$catServer$ja catServer = _Translations$settings$catServer$ja._(_root);
+	@override late final _Translations$settings$cluster$ja cluster = _Translations$settings$cluster$ja._(_root);
+	@override late final _Translations$settings$spotting$ja spotting = _Translations$settings$spotting$ja._(_root);
 	@override late final _Translations$settings$radio$ja radio = _Translations$settings$radio$ja._(_root);
 	@override late final _Translations$settings$help$ja help = _Translations$settings$help$ja._(_root);
 	@override late final _Translations$settings$exports$ja exports = _Translations$settings$exports$ja._(_root);
+	@override late final _Translations$settings$extensionSections$ja extensionSections = _Translations$settings$extensionSections$ja._(_root);
 	@override late final _Translations$settings$map$ja map = _Translations$settings$map$ja._(_root);
 	@override late final _Translations$settings$privacy$ja privacy = _Translations$settings$privacy$ja._(_root);
 	@override String get operatorCall => 'オペレーターのコールサイン';
@@ -751,9 +821,14 @@ class _Translations$commands$ja extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name}を有効化しました';
 	@override String experimentDisabled({required Object name}) => '${name}を無効化しました';
 	@override String get sentryTestSent => 'テストのエラーレポートをSentryに送信しました';
+	@override String get idleMetricsEnabled => 'ステータスバーのアイドル指標を有効にしました';
+	@override String get idleMetricsDisabled => 'アイドル指標を無効にしました';
 	@override String get sentryTestLocalOnly => 'このビルドではSentryが無効です。テストエラーはローカルにのみ記録されました';
 	@override String get noOperationOpen => 'このコマンドにはオペレーションを開いている必要があります';
 	@override String unknownSegmentKind({required Object kind}) => '「${kind}」の記録方法が分かりません';
+	@override String goUnavailable({required Object place}) => '${place}はこのアプリでは有効になっていません';
+	@override String goUnknown({required Object to}) => '「${to}」への移動方法が分かりません';
+	@override String get goBlocked => '先に開いているダイアログを閉じてください';
 	@override String get operationAlreadyStarted => 'このオペレーションにはすでに開始マーカーがあります';
 	@override String get couldNotOpenLocation => '休憩を追加しましたが、場所の画面を開けませんでした';
 	@override String get noTestOperations => '完全削除するテストオペレーションはありません';
@@ -795,6 +870,10 @@ class _Translations$commands$ja extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'CW送信中：${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CWメッセージF${n}：${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CWメッセージF${n}は送信されませんでした：拡張機能の準備ができていません';
+	@override String voiceMessageError({required Object n, required Object error}) => '電話メッセージM${n}：${error}';
+	@override String get voiceMessageNotRendered => '拡張機能の準備ができていません';
+	@override String so2rRadioCannotKey({required Object radio}) => '送信されませんでした：Radio ${radio}ではそれをキーイングできません';
+	@override String get so2rNoRadioB => '送信されませんでした：このセットからキーイングするには、ステーション構成でRadio Bを選んでください';
 	@override String settingNotStored({required Object label}) => '「${label}」はその値を受け付けませんでした';
 }
 
@@ -817,6 +896,44 @@ class _Translations$commandDialog$ja extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => '候補';
 	@override String get lookingUp => 'コールサインを検索中…';
 	@override String get blockedByPane => 'パネルやダイアログが開いている間はコマンドを使用できません';
+}
+
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$ja extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'キーボードショートカット';
+	@override String get description => 'キー割り当てをカスタマイズ';
+	@override String get search => 'コマンドとキーを検索';
+	@override String get import => 'インポート…';
+	@override String get export => 'エクスポート…';
+	@override String get resetAll => 'すべてリセット';
+	@override String get resetAllTitle => 'すべてのショートカットをリセットしますか？';
+	@override String get resetAllBody => 'すべてのコマンドがデフォルトのキーに戻り、入力コマンドに割り当てたキーは削除されます。';
+	@override String get reset => 'リセット';
+	@override String get noKey => 'キーなし';
+	@override String get changed => '変更済み';
+	@override String conflict({required Object keys, required Object commands}) => '${keys}は${commands}にも割り当てられています';
+	@override String get groupApp => 'アプリ';
+	@override String get groupKeying => 'キーイング';
+	@override String get groupLogging => 'ロギング';
+	@override String get groupCommands => 'コマンド';
+	@override String get groupFixed => '固定キー';
+	@override String get contextApp => 'どこでも';
+	@override String get contextLogView => 'オペレーション、チェイス、ログの各ビュー';
+	@override String get contextOperation => 'オペレーションビュー（CAT無線機のキーイング）';
+	@override String get contextLogging => 'ロギングパネル内';
+	@override String get addCommand => 'コマンドを追加…';
+	@override String unknownCommand({required Object command}) => '不明なコマンド：${command}';
+	@override late final _Translations$keyboardShortcuts$command$ja command = _Translations$keyboardShortcuts$command$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$ja fixed = _Translations$keyboardShortcuts$fixed$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$ja editor = _Translations$keyboardShortcuts$editor$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$file$ja file = _Translations$keyboardShortcuts$file$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$ja modifier = _Translations$keyboardShortcuts$modifier$ja._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$ja platform = _Translations$keyboardShortcuts$platform$ja._(_root);
 }
 
 // Path: expiredBuild
@@ -857,9 +974,11 @@ class _Translations$spotting$ja extends Translations$spotting$en {
 	@override String get noQsoYet => 'スポットするQSOがまだ記録されていません。';
 	@override String get setFrequencyFirst => '先に周波数を設定してください。';
 	@override String get nothingToSpot => 'スポットできません。ここでスポッティングを提供する拡張機能がありません。';
+	@override String get incompleteCall => '不完全なコールはスポットできません。先にコールサインを完成させてください。';
 	@override String spotFailed({required Object source, required Object message}) => '${source}が失敗しました：${message}';
 	@override String get unknownError => '不明なエラー';
 	@override String get notSent => 'スポットは送信されませんでした。';
+	@override String get allSkipped => 'スポットは送信されませんでした：すべてのスポットソースがスキップしました。';
 	@override String get notRefreshedOffline => '接続がないため、スポットは更新されませんでした';
 }
 
@@ -876,8 +995,10 @@ class _Translations$dataFiles$ja extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'サーバーの応答に時間がかかりすぎました。後で再試行してください。';
 	@override String downloadServerError({required Object host, required Object status}) => '${host}がエラーを返しました（HTTP ${status}）。後で再試行してください。';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host}はこのファイルを提供できませんでした（HTTP ${status}）。アドレスがまだ正しいか確認してください。';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MMには${stem}のコールヒストリーファイルがありません。';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'N1MMの${stem}のコールヒストリーをダウンロードできませんでした。後で再試行してください。';
 	@override String processingFailedTitle({required Object name}) => '${name}を処理できませんでした';
-	@override String importTooSmall({required Object existing, required Object imported}) => 'ダウンロードには、このデバイスにある${existing}件中${imported}件のレコードしかなかったため、含まれていなかったレコードは保持しました。設定 › オフラインデータ で更新すると、それでも受け入れます。';
+	@override String importTooSmall({required Object existing, required Object imported}) => 'ダウンロードには、このデバイスにある${existing}件中${imported}件のレコードしかなかったため、含まれていなかったレコードは保持しました。設定 › オフラインデータで更新すると、それでも受け入れます。';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: '${label}のレコードを${count}件インポートしました。',
 		other: '${label}のレコードを${count}件インポートしました。',
@@ -931,8 +1052,14 @@ class _Translations$extensionService$ja extends Translations$extensionService$en
 	@override String validationError({required Object error}) => '検証エラー：${error}';
 	@override String actionFailed({required Object error}) => '操作に失敗しました：${error}';
 	@override String get commandFailed => 'コマンドを実行できませんでした';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name}は設定を変更できません：インストール時に許可を求めていません';
+	@override String commandMayNotControlRadio({required Object name}) => '${name}は無線機を制御できません：インストール時に許可を求めていません';
+	@override String commandDeveloperOnly({required Object name}) => '${name}はそれを実行できません：アプリ自身の開発者コマンドです';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => '現在、報告を送信できません';
 	@override String get stashUnavailable => '現在、Ham2K File Stashに接続できません';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names}がアクティビティ検索に応答しなかったため、一部の結果が欠けている可能性があります。';
+	@override String get activitySearchSomeSourcesFailed => '一部のアクティビティ拡張機能が検索に応答しなかったため、一部の結果が欠けている可能性があります。';
 	@override String timersSuspendedBudget({required Object name}) => '${name}がタイマーで時間を使いすぎました。拡張機能が再起動するまでタイマーは停止されます。';
 	@override String timersSuspendedFailures({required Object name}) => '${name}のタイマーが失敗し続けました。拡張機能が再起動するまでタイマーは停止されます。';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name}がタイマー内で停止しました。拡張機能が再起動するまでタイマーは停止されます。';
@@ -952,14 +1079,14 @@ class _Translations$operationLocationScreen$ja extends Translations$operationLoc
 	@override String get suggestedLocations => '提案された場所';
 	@override String get deviceGps => 'デバイスGPS';
 	@override String peerGps({required Object device}) => '${device}のGPS';
-	@override String get locating => '検索中…';
+	@override String get locating => '測位中…';
 	@override String get gpsUnavailable => '位置情報を利用できません';
 	@override String get permissionDenied => '位置情報の許可が拒否されました';
 	@override String get permissionBlocked => '位置情報の許可がブロックされています';
 	@override String get moreDetails => '詳細';
 	@override String get stateOrProvince => '州または都道府県（任意）';
 	@override String get controlsUnavailableTitle => 'アクティビティの操作を利用できません';
-	@override String get controlsUnavailableReason => 'これらの参照コードは引き続き使用できます。アクティビティに接続できなかっただけです。';
+	@override String get controlsUnavailableReason => 'これらのリファレンスは引き続き使用できます。アクティビティに接続できなかっただけです。';
 	@override String get controlsUnavailableRetry => '再試行';
 	@override String get county => '郡（任意）';
 }
@@ -1018,7 +1145,7 @@ class _Translations$deepLink$ja extends Translations$deepLink$en {
 	// Translations
 	@override String get needsAnOperation => '先にオペレーションを開始してから、そのコンタクトをもう一度送信してください';
 	@override String get waitingInOperation => 'そのコンタクトはこの画面の後ろのオペレーションで待機しています';
-	@override String unknownActivities({required Object refs}) => 'このデバイスには${refs}のアクティビティがないため、それらの参照コードは省略されました';
+	@override String unknownActivities({required Object refs}) => 'このデバイスには${refs}のアクティビティがないため、それらのリファレンスは省略されました';
 	@override String activitiesUnavailable({required Object refs}) => 'アクティビティに接続できなかったため、${refs}は省略されました。もう一度そのリンクを試してください';
 }
 
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$ja extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$ja extends Translations$qsonImport$en {
+	_Translations$qsonImport$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'QSONオペレーションをインポート';
+	@override String get description => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。';
+	@override String get dropHint => 'QSONファイルをドロップして新しいオペレーションとしてインポート';
+	@override String importing({required Object filename}) => '${filename}をインポート中…';
+	@override String failed({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}';
+	@override String pickerFailed({required Object error}) => 'インポートするファイルを開けませんでした：${error}';
+	@override String notUtf8({required Object filename}) => '${filename}はUTF-8テキストではないため、QSONファイルではありません';
+	@override String notJson({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません';
+	@override String notOperation({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません';
+	@override String get busy => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。';
+	@override String get oneFileOnly => 'QSONファイルは1つずつドロップしてください。それぞれが別のオペレーションとして開きます。';
+}
+
 // Path: adifImport
 class _Translations$adifImport$ja extends Translations$adifImport$en {
 	_Translations$adifImport$ja._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -1136,14 +1283,14 @@ class _Translations$adifImport$ja extends Translations$adifImport$en {
 		other: '${formatted}件は確認が必要です',
 	);
 	@override String missingRefs({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のコンタクトの参照コードを復元できませんでした',
-		other: '${formatted}件のコンタクトの参照コードを復元できませんでした',
+		one: '${count}件のコンタクトのリファレンスを復元できませんでした',
+		other: '${formatted}件のコンタクトのリファレンスを復元できませんでした',
 	);
 	@override String partialRefs({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: '${count}件のコンタクトの${programs}参照コードが不完全な可能性があります',
-		other: '${formatted}件のコンタクトの${programs}参照コードが不完全な可能性があります',
+		one: '${count}件のコンタクトの${programs}リファレンスが不完全な可能性があります',
+		other: '${formatted}件のコンタクトの${programs}リファレンスが不完全な可能性があります',
 	);
-	@override String get stackingTypesUnknown => '統合されたコンタクトで参照コードが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。';
+	@override String get stackingTypesUnknown => '統合されたコンタクトでリファレンスが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。';
 	@override String get nothingToImport => 'このファイルにはインポートできるものがありません';
 	@override String get confirm => 'インポート';
 	@override String importing({required Object filename}) => '${filename}をインポート中…';
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$ja extends Translations$adifImport$en {
 	@override String get busy => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。';
 	@override String get oneFileOnly => 'ADIFファイルは1つずつドロップしてください。インポートの順序によって、どのデータが優先されるかが決まります。';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。';
+	@override String get importAnyway => 'それでもインポート';
 }
 
 // Path: offline
@@ -1177,7 +1326,7 @@ class _Translations$offline$ja extends Translations$offline$en {
 	@override String get statusOffline => 'インターネット：オフライン';
 	@override String get statusOnline => 'インターネット：接続済み';
 	@override String get noRoute => 'ネットワーク接続がまったくありません。';
-	@override String get unreachable => 'ネットワークは接続されていますが、どのサーバーも応答していません。多くの場合、ブラウザでサインインページが待機しています。';
+	@override String get unreachable => 'ネットワークは接続されていますが、どのサーバーも応答していません。多くの場合、ブラウザでログインページが待機しています。';
 	@override String get reachable => 'すべてのサービスが正常に応答しています。';
 	@override String get whatStops => '検索、スポット、データファイルは一時停止中です。ロギングと近くのデバイスとの同期は停止していません。';
 	@override String get servicesTitle => 'サービス';
@@ -1204,22 +1353,22 @@ class _Translations$exportSettings$ja extends Translations$exportSettings$en {
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String get defaultsDescription => 'すべてのエクスポートの基本設定です。参照コードのあるアクティビティとその他のアクティビティで、ファイル名とタイトルのテンプレートを別々に設定できます。エクスポートの種類ごとに、独自のデフォルトまたはカスタム設定を提供できます。';
-	@override String get referenceActivities => '参照コードのあるアクティビティ';
+	@override String get defaultsDescription => 'すべてのエクスポートの基本設定です。リファレンス付きアクティビティとその他のアクティビティで、ファイル名とタイトルのテンプレートを別々に設定できます。エクスポート種別ごとに、独自のデフォルトまたはカスタム設定を提供できます。';
+	@override String get referenceActivities => 'リファレンス付きアクティビティ';
 	@override String get otherActivities => 'その他のアクティビティ';
 	@override String get adifFields => 'ADIFフィールド';
 	@override String get loadFailed => 'エクスポート設定を読み込めませんでした。';
 	@override String get retry => '再試行';
 	@override String get compactFileNamesDescriptionOn => 'コンパクトなファイル名（例：N0CALL@US-1234-20260715.adi）。';
 	@override String get compactFileNamesDescriptionOff => '説明的なファイル名（例：2026-07-15 N0CALL at US-1234.adi）。';
-	@override String get includePrivateDataDescriptionOn => 'ADIFファイルに名前、住所、メール、ノート、正確な位置を含めています。';
-	@override String get includePrivateDataDescriptionOff => '名前、住所、メール、ノートを除外し、位置を6文字のグリッドに制限しています。';
+	@override String get includePrivateDataDescriptionOn => 'ADIFファイルに名前、住所、メール、メモ、正確な位置を含めています。';
+	@override String get includePrivateDataDescriptionOff => '名前、住所、メール、メモを除外し、位置を6文字のグリッドに制限しています。';
 	@override String get includeLookupDataDescriptionOn => 'コールサイン検索サービスからの情報を含めています。';
 	@override String get includeLookupDataDescriptionOff => 'コールサイン検索サービスからの情報を除外し、手動で入力した値は保持しています。';
 	@override String get customTemplatesDescriptionOn => 'カスタムテンプレートが有効で、下で編集できます。';
 	@override String get customTemplatesDescriptionOff => 'デフォルトテンプレートが有効です。カスタムテンプレートは後で使えるよう保持されています。';
 	@override String get type => 'エクスポート種別';
-	@override String get defaults => '既定値';
+	@override String get defaults => 'デフォルト';
 	@override String get includeLookupData => '検索データを含める';
 	@override String get customTemplates => 'カスタムテンプレート';
 	@override String get filenameTemplate => 'ファイル名テンプレート';
@@ -1287,7 +1436,7 @@ class _Translations$home$logs$ja extends Translations$home$logs$en {
 	// Translations
 	@override String get title => 'ログ';
 	@override String get titleFor => 'ログ：';
-	@override String get emptyCallsigns => 'まだQSOが記録されていません';
+	@override String get emptyCallsigns => 'まだQSOがありません';
 	@override String emptyQsos({required Object call}) => '${call}のQSOはありません';
 	@override String get mapNoSelection => 'QSOを選択すると地図に表示されます';
 	@override String get searchHint => 'コールサインまたは名前で検索';
@@ -1298,8 +1447,12 @@ class _Translations$home$logs$ja extends Translations$home$logs$en {
 	@override String get unsavedTitle => '未保存の変更';
 	@override String get unsavedBody => 'このQSOには保存されていない変更があります。';
 	@override String get pendingDeleteBody => 'このQSOは削除予定です。';
-	@override String get editGone => '保存されませんでした：そのQSOはこのログにもうありません。';
+	@override String get editGone => '保存されませんでした：そのQSOはもうこのログにありません。';
 	@override String get discard => '破棄';
+	@override late final _Translations$home$logs$sheet$ja sheet = _Translations$home$logs$sheet$ja._(_root);
+	@override late final _Translations$home$logs$groupBy$ja groupBy = _Translations$home$logs$groupBy$ja._(_root);
+	@override late final _Translations$home$logs$period$ja period = _Translations$home$logs$period$ja._(_root);
+	@override late final _Translations$home$logs$periodTitle$ja periodTitle = _Translations$home$logs$periodTitle$ja._(_root);
 	@override late final _Translations$home$logs$columns$ja columns = _Translations$home$logs$columns$ja._(_root);
 	@override late final _Translations$home$logs$panels$ja panels = _Translations$home$logs$panels$ja._(_root);
 	@override late final _Translations$home$logs$import$ja import = _Translations$home$logs$import$ja._(_root);
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$ja extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'チェイス目標';
 	@override String remove({required Object name}) => '${name}のチェイスをやめる';
-	@override String get extensionsTitle => 'チェイスに対応した拡張機能';
+	@override String get extensionsTitle => 'その他のチェイスプログラム';
 }
 
 // Path: chase.panels
@@ -1384,6 +1537,80 @@ class _Translations$chase$panels$ja extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'オンエア中にスポットされた、チェイスできる局。';
 	@override String get map => '地図';
 	@override String get mapDescription => '期間内のQSOとロギング中の局。';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$ja extends Translations$chase$claims$en {
+	_Translations$chase$claims$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'チェイス対象のQSOを確認中';
+	@override String rebuilding({required Object program}) => '${program}のログを確認中';
+	@override String progress({required Object total, required Object done}) => '${total}件中${done}件のQSO';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$ja extends Translations$chase$notice$en {
+	_Translations$chase$notice$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => '新しい${program}';
+	@override String newRefGuess({required Object program}) => 'おそらく新しい${program}';
+	@override String newBand({required Object program}) => '新しい${program}バンド';
+	@override String newBandGuess({required Object program}) => 'おそらく新しい${program}バンド';
+	@override String newMode({required Object program}) => '新しい${program}モード';
+	@override String newModeGuess({required Object program}) => 'おそらく新しい${program}モード';
+	@override String unconfirmed({required Object program}) => '${program}未確認';
+	@override String programGuess({required Object notice}) => 'おそらく${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$ja extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'アラート';
+	@override String get newRef => '新しいリファレンス';
+	@override String get newBand => '新しいバンド';
+	@override String get newMode => '新しいモード';
+	@override String get unconfirmed => '未確認';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$ja extends Translations$chase$imports$en {
+	_Translations$chase$imports$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => '${label}をインポート';
+	@override String pickTitle({required Object file}) => '${file}のインポート先';
+	@override String get dropHint => 'ファイルをドロップしてチェイスプログラムにインポート';
+	@override String done({required Object file, required Object program, required Object count}) => '${file}から${program}のエントリー${count}件をインポートしました';
+	@override String doneSkipped({required Object file, required Object program, required Object count, required Object skipped}) => '${file}から${program}のエントリー${count}件をインポートしました。読み取れなかった${skipped}件はスキップしました';
+	@override String nothing({required Object file, required Object program}) => '${file}には${program}がインポートできるものがありません';
+	@override String failed({required Object program, required Object file}) => '${program}は${file}を読み取れませんでした';
+	@override String unreadable({required Object program, required Object file, required Object skipped}) => '${program}は${file}の${skipped}件のレコードをどれも読み取れませんでした';
+	@override String noProgram({required Object file}) => '${file}をインポートできるチェイスプログラムはありません';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$ja extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'オンラインで検索しますか？';
+	@override String get body => 'このオペレーションではアシスタンスが無効です。すべてのQSOを検索すると、今回に限りQRZなどのオンラインサービスを使用します。';
+	@override String bodyRules({required Object rules}) => 'このオペレーションでは${rules}のルールに従うためアシスタンスが無効です。すべてのQSOを検索すると、今回に限りQRZなどのオンラインサービスを使用します。';
+	@override String get action => 'オンラインで検索';
 }
 
 // Path: dialogs.callChange
@@ -1424,8 +1651,10 @@ class _Translations$operation$tabs$ja extends Translations$operation$tabs$en {
 	@override String get weather => '天気';
 	@override String get website => 'Webサイト';
 	@override String get remoteScreen => 'リモート画面';
-	@override String get solar => '太陽';
+	@override String get solar => '太陽活動';
 	@override String get radio => '無線機';
+	@override String get rotator => 'ローテーター';
+	@override String get summaries => 'オペレーション概要';
 }
 
 // Path: operation.positions
@@ -1491,12 +1720,20 @@ class _Translations$operation$layout$ja extends Translations$operation$layout$en
 	@override String get paneInherit => 'アプリと同じ';
 	@override String get searchHint => 'パネルを検索';
 	@override String get noPanelsMatch => '検索に一致するパネルはありません。';
-	@override String get nothingToAdd => 'このビューには追加できるパネルがすべてあります';
+	@override String get nothingToAdd => 'このビューにはすでにすべてのパネルがあります';
 	@override String addPanel({required Object panel}) => '${panel}を追加';
 	@override String showPreview({required Object panel}) => '${panel}をプレビュー';
 	@override String missingExtension({required Object name}) => '拡張機能「${name}」が見つかりません';
+	@override String get missingExtensionEnable => '有効にする';
+	@override String get missingExtensionInstall => 'インストール…';
+	@override String get missingExtensionWontRun => 'このバージョンは動作しません。設定 › 拡張機能でアップデートしてください。';
+	@override String get missingExtensionUnavailable => 'このアプリでは利用できません';
+	@override String get missingExtensionNotInCatalog => 'カタログにありません';
+	@override String get missingExtensionCatalogUnreachable => 'カタログに接続できませんでした。再試行';
+	@override String get missingExtensionFailed => 'うまくいきませんでした。再試行';
 	@override String get previewUnavailable => 'このパネルのプレビュー画像を表示できませんでした。';
 	@override String get nestedPaneTitle => 'その他';
+	@override late final _Translations$operation$layout$layouts$ja layouts = _Translations$operation$layout$layouts$ja._(_root);
 	@override String get editLayout => 'レイアウトを編集';
 	@override String get saveLayout => 'レイアウトを保存';
 	@override String get revertLayout => 'レイアウトの変更を破棄';
@@ -1505,6 +1742,15 @@ class _Translations$operation$layout$ja extends Translations$operation$layout$en
 	@override String get layoutUnreadableBody => '保存したレイアウトを読み込めなかったため、デフォルトの配置を表示しています。保持を選ぶまで元のレイアウトは上書きされません。';
 	@override String get layoutUnreadableAction => 'このレイアウトを使用';
 	@override String panelRenderFailed({required Object panel}) => '${panel}を表示できませんでした';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel}を表示できませんでした：${max}文字を超える内容が送られました';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel}を表示できませんでした：アートワークの要素が${max}個を超えています';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel}を表示できませんでした：アートワークのネストが${max}階層を超えています';
+	@override String panelNotArtwork({required Object panel}) => '${panel}を表示できませんでした：アートワークが自己完結していません';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのレイヤーが${max}個を超えています';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのコントロールが${max}個を超えています';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの文字列が${max}文字を超えています';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel}を表示できませんでした：レイアウトのネストが${max}階層を超えています';
 	@override String get panelRenderRetry => '再試行';
 	@override String get panelActionFailed => 'パネルの操作に失敗しました。再試行してください。';
 	@override late final _Translations$operation$layout$panels$ja panels = _Translations$operation$layout$panels$ja._(_root);
@@ -1627,6 +1873,7 @@ class _Translations$operation$spots$ja extends Translations$operation$spots$en {
 		other: '${count}スポット',
 	);
 	@override String spotsCountFiltered({required Object total, required Object count}) => '${total}件中${count}件のスポットを表示';
+	@override String get spotsDisabled => 'このオペレーションではスポットが無効です';
 	@override String ageMinutes({required Object minutes}) => '${minutes}分';
 	@override String get callsOfNote => '注目のコール';
 	@override String get yourSpots => 'あなたのスポット';
@@ -1665,8 +1912,8 @@ class _Translations$operation$import$ja extends Translations$operation$import$en
 	@override String get n1mmProtocolName => 'N1MM+ Contact Broadcast';
 	@override String get n1mmAddressValue => 'すべて（ブロードキャスト）';
 	@override String get wsjtxProtocolName => 'WSJT-X UDPサーバー';
-	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → Broadcast Data タブ → コンタクト情報の "Enable Broadcasts" にチェック。同じコンピューターで実行している場合はIPアドレスを127.0.0.1に、現在のローカルネットワークにブロードキャストする場合は255.255.255.255に設定します。';
-	@override String get helpWsjtxSetup => 'File → Settings → Reporting タブ → UDP Server セクション → "Accept UDP requests" にチェック。同じコンピューターで実行している場合はUDP Serverを127.0.0.1に、または239.239.0.2のようなマルチキャストアドレスに設定し、このアプリの上記の設定でも同じアドレスを使用します。';
+	@override String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → Broadcast Data タブ → コンタクト情報の「Enable Broadcasts」にチェック。同じコンピューターで実行している場合はIPアドレスを127.0.0.1に、現在のローカルネットワークにブロードキャストする場合は255.255.255.255に設定します。';
+	@override String get helpWsjtxSetup => 'File → Settings → Reporting タブ → UDP Server セクション → 「Accept UDP requests」にチェック。同じコンピューターで実行している場合はUDP Serverを127.0.0.1に、または239.239.0.2のようなマルチキャストアドレスに設定し、このアプリの上記の設定でも同じアドレスを使用します。';
 	@override String get listenTitle => '他のアプリからQSOを受信';
 	@override String get listenDescriptionOnN1mm => 'N1MM+から受信中';
 	@override String get listenDescriptionOnWsjtx => 'WSJT-Xから受信中';
@@ -1737,6 +1984,14 @@ class _Translations$map$postcard$ja extends Translations$map$postcard$en {
 	@override String get previousPage => '前のページ';
 	@override String get nextPage => '次のページ';
 	@override String pageOf({required Object page, required Object count}) => '${page} / ${count}ページ';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${count} Q',
+		other: '${count} Q',
+	);
+	@override String get options => 'ポストカードのオプション';
+	@override String get bandLegend => 'バンドの凡例を表示';
+	@override String get grayline => 'グレイラインを表示';
+	@override String get sectionsAndOrder => '概要のセクションと順序';
 	@override String get sectionDays => '日ごと';
 	@override String get reset => 'リセット';
 	@override String failed({required Object error}) => 'ポストカードを作成できませんでした：${error}';
@@ -1781,6 +2036,7 @@ class _Translations$loggingControls$info$ja extends Translations$loggingControls
 	@override String get noticeInvalidMode => 'モード違い';
 	@override String get noticeInvalidBand => 'バンド違い';
 	@override String get noticeInvalidCategory => '交信対象外';
+	@override String get noticeOverTime => '時間外';
 	@override String get noticeWorkedBefore => '交信済み';
 	@override String get noticeNewPark => '新しい公園';
 	@override String get noticeNewSection => '新しいセクション';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$ja extends Translations$loggingControls
 	@override String get noticeMissingExchange => '交換なし';
 	@override String get noticeInvalidExchange => '交換が不正';
 	@override String get noticeUnknownEvent => '不明なイベント';
+	@override String get noticeIncompleteCall => 'コール不完全 — スコア対象外';
 	@override String get noticeOurGrid => '自局グリッドを設定';
 	@override String get noticeRareCounty => 'レアな郡！';
 	@override String get noticeOurLocation => '自局の郡を設定';
 	@override String get noticeShortGrid => 'グリッドが短すぎます';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$ja extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'ログ内を検索（${shortcut}）';
+	@override String get menuItemNoShortcut => 'ログ内を検索';
+	@override String get hint => 'QSO番号またはコールサイン';
+	@override String get noMatches => '一致なし';
+	@override String get noOperationQsos => 'このオペレーションにQSOはありません';
+	@override String get noPeriodQsos => 'この期間にQSOはありません';
+	@override String get outsideQsosOne => 'このオペレーション外のQSO：1件';
+	@override String outsideQsosOther({required Object count}) => 'このオペレーション外のQSO：${count}件';
+	@override String get pastQsosOne => '過去のQSO：1件';
+	@override String pastQsosOther({required Object count}) => '過去のQSO：${count}件';
 }
 
 // Path: callInfo.history
@@ -1801,7 +2077,7 @@ class _Translations$callInfo$history$ja extends Translations$callInfo$history$en
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String last7days({required Object n}) => '${n}件（過去7日間）';
+	@override String last7days({required Object n}) => '過去7日間：${n}件';
 	@override String today({required Object n}) => '今日：${n}件';
 	@override String qsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: '${n} QSO',
@@ -1872,11 +2148,11 @@ class _Translations$settings$layoutDensityOpts$ja extends Translations$settings$
 
 	// Translations
 	@override String get auto => '自動';
-	@override String get densest => '最も密';
-	@override String get dense => '密';
+	@override String get densest => '最高密度';
+	@override String get dense => '高密度';
 	@override String get normal => '標準';
-	@override String get sparse => '疎';
-	@override String get sparsest => '最も疎';
+	@override String get sparse => '低密度';
+	@override String get sparsest => '最低密度';
 }
 
 // Path: settings.distanceUnitsOpts
@@ -1931,6 +2207,11 @@ class _Translations$settings$catServer$ja extends Translations$settings$catServe
 	@override String get openAccess => 'オープンアクセス';
 	@override String get openAccessOn => 'ローカルネットワーク上のどのコンピューターからも接続できます。';
 	@override String get openAccessOff => 'このコンピューター上のアプリのみ接続できます。';
+	@override String get allowTransmit => 'アプリからの送信を許可';
+	@override String allowTransmitOn({required Object minutes}) => 'アプリは無線機のPTTを、一度に最大${minutes}分までキーイングできます。';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'ローカルネットワーク上のどのコンピューターのアプリも、無線機のPTTを一度に最大${minutes}分までキーイングできます。';
+	@override String get allowTransmitOff => 'アプリは無線機をキーイングできません。VOXか、アプリ独自のPTT設定を使ってください。';
+	@override String get allowTransmitUnsupported => 'メインVFOの無線機はHam2K Loggerからキーイングできないため、アプリはこの無線機で送信できません。';
 	@override String get off => 'オフ。';
 	@override String starting({required Object protocol}) => '${protocol}、起動中…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol}：ポート${port}で待ち受け中。接続中のクライアント：${clients}。';
@@ -1939,6 +2220,66 @@ class _Translations$settings$catServer$ja extends Translations$settings$catServe
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：別のプログラム（多くの場合${protocol}自体）が使用中です。そのプログラムを閉じるか、別のポートを選んでください。';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：このコンピューターが許可していません。1024より大きいポートを選んでください。';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$ja extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DXクラスター';
+	@override String get description => '拡張機能がオペレーターとしてログインし、スポットの投稿と読み取りを行うサーバー。';
+	@override String get connect => 'クラスターに接続';
+	@override String get connectOn => '拡張機能は必要なときにクラスターに接続します';
+	@override String get connectOff => '何もクラスターに接続しません';
+	@override String get console => 'コンソールを表示';
+	@override String get consoleDescription => 'クラスターからの受信内容と、コマンドを入力する場所';
+	@override String get consoleTitle => 'クラスターコンソール';
+	@override String get consoleConnect => '接続';
+	@override String get consoleDisconnect => '切断';
+	@override String get consoleCommand => 'コマンド';
+	@override String get consoleEmpty => 'まだ何もありません。接続するか、拡張機能がクラスターを使うのを待ってください。';
+	@override String consoleRetry({required Object command}) => '再送信中：${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => '未送信：${command}（${reason}）';
+	@override String get server => 'クラスターサーバー';
+	@override String get selectServer => 'サーバーを選択';
+	@override String get serverOther => 'その他';
+	@override String serverOtherIncomplete({required Object node}) => 'ホストが未入力のため、スポットは${node}に送られます';
+	@override String get customHost => 'サーバー';
+	@override String get customPort => 'ポート';
+	@override String get password => 'パスワード';
+	@override String get passwordDescription => '必要な場合のみ';
+	@override String passwordStored({required Object node}) => '${node}のパスワードを保存済み';
+	@override String get scrollback => '保持する行数';
+	@override String scrollbackOpt({required Object count}) => '${count}行';
+	@override String get connection => '接続';
+	@override String get statusIdle => '未接続。拡張機能が必要とすると接続します。タップしてテスト。';
+	@override String statusConnecting({required Object node}) => '${node}に接続中…';
+	@override String statusConnected({required Object node, required Object call}) => '${node}に${call}として接続済み。';
+	@override String statusFailed({required Object node, required Object reason}) => '${node}に接続できませんでした：${reason}';
+	@override String get statusUnsupported => 'Web版では利用できません。';
+	@override String get statusOff => 'オフ。使用するには「クラスターに接続」をオンにしてください。';
+	@override late final _Translations$settings$cluster$errors$ja errors = _Translations$settings$cluster$errors$ja._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$ja extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'スポッティング';
+	@override String get respotInterval => '自動再スポットの間隔';
+	@override String minutes({required Object minutes}) => '${minutes}分';
+	@override String get autoRespotByDefault => 'デフォルトで自動再スポット';
+	@override String get autoRespotByDefaultOn => 'スポットを投稿したら自動再スポットを有効にします';
+	@override String get autoRespotByDefaultOff => '自動再スポットの有効化には手動の操作が必要です';
+	@override String get pulseBeforeRespot => '自動再スポット前に点滅';
+	@override String pulseBeforeRespotOn({required Object seconds}) => '各再スポットの${seconds}秒前からスポッティングチップが青く点滅します';
+	@override String get pulseBeforeRespotOff => '自動再スポット前に点滅しません';
 }
 
 // Path: settings.radio
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$ja extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$ja enterSends = _Translations$settings$radio$enterSends$ja._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$ja keyerSpeed = _Translations$settings$radio$keyerSpeed$ja._(_root);
 	@override late final _Translations$settings$radio$cwMessages$ja cwMessages = _Translations$settings$radio$cwMessages$ja._(_root);
+	@override late final _Translations$settings$radio$keyerControl$ja keyerControl = _Translations$settings$radio$keyerControl$ja._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$ja voiceMessages = _Translations$settings$radio$voiceMessages$ja._(_root);
+	@override late final _Translations$settings$radio$voiceWords$ja voiceWords = _Translations$settings$radio$voiceWords$ja._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$ja avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$ja._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$ja zeroBeatRange = _Translations$settings$radio$zeroBeatRange$ja._(_root);
 }
@@ -1980,7 +2323,7 @@ class _Translations$settings$help$ja extends Translations$settings$help$en {
 	@override String get title => 'ヘルプとリソース';
 	@override String get description => 'コミュニティとサポート';
 	@override String get forums => 'Ham2K フォーラム';
-	@override String get forumsDescription => 'ヘルプを見つける, フィードバックを提供する, アイデアを議論する…';
+	@override String get forumsDescription => 'ヘルプを探す、フィードバックを送る、アイデアを語り合う…';
 	@override String get chat => 'Ham2K チャット';
 	@override String get chatDescription => 'オンラインコミュニティのDiscordサーバー';
 	@override String get youtube => 'Ham2K YouTube';
@@ -2003,6 +2346,20 @@ class _Translations$settings$exports$ja extends Translations$settings$exports$en
 	@override String get title => 'エクスポート';
 }
 
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$ja extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'アクティビティ';
+	@override String get hunting => 'ハンティング';
+	@override String get contests => 'コンテスト';
+	@override String get lookups => '検索';
+	@override String get dashboard => 'ダッシュボード';
+}
+
 // Path: settings.map
 class _Translations$settings$map$ja extends Translations$settings$map$en {
 	_Translations$settings$map$ja._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$ja extends Translations$settings$map$en {
 	// Translations
 	@override String get title => '地図';
 	@override late final _Translations$settings$map$style$ja style = _Translations$settings$map$style$ja._(_root);
+	@override late final _Translations$settings$map$showCallsigns$ja showCallsigns = _Translations$settings$map$showCallsigns$ja._(_root);
+	@override late final _Translations$settings$map$showGrayline$ja showGrayline = _Translations$settings$map$showGrayline$ja._(_root);
 	@override late final _Translations$settings$map$styleOpts$ja styleOpts = _Translations$settings$map$styleOpts$ja._(_root);
 }
 
@@ -2060,7 +2419,7 @@ class _Translations$settings$peers$ja extends Translations$settings$peers$en {
 	@override String get pairedDevices => 'リンク済みデバイス';
 	@override String get noPairedDevices => 'リンク済みのデバイスはまだありません。リンクするには、同じネットワーク上の別のデバイスでこれをオンにしてください。';
 	@override String deviceListProblem({required Object error}) => 'リンク済みデバイスを読み取れません：${error}';
-	@override String get nearby => '近く';
+	@override String get nearby => '近くのデバイス';
 	@override String get connected => '接続済み';
 	@override String get viaBluetooth => 'Bluetooth経由';
 	@override String get connecting => '接続中…';
@@ -2071,8 +2430,8 @@ class _Translations$settings$peers$ja extends Translations$settings$peers$en {
 	@override String get allow => '許可';
 	@override String get link => 'リンク';
 	@override String get reject => '拒否';
-	@override String get forget => '忘れる';
-	@override String forgetTitle({required Object name}) => '${name}を忘れますか？';
+	@override String get forget => '登録解除';
+	@override String forgetTitle({required Object name}) => '${name}の登録を解除しますか？';
 	@override String get forgetBody => 'このデバイスとの同期を停止します。後で再び許可でき、記録済みのコンタクトは保持されます。';
 	@override String pairTitle({required Object name}) => '${name}とリンク';
 	@override String get pairBody => 'このデバイスはローカルネットワーク上にあり、接続を求めています。';
@@ -2093,7 +2452,7 @@ class _Translations$settings$peers$ja extends Translations$settings$peers$en {
 	@override String get screenUnsupportedVersion => '画面の共有にはmacOS 12.3以降が必要です。このデバイスでも他のデバイスが共有した画面は表示できます。';
 	@override String get screenNeedsPermission => 'このアプリが画面を共有するには、macOSで画面収録の許可が必要です。';
 	@override String get screenGrantPermission => '許可をリクエスト';
-	@override String get screenRelaunchAfterGranting => 'システム設定の プライバシーとセキュリティ → 画面収録 で許可してから、このアプリを終了して開き直してください。macOSは次回起動時にのみ変更をアプリに伝えます。';
+	@override String get screenRelaunchAfterGranting => 'システム設定の「プライバシーとセキュリティ」→「画面収録」で許可してから、このアプリを終了して開き直してください。macOSは次回起動時にのみ変更をアプリに伝えます。';
 	@override String screenProblem({required Object error}) => '画面共有：${error}';
 	@override String get screenChooseTitle => '共有するものを選択';
 	@override String get screenChooseButton => '共有するものを選択…';
@@ -2175,7 +2534,7 @@ class _Translations$settings$accounts$ja extends Translations$settings$accounts$
 	@override String get none => 'アカウントを持つ有効な拡張機能はありません';
 	@override String get notConfigured => '未設定';
 	@override String get connected => '接続済み';
-	@override String get cancelLogin => 'サインインをキャンセル';
+	@override String get cancelLogin => 'ログインをキャンセル';
 	@override String get openInBrowser => 'ブラウザで開く';
 	@override String loggedInAs({required Object identity}) => '${identity}としてログイン中';
 	@override String get pressSaveToKeep => 'このアカウントの接続を維持するには保存を押してください。';
@@ -2187,7 +2546,7 @@ class _Translations$settings$accounts$ja extends Translations$settings$accounts$
 	@override String saveFailed({required Object error}) => '保存に失敗しました：${error}';
 	@override String loginFailed({required Object error}) => 'ログインに失敗しました：${error}';
 	@override String get lookupFailed => '現在アカウントを利用できません。しばらくしてから再試行してください';
-	@override String get browserLoginTitle => 'Webブラウザでサインインを完了してください';
+	@override String get browserLoginTitle => 'Webブラウザでログインを完了してください';
 	@override String browserLoginSteps({required Object prefix}) => '完了すると、ブラウザは「${prefix}」で始まるリンクを開こうとします。デスクトップにはそれを開くアプリが登録されていない可能性が高いため、そのリンク（アドレスバー、またはブラウザが表示するエラーページから）をコピーしてここに貼り付けてください。';
 	@override String browserLoginNotOpened({required Object prefix}) => 'Ham2K Loggerはブラウザを開けませんでした。下のログインリンクをコピーして自分で開き、その後移動先のリンク（「${prefix}」で始まる）をコピーしてここに貼り付けてください。';
 	@override String get copyLoginLink => 'ログインリンクをコピー';
@@ -2195,10 +2554,10 @@ class _Translations$settings$accounts$ja extends Translations$settings$accounts$
 	@override String get finishLogin => 'ログインを完了';
 	@override String pastedLinkNotARedirect({required Object prefix}) => 'これはログインリンクではありません。「${prefix}」で始まる必要があります。';
 	@override String get pastedLinkWrongLogin => 'そのリンクは別のログイン試行のものです。このページを閉じて、もう一度接続してください。';
-	@override String get pastedLinkNoCode => 'そのリンクにはログインコードがありません。まずサインインを完了してから、移動先のリンクをコピーしてください。';
+	@override String get pastedLinkNoCode => 'そのリンクにはログインコードがありません。まずログインを完了してから、移動先のリンクをコピーしてください。';
 	@override String get pastedLinkMalformed => 'そのリンクは途中で切れているようです。全体をコピーして、もう一度貼り付けてください。';
-	@override String get relayLoginWaiting => 'サインインの完了を待っています。完了すると自動的に続行します。';
-	@override String get loginNoResponse => 'このデバイスはまだサインインの結果を受け取っていません。ブラウザですでに完了した場合は、キャンセルしてもう一度接続してください。';
+	@override String get relayLoginWaiting => 'ログインの完了を待っています。完了すると自動的に続行します。';
+	@override String get loginNoResponse => 'このデバイスはまだログインの結果を受け取っていません。ブラウザですでに完了した場合は、キャンセルしてもう一度接続してください。';
 	@override String get relayLoginNotOpened => 'Ham2K Loggerはブラウザを自動的に開けませんでした。下のボタンでログインページを自分で開いてください。';
 	@override String get relayLoginUnavailable => 'このログインの完了に必要な同期サーバーに接続できませんでした。接続を確認して再試行してください。';
 	@override String get loginIncompleteResponse => 'そのログイン試行は正しく完了しませんでした。もう一度接続してください。';
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'ポート ${n} / ${total}';
 	@override String get serialPortSuggested => '推奨';
 	@override String get serialPortJustNow => '最近接続';
+	@override String get serialPortNoDriver => 'ドライバーなし';
 	@override String get serialDeviceRequest => 'USBデバイスを追加…';
+	@override String get bleDevice => 'Bluetooth LEデバイス';
+	@override String get bleDeviceDescription => '無線機を接続しているシリアルブリッジ。Mode 4のLiNK500MPやBLEシリアルアダプターなど。';
+	@override String get bleScan => 'Bluetooth LEデバイスをスキャン…';
+	@override String get bleScanNoneFound => 'Bluetooth LEデバイスが見つかりません。ブリッジの電源が入っていて、近くにあり、Bluetooth LEモード（LiNK500MPではMode 4）になっているか確認してください。';
+	@override String bleScanFailed({required Object reason}) => 'Bluetooth LEのスキャンを実行できませんでした：${reason}';
+	@override String get bleOff => 'Bluetoothがオフになっています。';
+	@override String get bleDenied => 'Bluetoothの許可が得られていません。システム設定で許可してから、もう一度お試しください。';
+	@override String get bleUnsupported => 'このデバイスにはBluetooth LEがありません。';
+	@override String get bleStarting => 'Bluetoothはまだ起動中です。しばらくしてからお試しください。';
+	@override String get bleConnectFailed => 'Bluetooth LEデバイスに接続できません。電源が入っていて、近くにあり、他のアプリに接続されていないか確認してください。';
+	@override String bleNoSerialService({required Object services}) => 'このBluetooth LEデバイスには、アプリが認識できるシリアルサービスがありません。サービス情報を添えて報告してください：${services}';
 	@override String get baudRate => '速度（ボー）';
 	@override String get baudRateDescription => '無線機のCATメニューと一致させてください。一致しないと、無線機は無意味なデータを返し、エラーは出ません。';
 	@override String get serialRtsHigh => 'RTSをHIGHに保持';
 	@override String get serialRtsHighDescription => 'CAT RTSをオンにしたYaesuなど、応答前にRTSを待つ無線機専用です。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTであり、HIGHに保持すると送信します。';
 	@override String get serialDtrHigh => 'DTRをHIGHに保持';
 	@override String get serialDtrHighDescription => 'FT-817用の一部のRS-232ケーブルなど、DTRから電源を取るCATインターフェース専用です。多くのケーブルではDTRがCWキーイングまたはPTTであり、HIGHに保持すると送信します。';
+	@override String get serialUsbDriver => 'USBチップのドライバー';
+	@override String get serialUsbDriverDescription => '自動ではほとんどのアダプターを認識します。ポート一覧で「ドライバーなし」と表示されるものについてのみチップを選んでください。チップ名はパッケージやUSBデバイス一覧に記載されています。';
+	@override String get serialUsbDriverAuto => '自動';
 	@override String get civAddress => '無線機のCI-Vアドレス';
 	@override String get civAddressDescription => '無線機のCI-Vメニューに表示される16進数。IC-705の出荷時設定はA4です。';
 	@override String get civAddressInvalid => 'CI-Vアドレスは01からFFまでの2桁の16進数です';
@@ -2298,8 +2672,37 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => 'このスライスには無線機上のパンアダプターがありません';
 	@override String spectrumStreamRefused({required Object code}) => '無線機がDAX IQストリームを拒否しました（エラー ${code}）';
 	@override String get spectrumNoUdp => '無線機のスペクトラムデータがこのデバイスに届きません';
+	@override String get spectrumK4Unavailable => 'K4のLANスペクトラムを受信できません。再試行中…';
+	@override String get spectrumK4RemoteUnavailable => 'K4のリモートスペクトラムを受信できません';
 	@override String get spectrumScopeRefused => '無線機がスコープのコマンドを拒否しました';
 	@override String get spectrumOutOfRange => '無線機のスコープが表示可能な範囲外に設定されています';
+	@override String get spectrumBandUnsupported => 'このバンドでは無線機のスコープを表示できません';
+	@override String get spectrumSdrNoRadio => 'リンクした無線機の周波数を待っています…';
+	@override String get spectrumSdrNotConnected => 'SDRが接続されていません';
+	@override String get spectrumSdrNoIf => 'このSDRの設定で無線機のIF周波数を設定してください';
+	@override String get sdrRadio => 'スペクトラムの表示対象';
+	@override String get sdrRadioDescription => 'この無線機のスペクトラム表示は、無線機自身のスコープの代わりにこの受信機から描画されます。';
+	@override String get sdrRadioMain => 'メインの無線機';
+	@override String get sdrTuning => 'アンテナ入力';
+	@override String get sdrTuningDescription => '受信機の信号の入力元。独自のアンテナなら無線機に追従して自ら同調し、無線機のIF出力ならIFに留まります。';
+	@override String get sdrTuningIndependent => '独自のアンテナ';
+	@override String get sdrTuningIfTap => '無線機のIF出力';
+	@override String get sdrIfHz => 'IF周波数（Hz）';
+	@override String get sdrIfHzDescription => 'IF出力の場合のみ：無線機のダイヤル周波数がIF上で位置する周波数。FT-817なら68330000など。';
+	@override String get sdrIfInverted => 'IFが反転している';
+	@override String get sdrGainDb => 'ゲイン（dB）';
+	@override String get sdrGainDbDescription => '空欄なら受信機の自動ゲインを使います。';
+	@override String get sdrOffsetHz => '周波数オフセット（Hz）';
+	@override String get sdrOffsetHzDescription => 'アップコンバーター用に、受信機へ送るすべての周波数に加算されます：Ham It Upなら125000000。';
+	@override String get sdrPpm => '周波数補正（ppm）';
+	@override String get rtlDirectSampling => 'ダイレクトサンプリング';
+	@override String get rtlDirectSamplingDescription => 'アップコンバーターなしのRTL-SDR V3でHFを受信する場合用。RTL-SDR V4はこれなしでHFに対応します。';
+	@override String get rtlDirectSamplingOff => 'オフ';
+	@override String get rtlDirectSamplingI => 'Iブランチ';
+	@override String get rtlDirectSamplingQ => 'Qブランチ';
+	@override String get rtlTcpNotAServer => 'これはrtl_tcpサーバーではありません';
+	@override String get rtlTcpNotes => 'ドングルを接続したコンピューター上で**自分で起動したrtl_tcpサーバー**に接続します。\n\n- **起動**は、他のマシンから接続できるよう `rtl_tcp -a 0.0.0.0` で行います。同じマシン上なら `rtl_tcp` だけで十分です。\n- **ポート**は、`-p` を指定して起動していなければ1234です。\n- **同時に使えるのは1つのプログラムだけ：** rtl_tcpは1つのクライアントにしか対応しません。アプリはスペクトラム表示を出している間だけ接続し、閉じてから数秒後に切断します。\n- **Androidでは**、*SDR driver* アプリがスマートフォン上で同じサーバーを実行します。';
+	@override String get rspTcpNotes => 'RSPを接続したコンピューター上で、SDRplayのAPIをインストールして**自分で起動したrsp_tcpサーバー**に接続します。\n\n- **起動**は `rsp_tcp -a 0.0.0.0` で行います。\n- **ポート**は、`-p` を指定して起動していなければ1234です。\n- **同時に使えるのは1つのプログラムだけ：** サーバーは1つのクライアントしか受け付けません。アプリはスペクトラム表示を出している間だけ接続します。';
 	@override String get n3fjpNoRig => 'N3FJPに無線機インターフェースが設定されていないため、無線機ではなくN3FJPに入力された内容に従います';
 	@override String get winkeyerKeyPort => 'キー出力';
 	@override String get winkeyerKeyPortDescription => 'キーヤーの2つの出力ジャックのうち、無線機を接続している方。';
@@ -2308,6 +2711,11 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get winkeyerPttDescription => 'アンプや、PTTが必要な無線機のために、同じジャックのPTTラインをキーイングします。キージャックでキーイングする無線機ではオフのままにしてください。';
 	@override String get winkeyerNoAnswer => 'このポートでWinKeyerが応答しませんでした';
 	@override String get winkeyerStoppedAnswering => '送信中にWinKeyerが応答しなくなったため、メッセージは破棄されました';
+	@override String get icomControlPort => 'コントロールポート（UDP）';
+	@override String get icomControlPortDescription => '無線機のControl Port（UDP）。ネットワーク設定で変更するか、別のポートに転送していなければ50001です。';
+	@override String get icomSerialPort => 'シリアルポート（UDP）';
+	@override String get icomSerialPortDescription => '無線機のSerial Port（UDP）。ネットワーク設定で変更するか、別のポートに転送していなければ50002です。';
+	@override String get icomPortsDiffer => 'コントロールポートとシリアルポートは異なる値にしてください';
 	@override String get radioUser => '無線機のユーザー名';
 	@override String get radioPass => '無線機のパスワード';
 	@override String get radioLoginDescription => 'WiFiのパスワードではなく、無線機の Network → Remote のログイン情報です。';
@@ -2315,34 +2723,59 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get connectFailedBusy => 'デバイスは使用中です';
 	@override String get connectFailedDenied => 'アクセスが拒否されました';
 	@override String get connectFailedDevice => 'デバイスが見つかりません';
+	@override String get connectFailedUnsupported => 'このUSBアダプターのチップを認識できるドライバーがありません。チップが分かる場合は、詳細設定の「USBチップのドライバー」で選んでください。';
 	@override String get connectFailedLines => 'RTS/DTRを設定どおりに保持できなかったため、ポートを閉じました。別のプログラムがハードウェアハンドシェイクをオンのままにした可能性があります。ケーブルを抜き差ししてください。';
 	@override String get connectFailedNetwork => 'ネットワーク上で無線機が見つかりません。アドレスと、電源が入っていて接続可能かを確認してください。';
+	@override String connectFailedReplyPort({required Object port}) => 'このデバイスのポート${port}はすでに使用中ですが、応答はそこに届きます。そのポートで待ち受けている他のもの（別のPstRotatorノードを含む）を閉じるか、ポートを変更してください。';
 	@override String get connectFailedTimeout => '無線機が時間内に応答しませんでした。電源が入っていて接続可能かを確認してください。';
 	@override late final _Translations$settings$station$models$ja models = _Translations$settings$station$models$ja._(_root);
 	@override late final _Translations$settings$station$transports$ja transports = _Translations$settings$station$transports$ja._(_root);
 	@override String get troubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
-	@override String get ft891Troubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにする必要があります**（FT-891メニュー **05-08**）。オンのままだと、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。Digirig、SignaLink、ほとんどの自作ケーブルではその同じラインがPTTなので、HIGHにすると送信してしまいます。無線機本体のUSBポートを使う場合は、詳細設定の **RTSをHIGHに保持** が代替手段です。\n- **速度を一致させてください**：無線機のCAT RATE（メニュー **05-06**）と同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
+	@override String get ft891Troubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにするか、RTSをHIGHに保持をオンにしてください。** **CAT RTS** がオン（FT-891メニュー **05-08**）だと、無線機はRTSがLOWの間は沈黙します。ポートを開いた直後に一度だけ応答し、その後は何も返さないことがあります。無線機本体のUSBポートを選ぶと、詳細設定の **RTSをHIGHに保持** が自動的にオンになります。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTなので、HIGHに保持すると送信してしまいます。その場合は代わりに無線機側でCAT RTSをOFFにしてください。\n- **速度を一致させてください**：無線機のCAT RATE（メニュー **05-06**）と同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
 	@override String get yaesuBinaryTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
 	@override String get yaesuBinaryTroubleshooting => 'この無線機はYaesuの旧式の5バイトCATを使用し、何か問題があるとまったく応答しません。ほとんどの場合、次のいずれかが原因です：\n\n- **ケーブルでレベル変換が必要です。** 背面のCATジャックはRS-232でもUSBでもなく、CT-62または同等のアダプターが必要です。普通のオーディオケーブルやデータケーブルではCATは動作しません。\n- **速度を一致させてください**：無線機のCAT RATEメニュー（FT-817では **#14**、FT-857やFT-897では **#19**）と同じにします。一致しないと、無線機は何も返さず、エラーも出ません。\n- **このポートでRTSやDTRを決してHIGHにしないでください。** これらの無線機用のほとんどのケーブルでは、それらのラインがPTTとキーイングです。DTRから電源を取る古いインターフェースは例外で、その場合は詳細設定の **DTRをHIGHに保持** をオンにしてください。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのドライバーはYaesuが公開しているCAT仕様表をもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。';
+	@override String get tenTecTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
+	@override String get tenTecEagleTroubleshooting => '- **背面のUSB-BポートがCATリンクです。** 無線機はUSBシリアルポートとして表示されます。WindowsではTen-TecのUSB to UARTドライバーが必要で、デバイスマネージャーには「USB to UART (COMx)」として表示されます。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにし、Ten-Tecのファームウェアアップデーターも同様です。\n- **アプリからフィルター幅を設定すると、無線機の電源を入れ直すまでBWツマミが効かなくなります。** これは無線機の仕様です。\n\nこのドライバーはTen-Tecのプログラマーズリファレンスガイドをもとに作成されています。一部しか動作しない場合は、無線機のメニューに表示されるファームウェアバージョンを添えてぜひ報告してください。';
+	@override String get tenTecOrionTroubleshooting => '- **SERIAL DATAポートにはストレートのDB-9シリアルケーブルを使ってください。** ヌルモデムケーブルは使えません。\n- **このエントリーはRTSをHIGHに保持します。** OrionはRTSとCTSをハンドシェイクに使うためです。DigirigなどRTSでPTTをキーイングするインターフェースでは、詳細設定の「RTSをHIGHに保持」をオフにしてください。そうしないと、アプリが接続した瞬間に無線機が送信します。\n- **アプリからのCWには、無線機の内蔵キーヤーをオンにする必要があります。** オフだと、無線機はアプリからの送信を無視します。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのドライバーはTen-Tecのプログラマーズリファレンスガイドをもとに作成されており、Orionの実機ではテストされていません。一部しか動作しない場合は、無線機のメニューに表示されるファームウェアバージョンを添えてぜひ報告してください。';
+	@override String get tenTecNoCw => 'この無線機のファームウェアはアプリからのCWを受け付けません。Ten-TecはOrionファームウェア1.366で対応を追加しました。';
+	@override String get tenTecKeyerOff => '無線機の内蔵キーヤーがオフのため、アプリから送るCWは無視されます。無線機のメニューでキーヤーをオンにしてください。';
 	@override String get guohetecTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
 	@override String get guohetecTroubleshooting => 'Q900には2つのCATプロトコルがあり、このエントリーはFT-817の模倣ではなく独自プロトコルを使用します。ここではFT-817ではなく **Guohetec Q900** を選んでください。模倣プロトコルは対応コマンドが少なく、無線機はどちらを使っているかを示しません。\n\n- **USB-CケーブルがCATリンクです**。サウンドカードも同じケーブルで接続されます。このポートでは速度は関係なく、設定値は無視されます。\n- **このポートでRTSやDTRを決してHIGHにしないでください。** シリアルケーブルではそれらのラインがPTTとキーイングです。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **第2世代の無線機は第1世代と動作が異なります**。Menuを長押しして About を開き、HW 2.0なら第2世代です。\n\nこのドライバーはメーカーが公開しているプロトコルをもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。';
 	@override String get yaesuTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
 	@override String get yaesuTroubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。Digirig、SignaLink、ほとんどの自作ケーブルではその同じラインがPTTなので、HIGHにすると送信してしまいます。無線機本体のUSBポートを使う場合は、詳細設定の **RTSをHIGHに保持** が代替手段です。この設定の場所は機種によって異なります（FT-891ではメニュー **05-08**）。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **モードはFT-891の対応表に従います。** Yaesuのほとんどの機種はこれと一致しますが、モードの番号付けが異なる無線機では、該当するモードが誤って表示・設定されます。周波数には影響しません。';
+	@override String get ftdx3000Troubleshooting => '**無線機のUSBポートでCATを使うには、メニュー037 CAT SELECTをUSBにしてください。** RS232Cに設定すると、CATは背面のジャックになります。\n\nこのエントリーは公開されているCATドキュメントをもとに作成されており、FTDX3000の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。';
 	@override String get yaesuRs232Troubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **CATジャックはRS-232です。** USB-シリアル変換アダプターとストレートのDB-9ケーブルが必要です。クロス（ヌルモデム）ケーブルではラインが入れ替わり、無線機には何も届きません。\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、詳細設定の **RTSをHIGHに保持** がオンでない限り、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのエントリーは公開されているCATドキュメントをもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。';
-	@override String get yaesuUsbTroubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機の2つのUSBポートのうち1つ目を使用してください。** CATは通常1つ目（Windowsでは **Enhanced** COMポート）にあり、2つ目（**Standard**）はPTTとキーイング用です。ポート選択では、2つを区別できる場合は1つ目を指します。\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、詳細設定の **RTSをHIGHに保持** がオンでない限り、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
+	@override String get yaesuUsbTroubleshooting => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機の2つのUSBポートのうち1つ目を使用してください。** CATは通常1つ目（Windowsでは **Enhanced** COMポート）にあり、2つ目（**Standard**）はPTTとキーイング用です。ポート選択では、2つを区別できる場合は1つ目を指します。\n- **無線機側でCAT RTSをOFFにするか、RTSをHIGHに保持をオンにしてください。** 無線機の **CAT RTS** メニューがオンだと、RTSがLOWの間は沈黙します。ポートを開いた直後に一度だけ応答し、その後は何も返さないことがあります。無線機本体のUSBポートを選ぶと、詳細設定の **RTSをHIGHに保持** が自動的にオンになります。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTなので、HIGHに保持すると送信してしまいます。その場合は代わりに無線機側でCAT RTSをOFFにしてください。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
 	@override String get k4SerialNotes => 'K4背面のUSB-B（PC）ソケットに接続してください。CATにはUSB-PC1とUSB-PC2のどちらも使えます。未使用のポートを選び、無線機のSerial USB-PCn: Baud Rate設定と一致させてください。HaLoは38400を初期値として入力します。必要に応じて変更してください。他のアプリケーションはもう一方のポートかEthernetを使う必要があります。\n\nこの接続は無線機とそのキーヤーを制御しますが、HaLoに音声は送りません。';
-	@override String get k4TcpNotes => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。これはCAT制御であり、ポート9204の別のリモート音声接続ではありません。\n\nHaLoは音声やパンアダプターのデータをストリーミングせずに、無線機とそのキーヤーを制御します。';
+	@override String get k4TcpNotes => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。パンアダプターやウォーターフォールの表示中、HaLoは同じホストの固定ポート9201を使います。CATポートを変更してもスペクトラムのポートは変わりません。\n\nスペクトラムはメイン受信機を表示します。そのズーム、リファレンス調整、速度の操作はHaLoの表示にのみ影響します。音声ストリーミングには対応していません。';
 	@override String get k4PowerTimeout => '無線機が出力範囲を確認しなかったため、K4の出力は変更されませんでした。再試行してください。';
+	@override String get k4RemoteNotes => 'K4でリモートアクセスを有効にし、そのネットワークパスワードを入力してください。MainとSubは、無線機制御とスペクトラムのために1つの暗号化接続を共有します。デフォルトのポートは9204です。リモートから接続する場合は転送先のポートを入力してください。\n\n音声の再生とマイクのストリーミングには対応していません。';
+	@override String get k4Receiver => '受信機';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'MainまたはSubを選んでください';
+	@override String get k4ReceiverAlreadyConfigured => 'その受信機はこのK4ですでに設定済みです';
+	@override String get k4SubReceiverOff => 'K4のサブ受信機がオフです';
+	@override String get k4RemotePasswordRequired => '安全に接続するにはK4のネットワークパスワードを入力してください。';
+	@override String get k4RemoteHandshakeFailed => 'K4とのセキュアな接続を確立できませんでした。ネットワークパスワードとリモートアクセスの設定を確認してください。';
+	@override String get k4RemoteUnreachable => 'K4のセキュア接続に到達できませんでした。アドレス、ポート、リモートアクセスの設定を確認してください。';
 	@override String get k4PowerRange => 'K4の出力は0.1〜110 W、トランスバーターのミリワット出力が有効な場合は0.0001〜0.01 Wの範囲で指定してください。';
 	@override String get elecraftTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
 	@override String get elecraftTroubleshooting => 'ElecraftのリグはKenwood CATを使用し、KX2とKX3の両方でこの方法による動作が確認されています。VFOの双方向制御、モード切替、CWのゼロビートすべてが動作します。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のメニューの **RS232** で設定したレートと同じにします。出荷時は38400です。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\n**周波数は正しいのにモードが違う場合**は、お知らせください。KX2とKX3のエントリーは、無線機のステータス応答内の特定の位置からモードを読み取っており、その位置はこれまでに確認したリグをもとに固定しています。別の位置に置くファームウェアについては、報告がなければ私たちには分かりません。\n\nK3についてはまだどちらの報告もないため、使用している場合は結果をお知らせください。K4には専用のエントリーがあります。';
+	@override String get lab599TroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
+	@override String get lab599Troubleshooting => 'TX-500シリーズはKenwood CATを使用します。周波数とモードはLiNK500MP経由で動作確認済みです。出力とメーターはLab599のCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n- **速度を一致させてください**：無線機のCAT設定と同じにします。変更していなければ9600です。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **無線機側でCATプロトコルを選んでください。** TS-2000は周波数、モード、出力に対応します。LAB599ではさらに、アプリから無線機をDIGに切り替え、DIGでの送信を確認し、電源電圧を読み取れます。\n- **LiNK500MP経由の場合**、VFOツマミを3秒ほど長押しして、CAT制御をインターフェースに渡してください。\n- **接続に合わせてLiNK500MPのモードを設定してください**：BluetoothならMode 3、Bluetooth LEならMode 4です。それ以外のモードではBluetooth LEスキャンで見つかりません。\n- **Bluetooth経由**では、LiNK500MPは2つのシリアルポートとしてペアリングされ、CATを扱うのは片方だけです。無線機が沈黙したままなら、もう一方を選んでください。';
+	@override String get lab599TroubleshootingIos => 'TX-500シリーズはKenwood CATを使用します。周波数とモードはLiNK500MP経由で動作確認済みです。出力とメーターはLab599のCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n- **スキャンの前にLiNK500MPをMode 4にしてください**。これがBluetooth LEモードです。それ以外のモードではiPhoneやiPadから見つけられません。\n- **CAT制御をLiNK500MPに渡してください**：無線機のVFOツマミを3秒ほど長押しします。\n- **無線機側でCATプロトコルを選んでください。** TS-2000は周波数、モード、出力に対応します。LAB599ではさらに、アプリから無線機をDIGに切り替え、DIGでの送信を確認し、電源電圧を読み取れます。';
 	@override String get kenwoodTroubleshootingTitle => '無線機に接続できても周波数が表示されない場合';
-	@override String get kenwoodTroubleshooting => 'このドライバーは、KenwoodのTS-590SGとTS-480、QRP LabsのQMXとQCX-mini、ElecraftのKX2とKX3で動作が確認されています。その他の機種は公開されているCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のCATメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **一部のリグはメニューでCATを有効にする必要があります**。有効にしないとまったく応答しません。\n\n**いくつかのSDRフロントエンドも同じプロトコルを使用している**ため、それらでもこのエントリーを試す価値があります。ElecraftのリグはElecraftの下に別途掲載しています。周波数は正しいのにモードが違う、または表示されない場合、それが機種ごとに異なる唯一の部分です。アプリは無線機からモードを判別し、できなければ直接問い合わせるため、モードの表示が単に遅れているだけかもしれません。';
+	@override String get kenwoodTroubleshooting => 'このドライバーは、KenwoodのTS-590SGとTS-480、QRP LabsのQMXとQCX-mini、ElecraftのKX2とKX3で動作が確認されています。その他の機種は公開されているCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のCATメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **一部のリグはメニューでCATを有効にする必要があります**。有効にしないとまったく応答しません。\n- **Kenwoodの無線機はRTSを待ちます**：CATポートがRTSをハンドシェイクに使うため、詳細設定の「RTSをHIGHに保持」をオンにする必要があります。これがデフォルトでオンになる前に設定した接続では、オフのままかもしれません。DigirigなどRTSでPTTをキーイングするケーブルではオフにしてください。そうしないと無線機が送信します。\n\n**いくつかのSDRフロントエンドも同じプロトコルを使用している**ため、それらでもこのエントリーを試す価値があります。ElecraftのリグはElecraftの下に別途掲載しています。周波数は正しいのにモードが違う、または表示されない場合、それが機種ごとに異なる唯一の部分です。アプリは無線機からモードを判別し、できなければ直接問い合わせるため、モードの表示が単に遅れているだけかもしれません。';
 	@override String get statusConnected => '接続済み';
 	@override String get statusLost => '切断';
 	@override String get notConfigured => '未設定';
 	@override String get currentConfiguration => '現在の構成';
 	@override String get currentTransceiver => '現在のトランシーバー';
+	@override String get currentTransceivers => '現在のトランシーバー';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}：${name}';
+	@override String get so2rQueueMessages => 'メッセージを割り込ませずにキューに入れる';
+	@override String get noRadioBSelected => 'Radio Bが選択されていません';
 	@override String get radioMode => '無線機のモード';
 	@override String get keyerNotSupported => '現在の無線機では未対応';
 	@override String get catControlPreferences => 'CAT制御の設定';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio}は別のデバイス上にあります';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'この無線機は${device}に接続されています。接続と設定はそのデバイスで構成します。';
 	@override String get antennaInUse => '使用中のアンテナ';
-	@override String get keyInUse => '使用中のキー';
+	@override String get keyInUse => 'CWキーイング';
+	@override String get phoneKeying => '電話キーイング';
+	@override String get phoneKeyingNone => 'なし';
+	@override String phoneKeyingRadio({required Object radio}) => '${radio}のメモリー';
+	@override String get phoneKeyingComputer => 'このコンピューターの音声';
+	@override String get phoneKeyingOff => '電話キーイングはオフです';
+	@override String get computerVoiceSettings => 'コンピューターの音声';
+	@override String get cwKeyingOptions => 'CWキーイングのオプション';
 	@override String get noneSelected => 'なし';
 	@override String get moreSettings => 'その他の設定';
 	@override String get icomCivTroubleshootingTitle => '同じ無線機に2つのシリアルポートが表示される場合';
 	@override String get icomCivTroubleshooting => 'IC-705を含む一部のIcom無線機は、**2つ**のUSBシリアルポート（IcomではPort AとPort Bと呼びます）を同時に提供し、どちらもデフォルトでCI-Vに設定されています。このアプリもOSもそれ以上は区別できず、同じUSBベンダー/プロダクトIDが2回表示されるだけです（ここでは `#2` という接尾辞が付くこともあります）。**通常はPort Aが正解です**。たいていOSやブラウザが最初に表示するもので、このアプリが2つのポートを区別できる場合は推奨として表示します。コマンドを送っても無線機が応答しない場合は、もう一方のポートを試してください。';
 	@override String get civAddressTroubleshootingTitle => '無線機がまったく応答しない場合';
 	@override String get civAddressTroubleshooting => '- **CI-Vアドレスを一致させてください**：無線機のメニューと同じにします。このエントリーには機種の出荷時アドレスが入力されていますが、CI-Vバスを共有するリグではまさにそれが変更されます。間違ったアドレスに送られたフレームは黙って無視されるため、ケーブルの故障とまったく同じように見えます。\n- **速度を一致させてください**：無線機のCI-V BAUD RATE（USBの場合はCI-V USB Baud Rate）と同じにします。無線機をここに表示されているのと同じ数値に設定し、**Autoにはしないでください**。Autoでは、IC-7300などの一部の無線機は接続後1分ほどで応答しなくなります。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **CI-Vアドレスを一致させてください**：無線機のメニューと同じにします。このエントリーには機種の出荷時アドレスが入力されていますが、CI-Vバスを共有するリグではまさにそれが変更されます。間違ったアドレスに送られたフレームは黙って無視されるため、ケーブルの故障とまったく同じように見えます。\n${speed}\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。';
+	@override String get icomUsbSpeedFollows => '- **設定する速度はありません。** USB経由では、この無線機はコンピューターが使う速度で通信します。このエントリーは常に、スコープに必要な速度である115200を使います。';
+	@override String get ic7610UsbSpeed => '- **CI-V USB Baud Rateを115200にしてください**。スコープに必要なため、このエントリーは常にこの速度を使います。**Autoにはしないでください**。他の速度に設定された無線機は何も返しません。';
+	@override String get civTransceiveTitle => 'アプリが無線機の操作に追従するのが遅い場合';
+	@override String get civTransceive => '無線機で変更した周波数やモードがアプリに表示されるまで数秒かかる場合は、無線機の **CI-V Transceive** 設定をオンにしてください（最近の機種ではSET > Connectors > CI-Vにあります）。オンにすると、無線機は変更があった瞬間にそれを報告します。オフだと、アプリは数秒ごとの次回の問い合わせまで変更に気づきません。';
 	@override String get ic7300Mk2Note => '\n- **IC-7300 MK2** の出荷時アドレスは、ここに入力されている `94` ではなく `B6` です。代わりにIC-7300 MK2のエントリーを選んでください。';
 	@override String get ic705PortNote => '\n- **IC-705** は、どちらも無線機の名前が付いた2つのUSBシリアルポートを提供します。CI-Vはそのうち **1つ目** にあり、ポート選択では2つを区別できる場合はそちらを指します。';
 	@override String get ic7760PortNote => '\n- **IC-7760** は、提供する2つのUSBシリアルポートのうち **Port A** でCI-Vを使用します。';
@@ -2393,7 +2838,8 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get commanderTroubleshootingTitle => 'アプリが接続できない場合';
 	@override String get commanderTroubleshooting => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。';
 	@override String get ic705TroubleshootingTitle => '無線機がまったく応答しない場合';
-	@override String get ic705Troubleshooting => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。';
+	@override String get ic705Troubleshooting => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- **ポートを一致させてください**：無線機のControl PortとSerial Port（UDP）、またはそこへ転送されているポートと同じにします。ポートが間違っていると、電源の切れた無線機と同じく無応答になります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。';
+	@override String get icomLanTroubleshooting => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfview、RS-BA1、IcomのRemote Utilityがそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** LANポートがこのデバイスと同じネットワークに接続され、**Network Control** がオンで、ユーザー名とパスワードが無線機上のネットワークユーザーとして設定されている必要があります。\n- **ポートを一致させてください**：無線機のControl PortとSerial Port（UDP）、またはそこへ転送されているポートと同じにします。ポートが間違っていると、電源の切れた無線機と同じく無応答になります。\n- **接続しても応答がない場合**は、ここのCI-Vアドレスを無線機のCI-V ADDRESSメニューと一致させてください。このエントリーには機種の出荷時アドレスが入力されています。\n- 固まったままの場合は、**無線機の電源を入れ直してください**。';
 	@override String get statusStale => '応答なし';
 	@override String get statusDisconnected => '未接続';
 	@override String get statusConnecting => '接続中…';
@@ -2401,8 +2847,8 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get statusError => '接続に失敗しました';
 	@override String get currentRadioSettings => '現在の無線機の設定';
 	@override String get notSupportedByThisRadio => 'この無線機では未対応';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => '電話';
+	@override String get cwMessagesButton => 'CWメッセージ';
+	@override String get voiceMessagesButton => '電話メッセージ';
 	@override String voiceKeyerAvailable({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件';
 	@override String get antennaBands => 'バンド';
 	@override String get antennaType => 'アンテナの種類';
@@ -2423,7 +2869,7 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get includeStationInfoInAdif => 'ADIFエクスポートに含める';
 	@override String get whatToTrack => '記録する項目';
 	@override String get trackFieldRig => 'トランシーバー';
-	@override String get trackFieldPower => '出力';
+	@override String get trackFieldPower => 'パワー';
 	@override String get watts => 'ワット';
 	@override String get trackFieldAntenna => 'アンテナ';
 	@override String get trackFieldKey => 'CWキー';
@@ -2437,7 +2883,7 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get placeholderFreqDescription => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。';
 	@override String get placeholderMode => 'モード';
 	@override String get placeholderModeDescription => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。';
-	@override String get placeholderPower => '出力（ワット）';
+	@override String get placeholderPower => 'パワー（ワット）';
 	@override String get placeholderPurpose => 'ロギングのために、使用中のリグを記録するための無線機です';
 	@override String get placeholderReplyDelay => '応答遅延（ms）';
 	@override String get placeholderReplyDelayDescription => 'プレースホルダー無線機が変更を報告するまでの時間。空欄または0で即座に応答します。';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => '各無線機ポートが現在どのアンテナに接続されているか。変更は即座に反映されます。';
 	@override String get switchWiringHeader => '配線';
 	@override String get switchPortInhibitedHint => '送信禁止';
+	@override String get rotatorAxes => '軸';
+	@override String get rotatorAxesDescription => 'ローテーターが方位のみ回るか、仰角も回るか（G-5500など）。';
+	@override String get rotatorAxesAzimuth => '方位のみ';
+	@override String get rotatorAxesAzimuthElevation => '方位と仰角';
+	@override String get rotatorAzimuthOffset => '方位オフセット';
+	@override String get rotatorAzimuthOffsetDescription => 'コントローラーのゼロが真北でない場合に、読み取り値に加える角度（度）。回転もこれに合わせて補正されます。';
+	@override String get rotatorElevationOffset => '仰角オフセット';
+	@override String get rotatorAzimuthMin => '方位の下限';
+	@override String get rotatorAzimuthMax => '方位の上限';
+	@override String get rotatorAzimuthMaxDescription => 'コントローラー自身の角度で指定します。オーバーラップのあるローテーターでは360より大きくすると、短い方の回転を選びます。';
+	@override String get rotatorElevationMin => '仰角の下限';
+	@override String get rotatorElevationMax => '仰角の上限';
+	@override String get rotatorElevationMaxDescription => 'コントローラー自身の角度で指定します。反転できるローテーターでは90より大きくします。';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => '${min}〜${max}の整数（度）';
+	@override String get rotatorLimitsInvalid => '下限は上限より小さくしてください';
+	@override String get rotatorPollInterval => 'ポーリング間隔（ms）';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'ローテーターの向きを問い合わせる頻度。空欄の場合は${fallback} msです。';
+	@override String get rotatorAxesRequired => 'ローテーターが回る軸を選んでください';
+	@override String get rotatorRefused => 'コントローラーがコマンドを拒否しました。GS-232モードに設定されているか確認してください。';
+	@override String get pstRotatorTroubleshooting => 'PstRotatorは設定が済んでいるときだけ応答し、それ以外はまったく何も返しません：\n\n- **UDP Controlをオンにしてください**：PstRotatorのSetupメニューにあります。\n- **ポートを一致させてください**：Communication → UDP Control Port、変更していなければ12000です。PstRotatorは次のポート（12001）で応答するため、このデバイスでそのポートが空いている必要があります。\n- **PstRotatorをコントローラーに接続してください。** 接続されるまで、UDPでは何も応答しません。\n- **ファイアウォールで許可してください**：PstRotatorを実行しているPCと、応答を待ち受けるこのデバイスの両方で。\n- **Mac、iPhone、iPadでは**、Ham2K Loggerにローカルネットワークへのアクセスが必要です（設定 → プライバシーとセキュリティ → ローカルネットワーク）。';
+	@override String rotatorCurrentStateHeader({required Object position}) => '現在の状態：${position}';
+	@override String get rotatorDisconnected => '未接続';
+	@override String rotatorAzimuthReading({required Object degrees}) => '方位${degrees}°';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '方位${degrees}°';
+	@override String rotatorElevationReading({required Object degrees}) => '仰角${degrees}°';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '仰角${degrees}°';
+	@override String get rotatorNoReading => 'コントローラーが位置を報告するのを待っています…';
+	@override String get rotatorNotResponding => '応答なし';
+	@override String rotatorHeldAtLimit({required Object heading}) => '${heading}へ、このローテーターの制限内で可能な限り回転中';
+	@override String get rotatorTargetAzimuth => '方位へ回転';
+	@override String get rotatorTargetAzimuthShort => '方位へ';
+	@override String get rotatorTargetElevation => '仰角へ回転';
+	@override String get rotatorTargetElevationShort => '仰角へ';
+	@override String get rotatorAzimuthInvalid => '0〜360で指定してください';
+	@override String get rotatorElevationInvalid => '0〜180で指定してください';
+	@override String get rotatorTurn => '回転';
+	@override String get rotatorStop => '停止';
 	@override String get configUnreadable => 'この無線機の保存済み設定を読み取れませんでした。設定を開いて再入力するか、削除して追加し直してください。';
 	@override String get autoConnectHeld => '前回この無線機に接続したときにHaLoが応答しなくなったため、今回は自動的に接続しませんでした。再試行するには接続を押してください。';
 }
@@ -2562,6 +3045,11 @@ class _Translations$settings$developer$ja extends Translations$settings$develope
 	// Translations
 	@override String get developerModeDescription => '開発者向けの警告、デバッグログ、ツールを有効にします。';
 	@override String get experiments => '実験';
+	@override String get showIdleMetrics => 'アイドル指標を表示';
+	@override String get showIdleMetricsDescription => '拡張機能エンジンが直近1秒間にどれだけアイドルだったかをステータスバーに表示します。タップすると10秒と60秒の平均が見られます。';
+	@override String idleMetricsReadout({required Object percent}) => 'アイドル${percent}%';
+	@override String get idleMetricsAverages => 'アイドル平均：';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}秒 ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: '${count}件有効',
 		other: '${count}件有効',
@@ -2640,7 +3128,7 @@ class _Translations$settings$panels$ja extends Translations$settings$panels$en {
 	@override String get commonSettings => '共通の設定';
 	@override String get syncDescription => 'ログをバックアップし、デバイス間で同期';
 	@override String get accountsDescription => 'サービスの認証情報、オフラインデータなど';
-	@override String get extensions => '拡張機能と機能';
+	@override String get extensions => '拡張機能とアプリ機能';
 	@override String get extensionsDescription => 'アクティビティ、コンテスト、ダッシュボードパネルなどの機能';
 	@override String get profilesDescription => 'オペレーターのコールサインとステーションプロファイル';
 	@override String get stationProfiles => 'ステーションプロファイル';
@@ -2678,6 +3166,183 @@ class _Translations$settings$gridPrecisionDescription$ja extends Translations$se
 	@override String get eight => '8桁';
 }
 
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$ja extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'コマンドダイアログを開く';
+	@override String get toggleTheme => 'ライトとダークを切り替える';
+	@override String get toggleLanguage => '英語とスペイン語を切り替える';
+	@override String get fontScaleUp => '文字を大きく';
+	@override String get fontScaleDown => '文字を小さく';
+	@override String get fontScaleReset => '標準の文字サイズ';
+	@override String get densityLooser => 'ゆったりしたレイアウト';
+	@override String get densityDenser => '密なレイアウト';
+	@override String get densityAuto => 'レイアウト密度を自動に';
+	@override String get find => 'ログ内を検索';
+	@override String keyerMessage({required Object n}) => 'メッセージ${n}を送信';
+	@override String get keyboardMode => 'キーボードモードのオン/オフ';
+	@override String get ptt => 'PTT（プッシュトゥトーク）';
+	@override String get wipe => '入力中のコンタクトをクリア';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$ja extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'コールサインの入力';
+	@override String get escape => '送信の停止、1段階戻る、または閉じる';
+	@override String get enter => 'コンタクトを記録';
+	@override String get space => '次のフィールド';
+	@override String get tab => '次または前のフィールド';
+	@override String get arrows => 'フィールド、コントロール、ログの間を移動';
+	@override String get walk => 'ログをページ送り、または先頭/末尾へ';
+	@override String get undo => '消去や削除を取り消す';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$ja extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'ショートカットを追加';
+	@override String get listening => 'ショートカットのキーを押してください…';
+	@override String get listeningHint => 'Escで中止';
+	@override String get add => '追加';
+	@override String refusedFixed({required Object keys}) => '${keys}はロギングフィールドまたはダイアログのキーのため、変更できません。';
+	@override String refusedCallsign({required Object keys}) => '${keys}はコールサインの入力に使います。Cmd、Ctrl、Altのいずれかと組み合わせてください。';
+	@override String reserved({required Object keys}) => '${keys}はアプリに届く前にシステムが使う可能性があります。';
+	@override String already({required Object keys}) => '${keys}はすでにこのコマンドのキーの1つです。';
+	@override String takeIt({required Object command, required Object keys}) => '「${command}」から${keys}を取る';
+	@override String get resetDefault => 'デフォルトに戻す';
+	@override String get remove => '削除';
+	@override String get commandLabel => 'コマンド';
+	@override String get commandHint => '有効なコマンド、または「;」で区切った複数のコマンドを入力';
+	@override String get removeCommand => 'コマンドを削除';
+	@override String commandUnknown({required Object text}) => '「${text}」というコマンドはありません';
+	@override String get noShortcuts => 'キーはまだありません';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$ja extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'ショートカットを${location}に保存しました';
+	@override String exportFailed({required Object error}) => 'ショートカットをエクスポートできませんでした：${error}';
+	@override String importPickerFailed({required Object error}) => 'ファイルを開けませんでした：${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるショートカットファイルではありません：${problem}';
+	@override String problemNotYaml({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）';
+	@override String get problemNotKeysFile => 'Ham2Kのキーボードショートカットファイルではありません';
+	@override String get problemNewerVersion => '新しいバージョンのアプリで書き出されたものです';
+	@override String get problemMalformed => '一部がショートカット形式に従っていません';
+	@override String get problemTooLarge => '大きすぎます';
+	@override String get importTitle => 'ショートカットをインポート';
+	@override String writtenOn({required Object platform}) => '${platform}で書き出されました。';
+	@override String get writtenOnUnknown => 'このファイルには、どのキーボードで書き出されたかの記載がありません。';
+	@override String get translate => 'これらの各キーは、このキーボードでは何にしますか？';
+	@override String get leaveOut => 'それらのショートカットを除外';
+	@override String get replace => 'このデバイスの設定と置き換え';
+	@override String get replaceHint => 'ファイルにないショートカットはすべてデフォルトに戻ります。';
+	@override String get merge => 'このデバイスの設定に追加';
+	@override String get mergeHint => '同じコマンドについてはファイルのショートカットがこのデバイスのものを置き換え、それ以外は残ります。';
+	@override String unknown({required Object commands}) => 'このバージョンでは不明なため除外：${commands}';
+	@override String unreadableChords({required Object chords}) => 'ショートカットではないため除外：${chords}';
+	@override String refusedChords({required Object chords}) => 'アプリが予約しているキーのため除外：${chords}';
+	@override String conflicts({required Object keys}) => 'インポート後に複数のコマンドに割り当てられています：${keys}';
+	@override String get importAction => 'インポート';
+	@override String get imported => 'ショートカットをインポートしました';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$ja extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$ja extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$ja extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'ステーションコールサイン';
+	@override String get groupBy => 'グループ化';
+	@override String get period => '期間';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$ja extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'グループ化なし';
+	@override String get date => '日付';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => '不明な大陸';
+	@override String get unknownEntity => '不明なエンティティ';
+	@override String get unknownDate => '日付なし';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$ja extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => '今月';
+	@override String get last3Months => '過去3か月';
+	@override String get thisYear => '今年';
+	@override String get lastYear => '昨年';
+	@override String get allTime => '全期間';
+	@override String get custom => 'カスタム範囲';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$ja extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => '（${span}）';
+	@override String get custom => 'カスタム範囲';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$ja extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$ja._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -2698,7 +3363,7 @@ class _Translations$home$logs$columns$ja extends Translations$home$logs$columns$
 	@override String get grid => 'グリッド';
 	@override String get state => '州';
 	@override String get country => '国';
-	@override String get refs => '参照';
+	@override String get refs => 'リファレンス';
 }
 
 // Path: home.logs.panels
@@ -2734,6 +3399,72 @@ class _Translations$home$logs$import$ja extends Translations$home$logs$import$en
 	@override String importingDetail({required Object total, required Object imported}) => '${total}件中${imported}件をインポート済み';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$ja extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'デフォルト';
+	@override String untitledName({required Object number}) => 'レイアウト${number}';
+	@override String switcherLabel({required Object name}) => 'レイアウト：${name}';
+	@override String get menuNew => '新規…';
+	@override String get menuExport => 'エクスポート…';
+	@override String get menuImport => 'インポート…';
+	@override String get menuTitle => 'レイアウト';
+	@override String get newTitle => '新しいレイアウト';
+	@override String get editTitle => 'レイアウトを編集';
+	@override String get edit => '編集';
+	@override String get duplicateCurrent => '現在のレイアウトを複製';
+	@override String get startFromDefault => 'デフォルトのレイアウトから始める';
+	@override String get nameLabel => '名前';
+	@override String get descriptionLabel => '説明';
+	@override String get create => '作成';
+	@override String leaveEditTitle({required Object name}) => '「${name}」の変更を保存しますか？';
+	@override String get leaveEditBody => 'このレイアウトには保存されていない変更があります。';
+	@override String get discard => '破棄';
+	@override String get deleteTitle => 'このレイアウトを削除しますか？';
+	@override String deleteBody({required Object name}) => 'レイアウト「${name}」を本当に削除しますか？';
+	@override String get exportTitle => 'レイアウトをエクスポート';
+	@override String get exportPick => 'エクスポートするパネル';
+	@override String get tabSet => 'タブセット';
+	@override String get exportAction => 'エクスポート';
+	@override String exported({required Object location}) => 'レイアウトを${location}に保存しました';
+	@override String exportFailed({required Object error}) => 'レイアウトをエクスポートできませんでした：${error}';
+	@override String get importTitle => 'レイアウトをインポート';
+	@override String importFromOtherView({required Object view}) => '${view}ビュー用に作られたものです。そのビューにしかないパネルは除外されます。';
+	@override String get viewHome => 'ホーム';
+	@override String get viewOperation => 'オペレーション';
+	@override String get viewLogs => 'ログ';
+	@override String get viewChase => 'チェイス';
+	@override String get importAsNew => '新しいレイアウトとして';
+	@override String get importReplace => 'このレイアウトと置き換え';
+	@override String get importAdd => 'このレイアウトに追加';
+	@override String get importAddHint => 'パネルは右側の新しい列に追加されます。';
+	@override String get importPick => 'インポートするパネル';
+	@override String get importReplaceSettings => 'ここで設定済みのパネルの設定を置き換える';
+	@override String get importAction => 'インポート';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるレイアウトではありません：${problem}';
+	@override String problemNotYaml({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）';
+	@override String get problemNotLayoutFile => 'Ham2Kのレイアウトファイルではありません';
+	@override String get problemNewerVersion => '新しいバージョンのアプリで書き出されたものです';
+	@override String get problemNoArrangement => '配置が含まれていません';
+	@override String get problemMalformed => '一部がレイアウト形式に従っていません';
+	@override String get problemTooLarge => '大きすぎます';
+	@override String importPickerFailed({required Object error}) => 'ファイルを開けませんでした：${error}';
+	@override String importFailed({required Object error}) => 'レイアウトをインポートできませんでした：${error}';
+	@override String duplicateFailed({required Object error}) => 'レイアウトをコピーできませんでした：${error}';
+	@override String get importNothing => 'パネルが選択されていないため、何もインポートされませんでした。';
+	@override String importSkipped({required Object panels}) => '除外：${panels}';
+	@override String importKeptPinned({required Object panels}) => '${panels}は残しました：小画面の配置に欠かせないためです。';
+	@override String get notOffered => 'このビューでは利用できません';
+	@override String get alreadyPlaced => 'すでにこのレイアウトにあります';
+	@override String needsExtension({required Object name}) => '${name}が必要';
+	@override String get listRecoveredTitle => 'レイアウト名を読み込めませんでした';
+	@override String get listRecoveredBody => 'このビューのレイアウト一覧を読み込めませんでした。レイアウト自体はすべて残っており、名前の代わりに番号が付いています。';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$ja extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$ja._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -2745,6 +3476,11 @@ class _Translations$operation$layout$panels$ja extends Translations$operation$la
 	@override String get infoDescription => '交信中の局について分かっている情報';
 	@override String get spotsDescription => 'クラスターとアクティビティプログラムからのスポット';
 	@override String get mapDescription => 'コンタクトの位置';
+	@override String get summariesDescription => 'オペレーションの統計とスコアを、選んだセクションと順序で表示';
+	@override String get summariesSections => 'セクションと順序';
+	@override String get summariesDays => '日ごと';
+	@override String get summariesReset => 'すべて表示';
+	@override String get summariesAllHidden => 'すべてのセクションが非表示です。このパネルの設定で表示するものを選んでください。';
 	@override String get clockDescription => '任意のタイムゾーンの時計';
 	@override String get clockFace => '文字盤';
 	@override String get clockFaceLcd => 'LCD';
@@ -2761,7 +3497,7 @@ class _Translations$operation$layout$panels$ja extends Translations$operation$la
 	@override String weatherBadLocation({required Object location}) => '場所${location}を読み取れませんでした。FN31prのようなグリッドスクエア、または42.36,-71.06の形式で入力してください。';
 	@override String get weatherUnreachable => 'Open-Meteoに接続できませんでした。ネットワークがない可能性があります。まもなく再試行します。';
 	@override String get weatherUnreadable => 'Open-Meteoは応答しましたが、読み取れる内容ではありませんでした。まもなく再試行します。';
-	@override String weatherGusts({required Object speed}) => '最大瞬間風速 ${speed}';
+	@override String weatherGusts({required Object speed}) => '突風 ${speed}';
 	@override String get panelAgeNow => 'たった今';
 	@override String panelAgeMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: '${count}分前',
@@ -2791,7 +3527,7 @@ class _Translations$operation$layout$panels$ja extends Translations$operation$la
 	@override String get remoteScreenTarget => '画面';
 	@override String get remoteScreenChoose => '画面を選択…';
 	@override String get remoteScreenPickerTitle => '共有画面';
-	@override String get remoteScreenPickerEmpty => '画面を共有しているデバイスはありません。表示したいデバイスで、設定 → ピアデバイス の「画面とウィンドウを共有」をオンにしてください。';
+	@override String get remoteScreenPickerEmpty => '画面を共有しているデバイスはありません。表示したいデバイスで、設定 → ピアデバイスの「画面とウィンドウを共有」をオンにしてください。';
 	@override String get remoteScreenUnset => '画面が選択されていません。このパネルの設定を開き、他のデバイスが共有している画面を選んでください。';
 	@override String get remoteScreenConnecting => '接続中…';
 	@override String get remoteScreenPeerAway => 'そのデバイスは現在接続されていません。';
@@ -2845,6 +3581,30 @@ class _Translations$operation$layout$panels$ja extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR高';
+	@override String get rotatorDescription => 'アンテナの向きを、局を中心にした地図上に表示します。地図をタップすると回転します。';
+	@override String get rotatorRotator => 'ローテーター';
+	@override String rotatorAutoNamed({required Object name}) => '自動 — ${name}';
+	@override String get rotatorAutoNone => '自動 — ローテーターはまだありません';
+	@override String get rotatorBeamWidth => 'ビーム幅';
+	@override String get rotatorBeamWidthDescription => '方位の周りに描く角度（度）。0なら描画しません。';
+	@override String get rotatorLocation => '場所';
+	@override String get rotatorLocationDescription => '地図の中心にするグリッドスクエアまたは緯度経度。空欄ならオペレーションの場所を使います。';
+	@override String get rotatorTheme => 'テーマ';
+	@override String get rotatorThemeColor => 'カラー';
+	@override String get rotatorThemeGray => 'グレー';
+	@override String get rotatorThemeMuted => '淡色';
+	@override String get rotatorGrayline => 'グレイラインを表示';
+	@override String get rotatorNoRotator => '表示するローテーターがありません。このパネルの設定で選ぶか、ステーション構成で追加してください。';
+	@override String get rotatorNoLocation => '地図の中心にする場所がありません。このパネルの設定で指定してください。';
+	@override String get rotatorDisconnected => '未接続';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => '応答なし';
+	@override String get rotatorLocationInvalid => 'このパネルの設定の場所を読み取れません。グリッドスクエアか、40.7, -74.0 のような緯度経度を使ってください。';
+	@override String rotatorElevation({required Object degrees}) => '仰角${degrees}°';
+	@override String get rotatorNorth => 'N';
+	@override String get rotatorEast => 'E';
+	@override String get rotatorSouth => 'S';
+	@override String get rotatorWest => 'W';
 }
 
 // Path: operation.export.compactFileNames
@@ -2867,8 +3627,8 @@ class _Translations$operation$export$includePrivateData$ja extends Translations$
 
 	// Translations
 	@override String get title => '個人情報を含める';
-	@override String get descriptionOn => '名前、住所、メール、グリッドスクエア、ノートを含めます';
-	@override String get descriptionOff => '名前、住所、メール、グリッドスクエア、ノートを除外します';
+	@override String get descriptionOn => '名前、住所、メール、グリッドスクエア、メモを含めます';
+	@override String get descriptionOff => '名前、住所、メール、グリッドスクエア、メモを除外します';
 	@override String get note => 'Full ADIF Exportには常にすべてが含まれます';
 }
 
@@ -2880,7 +3640,7 @@ class _Translations$operation$export$stash$ja extends Translations$operation$exp
 
 	// Translations
 	@override String get needsEmailTitle => '先にメールアドレスを追加してください';
-	@override String get needsEmailBody => 'Ham2K File StashはLoFiアカウントのメールアドレスにファイルを送信し、stash.ham2k.netへのサインインにもそのアドレスを使います。あなたのアカウントにはまだ確認済みのメールアドレスがありません。設定 › クラウド同期 で追加してください。';
+	@override String get needsEmailBody => 'Ham2K File StashはLoFiアカウントのメールアドレスにファイルを送信し、stash.ham2k.netへのログインにもそのアドレスを使います。あなたのアカウントにはまだ確認済みのメールアドレスがありません。設定 › クラウド同期で追加してください。';
 	@override String get openSyncSettings => 'クラウド同期を開く';
 	@override String get replaceTitle => '最近のスタッシュが置き換えられます';
 	@override String replaceBody({required Object name}) => '6時間以内に「${name}」を送信しましたが、まだダウンロードされていません。無料アカウントで保持できるスタッシュは一度に1つだけのため、今送信すると置き換えられます。';
@@ -2888,8 +3648,8 @@ class _Translations$operation$export$stash$ja extends Translations$operation$exp
 	@override String get failedTitle => 'Ham2K File Stashに送信できませんでした';
 	@override String get sentTitle => 'Ham2K File Stashに送信しました';
 	@override String retrieve({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: 'このファイルは、任意のブラウザーで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。',
-		other: 'これらのファイルは、任意のブラウザーで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。',
+		one: 'このファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。',
+		other: 'これらのファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。',
 	);
 	@override String get mayHaveArrived => 'スタッシュから応答がありません。ファイルは届いている可能性があります。再送信する前にstash.ham2k.netを確認してください';
 	@override String get notSent => '未送信';
@@ -2940,8 +3700,10 @@ class _Translations$operation$spots$filters$ja extends Translations$operation$sp
 	@override String get sorting => '並び替え';
 	@override String get sortByTime => 'スポット時間順';
 	@override String get sortByFrequency => '周波数順';
+	@override String get sortByWanted => 'モストウォンテッド順';
 	@override String get groupByBand => 'バンドでグループ化';
 	@override String get groupCallsWithNotes => 'ノート付きコールをグループ化';
+	@override String get alertingOnly => 'アラート付きのスポットのみ';
 	@override String get sourceNoReply => '応答なし';
 	@override String get sourceError => 'エラー';
 }
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$ja extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$ja extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'ログインに使うオペレーターのコールサインがありません';
+	@override String get connectFailed => 'ノードに到達できませんでした';
+	@override String get needsPassword => 'ノードがパスワードを求めていますが、保存されていません';
+	@override String get loginFailed => 'ノードがログインを受け付けませんでした';
+	@override String get disconnected => 'ノードが接続を閉じました';
+	@override String get timeout => 'ノードが応答しませんでした';
+	@override String get off => '「クラスターに接続」がオフです';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$ja extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$ja._(TranslationsJa root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$ja extends Translations$settings$radio
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'キーボードでPTTを操作';
+	@override late final _Translations$settings$radio$pttKey$modes$ja modes = _Translations$settings$radio$pttKey$modes$ja._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$ja descriptions = _Translations$settings$radio$pttKey$descriptions$ja._(_root);
+	@override String get key => 'PTTキー';
 	@override String get pill => 'TX';
 	@override String get transmitting => '送信中';
 }
@@ -3256,8 +4038,8 @@ class _Translations$settings$radio$cwMessages$ja extends Translations$settings$r
 	// Translations
 	@override String get title => 'CWキーヤーメッセージ';
 	@override String get notSupported => '現在の無線機はCWキーイングに対応していません';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'メッセージ（${n}）';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'メッセージ${n}';
 	@override String get labelField => 'ラベル';
 	@override String labelKey({required Object n}) => 'F${n}のラベル';
 	@override String get details => '詳細';
@@ -3271,7 +4053,10 @@ class _Translations$settings$radio$cwMessages$ja extends Translations$settings$r
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESMメッセージ';
 	@override String get setSaved => 'マイメッセージ';
-	@override String get repeat => 'メッセージ#1を繰り返す';
+	@override String get repeat => 'メッセージ1を繰り返す';
+	@override String get repeatShort => 'M1を繰り返す';
+	@override String get cooldown => '繰り返しまでの待ち時間';
+	@override String cooldownSeconds({required Object n}) => '${n}秒';
 	@override String get repeatWait => '繰り返し中';
 	@override String get keyboard => '入力して送信';
 	@override String get keyboardField => '入力して送信';
@@ -3296,12 +4081,25 @@ class _Translations$settings$radio$cwMessages$ja extends Translations$settings$r
 	@override String get helpExample => 'W1AW 5NN TT7を送信';
 	@override String get helpEsmIntro => 'Enterでメッセージ送信がオンの場合、N1MMと同様に、Enterで対応するファンクションキーのメッセージを送信します。ESMメッセージセットの初期内容は次のとおりです：';
 	@override String get helpEsmCq => 'Run時、コール欄が空の状態でEnterを押すとCQを出します';
-	@override String get helpEsmExchange => 'あなたのエクスチェンジ：Run時は相手のコールの後、S&P時は相手が応答した後';
-	@override String get helpEsmThanks => 'コンタクトの記録後のお礼。プレースホルダーはこのコンタクトではなく次のコンタクトを指します';
+	@override String get helpEsmExchange => 'あなたの交換：Run時は相手のコールの後、S&P時は相手が応答した後';
+	@override String get helpEsmThanks => 'コンタクトの記録後のお礼。qsoは記録されたコンタクト、nextは次のコンタクトを指します';
 	@override String get helpEsmMyCall => 'S&P時、応答する局へのあなたのコール';
-	@override String get helpEsmHisCall => 'Run時、エクスチェンジの前に送る相手のコール';
-	@override String get helpEsmAgain => '相手のエクスチェンジがまったく取れなかったときに再度尋ねます';
-	@override String get helpEsmStackThanks => '//スタック用の推奨F3：TUはコンタクトの記録後に送信されるため、お礼の後、スタックの次の局を呼んでエクスチェンジを送るか、部分コールを聞き返します（TU KR?）。残りがなければTUのみ';
+	@override String get helpEsmHisCall => 'Run時、交換の前に送る相手のコール';
+	@override String get helpEsmAgain => '相手の交換がまったく取れなかったときに再度尋ねます';
+	@override String get helpEsmStackThanks => '//スタック用の推奨F3：お礼の後、スタックの次の局を呼んで交換を送るか、部分コールを聞き返します（TU KR?）。残りがなければTUのみ';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$ja extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'キーヤー';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => '音声';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3314,7 +4112,7 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String get title => '電話キーヤーメッセージ';
 	@override String get notSupported => '現在の無線機は電話メッセージに対応していません';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'ボイスメモリー（${n}）';
+	@override String messageTitle({required Object n}) => 'ボイスメモリー${n}';
 	@override String get labelField => 'ラベル';
 	@override String labelKey({required Object n}) => 'ボイスメモリー${n}のラベル';
 	@override String durationSeconds({required Object n}) => '${n}秒';
@@ -3323,7 +4121,7 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String get playButton => '再生';
 	@override String get recordButton => '録音';
 	@override String get stopButton => '停止';
-	@override String get repeat => 'メッセージ#1を繰り返す';
+	@override String get repeat => 'メッセージ1を繰り返す';
 	@override String recordHelpTitle({required Object model}) => '${model}の注意事項：';
 	@override String namedOnDevice({required Object device}) => 'これらのメモリーは${device}の無線機にあります。名前と長さはそのデバイスのものです。';
 	@override String get namedOnRadio => '無線機に保存され、他のクライアントからも見えます。';
@@ -3340,6 +4138,89 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String recordingMemory({required Object label}) => '${label}を録音中';
 	@override String get doubtful => '無線機は再生しましたか？すぐにアイドル状態と報告しました。';
 	@override String get recordOnRadio => 'メモリーは無線機本体で録音する必要があります。';
+	@override String get sets => 'メッセージセット';
+	@override String get soundFilesSet => 'このコンピューター上のサウンドファイル';
+	@override String get openFileButton => 'ファイルを開く';
+	@override String get newSet => '新しいセット';
+	@override String get renameSet => 'セット名を変更';
+	@override String get deleteSet => 'セットを削除';
+	@override String get newSetName => '名前';
+	@override String deleteSetConfirm({required Object name}) => '${name}とその録音を削除しますか？元に戻せません。';
+	@override String get output => '音声の出力先';
+	@override String get input => '録音元';
+	@override String get outputRadio => 'ネットワーク経由で無線機に送る';
+	@override String get inputDefault => 'システムのデフォルト';
+	@override String get pickDevice => 'サウンドデバイスを選択';
+	@override String deviceMissing({required Object name}) => '${name}（未接続）';
+	@override String get lead => 'キーイング後の遅延';
+	@override String get tail => 'キーイング解除前の遅延';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => '試聴';
+	@override String get notRecorded => '未録音';
+	@override String get unplayable => 'このファイルは再生できません';
+	@override String get problemNoOutput => 'メッセージを再生する前に、無線機に音声を送るサウンドデバイスを選んでください。';
+	@override String get problemOutputMissing => '無線機に音声を送るサウンドデバイスが接続されていません。';
+	@override String get problemInputMissing => '録音デバイスが接続されていません。';
+	@override String get problemDeviceFailed => 'サウンドデバイスを開けませんでした。';
+	@override String get problemNotRecorded => 'そのメッセージはまだ録音されていません。';
+	@override String get problemRecordingSilent => '録音デバイスから何も聞こえなかったため、メッセージはそのままにしました。入力と、アプリにマイクの使用が許可されているかを確認してください。';
+	@override String get problemRadioAudioUnavailable => '無線機は現在アプリからの音声を受け取っていません。無線機へのネットワーク接続が必要です。';
+	@override String get problemSourceRefused => '無線機が送信音声をアプリに切り替えなかったため、メッセージを停止しました。アプリの音声を送信するよう無線機を設定してください。';
+	@override String get problemCannotKey => 'この無線機はCATでキーイングできないため、コンピューターからメッセージを流せません。';
+	@override String get problemUnplayable => 'そのメッセージのファイルは、アプリで再生できるサウンドファイルではありません。WAV、FLAC、MP3ファイルを使うか、録音し直してください。';
+	@override String get problemRecordingFailed => '録音が途中で切れたため、メッセージはそのままにしました。録音デバイスがまだ接続されているか、ディスクに空きがあるかを確認してください。';
+	@override String get problemFileFailed => '録音をメッセージの場所に保存できなかったため、メッセージはそのままにしました。';
+	@override String problemWordsMissing({required Object words}) => 'そのメッセージには未録音の単語が必要です：${words}。';
+	@override String problemTemplateFailed({required Object error}) => 'そのメッセージのテンプレートに問題があります：${error}';
+	@override String get problemNoOperation => '自分の声で言うメッセージは、対象のコンタクトがあるオペレーション内で再生します。';
+	@override String get problemNothingSaid => 'そのメッセージはこのコンタクトに対して何も言いません。';
+	@override String get templateField => '自分の声で言う';
+	@override String get templateHelp => '空欄なら録音をそのまま再生します。入力すると、録音した単語をコンタクトごとに当てはめてメッセージを言います。使える値：';
+	@override String get help => 'ヘルプ';
+	@override String get helpTitle => '自分の声でメッセージを言う';
+	@override String get helpFullExample => 'メッセージ全体の例：';
+	@override String get helpExample => '相手のコール、相手へのレポート、そして「QSL?」の録音';
+	@override String get playOnRadio => '無線機で再生';
+	@override String get templateHelpCall => '相手のコール';
+	@override String get templateHelpReport => '相手に送るレポート';
+	@override String get templateHelpMessage => 'メッセージ2の録音を、録音のまま再生';
+	@override String get voiced => '自分の声で読み上げ';
+	@override String willSay({required Object words}) => '読み上げ：${words}';
+	@override String willSayMissing({required Object words}) => '未録音：${words}';
+	@override String get previewNoOperation => '何を言うかを確認するにはオペレーションを開いてください。';
+	@override String get wordsDescription => 'コールや数字などに自分の声を使います。';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$ja extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '単語の録音';
+	@override String get callField => 'オペレーター別の単語';
+	@override String get intro => '各単語や数字を、コールサインを言うときのように続けて素早く3回録音します。長いフレーズは1回だけ録音します。';
+	@override String get recordAll => 'すべて録音';
+	@override String get recordAllGuide => '各単語は続けて3回、複数の単語からなるフレーズは1回読み上げ、行の間で息継ぎをしてください。最後まで読んだら停止を押してください。';
+	@override String recordingOne({required Object word}) => '「${word} ${word} ${word}」と言ってから、停止を押してください。';
+	@override String recordingOnce({required Object words}) => '「${words}」と言ってから、停止を押してください。';
+	@override String get recorded => '録音済み';
+	@override String get notRecorded => '未録音';
+	@override String get addPhrase => 'フレーズを追加';
+	@override String get phraseField => 'フレーズ（メッセージに書くとおりに）';
+	@override String get deletePhrase => 'フレーズを削除';
+	@override String get tryField => '試しに読み上げ';
+	@override String get pauseLetters => '文字間の間隔';
+	@override String get pauseWords => '単語間の間隔';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => '速度';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => '詳細設定';
+	@override String get splitSilent => '録音に何も聞こえませんでした。';
+	@override String get splitNotThreeTakes => '3回分を見つけられませんでした。単語を続けて3回言ってから、もう一度試してください。';
+	@override String get splitLineCount => '読み上げの中にすべての単語を見つけられませんでした。各単語を3回ずつ、単語の間で息継ぎをして読んでください。';
+	@override String get splitLinesTooClose => '単語を区別できませんでした。単語の間にもっと長く息継ぎを入れてください。';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3373,6 +4254,28 @@ class _Translations$settings$map$style$ja extends Translations$settings$map$styl
 
 	// Translations
 	@override String get title => '地図スタイル';
+}
+
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$ja extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'コールサインを表示';
+	@override String get description => '各コンタクトを、バンドの色のコールサイン付きピルで表示します';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$ja extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'グレイラインを表示';
+	@override String get description => '地球の夜側を暗くし、薄明をグラデーションで表示します';
 }
 
 // Path: settings.map.styleOpts
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$ja extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - 汎用';
 	@override String get icomGeneric => 'Icom - 汎用';
 	@override String get kenwoodGeneric => 'Kenwood - 汎用';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$ja extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - 汎用';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$ja extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'rigctld経由で制御する無線機';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$ja extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => 'マイ無線機';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
+	@override String get gs232a => 'Yaesu GS-232A ローテーターインターフェース';
+	@override String get pstRotator => 'PstRotator（UDP制御）';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$ja extends Translations$settings
 
 	// Translations
 	@override String get network => 'ネットワーク/WiFi';
+	@override String get secureNetwork => 'セキュアネットワーク/WiFi';
 	@override String get usbSerial => 'USBシリアル';
 	@override String get wifi => 'ネットワーク/WiFi';
 	@override String get bluetoothSerial => 'Bluetoothシリアル';
+	@override String get bleSerial => 'Bluetooth LE';
 	@override String get placeholder => 'プレースホルダー';
 }
 
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$ja extends Transla
 	@override String get thunderstormWithHail => 'ひょうを伴う雷雨';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$ja extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'いいえ';
+	@override String get toggle => 'トグル';
+	@override String get hold => 'ホールド';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$ja extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'キーボードでは無線機をキーイングしません。';
+	@override String get toggle => '電話モードでは、PTTキーで無線機をキーイングし、もう一度押すと解除します。1分経つと自動的に解除されます。';
+	@override String get hold => '電話モードでは、PTTキーを押している間、最大1分まで無線機が送信します。';
+}
+
 /// The flat map containing all translations for locale <ja>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3577,6 +4526,7 @@ extension on TranslationsJa {
 			'common.callsign' => 'コールサイン',
 			'common.clear' => 'クリア',
 			'common.dismiss' => '閉じる',
+			'common.copyDetails' => '詳細をコピー',
 			'common.expand' => '展開',
 			'common.collapse' => '折りたたむ',
 			'onboarding.welcomeTitle' => 'Ham2K Portable Loggerへようこそ！',
@@ -3604,6 +4554,12 @@ extension on TranslationsJa {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'クラウド同期',
+			'onboarding.syncBody' => 'Ham2K Log Filerはログのバックアップをクラウドに保存し、Ham2Kアプリを使っているすべてのデバイス間で同期します。',
+			'onboarding.syncPricing' => '無料です！有料サブスクリプションにすると、さらに高速になります。',
+			'onboarding.syncLabel' => 'クラウド同期を有効にする',
+			'onboarding.syncOffWarning' => '警告：デバイスの故障や紛失などでオペレーションデータを失う可能性が高くなります。',
+			'onboarding.notNow' => '今はしない',
 			'onboarding.consentTitle' => 'データとプライバシー',
 			'onboarding.consentUsageBody' => 'アプリの改善に役立てるため、パフォーマンス、クラッシュ、アプリ使用状況のデータを収集させてください。',
 			'onboarding.consentUsageLabel' => 'アプリ使用データを共有',
@@ -3613,10 +4569,11 @@ extension on TranslationsJa {
 			'startScreen.credits' => 'KI2Dと仲間たちによる',
 			'testerOverlay.tape' => '注意：工事中',
 			'testerOverlay.warningTitle' => 'このアプリは開発中です',
-			'testerOverlay.warningBody' => 'ほとんどの機能は路面が不安定で、あちこちに段差があります。定期的に更新を確認してください。',
+			'testerOverlay.warningBody' => 'ほとんどの機能はまだ路面が凸凹で、あちこちに段差があります。定期的にアップデートを確認してください。',
 			'testerOverlay.whatsNew' => ({required Object build}) => 'ビルド${build}の新機能',
 			'testerOverlay.thanks' => 'このアプリの改善のために、ご自身のログを危険にさらしてくださりありがとうございます！',
 			'extensionsPanel.categoryActivity' => 'アクティビティ',
+			'extensionsPanel.categoryAward' => 'アワード',
 			'extensionsPanel.categoryContest' => 'コンテスト',
 			'extensionsPanel.categoryLookup' => 'コールサイン検索',
 			'extensionsPanel.categorySpots' => 'スポットソース',
@@ -3627,13 +4584,23 @@ extension on TranslationsJa {
 			'extensionsPanel.noMatches' => '検索に一致する拡張機能はありません',
 			'extensionsPanel.installFromFile' => 'ファイルからインストール…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'バージョン ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'スクリーンショット ${n}/${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => '前のスクリーンショット',
+			'extensionsPanel.nextScreenshot' => '次のスクリーンショット',
+			'extensionsPanel.screenshotUnavailable' => 'スクリーンショットを表示できません',
 			'extensionsPanel.canReach' => 'この拡張機能がアクセスできるもの',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}（常時接続）',
 			'extensionsPanel.canHoldLocalConnection' => 'ローカルネットワーク上のデバイス（常時接続）',
 			'extensionsPanel.canUseLocation' => 'あなたの位置情報',
 			'extensionsPanel.canReadRadio' => '無線機（周波数とモードの読み取り）',
 			'extensionsPanel.canControlRadio' => '無線機（制御と送信：チューニング、出力、CW、ボイスメモリー、PTT）',
-			'extensionsPanel.canSetUserAgent' => '独自の名前でサーバーに名乗る',
+			'extensionsPanel.canCommandRadioRaw' => '無線機（固有プロトコルでの任意のコマンド送信。送信や設定変更を行うものも含む）',
+			'extensionsPanel.canReadCluster' => 'DXクラスター（あなたとしてログインし、受信内容の読み取り）',
+			'extensionsPanel.canSpotCluster' => 'DXクラスター（あなたとしてログインし、あなたの名前でのスポット投稿）',
+			'extensionsPanel.canCommandCluster' => 'DXクラスター（あなたとしてログインし、あなたの名前での任意のコマンド送信）',
+			'extensionsPanel.canSetUserAgent' => 'サーバーに対して独自の名前を名乗る',
+			'extensionsPanel.canChangeSettings' => '設定（コマンドによる変更：あらゆる設定、開発者モード、実験）',
 			'extensionsPanel.noCapabilities' => 'アプリ外へのアクセスは一切要求しません。',
 			'extensionsPanel.sandboxNote' => '拡張機能はサンドボックス内で動作します。ファイルにはアクセスできず、ここに記載されたもの以外のネットワークにも接続できません。',
 			'extensionsPanel.installAction' => 'インストール',
@@ -3656,7 +4623,7 @@ extension on TranslationsJa {
 			'extensionsPanel.dropHint' => '.h2kext拡張機能をドロップしてインストール',
 			'extensionsPanel.dropOneOnly' => '拡張機能は1つずつドロップしてください。',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => 'その拡張機能について${source}が${status}を返しました。',
-			'extensionsPanel.downloadTooLarge' => 'ダウンロードが大きすぎるため、拡張機能ではありません。',
+			'extensionsPanel.downloadTooLarge' => 'そのダウンロードは拡張機能としては大きすぎます。',
 			'extensionsPanel.downloadNotSecure' => 'ダウンロードが安全でない場所にリダイレクトされました。',
 			'extensionsPanel.catalogSection' => 'カタログ',
 			'extensionsPanel.catalogLoading' => 'カタログを読み込み中…',
@@ -3677,31 +4644,39 @@ extension on TranslationsJa {
 			'extensionsPanel.upgradeDoneBody' => '拡張機能はHam2K拡張機能カタログから提供されるようになったため、アプリの新バージョンを待たずにアップデートできます。',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'アップグレードされなかったもの：${names}。',
 			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => '動作しなかったもの：${names}。',
-			'extensionsPanel.upgradeDoneRefusedHint' => 'これらはインストールされたまま、設定 › 拡張機能 で印が付いています。そこでアップデートすると復活します。',
+			'extensionsPanel.upgradeDoneRefusedHint' => 'これらはインストールされたままで、設定 › 拡張機能に印が付いています。そこでアップデートすると復活します。',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'カタログにはこれらの直接の後継がありません。使っていた機能をカバーする拡張機能をカタログで探してください。',
 			'extensionsPanel.retiredQp' => 'QSOパーティー',
 			'extensionsPanel.retiredStateparks' => '州立公園イベント',
 			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count}件の拡張機能がまだ届いていません。次に拡張機能カタログに接続できたときにダウンロードされます。',
 			'extensionsPanel.runtimeDeadBody' => '拡張機能が起動しませんでした。アプリを再起動すると復活するはずです。',
 			'extensionsPanel.refusedTitle' => '一部の拡張機能が動作しませんでした',
-			'extensionsPanel.upgradeBusyTitle' => 'セットアップ中',
+			'extensionsPanel.upgradeBusyTitle' => 'まだセットアップ中です',
 			'extensionsPanel.upgradeRuntimeDeadTitle' => '拡張機能が動作していません',
 			'extensionsPanel.restoreTitle' => '一部の拡張機能が見つかりません',
 			'extensionsPanel.restoreBody' => 'インストールしたこれらの拡張機能がこのデバイスにありません。Ham2K拡張機能カタログから再ダウンロードできます：',
-			'extensionsPanel.restoreFromFile' => 'ファイルからインストールしたもの。ファイルから再インストールするか、忘れてください：',
+			'extensionsPanel.restoreFromFile' => 'ファイルからインストールしたもの。ファイルから再インストールするか、登録を解除してください：',
 			'extensionsPanel.restoreOtherCatalog' => '別の拡張機能カタログからインストールしたため、ここでは利用できません：',
-			'extensionsPanel.restoreForget' => '忘れる',
+			'extensionsPanel.restoreForget' => '登録解除',
 			'extensionsPanel.restoreInstall' => 'インストール',
 			'extensionsPanel.restoreLater' => '後で',
 			'extensionsPanel.restoreInstalling' => '拡張機能をインストール中…',
 			'extensionsPanel.restoreDoneTitle' => '拡張機能が戻りました',
-			'extensionsPanel.restoreDoneBody' => ({required Object names}) => '再インストール：${names}。',
+			'extensionsPanel.restoreDoneBody' => ({required Object names}) => '再インストールしました：${names}。',
 			'extensionsPanel.restorePartialTitle' => '一部の拡張機能をインストールできませんでした',
 			'extensionsPanel.restoreFailed' => ({required Object names}) => 'インストールできませんでした：${names}。次回アプリを開いたときに再度提案します。',
 			'extensionsPanel.restoreBusyBody' => 'アプリは拡張機能をセットアップ中です。次回アプリを開いたときに再度提案します。',
 			'extensionsPanel.restoreRuntimeDeadBody' => '再インストールしましたが、拡張機能が起動しませんでした。アプリを再起動すると復活するはずです。',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name}は取り下げられました',
 			'extensionsPanel.revokedBody' => 'カタログがこのバージョンを取り下げたため、無効化されました。',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name}は無効化されました',
+			'extensionsPanel.forceDisabledBody' => 'Ham2Kがこの拡張機能を当面のあいだ無効化しました。',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name}は置き換えられました',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '代わりに${replacement}が提供されています。拡張機能画面で切り替えられます。',
+			'extensionsPanel.replacedBy' => ({required Object name}) => '${name}に置き換えられました',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'すでにお持ちの${name}に置き換えられました',
+			'extensionsPanel.replaceAction' => '置き換える',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => '設定はすでにお持ちの${replacement}に引き継がれます。ログはそのまま残ります。',
 			'extensionsPanel.downloadHashMismatch' => 'ダウンロードした内容がカタログに記載された拡張機能と一致しません。',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object key, required Object version}) => 'カタログに${key}のバージョン${version}はありません。',
 			'extensionsPanel.catalogLinkUnknown' => 'そのカタログリンクは拡張機能のバージョンを示していません。',
@@ -3715,22 +4690,25 @@ extension on TranslationsJa {
 			'extensionsPanel.followsBleeding' => 'ブリーディングエッジ版、不安定版、安定版のリリースを受け取ります',
 			'extensionsPanel.followStableAction' => '安定版リリースのみ受け取る',
 			'extensionsPanel.revokedBadge' => '取り下げ済み',
+			'extensionsPanel.forceDisabledBadge' => 'Ham2Kにより無効化',
 			'extensionsPanel.refusedBadge' => '読み込み失敗',
 			'extensionsPanel.downloadNotHttps' => 'そのダウンロードは安全な接続ではありません。',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'その拡張機能について${source}に接続できませんでした。',
 			'extensionsPanel.detailsAction' => '詳細',
 			'extensionsPanel.installedFromFile' => 'ファイルからインストール済み',
-			'extensionsPanel.detailsWhatItDoes' => '対応内容',
-			'extensionsPanel.installedPreloaded' => 'プリインストール',
-			'extensionsPanel.hookAccount' => 'アカウントのサインイン',
+			'extensionsPanel.detailsWhatItDoes' => '提供する機能',
+			'extensionsPanel.installedPreloaded' => 'プリインストール済み',
+			'extensionsPanel.hookAccount' => 'アカウントのログイン',
 			'extensionsPanel.hookCallNotes' => 'コールサインノート',
 			'extensionsPanel.hookDataFile' => 'オフラインデータ',
 			'extensionsPanel.hookExport' => 'エクスポート',
 			'extensionsPanel.hookLookup' => 'コールサイン検索',
-			'extensionsPanel.hookScoring' => 'スコア計算',
+			'extensionsPanel.hookScoring' => 'スコア',
 			'extensionsPanel.hookSpots' => 'スポット',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '${program}のハンティング',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '${program}のアクティベーション',
+			'extensionsPanel.suggestedSection' => 'おすすめ',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => '他にも${count}件',
 			'home.title' => 'ポータブルロガー',
 			'home.newOperation' => '新しいオペレーション',
 			'home.stationCallsign' => 'ステーションコールサイン',
@@ -3749,7 +4727,7 @@ extension on TranslationsJa {
 			'home.toggleNav' => 'ナビゲーションラベルの表示/非表示',
 			'home.logs.title' => 'ログ',
 			'home.logs.titleFor' => 'ログ：',
-			'home.logs.emptyCallsigns' => 'まだQSOが記録されていません',
+			'home.logs.emptyCallsigns' => 'まだQSOがありません',
 			'home.logs.emptyQsos' => ({required Object call}) => '${call}のQSOはありません',
 			'home.logs.mapNoSelection' => 'QSOを選択すると地図に表示されます',
 			'home.logs.searchHint' => 'コールサインまたは名前で検索',
@@ -3760,8 +4738,25 @@ extension on TranslationsJa {
 			'home.logs.unsavedTitle' => '未保存の変更',
 			'home.logs.unsavedBody' => 'このQSOには保存されていない変更があります。',
 			'home.logs.pendingDeleteBody' => 'このQSOは削除予定です。',
-			'home.logs.editGone' => '保存されませんでした：そのQSOはこのログにもうありません。',
+			'home.logs.editGone' => '保存されませんでした：そのQSOはもうこのログにありません。',
 			'home.logs.discard' => '破棄',
+			'home.logs.sheet.callsigns' => 'ステーションコールサイン',
+			'home.logs.sheet.groupBy' => 'グループ化',
+			'home.logs.sheet.period' => '期間',
+			'home.logs.groupBy.none' => 'グループ化なし',
+			'home.logs.groupBy.date' => '日付',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => '不明な大陸',
+			'home.logs.groupBy.unknownEntity' => '不明なエンティティ',
+			'home.logs.groupBy.unknownDate' => '日付なし',
+			'home.logs.period.thisMonth' => '今月',
+			'home.logs.period.last3Months' => '過去3か月',
+			'home.logs.period.thisYear' => '今年',
+			'home.logs.period.lastYear' => '昨年',
+			'home.logs.period.allTime' => '全期間',
+			'home.logs.period.custom' => 'カスタム範囲',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => '（${span}）',
+			'home.logs.periodTitle.custom' => 'カスタム範囲',
 			'home.logs.columns.date' => '日付',
 			'home.logs.columns.time' => '時刻',
 			'home.logs.columns.freq' => '周波数',
@@ -3775,7 +4770,7 @@ extension on TranslationsJa {
 			'home.logs.columns.grid' => 'グリッド',
 			'home.logs.columns.state' => '州',
 			'home.logs.columns.country' => '国',
-			'home.logs.columns.refs' => '参照',
+			'home.logs.columns.refs' => 'リファレンス',
 			'home.logs.panels.qsos' => 'QSOログ',
 			'home.logs.panels.qsosDescription' => '選択したコールサインの全オペレーションにわたるQSO。',
 			'home.logs.panels.info' => '情報',
@@ -3793,7 +4788,7 @@ extension on TranslationsJa {
 			'home.logs.import.importingDetail' => ({required Object total, required Object imported}) => '${total}件中${imported}件をインポート済み',
 			'chase.operatorPrefix' => 'op',
 			'chase.chasing' => 'チェイス中',
-			'chase.goalsTwo' => ({required Object first, required Object second}) => '${first}・${second}',
+			'chase.goalsTwo' => ({required Object first, required Object second}) => '${first}と${second}',
 			'chase.goalsMore' => ({required Object first, required Object second}) => '${first}、${second}など',
 			'chase.station.title' => 'チェイス局',
 			'chase.station.stationLabel' => '局：',
@@ -3813,7 +4808,7 @@ extension on TranslationsJa {
 			'chase.period.thisMonth' => '今月',
 			'chase.goals.title' => 'チェイス目標',
 			'chase.goals.remove' => ({required Object name}) => '${name}のチェイスをやめる',
-			'chase.goals.extensionsTitle' => 'チェイスに対応した拡張機能',
+			'chase.goals.extensionsTitle' => 'その他のチェイスプログラム',
 			'chase.panels.logging' => 'QSO',
 			'chase.panels.loggingDescription' => '期間内にチェイスしたQSOの上にあるロギング操作。',
 			'chase.panels.info' => '情報',
@@ -3822,10 +4817,47 @@ extension on TranslationsJa {
 			'chase.panels.spotsDescription' => 'オンエア中にスポットされた、チェイスできる局。',
 			'chase.panels.map' => '地図',
 			'chase.panels.mapDescription' => '期間内のQSOとロギング中の局。',
+			'chase.claims.checking' => 'チェイス対象のQSOを確認中',
+			'chase.claims.rebuilding' => ({required Object program}) => '${program}のログを確認中',
+			'chase.claims.progress' => ({required Object total, required Object done}) => '${total}件中${done}件のQSO',
+			'chase.notice.newRef' => ({required Object program}) => '新しい${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'おそらく新しい${program}',
+			'chase.notice.newBand' => ({required Object program}) => '新しい${program}バンド',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'おそらく新しい${program}バンド',
+			'chase.notice.newMode' => ({required Object program}) => '新しい${program}モード',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'おそらく新しい${program}モード',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program}未確認',
+			'chase.notice.programGuess' => ({required Object notice}) => 'おそらく${notice}',
+			'chase.alerts.title' => 'アラート',
+			'chase.alerts.newRef' => '新しいリファレンス',
+			'chase.alerts.newBand' => '新しいバンド',
+			'chase.alerts.newMode' => '新しいモード',
+			'chase.alerts.unconfirmed' => '未確認',
+			'chase.checklists' => 'チェイスの進捗',
+			'chase.imports.importFrom' => ({required Object label}) => '${label}をインポート',
+			'chase.imports.pickTitle' => ({required Object file}) => '${file}のインポート先',
+			'chase.imports.dropHint' => 'ファイルをドロップしてチェイスプログラムにインポート',
+			'chase.imports.done' => ({required Object file, required Object program, required Object count}) => '${file}から${program}のエントリー${count}件をインポートしました',
+			'chase.imports.doneSkipped' => ({required Object file, required Object program, required Object count, required Object skipped}) => '${file}から${program}のエントリー${count}件をインポートしました。読み取れなかった${skipped}件はスキップしました',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file}には${program}がインポートできるものがありません',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program}は${file}を読み取れませんでした',
+			'chase.imports.unreadable' => ({required Object program, required Object file, required Object skipped}) => '${program}は${file}の${skipped}件のレコードをどれも読み取れませんでした',
+			'chase.imports.noProgram' => ({required Object file}) => '${file}をインポートできるチェイスプログラムはありません',
 			'dialogs.operationDetails' => 'オペレーション詳細',
 			'dialogs.activities' => 'アクティビティ',
 			'dialogs.stationCallsign' => 'ステーションコールサイン',
-			'dialogs.notes' => 'ノート',
+			'dialogs.advanced' => '詳細設定',
+			'dialogs.operatingPosition' => '運用ポジション（マルチステーション）',
+			'dialogs.assistance' => 'アシスタンス',
+			'dialogs.assistanceDescription' => 'スポットサービスなどの情報源を利用する',
+			'dialogs.selfSpotting' => 'セルフスポッティング',
+			'dialogs.selfSpottingDescription' => '自局の周波数情報を報告する機能を許可する',
+			'dialogs.disabledByRules' => ({required Object rules}) => '${rules}のルールに従うため無効',
+			'dialogs.lookupDespiteAssistance.title' => 'オンラインで検索しますか？',
+			'dialogs.lookupDespiteAssistance.body' => 'このオペレーションではアシスタンスが無効です。すべてのQSOを検索すると、今回に限りQRZなどのオンラインサービスを使用します。',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'このオペレーションでは${rules}のルールに従うためアシスタンスが無効です。すべてのQSOを検索すると、今回に限りQRZなどのオンラインサービスを使用します。',
+			'dialogs.lookupDespiteAssistance.action' => 'オンラインで検索',
+			'dialogs.notes' => 'メモ',
 			'dialogs.deleteOperationTitle' => 'オペレーションを削除',
 			'dialogs.purgeTestsTitle' => 'テストオペレーションを完全削除',
 			'dialogs.purgeTestsBody' => 'これらのテストオペレーションとそのQSOを完全に削除します。元に戻せません。',
@@ -3833,7 +4865,7 @@ extension on TranslationsJa {
 			'dialogs.purgeTestsAction' => '完全削除',
 			'dialogs.syncAllTitle' => 'このデバイスのログを置き換えますか？',
 			'dialogs.syncAllBody' => ({required Object qsos}) => 'SYNCALLはこのデバイスの${qsos}をバックアップしてから消去し、アカウントのログをサーバーから再ダウンロードします。バックアップはこのデバイスのデータベースに残ります。',
-			'dialogs.syncAllUnsynced' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のQSOがまだ同期されていません。サーバーは受信していないため、元に戻りません。', other: '${n}件のQSOがまだ同期されていません。サーバーは受信していないため、元に戻りません。', ), 
+			'dialogs.syncAllUnsynced' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n}件のQSOはまだ同期されていません。サーバーには届いていないため、復元されません。', other: '${n}件のQSOはまだ同期されていません。サーバーには届いていないため、復元されません。', ), 
 			'dialogs.syncAllAction' => '消去して再同期',
 			'dialogs.receivedPurgesTitle' => '他のデバイスで削除されたテストオペレーション',
 			'dialogs.receivedPurgesBody' => 'これらは別のデバイスでテストオペレーションとして削除されました。ここでも削除しますか？これらとそのQSOは完全に削除され、元に戻せません。',
@@ -3858,8 +4890,10 @@ extension on TranslationsJa {
 			'operation.tabs.weather' => '天気',
 			'operation.tabs.website' => 'Webサイト',
 			'operation.tabs.remoteScreen' => 'リモート画面',
-			'operation.tabs.solar' => '太陽',
+			'operation.tabs.solar' => '太陽活動',
 			'operation.tabs.radio' => '無線機',
+			'operation.tabs.rotator' => 'ローテーター',
+			'operation.tabs.summaries' => 'オペレーション概要',
 			'operation.positions.nobodyYet' => 'このオペレーションを共有している他の運用ポジションはまだありません。',
 			'operation.positions.positionLabel' => ({required Object number}) => 'ポジション：${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op：${call}',
@@ -3908,12 +4942,76 @@ extension on TranslationsJa {
 			'operation.layout.paneInherit' => 'アプリと同じ',
 			'operation.layout.searchHint' => 'パネルを検索',
 			'operation.layout.noPanelsMatch' => '検索に一致するパネルはありません。',
-			'operation.layout.nothingToAdd' => 'このビューには追加できるパネルがすべてあります',
+			'operation.layout.nothingToAdd' => 'このビューにはすでにすべてのパネルがあります',
 			'operation.layout.addPanel' => ({required Object panel}) => '${panel}を追加',
 			'operation.layout.showPreview' => ({required Object panel}) => '${panel}をプレビュー',
 			'operation.layout.missingExtension' => ({required Object name}) => '拡張機能「${name}」が見つかりません',
+			'operation.layout.missingExtensionEnable' => '有効にする',
+			'operation.layout.missingExtensionInstall' => 'インストール…',
+			'operation.layout.missingExtensionWontRun' => 'このバージョンは動作しません。設定 › 拡張機能でアップデートしてください。',
+			'operation.layout.missingExtensionUnavailable' => 'このアプリでは利用できません',
+			'operation.layout.missingExtensionNotInCatalog' => 'カタログにありません',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'カタログに接続できませんでした。再試行',
+			'operation.layout.missingExtensionFailed' => 'うまくいきませんでした。再試行',
 			'operation.layout.previewUnavailable' => 'このパネルのプレビュー画像を表示できませんでした。',
 			'operation.layout.nestedPaneTitle' => 'その他',
+			'operation.layout.layouts.defaultName' => 'デフォルト',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'レイアウト${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'レイアウト：${name}',
+			'operation.layout.layouts.menuNew' => '新規…',
+			'operation.layout.layouts.menuExport' => 'エクスポート…',
+			'operation.layout.layouts.menuImport' => 'インポート…',
+			'operation.layout.layouts.menuTitle' => 'レイアウト',
+			'operation.layout.layouts.newTitle' => '新しいレイアウト',
+			'operation.layout.layouts.editTitle' => 'レイアウトを編集',
+			'operation.layout.layouts.edit' => '編集',
+			'operation.layout.layouts.duplicateCurrent' => '現在のレイアウトを複製',
+			'operation.layout.layouts.startFromDefault' => 'デフォルトのレイアウトから始める',
+			'operation.layout.layouts.nameLabel' => '名前',
+			'operation.layout.layouts.descriptionLabel' => '説明',
+			'operation.layout.layouts.create' => '作成',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => '「${name}」の変更を保存しますか？',
+			'operation.layout.layouts.leaveEditBody' => 'このレイアウトには保存されていない変更があります。',
+			'operation.layout.layouts.discard' => '破棄',
+			'operation.layout.layouts.deleteTitle' => 'このレイアウトを削除しますか？',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'レイアウト「${name}」を本当に削除しますか？',
+			'operation.layout.layouts.exportTitle' => 'レイアウトをエクスポート',
+			'operation.layout.layouts.exportPick' => 'エクスポートするパネル',
+			'operation.layout.layouts.tabSet' => 'タブセット',
+			'operation.layout.layouts.exportAction' => 'エクスポート',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'レイアウトを${location}に保存しました',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'レイアウトをエクスポートできませんでした：${error}',
+			'operation.layout.layouts.importTitle' => 'レイアウトをインポート',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '${view}ビュー用に作られたものです。そのビューにしかないパネルは除外されます。',
+			'operation.layout.layouts.viewHome' => 'ホーム',
+			'operation.layout.layouts.viewOperation' => 'オペレーション',
+			'operation.layout.layouts.viewLogs' => 'ログ',
+			'operation.layout.layouts.viewChase' => 'チェイス',
+			'operation.layout.layouts.importAsNew' => '新しいレイアウトとして',
+			'operation.layout.layouts.importReplace' => 'このレイアウトと置き換え',
+			'operation.layout.layouts.importAdd' => 'このレイアウトに追加',
+			'operation.layout.layouts.importAddHint' => 'パネルは右側の新しい列に追加されます。',
+			'operation.layout.layouts.importPick' => 'インポートするパネル',
+			'operation.layout.layouts.importReplaceSettings' => 'ここで設定済みのパネルの設定を置き換える',
+			'operation.layout.layouts.importAction' => 'インポート',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるレイアウトではありません：${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）',
+			'operation.layout.layouts.problemNotLayoutFile' => 'Ham2Kのレイアウトファイルではありません',
+			'operation.layout.layouts.problemNewerVersion' => '新しいバージョンのアプリで書き出されたものです',
+			'operation.layout.layouts.problemNoArrangement' => '配置が含まれていません',
+			'operation.layout.layouts.problemMalformed' => '一部がレイアウト形式に従っていません',
+			'operation.layout.layouts.problemTooLarge' => '大きすぎます',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'ファイルを開けませんでした：${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'レイアウトをインポートできませんでした：${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'レイアウトをコピーできませんでした：${error}',
+			'operation.layout.layouts.importNothing' => 'パネルが選択されていないため、何もインポートされませんでした。',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => '除外：${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '${panels}は残しました：小画面の配置に欠かせないためです。',
+			'operation.layout.layouts.notOffered' => 'このビューでは利用できません',
+			'operation.layout.layouts.alreadyPlaced' => 'すでにこのレイアウトにあります',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => '${name}が必要',
+			'operation.layout.layouts.listRecoveredTitle' => 'レイアウト名を読み込めませんでした',
+			'operation.layout.layouts.listRecoveredBody' => 'このビューのレイアウト一覧を読み込めませんでした。レイアウト自体はすべて残っており、名前の代わりに番号が付いています。',
 			'operation.layout.editLayout' => 'レイアウトを編集',
 			'operation.layout.saveLayout' => 'レイアウトを保存',
 			'operation.layout.revertLayout' => 'レイアウトの変更を破棄',
@@ -3922,12 +5020,28 @@ extension on TranslationsJa {
 			'operation.layout.layoutUnreadableBody' => '保存したレイアウトを読み込めなかったため、デフォルトの配置を表示しています。保持を選ぶまで元のレイアウトは上書きされません。',
 			'operation.layout.layoutUnreadableAction' => 'このレイアウトを使用',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel}を表示できませんでした',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：${max}文字を超える内容が送られました',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：アートワークの要素が${max}個を超えています',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：アートワークのネストが${max}階層を超えています',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel}を表示できませんでした：アートワークが自己完結していません',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのレイヤーが${max}個を超えています',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのコントロールが${max}個を超えています',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの文字列が${max}文字を超えています',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：レイアウトのネストが${max}階層を超えています',
 			'operation.layout.panelRenderRetry' => '再試行',
 			'operation.layout.panelActionFailed' => 'パネルの操作に失敗しました。再試行してください。',
 			'operation.layout.panels.loggingDescription' => 'ログと入力フィールド',
 			'operation.layout.panels.infoDescription' => '交信中の局について分かっている情報',
 			'operation.layout.panels.spotsDescription' => 'クラスターとアクティビティプログラムからのスポット',
 			'operation.layout.panels.mapDescription' => 'コンタクトの位置',
+			'operation.layout.panels.summariesDescription' => 'オペレーションの統計とスコアを、選んだセクションと順序で表示',
+			'operation.layout.panels.summariesSections' => 'セクションと順序',
+			'operation.layout.panels.summariesDays' => '日ごと',
+			'operation.layout.panels.summariesReset' => 'すべて表示',
+			'operation.layout.panels.summariesAllHidden' => 'すべてのセクションが非表示です。このパネルの設定で表示するものを選んでください。',
 			'operation.layout.panels.clockDescription' => '任意のタイムゾーンの時計',
 			'operation.layout.panels.clockFace' => '文字盤',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -3944,7 +5058,7 @@ extension on TranslationsJa {
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => '場所${location}を読み取れませんでした。FN31prのようなグリッドスクエア、または42.36,-71.06の形式で入力してください。',
 			'operation.layout.panels.weatherUnreachable' => 'Open-Meteoに接続できませんでした。ネットワークがない可能性があります。まもなく再試行します。',
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteoは応答しましたが、読み取れる内容ではありませんでした。まもなく再試行します。',
-			'operation.layout.panels.weatherGusts' => ({required Object speed}) => '最大瞬間風速 ${speed}',
+			'operation.layout.panels.weatherGusts' => ({required Object speed}) => '突風 ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'たった今',
 			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}分前', other: '${count}分前', ), 
 			'operation.layout.panels.panelAgeHours' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}時間前', other: '${count}時間前', ), 
@@ -3998,7 +5112,7 @@ extension on TranslationsJa {
 			'operation.layout.panels.remoteScreenTarget' => '画面',
 			'operation.layout.panels.remoteScreenChoose' => '画面を選択…',
 			'operation.layout.panels.remoteScreenPickerTitle' => '共有画面',
-			'operation.layout.panels.remoteScreenPickerEmpty' => '画面を共有しているデバイスはありません。表示したいデバイスで、設定 → ピアデバイス の「画面とウィンドウを共有」をオンにしてください。',
+			'operation.layout.panels.remoteScreenPickerEmpty' => '画面を共有しているデバイスはありません。表示したいデバイスで、設定 → ピアデバイスの「画面とウィンドウを共有」をオンにしてください。',
 			'operation.layout.panels.remoteScreenUnset' => '画面が選択されていません。このパネルの設定を開き、他のデバイスが共有している画面を選んでください。',
 			'operation.layout.panels.remoteScreenConnecting' => '接続中…',
 			'operation.layout.panels.remoteScreenPeerAway' => 'そのデバイスは現在接続されていません。',
@@ -4052,6 +5166,30 @@ extension on TranslationsJa {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR高',
+			'operation.layout.panels.rotatorDescription' => 'アンテナの向きを、局を中心にした地図上に表示します。地図をタップすると回転します。',
+			'operation.layout.panels.rotatorRotator' => 'ローテーター',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '自動 — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => '自動 — ローテーターはまだありません',
+			'operation.layout.panels.rotatorBeamWidth' => 'ビーム幅',
+			'operation.layout.panels.rotatorBeamWidthDescription' => '方位の周りに描く角度（度）。0なら描画しません。',
+			'operation.layout.panels.rotatorLocation' => '場所',
+			'operation.layout.panels.rotatorLocationDescription' => '地図の中心にするグリッドスクエアまたは緯度経度。空欄ならオペレーションの場所を使います。',
+			'operation.layout.panels.rotatorTheme' => 'テーマ',
+			'operation.layout.panels.rotatorThemeColor' => 'カラー',
+			'operation.layout.panels.rotatorThemeGray' => 'グレー',
+			'operation.layout.panels.rotatorThemeMuted' => '淡色',
+			'operation.layout.panels.rotatorGrayline' => 'グレイラインを表示',
+			'operation.layout.panels.rotatorNoRotator' => '表示するローテーターがありません。このパネルの設定で選ぶか、ステーション構成で追加してください。',
+			'operation.layout.panels.rotatorNoLocation' => '地図の中心にする場所がありません。このパネルの設定で指定してください。',
+			'operation.layout.panels.rotatorDisconnected' => '未接続',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => '応答なし',
+			'operation.layout.panels.rotatorLocationInvalid' => 'このパネルの設定の場所を読み取れません。グリッドスクエアか、40.7, -74.0 のような緯度経度を使ってください。',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '仰角${degrees}°',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'E',
+			'operation.layout.panels.rotatorSouth' => 'S',
+			'operation.layout.panels.rotatorWest' => 'W',
 			'operation.layout.htmlPanelUnsupported' => 'このパネルにはWebビューが必要ですが、このプラットフォームでは提供されていません',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'このパネルにはWeb版では提供できないサンドボックスが必要です',
 			'operation.export.title' => 'オペレーションのエクスポート',
@@ -4078,8 +5216,6 @@ extension on TranslationsJa {
 			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			'operation.export.shareOne' => ({required Object name}) => '${name}を共有',
 			'operation.export.exportOne' => ({required Object name}) => '${name}をエクスポート',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '${name}をダウンロード',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをスタッシュ', other: '${count}件のファイルをスタッシュ', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをスタッシュ', other: '${count}件の結合ファイルをスタッシュ', ), 
@@ -4089,8 +5225,8 @@ extension on TranslationsJa {
 			'operation.export.compactFileNames.descriptionOn' => 'アップロード用の短い名前（例：N0CALL@US-1234-20260727.adi）',
 			'operation.export.compactFileNames.descriptionOff' => '読みやすい名前（例：2026-07-27 N0CALL at US-1234.adi）',
 			'operation.export.includePrivateData.title' => '個人情報を含める',
-			'operation.export.includePrivateData.descriptionOn' => '名前、住所、メール、グリッドスクエア、ノートを含めます',
-			'operation.export.includePrivateData.descriptionOff' => '名前、住所、メール、グリッドスクエア、ノートを除外します',
+			'operation.export.includePrivateData.descriptionOn' => '名前、住所、メール、グリッドスクエア、メモを含めます',
+			'operation.export.includePrivateData.descriptionOff' => '名前、住所、メール、グリッドスクエア、メモを除外します',
 			'operation.export.includePrivateData.note' => 'Full ADIF Exportには常にすべてが含まれます',
 			'operation.export.resultTitle' => 'エクスポート完了',
 			'operation.export.resultFailedTitle' => 'エクスポート失敗',
@@ -4100,14 +5236,14 @@ extension on TranslationsJa {
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のファイルをダウンロードしました', other: '${count}件のファイルをダウンロードしました', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'エクスポート失敗：${error}',
 			'operation.export.stash.needsEmailTitle' => '先にメールアドレスを追加してください',
-			'operation.export.stash.needsEmailBody' => 'Ham2K File StashはLoFiアカウントのメールアドレスにファイルを送信し、stash.ham2k.netへのサインインにもそのアドレスを使います。あなたのアカウントにはまだ確認済みのメールアドレスがありません。設定 › クラウド同期 で追加してください。',
+			'operation.export.stash.needsEmailBody' => 'Ham2K File StashはLoFiアカウントのメールアドレスにファイルを送信し、stash.ham2k.netへのログインにもそのアドレスを使います。あなたのアカウントにはまだ確認済みのメールアドレスがありません。設定 › クラウド同期で追加してください。',
 			'operation.export.stash.openSyncSettings' => 'クラウド同期を開く',
 			'operation.export.stash.replaceTitle' => '最近のスタッシュが置き換えられます',
 			'operation.export.stash.replaceBody' => ({required Object name}) => '6時間以内に「${name}」を送信しましたが、まだダウンロードされていません。無料アカウントで保持できるスタッシュは一度に1つだけのため、今送信すると置き換えられます。',
 			'operation.export.stash.replaceConfirm' => 'それでも送信',
 			'operation.export.stash.failedTitle' => 'Ham2K File Stashに送信できませんでした',
 			'operation.export.stash.sentTitle' => 'Ham2K File Stashに送信しました',
-			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは、任意のブラウザーで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', other: 'これらのファイルは、任意のブラウザーで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', ), 
+			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', other: 'これらのファイルは、任意のブラウザで **[stash.ham2k.net](https://stash.ham2k.net)** にアクセスして取得できます。', ), 
 			'operation.export.stash.mayHaveArrived' => 'スタッシュから応答がありません。ファイルは届いている可能性があります。再送信する前にstash.ham2k.netを確認してください',
 			'operation.export.stash.notSent' => '未送信',
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルは届きませんでした：', other: 'これら${count}件のファイルは届きませんでした：', ), 
@@ -4129,6 +5265,7 @@ extension on TranslationsJa {
 			'operation.spots.phoneAndCw' => '電話とCW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}スポット', other: '${count}スポット', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object total, required Object count}) => '${total}件中${count}件のスポットを表示',
+			'operation.spots.spotsDisabled' => 'このオペレーションではスポットが無効です',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes}分',
 			'operation.spots.callsOfNote' => '注目のコール',
 			'operation.spots.yourSpots' => 'あなたのスポット',
@@ -4149,8 +5286,10 @@ extension on TranslationsJa {
 			'operation.spots.filters.sorting' => '並び替え',
 			'operation.spots.filters.sortByTime' => 'スポット時間順',
 			'operation.spots.filters.sortByFrequency' => '周波数順',
+			'operation.spots.filters.sortByWanted' => 'モストウォンテッド順',
 			'operation.spots.filters.groupByBand' => 'バンドでグループ化',
 			'operation.spots.filters.groupCallsWithNotes' => 'ノート付きコールをグループ化',
+			'operation.spots.filters.alertingOnly' => 'アラート付きのスポットのみ',
 			'operation.spots.filters.sourceNoReply' => '応答なし',
 			'operation.spots.filters.sourceError' => 'エラー',
 			'operation.spots.unavailableTitle' => 'スポットを利用できません',
@@ -4180,8 +5319,8 @@ extension on TranslationsJa {
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
 			'operation.import.n1mmAddressValue' => 'すべて（ブロードキャスト）',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDPサーバー',
-			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data タブ → コンタクト情報の "Enable Broadcasts" にチェック。同じコンピューターで実行している場合はIPアドレスを127.0.0.1に、現在のローカルネットワークにブロードキャストする場合は255.255.255.255に設定します。',
-			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting タブ → UDP Server セクション → "Accept UDP requests" にチェック。同じコンピューターで実行している場合はUDP Serverを127.0.0.1に、または239.239.0.2のようなマルチキャストアドレスに設定し、このアプリの上記の設定でも同じアドレスを使用します。',
+			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data タブ → コンタクト情報の「Enable Broadcasts」にチェック。同じコンピューターで実行している場合はIPアドレスを127.0.0.1に、現在のローカルネットワークにブロードキャストする場合は255.255.255.255に設定します。',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting タブ → UDP Server セクション → 「Accept UDP requests」にチェック。同じコンピューターで実行している場合はUDP Serverを127.0.0.1に、または239.239.0.2のようなマルチキャストアドレスに設定し、このアプリの上記の設定でも同じアドレスを使用します。',
 			'operation.import.listenTitle' => '他のアプリからQSOを受信',
 			'operation.import.listenDescriptionOnN1mm' => 'N1MM+から受信中',
 			'operation.import.listenDescriptionOnWsjtx' => 'WSJT-Xから受信中',
@@ -4227,6 +5366,7 @@ extension on TranslationsJa {
 			'map.globe' => '地球儀',
 			'map.zoomIn' => '拡大',
 			'map.zoomOut' => '縮小',
+			'map.resetNorth' => '北を上にリセット',
 			'map.postcard.button' => 'オペレーションのポストカード',
 			'map.postcard.title' => ({required Object title}) => '${title}のポストカード',
 			'map.postcard.portrait' => '縦',
@@ -4249,6 +5389,11 @@ extension on TranslationsJa {
 			'map.postcard.previousPage' => '前のページ',
 			'map.postcard.nextPage' => '次のページ',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => '${page} / ${count}ページ',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count} Q', other: '${count} Q', ), 
+			'map.postcard.options' => 'ポストカードのオプション',
+			'map.postcard.bandLegend' => 'バンドの凡例を表示',
+			'map.postcard.grayline' => 'グレイラインを表示',
+			'map.postcard.sectionsAndOrder' => '概要のセクションと順序',
 			'map.postcard.sectionDays' => '日ごと',
 			'map.postcard.reset' => 'リセット',
 			'map.postcard.failed' => ({required Object error}) => 'ポストカードを作成できませんでした：${error}',
@@ -4262,13 +5407,13 @@ extension on TranslationsJa {
 			'mapsView.activities' => 'アクティビティ',
 			'mapsView.layers' => 'レイヤー',
 			'mapsView.baseMap' => 'ベースマップ',
-			'mapsView.satellite' => '衛星写真 (Esri)',
+			'mapsView.satellite' => '衛星写真（Esri）',
 			'mapsView.facilities' => '公園の施設',
 			'mapsView.boundaries' => '行政境界',
 			'mapsView.currentLocation' => '現在地',
 			'mapsView.noMatches' => ({required Object text}) => '「${text}」に一致するものはありません',
-			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${where} の参照コード ${count} 件', other: '${where} の参照コード ${count} 件', ), 
-			'mapsView.startOperation' => 'これらの参照コードでオペレーションを開始',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${where}のリファレンス${count}件', other: '${where}のリファレンス${count}件', ), 
+			'mapsView.startOperation' => 'これらのリファレンスでオペレーションを開始',
 			'activitiesView.title' => 'アクティビティ',
 			'activitiesView.activitiesCountZero' => 'アクティビティが選択されていません',
 			'activitiesView.activitiesCountOne' => '1件のアクティビティ',
@@ -4280,28 +5425,28 @@ extension on TranslationsJa {
 			'activitiesView.manageExtensions' => '拡張機能を管理',
 			'activitiesView.manage' => '管理',
 			'activitiesView.activitiesTitle1' => ({required Object first}) => 'アクティビティの種類：${first}',
-			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'アクティビティの種類：${first}、${second}',
+			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'アクティビティの種類：${first}と${second}',
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'アクティビティの種類：${first}、${second}、他${more}件',
-			'activitiesView.reference' => '参照コード',
+			'activitiesView.reference' => 'リファレンス',
 			'activitiesView.invalidReference' => '無効',
 			'activitiesView.duplicateReference' => '追加済み',
-			'activitiesView.searchHint' => '名前、参照コードなどで検索…',
+			'activitiesView.searchHint' => '名前、リファレンスなどで検索…',
 			'activitiesView.noSuggestions' => '一致なし',
-			'activitiesView.noSuggestionsHint' => '上で参照名または番号を検索してください',
+			'activitiesView.noSuggestionsHint' => '上でリファレンスの名前または番号を検索してください',
 			'activitiesView.noSuggestionsExample' => '（例：「trail」や「4556」）',
 			'activitiesView.allOptions' => 'アクティビティの種類',
-			'activitiesView.determiningLocation' => '現在地を特定しています…\n近くの参照コードを探すためにGPSの測位を待っています',
+			'activitiesView.determiningLocation' => '現在地を特定しています…\n近くのリファレンスを探すためにGPSの測位を待っています',
 			'activitiesView.locationUnavailableTitle' => '位置情報を利用できません',
 			'activitiesView.locationDeniedTitle' => '位置情報の許可が拒否されました',
 			'activitiesView.locationBlockedTitle' => '位置情報の許可がブロックされています',
-			'activitiesView.noNearbyReason' => '近くの参照コードを特定できません',
-			'activitiesView.locationManualHint' => ({required Object icon}) => '${icon}をタップして手動で位置を入力するか、\n名前で参照コードを検索してください',
+			'activitiesView.noNearbyReason' => '近くのリファレンスを特定できません',
+			'activitiesView.locationManualHint' => ({required Object icon}) => '${icon}をタップして手動で位置を入力するか、\n名前でリファレンスを検索してください',
 			'activitiesView.locationGrantAction' => '位置情報へのアクセスを許可',
 			'activitiesView.locationSettingsAction' => '設定を開く',
 			'activitiesView.locationSettingsUnavailable' => 'システム設定で位置情報へのアクセスを許可してください',
 			'activitiesView.locationGrantRefused' => '位置情報がまだありません。システムに再び拒否されました',
 			'activitiesView.searchUnavailableTitle' => 'アクティビティ検索を利用できません',
-			'activitiesView.searchUnavailableReason' => '検索を実行できるアクティビティ拡張機能がありませんでした。しばらくしてから再試行してください。',
+			'activitiesView.searchUnavailableReason' => 'アクティビティ拡張機能が検索に応答できませんでした。しばらくしてから再試行してください。',
 			'activitiesView.emptySheet' => '下の候補と検索から追加してください',
 			'activitiesView.exports' => 'エクスポート',
 			'activitiesView.exportLogs' => 'ログをエクスポート',
@@ -4315,12 +5460,12 @@ extension on TranslationsJa {
 			'activitiesView.alreadySelected' => '選択済み',
 			'activitiesView.selected' => '選択中',
 			'activitiesView.pickPosition' => ({required Object index, required Object count}) => '${index} / ${count}',
-			'activitiesView.previousPick' => '前の一致',
-			'activitiesView.nextPick' => '次の一致',
+			'activitiesView.previousPick' => '前の候補',
+			'activitiesView.nextPick' => '次の候補',
 			'activitiesView.retiredReference' => '廃止',
 			'activitiesView.enableExtension' => ({required Object name}) => '${name}を有効化',
 			'activitiesView.enableExtensionHint' => 'この拡張機能は検索に一致しますが、現在有効になっていません',
-			'activitiesView.enableExtensionForRefHint' => 'この拡張機能はこのオペレーションの参照コードの1つを扱いますが、現在有効になっていません',
+			'activitiesView.enableExtensionForRefHint' => 'この拡張機能はこのオペレーションのリファレンスの1つを扱いますが、現在有効になっていません',
 			'activitiesView.extensionNotRunning' => ({required Object name}) => '${name}は動作していません',
 			'activitiesView.extensionNotRunningHint' => 'この拡張機能は無効化されています。詳細は拡張機能の設定を開いてください',
 			'activitiesView.installExtension' => ({required Object name}) => '${name}をインストール',
@@ -4328,7 +5473,7 @@ extension on TranslationsJa {
 			'activitiesView.onlyCatalogMatches' => '一致なし\nカタログの一部の拡張機能に結果があるかもしれません。\n下のアクティビティの種類からインストールしてください。',
 			'activitiesView.setupUnavailable' => 'このアクティビティの設定を読み込めませんでした。管理から再試行してください',
 			'activitiesView.controlsUnavailableTitle' => 'アクティビティの操作を利用できません',
-			'activitiesView.controlsUnavailableReason' => '参照コードは安全ですが、現在編集できません。',
+			'activitiesView.controlsUnavailableReason' => 'リファレンスは安全ですが、現在編集できません。',
 			'activitiesView.controlsUnavailableRetry' => '再試行',
 			'activitiesView.onlyDisabledMatches' => '一致なし\n利用可能な一部の拡張機能に結果があるかもしれません。\n下のアクティビティの種類で有効にしてください。',
 			'activitiesView.onlyNotRunningMatches' => '一致なし\n結果があるかもしれない一部の拡張機能が動作していません。\n下のアクティビティの種類を確認してください。',
@@ -4342,10 +5487,14 @@ extension on TranslationsJa {
 			'loggingControls.timeUtc' => '時刻（UTC）',
 			'loggingControls.date' => '日付',
 			'loggingControls.now' => '現在',
+			'loggingControls.manualTimeSettings' => '手動時刻',
+			'loggingControls.manualTimeIncrement' => 'QSOごとの増分',
+			'loggingControls.manualTimeIncrementNone' => 'なし',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}分', other: '${count}分', ), 
 			'loggingControls.frequency' => '周波数',
 			'loggingControls.mode' => 'モード',
 			'loggingControls.theirCall' => '相手のコール',
-			'loggingControls.noteField' => 'ノート',
+			'loggingControls.noteField' => 'メモ',
 			'loggingControls.todoField' => 'To-Do',
 			'loggingControls.sent' => '送信',
 			'loggingControls.rcvd' => '受信',
@@ -4363,9 +5512,9 @@ extension on TranslationsJa {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '削除された${kind}',
 			'loggingControls.timeControl' => '時刻',
 			'loggingControls.radioControl' => '無線機',
-			'loggingControls.powerControl' => '出力',
-			'loggingControls.notesControl' => 'ノート',
-			'loggingControls.power' => '出力',
+			'loggingControls.powerControl' => 'パワー',
+			'loggingControls.notesControl' => 'メモ',
+			'loggingControls.power' => 'パワー',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'ロギング操作',
 			'loggingControls.spottingControl' => 'スポッティング',
@@ -4374,11 +5523,26 @@ extension on TranslationsJa {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => '${call}を${freq}でスポット',
 			'loggingControls.spotTooLate' => ({required Object call}) => '${call}のスポットには遅すぎます',
 			'loggingControls.spotNoFreq' => '最初に周波数を設定してください',
+			'loggingControls.selfSpotDisabled' => 'セルフスポット無効',
 			'loggingControls.spotComment' => 'コメント',
+			'loggingControls.spottingAutoControl' => '自動再スポット',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '${minutes}分ごとに再スポット',
+			'loggingControls.spotAutoNext' => ({required Object time}) => '${time}後に自動。停止しますか？',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => '${minutes}分後に自動',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '${seconds}秒後に自動',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => '${seconds}後に自動',
+			'loggingControls.spotAutoNotStarted' => '自動再スポットを開始できませんでした：スポットが送信されませんでした',
+			'loggingControls.spotAutoMoved' => '自動再スポットを開始できませんでした：スポット中に周波数が変わりました',
+			'loggingControls.spotAutoStopped' => '自動再スポットを停止しました',
+			'loggingControls.spotAutoLeftFreq' => '自動再スポットを停止しました：周波数が変わりました',
+			'loggingControls.spotAutoNoFreq' => '自動再スポットを停止しました：無線機から周波数が得られません',
+			'loggingControls.spotBusy' => '別のスポットをまだ送信中です',
 			'loggingControls.bandOrFreqRequired' => '記録する前に周波数またはバンドを設定してください',
 			'loggingControls.missingBand' => 'バンドなし',
 			'loggingControls.missingMode' => 'モードなし',
 			'loggingControls.saveFailed' => ({required Object error}) => '保存できませんでした：${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => '削除できませんでした：${error}',
 			'loggingControls.info.noQsos' => 'まだQSOがありません... オンエアしましょう！',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4407,6 +5571,7 @@ extension on TranslationsJa {
 			'loggingControls.info.noticeInvalidMode' => 'モード違い',
 			'loggingControls.info.noticeInvalidBand' => 'バンド違い',
 			'loggingControls.info.noticeInvalidCategory' => '交信対象外',
+			'loggingControls.info.noticeOverTime' => '時間外',
 			'loggingControls.info.noticeWorkedBefore' => '交信済み',
 			'loggingControls.info.noticeNewPark' => '新しい公園',
 			'loggingControls.info.noticeNewSection' => '新しいセクション',
@@ -4414,6 +5579,7 @@ extension on TranslationsJa {
 			'loggingControls.info.noticeMissingExchange' => '交換なし',
 			'loggingControls.info.noticeInvalidExchange' => '交換が不正',
 			'loggingControls.info.noticeUnknownEvent' => '不明なイベント',
+			'loggingControls.info.noticeIncompleteCall' => 'コール不完全 — スコア対象外',
 			'loggingControls.info.noticeOurGrid' => '自局グリッドを設定',
 			'loggingControls.info.noticeRareCounty' => 'レアな郡！',
 			'loggingControls.info.noticeOurLocation' => '自局の郡を設定',
@@ -4438,6 +5604,7 @@ extension on TranslationsJa {
 			'formChrome.transformationError' => ({required Object error}) => '変換エラー：${error}',
 			'formChrome.actionError' => ({required Object error}) => 'エラー：${error}',
 			'formChrome.removeItem' => '削除',
+			'formChrome.deleteItemTitle' => ({required Object name}) => '${name}を削除しますか？',
 			'formChrome.storageUnavailable' => 'ログイン情報を利用できません',
 			'qsoEditForm.title' => 'QSOを編集',
 			'qsoEditForm.operatorCall' => 'オペレーター',
@@ -4446,11 +5613,11 @@ extension on TranslationsJa {
 			'qsoEditForm.theirGrid' => 'グリッド',
 			'qsoEditForm.theirState' => '州',
 			'qsoEditForm.band' => 'バンド',
-			'qsoEditForm.notes' => 'ノート',
+			'qsoEditForm.notes' => 'メモ',
 			'qsoEditForm.sectionQso' => 'QSO',
 			'qsoEditForm.sectionTheir' => '相手の情報',
 			'qsoEditForm.sectionOur' => '自局の情報',
-			'qsoEditForm.sectionNotes' => 'ノート',
+			'qsoEditForm.sectionNotes' => 'メモ',
 			'qsoEditForm.theirCity' => '都市',
 			'qsoEditForm.theirCounty' => '郡',
 			'qsoEditForm.theirEntity' => 'エンティティ',
@@ -4459,12 +5626,22 @@ extension on TranslationsJa {
 			'qsoEditForm.theirArrlSection' => 'ARRLセクション',
 			'qsoEditForm.theirLat' => '緯度',
 			'qsoEditForm.theirLon' => '経度',
-			'qsoEditForm.theirPower' => '相手の出力',
+			'qsoEditForm.theirPower' => '相手のパワー',
 			'qsoList.empty' => 'まだQSOがありません。誰かと交信しましょう！',
 			'qsoList.bandOrModeWarning' => 'バンドとモードが正しいか確認してください',
 			'qsoList.today' => '今日',
 			'qsoList.yesterday' => '昨日',
 			'qsoList.tomorrow' => '明日',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'ログ内を検索（${shortcut}）',
+			'qsoList.find.menuItemNoShortcut' => 'ログ内を検索',
+			'qsoList.find.hint' => 'QSO番号またはコールサイン',
+			'qsoList.find.noMatches' => '一致なし',
+			'qsoList.find.noOperationQsos' => 'このオペレーションにQSOはありません',
+			'qsoList.find.noPeriodQsos' => 'この期間にQSOはありません',
+			'qsoList.find.outsideQsosOne' => 'このオペレーション外のQSO：1件',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => 'このオペレーション外のQSO：${count}件',
+			'qsoList.find.pastQsosOne' => '過去のQSO：1件',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '過去のQSO：${count}件',
 			'loggingPanel.stats' => 'オペレーションの統計',
 			'loggingPanel.scoring' => 'スコア',
 			'loggingPanel.dxccEntities' => 'DXCCエンティティ',
@@ -4475,26 +5652,26 @@ extension on TranslationsJa {
 			'callInfo.showImage' => '画像を表示',
 			'callInfo.imageUnavailable' => '写真を利用できません',
 			'callInfo.photo' => '写真',
-			'callInfo.notes' => 'ノート',
+			'callInfo.notes' => 'メモ',
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} →',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance}（${bearing}°）→',
 			'callInfo.distanceBearingsTo' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance}（${bearing}° / ${reverse}°）→',
 			'callInfo.distanceAway' => ({required Object distance}) => '${distance} 離れた所',
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance}（${bearing}°）離れた所',
 			'callInfo.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance}（${bearing}° / ${reverse}°）離れた所',
-			'callInfo.thisOpCountOne' => '現在のオペレーションでのQSO数：1 QSO',
-			'callInfo.thisOpCountOther' => ({required Object count}) => '現在のオペレーションでのQSO数：${count} QSO',
-			'callInfo.otherOpsCountOne' => '他のオペレーションでのQSO数：1 QSO',
-			'callInfo.otherOpsCountOther' => ({required Object count}) => '他のオペレーションでのQSO数：${count} QSO',
+			'callInfo.thisOpCountOne' => 'このオペレーションでのQSO：1件',
+			'callInfo.thisOpCountOther' => ({required Object count}) => 'このオペレーションでのQSO：${count}件',
+			'callInfo.otherOpsCountOne' => '他のオペレーションでのQSO：1件',
+			'callInfo.otherOpsCountOther' => ({required Object count}) => '他のオペレーションでのQSO：${count}件',
 			'callInfo.andMore' => ({required Object count}) => '…さらに${count}件',
 			'callInfo.withCall' => ({required Object call}) => '${call}と共に',
 			'callInfo.fromOperation' => ({required Object where}) => '${where}から',
-			'callInfo.history.last7days' => ({required Object n}) => '${n}件（過去7日間）',
+			'callInfo.history.last7days' => ({required Object n}) => '過去7日間：${n}件',
 			'callInfo.history.today' => ({required Object n}) => '今日：${n}件',
 			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${n} QSO', other: '${n} QSO', ), 
 			'settings.title' => '設定',
 			'settings.language' => '言語',
-			'settings.languageSystem' => ({required Object language}) => 'システム設定に従う (${language})',
+			'settings.languageSystem' => ({required Object language}) => 'システム設定に従う（${language}）',
 			'settings.theme.title' => 'テーマモード',
 			'settings.theme.system' => 'システム設定に従う',
 			'settings.theme.light' => 'ライト',
@@ -4517,11 +5694,11 @@ extension on TranslationsJa {
 			'settings.keepDeviceAwake.descriptionOff' => '通常どおりスリープします',
 			'settings.layoutDensity' => 'レイアウト密度',
 			'settings.layoutDensityOpts.auto' => '自動',
-			'settings.layoutDensityOpts.densest' => '最も密',
-			'settings.layoutDensityOpts.dense' => '密',
+			'settings.layoutDensityOpts.densest' => '最高密度',
+			'settings.layoutDensityOpts.dense' => '高密度',
 			'settings.layoutDensityOpts.normal' => '標準',
-			'settings.layoutDensityOpts.sparse' => '疎',
-			'settings.layoutDensityOpts.sparsest' => '最も疎',
+			'settings.layoutDensityOpts.sparse' => '低密度',
+			'settings.layoutDensityOpts.sparsest' => '最低密度',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'ウィンドウの高さが足りないため、${effective}を使用中',
 			'settings.layoutDensityAtLimit' => 'これ以上は変更できません',
 			'settings.distanceUnits' => '距離の単位',
@@ -4580,6 +5757,11 @@ extension on TranslationsJa {
 			'settings.catServer.openAccess' => 'オープンアクセス',
 			'settings.catServer.openAccessOn' => 'ローカルネットワーク上のどのコンピューターからも接続できます。',
 			'settings.catServer.openAccessOff' => 'このコンピューター上のアプリのみ接続できます。',
+			'settings.catServer.allowTransmit' => 'アプリからの送信を許可',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'アプリは無線機のPTTを、一度に最大${minutes}分までキーイングできます。',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'ローカルネットワーク上のどのコンピューターのアプリも、無線機のPTTを一度に最大${minutes}分までキーイングできます。',
+			'settings.catServer.allowTransmitOff' => 'アプリは無線機をキーイングできません。VOXか、アプリ独自のPTT設定を使ってください。',
+			'settings.catServer.allowTransmitUnsupported' => 'メインVFOの無線機はHam2K Loggerからキーイングできないため、アプリはこの無線機で送信できません。',
 			'settings.catServer.off' => 'オフ。',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}、起動中…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol}：ポート${port}で待ち受け中。接続中のクライアント：${clients}。',
@@ -4588,12 +5770,58 @@ extension on TranslationsJa {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：別のプログラム（多くの場合${protocol}自体）が使用中です。そのプログラムを閉じるか、別のポートを選んでください。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：このコンピューターが許可していません。1024より大きいポートを選んでください。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…',
+			'settings.cluster.title' => 'DXクラスター',
+			'settings.cluster.description' => '拡張機能がオペレーターとしてログインし、スポットの投稿と読み取りを行うサーバー。',
+			'settings.cluster.connect' => 'クラスターに接続',
+			'settings.cluster.connectOn' => '拡張機能は必要なときにクラスターに接続します',
+			'settings.cluster.connectOff' => '何もクラスターに接続しません',
+			'settings.cluster.console' => 'コンソールを表示',
+			'settings.cluster.consoleDescription' => 'クラスターからの受信内容と、コマンドを入力する場所',
+			'settings.cluster.consoleTitle' => 'クラスターコンソール',
+			'settings.cluster.consoleConnect' => '接続',
+			'settings.cluster.consoleDisconnect' => '切断',
+			'settings.cluster.consoleCommand' => 'コマンド',
+			'settings.cluster.consoleEmpty' => 'まだ何もありません。接続するか、拡張機能がクラスターを使うのを待ってください。',
+			'settings.cluster.consoleRetry' => ({required Object command}) => '再送信中：${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => '未送信：${command}（${reason}）',
+			'settings.cluster.server' => 'クラスターサーバー',
+			'settings.cluster.selectServer' => 'サーバーを選択',
+			'settings.cluster.serverOther' => 'その他',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'ホストが未入力のため、スポットは${node}に送られます',
+			'settings.cluster.customHost' => 'サーバー',
+			'settings.cluster.customPort' => 'ポート',
+			'settings.cluster.password' => 'パスワード',
+			'settings.cluster.passwordDescription' => '必要な場合のみ',
+			'settings.cluster.passwordStored' => ({required Object node}) => '${node}のパスワードを保存済み',
+			'settings.cluster.scrollback' => '保持する行数',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count}行',
+			'settings.cluster.connection' => '接続',
+			'settings.cluster.statusIdle' => '未接続。拡張機能が必要とすると接続します。タップしてテスト。',
+			'settings.cluster.statusConnecting' => ({required Object node}) => '${node}に接続中…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => '${node}に${call}として接続済み。',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => '${node}に接続できませんでした：${reason}',
+			'settings.cluster.statusUnsupported' => 'Web版では利用できません。',
+			'settings.cluster.statusOff' => 'オフ。使用するには「クラスターに接続」をオンにしてください。',
+			'settings.cluster.errors.noCall' => 'ログインに使うオペレーターのコールサインがありません',
+			'settings.cluster.errors.connectFailed' => 'ノードに到達できませんでした',
+			'settings.cluster.errors.needsPassword' => 'ノードがパスワードを求めていますが、保存されていません',
+			'settings.cluster.errors.loginFailed' => 'ノードがログインを受け付けませんでした',
+			'settings.cluster.errors.disconnected' => 'ノードが接続を閉じました',
+			'settings.cluster.errors.timeout' => 'ノードが応答しませんでした',
+			'settings.cluster.errors.off' => '「クラスターに接続」がオフです',
+			'settings.spotting.title' => 'スポッティング',
+			'settings.spotting.respotInterval' => '自動再スポットの間隔',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes}分',
+			'settings.spotting.autoRespotByDefault' => 'デフォルトで自動再スポット',
+			'settings.spotting.autoRespotByDefaultOn' => 'スポットを投稿したら自動再スポットを有効にします',
+			'settings.spotting.autoRespotByDefaultOff' => '自動再スポットの有効化には手動の操作が必要です',
+			'settings.spotting.pulseBeforeRespot' => '自動再スポット前に点滅',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => '各再スポットの${seconds}秒前からスポッティングチップが青く点滅します',
+			'settings.spotting.pulseBeforeRespotOff' => '自動再スポット前に点滅しません',
 			'settings.radio.title' => 'CAT制御',
 			'settings.radio.loggingAndCat' => 'ロギングとCAT',
 			'settings.radio.tuningSection' => 'チューニング',
 			'settings.radio.keyerSection' => 'キーヤー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'サービス',
 			'settings.radio.stationConfigurationSection' => 'ステーション構成',
 			'settings.radio.moreSettings' => 'その他のステーション構成設定',
@@ -4601,6 +5829,14 @@ extension on TranslationsJa {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'キーボードでPTTを操作',
+			'settings.radio.pttKey.modes.off' => 'いいえ',
+			'settings.radio.pttKey.modes.toggle' => 'トグル',
+			'settings.radio.pttKey.modes.hold' => 'ホールド',
+			'settings.radio.pttKey.descriptions.off' => 'キーボードでは無線機をキーイングしません。',
+			'settings.radio.pttKey.descriptions.toggle' => '電話モードでは、PTTキーで無線機をキーイングし、もう一度押すと解除します。1分経つと自動的に解除されます。',
+			'settings.radio.pttKey.descriptions.hold' => '電話モードでは、PTTキーを押している間、最大1分まで無線機が送信します。',
+			'settings.radio.pttKey.key' => 'PTTキー',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => '送信中',
 			'settings.radio.smartVfoSnap.title' => 'スマートVFOスナップ',
@@ -4628,8 +5864,8 @@ extension on TranslationsJa {
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CWキーヤーメッセージ',
 			'settings.radio.cwMessages.notSupported' => '現在の無線機はCWキーイングに対応していません',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'メッセージ（${n}）',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'メッセージ${n}',
 			'settings.radio.cwMessages.labelField' => 'ラベル',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n}のラベル',
 			'settings.radio.cwMessages.details' => '詳細',
@@ -4643,7 +5879,10 @@ extension on TranslationsJa {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESMメッセージ',
 			'settings.radio.cwMessages.setSaved' => 'マイメッセージ',
-			'settings.radio.cwMessages.repeat' => 'メッセージ#1を繰り返す',
+			'settings.radio.cwMessages.repeat' => 'メッセージ1を繰り返す',
+			'settings.radio.cwMessages.repeatShort' => 'M1を繰り返す',
+			'settings.radio.cwMessages.cooldown' => '繰り返しまでの待ち時間',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n}秒',
 			'settings.radio.cwMessages.repeatWait' => '繰り返し中',
 			'settings.radio.cwMessages.keyboard' => '入力して送信',
 			'settings.radio.cwMessages.keyboardField' => '入力して送信',
@@ -4668,16 +5907,20 @@ extension on TranslationsJa {
 			'settings.radio.cwMessages.helpExample' => 'W1AW 5NN TT7を送信',
 			'settings.radio.cwMessages.helpEsmIntro' => 'Enterでメッセージ送信がオンの場合、N1MMと同様に、Enterで対応するファンクションキーのメッセージを送信します。ESMメッセージセットの初期内容は次のとおりです：',
 			'settings.radio.cwMessages.helpEsmCq' => 'Run時、コール欄が空の状態でEnterを押すとCQを出します',
-			'settings.radio.cwMessages.helpEsmExchange' => 'あなたのエクスチェンジ：Run時は相手のコールの後、S&P時は相手が応答した後',
-			'settings.radio.cwMessages.helpEsmThanks' => 'コンタクトの記録後のお礼。プレースホルダーはこのコンタクトではなく次のコンタクトを指します',
+			'settings.radio.cwMessages.helpEsmExchange' => 'あなたの交換：Run時は相手のコールの後、S&P時は相手が応答した後',
+			'settings.radio.cwMessages.helpEsmThanks' => 'コンタクトの記録後のお礼。qsoは記録されたコンタクト、nextは次のコンタクトを指します',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'S&P時、応答する局へのあなたのコール',
-			'settings.radio.cwMessages.helpEsmHisCall' => 'Run時、エクスチェンジの前に送る相手のコール',
-			'settings.radio.cwMessages.helpEsmAgain' => '相手のエクスチェンジがまったく取れなかったときに再度尋ねます',
-			'settings.radio.cwMessages.helpEsmStackThanks' => '//スタック用の推奨F3：TUはコンタクトの記録後に送信されるため、お礼の後、スタックの次の局を呼んでエクスチェンジを送るか、部分コールを聞き返します（TU KR?）。残りがなければTUのみ',
+			'settings.radio.cwMessages.helpEsmHisCall' => 'Run時、交換の前に送る相手のコール',
+			'settings.radio.cwMessages.helpEsmAgain' => '相手の交換がまったく取れなかったときに再度尋ねます',
+			'settings.radio.cwMessages.helpEsmStackThanks' => '//スタック用の推奨F3：お礼の後、スタックの次の局を呼んで交換を送るか、部分コールを聞き返します（TU KR?）。残りがなければTUのみ',
+			'settings.radio.keyerControl.label' => 'キーヤー',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => '音声',
 			'settings.radio.voiceMessages.title' => '電話キーヤーメッセージ',
 			'settings.radio.voiceMessages.notSupported' => '現在の無線機は電話メッセージに対応していません',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'ボイスメモリー（${n}）',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'ボイスメモリー${n}',
 			'settings.radio.voiceMessages.labelField' => 'ラベル',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'ボイスメモリー${n}のラベル',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n}秒',
@@ -4686,7 +5929,7 @@ extension on TranslationsJa {
 			'settings.radio.voiceMessages.playButton' => '再生',
 			'settings.radio.voiceMessages.recordButton' => '録音',
 			'settings.radio.voiceMessages.stopButton' => '停止',
-			'settings.radio.voiceMessages.repeat' => 'メッセージ#1を繰り返す',
+			'settings.radio.voiceMessages.repeat' => 'メッセージ1を繰り返す',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model}の注意事項：',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'これらのメモリーは${device}の無線機にあります。名前と長さはそのデバイスのものです。',
 			'settings.radio.voiceMessages.namedOnRadio' => '無線機に保存され、他のクライアントからも見えます。',
@@ -4703,6 +5946,80 @@ extension on TranslationsJa {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label}を録音中',
 			'settings.radio.voiceMessages.doubtful' => '無線機は再生しましたか？すぐにアイドル状態と報告しました。',
 			'settings.radio.voiceMessages.recordOnRadio' => 'メモリーは無線機本体で録音する必要があります。',
+			'settings.radio.voiceMessages.sets' => 'メッセージセット',
+			'settings.radio.voiceMessages.soundFilesSet' => 'このコンピューター上のサウンドファイル',
+			'settings.radio.voiceMessages.openFileButton' => 'ファイルを開く',
+			'settings.radio.voiceMessages.newSet' => '新しいセット',
+			'settings.radio.voiceMessages.renameSet' => 'セット名を変更',
+			'settings.radio.voiceMessages.deleteSet' => 'セットを削除',
+			'settings.radio.voiceMessages.newSetName' => '名前',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name}とその録音を削除しますか？元に戻せません。',
+			'settings.radio.voiceMessages.output' => '音声の出力先',
+			'settings.radio.voiceMessages.input' => '録音元',
+			'settings.radio.voiceMessages.outputRadio' => 'ネットワーク経由で無線機に送る',
+			'settings.radio.voiceMessages.inputDefault' => 'システムのデフォルト',
+			'settings.radio.voiceMessages.pickDevice' => 'サウンドデバイスを選択',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name}（未接続）',
+			'settings.radio.voiceMessages.lead' => 'キーイング後の遅延',
+			'settings.radio.voiceMessages.tail' => 'キーイング解除前の遅延',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => '試聴',
+			'settings.radio.voiceMessages.notRecorded' => '未録音',
+			'settings.radio.voiceMessages.unplayable' => 'このファイルは再生できません',
+			'settings.radio.voiceMessages.problemNoOutput' => 'メッセージを再生する前に、無線機に音声を送るサウンドデバイスを選んでください。',
+			'settings.radio.voiceMessages.problemOutputMissing' => '無線機に音声を送るサウンドデバイスが接続されていません。',
+			'settings.radio.voiceMessages.problemInputMissing' => '録音デバイスが接続されていません。',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'サウンドデバイスを開けませんでした。',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'そのメッセージはまだ録音されていません。',
+			'settings.radio.voiceMessages.problemRecordingSilent' => '録音デバイスから何も聞こえなかったため、メッセージはそのままにしました。入力と、アプリにマイクの使用が許可されているかを確認してください。',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => '無線機は現在アプリからの音声を受け取っていません。無線機へのネットワーク接続が必要です。',
+			'settings.radio.voiceMessages.problemSourceRefused' => '無線機が送信音声をアプリに切り替えなかったため、メッセージを停止しました。アプリの音声を送信するよう無線機を設定してください。',
+			'settings.radio.voiceMessages.problemCannotKey' => 'この無線機はCATでキーイングできないため、コンピューターからメッセージを流せません。',
+			'settings.radio.voiceMessages.problemUnplayable' => 'そのメッセージのファイルは、アプリで再生できるサウンドファイルではありません。WAV、FLAC、MP3ファイルを使うか、録音し直してください。',
+			'settings.radio.voiceMessages.problemRecordingFailed' => '録音が途中で切れたため、メッセージはそのままにしました。録音デバイスがまだ接続されているか、ディスクに空きがあるかを確認してください。',
+			'settings.radio.voiceMessages.problemFileFailed' => '録音をメッセージの場所に保存できなかったため、メッセージはそのままにしました。',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'そのメッセージには未録音の単語が必要です：${words}。',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'そのメッセージのテンプレートに問題があります：${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => '自分の声で言うメッセージは、対象のコンタクトがあるオペレーション内で再生します。',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'そのメッセージはこのコンタクトに対して何も言いません。',
+			'settings.radio.voiceMessages.templateField' => '自分の声で言う',
+			'settings.radio.voiceMessages.templateHelp' => '空欄なら録音をそのまま再生します。入力すると、録音した単語をコンタクトごとに当てはめてメッセージを言います。使える値：',
+			'settings.radio.voiceMessages.help' => 'ヘルプ',
+			'settings.radio.voiceMessages.helpTitle' => '自分の声でメッセージを言う',
+			'settings.radio.voiceMessages.helpFullExample' => 'メッセージ全体の例：',
+			'settings.radio.voiceMessages.helpExample' => '相手のコール、相手へのレポート、そして「QSL?」の録音',
+			'settings.radio.voiceMessages.playOnRadio' => '無線機で再生',
+			'settings.radio.voiceMessages.templateHelpCall' => '相手のコール',
+			'settings.radio.voiceMessages.templateHelpReport' => '相手に送るレポート',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'メッセージ2の録音を、録音のまま再生',
+			'settings.radio.voiceMessages.voiced' => '自分の声で読み上げ',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => '読み上げ：${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => '未録音：${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => '何を言うかを確認するにはオペレーションを開いてください。',
+			'settings.radio.voiceMessages.wordsDescription' => 'コールや数字などに自分の声を使います。',
+			'settings.radio.voiceWords.title' => '単語の録音',
+			'settings.radio.voiceWords.callField' => 'オペレーター別の単語',
+			'settings.radio.voiceWords.intro' => '各単語や数字を、コールサインを言うときのように続けて素早く3回録音します。長いフレーズは1回だけ録音します。',
+			'settings.radio.voiceWords.recordAll' => 'すべて録音',
+			'settings.radio.voiceWords.recordAllGuide' => '各単語は続けて3回、複数の単語からなるフレーズは1回読み上げ、行の間で息継ぎをしてください。最後まで読んだら停止を押してください。',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '「${word} ${word} ${word}」と言ってから、停止を押してください。',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '「${words}」と言ってから、停止を押してください。',
+			'settings.radio.voiceWords.recorded' => '録音済み',
+			'settings.radio.voiceWords.notRecorded' => '未録音',
+			'settings.radio.voiceWords.addPhrase' => 'フレーズを追加',
+			'settings.radio.voiceWords.phraseField' => 'フレーズ（メッセージに書くとおりに）',
+			'settings.radio.voiceWords.deletePhrase' => 'フレーズを削除',
+			'settings.radio.voiceWords.tryField' => '試しに読み上げ',
+			'settings.radio.voiceWords.pauseLetters' => '文字間の間隔',
+			'settings.radio.voiceWords.pauseWords' => '単語間の間隔',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => '速度',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => '詳細設定',
+			'settings.radio.voiceWords.splitSilent' => '録音に何も聞こえませんでした。',
+			'settings.radio.voiceWords.splitNotThreeTakes' => '3回分を見つけられませんでした。単語を続けて3回言ってから、もう一度試してください。',
+			'settings.radio.voiceWords.splitLineCount' => '読み上げの中にすべての単語を見つけられませんでした。各単語を3回ずつ、単語の間で息継ぎをして読んでください。',
+			'settings.radio.voiceWords.splitLinesTooClose' => '単語を区別できませんでした。単語の間にもっと長く息継ぎを入れてください。',
 			'settings.radio.avoidZeroBeat.title' => 'スポットでのゼロビートを避ける',
 			'settings.radio.avoidZeroBeat.descriptionOn' => '無線機が接続されている場合、CWスポットから数Hzずらしてチューニングし、応答する全員が同じ音で呼ばないようにします。',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'スポットされた周波数ちょうどにチューニングします。',
@@ -4711,7 +6028,7 @@ extension on TranslationsJa {
 			'settings.help.title' => 'ヘルプとリソース',
 			'settings.help.description' => 'コミュニティとサポート',
 			'settings.help.forums' => 'Ham2K フォーラム',
-			'settings.help.forumsDescription' => 'ヘルプを見つける, フィードバックを提供する, アイデアを議論する…',
+			'settings.help.forumsDescription' => 'ヘルプを探す、フィードバックを送る、アイデアを語り合う…',
 			'settings.help.chat' => 'Ham2K チャット',
 			'settings.help.chatDescription' => 'オンラインコミュニティのDiscordサーバー',
 			'settings.help.youtube' => 'Ham2K YouTube',
@@ -4723,12 +6040,23 @@ extension on TranslationsJa {
 			'settings.help.contact' => 'お問い合わせ',
 			'settings.help.contactDescription' => 'help@ham2k.com（まずはフォーラムやチャットをお試しください！）',
 			'settings.exports.title' => 'エクスポート',
+			'settings.extensionSections.activities' => 'アクティビティ',
+			'settings.extensionSections.hunting' => 'ハンティング',
+			'settings.extensionSections.contests' => 'コンテスト',
+			'settings.extensionSections.lookups' => '検索',
+			'settings.extensionSections.dashboard' => 'ダッシュボード',
 			'settings.map.title' => '地図',
 			'settings.map.style.title' => '地図スタイル',
+			'settings.map.showCallsigns.title' => 'コールサインを表示',
+			'settings.map.showCallsigns.description' => '各コンタクトを、バンドの色のコールサイン付きピルで表示します',
+			'settings.map.showGrayline.title' => 'グレイラインを表示',
+			'settings.map.showGrayline.description' => '地球の夜側を暗くし、薄明をグラデーションで表示します',
 			'settings.map.styleOpts.automatic' => '自動',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'プライバシー',
@@ -4756,7 +6084,7 @@ extension on TranslationsJa {
 			'settings.peers.pairedDevices' => 'リンク済みデバイス',
 			'settings.peers.noPairedDevices' => 'リンク済みのデバイスはまだありません。リンクするには、同じネットワーク上の別のデバイスでこれをオンにしてください。',
 			'settings.peers.deviceListProblem' => ({required Object error}) => 'リンク済みデバイスを読み取れません：${error}',
-			'settings.peers.nearby' => '近く',
+			'settings.peers.nearby' => '近くのデバイス',
 			'settings.peers.connected' => '接続済み',
 			'settings.peers.viaBluetooth' => 'Bluetooth経由',
 			'settings.peers.connecting' => '接続中…',
@@ -4767,8 +6095,8 @@ extension on TranslationsJa {
 			'settings.peers.allow' => '許可',
 			'settings.peers.link' => 'リンク',
 			'settings.peers.reject' => '拒否',
-			'settings.peers.forget' => '忘れる',
-			'settings.peers.forgetTitle' => ({required Object name}) => '${name}を忘れますか？',
+			'settings.peers.forget' => '登録解除',
+			'settings.peers.forgetTitle' => ({required Object name}) => '${name}の登録を解除しますか？',
 			'settings.peers.forgetBody' => 'このデバイスとの同期を停止します。後で再び許可でき、記録済みのコンタクトは保持されます。',
 			'settings.peers.pairTitle' => ({required Object name}) => '${name}とリンク',
 			'settings.peers.pairBody' => 'このデバイスはローカルネットワーク上にあり、接続を求めています。',
@@ -4789,7 +6117,7 @@ extension on TranslationsJa {
 			'settings.peers.screenUnsupportedVersion' => '画面の共有にはmacOS 12.3以降が必要です。このデバイスでも他のデバイスが共有した画面は表示できます。',
 			'settings.peers.screenNeedsPermission' => 'このアプリが画面を共有するには、macOSで画面収録の許可が必要です。',
 			'settings.peers.screenGrantPermission' => '許可をリクエスト',
-			'settings.peers.screenRelaunchAfterGranting' => 'システム設定の プライバシーとセキュリティ → 画面収録 で許可してから、このアプリを終了して開き直してください。macOSは次回起動時にのみ変更をアプリに伝えます。',
+			'settings.peers.screenRelaunchAfterGranting' => 'システム設定の「プライバシーとセキュリティ」→「画面収録」で許可してから、このアプリを終了して開き直してください。macOSは次回起動時にのみ変更をアプリに伝えます。',
 			'settings.peers.screenProblem' => ({required Object error}) => '画面共有：${error}',
 			'settings.peers.screenChooseTitle' => '共有するものを選択',
 			'settings.peers.screenChooseButton' => '共有するものを選択…',
@@ -4845,7 +6173,7 @@ extension on TranslationsJa {
 			'settings.accounts.none' => 'アカウントを持つ有効な拡張機能はありません',
 			'settings.accounts.notConfigured' => '未設定',
 			'settings.accounts.connected' => '接続済み',
-			'settings.accounts.cancelLogin' => 'サインインをキャンセル',
+			'settings.accounts.cancelLogin' => 'ログインをキャンセル',
 			'settings.accounts.openInBrowser' => 'ブラウザで開く',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => '${identity}としてログイン中',
 			'settings.accounts.pressSaveToKeep' => 'このアカウントの接続を維持するには保存を押してください。',
@@ -4857,7 +6185,7 @@ extension on TranslationsJa {
 			'settings.accounts.saveFailed' => ({required Object error}) => '保存に失敗しました：${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'ログインに失敗しました：${error}',
 			'settings.accounts.lookupFailed' => '現在アカウントを利用できません。しばらくしてから再試行してください',
-			'settings.accounts.browserLoginTitle' => 'Webブラウザでサインインを完了してください',
+			'settings.accounts.browserLoginTitle' => 'Webブラウザでログインを完了してください',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => '完了すると、ブラウザは「${prefix}」で始まるリンクを開こうとします。デスクトップにはそれを開くアプリが登録されていない可能性が高いため、そのリンク（アドレスバー、またはブラウザが表示するエラーページから）をコピーしてここに貼り付けてください。',
 			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Loggerはブラウザを開けませんでした。下のログインリンクをコピーして自分で開き、その後移動先のリンク（「${prefix}」で始まる）をコピーしてここに貼り付けてください。',
 			'settings.accounts.copyLoginLink' => 'ログインリンクをコピー',
@@ -4865,10 +6193,10 @@ extension on TranslationsJa {
 			'settings.accounts.finishLogin' => 'ログインを完了',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'これはログインリンクではありません。「${prefix}」で始まる必要があります。',
 			'settings.accounts.pastedLinkWrongLogin' => 'そのリンクは別のログイン試行のものです。このページを閉じて、もう一度接続してください。',
-			'settings.accounts.pastedLinkNoCode' => 'そのリンクにはログインコードがありません。まずサインインを完了してから、移動先のリンクをコピーしてください。',
+			'settings.accounts.pastedLinkNoCode' => 'そのリンクにはログインコードがありません。まずログインを完了してから、移動先のリンクをコピーしてください。',
 			'settings.accounts.pastedLinkMalformed' => 'そのリンクは途中で切れているようです。全体をコピーして、もう一度貼り付けてください。',
-			'settings.accounts.relayLoginWaiting' => 'サインインの完了を待っています。完了すると自動的に続行します。',
-			'settings.accounts.loginNoResponse' => 'このデバイスはまだサインインの結果を受け取っていません。ブラウザですでに完了した場合は、キャンセルしてもう一度接続してください。',
+			'settings.accounts.relayLoginWaiting' => 'ログインの完了を待っています。完了すると自動的に続行します。',
+			'settings.accounts.loginNoResponse' => 'このデバイスはまだログインの結果を受け取っていません。ブラウザですでに完了した場合は、キャンセルしてもう一度接続してください。',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Loggerはブラウザを自動的に開けませんでした。下のボタンでログインページを自分で開いてください。',
 			'settings.accounts.relayLoginUnavailable' => 'このログインの完了に必要な同期サーバーに接続できませんでした。接続を確認して再試行してください。',
 			'settings.accounts.loginIncompleteResponse' => 'そのログイン試行は正しく完了しませんでした。もう一度接続してください。',
@@ -4932,13 +6260,28 @@ extension on TranslationsJa {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'ポート ${n} / ${total}',
 			'settings.station.serialPortSuggested' => '推奨',
 			'settings.station.serialPortJustNow' => '最近接続',
+			'settings.station.serialPortNoDriver' => 'ドライバーなし',
 			'settings.station.serialDeviceRequest' => 'USBデバイスを追加…',
+			'settings.station.bleDevice' => 'Bluetooth LEデバイス',
+			'settings.station.bleDeviceDescription' => '無線機を接続しているシリアルブリッジ。Mode 4のLiNK500MPやBLEシリアルアダプターなど。',
+			'settings.station.bleScan' => 'Bluetooth LEデバイスをスキャン…',
+			'settings.station.bleScanNoneFound' => 'Bluetooth LEデバイスが見つかりません。ブリッジの電源が入っていて、近くにあり、Bluetooth LEモード（LiNK500MPではMode 4）になっているか確認してください。',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'Bluetooth LEのスキャンを実行できませんでした：${reason}',
+			'settings.station.bleOff' => 'Bluetoothがオフになっています。',
+			'settings.station.bleDenied' => 'Bluetoothの許可が得られていません。システム設定で許可してから、もう一度お試しください。',
+			'settings.station.bleUnsupported' => 'このデバイスにはBluetooth LEがありません。',
+			'settings.station.bleStarting' => 'Bluetoothはまだ起動中です。しばらくしてからお試しください。',
+			'settings.station.bleConnectFailed' => 'Bluetooth LEデバイスに接続できません。電源が入っていて、近くにあり、他のアプリに接続されていないか確認してください。',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'このBluetooth LEデバイスには、アプリが認識できるシリアルサービスがありません。サービス情報を添えて報告してください：${services}',
 			'settings.station.baudRate' => '速度（ボー）',
 			'settings.station.baudRateDescription' => '無線機のCATメニューと一致させてください。一致しないと、無線機は無意味なデータを返し、エラーは出ません。',
 			'settings.station.serialRtsHigh' => 'RTSをHIGHに保持',
 			'settings.station.serialRtsHighDescription' => 'CAT RTSをオンにしたYaesuなど、応答前にRTSを待つ無線機専用です。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTであり、HIGHに保持すると送信します。',
 			'settings.station.serialDtrHigh' => 'DTRをHIGHに保持',
 			'settings.station.serialDtrHighDescription' => 'FT-817用の一部のRS-232ケーブルなど、DTRから電源を取るCATインターフェース専用です。多くのケーブルではDTRがCWキーイングまたはPTTであり、HIGHに保持すると送信します。',
+			'settings.station.serialUsbDriver' => 'USBチップのドライバー',
+			'settings.station.serialUsbDriverDescription' => '自動ではほとんどのアダプターを認識します。ポート一覧で「ドライバーなし」と表示されるものについてのみチップを選んでください。チップ名はパッケージやUSBデバイス一覧に記載されています。',
+			'settings.station.serialUsbDriverAuto' => '自動',
 			'settings.station.civAddress' => '無線機のCI-Vアドレス',
 			'settings.station.civAddressDescription' => '無線機のCI-Vメニューに表示される16進数。IC-705の出荷時設定はA4です。',
 			'settings.station.civAddressInvalid' => 'CI-Vアドレスは01からFFまでの2桁の16進数です',
@@ -4959,8 +6302,37 @@ extension on TranslationsJa {
 			'settings.station.spectrumNoPanadapter' => 'このスライスには無線機上のパンアダプターがありません',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => '無線機がDAX IQストリームを拒否しました（エラー ${code}）',
 			'settings.station.spectrumNoUdp' => '無線機のスペクトラムデータがこのデバイスに届きません',
+			'settings.station.spectrumK4Unavailable' => 'K4のLANスペクトラムを受信できません。再試行中…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'K4のリモートスペクトラムを受信できません',
 			'settings.station.spectrumScopeRefused' => '無線機がスコープのコマンドを拒否しました',
 			'settings.station.spectrumOutOfRange' => '無線機のスコープが表示可能な範囲外に設定されています',
+			'settings.station.spectrumBandUnsupported' => 'このバンドでは無線機のスコープを表示できません',
+			'settings.station.spectrumSdrNoRadio' => 'リンクした無線機の周波数を待っています…',
+			'settings.station.spectrumSdrNotConnected' => 'SDRが接続されていません',
+			'settings.station.spectrumSdrNoIf' => 'このSDRの設定で無線機のIF周波数を設定してください',
+			'settings.station.sdrRadio' => 'スペクトラムの表示対象',
+			'settings.station.sdrRadioDescription' => 'この無線機のスペクトラム表示は、無線機自身のスコープの代わりにこの受信機から描画されます。',
+			'settings.station.sdrRadioMain' => 'メインの無線機',
+			'settings.station.sdrTuning' => 'アンテナ入力',
+			'settings.station.sdrTuningDescription' => '受信機の信号の入力元。独自のアンテナなら無線機に追従して自ら同調し、無線機のIF出力ならIFに留まります。',
+			'settings.station.sdrTuningIndependent' => '独自のアンテナ',
+			'settings.station.sdrTuningIfTap' => '無線機のIF出力',
+			'settings.station.sdrIfHz' => 'IF周波数（Hz）',
+			'settings.station.sdrIfHzDescription' => 'IF出力の場合のみ：無線機のダイヤル周波数がIF上で位置する周波数。FT-817なら68330000など。',
+			'settings.station.sdrIfInverted' => 'IFが反転している',
+			'settings.station.sdrGainDb' => 'ゲイン（dB）',
+			'settings.station.sdrGainDbDescription' => '空欄なら受信機の自動ゲインを使います。',
+			'settings.station.sdrOffsetHz' => '周波数オフセット（Hz）',
+			'settings.station.sdrOffsetHzDescription' => 'アップコンバーター用に、受信機へ送るすべての周波数に加算されます：Ham It Upなら125000000。',
+			'settings.station.sdrPpm' => '周波数補正（ppm）',
+			'settings.station.rtlDirectSampling' => 'ダイレクトサンプリング',
+			'settings.station.rtlDirectSamplingDescription' => 'アップコンバーターなしのRTL-SDR V3でHFを受信する場合用。RTL-SDR V4はこれなしでHFに対応します。',
+			'settings.station.rtlDirectSamplingOff' => 'オフ',
+			'settings.station.rtlDirectSamplingI' => 'Iブランチ',
+			'settings.station.rtlDirectSamplingQ' => 'Qブランチ',
+			'settings.station.rtlTcpNotAServer' => 'これはrtl_tcpサーバーではありません',
+			'settings.station.rtlTcpNotes' => 'ドングルを接続したコンピューター上で**自分で起動したrtl_tcpサーバー**に接続します。\n\n- **起動**は、他のマシンから接続できるよう `rtl_tcp -a 0.0.0.0` で行います。同じマシン上なら `rtl_tcp` だけで十分です。\n- **ポート**は、`-p` を指定して起動していなければ1234です。\n- **同時に使えるのは1つのプログラムだけ：** rtl_tcpは1つのクライアントにしか対応しません。アプリはスペクトラム表示を出している間だけ接続し、閉じてから数秒後に切断します。\n- **Androidでは**、*SDR driver* アプリがスマートフォン上で同じサーバーを実行します。',
+			'settings.station.rspTcpNotes' => 'RSPを接続したコンピューター上で、SDRplayのAPIをインストールして**自分で起動したrsp_tcpサーバー**に接続します。\n\n- **起動**は `rsp_tcp -a 0.0.0.0` で行います。\n- **ポート**は、`-p` を指定して起動していなければ1234です。\n- **同時に使えるのは1つのプログラムだけ：** サーバーは1つのクライアントしか受け付けません。アプリはスペクトラム表示を出している間だけ接続します。',
 			'settings.station.n3fjpNoRig' => 'N3FJPに無線機インターフェースが設定されていないため、無線機ではなくN3FJPに入力された内容に従います',
 			'settings.station.winkeyerKeyPort' => 'キー出力',
 			'settings.station.winkeyerKeyPortDescription' => 'キーヤーの2つの出力ジャックのうち、無線機を接続している方。',
@@ -4969,6 +6341,11 @@ extension on TranslationsJa {
 			'settings.station.winkeyerPttDescription' => 'アンプや、PTTが必要な無線機のために、同じジャックのPTTラインをキーイングします。キージャックでキーイングする無線機ではオフのままにしてください。',
 			'settings.station.winkeyerNoAnswer' => 'このポートでWinKeyerが応答しませんでした',
 			'settings.station.winkeyerStoppedAnswering' => '送信中にWinKeyerが応答しなくなったため、メッセージは破棄されました',
+			'settings.station.icomControlPort' => 'コントロールポート（UDP）',
+			'settings.station.icomControlPortDescription' => '無線機のControl Port（UDP）。ネットワーク設定で変更するか、別のポートに転送していなければ50001です。',
+			'settings.station.icomSerialPort' => 'シリアルポート（UDP）',
+			'settings.station.icomSerialPortDescription' => '無線機のSerial Port（UDP）。ネットワーク設定で変更するか、別のポートに転送していなければ50002です。',
+			'settings.station.icomPortsDiffer' => 'コントロールポートとシリアルポートは異なる値にしてください',
 			'settings.station.radioUser' => '無線機のユーザー名',
 			'settings.station.radioPass' => '無線機のパスワード',
 			'settings.station.radioLoginDescription' => 'WiFiのパスワードではなく、無線機の Network → Remote のログイン情報です。',
@@ -4976,8 +6353,10 @@ extension on TranslationsJa {
 			'settings.station.connectFailedBusy' => 'デバイスは使用中です',
 			'settings.station.connectFailedDenied' => 'アクセスが拒否されました',
 			'settings.station.connectFailedDevice' => 'デバイスが見つかりません',
+			'settings.station.connectFailedUnsupported' => 'このUSBアダプターのチップを認識できるドライバーがありません。チップが分かる場合は、詳細設定の「USBチップのドライバー」で選んでください。',
 			'settings.station.connectFailedLines' => 'RTS/DTRを設定どおりに保持できなかったため、ポートを閉じました。別のプログラムがハードウェアハンドシェイクをオンのままにした可能性があります。ケーブルを抜き差ししてください。',
 			'settings.station.connectFailedNetwork' => 'ネットワーク上で無線機が見つかりません。アドレスと、電源が入っていて接続可能かを確認してください。',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'このデバイスのポート${port}はすでに使用中ですが、応答はそこに届きます。そのポートで待ち受けている他のもの（別のPstRotatorノードを含む）を閉じるか、ポートを変更してください。',
 			'settings.station.connectFailedTimeout' => '無線機が時間内に応答しませんでした。電源が入っていて接続可能かを確認してください。',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsJa {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - 汎用',
 			'settings.station.models.icomGeneric' => 'Icom - 汎用',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - 汎用',
@@ -4997,6 +6385,8 @@ extension on TranslationsJa {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - 汎用',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsJa {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'rigctld経由で制御する無線機',
@@ -5028,34 +6422,64 @@ extension on TranslationsJa {
 			'settings.station.models.placeholderRadioNodeName' => 'マイ無線機',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A ローテーターインターフェース',
+			'settings.station.models.pstRotator' => 'PstRotator（UDP制御）',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'ネットワーク/WiFi',
+			'settings.station.transports.secureNetwork' => 'セキュアネットワーク/WiFi',
 			'settings.station.transports.usbSerial' => 'USBシリアル',
 			'settings.station.transports.wifi' => 'ネットワーク/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetoothシリアル',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
 			'settings.station.transports.placeholder' => 'プレースホルダー',
 			'settings.station.troubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
-			'settings.station.ft891Troubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにする必要があります**（FT-891メニュー **05-08**）。オンのままだと、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。Digirig、SignaLink、ほとんどの自作ケーブルではその同じラインがPTTなので、HIGHにすると送信してしまいます。無線機本体のUSBポートを使う場合は、詳細設定の **RTSをHIGHに保持** が代替手段です。\n- **速度を一致させてください**：無線機のCAT RATE（メニュー **05-06**）と同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
+			'settings.station.ft891Troubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにするか、RTSをHIGHに保持をオンにしてください。** **CAT RTS** がオン（FT-891メニュー **05-08**）だと、無線機はRTSがLOWの間は沈黙します。ポートを開いた直後に一度だけ応答し、その後は何も返さないことがあります。無線機本体のUSBポートを選ぶと、詳細設定の **RTSをHIGHに保持** が自動的にオンになります。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTなので、HIGHに保持すると送信してしまいます。その場合は代わりに無線機側でCAT RTSをOFFにしてください。\n- **速度を一致させてください**：無線機のCAT RATE（メニュー **05-06**）と同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
 			'settings.station.yaesuBinaryTroubleshooting' => 'この無線機はYaesuの旧式の5バイトCATを使用し、何か問題があるとまったく応答しません。ほとんどの場合、次のいずれかが原因です：\n\n- **ケーブルでレベル変換が必要です。** 背面のCATジャックはRS-232でもUSBでもなく、CT-62または同等のアダプターが必要です。普通のオーディオケーブルやデータケーブルではCATは動作しません。\n- **速度を一致させてください**：無線機のCAT RATEメニュー（FT-817では **#14**、FT-857やFT-897では **#19**）と同じにします。一致しないと、無線機は何も返さず、エラーも出ません。\n- **このポートでRTSやDTRを決してHIGHにしないでください。** これらの無線機用のほとんどのケーブルでは、それらのラインがPTTとキーイングです。DTRから電源を取る古いインターフェースは例外で、その場合は詳細設定の **DTRをHIGHに保持** をオンにしてください。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのドライバーはYaesuが公開しているCAT仕様表をもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
+			'settings.station.tenTecTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
+			'settings.station.tenTecEagleTroubleshooting' => '- **背面のUSB-BポートがCATリンクです。** 無線機はUSBシリアルポートとして表示されます。WindowsではTen-TecのUSB to UARTドライバーが必要で、デバイスマネージャーには「USB to UART (COMx)」として表示されます。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにし、Ten-Tecのファームウェアアップデーターも同様です。\n- **アプリからフィルター幅を設定すると、無線機の電源を入れ直すまでBWツマミが効かなくなります。** これは無線機の仕様です。\n\nこのドライバーはTen-Tecのプログラマーズリファレンスガイドをもとに作成されています。一部しか動作しない場合は、無線機のメニューに表示されるファームウェアバージョンを添えてぜひ報告してください。',
+			'settings.station.tenTecOrionTroubleshooting' => '- **SERIAL DATAポートにはストレートのDB-9シリアルケーブルを使ってください。** ヌルモデムケーブルは使えません。\n- **このエントリーはRTSをHIGHに保持します。** OrionはRTSとCTSをハンドシェイクに使うためです。DigirigなどRTSでPTTをキーイングするインターフェースでは、詳細設定の「RTSをHIGHに保持」をオフにしてください。そうしないと、アプリが接続した瞬間に無線機が送信します。\n- **アプリからのCWには、無線機の内蔵キーヤーをオンにする必要があります。** オフだと、無線機はアプリからの送信を無視します。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのドライバーはTen-Tecのプログラマーズリファレンスガイドをもとに作成されており、Orionの実機ではテストされていません。一部しか動作しない場合は、無線機のメニューに表示されるファームウェアバージョンを添えてぜひ報告してください。',
+			'settings.station.tenTecNoCw' => 'この無線機のファームウェアはアプリからのCWを受け付けません。Ten-TecはOrionファームウェア1.366で対応を追加しました。',
+			'settings.station.tenTecKeyerOff' => '無線機の内蔵キーヤーがオフのため、アプリから送るCWは無視されます。無線機のメニューでキーヤーをオンにしてください。',
 			'settings.station.guohetecTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
 			'settings.station.guohetecTroubleshooting' => 'Q900には2つのCATプロトコルがあり、このエントリーはFT-817の模倣ではなく独自プロトコルを使用します。ここではFT-817ではなく **Guohetec Q900** を選んでください。模倣プロトコルは対応コマンドが少なく、無線機はどちらを使っているかを示しません。\n\n- **USB-CケーブルがCATリンクです**。サウンドカードも同じケーブルで接続されます。このポートでは速度は関係なく、設定値は無視されます。\n- **このポートでRTSやDTRを決してHIGHにしないでください。** シリアルケーブルではそれらのラインがPTTとキーイングです。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **第2世代の無線機は第1世代と動作が異なります**。Menuを長押しして About を開き、HW 2.0なら第2世代です。\n\nこのドライバーはメーカーが公開しているプロトコルをもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.yaesuTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
 			'settings.station.yaesuTroubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。Digirig、SignaLink、ほとんどの自作ケーブルではその同じラインがPTTなので、HIGHにすると送信してしまいます。無線機本体のUSBポートを使う場合は、詳細設定の **RTSをHIGHに保持** が代替手段です。この設定の場所は機種によって異なります（FT-891ではメニュー **05-08**）。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **モードはFT-891の対応表に従います。** Yaesuのほとんどの機種はこれと一致しますが、モードの番号付けが異なる無線機では、該当するモードが誤って表示・設定されます。周波数には影響しません。',
+			'settings.station.ftdx3000Troubleshooting' => '**無線機のUSBポートでCATを使うには、メニュー037 CAT SELECTをUSBにしてください。** RS232Cに設定すると、CATは背面のジャックになります。\n\nこのエントリーは公開されているCATドキュメントをもとに作成されており、FTDX3000の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.yaesuRs232Troubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **CATジャックはRS-232です。** USB-シリアル変換アダプターとストレートのDB-9ケーブルが必要です。クロス（ヌルモデム）ケーブルではラインが入れ替わり、無線機には何も届きません。\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、詳細設定の **RTSをHIGHに保持** がオンでない限り、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\nこのエントリーは公開されているCATドキュメントをもとに作成されており、これらの無線機の実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
-			'settings.station.yaesuUsbTroubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機の2つのUSBポートのうち1つ目を使用してください。** CATは通常1つ目（Windowsでは **Enhanced** COMポート）にあり、2つ目（**Standard**）はPTTとキーイング用です。ポート選択では、2つを区別できる場合は1つ目を指します。\n- **無線機側でCAT RTSをOFFにする必要があります。** オンのままだと、詳細設定の **RTSをHIGHに保持** がオンでない限り、無線機はアプリがLOWに保つハンドシェイクラインを待ち続けます。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
+			'settings.station.yaesuUsbTroubleshooting' => '無線機はコマンドを受信していますが、応答していません。ほとんどの場合、次のいずれかが原因です：\n\n- **無線機の2つのUSBポートのうち1つ目を使用してください。** CATは通常1つ目（Windowsでは **Enhanced** COMポート）にあり、2つ目（**Standard**）はPTTとキーイング用です。ポート選択では、2つを区別できる場合は1つ目を指します。\n- **無線機側でCAT RTSをOFFにするか、RTSをHIGHに保持をオンにしてください。** 無線機の **CAT RTS** メニューがオンだと、RTSがLOWの間は沈黙します。ポートを開いた直後に一度だけ応答し、その後は何も返さないことがあります。無線機本体のUSBポートを選ぶと、詳細設定の **RTSをHIGHに保持** が自動的にオンになります。Digirig、SignaLink、ほとんどの自作ケーブルではRTSがPTTなので、HIGHに保持すると送信してしまいます。その場合は代わりに無線機側でCAT RTSをOFFにしてください。\n- **速度を一致させてください**：無線機のCAT RATEメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
 			'settings.station.k4SerialNotes' => 'K4背面のUSB-B（PC）ソケットに接続してください。CATにはUSB-PC1とUSB-PC2のどちらも使えます。未使用のポートを選び、無線機のSerial USB-PCn: Baud Rate設定と一致させてください。HaLoは38400を初期値として入力します。必要に応じて変更してください。他のアプリケーションはもう一方のポートかEthernetを使う必要があります。\n\nこの接続は無線機とそのキーヤーを制御しますが、HaLoに音声は送りません。',
-			'settings.station.k4TcpNotes' => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。これはCAT制御であり、ポート9204の別のリモート音声接続ではありません。\n\nHaLoは音声やパンアダプターのデータをストリーミングせずに、無線機とそのキーヤーを制御します。',
+			'settings.station.k4TcpNotes' => 'K4のEthernetソケットをローカルネットワークに接続してください。ホスト名またはIPアドレスと、CATポート9200を入力します。パンアダプターやウォーターフォールの表示中、HaLoは同じホストの固定ポート9201を使います。CATポートを変更してもスペクトラムのポートは変わりません。\n\nスペクトラムはメイン受信機を表示します。そのズーム、リファレンス調整、速度の操作はHaLoの表示にのみ影響します。音声ストリーミングには対応していません。',
 			'settings.station.k4PowerTimeout' => '無線機が出力範囲を確認しなかったため、K4の出力は変更されませんでした。再試行してください。',
+			'settings.station.k4RemoteNotes' => 'K4でリモートアクセスを有効にし、そのネットワークパスワードを入力してください。MainとSubは、無線機制御とスペクトラムのために1つの暗号化接続を共有します。デフォルトのポートは9204です。リモートから接続する場合は転送先のポートを入力してください。\n\n音声の再生とマイクのストリーミングには対応していません。',
+			'settings.station.k4Receiver' => '受信機',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'MainまたはSubを選んでください',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'その受信機はこのK4ですでに設定済みです',
+			'settings.station.k4SubReceiverOff' => 'K4のサブ受信機がオフです',
+			'settings.station.k4RemotePasswordRequired' => '安全に接続するにはK4のネットワークパスワードを入力してください。',
+			'settings.station.k4RemoteHandshakeFailed' => 'K4とのセキュアな接続を確立できませんでした。ネットワークパスワードとリモートアクセスの設定を確認してください。',
+			'settings.station.k4RemoteUnreachable' => 'K4のセキュア接続に到達できませんでした。アドレス、ポート、リモートアクセスの設定を確認してください。',
 			'settings.station.k4PowerRange' => 'K4の出力は0.1〜110 W、トランスバーターのミリワット出力が有効な場合は0.0001〜0.01 Wの範囲で指定してください。',
 			'settings.station.elecraftTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
 			'settings.station.elecraftTroubleshooting' => 'ElecraftのリグはKenwood CATを使用し、KX2とKX3の両方でこの方法による動作が確認されています。VFOの双方向制御、モード切替、CWのゼロビートすべてが動作します。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のメニューの **RS232** で設定したレートと同じにします。出荷時は38400です。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n\n**周波数は正しいのにモードが違う場合**は、お知らせください。KX2とKX3のエントリーは、無線機のステータス応答内の特定の位置からモードを読み取っており、その位置はこれまでに確認したリグをもとに固定しています。別の位置に置くファームウェアについては、報告がなければ私たちには分かりません。\n\nK3についてはまだどちらの報告もないため、使用している場合は結果をお知らせください。K4には専用のエントリーがあります。',
+			'settings.station.lab599TroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
+			'settings.station.lab599Troubleshooting' => 'TX-500シリーズはKenwood CATを使用します。周波数とモードはLiNK500MP経由で動作確認済みです。出力とメーターはLab599のCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n- **速度を一致させてください**：無線機のCAT設定と同じにします。変更していなければ9600です。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **無線機側でCATプロトコルを選んでください。** TS-2000は周波数、モード、出力に対応します。LAB599ではさらに、アプリから無線機をDIGに切り替え、DIGでの送信を確認し、電源電圧を読み取れます。\n- **LiNK500MP経由の場合**、VFOツマミを3秒ほど長押しして、CAT制御をインターフェースに渡してください。\n- **接続に合わせてLiNK500MPのモードを設定してください**：BluetoothならMode 3、Bluetooth LEならMode 4です。それ以外のモードではBluetooth LEスキャンで見つかりません。\n- **Bluetooth経由**では、LiNK500MPは2つのシリアルポートとしてペアリングされ、CATを扱うのは片方だけです。無線機が沈黙したままなら、もう一方を選んでください。',
+			'settings.station.lab599TroubleshootingIos' => 'TX-500シリーズはKenwood CATを使用します。周波数とモードはLiNK500MP経由で動作確認済みです。出力とメーターはLab599のCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n- **スキャンの前にLiNK500MPをMode 4にしてください**。これがBluetooth LEモードです。それ以外のモードではiPhoneやiPadから見つけられません。\n- **CAT制御をLiNK500MPに渡してください**：無線機のVFOツマミを3秒ほど長押しします。\n- **無線機側でCATプロトコルを選んでください。** TS-2000は周波数、モード、出力に対応します。LAB599ではさらに、アプリから無線機をDIGに切り替え、DIGでの送信を確認し、電源電圧を読み取れます。',
 			'settings.station.kenwoodTroubleshootingTitle' => '無線機に接続できても周波数が表示されない場合',
-			'settings.station.kenwoodTroubleshooting' => 'このドライバーは、KenwoodのTS-590SGとTS-480、QRP LabsのQMXとQCX-mini、ElecraftのKX2とKX3で動作が確認されています。その他の機種は公開されているCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のCATメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **一部のリグはメニューでCATを有効にする必要があります**。有効にしないとまったく応答しません。\n\n**いくつかのSDRフロントエンドも同じプロトコルを使用している**ため、それらでもこのエントリーを試す価値があります。ElecraftのリグはElecraftの下に別途掲載しています。周波数は正しいのにモードが違う、または表示されない場合、それが機種ごとに異なる唯一の部分です。アプリは無線機からモードを判別し、できなければ直接問い合わせるため、モードの表示が単に遅れているだけかもしれません。',
+			'settings.station.kenwoodTroubleshooting' => 'このドライバーは、KenwoodのTS-590SGとTS-480、QRP LabsのQMXとQCX-mini、ElecraftのKX2とKX3で動作が確認されています。その他の機種は公開されているCATリファレンスをもとに作成しているため、結果にかかわらずお知らせください。\n\n無線機が応答しない場合、ほとんどの場合は次のいずれかが原因です：\n\n- **速度を一致させてください**：無線機のCATメニューと同じにします。一致しないと、無線機は無意味なデータを返すか何も返さず、エラーは出ません。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。\n- **一部のリグはメニューでCATを有効にする必要があります**。有効にしないとまったく応答しません。\n- **Kenwoodの無線機はRTSを待ちます**：CATポートがRTSをハンドシェイクに使うため、詳細設定の「RTSをHIGHに保持」をオンにする必要があります。これがデフォルトでオンになる前に設定した接続では、オフのままかもしれません。DigirigなどRTSでPTTをキーイングするケーブルではオフにしてください。そうしないと無線機が送信します。\n\n**いくつかのSDRフロントエンドも同じプロトコルを使用している**ため、それらでもこのエントリーを試す価値があります。ElecraftのリグはElecraftの下に別途掲載しています。周波数は正しいのにモードが違う、または表示されない場合、それが機種ごとに異なる唯一の部分です。アプリは無線機からモードを判別し、できなければ直接問い合わせるため、モードの表示が単に遅れているだけかもしれません。',
 			'settings.station.statusConnected' => '接続済み',
 			'settings.station.statusLost' => '切断',
 			'settings.station.notConfigured' => '未設定',
 			'settings.station.currentConfiguration' => '現在の構成',
 			'settings.station.currentTransceiver' => '現在のトランシーバー',
+			'settings.station.currentTransceivers' => '現在のトランシーバー',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}：${name}',
+			'settings.station.so2rQueueMessages' => 'メッセージを割り込ませずにキューに入れる',
+			'settings.station.noRadioBSelected' => 'Radio Bが選択されていません',
 			'settings.station.radioMode' => '無線機のモード',
 			'settings.station.keyerNotSupported' => '現在の無線機では未対応',
 			'settings.station.catControlPreferences' => 'CAT制御の設定',
@@ -5074,13 +6498,25 @@ extension on TranslationsJa {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio}は別のデバイス上にあります',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'この無線機は${device}に接続されています。接続と設定はそのデバイスで構成します。',
 			'settings.station.antennaInUse' => '使用中のアンテナ',
-			'settings.station.keyInUse' => '使用中のキー',
+			'settings.station.keyInUse' => 'CWキーイング',
+			'settings.station.phoneKeying' => '電話キーイング',
+			'settings.station.phoneKeyingNone' => 'なし',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '${radio}のメモリー',
+			'settings.station.phoneKeyingComputer' => 'このコンピューターの音声',
+			'settings.station.phoneKeyingOff' => '電話キーイングはオフです',
+			'settings.station.computerVoiceSettings' => 'コンピューターの音声',
+			'settings.station.cwKeyingOptions' => 'CWキーイングのオプション',
 			'settings.station.noneSelected' => 'なし',
 			'settings.station.moreSettings' => 'その他の設定',
 			'settings.station.icomCivTroubleshootingTitle' => '同じ無線機に2つのシリアルポートが表示される場合',
 			'settings.station.icomCivTroubleshooting' => 'IC-705を含む一部のIcom無線機は、**2つ**のUSBシリアルポート（IcomではPort AとPort Bと呼びます）を同時に提供し、どちらもデフォルトでCI-Vに設定されています。このアプリもOSもそれ以上は区別できず、同じUSBベンダー/プロダクトIDが2回表示されるだけです（ここでは `#2` という接尾辞が付くこともあります）。**通常はPort Aが正解です**。たいていOSやブラウザが最初に表示するもので、このアプリが2つのポートを区別できる場合は推奨として表示します。コマンドを送っても無線機が応答しない場合は、もう一方のポートを試してください。',
 			'settings.station.civAddressTroubleshootingTitle' => '無線機がまったく応答しない場合',
 			'settings.station.civAddressTroubleshooting' => '- **CI-Vアドレスを一致させてください**：無線機のメニューと同じにします。このエントリーには機種の出荷時アドレスが入力されていますが、CI-Vバスを共有するリグではまさにそれが変更されます。間違ったアドレスに送られたフレームは黙って無視されるため、ケーブルの故障とまったく同じように見えます。\n- **速度を一致させてください**：無線機のCI-V BAUD RATE（USBの場合はCI-V USB Baud Rate）と同じにします。無線機をここに表示されているのと同じ数値に設定し、**Autoにはしないでください**。Autoでは、IC-7300などの一部の無線機は接続後1分ほどで応答しなくなります。\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **CI-Vアドレスを一致させてください**：無線機のメニューと同じにします。このエントリーには機種の出荷時アドレスが入力されていますが、CI-Vバスを共有するリグではまさにそれが変更されます。間違ったアドレスに送られたフレームは黙って無視されるため、ケーブルの故障とまったく同じように見えます。\n${speed}\n- **別のアプリがポートを使用中の可能性があります**：WSJT-X、fldigi、rigctldはいずれもポートを開いたままにします。',
+			'settings.station.icomUsbSpeedFollows' => '- **設定する速度はありません。** USB経由では、この無線機はコンピューターが使う速度で通信します。このエントリーは常に、スコープに必要な速度である115200を使います。',
+			'settings.station.ic7610UsbSpeed' => '- **CI-V USB Baud Rateを115200にしてください**。スコープに必要なため、このエントリーは常にこの速度を使います。**Autoにはしないでください**。他の速度に設定された無線機は何も返しません。',
+			'settings.station.civTransceiveTitle' => 'アプリが無線機の操作に追従するのが遅い場合',
+			'settings.station.civTransceive' => '無線機で変更した周波数やモードがアプリに表示されるまで数秒かかる場合は、無線機の **CI-V Transceive** 設定をオンにしてください（最近の機種ではSET > Connectors > CI-Vにあります）。オンにすると、無線機は変更があった瞬間にそれを報告します。オフだと、アプリは数秒ごとの次回の問い合わせまで変更に気づきません。',
 			'settings.station.ic7300Mk2Note' => '\n- **IC-7300 MK2** の出荷時アドレスは、ここに入力されている `94` ではなく `B6` です。代わりにIC-7300 MK2のエントリーを選んでください。',
 			'settings.station.ic705PortNote' => '\n- **IC-705** は、どちらも無線機の名前が付いた2つのUSBシリアルポートを提供します。CI-Vはそのうち **1つ目** にあり、ポート選択では2つを区別できる場合はそちらを指します。',
 			'settings.station.ic7760PortNote' => '\n- **IC-7760** は、提供する2つのUSBシリアルポートのうち **Port A** でCI-Vを使用します。',
@@ -5096,7 +6532,8 @@ extension on TranslationsJa {
 			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.ic705TroubleshootingTitle' => '無線機がまったく応答しない場合',
-			'settings.station.ic705Troubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。',
+			'settings.station.ic705Troubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- **ポートを一致させてください**：無線機のControl PortとSerial Port（UDP）、またはそこへ転送されているポートと同じにします。ポートが間違っていると、電源の切れた無線機と同じく無応答になります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。',
+			'settings.station.icomLanTroubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfview、RS-BA1、IcomのRemote Utilityがそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** LANポートがこのデバイスと同じネットワークに接続され、**Network Control** がオンで、ユーザー名とパスワードが無線機上のネットワークユーザーとして設定されている必要があります。\n- **ポートを一致させてください**：無線機のControl PortとSerial Port（UDP）、またはそこへ転送されているポートと同じにします。ポートが間違っていると、電源の切れた無線機と同じく無応答になります。\n- **接続しても応答がない場合**は、ここのCI-Vアドレスを無線機のCI-V ADDRESSメニューと一致させてください。このエントリーには機種の出荷時アドレスが入力されています。\n- 固まったままの場合は、**無線機の電源を入れ直してください**。',
 			'settings.station.statusStale' => '応答なし',
 			'settings.station.statusDisconnected' => '未接続',
 			'settings.station.statusConnecting' => '接続中…',
@@ -5104,10 +6541,8 @@ extension on TranslationsJa {
 			'settings.station.statusError' => '接続に失敗しました',
 			'settings.station.currentRadioSettings' => '現在の無線機の設定',
 			'settings.station.notSupportedByThisRadio' => 'この無線機では未対応',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => '電話',
-			_ => null,
-		} ?? switch (path) {
+			'settings.station.cwMessagesButton' => 'CWメッセージ',
+			'settings.station.voiceMessagesButton' => '電話メッセージ',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件',
 			'settings.station.antennaBands' => 'バンド',
 			'settings.station.antennaType' => 'アンテナの種類',
@@ -5134,13 +6569,15 @@ extension on TranslationsJa {
 			'settings.station.newAntenna' => '新しいアンテナ',
 			'settings.station.newKey' => '新しいキー',
 			'settings.station.newKeyer' => 'WinKeyer（K1ELまたは互換機）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}のキー',
 			'settings.station.trackStationInfo' => 'QSOごとにステーション情報を記録',
 			'settings.station.includeStationInfoInAdif' => 'ADIFエクスポートに含める',
 			'settings.station.whatToTrack' => '記録する項目',
 			'settings.station.trackFieldRig' => 'トランシーバー',
-			'settings.station.trackFieldPower' => '出力',
+			'settings.station.trackFieldPower' => 'パワー',
 			'settings.station.watts' => 'ワット',
 			'settings.station.trackFieldAntenna' => 'アンテナ',
 			'settings.station.trackFieldKey' => 'CWキー',
@@ -5154,7 +6591,7 @@ extension on TranslationsJa {
 			'settings.station.placeholderFreqDescription' => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
 			'settings.station.placeholderMode' => 'モード',
 			'settings.station.placeholderModeDescription' => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。',
-			'settings.station.placeholderPower' => '出力（ワット）',
+			'settings.station.placeholderPower' => 'パワー（ワット）',
 			'settings.station.placeholderPurpose' => 'ロギングのために、使用中のリグを記録するための無線機です',
 			'settings.station.placeholderReplyDelay' => '応答遅延（ms）',
 			'settings.station.placeholderReplyDelayDescription' => 'プレースホルダー無線機が変更を報告するまでの時間。空欄または0で即座に応答します。',
@@ -5212,6 +6649,43 @@ extension on TranslationsJa {
 			'settings.station.switchCurrentStateDescription' => '各無線機ポートが現在どのアンテナに接続されているか。変更は即座に反映されます。',
 			'settings.station.switchWiringHeader' => '配線',
 			'settings.station.switchPortInhibitedHint' => '送信禁止',
+			'settings.station.rotatorAxes' => '軸',
+			'settings.station.rotatorAxesDescription' => 'ローテーターが方位のみ回るか、仰角も回るか（G-5500など）。',
+			'settings.station.rotatorAxesAzimuth' => '方位のみ',
+			'settings.station.rotatorAxesAzimuthElevation' => '方位と仰角',
+			'settings.station.rotatorAzimuthOffset' => '方位オフセット',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'コントローラーのゼロが真北でない場合に、読み取り値に加える角度（度）。回転もこれに合わせて補正されます。',
+			'settings.station.rotatorElevationOffset' => '仰角オフセット',
+			'settings.station.rotatorAzimuthMin' => '方位の下限',
+			'settings.station.rotatorAzimuthMax' => '方位の上限',
+			'settings.station.rotatorAzimuthMaxDescription' => 'コントローラー自身の角度で指定します。オーバーラップのあるローテーターでは360より大きくすると、短い方の回転を選びます。',
+			'settings.station.rotatorElevationMin' => '仰角の下限',
+			'settings.station.rotatorElevationMax' => '仰角の上限',
+			'settings.station.rotatorElevationMaxDescription' => 'コントローラー自身の角度で指定します。反転できるローテーターでは90より大きくします。',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => '${min}〜${max}の整数（度）',
+			'settings.station.rotatorLimitsInvalid' => '下限は上限より小さくしてください',
+			'settings.station.rotatorPollInterval' => 'ポーリング間隔（ms）',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'ローテーターの向きを問い合わせる頻度。空欄の場合は${fallback} msです。',
+			'settings.station.rotatorAxesRequired' => 'ローテーターが回る軸を選んでください',
+			'settings.station.rotatorRefused' => 'コントローラーがコマンドを拒否しました。GS-232モードに設定されているか確認してください。',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotatorは設定が済んでいるときだけ応答し、それ以外はまったく何も返しません：\n\n- **UDP Controlをオンにしてください**：PstRotatorのSetupメニューにあります。\n- **ポートを一致させてください**：Communication → UDP Control Port、変更していなければ12000です。PstRotatorは次のポート（12001）で応答するため、このデバイスでそのポートが空いている必要があります。\n- **PstRotatorをコントローラーに接続してください。** 接続されるまで、UDPでは何も応答しません。\n- **ファイアウォールで許可してください**：PstRotatorを実行しているPCと、応答を待ち受けるこのデバイスの両方で。\n- **Mac、iPhone、iPadでは**、Ham2K Loggerにローカルネットワークへのアクセスが必要です（設定 → プライバシーとセキュリティ → ローカルネットワーク）。',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => '現在の状態：${position}',
+			'settings.station.rotatorDisconnected' => '未接続',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '方位${degrees}°',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '方位${degrees}°',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '仰角${degrees}°',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '仰角${degrees}°',
+			'settings.station.rotatorNoReading' => 'コントローラーが位置を報告するのを待っています…',
+			'settings.station.rotatorNotResponding' => '応答なし',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '${heading}へ、このローテーターの制限内で可能な限り回転中',
+			'settings.station.rotatorTargetAzimuth' => '方位へ回転',
+			'settings.station.rotatorTargetAzimuthShort' => '方位へ',
+			'settings.station.rotatorTargetElevation' => '仰角へ回転',
+			'settings.station.rotatorTargetElevationShort' => '仰角へ',
+			'settings.station.rotatorAzimuthInvalid' => '0〜360で指定してください',
+			'settings.station.rotatorElevationInvalid' => '0〜180で指定してください',
+			'settings.station.rotatorTurn' => '回転',
+			'settings.station.rotatorStop' => '停止',
 			'settings.station.configUnreadable' => 'この無線機の保存済み設定を読み取れませんでした。設定を開いて再入力するか、削除して追加し直してください。',
 			'settings.station.autoConnectHeld' => '前回この無線機に接続したときにHaLoが応答しなくなったため、今回は自動的に接続しませんでした。再試行するには接続を押してください。',
 			'settings.offlineData.title' => 'オフラインデータ',
@@ -5243,6 +6717,11 @@ extension on TranslationsJa {
 			'settings.search.hint' => '設定を検索',
 			'settings.developer.developerModeDescription' => '開発者向けの警告、デバッグログ、ツールを有効にします。',
 			'settings.developer.experiments' => '実験',
+			'settings.developer.showIdleMetrics' => 'アイドル指標を表示',
+			'settings.developer.showIdleMetricsDescription' => '拡張機能エンジンが直近1秒間にどれだけアイドルだったかをステータスバーに表示します。タップすると10秒と60秒の平均が見られます。',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => 'アイドル${percent}%',
+			'settings.developer.idleMetricsAverages' => 'アイドル平均：',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}秒 ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件有効', other: '${count}件有効', ), 
 			'settings.developer.patchTrack' => 'コードプッシュのトラック',
 			'settings.developer.patchTrackDescription' => 'このデバイスが従うOTAコードプッシュのリング。冒険的なリングほど修正を早く受け取りますが、テストは少なくなります。コードプッシュは次回の再起動時に適用されます。',
@@ -5294,7 +6773,7 @@ extension on TranslationsJa {
 			'settings.panels.commonSettings' => '共通の設定',
 			'settings.panels.syncDescription' => 'ログをバックアップし、デバイス間で同期',
 			'settings.panels.accountsDescription' => 'サービスの認証情報、オフラインデータなど',
-			'settings.panels.extensions' => '拡張機能と機能',
+			'settings.panels.extensions' => '拡張機能とアプリ機能',
 			'settings.panels.extensionsDescription' => 'アクティビティ、コンテスト、ダッシュボードパネルなどの機能',
 			'settings.panels.profilesDescription' => 'オペレーターのコールサインとステーションプロファイル',
 			'settings.panels.stationProfiles' => 'ステーションプロファイル',
@@ -5324,9 +6803,14 @@ extension on TranslationsJa {
 			'commands.experimentEnabled' => ({required Object name}) => '${name}を有効化しました',
 			'commands.experimentDisabled' => ({required Object name}) => '${name}を無効化しました',
 			'commands.sentryTestSent' => 'テストのエラーレポートをSentryに送信しました',
+			'commands.idleMetricsEnabled' => 'ステータスバーのアイドル指標を有効にしました',
+			'commands.idleMetricsDisabled' => 'アイドル指標を無効にしました',
 			'commands.sentryTestLocalOnly' => 'このビルドではSentryが無効です。テストエラーはローカルにのみ記録されました',
 			'commands.noOperationOpen' => 'このコマンドにはオペレーションを開いている必要があります',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '「${kind}」の記録方法が分かりません',
+			'commands.goUnavailable' => ({required Object place}) => '${place}はこのアプリでは有効になっていません',
+			'commands.goUnknown' => ({required Object to}) => '「${to}」への移動方法が分かりません',
+			'commands.goBlocked' => '先に開いているダイアログを閉じてください',
 			'commands.operationAlreadyStarted' => 'このオペレーションにはすでに開始マーカーがあります',
 			'commands.couldNotOpenLocation' => '休憩を追加しましたが、場所の画面を開けませんでした',
 			'commands.noTestOperations' => '完全削除するテストオペレーションはありません',
@@ -5359,6 +6843,10 @@ extension on TranslationsJa {
 			'commands.cwSending' => ({required Object text}) => 'CW送信中：${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CWメッセージF${n}：${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CWメッセージF${n}は送信されませんでした：拡張機能の準備ができていません',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => '電話メッセージM${n}：${error}',
+			'commands.voiceMessageNotRendered' => '拡張機能の準備ができていません',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => '送信されませんでした：Radio ${radio}ではそれをキーイングできません',
+			'commands.so2rNoRadioB' => '送信されませんでした：このセットからキーイングするには、ステーション構成でRadio Bを選んでください',
 			'commands.settingNotStored' => ({required Object label}) => '「${label}」はその値を受け付けませんでした',
 			'commandDialog.hint' => 'コールサインを検索、またはコマンドを入力',
 			'commandDialog.noResults' => ({required Object text}) => '「${text}」に一致するものはありません',
@@ -5372,6 +6860,99 @@ extension on TranslationsJa {
 			'commandDialog.sectionSuggestions' => '候補',
 			'commandDialog.lookingUp' => 'コールサインを検索中…',
 			'commandDialog.blockedByPane' => 'パネルやダイアログが開いている間はコマンドを使用できません',
+			'keyboardShortcuts.title' => 'キーボードショートカット',
+			'keyboardShortcuts.description' => 'キー割り当てをカスタマイズ',
+			'keyboardShortcuts.search' => 'コマンドとキーを検索',
+			'keyboardShortcuts.import' => 'インポート…',
+			'keyboardShortcuts.export' => 'エクスポート…',
+			'keyboardShortcuts.resetAll' => 'すべてリセット',
+			'keyboardShortcuts.resetAllTitle' => 'すべてのショートカットをリセットしますか？',
+			'keyboardShortcuts.resetAllBody' => 'すべてのコマンドがデフォルトのキーに戻り、入力コマンドに割り当てたキーは削除されます。',
+			'keyboardShortcuts.reset' => 'リセット',
+			'keyboardShortcuts.noKey' => 'キーなし',
+			'keyboardShortcuts.changed' => '変更済み',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys}は${commands}にも割り当てられています',
+			'keyboardShortcuts.groupApp' => 'アプリ',
+			'keyboardShortcuts.groupKeying' => 'キーイング',
+			'keyboardShortcuts.groupLogging' => 'ロギング',
+			'keyboardShortcuts.groupCommands' => 'コマンド',
+			'keyboardShortcuts.groupFixed' => '固定キー',
+			'keyboardShortcuts.contextApp' => 'どこでも',
+			'keyboardShortcuts.contextLogView' => 'オペレーション、チェイス、ログの各ビュー',
+			'keyboardShortcuts.contextOperation' => 'オペレーションビュー（CAT無線機のキーイング）',
+			'keyboardShortcuts.contextLogging' => 'ロギングパネル内',
+			'keyboardShortcuts.addCommand' => 'コマンドを追加…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => '不明なコマンド：${command}',
+			'keyboardShortcuts.command.commandDialog' => 'コマンドダイアログを開く',
+			'keyboardShortcuts.command.toggleTheme' => 'ライトとダークを切り替える',
+			'keyboardShortcuts.command.toggleLanguage' => '英語とスペイン語を切り替える',
+			'keyboardShortcuts.command.fontScaleUp' => '文字を大きく',
+			'keyboardShortcuts.command.fontScaleDown' => '文字を小さく',
+			'keyboardShortcuts.command.fontScaleReset' => '標準の文字サイズ',
+			'keyboardShortcuts.command.densityLooser' => 'ゆったりしたレイアウト',
+			'keyboardShortcuts.command.densityDenser' => '密なレイアウト',
+			'keyboardShortcuts.command.densityAuto' => 'レイアウト密度を自動に',
+			'keyboardShortcuts.command.find' => 'ログ内を検索',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'メッセージ${n}を送信',
+			'keyboardShortcuts.command.keyboardMode' => 'キーボードモードのオン/オフ',
+			'keyboardShortcuts.command.ptt' => 'PTT（プッシュトゥトーク）',
+			'keyboardShortcuts.command.wipe' => '入力中のコンタクトをクリア',
+			'keyboardShortcuts.fixed.callsign' => 'コールサインの入力',
+			'keyboardShortcuts.fixed.escape' => '送信の停止、1段階戻る、または閉じる',
+			'keyboardShortcuts.fixed.enter' => 'コンタクトを記録',
+			'keyboardShortcuts.fixed.space' => '次のフィールド',
+			'keyboardShortcuts.fixed.tab' => '次または前のフィールド',
+			'keyboardShortcuts.fixed.arrows' => 'フィールド、コントロール、ログの間を移動',
+			'keyboardShortcuts.fixed.walk' => 'ログをページ送り、または先頭/末尾へ',
+			'keyboardShortcuts.fixed.undo' => '消去や削除を取り消す',
+			'keyboardShortcuts.editor.addShortcut' => 'ショートカットを追加',
+			'keyboardShortcuts.editor.listening' => 'ショートカットのキーを押してください…',
+			'keyboardShortcuts.editor.listeningHint' => 'Escで中止',
+			'keyboardShortcuts.editor.add' => '追加',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys}はロギングフィールドまたはダイアログのキーのため、変更できません。',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys}はコールサインの入力に使います。Cmd、Ctrl、Altのいずれかと組み合わせてください。',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => '${keys}はアプリに届く前にシステムが使う可能性があります。',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys}はすでにこのコマンドのキーの1つです。',
+			'keyboardShortcuts.editor.takeIt' => ({required Object command, required Object keys}) => '「${command}」から${keys}を取る',
+			'keyboardShortcuts.editor.resetDefault' => 'デフォルトに戻す',
+			'keyboardShortcuts.editor.remove' => '削除',
+			'keyboardShortcuts.editor.commandLabel' => 'コマンド',
+			'keyboardShortcuts.editor.commandHint' => '有効なコマンド、または「;」で区切った複数のコマンドを入力',
+			'keyboardShortcuts.editor.removeCommand' => 'コマンドを削除',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '「${text}」というコマンドはありません',
+			'keyboardShortcuts.editor.noShortcuts' => 'キーはまだありません',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'ショートカットを${location}に保存しました',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'ショートカットをエクスポートできませんでした：${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'ファイルを開けませんでした：${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるショートカットファイルではありません：${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'Ham2Kのキーボードショートカットファイルではありません',
+			'keyboardShortcuts.file.problemNewerVersion' => '新しいバージョンのアプリで書き出されたものです',
+			'keyboardShortcuts.file.problemMalformed' => '一部がショートカット形式に従っていません',
+			'keyboardShortcuts.file.problemTooLarge' => '大きすぎます',
+			'keyboardShortcuts.file.importTitle' => 'ショートカットをインポート',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '${platform}で書き出されました。',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'このファイルには、どのキーボードで書き出されたかの記載がありません。',
+			'keyboardShortcuts.file.translate' => 'これらの各キーは、このキーボードでは何にしますか？',
+			'keyboardShortcuts.file.leaveOut' => 'それらのショートカットを除外',
+			'keyboardShortcuts.file.replace' => 'このデバイスの設定と置き換え',
+			'keyboardShortcuts.file.replaceHint' => 'ファイルにないショートカットはすべてデフォルトに戻ります。',
+			'keyboardShortcuts.file.merge' => 'このデバイスの設定に追加',
+			'keyboardShortcuts.file.mergeHint' => '同じコマンドについてはファイルのショートカットがこのデバイスのものを置き換え、それ以外は残ります。',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'このバージョンでは不明なため除外：${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'ショートカットではないため除外：${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'アプリが予約しているキーのため除外：${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'インポート後に複数のコマンドに割り当てられています：${keys}',
+			'keyboardShortcuts.file.importAction' => 'インポート',
+			'keyboardShortcuts.file.imported' => 'ショートカットをインポートしました',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'このビルドは期限切れです',
 			'expiredBuild.body' => 'ham2k.comにアクセスして新しいバージョンを入手してください。',
 			'expiredBuild.visit' => 'ham2k.comを開く',
@@ -5385,9 +6966,11 @@ extension on TranslationsJa {
 			'spotting.noQsoYet' => 'スポットするQSOがまだ記録されていません。',
 			'spotting.setFrequencyFirst' => '先に周波数を設定してください。',
 			'spotting.nothingToSpot' => 'スポットできません。ここでスポッティングを提供する拡張機能がありません。',
+			'spotting.incompleteCall' => '不完全なコールはスポットできません。先にコールサインを完成させてください。',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source}が失敗しました：${message}',
 			'spotting.unknownError' => '不明なエラー',
 			'spotting.notSent' => 'スポットは送信されませんでした。',
+			'spotting.allSkipped' => 'スポットは送信されませんでした：すべてのスポットソースがスキップしました。',
 			'spotting.notRefreshedOffline' => '接続がないため、スポットは更新されませんでした',
 			'dataFiles.downloading' => 'ダウンロード中…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '${name}をダウンロードできませんでした',
@@ -5395,8 +6978,10 @@ extension on TranslationsJa {
 			'dataFiles.downloadTimedOut' => 'サーバーの応答に時間がかかりすぎました。後で再試行してください。',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host}がエラーを返しました（HTTP ${status}）。後で再試行してください。',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host}はこのファイルを提供できませんでした（HTTP ${status}）。アドレスがまだ正しいか確認してください。',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MMには${stem}のコールヒストリーファイルがありません。',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MMの${stem}のコールヒストリーをダウンロードできませんでした。後で再試行してください。',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => '${name}を処理できませんでした',
-			'dataFiles.importTooSmall' => ({required Object existing, required Object imported}) => 'ダウンロードには、このデバイスにある${existing}件中${imported}件のレコードしかなかったため、含まれていなかったレコードは保持しました。設定 › オフラインデータ で更新すると、それでも受け入れます。',
+			'dataFiles.importTooSmall' => ({required Object existing, required Object imported}) => 'ダウンロードには、このデバイスにある${existing}件中${imported}件のレコードしかなかったため、含まれていなかったレコードは保持しました。設定 › オフラインデータで更新すると、それでも受け入れます。',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${label}のレコードを${count}件インポートしました。', other: '${label}のレコードを${count}件インポートしました。', ), 
 			'dataFiles.importedData' => ({required Object label}) => '${label}のデータをインポートしました。',
 			'dataFiles.cleanedUpTitle' => '拡張機能のデータを整理しました',
@@ -5426,8 +7011,14 @@ extension on TranslationsJa {
 			'extensionService.validationError' => ({required Object error}) => '検証エラー：${error}',
 			'extensionService.actionFailed' => ({required Object error}) => '操作に失敗しました：${error}',
 			'extensionService.commandFailed' => 'コマンドを実行できませんでした',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name}は設定を変更できません：インストール時に許可を求めていません',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name}は無線機を制御できません：インストール時に許可を求めていません',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name}はそれを実行できません：アプリ自身の開発者コマンドです',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => '現在、報告を送信できません',
 			'extensionService.stashUnavailable' => '現在、Ham2K File Stashに接続できません',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names}がアクティビティ検索に応答しなかったため、一部の結果が欠けている可能性があります。',
+			'extensionService.activitySearchSomeSourcesFailed' => '一部のアクティビティ拡張機能が検索に応答しなかったため、一部の結果が欠けている可能性があります。',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name}がタイマーで時間を使いすぎました。拡張機能が再起動するまでタイマーは停止されます。',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}のタイマーが失敗し続けました。拡張機能が再起動するまでタイマーは停止されます。',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name}がタイマー内で停止しました。拡張機能が再起動するまでタイマーは停止されます。',
@@ -5438,14 +7029,14 @@ extension on TranslationsJa {
 			'operationLocationScreen.suggestedLocations' => '提案された場所',
 			'operationLocationScreen.deviceGps' => 'デバイスGPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '${device}のGPS',
-			'operationLocationScreen.locating' => '検索中…',
+			'operationLocationScreen.locating' => '測位中…',
 			'operationLocationScreen.gpsUnavailable' => '位置情報を利用できません',
 			'operationLocationScreen.permissionDenied' => '位置情報の許可が拒否されました',
 			'operationLocationScreen.permissionBlocked' => '位置情報の許可がブロックされています',
 			'operationLocationScreen.moreDetails' => '詳細',
 			'operationLocationScreen.stateOrProvince' => '州または都道府県（任意）',
 			'operationLocationScreen.controlsUnavailableTitle' => 'アクティビティの操作を利用できません',
-			'operationLocationScreen.controlsUnavailableReason' => 'これらの参照コードは引き続き使用できます。アクティビティに接続できなかっただけです。',
+			'operationLocationScreen.controlsUnavailableReason' => 'これらのリファレンスは引き続き使用できます。アクティビティに接続できなかっただけです。',
 			'operationLocationScreen.controlsUnavailableRetry' => '再試行',
 			'operationLocationScreen.county' => '郡（任意）',
 			'versionLabel.version' => ({required Object version}) => 'バージョン ${version}',
@@ -5468,7 +7059,7 @@ extension on TranslationsJa {
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email}（確認待ち - #${id}）',
 			'deepLink.needsAnOperation' => '先にオペレーションを開始してから、そのコンタクトをもう一度送信してください',
 			'deepLink.waitingInOperation' => 'そのコンタクトはこの画面の後ろのオペレーションで待機しています',
-			'deepLink.unknownActivities' => ({required Object refs}) => 'このデバイスには${refs}のアクティビティがないため、それらの参照コードは省略されました',
+			'deepLink.unknownActivities' => ({required Object refs}) => 'このデバイスには${refs}のアクティビティがないため、それらのリファレンスは省略されました',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'アクティビティに接続できなかったため、${refs}は省略されました。もう一度そのリンクを試してください',
 			'confirmDevice.title' => 'デバイスを確認',
 			'confirmDevice.codePrompt' => 'このアカウントへの参加を求めているデバイスに表示されたコードを入力してください。',
@@ -5492,6 +7083,8 @@ extension on TranslationsJa {
 			'switchAccounts.linkWithSiblingDescription' => '別のHam2Kアプリがインストールされています。そこで使用中のアカウントとリンクします。',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '${app}でリクエストを承認してから、ここに戻ってください。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app}をもう一度開く',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'うまくいきませんでしたか？もう一度開くか、戻って別の方法でリンクしてください。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}を開けませんでした。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'リンクの期限が切れたため、新しいリンクを用意しました。${app}をもう一度開いてください。',
@@ -5521,6 +7114,17 @@ extension on TranslationsJa {
 			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のQSO', other: '${count}件のQSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
+			'qsonImport.title' => 'QSONオペレーションをインポート',
+			'qsonImport.description' => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。',
+			'qsonImport.dropHint' => 'QSONファイルをドロップして新しいオペレーションとしてインポート',
+			'qsonImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'インポートするファイルを開けませんでした：${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename}はUTF-8テキストではないため、QSONファイルではありません',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません',
+			'qsonImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
+			'qsonImport.oneFileOnly' => 'QSONファイルは1つずつドロップしてください。それぞれが別のオペレーションとして開きます。',
 			'adifImport.title' => 'ADIFからQSOをインポート',
 			'adifImport.reading' => ({required Object filename}) => '${filename}を読み込み中…',
 			'adifImport.dropHint' => 'ADIFファイルをドロップしてインポート',
@@ -5531,9 +7135,9 @@ extension on TranslationsJa {
 			'adifImport.merging' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は既存のコンタクトと統合されます', other: '${formatted}件は既存のコンタクトと統合されます', ), 
 			'adifImport.unusable' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件はインポートできません（コールサインなし）', other: '${formatted}件はインポートできません（コールサインなし）', ), 
 			'adifImport.flagged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件は確認が必要です', other: '${formatted}件は確認が必要です', ), 
-			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトの参照コードを復元できませんでした', other: '${formatted}件のコンタクトの参照コードを復元できませんでした', ), 
-			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトの${programs}参照コードが不完全な可能性があります', other: '${formatted}件のコンタクトの${programs}参照コードが不完全な可能性があります', ), 
-			'adifImport.stackingTypesUnknown' => '統合されたコンタクトで参照コードが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。',
+			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトのリファレンスを復元できませんでした', other: '${formatted}件のコンタクトのリファレンスを復元できませんでした', ), 
+			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のコンタクトの${programs}リファレンスが不完全な可能性があります', other: '${formatted}件のコンタクトの${programs}リファレンスが不完全な可能性があります', ), 
+			'adifImport.stackingTypesUnknown' => '統合されたコンタクトでリファレンスが失われる可能性があります。どの種類が重ねられるかをアクティビティが示せませんでした。これを避けるには、キャンセルして再試行してください。',
 			'adifImport.nothingToImport' => 'このファイルにはインポートできるものがありません',
 			'adifImport.confirm' => 'インポート',
 			'adifImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
@@ -5549,10 +7153,12 @@ extension on TranslationsJa {
 			'adifImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
 			'adifImport.oneFileOnly' => 'ADIFファイルは1つずつドロップしてください。インポートの順序によって、どのデータが優先されるかが決まります。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。',
+			'adifImport.importAnyway' => 'それでもインポート',
 			'offline.statusOffline' => 'インターネット：オフライン',
 			'offline.statusOnline' => 'インターネット：接続済み',
 			'offline.noRoute' => 'ネットワーク接続がまったくありません。',
-			'offline.unreachable' => 'ネットワークは接続されていますが、どのサーバーも応答していません。多くの場合、ブラウザでサインインページが待機しています。',
+			'offline.unreachable' => 'ネットワークは接続されていますが、どのサーバーも応答していません。多くの場合、ブラウザでログインページが待機しています。',
 			'offline.reachable' => 'すべてのサービスが正常に応答しています。',
 			'offline.whatStops' => '検索、スポット、データファイルは一時停止中です。ロギングと近くのデバイスとの同期は停止していません。',
 			'offline.servicesTitle' => 'サービス',
@@ -5570,22 +7176,22 @@ extension on TranslationsJa {
 			'offline.retryDisabled' => '同期がオフのため、確認に使えるものがありません。',
 			'offline.syncService' => 'Ham2K LoFi 同期',
 			'offline.retryInFlight' => 'すでに試行中です。お待ちください。',
-			'exportSettings.defaultsDescription' => 'すべてのエクスポートの基本設定です。参照コードのあるアクティビティとその他のアクティビティで、ファイル名とタイトルのテンプレートを別々に設定できます。エクスポートの種類ごとに、独自のデフォルトまたはカスタム設定を提供できます。',
-			'exportSettings.referenceActivities' => '参照コードのあるアクティビティ',
+			'exportSettings.defaultsDescription' => 'すべてのエクスポートの基本設定です。リファレンス付きアクティビティとその他のアクティビティで、ファイル名とタイトルのテンプレートを別々に設定できます。エクスポート種別ごとに、独自のデフォルトまたはカスタム設定を提供できます。',
+			'exportSettings.referenceActivities' => 'リファレンス付きアクティビティ',
 			'exportSettings.otherActivities' => 'その他のアクティビティ',
 			'exportSettings.adifFields' => 'ADIFフィールド',
 			'exportSettings.loadFailed' => 'エクスポート設定を読み込めませんでした。',
 			'exportSettings.retry' => '再試行',
 			'exportSettings.compactFileNamesDescriptionOn' => 'コンパクトなファイル名（例：N0CALL@US-1234-20260715.adi）。',
 			'exportSettings.compactFileNamesDescriptionOff' => '説明的なファイル名（例：2026-07-15 N0CALL at US-1234.adi）。',
-			'exportSettings.includePrivateDataDescriptionOn' => 'ADIFファイルに名前、住所、メール、ノート、正確な位置を含めています。',
-			'exportSettings.includePrivateDataDescriptionOff' => '名前、住所、メール、ノートを除外し、位置を6文字のグリッドに制限しています。',
+			'exportSettings.includePrivateDataDescriptionOn' => 'ADIFファイルに名前、住所、メール、メモ、正確な位置を含めています。',
+			'exportSettings.includePrivateDataDescriptionOff' => '名前、住所、メール、メモを除外し、位置を6文字のグリッドに制限しています。',
 			'exportSettings.includeLookupDataDescriptionOn' => 'コールサイン検索サービスからの情報を含めています。',
 			'exportSettings.includeLookupDataDescriptionOff' => 'コールサイン検索サービスからの情報を除外し、手動で入力した値は保持しています。',
 			'exportSettings.customTemplatesDescriptionOn' => 'カスタムテンプレートが有効で、下で編集できます。',
 			'exportSettings.customTemplatesDescriptionOff' => 'デフォルトテンプレートが有効です。カスタムテンプレートは後で使えるよう保持されています。',
 			'exportSettings.type' => 'エクスポート種別',
-			'exportSettings.defaults' => '既定値',
+			'exportSettings.defaults' => 'デフォルト',
 			'exportSettings.includeLookupData' => '検索データを含める',
 			'exportSettings.customTemplates' => 'カスタムテンプレート',
 			'exportSettings.filenameTemplate' => 'ファイル名テンプレート',

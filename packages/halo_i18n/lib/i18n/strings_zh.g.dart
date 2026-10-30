@@ -60,6 +60,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$settings$zh settings = _Translations$settings$zh._(_root);
 	@override late final _Translations$commands$zh commands = _Translations$commands$zh._(_root);
 	@override late final _Translations$commandDialog$zh commandDialog = _Translations$commandDialog$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$zh keyboardShortcuts = _Translations$keyboardShortcuts$zh._(_root);
 	@override late final _Translations$expiredBuild$zh expiredBuild = _Translations$expiredBuild$zh._(_root);
 	@override late final _Translations$staleness$zh staleness = _Translations$staleness$zh._(_root);
 	@override late final _Translations$spotting$zh spotting = _Translations$spotting$zh._(_root);
@@ -73,6 +74,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$zh deepLink = _Translations$deepLink$zh._(_root);
 	@override late final _Translations$confirmDevice$zh confirmDevice = _Translations$confirmDevice$zh._(_root);
 	@override late final _Translations$switchAccounts$zh switchAccounts = _Translations$switchAccounts$zh._(_root);
+	@override late final _Translations$qsonImport$zh qsonImport = _Translations$qsonImport$zh._(_root);
 	@override late final _Translations$adifImport$zh adifImport = _Translations$adifImport$zh._(_root);
 	@override late final _Translations$offline$zh offline = _Translations$offline$zh._(_root);
 	@override late final _Translations$exportSettings$zh exportSettings = _Translations$exportSettings$zh._(_root);
@@ -97,6 +99,7 @@ class _Translations$common$zh extends Translations$common$en {
 	@override String get callsign => '呼号';
 	@override String get clear => '清除';
 	@override String get dismiss => '忽略';
+	@override String get copyDetails => '复制详情';
 	@override String get expand => '展开';
 	@override String get collapse => '收起';
 }
@@ -117,7 +120,7 @@ class _Translations$onboarding$zh extends Translations$onboarding$en {
 	@override String get next => '下一步';
 	@override String get done => '完成';
 	@override String get callsignTitle => '您的呼号是什么？';
-	@override String get callsignBody => '您需要业余无线电操作证书才能用好这个应用';
+	@override String get callsignBody => '您需要持有业余无线电操作证书，这个应用才对您有用';
 	@override String get callsignLabel => '操作员呼号';
 	@override String get alreadyHaveAccount => '已有账户？';
 	@override String get foundSiblingTitle => '链接现有账户？';
@@ -133,11 +136,17 @@ class _Translations$onboarding$zh extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => '云同步';
+	@override String get syncBody => 'Ham2K Log Filer 会在云端备份您的日志，并在您使用 Ham2K 应用的所有设备之间同步。';
+	@override String get syncPricing => '免费！不过付费订阅会让它更快。';
+	@override String get syncLabel => '启用云同步';
+	@override String get syncOffWarning => '警告：这会增加丢失操作数据的风险，例如设备崩溃或丢失时。';
+	@override String get notNow => '暂不';
 	@override String get consentTitle => '数据与隐私';
 	@override String get consentUsageBody => '为了帮助我们改进应用，我们希望收集性能、崩溃和应用使用数据。';
 	@override String get consentUsageLabel => '分享应用使用数据';
-	@override String get consentOperationBody => '某些功能可能会与其他用户共享您的操作数据。您可以随时选择退出。';
-	@override String get consentOperationLabel => '共享操作数据';
+	@override String get consentOperationBody => '某些功能可能会将您的操作数据分享给其他用户。您可以随时选择退出。';
+	@override String get consentOperationLabel => '分享操作数据';
 	@override String get finishingSetup => '正在完成设置——下载参考数据…';
 }
 
@@ -162,7 +171,7 @@ class _Translations$testerOverlay$zh extends Translations$testerOverlay$en {
 	@override String get warningTitle => '此应用仍在开发中';
 	@override String get warningBody => '大多数功能还坑坑洼洼，到处都有绊脚的地方。请定期检查更新。';
 	@override String whatsNew({required Object build}) => '构建 ${build} 的新内容';
-	@override String get thanks => '感谢您冒着日志的风险帮助我们改进这个应用！';
+	@override String get thanks => '感谢您冒着丢失日志的风险来帮助我们改进这个应用！';
 }
 
 // Path: extensionsPanel
@@ -173,6 +182,7 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => '活动';
+	@override String get categoryAward => '奖项';
 	@override String get categoryContest => '竞赛';
 	@override String get categoryLookup => '呼号查询';
 	@override String get categorySpots => '信号来源';
@@ -183,15 +193,25 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get noMatches => '没有与搜索匹配的扩展';
 	@override String get installFromFile => '从文件安装…';
 	@override String installVersion({required Object version}) => '版本 ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => '第 ${n}/${count} 张截图';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => '上一张截图';
+	@override String get nextScreenshot => '下一张截图';
+	@override String get screenshotUnavailable => '截图不可用';
 	@override String get canReach => '此扩展可以连接';
 	@override String canHoldConnection({required Object host}) => '${host}，通过持续连接';
 	@override String get canHoldLocalConnection => '本地网络上的设备，通过持续连接';
 	@override String get canUseLocation => '您的位置';
 	@override String get canReadRadio => '您的电台，用于读取其频率和模式';
 	@override String get canControlRadio => '您的电台，用于控制和发射——调谐、功率、CW、语音存储和 PTT';
-	@override String get canSetUserAgent => '以自己的名称向服务器标识自身';
+	@override String get canCommandRadioRaw => '您的电台，用其自身协议向它发送任何命令——包括发射或更改其设置的命令';
+	@override String get canReadCluster => 'DX 集群，以您的身份登录，读取它发送的内容';
+	@override String get canSpotCluster => 'DX 集群，以您的身份登录，以您的名义发布 Spot';
+	@override String get canCommandCluster => 'DX 集群，以您的身份登录，以您的名义向它发送任何命令';
+	@override String get canSetUserAgent => '以自己的名义向服务器表明身份';
+	@override String get canChangeSettings => '您的设置，通过其命令更改：任何设置、开发者模式和实验';
 	@override String get noCapabilities => '它不请求应用之外的任何权限。';
-	@override String get sandboxNote => '扩展在沙盒中运行：无法访问您的文件，也只能访问此处列出的网络。';
+	@override String get sandboxNote => '扩展在沙盒中运行：无法访问您的文件，网络访问也仅限于此处列出的范围。';
 	@override String get installAction => '安装';
 	@override String get updateAction => '更新';
 	@override String get installFailed => '无法安装该扩展';
@@ -220,7 +240,7 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get builtIn => '内置';
 	@override String get updateAvailableBadge => '有可用更新';
 	@override String get updatesAvailableTitle => '扩展更新';
-	@override String updateAvailableFor({required Object name}) => '${name} 有可用更新。';
+	@override String updateAvailableFor({required Object name}) => '${name} 有更新可用。';
 	@override String updatesAvailable({required Object names, required Object count}) => '${names} 及其他 ${count} 个扩展需要更新。';
 	@override String updatesAvailableFor({required Object names}) => '${names} 需要更新。';
 	@override String get pendingUpdatesSection => '待更新';
@@ -247,8 +267,8 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get upgradeRuntimeDeadTitle => '您的扩展未在运行';
 	@override String get restoreTitle => '您的部分扩展缺失';
 	@override String get restoreBody => '您安装的这些扩展不在此设备上。我们可以从 Ham2K 扩展目录重新下载：';
-	@override String get restoreFromFile => '从文件安装。请从文件重新安装，或忘记它们：';
-	@override String get restoreOtherCatalog => '从其他扩展目录安装，因此此处无法获取：';
+	@override String get restoreFromFile => '这些是从文件安装的。请从原文件重新安装，或忘记它们：';
+	@override String get restoreOtherCatalog => '这些是从其他扩展目录安装的，因此此处无法获取：';
 	@override String get restoreForget => '忘记';
 	@override String get restoreInstall => '安装';
 	@override String get restoreLater => '稍后';
@@ -261,19 +281,28 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get restoreRuntimeDeadBody => '我们已重新安装，但您的扩展无法启动。重启应用应该可以恢复。';
 	@override String revokedTitle({required Object name}) => '${name} 已被撤回';
 	@override String get revokedBody => '目录撤回了此版本，因此已将其禁用。';
+	@override String forceDisabledTitle({required Object name}) => '${name} 已被禁用';
+	@override String get forceDisabledBody => 'Ham2K 暂时禁用了此扩展。';
+	@override String replacedTitle({required Object name}) => '${name} 已被替换';
+	@override String replacedBody({required Object replacement}) => '由 ${replacement} 取而代之。您可以在扩展中切换过去。';
+	@override String replacedBy({required Object name}) => '已由 ${name} 替换';
+	@override String replacedByInstalled({required Object name}) => '已由 ${name} 替换，您已安装了它';
+	@override String get replaceAction => '替换';
+	@override String replaceInstalledBody({required Object replacement}) => '它的设置将转移到您已安装的 ${replacement}。您的日志不受影响。';
 	@override String get downloadHashMismatch => '该下载与目录描述的扩展不符。';
 	@override String catalogVersionUnknown({required Object key, required Object version}) => '目录中没有 ${key} 的 ${version} 版本。';
 	@override String get catalogLinkUnknown => '该目录链接未指明扩展版本。';
-	@override String catalogNoRelease({required Object key}) => '目录中没有 ${key} 在该轨道上的发布版本。';
+	@override String catalogNoRelease({required Object key}) => '目录中没有 ${key} 在该通道上的发布版本。';
 	@override String get installFromLink => '从链接安装';
-	@override String get unstableReleaseWarning => '这是不稳定版本，发布者尚未将其定为完成版。它可能运行异常，并将持续接收不稳定版更新。';
-	@override String get bleedingReleaseWarning => '这是前沿版本：仍在开发中，可能出错或丢失设置。它将持续接收前沿版更新。';
+	@override String get unstableReleaseWarning => '这是不稳定版本，发布者尚未将其视为完成。它可能运行异常，并会持续接收不稳定版更新。';
+	@override String get bleedingReleaseWarning => '这是前沿版本：仍在开发中，可能出错或丢失设置。它会持续接收前沿版更新。';
 	@override String get channelUnstable => '不稳定';
 	@override String get channelBleeding => '前沿';
 	@override String get followsUnstable => '接收不稳定版和稳定版';
 	@override String get followsBleeding => '接收前沿版、不稳定版和稳定版';
 	@override String get followStableAction => '仅接收稳定版';
 	@override String get revokedBadge => '已撤回';
+	@override String get forceDisabledBadge => '已被 Ham2K 禁用';
 	@override String get refusedBadge => '未加载';
 	@override String get downloadNotHttps => '该下载未使用安全连接。';
 	@override String downloadUnreachable({required Object source}) => '无法连接 ${source} 获取该扩展。';
@@ -290,6 +319,8 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String get hookSpots => '信号';
 	@override String hookHunting({required Object program}) => '猎取 ${program}';
 	@override String hookActivating({required Object program}) => '激活 ${program}';
+	@override String get suggestedSection => '推荐';
+	@override String moreAvailableSection({required Object count}) => '更多可用（${count}）';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class _Translations$chase$zh extends Translations$chase$en {
 	@override late final _Translations$chase$period$zh period = _Translations$chase$period$zh._(_root);
 	@override late final _Translations$chase$goals$zh goals = _Translations$chase$goals$zh._(_root);
 	@override late final _Translations$chase$panels$zh panels = _Translations$chase$panels$zh._(_root);
+	@override late final _Translations$chase$claims$zh claims = _Translations$chase$claims$zh._(_root);
+	@override late final _Translations$chase$notice$zh notice = _Translations$chase$notice$zh._(_root);
+	@override late final _Translations$chase$alerts$zh alerts = _Translations$chase$alerts$zh._(_root);
+	@override String get checklists => '追逐进度';
+	@override late final _Translations$chase$imports$zh imports = _Translations$chase$imports$zh._(_root);
 }
 
 // Path: dialogs
@@ -340,6 +376,14 @@ class _Translations$dialogs$zh extends Translations$dialogs$en {
 	@override String get operationDetails => '操作详情';
 	@override String get activities => '活动';
 	@override String get stationCallsign => '电台呼号';
+	@override String get advanced => '高级';
+	@override String get operatingPosition => '操作位（多电台）';
+	@override String get assistance => '辅助';
+	@override String get assistanceDescription => '使用 Spot 服务和其他信息来源';
+	@override String get selfSpotting => '自我 Spot';
+	@override String get selfSpottingDescription => '允许上报您自己频率信息的功能';
+	@override String disabledByRules({required Object rules}) => '为遵守 ${rules} 规则已禁用';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$zh lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$zh._(_root);
 	@override String get notes => '备注';
 	@override String get deleteOperationTitle => '删除操作';
 	@override String get purgeTestsTitle => '清除测试操作';
@@ -402,7 +446,7 @@ class _Translations$map$zh extends Translations$map$en {
 	@override String boundariesCredit({required Object sources}) => '行政边界：${sources}';
 	@override String facilitiesCredit({required Object sources}) => '设施：${sources}';
 	@override String get fullCredits => '完整数据来源';
-	@override String get fewerCredits => '更少来源';
+	@override String get fewerCredits => '收起来源';
 	@override String get emptyState => '还没有 QSO 位置。\n带有网格、州或国家的 QSO 会显示在这里。';
 	@override String get unavailable => '地图目前不可用。';
 	@override String qthPopupTitle({required Object grid}) => 'QTH：${grid}';
@@ -412,6 +456,7 @@ class _Translations$map$zh extends Translations$map$en {
 	@override String get globe => '地球仪';
 	@override String get zoomIn => '放大';
 	@override String get zoomOut => '缩小';
+	@override String get resetNorth => '恢复正北朝上';
 	@override late final _Translations$map$postcard$zh postcard = _Translations$map$postcard$zh._(_root);
 }
 
@@ -427,7 +472,7 @@ class _Translations$mapsView$zh extends Translations$mapsView$en {
 	@override String get activities => '活动';
 	@override String get layers => '图层';
 	@override String get baseMap => '底图';
-	@override String get satellite => '卫星影像 (Esri)';
+	@override String get satellite => '卫星影像（Esri）';
 	@override String get facilities => '公园设施';
 	@override String get boundaries => '行政边界';
 	@override String get currentLocation => '当前位置';
@@ -478,7 +523,7 @@ class _Translations$activitiesView$zh extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => '请在系统设置中允许访问位置';
 	@override String get locationGrantRefused => '仍无法获取位置——系统再次拒绝';
 	@override String get searchUnavailableTitle => '活动搜索不可用';
-	@override String get searchUnavailableReason => '没有活动扩展能执行此搜索。请稍后重试。';
+	@override String get searchUnavailableReason => '某个活动扩展无法响应此搜索。请稍后重试。';
 	@override String get emptySheet => '使用下方的建议和搜索来添加';
 	@override String get exports => '导出';
 	@override String get exportLogs => '导出日志';
@@ -525,20 +570,27 @@ class _Translations$loggingControls$zh extends Translations$loggingControls$en {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get timeUtc => '时间 (UTC)';
+	@override String get timeUtc => '时间（UTC）';
 	@override String get date => '日期';
 	@override String get now => '现在';
+	@override String get manualTimeSettings => '手动时间';
+	@override String get manualTimeIncrement => '每个 QSO 递增';
+	@override String get manualTimeIncrementNone => '无';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '${count} 分钟',
+		other: '${count} 分钟',
+	);
 	@override String get frequency => '频率';
 	@override String get mode => '模式';
-	@override String get theirCall => '对方呼号';
+	@override String get theirCall => '对方的呼号';
 	@override String get noteField => '备注';
 	@override String get todoField => '待办';
 	@override String get sent => '发送';
 	@override String get rcvd => '接收';
 	@override String get more => '更多';
-	@override String get revert => '恢复';
+	@override String get revert => '还原';
 	@override String get undoDelete => '撤销删除';
-	@override String get restore => '还原';
+	@override String get restore => '恢复';
 	@override String get wipe => '清空';
 	@override String get undo => '撤销';
 	@override String get pendingDeleteTapWarning => '再点按一次垃圾桶即可删除此 QSO';
@@ -560,7 +612,20 @@ class _Translations$loggingControls$zh extends Translations$loggingControls$en {
 	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} 于 ${freq}';
 	@override String spotTooLate({required Object call}) => 'Spot ${call} 为时已晚';
 	@override String get spotNoFreq => '请先设置要 Spot 的频率';
+	@override String get selfSpotDisabled => '自我 Spot 已禁用';
 	@override String get spotComment => '评论';
+	@override String get spottingAutoControl => '自动重新 Spot';
+	@override String spotAutoEvery({required Object minutes}) => '每 ${minutes} 分钟重新 Spot';
+	@override String spotAutoNext({required Object time}) => '${time} 后自动 Spot。停止？';
+	@override String spotAutoInMinutes({required Object minutes}) => '${minutes} 分后自动';
+	@override String spotAutoInSeconds({required Object seconds}) => '${seconds} 秒后自动';
+	@override String spotAutoInCount({required Object seconds}) => '${seconds} 秒后自动';
+	@override String get spotAutoNotStarted => '自动重新 Spot 未启动：Spot 未成功发送';
+	@override String get spotAutoMoved => '自动重新 Spot 未启动：Spot 时频率发生了变化';
+	@override String get spotAutoStopped => '自动重新 Spot 已停止';
+	@override String get spotAutoLeftFreq => '自动重新 Spot 已停止：频率已更改';
+	@override String get spotAutoNoFreq => '自动重新 Spot 已停止：电台未报告频率';
+	@override String get spotBusy => '另一个 Spot 仍在发送中';
 	@override String get bandOrFreqRequired => '记录前请设置频率或频段';
 	@override String get missingBand => '无频段';
 	@override String get missingMode => '无模式';
@@ -578,7 +643,7 @@ class _Translations$formChrome$zh extends Translations$formChrome$en {
 	// Translations
 	@override String get untitled => '（无标题）';
 	@override String get showMore => '显示更多';
-	@override String get showAll => '显示全部';
+	@override String get showAll => '全部显示';
 	@override String get showFewer => '显示更少';
 	@override String get defaults => '默认';
 	@override String get search => '搜索';
@@ -595,7 +660,8 @@ class _Translations$formChrome$zh extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => '验证错误：${error}';
 	@override String transformationError({required Object error}) => '转换错误：${error}';
 	@override String actionError({required Object error}) => '错误：${error}';
-	@override String get removeItem => '移除';
+	@override String get removeItem => '删除';
+	@override String deleteItemTitle({required Object name}) => '删除 ${name}？';
 	@override String get storageUnavailable => '登录信息不可用';
 }
 
@@ -636,11 +702,12 @@ class _Translations$qsoList$zh extends Translations$qsoList$en {
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get empty => '还没有 QSO——去联络吧！';
+	@override String get empty => '还没有 QSO——去通联吧！';
 	@override String get bandOrModeWarning => '请确认您的频段和模式正确';
 	@override String get today => '今天';
 	@override String get yesterday => '昨天';
 	@override String get tomorrow => '明天';
+	@override late final _Translations$qsoList$find$zh find = _Translations$qsoList$find$zh._(_root);
 }
 
 // Path: loggingPanel
@@ -695,7 +762,7 @@ class _Translations$settings$zh extends Translations$settings$en {
 	// Translations
 	@override String get title => '设置';
 	@override String get language => '语言';
-	@override String languageSystem({required Object language}) => '跟随系统设置 (${language})';
+	@override String languageSystem({required Object language}) => '跟随系统设置（${language}）';
 	@override late final _Translations$settings$theme$zh theme = _Translations$settings$theme$zh._(_root);
 	@override late final _Translations$settings$themeDescription$zh themeDescription = _Translations$settings$themeDescription$zh._(_root);
 	@override String get fontScale => '字体缩放';
@@ -710,9 +777,12 @@ class _Translations$settings$zh extends Translations$settings$en {
 	@override String get userInterface => '用户界面';
 	@override late final _Translations$settings$logging$zh logging = _Translations$settings$logging$zh._(_root);
 	@override late final _Translations$settings$catServer$zh catServer = _Translations$settings$catServer$zh._(_root);
+	@override late final _Translations$settings$cluster$zh cluster = _Translations$settings$cluster$zh._(_root);
+	@override late final _Translations$settings$spotting$zh spotting = _Translations$settings$spotting$zh._(_root);
 	@override late final _Translations$settings$radio$zh radio = _Translations$settings$radio$zh._(_root);
 	@override late final _Translations$settings$help$zh help = _Translations$settings$help$zh._(_root);
 	@override late final _Translations$settings$exports$zh exports = _Translations$settings$exports$zh._(_root);
+	@override late final _Translations$settings$extensionSections$zh extensionSections = _Translations$settings$extensionSections$zh._(_root);
 	@override late final _Translations$settings$map$zh map = _Translations$settings$map$zh._(_root);
 	@override late final _Translations$settings$privacy$zh privacy = _Translations$settings$privacy$zh._(_root);
 	@override String get operatorCall => '操作员呼号';
@@ -751,9 +821,14 @@ class _Translations$commands$zh extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '已启用 ${name}';
 	@override String experimentDisabled({required Object name}) => '已禁用 ${name}';
 	@override String get sentryTestSent => '测试错误报告已发送到 Sentry';
+	@override String get idleMetricsEnabled => '已在状态栏中启用空闲指标';
+	@override String get idleMetricsDisabled => '已禁用空闲指标';
 	@override String get sentryTestLocalOnly => '此构建中已禁用 Sentry——测试错误仅在本地记录';
 	@override String get noOperationOpen => '该命令需要打开一个操作';
 	@override String unknownSegmentKind({required Object kind}) => '不知道如何标记“${kind}”';
+	@override String goUnavailable({required Object place}) => '此应用中未开启 ${place}';
+	@override String goUnknown({required Object to}) => '不知道如何转到“${to}”';
+	@override String get goBlocked => '请先关闭打开的对话框';
 	@override String get operationAlreadyStarted => '此操作已有开始标记';
 	@override String get couldNotOpenLocation => '已添加休息，但无法打开位置界面';
 	@override String get noTestOperations => '没有可清除的测试操作';
@@ -789,12 +864,16 @@ class _Translations$commands$zh extends Translations$commands$en {
 	@override String settingVanished({required Object label}) => '“${label}”已不再可用';
 	@override String get noCwKeyer => '没有已连接的电台能键控 CW';
 	@override String get noKeyer => '没有已连接的电台能键控 CW 或播放语音存储';
-	@override String get keyerNeedsOperation => '请打开一个操作以使用 CW 电键器';
+	@override String get keyerNeedsOperation => '请打开一个操作以使用 CW 键控器';
 	@override String get keyerExperimentOff => 'CW 键控已关闭——使用 EXP KEYER 开启';
 	@override String get esmExperimentOff => '回车发送消息已关闭——使用 EXP ESM 开启';
 	@override String cwSending({required Object text}) => '正在发送 CW：${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'CW 消息 F${n}：${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'CW 消息 F${n} 未发送：扩展尚未就绪';
+	@override String voiceMessageError({required Object n, required Object error}) => '话音消息 M${n}：${error}';
+	@override String get voiceMessageNotRendered => '扩展尚未就绪';
+	@override String so2rRadioCannotKey({required Object radio}) => '未发送：电台 ${radio} 无法键控该内容';
+	@override String get so2rNoRadioB => '未发送：请先在电台配置中选择电台 B，才能从此消息组键控';
 	@override String settingNotStored({required Object label}) => '“${label}”不接受该值';
 }
 
@@ -819,6 +898,44 @@ class _Translations$commandDialog$zh extends Translations$commandDialog$en {
 	@override String get blockedByPane => '面板或对话框打开时无法使用命令';
 }
 
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$zh extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '键盘快捷键';
+	@override String get description => '自定义按键映射';
+	@override String get search => '搜索命令和按键';
+	@override String get import => '导入…';
+	@override String get export => '导出…';
+	@override String get resetAll => '全部重置';
+	@override String get resetAllTitle => '重置所有快捷键？';
+	@override String get resetAllBody => '每个命令都恢复为默认按键，绑定到键入命令的按键会被移除。';
+	@override String get reset => '重置';
+	@override String get noKey => '无按键';
+	@override String get changed => '已更改';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} 也绑定到了 ${commands}';
+	@override String get groupApp => '应用';
+	@override String get groupKeying => '键控';
+	@override String get groupLogging => '记录';
+	@override String get groupCommands => '命令';
+	@override String get groupFixed => '固定按键';
+	@override String get contextApp => '任何位置';
+	@override String get contextLogView => '操作、追逐和日志视图';
+	@override String get contextOperation => '操作视图，键控 CAT 电台时';
+	@override String get contextLogging => '在记录面板中';
+	@override String get addCommand => '添加命令…';
+	@override String unknownCommand({required Object command}) => '未知命令：${command}';
+	@override late final _Translations$keyboardShortcuts$command$zh command = _Translations$keyboardShortcuts$command$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$zh fixed = _Translations$keyboardShortcuts$fixed$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$zh editor = _Translations$keyboardShortcuts$editor$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$file$zh file = _Translations$keyboardShortcuts$file$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$zh modifier = _Translations$keyboardShortcuts$modifier$zh._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$zh platform = _Translations$keyboardShortcuts$platform$zh._(_root);
+}
+
 // Path: expiredBuild
 class _Translations$expiredBuild$zh extends Translations$expiredBuild$en {
 	_Translations$expiredBuild$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -841,9 +958,9 @@ class _Translations$staleness$zh extends Translations$staleness$en {
 	// Translations
 	@override String get codePushFloorTitle => '有一个重要更新等待应用';
 	@override String get codePushFloorBody => '此版本包含一项您尚未获得的修复。';
-	@override String get restartToApply => '重启应用以应用。';
-	@override String get quitAndReopen => '退出应用并重新打开以应用。';
-	@override String get reopenToApply => '关闭应用并重新打开以应用。';
+	@override String get restartToApply => '重启应用即可生效。';
+	@override String get quitAndReopen => '退出应用并重新打开即可生效。';
+	@override String get reopenToApply => '关闭应用并重新打开即可生效。';
 	@override String get ignoreForNow => '暂时忽略';
 }
 
@@ -857,9 +974,11 @@ class _Translations$spotting$zh extends Translations$spotting$en {
 	@override String get noQsoYet => '尚未记录可 Spot 的 QSO。';
 	@override String get setFrequencyFirst => '请先设置频率。';
 	@override String get nothingToSpot => '没有可 Spot 的内容——此处没有扩展提供 Spot 功能。';
+	@override String get incompleteCall => '无法 Spot 不完整的呼号——请先输完呼号。';
 	@override String spotFailed({required Object source, required Object message}) => '${source} 失败：${message}';
 	@override String get unknownError => '未知错误';
 	@override String get notSent => 'Spot 未发送。';
+	@override String get allSkipped => 'Spot 未发送：所有信号来源都跳过了它。';
 	@override String get notRefreshedOffline => '没有网络连接——信号未刷新';
 }
 
@@ -876,6 +995,8 @@ class _Translations$dataFiles$zh extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => '服务器响应时间过长。请稍后重试。';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} 返回了错误（HTTP ${status}）。请稍后重试。';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} 无法提供此文件（HTTP ${status}）。请检查其地址是否仍然正确。';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM 没有 ${stem} 的呼号历史文件。';
+	@override String n1mmHistoryUnavailable({required Object stem}) => '从 N1MM 下载 ${stem} 的呼号历史失败。请稍后重试。';
 	@override String processingFailedTitle({required Object name}) => '无法处理 ${name}';
 	@override String importTooSmall({required Object existing, required Object imported}) => '下载的数据只有此设备上 ${existing} 条记录中的 ${imported} 条，因此保留了缺少的记录。在 设置 › 离线数据 中刷新即可强制接受。';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
@@ -904,7 +1025,7 @@ class _Translations$updates$zh extends Translations$updates$en {
 	@override String get getIt => '获取';
 	@override String get ok => '确定';
 	@override String get updateReady => '更新已就绪';
-	@override String get restartToApply => '更新已下载。重启以应用。';
+	@override String get restartToApply => '更新已下载。重启即可生效。';
 	@override String get appliesNextLaunch => '更新已下载。将在下次打开应用时生效。';
 	@override String get restartNow => '立即重启';
 	@override String get reloadToUpdate => '此页面有较新版本可用。重新加载即可获取。';
@@ -931,8 +1052,14 @@ class _Translations$extensionService$zh extends Translations$extensionService$en
 	@override String validationError({required Object error}) => '验证错误：${error}';
 	@override String actionFailed({required Object error}) => '操作失败：${error}';
 	@override String get commandFailed => '命令运行失败';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} 无法更改设置：它在安装时没有申请此权限';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} 无法控制电台：它在安装时没有申请此权限';
+	@override String commandDeveloperOnly({required Object name}) => '${name} 无法运行该命令：这是应用自身的开发者命令';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => '目前无法发送报告';
 	@override String get stashUnavailable => '目前无法访问 Ham2K File Stash';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names} 没有响应活动搜索，因此可能缺少部分结果。';
+	@override String get activitySearchSomeSourcesFailed => '部分活动扩展没有响应搜索，因此可能缺少部分结果。';
 	@override String timersSuspendedBudget({required Object name}) => '${name} 在计时器中花费了太多时间。在扩展重启之前，其计时器已停止。';
 	@override String timersSuspendedFailures({required Object name}) => '${name} 的计时器反复失败。在扩展重启之前，其计时器已停止。';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} 卡在了一个计时器中。在扩展重启之前，其计时器已停止。';
@@ -1097,6 +1224,26 @@ class _Translations$switchAccounts$zh extends Translations$switchAccounts$en {
 	);
 }
 
+// Path: qsonImport
+class _Translations$qsonImport$zh extends Translations$qsonImport$en {
+	_Translations$qsonImport$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '导入 QSON 操作';
+	@override String get description => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。';
+	@override String get dropHint => '拖放 QSON 文件以导入为新操作';
+	@override String importing({required Object filename}) => '正在导入 ${filename}…';
+	@override String failed({required Object filename, required Object error}) => '无法导入 ${filename}：${error}';
+	@override String pickerFailed({required Object error}) => '无法打开要导入的文件：${error}';
+	@override String notUtf8({required Object filename}) => '${filename} 不是 UTF-8 文本，因此不是 QSON 文件';
+	@override String notJson({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件';
+	@override String notOperation({required Object filename}) => '${filename} 不包含 QSON 操作';
+	@override String get busy => '已有导入正在进行。请等待其完成后再开始新的导入。';
+	@override String get oneFileOnly => '一次只能拖放一个 QSON 文件——每个文件会作为单独的操作打开。';
+}
+
 // Path: adifImport
 class _Translations$adifImport$zh extends Translations$adifImport$en {
 	_Translations$adifImport$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -1165,6 +1312,8 @@ class _Translations$adifImport$zh extends Translations$adifImport$en {
 	@override String get busy => '已有导入正在进行。请等待其完成后再开始新的导入。';
 	@override String get oneFileOnly => '一次只能拖放一个 ADIF 文件——文件的导入顺序决定了哪些数据优先。';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。';
+	@override String get importAnyway => '仍然导入';
 }
 
 // Path: offline
@@ -1300,6 +1449,10 @@ class _Translations$home$logs$zh extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => '此 QSO 已标记为删除。';
 	@override String get editGone => '未保存：该 QSO 已不在此日志中。';
 	@override String get discard => '放弃';
+	@override late final _Translations$home$logs$sheet$zh sheet = _Translations$home$logs$sheet$zh._(_root);
+	@override late final _Translations$home$logs$groupBy$zh groupBy = _Translations$home$logs$groupBy$zh._(_root);
+	@override late final _Translations$home$logs$period$zh period = _Translations$home$logs$period$zh._(_root);
+	@override late final _Translations$home$logs$periodTitle$zh periodTitle = _Translations$home$logs$periodTitle$zh._(_root);
 	@override late final _Translations$home$logs$columns$zh columns = _Translations$home$logs$columns$zh._(_root);
 	@override late final _Translations$home$logs$panels$zh panels = _Translations$home$logs$panels$zh._(_root);
 	@override late final _Translations$home$logs$import$zh import = _Translations$home$logs$import$zh._(_root);
@@ -1366,7 +1519,7 @@ class _Translations$chase$goals$zh extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => '追逐目标';
 	@override String remove({required Object name}) => '停止追逐 ${name}';
-	@override String get extensionsTitle => '包含追逐功能的扩展';
+	@override String get extensionsTitle => '更多追逐项目';
 }
 
 // Path: chase.panels
@@ -1381,9 +1534,83 @@ class _Translations$chase$panels$zh extends Translations$chase$panels$en {
 	@override String get info => '信息';
 	@override String get infoDescription => '正在记录的呼号，或该时段的统计。';
 	@override String get spots => '信号';
-	@override String get spotsDescription => '空中被 Spot 的电台，随时可以追逐。';
+	@override String get spotsDescription => '空中被 Spot 到的电台，随时可以追逐。';
 	@override String get map => '地图';
 	@override String get mapDescription => '该时段的 QSO 以及正在记录的电台。';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$zh extends Translations$chase$claims$en {
+	_Translations$chase$claims$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => '正在检查 QSO 的追逐情况';
+	@override String rebuilding({required Object program}) => '正在为 ${program} 检查日志';
+	@override String progress({required Object done, required Object total}) => '${done}/${total} 个 QSO';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$zh extends Translations$chase$notice$en {
+	_Translations$chase$notice$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => '新 ${program}';
+	@override String newRefGuess({required Object program}) => '可能是新 ${program}';
+	@override String newBand({required Object program}) => '${program} 新频段';
+	@override String newBandGuess({required Object program}) => '可能是 ${program} 新频段';
+	@override String newMode({required Object program}) => '${program} 新模式';
+	@override String newModeGuess({required Object program}) => '可能是 ${program} 新模式';
+	@override String unconfirmed({required Object program}) => '${program} 未确认';
+	@override String programGuess({required Object notice}) => '可能是${notice}';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$zh extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '提醒';
+	@override String get newRef => '新参考';
+	@override String get newBand => '新频段';
+	@override String get newMode => '新模式';
+	@override String get unconfirmed => '未确认';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$zh extends Translations$chase$imports$en {
+	_Translations$chase$imports$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => '导入 ${label}';
+	@override String pickTitle({required Object file}) => '将 ${file} 导入为';
+	@override String get dropHint => '拖放文件以导入到追逐项目';
+	@override String done({required Object file, required Object count, required Object program}) => '已从 ${file} 导入 ${count} 条 ${program} 记录';
+	@override String doneSkipped({required Object file, required Object count, required Object program, required Object skipped}) => '已从 ${file} 导入 ${count} 条 ${program} 记录，跳过了 ${skipped} 条无法读取的记录';
+	@override String nothing({required Object file, required Object program}) => '${file} 中没有 ${program} 可导入的内容';
+	@override String failed({required Object program, required Object file}) => '${program} 无法读取 ${file}';
+	@override String unreadable({required Object file, required Object skipped, required Object program}) => '${file} 中的 ${skipped} 条记录 ${program} 都无法读取';
+	@override String noProgram({required Object file}) => '没有追逐项目能导入 ${file}';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$zh extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '在线查询？';
+	@override String get body => '此操作已禁用辅助。查询所有 QSO 将仅此一次使用 QRZ 等在线服务。';
+	@override String bodyRules({required Object rules}) => '为遵守 ${rules} 规则，此操作已禁用辅助。查询所有 QSO 将仅此一次使用 QRZ 等在线服务。';
+	@override String get action => '在线查询';
 }
 
 // Path: dialogs.callChange
@@ -1424,8 +1651,10 @@ class _Translations$operation$tabs$zh extends Translations$operation$tabs$en {
 	@override String get weather => '天气';
 	@override String get website => '网站';
 	@override String get remoteScreen => '远程屏幕';
-	@override String get solar => '太阳';
+	@override String get solar => '太阳活动';
 	@override String get radio => '电台';
+	@override String get rotator => '旋转器';
+	@override String get summaries => '操作摘要';
 }
 
 // Path: operation.positions
@@ -1436,7 +1665,7 @@ class _Translations$operation$positions$zh extends Translations$operation$positi
 
 	// Translations
 	@override String get nobodyYet => '还没有其他操作位共享此操作。';
-	@override String positionLabel({required Object number}) => '位：${number}';
+	@override String positionLabel({required Object number}) => '操作位：${number}';
 	@override String operatorLabel({required Object call}) => '操作员：${call}';
 	@override String get unnamedPosition => '另一个操作位';
 	@override String get thisDevice => '我们的操作位';
@@ -1459,7 +1688,7 @@ class _Translations$operation$menu$zh extends Translations$operation$menu$en {
 	@override String get showDeletedOps => '显示已删除的操作';
 	@override String get showQsoNumbers => '显示 QSO 编号';
 	@override String get lookupAllQsos => '查询所有 QSO';
-	@override String get loggingSettingsTitle => '记录设置';
+	@override String get loggingSettingsTitle => '日志设置';
 	@override String get mapSettingsTitle => '地图设置';
 	@override String get actionsSection => '操作';
 }
@@ -1477,7 +1706,7 @@ class _Translations$operation$layout$zh extends Translations$operation$layout$en
 	@override String get panelSettingsAction => '面板设置';
 	@override String get viewName => '操作视图';
 	@override String get viewOptions => '视图布局选项';
-	@override String get viewTitleBuiltIn => '此视图为应用内置，其名称也是';
+	@override String get viewTitleBuiltIn => '此视图是应用内置的，名称也是';
 	@override String get resetOptions => '恢复默认';
 	@override String get removePane => '移除';
 	@override String resetPaneConfirm({required Object panel}) => '将 ${panel} 恢复为默认值？';
@@ -1495,8 +1724,16 @@ class _Translations$operation$layout$zh extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => '添加 ${panel}';
 	@override String showPreview({required Object panel}) => '预览 ${panel}';
 	@override String missingExtension({required Object name}) => '缺少扩展“${name}”';
+	@override String get missingExtensionEnable => '启用';
+	@override String get missingExtensionInstall => '安装…';
+	@override String get missingExtensionWontRun => '此版本无法运行。请在 设置 › 扩展 中更新。';
+	@override String get missingExtensionUnavailable => '此应用中不可用';
+	@override String get missingExtensionNotInCatalog => '不在目录中';
+	@override String get missingExtensionCatalogUnreachable => '无法访问目录。请重试';
+	@override String get missingExtensionFailed => '没有成功。请重试';
 	@override String get previewUnavailable => '无法显示此面板的预览图。';
 	@override String get nestedPaneTitle => '更多';
+	@override late final _Translations$operation$layout$layouts$zh layouts = _Translations$operation$layout$layouts$zh._(_root);
 	@override String get editLayout => '编辑布局';
 	@override String get saveLayout => '保存布局';
 	@override String get revertLayout => '放弃布局更改';
@@ -1504,7 +1741,16 @@ class _Translations$operation$layout$zh extends Translations$operation$layout$en
 	@override String get layoutUnreadableTitle => '无法读取布局';
 	@override String get layoutUnreadableBody => '无法读取您保存的布局，因此显示默认排列。在您选择保留之前，它不会覆盖您原来的布局。';
 	@override String get layoutUnreadableAction => '使用此布局';
-	@override String panelRenderFailed({required Object panel}) => '无法显示 ${panel}';
+	@override String panelRenderFailed({required Object panel}) => '${panel} 无法显示';
+	@override String panelOverCharacters({required Object panel, required Object max}) => '${panel} 无法显示：它发送了超过 ${max} 个字符';
+	@override String panelOverElements({required Object panel, required Object max}) => '${panel} 无法显示：其图形包含超过 ${max} 个元素';
+	@override String panelOverDepth({required Object panel, required Object max}) => '${panel} 无法显示：其图形嵌套超过 ${max} 层';
+	@override String panelNotArtwork({required Object panel}) => '${panel} 无法显示：其图形不是自包含的';
+	@override String panelOverLayers({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个图层';
+	@override String panelOverControls({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个控件';
+	@override String panelOverItems({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目';
+	@override String panelOverStringLength({required Object panel, required Object max}) => '${panel} 无法显示：某个场景字符串长度超过 ${max} 个字符';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => '${panel} 无法显示：其布局嵌套超过 ${max} 层';
 	@override String get panelRenderRetry => '重试';
 	@override String get panelActionFailed => '该面板操作失败，请重试。';
 	@override late final _Translations$operation$layout$panels$zh panels = _Translations$operation$layout$panels$zh._(_root);
@@ -1627,8 +1873,9 @@ class _Translations$operation$spots$zh extends Translations$operation$spots$en {
 		other: '${count} 个信号',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => '显示 ${count} / ${total} 个信号';
+	@override String get spotsDisabled => '此操作已禁用信号';
 	@override String ageMinutes({required Object minutes}) => '${minutes} 分钟';
-	@override String get callsOfNote => '注意的呼号';
+	@override String get callsOfNote => '有备注的呼号';
 	@override String get yourSpots => '您的信号';
 	@override String get allSpots => '所有信号';
 	@override late final _Translations$operation$spots$continents$zh continents = _Translations$operation$spots$continents$zh._(_root);
@@ -1737,6 +1984,14 @@ class _Translations$map$postcard$zh extends Translations$map$postcard$en {
 	@override String get previousPage => '上一页';
 	@override String get nextPage => '下一页';
 	@override String pageOf({required Object page, required Object count}) => '第 ${page} / ${count} 页';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '${count} Q',
+		other: '${count} Q',
+	);
+	@override String get options => '明信片选项';
+	@override String get bandLegend => '显示频段图例';
+	@override String get grayline => '显示灰线';
+	@override String get sectionsAndOrder => '摘要分区与顺序';
 	@override String get sectionDays => '每天';
 	@override String get reset => '重置';
 	@override String failed({required Object error}) => '无法制作明信片：${error}';
@@ -1754,10 +2009,10 @@ class _Translations$loggingControls$info$zh extends Translations$loggingControls
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get noQsos => '尚未有 QSO… 让我们开始上线吧！';
+	@override String get noQsos => '还没有 QSO…开始通联吧！';
 	@override String get qsoCountOne => '1 个 QSO';
 	@override String qsoCountOther({required Object count}) => '${count} 个 QSO';
-	@override String qsosInTime({required Object time, required Object count}) => '${time} 内 ${count} 个';
+	@override String qsosInTime({required Object time, required Object count}) => '${time} 内 ${count}';
 	@override String sinceLast({required Object time}) => '距离上次 ${time}';
 	@override String ratePer10({required Object rate}) => '最近 10 个：${rate} Q/h';
 	@override String ratePer100({required Object rate}) => '最近 100 个：${rate} Q/h';
@@ -1781,6 +2036,7 @@ class _Translations$loggingControls$info$zh extends Translations$loggingControls
 	@override String get noticeInvalidMode => '模式错误';
 	@override String get noticeInvalidBand => '频段错误';
 	@override String get noticeInvalidCategory => '不可通联';
+	@override String get noticeOverTime => '超出时间';
 	@override String get noticeWorkedBefore => '曾通联';
 	@override String get noticeNewPark => '新公园';
 	@override String get noticeNewSection => '新分部';
@@ -1788,10 +2044,30 @@ class _Translations$loggingControls$info$zh extends Translations$loggingControls
 	@override String get noticeMissingExchange => '无交换';
 	@override String get noticeInvalidExchange => '交换错误';
 	@override String get noticeUnknownEvent => '未知活动';
+	@override String get noticeIncompleteCall => '呼号不完整——不计分';
 	@override String get noticeOurGrid => '设置我方网格';
 	@override String get noticeRareCounty => '稀有县！';
 	@override String get noticeOurLocation => '设置我方县';
 	@override String get noticeShortGrid => '网格太短';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$zh extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => '在日志中查找（${shortcut}）';
+	@override String get menuItemNoShortcut => '在日志中查找';
+	@override String get hint => 'QSO 编号或呼号';
+	@override String get noMatches => '无匹配';
+	@override String get noOperationQsos => '此操作中没有 QSO';
+	@override String get noPeriodQsos => '此时段内没有 QSO';
+	@override String get outsideQsosOne => '1 个此操作以外的 QSO';
+	@override String outsideQsosOther({required Object count}) => '${count} 个此操作以外的 QSO';
+	@override String get pastQsosOne => '1 个过去的 QSO';
+	@override String pastQsosOther({required Object count}) => '${count} 个过去的 QSO';
 }
 
 // Path: callInfo.history
@@ -1818,8 +2094,8 @@ class _Translations$settings$theme$zh extends Translations$settings$theme$en {
 	// Translations
 	@override String get title => '主题模式';
 	@override String get system => '跟随系统设置';
-	@override String get light => '明亮';
-	@override String get dark => '黑暗';
+	@override String get light => '浅色';
+	@override String get dark => '深色';
 }
 
 // Path: settings.themeDescription
@@ -1830,8 +2106,8 @@ class _Translations$settings$themeDescription$zh extends Translations$settings$t
 
 	// Translations
 	@override String get system => '正在跟随系统设置';
-	@override String get light => '保持明亮模式';
-	@override String get dark => '保持黑暗模式';
+	@override String get light => '始终使用浅色模式';
+	@override String get dark => '始终使用深色模式';
 }
 
 // Path: settings.fontScaleOpts
@@ -1931,6 +2207,11 @@ class _Translations$settings$catServer$zh extends Translations$settings$catServe
 	@override String get openAccess => '开放访问';
 	@override String get openAccessOn => '本地网络上的任何计算机都可以连接。';
 	@override String get openAccessOff => '只有本计算机上的应用可以连接。';
+	@override String get allowTransmit => '允许应用发射';
+	@override String allowTransmitOn({required Object minutes}) => '应用可以按下电台的 PTT，每次最长 ${minutes} 分钟。';
+	@override String allowTransmitOnNetwork({required Object minutes}) => '本地网络上任何计算机上的应用都可以按下电台的 PTT，每次最长 ${minutes} 分钟。';
+	@override String get allowTransmitOff => '应用无法按下电台的 PTT。请使用 VOX 或它们自己的 PTT 设置。';
+	@override String get allowTransmitUnsupported => 'Ham2K Logger 无法按下主 VFO 电台的 PTT，因此应用无法通过它发射。';
 	@override String get off => '关闭。';
 	@override String starting({required Object protocol}) => '${protocol}，启动中…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} 在端口 ${port} 上。已连接客户端：${clients}。';
@@ -1939,6 +2220,66 @@ class _Translations$settings$catServer$zh extends Translations$settings$catServe
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：另一个程序正在使用它，通常是 ${protocol} 本身。请关闭该程序或选择其他端口。';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：此计算机不允许。请选择 1024 以上的端口。';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$zh extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX 集群';
+	@override String get description => '扩展用来发布和读取 Spot 的服务器，以操作员身份登录。';
+	@override String get connect => '连接到集群';
+	@override String get connectOn => '扩展在需要时连接到集群';
+	@override String get connectOff => '不连接集群';
+	@override String get console => '显示控制台';
+	@override String get consoleDescription => '集群发送的内容，以及输入命令的地方';
+	@override String get consoleTitle => '集群控制台';
+	@override String get consoleConnect => '连接';
+	@override String get consoleDisconnect => '断开';
+	@override String get consoleCommand => '命令';
+	@override String get consoleEmpty => '暂无内容。请连接，或等待扩展使用集群。';
+	@override String consoleRetry({required Object command}) => '正在重新发送：${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => '未发送：${command}（${reason}）';
+	@override String get server => '集群服务器';
+	@override String get selectServer => '选择服务器';
+	@override String get serverOther => '其他';
+	@override String serverOtherIncomplete({required Object node}) => '尚未输入主机，因此 Spot 发往 ${node}';
+	@override String get customHost => '服务器';
+	@override String get customPort => '端口';
+	@override String get password => '密码';
+	@override String get passwordDescription => '仅在需要时填写';
+	@override String passwordStored({required Object node}) => '已保存 ${node} 的密码';
+	@override String get scrollback => '保留行数';
+	@override String scrollbackOpt({required Object count}) => '${count} 行';
+	@override String get connection => '连接';
+	@override String get statusIdle => '未连接。扩展需要时会连接。点按以测试。';
+	@override String statusConnecting({required Object node}) => '正在连接 ${node}…';
+	@override String statusConnected({required Object call, required Object node}) => '已以 ${call} 身份连接到 ${node}。';
+	@override String statusFailed({required Object node, required Object reason}) => '无法连接到 ${node}：${reason}';
+	@override String get statusUnsupported => '网页版不可用。';
+	@override String get statusOff => '已关闭。请开启“连接到集群”以使用。';
+	@override late final _Translations$settings$cluster$errors$zh errors = _Translations$settings$cluster$errors$zh._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$zh extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spot';
+	@override String get respotInterval => '自动重新 Spot 间隔';
+	@override String minutes({required Object minutes}) => '${minutes} 分钟';
+	@override String get autoRespotByDefault => '默认自动重新 Spot';
+	@override String get autoRespotByDefaultOn => '发布任何 Spot 后启用自动重新 Spot';
+	@override String get autoRespotByDefaultOff => '需用户手动启用自动重新 Spot';
+	@override String get pulseBeforeRespot => '每次自动重新 Spot 前闪烁';
+	@override String pulseBeforeRespotOn({required Object seconds}) => '每次重新 Spot 前的 ${seconds} 秒内，Spot 标签会闪烁蓝色';
+	@override String get pulseBeforeRespotOff => '自动重新 Spot 前不闪烁';
 }
 
 // Path: settings.radio
@@ -1951,7 +2292,7 @@ class _Translations$settings$radio$zh extends Translations$settings$radio$en {
 	@override String get title => 'CAT 控制';
 	@override String get loggingAndCat => '记录与 CAT';
 	@override String get tuningSection => '调谐';
-	@override String get keyerSection => '电键';
+	@override String get keyerSection => '键控器';
 	@override String get servicesSection => '服务';
 	@override String get stationConfigurationSection => '电台配置';
 	@override String get moreSettings => '更多电台配置设置';
@@ -1965,7 +2306,9 @@ class _Translations$settings$radio$zh extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$enterSends$zh enterSends = _Translations$settings$radio$enterSends$zh._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$zh keyerSpeed = _Translations$settings$radio$keyerSpeed$zh._(_root);
 	@override late final _Translations$settings$radio$cwMessages$zh cwMessages = _Translations$settings$radio$cwMessages$zh._(_root);
+	@override late final _Translations$settings$radio$keyerControl$zh keyerControl = _Translations$settings$radio$keyerControl$zh._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$zh voiceMessages = _Translations$settings$radio$voiceMessages$zh._(_root);
+	@override late final _Translations$settings$radio$voiceWords$zh voiceWords = _Translations$settings$radio$voiceWords$zh._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$zh avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$zh._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$zh zeroBeatRange = _Translations$settings$radio$zeroBeatRange$zh._(_root);
 }
@@ -2003,6 +2346,20 @@ class _Translations$settings$exports$zh extends Translations$settings$exports$en
 	@override String get title => '导出';
 }
 
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$zh extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => '活动';
+	@override String get hunting => '猎取';
+	@override String get contests => '竞赛';
+	@override String get lookups => '查询';
+	@override String get dashboard => '仪表板';
+}
+
 // Path: settings.map
 class _Translations$settings$map$zh extends Translations$settings$map$en {
 	_Translations$settings$map$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class _Translations$settings$map$zh extends Translations$settings$map$en {
 	// Translations
 	@override String get title => '地图';
 	@override late final _Translations$settings$map$style$zh style = _Translations$settings$map$style$zh._(_root);
+	@override late final _Translations$settings$map$showCallsigns$zh showCallsigns = _Translations$settings$map$showCallsigns$zh._(_root);
+	@override late final _Translations$settings$map$showGrayline$zh showGrayline = _Translations$settings$map$showGrayline$zh._(_root);
 	@override late final _Translations$settings$map$styleOpts$zh styleOpts = _Translations$settings$map$styleOpts$zh._(_root);
 }
 
@@ -2171,7 +2530,7 @@ class _Translations$settings$accounts$zh extends Translations$settings$accounts$
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '账户、服务和数据源';
+	@override String get title => '账户、服务与数据源';
 	@override String get none => '没有带账户的活动扩展';
 	@override String get notConfigured => '未配置';
 	@override String get connected => '已连接';
@@ -2271,13 +2630,28 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String serialPortOrdinal({required Object n, required Object total}) => '端口 ${n} / ${total}';
 	@override String get serialPortSuggested => '建议';
 	@override String get serialPortJustNow => '最近连接';
+	@override String get serialPortNoDriver => '无驱动';
 	@override String get serialDeviceRequest => '添加 USB 设备…';
+	@override String get bleDevice => '低功耗蓝牙设备';
+	@override String get bleDeviceDescription => '您的电台所连接的串口桥接器，例如处于模式 4 的 LiNK500MP 或 BLE 串口适配器。';
+	@override String get bleScan => '扫描低功耗蓝牙设备…';
+	@override String get bleScanNoneFound => '未找到低功耗蓝牙设备。请检查桥接器已开机、就在附近，并处于低功耗蓝牙模式（LiNK500MP 上为模式 4）。';
+	@override String bleScanFailed({required Object reason}) => '无法运行低功耗蓝牙扫描：${reason}';
+	@override String get bleOff => '蓝牙已关闭。';
+	@override String get bleDenied => '未授予蓝牙权限。请在系统设置中允许，然后重试。';
+	@override String get bleUnsupported => '此设备没有低功耗蓝牙。';
+	@override String get bleStarting => '蓝牙仍在启动中。请稍后重试。';
+	@override String get bleConnectFailed => '无法连接低功耗蓝牙设备。请检查它已开机、就在附近，且未连接到其他应用。';
+	@override String bleNoSerialService({required Object services}) => '此低功耗蓝牙设备没有本应用能识别的串口服务。请连同其服务一起报告：${services}';
 	@override String get baudRate => '速率（波特）';
 	@override String get baudRateDescription => '必须与电台的 CAT 菜单一致。不一致时，电台会返回乱码且不报错。';
 	@override String get serialRtsHigh => '保持 RTS 为高';
 	@override String get serialRtsHighDescription => '仅适用于响应前等待 RTS 的电台，例如开启了 CAT RTS 的 Yaesu。在 Digirig、SignaLink 和大多数自制线缆上，RTS 就是 PTT，保持为高会导致发射。';
 	@override String get serialDtrHigh => '保持 DTR 为高';
 	@override String get serialDtrHighDescription => '仅适用于从 DTR 取电的 CAT 接口，例如某些用于 FT-817 的 RS-232 线缆。在许多线缆上 DTR 用于 CW 键控或 PTT，保持为高会导致发射。';
+	@override String get serialUsbDriver => 'USB 芯片驱动';
+	@override String get serialUsbDriverDescription => '自动可识别大多数适配器。只有端口列表显示无驱动时才选择芯片——其包装或 USB 设备列表会注明芯片型号。';
+	@override String get serialUsbDriverAuto => '自动';
 	@override String get civAddress => '电台 CI-V 地址';
 	@override String get civAddressDescription => '十六进制，与电台 CI-V 菜单中显示的一致。IC-705 出厂为 A4。';
 	@override String get civAddressInvalid => 'CI-V 地址为两位十六进制数，01 到 FF';
@@ -2298,16 +2672,50 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get spectrumNoPanadapter => '此 Slice 在电台上没有全景显示';
 	@override String spectrumStreamRefused({required Object code}) => '电台拒绝了 DAX IQ 流（错误 ${code}）';
 	@override String get spectrumNoUdp => '电台的频谱数据无法到达此设备';
+	@override String get spectrumK4Unavailable => '无法接收 K4 的 LAN 频谱。正在重试…';
+	@override String get spectrumK4RemoteUnavailable => '无法接收 K4 的远程频谱';
 	@override String get spectrumScopeRefused => '电台拒绝了频谱仪命令';
 	@override String get spectrumOutOfRange => '电台的频谱仪设置超出了可显示的范围';
+	@override String get spectrumBandUnsupported => '电台的频谱仪无法在此频段显示';
+	@override String get spectrumSdrNoRadio => '等待所链接电台的频率…';
+	@override String get spectrumSdrNotConnected => 'SDR 未连接';
+	@override String get spectrumSdrNoIf => '请在此 SDR 的设置中设置电台的中频频率';
+	@override String get sdrRadio => '为以下电台显示频谱';
+	@override String get sdrRadioDescription => '此电台上的频谱显示取自此接收机，而不是电台自带的频谱仪。';
+	@override String get sdrRadioMain => '主电台';
+	@override String get sdrTuning => '天线输入';
+	@override String get sdrTuningDescription => '接收机的信号来源。接在自己的天线上时，它会自行调谐以跟随电台；接在电台的中频输出上时，它停留在中频上。';
+	@override String get sdrTuningIndependent => '自己的天线';
+	@override String get sdrTuningIfTap => '电台的中频输出';
+	@override String get sdrIfHz => '中频频率（Hz）';
+	@override String get sdrIfHzDescription => '仅用于中频输出：电台当前频率在其中频上所处的频率，例如 FT-817 上的 68330000。';
+	@override String get sdrIfInverted => '中频反转';
+	@override String get sdrGainDb => '增益（dB）';
+	@override String get sdrGainDbDescription => '留空则使用接收机的自动增益。';
+	@override String get sdrOffsetHz => '频率偏移（Hz）';
+	@override String get sdrOffsetHzDescription => '加到发送给接收机的每个频率上，用于上变频器：Ham It Up 为 125000000。';
+	@override String get sdrPpm => '频率校正（ppm）';
+	@override String get rtlDirectSampling => '直接采样';
+	@override String get rtlDirectSamplingDescription => '用于没有上变频器的 RTL-SDR V3 接收 HF。RTL-SDR V4 不需要它即可接收 HF。';
+	@override String get rtlDirectSamplingOff => '关闭';
+	@override String get rtlDirectSamplingI => 'I 支路';
+	@override String get rtlDirectSamplingQ => 'Q 支路';
+	@override String get rtlTcpNotAServer => '这不是 rtl_tcp 服务器';
+	@override String get rtlTcpNotes => '此项连接到您**自己运行的 rtl_tcp 服务器**，该服务器运行在插着接收棒的计算机上。\n\n- **启动它**时使用 `rtl_tcp -a 0.0.0.0`，以便其他机器能访问；在同一台机器上，只用 `rtl_tcp` 即可。\n- **端口**为 1234，除非您启动时用 `-p` 另行指定。\n- **一次只能一个程序：**rtl_tcp 只服务一个客户端。本应用只在显示频谱时连接，并在关闭后几秒钟释放。\n- **在 Android 上**，*SDR driver* 应用在手机上运行同样的服务器。';
+	@override String get rspTcpNotes => '此项连接到您**自己运行的 rsp_tcp 服务器**，该服务器运行在插着 RSP 且安装了 SDRplay API 的计算机上。\n\n- **启动它**时使用 `rsp_tcp -a 0.0.0.0`。\n- **端口**为 1234，除非您启动时用 `-p` 另行指定。\n- **一次只能一个程序：**该服务器只接受一个客户端。本应用只在显示频谱时连接。';
 	@override String get n3fjpNoRig => 'N3FJP 未设置电台接口，因此这里跟随的是在 N3FJP 中输入的内容，而不是电台';
 	@override String get winkeyerKeyPort => '键控输出';
-	@override String get winkeyerKeyPortDescription => '您的电台插在电键器两个输出插孔中的哪一个。';
+	@override String get winkeyerKeyPortDescription => '您的电台插在键控器两个输出插孔中的哪一个。';
 	@override String winkeyerKeyPortLabel({required Object n}) => '端口 ${n}';
-	@override String get winkeyerPtt => '使用电键器的 PTT';
+	@override String get winkeyerPtt => '使用键控器的 PTT';
 	@override String get winkeyerPttDescription => '在同一插孔上键控 PTT 线，用于需要它的功放或电台。如电台通过其电键插孔键控，请保持关闭。';
 	@override String get winkeyerNoAnswer => '此端口上没有 WinKeyer 响应';
 	@override String get winkeyerStoppedAnswering => 'WinKeyer 在发送时停止响应；该消息已丢弃';
+	@override String get icomControlPort => '控制端口（UDP）';
+	@override String get icomControlPortDescription => '电台的 Control Port (UDP)——除非在其网络设置中更改或转发到其他端口，否则为 50001。';
+	@override String get icomSerialPort => '串口（UDP）';
+	@override String get icomSerialPortDescription => '电台的 Serial Port (UDP)——除非在其网络设置中更改或转发到其他端口，否则为 50002。';
+	@override String get icomPortsDiffer => '控制端口和串口必须不同';
 	@override String get radioUser => '电台用户名';
 	@override String get radioPass => '电台密码';
 	@override String get radioLoginDescription => '电台的 Network → Remote 登录信息，不是您的 WiFi 密码。';
@@ -2315,34 +2723,59 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get connectFailedBusy => '设备正在使用中';
 	@override String get connectFailedDenied => '访问被拒绝';
 	@override String get connectFailedDevice => '未找到设备';
+	@override String get connectFailedUnsupported => '没有驱动能识别此 USB 适配器的芯片。如果您知道是哪种芯片，请在高级设置的 USB 芯片驱动中选择。';
 	@override String get connectFailedLines => '无法按设置保持 RTS/DTR，因此已关闭端口。可能有其他程序开启了硬件握手——请拔下线缆后重新插入。';
 	@override String get connectFailedNetwork => '无法通过网络找到电台。请检查其地址，并确认它已开机且可访问。';
+	@override String connectFailedReplyPort({required Object port}) => '此设备上的端口 ${port} 已被占用，而应答会到达该端口。请关闭其他监听该端口的程序——包括另一个 PstRotator 节点——或更改端口。';
 	@override String get connectFailedTimeout => '电台未及时响应。请确认它已开机且可访问。';
 	@override late final _Translations$settings$station$models$zh models = _Translations$settings$station$models$zh._(_root);
 	@override late final _Translations$settings$station$transports$zh transports = _Translations$settings$station$transports$zh._(_root);
 	@override String get troubleshootingTitle => '如果电台已连接但不显示频率';
-	@override String get ft891Troubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **电台上的 CAT RTS 必须为 OFF**（FT-891 菜单 **05-08**）。开启时，电台会等待一条握手线，而应用将其保持为低。在 Digirig、SignaLink 或大多数自制线缆上，这条线就是 PTT，拉高它会让发射机发射。如使用电台自带的 USB 端口，可改为在高级设置中开启 **保持 RTS 为高**。\n- **速率必须与电台的 CAT RATE 一致**（菜单 **05-06**）。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
+	@override String get ft891Troubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **在电台上关闭 CAT RTS，或开启“保持 RTS 为高”。** 当 **CAT RTS** 开启时（FT-891 菜单 **05-08**），只要 RTS 为低，电台就保持沉默——它可能在端口打开时应答一次，然后再无回应。选择电台自带的 USB 端口会自动开启高级设置中的 **保持 RTS 为高**。在 Digirig、SignaLink 或大多数自制线缆上，RTS 就是 PTT，保持为高会让您的发射机发射：此时应改为在电台上关闭 CAT RTS。\n- **速率必须与电台的 CAT RATE 一致**（菜单 **05-06**）。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
 	@override String get yaesuBinaryTroubleshootingTitle => '如果电台已连接但不显示频率';
 	@override String get yaesuBinaryTroubleshooting => '此电台使用 Yaesu 较早的五字节 CAT 协议，只要有任何问题就完全不响应。几乎总是以下原因之一：\n\n- **线缆必须转换电平。** 背面的 CAT 插孔既不是 RS-232 也不是 USB；需要 CT-62 或同等适配器。普通音频线或数据线无法用于 CAT。\n- **速率必须与电台的 CAT RATE 菜单一致**（FT-817 上为 **#14**，FT-857 或 FT-897 上为 **#19**）。不一致时，电台什么都不返回，而且从不报错。\n- **绝不要让任何程序拉高此端口的 RTS 或 DTR。** 在这些电台的大多数线缆上，这两条线用于 PTT 和键控。例外是由 DTR 供电的老式接口：对于这种接口，请在高级设置中开启 **保持 DTR 为高**。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此驱动根据 Yaesu 公布的 CAT 表编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。';
+	@override String get tenTecTroubleshootingTitle => '如果电台已连接但不显示频率';
+	@override String get tenTecEagleTroubleshooting => '- **背面的 USB-B 端口就是 CAT 连接。** 电台会显示为一个 USB 串口；在 Windows 上需要 Ten-Tec 的 USB to UART 驱动，它在设备管理器中显示为 "USB to UART (COMx)"。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开，Ten-Tec 的固件更新程序也是。\n- **从应用设置滤波器宽度后，BW 旋钮会失去控制**，直到电台关机再开机。这是电台本身的工作方式。\n\n此驱动根据 Ten-Tec 的编程参考指南编写。如果它只部分可用，非常值得报告，并附上电台菜单中的固件版本。';
+	@override String get tenTecOrionTroubleshooting => '- **使用直通 DB-9 串口线**连接 SERIAL DATA 端口，不要用交叉（null-modem）线。\n- **此条目保持 RTS 为高**，因为 Orion 使用 RTS 和 CTS 作为握手。在通过 RTS 键控 PTT 的接口（如 Digirig）上，请在高级设置中关闭“保持 RTS 为高”，否则应用一连接电台就会发射。\n- **从应用发送 CW 需要开启电台的内置键控器。** 关闭时，电台会忽略应用发送的内容。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此驱动根据 Ten-Tec 的编程参考指南编写，尚未在 Orion 上实际运行过。如果它只部分可用，非常值得报告，并附上电台菜单中的固件版本。';
+	@override String get tenTecNoCw => '此电台的固件不接受来自应用的 CW。Ten-Tec 在 Orion 固件 1.366 中加入了此功能。';
+	@override String get tenTecKeyerOff => '电台的内置键控器已关闭，因此会忽略应用发送的 CW。请在电台菜单中开启键控器。';
 	@override String get guohetecTroubleshootingTitle => '如果电台已连接但不显示频率';
 	@override String get guohetecTroubleshooting => 'Q900 有两种 CAT 协议，此条目使用其原生协议，而不是模仿 FT-817 的协议。请在此选择 **Guohetec Q900**，而不是 FT-817——模仿协议支持的命令更少，而且电台不会说明它正在使用哪一种。\n\n- **USB-C 线就是 CAT 连接**，它同时也连接声卡。在这条线上速率无关紧要；端口会忽略所设置的任何值。\n- **绝不要让任何程序拉高此端口的 RTS 或 DTR。** 在串口线上，这两条线用于 PTT 和键控。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **第二代电台的行为与第一代不同。** 长按 Menu，然后选择 About：HW 2.0 即为第二代。\n\n此驱动根据制造商公布的协议编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。';
 	@override String get yaesuTroubleshootingTitle => '如果电台已连接但不显示频率';
 	@override String get yaesuTroubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而应用将其保持为低。在 Digirig、SignaLink 或大多数自制线缆上，这条线就是 PTT，拉高它会让发射机发射。如使用电台自带的 USB 端口，可改为在高级设置中开启 **保持 RTS 为高**。该设置的位置因型号而异（FT-891 上为菜单 **05-08**）。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **模式遵循 FT-891 的对照表。** 大多数 Yaesu 电台与之相符，但模式编号不同的电台在这些模式上会显示和设置错误的模式。频率不受影响。';
+	@override String get ftdx3000Troubleshooting => '**菜单 037 CAT SELECT 必须设为 USB**，才能通过电台的 USB 端口使用 CAT；设为 RS232C 时，CAT 在背面的插孔上。\n\n此条目根据公开的 CAT 文档编写，尚未在 FTDX3000 上实际运行过。如果它只部分可用，非常值得报告。';
 	@override String get yaesuRs232Troubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **CAT 插孔是 RS-232。** 需要 USB 转串口适配器和直通 DB-9 线缆——交叉（null-modem）线会交换信号线，电台将什么都收不到。\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而除非在高级设置中开启 **保持 RTS 为高**，应用会将其保持为低。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此条目根据公开的 CAT 文档编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。';
-	@override String get yaesuUsbTroubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **使用电台两个 USB 端口中的第一个。** CAT 通常在第一个端口上（Windows 上为 **Enhanced** COM 端口）；第二个（**Standard**）用于 PTT 和键控。只要能区分两者，端口选择器都会指向第一个。\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而除非在高级设置中开启 **保持 RTS 为高**，应用会将其保持为低。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
-	@override String get k4SerialNotes => '连接 K4 背面的 USB-B (PC) 插座。USB-PC1 或 USB-PC2 都可用于 CAT；请选择未使用的端口，并使其与电台上的 Serial USB-PCn: Baud Rate 设置一致。HaLo 预填为 38400；如有需要请更改。其他应用必须使用另一个端口或以太网。\n\n此连接控制电台及其电键器；不会向 HaLo 发送音频。';
-	@override String get k4TcpNotes => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。这是 CAT 控制，不是端口 9204 上单独的远程音频连接。\n\nHaLo 控制电台及其电键器，不传输音频或全景显示数据。';
+	@override String get yaesuUsbTroubleshooting => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **使用电台两个 USB 端口中的第一个。** CAT 通常在第一个端口上（Windows 上为 **Enhanced** COM 端口）；第二个（**Standard**）用于 PTT 和键控。只要能区分两者，端口选择器都会指向第一个。\n- **在电台上关闭 CAT RTS，或开启“保持 RTS 为高”。** 当电台的 **CAT RTS** 菜单开启时，只要 RTS 为低，电台就保持沉默——它可能在端口打开时应答一次，然后再无回应。选择电台自带的 USB 端口会自动开启高级设置中的 **保持 RTS 为高**。在 Digirig、SignaLink 或大多数自制线缆上，RTS 就是 PTT，保持为高会让您的发射机发射：此时应改为在电台上关闭 CAT RTS。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
+	@override String get k4SerialNotes => '连接 K4 背面的 USB-B (PC) 插座。USB-PC1 或 USB-PC2 都可用于 CAT；请选择未使用的端口，并使其与电台上的 Serial USB-PCn: Baud Rate 设置一致。HaLo 预填为 38400；如有需要请更改。其他应用必须使用另一个端口或以太网。\n\n此连接控制电台及其键控器；不会向 HaLo 发送音频。';
+	@override String get k4TcpNotes => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。当显示全景或瀑布图时，HaLo 会使用同一主机上的固定端口 9201；更改 CAT 端口不会改变频谱端口。\n\n频谱显示的是主接收机。其缩放、参考电平调整和速度控制只影响 HaLo 的显示。不支持音频流。';
 	@override String get k4PowerTimeout => 'K4 功率未更改，因为电台没有确认其输出范围。请重试。';
+	@override String get k4RemoteNotes => '在您的 K4 上启用远程访问，并输入其网络密码。主接收机和副接收机共用一条加密连接，用于电台控制和频谱。默认端口为 9204；远程连接时请输入您转发的端口。\n\n不支持音频播放和麦克风流。';
+	@override String get k4Receiver => '接收机';
+	@override String get k4ReceiverMain => '主';
+	@override String get k4ReceiverSub => '副';
+	@override String get k4ReceiverInvalid => '请选择主或副';
+	@override String get k4ReceiverAlreadyConfigured => '此 K4 已配置了该接收机';
+	@override String get k4SubReceiverOff => 'K4 副接收机已关闭';
+	@override String get k4RemotePasswordRequired => '请输入 K4 的网络密码以安全连接。';
+	@override String get k4RemoteHandshakeFailed => 'K4 无法建立安全连接。请检查其网络密码和远程访问设置。';
+	@override String get k4RemoteUnreachable => '无法访问 K4 的安全连接。请检查其地址、端口和远程访问设置。';
 	@override String get k4PowerRange => 'K4 功率必须为 0.1–110 W；当变频器毫瓦输出启用时，必须为 0.0001–0.01 W。';
 	@override String get elecraftTroubleshootingTitle => '如果电台已连接但不显示频率';
 	@override String get elecraftTroubleshooting => 'Elecraft 电台使用 Kenwood CAT 协议，KX2 和 KX3 都已用这种方式实测——VFO 双向同步、模式切换和 CW 零差拍均可正常工作。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台菜单中 **RS232** 下设置的速率一致。** 这些电台出厂为 38400。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n**如果频率正确但模式错误**，请告诉我们。KX2 和 KX3 条目从电台状态回复中的某个位置读取模式，这个位置是根据我们见过的电台确定的；如果某个固件把它放在别处，只有通过报告我们才能得知。\n\n目前还没有关于 K3 的任何报告，如果您在使用，请告诉我们结果。K4 有单独的条目。';
+	@override String get lab599TroubleshootingTitle => '如果电台已连接但不显示频率';
+	@override String get lab599Troubleshooting => 'TX-500 系列使用 Kenwood CAT 协议。频率和模式已通过 LiNK500MP 实测；功率和表头根据 Lab599 的 CAT 资料编写，因此无论结果如何，都请报告。\n\n- **速率必须与电台的 CAT 设置一致**，除非您更改过，否则为 9600。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **在电台上选择 CAT 协议。** TS-2000 涵盖频率、模式和功率。LAB599 还允许应用将电台切换到 DIG、看到它在 DIG 下发射，并读取其供电电压。\n- **通过 LiNK500MP 时**，按住 VFO 旋钮约三秒，将 CAT 控制交给该接口。\n- **按连接方式设置 LiNK500MP 的模式**：蓝牙为模式 3，低功耗蓝牙为模式 4。在其他模式下，低功耗蓝牙扫描找不到它。\n- **通过蓝牙时**，LiNK500MP 会配对为两个串口，只有一个承载 CAT。如果电台保持沉默，请选择另一个。';
+	@override String get lab599TroubleshootingIos => 'TX-500 系列使用 Kenwood CAT 协议。频率和模式已通过 LiNK500MP 实测；功率和表头根据 Lab599 的 CAT 资料编写，因此无论结果如何，都请报告。\n\n- **扫描前先将 LiNK500MP 设为模式 4**，即其低功耗蓝牙模式。在其他模式下，iPhone 或 iPad 找不到它。\n- **将 CAT 控制交给 LiNK500MP**：按住电台的 VFO 旋钮约三秒。\n- **在电台上选择 CAT 协议。** TS-2000 涵盖频率、模式和功率。LAB599 还允许应用将电台切换到 DIG、看到它在 DIG 下发射，并读取其供电电压。';
 	@override String get kenwoodTroubleshootingTitle => '如果电台已连接但不显示频率';
-	@override String get kenwoodTroubleshooting => '此驱动已在 Kenwood 的 TS-590SG 和 TS-480、QRP Labs 的 QMX 和 QCX-mini，以及 Elecraft 的 KX2 和 KX3 上验证。其余型号根据公开的 CAT 资料编写，因此无论结果如何，都请报告。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台的 CAT 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **某些电台需要先在菜单中启用 CAT**，否则完全不响应。\n\n**一些 SDR 前端也使用相同的协议**，因此对它们也值得尝试此条目；Elecraft 电台单独列在 Elecraft 下。如果频率正确但模式错误或缺失，这正是各型号之间唯一不同的部分——应用会根据电台推断模式，失败时再直接查询，因此模式可能只是稍有延迟。';
+	@override String get kenwoodTroubleshooting => '此驱动已在 Kenwood 的 TS-590SG 和 TS-480、QRP Labs 的 QMX 和 QCX-mini，以及 Elecraft 的 KX2 和 KX3 上验证。其余型号根据公开的 CAT 资料编写，因此无论结果如何，都请报告。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台的 CAT 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **某些电台需要先在菜单中启用 CAT**，否则完全不响应。\n- **Kenwood 电台会等待 RTS**：其 CAT 端口将它用作握手信号，因此必须开启“保持 RTS 为高”（在高级设置中）。在它成为默认开启之前建立的连接可能处于关闭状态。在 Digirig 或其他通过 RTS 键控 PTT 的线缆上，请将其关闭，否则电台会发射。\n\n**一些 SDR 前端也使用相同的协议**，因此对它们也值得尝试此条目；Elecraft 电台单独列在 Elecraft 下。如果频率正确但模式错误或缺失，这正是各型号之间唯一不同的部分——应用会根据电台推断模式，失败时再直接查询，因此模式可能只是稍有延迟。';
 	@override String get statusConnected => '已连接';
 	@override String get statusLost => '已断开';
 	@override String get notConfigured => '未配置';
 	@override String get currentConfiguration => '当前配置';
 	@override String get currentTransceiver => '当前收发信机';
+	@override String get currentTransceivers => '当前收发信机';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}：${name}';
+	@override String get so2rQueueMessages => '消息排队而不打断';
+	@override String get noRadioBSelected => '未选择电台 B';
 	@override String get radioMode => '电台模式';
 	@override String get keyerNotSupported => '当前电台不支持';
 	@override String get catControlPreferences => 'CAT 控制偏好';
@@ -2371,13 +2804,25 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} 位于另一台设备上';
 	@override String peerRadioElsewhereMessage({required Object device}) => '此电台连接在 ${device} 上。其连接和设置需在该设备上配置。';
 	@override String get antennaInUse => '使用中的天线';
-	@override String get keyInUse => '使用中的电键';
+	@override String get keyInUse => 'CW 键控';
+	@override String get phoneKeying => '话音键控';
+	@override String get phoneKeyingNone => '无';
+	@override String phoneKeyingRadio({required Object radio}) => '${radio} 中的存储';
+	@override String get phoneKeyingComputer => '本计算机的音频';
+	@override String get phoneKeyingOff => '话音键控已关闭';
+	@override String get computerVoiceSettings => '计算机音频';
+	@override String get cwKeyingOptions => 'CW 键控选项';
 	@override String get noneSelected => '无';
 	@override String get moreSettings => '更多设置';
 	@override String get icomCivTroubleshootingTitle => '如果同一台电台出现两个串口';
 	@override String get icomCivTroubleshooting => '包括 IC-705 在内的多款 Icom 电台会同时提供**两个** USB 串口（Icom 称为 Port A 和 Port B），默认都设为 CI-V。除此之外，本应用和您的操作系统都无法区分它们：同一个 USB 厂商/产品 ID 只是出现两次，有时在这里会带有 `#2` 后缀。**通常 Port A 才是正确的**——一般是操作系统或浏览器列出的第一个，在本应用能区分两个端口时，会将其标记为建议。如果命令已发出而电台始终没有响应，请改试另一个端口。';
 	@override String get civAddressTroubleshootingTitle => '如果电台始终没有响应';
 	@override String get civAddressTroubleshooting => '- **CI-V 地址必须与电台菜单一致。** 此条目预填了该型号的出厂地址，但多台电台共用 CI-V 总线时，正是需要更改这个地址的情况。发往错误地址的帧会被静默忽略，看起来就像线缆坏了一样。\n- **速率必须与电台的 CI-V BAUD RATE 一致**（USB 上为 CI-V USB Baud Rate）。请将电台设为与此处显示相同的数值，**不要用 Auto**。设为 Auto 时，包括 IC-7300 在内的一些电台连接后大约一分钟就会停止响应。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **CI-V 地址必须与电台菜单一致。** 此条目预填了该型号的出厂地址，但多台电台共用 CI-V 总线时，正是需要更改这个地址的情况。发往错误地址的帧会被静默忽略，看起来就像线缆坏了一样。\n${speed}\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。';
+	@override String get icomUsbSpeedFollows => '- **没有速率需要设置。** 通过 USB 时，此电台使用计算机所用的任何速率通信，而此条目始终使用 115200，即频谱仪所需的速率。';
+	@override String get ic7610UsbSpeed => '- **将 CI-V USB Baud Rate 设为 115200**，这是此条目始终使用的速率，因为频谱仪需要它——**不要用 Auto**。设为其他任何速率的电台都会以沉默回应。';
+	@override String get civTransceiveTitle => '如果应用跟随电台较慢';
+	@override String get civTransceive => '如果应用需要数秒才能显示在电台上所做的频率或模式更改，请开启电台的 **CI-V Transceive** 设置（在大多数现款机型上位于 SET > Connectors > CI-V）。开启后，电台会在每次更改发生时立即报告。关闭时，应用只能在下次查询（每隔几秒）时才看到更改。';
 	@override String get ic7300Mk2Note => '\n- **IC-7300 MK2** 出厂地址为 `B6`，而不是此处预填的 `94`——请改选 IC-7300 MK2 条目。';
 	@override String get ic705PortNote => '\n- **IC-705** 提供两个 USB 串口，都以电台名称命名。CI-V 在其中的**第一个**上，只要能区分两者，端口选择器都会指向它。';
 	@override String get ic7760PortNote => '\n- **IC-7760** 在其提供的两个 USB 串口中的 **Port A** 上使用 CI-V。';
@@ -2387,13 +2832,14 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get flrigTroubleshootingTitle => '如果应用无法连接';
 	@override String get flrigTroubleshooting => '这会连接到**您自行运行的 flrig 程序**，而不是直接连接电台——由 flrig 与电台通信，支持大多数品牌和型号。\n\n- **flrig 必须已在运行**，并已配置和连接其收发信机。\n- **端口**为 12345，除非您在 flrig 的配置中更改过（Config → Setup → Server）。\n- **从另一台计算机连接时**，请确保 flrig 的服务器可以访问。它监听所有网络接口，但您的防火墙可能不允许。\n- 连接后如果没有频率，通常意味着 flrig 本身无法访问电台。请检查 flrig 的显示是否跟随旋钮变化。';
 	@override String get hrdTroubleshootingTitle => '如果应用无法连接';
-	@override String get hrdTroubleshooting => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际运行过。如果它只部分可用，非常值得报告。';
+	@override String get hrdTroubleshooting => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际测试过。如果它只部分可用，非常值得报告。';
 	@override String get n3fjpTroubleshootingTitle => '如果应用无法连接';
-	@override String get n3fjpTroubleshooting => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。';
+	@override String get n3fjpTroubleshooting => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际测试过。如果它只部分可用，非常值得报告。';
 	@override String get commanderTroubleshootingTitle => '如果应用无法连接';
-	@override String get commanderTroubleshooting => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。';
+	@override String get commanderTroubleshooting => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际测试过。如果它只部分可用，非常值得报告。';
 	@override String get ic705TroubleshootingTitle => '如果电台始终没有响应';
-	@override String get ic705Troubleshooting => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。';
+	@override String get ic705Troubleshooting => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- **端口必须一致**：与电台的 Control Port 和 Serial Port (UDP) 一致，或与转发到它们的端口一致。端口错误时电台毫无回应，和没开机一样。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。';
+	@override String get icomLanTroubleshooting => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview、RS-BA1 或 Icom 的 Remote Utility 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 其 LAN 端口必须与此设备连接到同一网络，必须开启其 **Network Control**，并且用户名和密码必须已在电台上设置为网络用户。\n- **端口必须一致**：与电台的 Control Port 和 Serial Port (UDP) 一致，或与转发到它们的端口一致。端口错误时电台毫无回应，和没开机一样。\n- **如果能连接但始终没有应答**，这里的 CI-V 地址必须与电台的 CI-V ADDRESS 菜单一致。此条目预填了该型号的出厂地址。\n- 如果一直卡住，**请将电台关机再开机**。';
 	@override String get statusStale => '无响应';
 	@override String get statusDisconnected => '未连接';
 	@override String get statusConnecting => '连接中…';
@@ -2401,9 +2847,9 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get statusError => '连接失败';
 	@override String get currentRadioSettings => '当前电台设置';
 	@override String get notSupportedByThisRadio => '此电台不支持';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => '话音';
-	@override String voiceKeyerAvailable({required Object count}) => '语音电键：电台中有 ${count} 个存储';
+	@override String get cwMessagesButton => 'CW 消息';
+	@override String get voiceMessagesButton => '话音消息';
+	@override String voiceKeyerAvailable({required Object count}) => '语音键控器：电台中有 ${count} 个存储';
 	@override String get antennaBands => '频段';
 	@override String get antennaType => '天线类型';
 	@override String get antennaTypeRequired => '请选择天线类型';
@@ -2417,7 +2863,7 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get newAntenna => '新天线';
 	@override String get newKey => '新电键';
 	@override String get newKeyer => 'WinKeyer（K1EL 或兼容）';
-	@override String keyViaRadio({required Object radio}) => '${radio} 中的 CAT 电键器';
+	@override String keyViaRadio({required Object radio}) => '${radio} 中的 CAT 键控器';
 	@override String keyOnDevice({required Object device}) => '${device} 上的电键';
 	@override String get trackStationInfo => '为每个 QSO 记录电台信息';
 	@override String get includeStationInfoInAdif => '包含在 ADIF 导出中';
@@ -2427,21 +2873,21 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get watts => '瓦';
 	@override String get trackFieldAntenna => '天线';
 	@override String get trackFieldKey => 'CW 电键';
-	@override String get placeholderConnectDelay => '连接延迟 (ms)';
+	@override String get placeholderConnectDelay => '连接延迟（ms）';
 	@override String get placeholderConnectDelayDescription => '模拟握手所需的时间。留空或 0 表示立即连接。';
-	@override String get placeholderDropAfter => '断开时间（秒）';
+	@override String get placeholderDropAfter => '多久后断开（秒）';
 	@override String get placeholderDropAfterDescription => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。';
 	@override String get placeholderFailConnect => '总是连接失败';
 	@override String get placeholderConnectFailure => '占位电台被设置为拒绝此连接';
-	@override String get placeholderFreq => '频率 (kHz)';
+	@override String get placeholderFreq => '频率（kHz）';
 	@override String get placeholderFreqDescription => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。';
 	@override String get placeholderMode => '模式';
 	@override String get placeholderModeDescription => '占位电台的起始模式，例如 USB、CW、FT8。';
 	@override String get placeholderPower => '功率（瓦）';
-	@override String get placeholderPurpose => '用此电台记录您在记录时使用的是哪台设备';
-	@override String get placeholderReplyDelay => '回复延迟 (ms)';
+	@override String get placeholderPurpose => '用它来记下您正在使用哪台电台，以便记入日志';
+	@override String get placeholderReplyDelay => '回复延迟（ms）';
 	@override String get placeholderReplyDelayDescription => '占位电台报告变化所需的时间。留空或 0 表示立即回复。';
-	@override String get cwKeyerField => 'CAT CW 电键器';
+	@override String get cwKeyerField => 'CAT CW 键控器';
 	@override String get cwKeyerFieldDescription => '此电台是否通过 CAT 将文本键控为 CW。对于应用不认识的电台请关闭。';
 	@override String get voiceMemories => '语音存储';
 	@override String get voiceMemoriesDescription => '电台可通过 CAT 播放的语音存储数量。0 表示没有。';
@@ -2449,11 +2895,11 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get yaesuMeterCapture => '捕获表头读数';
 	@override String get yaesuBinaryMeterCaptureDescription => '在发射时读取电台的输出功率表和 SWR 过高标志，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。';
 	@override String get yaesuMeterCaptureDescription => '在发射时读取电台的 PO、SWR 和 ALC 表头，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。';
-	@override String get telemetryInterval => '表头读取间隔 (ms)';
-	@override String get telemetryIntervalDescription => '电台发射时读取其表头的频率。留空则使用此连接能承受的最快速度，最高 200 ms。';
+	@override String get telemetryInterval => '表头读取间隔（ms）';
+	@override String get telemetryIntervalDescription => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。';
 	@override String telemetryIntervalInvalid({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}';
-	@override String get pollInterval => '空闲轮询间隔 (ms)';
-	@override String pollIntervalDescription({required Object fallback}) => '在频率和模式都没有变化时，向电台查询频率和模式的频率。留空则为 ${fallback} ms。';
+	@override String get pollInterval => '空闲轮询间隔（ms）';
+	@override String pollIntervalDescription({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。';
 	@override String pollIntervalInvalid({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}';
 	@override String get advancedSettings => '高级设置';
 	@override String get placeholderSwr => 'SWR 读数';
@@ -2464,11 +2910,11 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get cwDialectDescription => '此电台接受哪种格式的 KY 命令。“无”表示不通过 CAT 进行 CW 键控。';
 	@override String get cwDialectKenwood => 'Kenwood（KY，补齐到 24）';
 	@override String get cwDialectElecraft => 'Elecraft（KY 文本）';
-	@override String get voiceDialect => '语音电键方言';
+	@override String get voiceDialect => '语音键控器方言';
 	@override String get voiceDialectDescription => '此电台如何通过 CAT 播放语音存储。“无”表示不通过 CAT 播放语音存储。选择了方言但未设数量时，使用该方言的默认数量。';
 	@override String get voiceDialectPb => 'Kenwood（PB，TS-590 风格）';
 	@override String get voiceDialectK4 => 'Elecraft K4（PB 和 DA）';
-	@override String get voiceDialectKx => 'Elecraft KX2/KX3（开关点按）';
+	@override String get voiceDialectKx => 'Elecraft KX2/KX3（按键点按）';
 	@override String get placeholderDiagnostic => '模拟';
 	@override String get placeholderWholeNumberInvalid => '必须是整数，0 或更大';
 	@override String get placeholderFreqInvalid => '必须是以 kHz 为单位且大于零的频率';
@@ -2495,6 +2941,43 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => '每个电台端口当前连接的天线。更改立即生效。';
 	@override String get switchWiringHeader => '接线';
 	@override String get switchPortInhibitedHint => '禁止发射';
+	@override String get rotatorAxes => '轴';
+	@override String get rotatorAxesDescription => '旋转器是只在方位角上转动，还是也在仰角上转动（G-5500 或类似型号）。';
+	@override String get rotatorAxesAzimuth => '仅方位角';
+	@override String get rotatorAxesAzimuthElevation => '方位角和仰角';
+	@override String get rotatorAzimuthOffset => '方位角偏移';
+	@override String get rotatorAzimuthOffsetDescription => '控制器的零点不是正北时，要加到其读数上的度数。转动会相应修正。';
+	@override String get rotatorElevationOffset => '仰角偏移';
+	@override String get rotatorAzimuthMin => '最小方位角';
+	@override String get rotatorAzimuthMax => '最大方位角';
+	@override String get rotatorAzimuthMaxDescription => '以控制器自身的度数计。有重叠区的旋转器可超过 360，此时会走较短的一边。';
+	@override String get rotatorElevationMin => '最小仰角';
+	@override String get rotatorElevationMax => '最大仰角';
+	@override String get rotatorElevationMaxDescription => '以控制器自身的度数计。可翻转的旋转器可超过 90。';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => '整数度数，${min} 到 ${max}';
+	@override String get rotatorLimitsInvalid => '下限必须低于上限';
+	@override String get rotatorPollInterval => '轮询间隔（ms）';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => '多久向旋转器查询一次指向。留空则为 ${fallback} ms。';
+	@override String get rotatorAxesRequired => '请选择旋转器转动的轴';
+	@override String get rotatorRefused => '控制器拒绝了命令。请检查它是否设为 GS-232 模式。';
+	@override String get pstRotatorTroubleshooting => 'PstRotator 只有在设置好之后才会应答，否则完全不出声：\n\n- **开启 UDP Control**：在 PstRotator 的 Setup 菜单中。\n- **端口要一致**：Communication → UDP Control Port，除非更改过，否则为 12000。PstRotator 会在下一个端口（12001）上应答，该端口在此设备上必须空闲。\n- **将 PstRotator 连接到其控制器。** 在此之前，它不会通过 UDP 应答任何内容。\n- **在防火墙中放行**：既要在运行 PstRotator 的 PC 上，也要在此设备上（它负责监听应答）。\n- **在 Mac、iPhone 或 iPad 上**，Ham2K Logger 需要本地网络访问权限（设置 → 隐私与安全性 → 本地网络）。';
+	@override String rotatorCurrentStateHeader({required Object position}) => '当前状态：${position}';
+	@override String get rotatorDisconnected => '已断开';
+	@override String rotatorAzimuthReading({required Object degrees}) => '方位角 ${degrees}°';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '方位 ${degrees}°';
+	@override String rotatorElevationReading({required Object degrees}) => '仰角 ${degrees}°';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '仰角 ${degrees}°';
+	@override String get rotatorNoReading => '等待控制器报告其位置…';
+	@override String get rotatorNotResponding => '无响应';
+	@override String rotatorHeldAtLimit({required Object heading}) => '正在转向 ${heading}，到此旋转器限位允许的最远处';
+	@override String get rotatorTargetAzimuth => '转到方位角';
+	@override String get rotatorTargetAzimuthShort => '转到方位';
+	@override String get rotatorTargetElevation => '转到仰角';
+	@override String get rotatorTargetElevationShort => '转到仰角';
+	@override String get rotatorAzimuthInvalid => '必须在 0 到 360 之间';
+	@override String get rotatorElevationInvalid => '必须在 0 到 180 之间';
+	@override String get rotatorTurn => '转动';
+	@override String get rotatorStop => '停止';
 	@override String get configUnreadable => '无法读取此电台保存的设置。请打开其设置并重新输入，或将其移除后重新添加。';
 	@override String get autoConnectHeld => 'HaLo 上次连接此电台时停止了响应，因此这次没有自动连接。请按“连接”重试。';
 }
@@ -2562,6 +3045,11 @@ class _Translations$settings$developer$zh extends Translations$settings$develope
 	// Translations
 	@override String get developerModeDescription => '启用开发者警告、调试日志和工具。';
 	@override String get experiments => '实验';
+	@override String get showIdleMetrics => '显示空闲指标';
+	@override String get showIdleMetricsDescription => '在状态栏中显示扩展引擎在过去一秒内的空闲程度。点按可查看 10 秒和 60 秒的平均值。';
+	@override String idleMetricsReadout({required Object percent}) => '空闲 ${percent}%';
+	@override String get idleMetricsAverages => '空闲平均：';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}s ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
 		one: '已启用 ${count} 个',
 		other: '已启用 ${count} 个',
@@ -2572,7 +3060,7 @@ class _Translations$settings$developer$zh extends Translations$settings$develope
 	@override String get trackUnstable => '不稳定';
 	@override String get trackBleeding => '前沿';
 	@override String checkingTrack({required Object track}) => '正在“${track}”上检查代码推送…';
-	@override String get patchDownloaded => '代码推送已下载——重启应用以应用。';
+	@override String get patchDownloaded => '代码推送已下载——重启应用即可生效。';
 	@override String noNewPatch({required Object track}) => '“${track}”上没有新的代码推送。';
 	@override String get noPatchInstalled => '未安装代码推送——正在运行发布版本。';
 	@override String runningPatch({required Object patch}) => '正在运行代码推送 #${patch}。';
@@ -2636,7 +3124,7 @@ class _Translations$settings$panels$zh extends Translations$settings$panels$en {
 
 	// Translations
 	@override String get settings => '应用偏好设置';
-	@override String get settingsDescription => '按您的方式使用应用';
+	@override String get settingsDescription => '让应用按您想要的方式工作';
 	@override String get commonSettings => '常用偏好设置';
 	@override String get syncDescription => '备份日志并在设备间同步';
 	@override String get accountsDescription => '服务凭证、离线数据等';
@@ -2663,8 +3151,8 @@ class _Translations$settings$gridPrecisionOpts$zh extends Translations$settings$
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get six => '6 位 (FN31pr)';
-	@override String get eight => '8 位 (FN31pr55)';
+	@override String get six => '6 位（FN31pr）';
+	@override String get eight => '8 位（FN31pr55）';
 }
 
 // Path: settings.gridPrecisionDescription
@@ -2676,6 +3164,183 @@ class _Translations$settings$gridPrecisionDescription$zh extends Translations$se
 	// Translations
 	@override String get six => '6 位';
 	@override String get eight => '8 位';
+}
+
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$zh extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => '打开命令对话框';
+	@override String get toggleTheme => '在浅色和深色之间切换';
+	@override String get toggleLanguage => '在英语和西班牙语之间切换';
+	@override String get fontScaleUp => '放大文字';
+	@override String get fontScaleDown => '缩小文字';
+	@override String get fontScaleReset => '正常文字大小';
+	@override String get densityLooser => '更宽松的布局';
+	@override String get densityDenser => '更紧凑的布局';
+	@override String get densityAuto => '自动布局密度';
+	@override String get find => '在日志中查找';
+	@override String keyerMessage({required Object n}) => '发送消息 ${n}';
+	@override String get keyboardMode => '开启或关闭键盘模式';
+	@override String get ptt => '按键通话（PTT）';
+	@override String get wipe => '清空正在记录的通联';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$zh extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => '输入呼号';
+	@override String get escape => '停止发送、后退一步或关闭';
+	@override String get enter => '记录通联';
+	@override String get space => '下一个字段';
+	@override String get tab => '下一个或上一个字段';
+	@override String get arrows => '在字段、控件和日志之间移动';
+	@override String get walk => '在日志中翻页，或跳到首尾';
+	@override String get undo => '撤销清空或删除';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$zh extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => '添加快捷键';
+	@override String get listening => '请按下快捷键的按键…';
+	@override String get listeningHint => 'Esc 停止监听';
+	@override String get add => '添加';
+	@override String refusedFixed({required Object keys}) => '${keys} 属于记录字段或对话框，无法更改。';
+	@override String refusedCallsign({required Object keys}) => '${keys} 用于输入呼号。请同时按住 Cmd、Ctrl 或 Alt。';
+	@override String reserved({required Object keys}) => '系统可能会在应用看到 ${keys} 之前将其截获。';
+	@override String already({required Object keys}) => '${keys} 已是此命令的按键之一。';
+	@override String takeIt({required Object command, required Object keys}) => '从“${command}”取走 ${keys}';
+	@override String get resetDefault => '重置为默认';
+	@override String get remove => '移除';
+	@override String get commandLabel => '命令';
+	@override String get commandHint => '输入任何有效命令，或用“;”分隔多个命令';
+	@override String get removeCommand => '移除命令';
+	@override String commandUnknown({required Object text}) => '没有名为“${text}”的命令';
+	@override String get noShortcuts => '尚无按键';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$zh extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => '快捷键已保存到 ${location}';
+	@override String exportFailed({required Object error}) => '无法导出快捷键：${error}';
+	@override String importPickerFailed({required Object error}) => '无法打开文件：${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的快捷键文件：${problem}';
+	@override String problemNotYaml({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）';
+	@override String get problemNotKeysFile => '它不是 Ham2K 键盘快捷键文件';
+	@override String get problemNewerVersion => '它由较新版本的应用写入';
+	@override String get problemMalformed => '其中一部分不符合快捷键格式';
+	@override String get problemTooLarge => '它太大了';
+	@override String get importTitle => '导入快捷键';
+	@override String writtenOn({required Object platform}) => '在 ${platform} 上写入。';
+	@override String get writtenOnUnknown => '文件没有说明它是在哪种键盘上写入的。';
+	@override String get translate => '这些按键在此键盘上应各自对应哪个键？';
+	@override String get leaveOut => '不导入这些快捷键';
+	@override String get replace => '替换此设备的配置';
+	@override String get replaceHint => '文件中没有的每个快捷键都恢复为默认。';
+	@override String get merge => '添加到此设备的配置';
+	@override String get mergeHint => '相同命令以文件中的快捷键为准，其余保持不变。';
+	@override String unknown({required Object commands}) => '此版本不认识，因此已略过：${commands}';
+	@override String unreadableChords({required Object chords}) => '不是快捷键，因此已略过：${chords}';
+	@override String refusedChords({required Object chords}) => '应用保留给自己的按键，因此已略过：${chords}';
+	@override String conflicts({required Object keys}) => '导入后绑定到多个命令：${keys}';
+	@override String get importAction => '导入';
+	@override String get imported => '快捷键已导入';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$zh extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$zh extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$zh extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => '电台呼号';
+	@override String get groupBy => '分组方式';
+	@override String get period => '时间段';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$zh extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => '不分组';
+	@override String get date => '日期';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => '未知大洲';
+	@override String get unknownEntity => '未知实体';
+	@override String get unknownDate => '无日期';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$zh extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => '本月';
+	@override String get last3Months => '最近 3 个月';
+	@override String get thisYear => '今年';
+	@override String get lastYear => '去年';
+	@override String get allTime => '全部时间';
+	@override String get custom => '自定义范围';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$zh extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => '（${span}）';
+	@override String get custom => '自定义范围';
 }
 
 // Path: home.logs.columns
@@ -2734,6 +3399,72 @@ class _Translations$home$logs$import$zh extends Translations$home$logs$import$en
 	@override String importingDetail({required Object imported, required Object total}) => '已导入 ${imported} / ${total}';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$zh extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => '默认';
+	@override String untitledName({required Object number}) => '布局 ${number}';
+	@override String switcherLabel({required Object name}) => '布局：${name}';
+	@override String get menuNew => '新建…';
+	@override String get menuExport => '导出…';
+	@override String get menuImport => '导入…';
+	@override String get menuTitle => '布局';
+	@override String get newTitle => '新建布局';
+	@override String get editTitle => '编辑布局';
+	@override String get edit => '编辑';
+	@override String get duplicateCurrent => '复制当前布局';
+	@override String get startFromDefault => '从默认布局开始';
+	@override String get nameLabel => '名称';
+	@override String get descriptionLabel => '描述';
+	@override String get create => '创建';
+	@override String leaveEditTitle({required Object name}) => '保存对“${name}”的更改？';
+	@override String get leaveEditBody => '此布局有未保存的更改。';
+	@override String get discard => '放弃';
+	@override String get deleteTitle => '删除此布局？';
+	@override String deleteBody({required Object name}) => '确定要删除“${name}”布局吗？';
+	@override String get exportTitle => '导出布局';
+	@override String get exportPick => '要导出的面板';
+	@override String get tabSet => '标签组';
+	@override String get exportAction => '导出';
+	@override String exported({required Object location}) => '布局已保存到 ${location}';
+	@override String exportFailed({required Object error}) => '无法导出布局：${error}';
+	@override String get importTitle => '导入布局';
+	@override String importFromOtherView({required Object view}) => '为 ${view} 视图制作：仅该视图才有的面板已被省略。';
+	@override String get viewHome => '主页';
+	@override String get viewOperation => '操作';
+	@override String get viewLogs => '日志';
+	@override String get viewChase => '追逐';
+	@override String get importAsNew => '作为新布局';
+	@override String get importReplace => '替换此布局';
+	@override String get importAdd => '添加到此布局';
+	@override String get importAddHint => '面板将出现在右侧的新列中。';
+	@override String get importPick => '要导入的面板';
+	@override String get importReplaceSettings => '替换此处已设置好的面板的设置';
+	@override String get importAction => '导入';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的布局：${problem}';
+	@override String problemNotYaml({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）';
+	@override String get problemNotLayoutFile => '它不是 Ham2K 布局文件';
+	@override String get problemNewerVersion => '它是由更新版本的应用写入的';
+	@override String get problemNoArrangement => '它不包含任何排列';
+	@override String get problemMalformed => '其中部分内容不符合布局格式';
+	@override String get problemTooLarge => '它太大了';
+	@override String importPickerFailed({required Object error}) => '无法打开文件：${error}';
+	@override String importFailed({required Object error}) => '无法导入布局：${error}';
+	@override String duplicateFailed({required Object error}) => '无法复制布局：${error}';
+	@override String get importNothing => '未选择任何面板，因此未导入任何内容。';
+	@override String importSkipped({required Object panels}) => '已省略：${panels}';
+	@override String importKeptPinned({required Object panels}) => '已保留 ${panels}：小屏幕排列离不开它。';
+	@override String get notOffered => '此视图中不可用';
+	@override String get alreadyPlaced => '已在此布局中';
+	@override String needsExtension({required Object name}) => '需要 ${name}';
+	@override String get listRecoveredTitle => '无法读取布局名称';
+	@override String get listRecoveredBody => '无法读取此视图的布局列表。所有布局仍在，以编号代替名称。';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$zh extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -2743,8 +3474,13 @@ class _Translations$operation$layout$panels$zh extends Translations$operation$la
 	// Translations
 	@override String get loggingDescription => '日志和输入字段';
 	@override String get infoDescription => '关于正在通联电台的信息';
-	@override String get spotsDescription => '来自集群和活动项目的信号';
+	@override String get spotsDescription => '来自 DX 集群和活动项目的信号';
 	@override String get mapDescription => '通联对象的位置';
+	@override String get summariesDescription => '操作的统计和得分，按您选择的分区和顺序显示';
+	@override String get summariesSections => '分区与顺序';
+	@override String get summariesDays => '每天';
+	@override String get summariesReset => '全部显示';
+	@override String get summariesAllHidden => '所有分区都已隐藏。请在此面板的设置中选择要显示的分区。';
 	@override String get clockDescription => '任意时区的时钟';
 	@override String get clockFace => '表盘';
 	@override String get clockFaceLcd => 'LCD';
@@ -2845,6 +3581,30 @@ class _Translations$operation$layout$panels$zh extends Translations$operation$la
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR 过高';
+	@override String get rotatorDescription => '天线的指向，显示在以电台为中心的地图上。点按地图可转动天线。';
+	@override String get rotatorRotator => '旋转器';
+	@override String rotatorAutoNamed({required Object name}) => '自动 — ${name}';
+	@override String get rotatorAutoNone => '自动 — 尚无旋转器';
+	@override String get rotatorBeamWidth => '波束宽度';
+	@override String get rotatorBeamWidthDescription => '以度为单位，绘制在指向周围。0 表示不绘制。';
+	@override String get rotatorLocation => '位置';
+	@override String get rotatorLocationDescription => '网格或经纬度，用作地图中心。留空则使用操作的位置。';
+	@override String get rotatorTheme => '主题';
+	@override String get rotatorThemeColor => '彩色';
+	@override String get rotatorThemeGray => '灰色';
+	@override String get rotatorThemeMuted => '柔和';
+	@override String get rotatorGrayline => '显示灰线';
+	@override String get rotatorNoRotator => '没有可显示的旋转器。请在此面板的设置中选择，或在“电台配置”中添加。';
+	@override String get rotatorNoLocation => '没有可作为地图中心的位置。请在此面板的设置中设置。';
+	@override String get rotatorDisconnected => '已断开';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => '无响应';
+	@override String get rotatorLocationInvalid => '无法读取此面板设置中的位置。请使用网格，或 40.7, -74.0 这样的经纬度。';
+	@override String rotatorElevation({required Object degrees}) => '仰角 ${degrees}°';
+	@override String get rotatorNorth => '北';
+	@override String get rotatorEast => '东';
+	@override String get rotatorSouth => '南';
+	@override String get rotatorWest => '西';
 }
 
 // Path: operation.export.compactFileNames
@@ -2940,8 +3700,10 @@ class _Translations$operation$spots$filters$zh extends Translations$operation$sp
 	@override String get sorting => '排序';
 	@override String get sortByTime => '按信号时间';
 	@override String get sortByFrequency => '按频率';
+	@override String get sortByWanted => '最想要的';
 	@override String get groupByBand => '按频段分组';
 	@override String get groupCallsWithNotes => '将有备注的呼号分组';
+	@override String get alertingOnly => '仅有提醒的信号';
 	@override String get sourceNoReply => '无响应';
 	@override String get sourceError => '错误';
 }
@@ -3137,6 +3899,22 @@ class _Translations$settings$catServer$protocolOpts$zh extends Translations$sett
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$zh extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => '没有可用于登录的操作员呼号';
+	@override String get connectFailed => '无法连接到该节点';
+	@override String get needsPassword => '该节点要求密码，但未保存密码';
+	@override String get loginFailed => '该节点不接受此登录';
+	@override String get disconnected => '该节点关闭了连接';
+	@override String get timeout => '该节点没有应答';
+	@override String get off => '“连接到集群”已关闭';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$zh extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class _Translations$settings$radio$pttKey$zh extends Translations$settings$radio
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => '用键盘控制 PTT';
+	@override late final _Translations$settings$radio$pttKey$modes$zh modes = _Translations$settings$radio$pttKey$modes$zh._(_root);
+	@override late final _Translations$settings$radio$pttKey$descriptions$zh descriptions = _Translations$settings$radio$pttKey$descriptions$zh._(_root);
+	@override String get key => 'PTT 键';
 	@override String get pill => 'TX';
 	@override String get transmitting => '正在发射';
 }
@@ -3241,7 +4023,7 @@ class _Translations$settings$radio$keyerSpeed$zh extends Translations$settings$r
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '电键速度';
+	@override String get title => '键控速度';
 	@override String get unit => 'WPM';
 	@override String pill({required Object wpm}) => '${wpm} wpm';
 	@override String get pillUnknown => '– wpm';
@@ -3254,10 +4036,10 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'CW 电键消息';
+	@override String get title => 'CW 键控消息';
 	@override String get notSupported => '当前电台不支持 CW 键控';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => '消息 (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => '消息 ${n}';
 	@override String get labelField => '标签';
 	@override String labelKey({required Object n}) => 'F${n} 标签';
 	@override String get details => '详情';
@@ -3271,7 +4053,10 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM 消息';
 	@override String get setSaved => '我的消息';
-	@override String get repeat => '重复消息 #1';
+	@override String get repeat => '重复消息 1';
+	@override String get repeatShort => '重复 M1';
+	@override String get cooldown => '重复前的冷却时间';
+	@override String cooldownSeconds({required Object n}) => '${n} 秒';
 	@override String get repeatWait => '重复中';
 	@override String get keyboard => '键入发送';
 	@override String get keyboardField => '键入发送';
@@ -3279,8 +4064,8 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	@override String get helpTitle => '编写 CW 消息';
 	@override String get helpIntro => '消息可以使用包含以下值的模板：';
 	@override String get helpOpCall => '您的呼号';
-	@override String get helpQsoCall => '对方呼号——在 // 堆栈中，为将要记录的呼号';
-	@override String get helpQsoFullCall => '对方呼号（如为有效呼号）；部分呼号时为空';
+	@override String get helpQsoCall => '对方的呼号——在 // 堆栈中，为将要记录的呼号';
+	@override String get helpQsoFullCall => '对方的呼号（如为有效呼号）；部分呼号时为空';
 	@override String get helpQsoPartial => '部分呼号；如为完整有效呼号则为空';
 	@override String get helpQsoNextCall => '在 // 堆栈中，接下来将被选中记录的呼号（如为有效完整呼号）';
 	@override String get helpQsoNextPartial => '在 // 堆栈中，记录当前通联后的下一个部分呼号';
@@ -3297,11 +4082,24 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	@override String get helpEsmIntro => '开启“回车发送消息”后，回车会按功能键发送消息，与 N1MM 相同。ESM 消息组默认包含以下内容：';
 	@override String get helpEsmCq => 'Run 模式下，呼号字段为空时按回车呼叫 CQ';
 	@override String get helpEsmExchange => '您的交换信息：Run 模式下在对方呼号之后发送，S&P 模式下在对方回应后发送';
-	@override String get helpEsmThanks => '致谢，在通联记录后发送：其中的占位符指向下一个通联，而不是本次通联';
+	@override String get helpEsmThanks => '致谢，在通联记录后发送：qso 为已记录的通联，next 为接下来的通联';
 	@override String get helpEsmMyCall => 'S&P 模式下，向您回应的电台发送您的呼号';
 	@override String get helpEsmHisCall => 'Run 模式下，在交换信息前发送对方呼号';
 	@override String get helpEsmAgain => '未抄收到对方任何交换信息时请求重发';
-	@override String get helpEsmStackThanks => '建议用于 // 堆栈的 F3：TU 在通联记录后发出，因此先致谢，再呼叫堆栈中的下一个电台并发送您的交换信息，或回询部分呼号（TU KR?）；如果没有剩余，则只发 TU';
+	@override String get helpEsmStackThanks => '建议用于 // 堆栈的 F3：先致谢，再呼叫堆栈中的下一个电台并发送您的交换信息，或回询部分呼号（TU KR?）；如果没有剩余，则只发 TU';
+}
+
+// Path: settings.radio.keyerControl
+class _Translations$settings$radio$keyerControl$zh extends Translations$settings$radio$keyerControl$en {
+	_Translations$settings$radio$keyerControl$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => '键控器';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => '语音';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3311,10 +4109,10 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '话音电键消息';
+	@override String get title => '话音消息';
 	@override String get notSupported => '当前电台不支持话音消息';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => '语音存储 (${n})';
+	@override String messageTitle({required Object n}) => '语音存储 ${n}';
 	@override String get labelField => '标签';
 	@override String labelKey({required Object n}) => '语音存储 ${n} 标签';
 	@override String durationSeconds({required Object n}) => '${n} s';
@@ -3323,9 +4121,9 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	@override String get playButton => '播放';
 	@override String get recordButton => '录制';
 	@override String get stopButton => '停止';
-	@override String get repeat => '重复消息 #1';
+	@override String get repeat => '重复消息 1';
 	@override String recordHelpTitle({required Object model}) => '${model} 说明：';
-	@override String namedOnDevice({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度归该设备所有。';
+	@override String namedOnDevice({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度属于该设备。';
 	@override String get namedOnRadio => '保存在电台中，电台的其他客户端也能看到。';
 	@override String get recordHelpYaesuDvs => '等待电台上出现 [REC] 指示，然后按住 PTT 按钮录制您的消息。松开 PTT 之前，先按本应用中的 STOP 按钮结束录制，以避免多余的咔嗒声。';
 	@override String get recordHelpFt891 => '等待 [REC] 指示至少闪烁四次，然后按住 PTT 按钮录制您的消息。松开 PTT 之前，先按本应用中的 STOP 按钮结束录制，以避免多余的咔嗒声。';
@@ -3338,8 +4136,91 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	@override String get recording => '录制中…';
 	@override String playingMemory({required Object label}) => '正在播放 ${label}';
 	@override String recordingMemory({required Object label}) => '正在录制 ${label}';
-	@override String get doubtful => '电台播放了吗？它立即报告为空闲。';
-	@override String get recordOnRadio => '必须在电台本身上录制存储。';
+	@override String get doubtful => '电台播放了吗？它立刻就报告为空闲。';
+	@override String get recordOnRadio => '存储必须在电台本身上录制。';
+	@override String get sets => '消息组';
+	@override String get soundFilesSet => '本计算机上的声音文件';
+	@override String get openFileButton => '打开文件';
+	@override String get newSet => '新建消息组';
+	@override String get renameSet => '重命名消息组';
+	@override String get deleteSet => '删除消息组';
+	@override String get newSetName => '名称';
+	@override String deleteSetConfirm({required Object name}) => '删除 ${name} 及其录音？此操作无法撤销。';
+	@override String get output => '音频输出到';
+	@override String get input => '录音来源';
+	@override String get outputRadio => '通过网络发送到电台';
+	@override String get inputDefault => '系统默认';
+	@override String get pickDevice => '选择声音设备';
+	@override String deviceMissing({required Object name}) => '${name}（未连接）';
+	@override String get lead => '发射前延迟';
+	@override String get tail => '发射后延迟';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => '试听';
+	@override String get notRecorded => '未录制';
+	@override String get unplayable => '无法播放此文件';
+	@override String get problemNoOutput => '播放消息前，请先选择向电台送音频的声音设备。';
+	@override String get problemOutputMissing => '向电台送音频的声音设备未连接。';
+	@override String get problemInputMissing => '录音设备未连接。';
+	@override String get problemDeviceFailed => '无法打开声音设备。';
+	@override String get problemNotRecorded => '该消息尚无录音。';
+	@override String get problemRecordingSilent => '录音设备没有录到任何声音，消息保持原样。请检查输入设备，并确认允许本应用使用麦克风。';
+	@override String get problemRadioAudioUnavailable => '电台目前没有从本应用获取音频。需要与电台建立网络连接。';
+	@override String get problemSourceRefused => '电台不肯将发射音频切换到本应用，因此消息已停止。请将电台设置为发射本应用的音频。';
+	@override String get problemCannotKey => '此电台无法通过 CAT 按下 PTT，因此计算机无法向其播放消息。';
+	@override String get problemUnplayable => '该消息的文件不是本应用能播放的声音文件。请使用 WAV、FLAC 或 MP3 文件，或重新录制。';
+	@override String get problemRecordingFailed => '录音被中断，消息保持原样。请检查录音设备是否仍已连接，以及磁盘是否有空间。';
+	@override String get problemFileFailed => '录音无法保存到该消息的位置，消息保持原样。';
+	@override String problemWordsMissing({required Object words}) => '该消息需要您尚未录制的词语：${words}。';
+	@override String problemTemplateFailed({required Object error}) => '该消息的模板有问题：${error}';
+	@override String get problemNoOperation => '用您的话语说出的消息只能在操作中播放，因为那里才有可以为之说话的通联。';
+	@override String get problemNothingSaid => '该消息对此通联没有可说的内容。';
+	@override String get templateField => '用我的话语说出';
+	@override String get templateHelp => '留空则播放录音。否则，消息会用您录制的词语说出，并按每个通联填入以下值：';
+	@override String get help => '帮助';
+	@override String get helpTitle => '用您的话语说出消息';
+	@override String get helpFullExample => '完整消息：';
+	@override String get helpExample => '对方的呼号、对方的报告，以及您录制的“QSL?”';
+	@override String get playOnRadio => '在电台上播放';
+	@override String get templateHelpCall => '对方的呼号';
+	@override String get templateHelpReport => '您给对方的报告';
+	@override String get templateHelpMessage => '消息 2 的录音，按原样播放';
+	@override String get voiced => '用您的话语说出';
+	@override String willSay({required Object words}) => '内容：${words}';
+	@override String willSayMissing({required Object words}) => '尚未录制：${words}';
+	@override String get previewNoOperation => '打开一个操作以查看它会说什么。';
+	@override String get wordsDescription => '用您自己的声音说出呼号、数字等。';
+}
+
+// Path: settings.radio.voiceWords
+class _Translations$settings$radio$voiceWords$zh extends Translations$settings$radio$voiceWords$en {
+	_Translations$settings$radio$voiceWords$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '词语录音';
+	@override String get callField => '操作员的词语';
+	@override String get intro => '每个词或数字连续快速录三遍，就像您念呼号时那样。较长的短语只录一遍。';
+	@override String get recordAll => '全部录制';
+	@override String get recordAllGuide => '每个词连着读三遍，几个词的短语读一遍，每行之间换口气。最后一个读完后按停止。';
+	@override String recordingOne({required Object word}) => '说“${word} ${word} ${word}”，然后按停止。';
+	@override String recordingOnce({required Object words}) => '说“${words}”，然后按停止。';
+	@override String get recorded => '已录制';
+	@override String get notRecorded => '未录制';
+	@override String get addPhrase => '添加短语';
+	@override String get phraseField => '短语，按您在消息中书写的形式';
+	@override String get deletePhrase => '删除短语';
+	@override String get tryField => '试说';
+	@override String get pauseLetters => '字母间停顿';
+	@override String get pauseWords => '词语间停顿';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => '速度';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => '高级设置';
+	@override String get splitSilent => '录音中没有听到任何声音。';
+	@override String get splitNotThreeTakes => '找不到三遍读音。请把这个词连着说三遍，然后重试。';
+	@override String get splitLineCount => '未能在录音中找到每个词。请每个词读三遍，词与词之间换口气。';
+	@override String get splitLinesTooClose => '无法区分各个词。请在词与词之间留更长的停顿。';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3349,7 +4230,7 @@ class _Translations$settings$radio$avoidZeroBeat$zh extends Translations$setting
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '避免在信号上零差拍';
+	@override String get title => '避免与信号零差拍';
 	@override String get descriptionOn => '连接电台时，调谐到偏离 CW 信号几 Hz 的位置，这样回应它的人不会都在同一音调上呼叫。';
 	@override String get descriptionOff => '精确调谐到信号频率。';
 }
@@ -3375,6 +4256,28 @@ class _Translations$settings$map$style$zh extends Translations$settings$map$styl
 	@override String get title => '地图样式';
 }
 
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$zh extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '显示呼号';
+	@override String get description => '每个通联显示为一个带呼号的标签，颜色为其频段的颜色';
+}
+
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$zh extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '显示灰线';
+	@override String get description => '为地球的夜侧加上阴影，晨昏以渐变显示';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$zh extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$zh._(TranslationsZh root) : this._root = root, super.internal(root);
@@ -3398,7 +4301,7 @@ class _Translations$settings$privacy$shareAppData$zh extends Translations$settin
 
 	// Translations
 	@override String get title => '分享应用使用数据';
-	@override String get descriptionOn => '共享使用情况、配置、崩溃和性能数据，帮助我们改进应用';
+	@override String get descriptionOn => '分享使用情况、配置、崩溃和性能数据，帮助我们改进应用';
 	@override String get descriptionOff => '保持应用使用数据私密。\nHam2K 团队将无法检测崩溃或其他问题。';
 }
 
@@ -3409,8 +4312,8 @@ class _Translations$settings$privacy$shareOpData$zh extends Translations$setting
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '共享操作数据';
-	@override String get descriptionOn => '公开并与其他用户共享部分操作数据';
+	@override String get title => '分享操作数据';
+	@override String get descriptionOn => '公开并与其他用户分享部分操作数据';
 	@override String get descriptionOff => '保持操作数据私密';
 }
 
@@ -3431,7 +4334,16 @@ class _Translations$settings$station$models$zh extends Translations$settings$sta
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - 通用';
 	@override String get icomGeneric => 'Icom - 通用';
 	@override String get kenwoodGeneric => 'Kenwood - 通用';
@@ -3439,6 +4351,8 @@ class _Translations$settings$station$models$zh extends Translations$settings$sta
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - 通用';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class _Translations$settings$station$models$zh extends Translations$settings$sta
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => '通过 rigctld 控制的电台';
@@ -3470,6 +4388,11 @@ class _Translations$settings$station$models$zh extends Translations$settings$sta
 	@override String get placeholderRadioNodeName => '我的电台';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Sierra Radio CX-1 同轴开关';
+	@override String get gs232a => 'Yaesu GS-232A 旋转器接口';
+	@override String get pstRotator => 'PstRotator（UDP 控制）';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,9 +4403,11 @@ class _Translations$settings$station$transports$zh extends Translations$settings
 
 	// Translations
 	@override String get network => '网络/WiFi';
+	@override String get secureNetwork => '安全网络/WiFi';
 	@override String get usbSerial => 'USB 串口';
 	@override String get wifi => '网络/WiFi';
 	@override String get bluetoothSerial => '蓝牙串口';
+	@override String get bleSerial => '低功耗蓝牙';
 	@override String get placeholder => '占位';
 }
 
@@ -3510,8 +4435,8 @@ class _Translations$settings$station$keyTypes$zh extends Translations$settings$s
 	// Translations
 	@override String get straight => '手键';
 	@override String get sideswiper => '侧摆键';
-	@override String get bug => '机械半自动键（Bug）';
-	@override String get fullyAutomatic => '全自动电键器';
+	@override String get bug => 'Bug 键（机械半自动）';
+	@override String get fullyAutomatic => '全自动键控器';
 	@override String get singlePaddle => '单桨键';
 	@override String get dualPaddle => '双桨键';
 	@override String get computerDriven => '计算机驱动';
@@ -3533,7 +4458,7 @@ class _Translations$operation$layout$panels$weatherConditions$zh extends Transla
 	@override String get partlyCloudy => '局部多云';
 	@override String get cloudy => '多云';
 	@override String get foggy => '雾';
-	@override String get rimeFog => '雾凇';
+	@override String get rimeFog => '冻雾';
 	@override String get lightDrizzle => '小毛毛雨';
 	@override String get drizzle => '毛毛雨';
 	@override String get heavyDrizzle => '大毛毛雨';
@@ -3558,6 +4483,30 @@ class _Translations$operation$layout$panels$weatherConditions$zh extends Transla
 	@override String get thunderstormWithHail => '雷暴伴冰雹';
 }
 
+// Path: settings.radio.pttKey.modes
+class _Translations$settings$radio$pttKey$modes$zh extends Translations$settings$radio$pttKey$modes$en {
+	_Translations$settings$radio$pttKey$modes$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => '否';
+	@override String get toggle => '切换';
+	@override String get hold => '按住';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class _Translations$settings$radio$pttKey$descriptions$zh extends Translations$settings$radio$pttKey$descriptions$en {
+	_Translations$settings$radio$pttKey$descriptions$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => '键盘不会按下电台的 PTT。';
+	@override String get toggle => '在话音模式下，按 PTT 键使电台发射，再按一次停止发射。一分钟后会自动停止。';
+	@override String get hold => '在话音模式下，按住 PTT 键期间电台发射，最长一分钟。';
+}
+
 /// The flat map containing all translations for locale <zh>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -3577,6 +4526,7 @@ extension on TranslationsZh {
 			'common.callsign' => '呼号',
 			'common.clear' => '清除',
 			'common.dismiss' => '忽略',
+			'common.copyDetails' => '复制详情',
 			'common.expand' => '展开',
 			'common.collapse' => '收起',
 			'onboarding.welcomeTitle' => '欢迎使用 Ham2K Portable Logger！',
@@ -3588,7 +4538,7 @@ extension on TranslationsZh {
 			'onboarding.next' => '下一步',
 			'onboarding.done' => '完成',
 			'onboarding.callsignTitle' => '您的呼号是什么？',
-			'onboarding.callsignBody' => '您需要业余无线电操作证书才能用好这个应用',
+			'onboarding.callsignBody' => '您需要持有业余无线电操作证书，这个应用才对您有用',
 			'onboarding.callsignLabel' => '操作员呼号',
 			'onboarding.alreadyHaveAccount' => '已有账户？',
 			'onboarding.foundSiblingTitle' => '链接现有账户？',
@@ -3604,19 +4554,26 @@ extension on TranslationsZh {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => '云同步',
+			'onboarding.syncBody' => 'Ham2K Log Filer 会在云端备份您的日志，并在您使用 Ham2K 应用的所有设备之间同步。',
+			'onboarding.syncPricing' => '免费！不过付费订阅会让它更快。',
+			'onboarding.syncLabel' => '启用云同步',
+			'onboarding.syncOffWarning' => '警告：这会增加丢失操作数据的风险，例如设备崩溃或丢失时。',
+			'onboarding.notNow' => '暂不',
 			'onboarding.consentTitle' => '数据与隐私',
 			'onboarding.consentUsageBody' => '为了帮助我们改进应用，我们希望收集性能、崩溃和应用使用数据。',
 			'onboarding.consentUsageLabel' => '分享应用使用数据',
-			'onboarding.consentOperationBody' => '某些功能可能会与其他用户共享您的操作数据。您可以随时选择退出。',
-			'onboarding.consentOperationLabel' => '共享操作数据',
+			'onboarding.consentOperationBody' => '某些功能可能会将您的操作数据分享给其他用户。您可以随时选择退出。',
+			'onboarding.consentOperationLabel' => '分享操作数据',
 			'onboarding.finishingSetup' => '正在完成设置——下载参考数据…',
 			'startScreen.credits' => '由 KI2D 和朋友们制作',
 			'testerOverlay.tape' => '注意：施工中',
 			'testerOverlay.warningTitle' => '此应用仍在开发中',
 			'testerOverlay.warningBody' => '大多数功能还坑坑洼洼，到处都有绊脚的地方。请定期检查更新。',
 			'testerOverlay.whatsNew' => ({required Object build}) => '构建 ${build} 的新内容',
-			'testerOverlay.thanks' => '感谢您冒着日志的风险帮助我们改进这个应用！',
+			'testerOverlay.thanks' => '感谢您冒着丢失日志的风险来帮助我们改进这个应用！',
 			'extensionsPanel.categoryActivity' => '活动',
+			'extensionsPanel.categoryAward' => '奖项',
 			'extensionsPanel.categoryContest' => '竞赛',
 			'extensionsPanel.categoryLookup' => '呼号查询',
 			'extensionsPanel.categorySpots' => '信号来源',
@@ -3627,15 +4584,25 @@ extension on TranslationsZh {
 			'extensionsPanel.noMatches' => '没有与搜索匹配的扩展',
 			'extensionsPanel.installFromFile' => '从文件安装…',
 			'extensionsPanel.installVersion' => ({required Object version}) => '版本 ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => '第 ${n}/${count} 张截图',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => '上一张截图',
+			'extensionsPanel.nextScreenshot' => '下一张截图',
+			'extensionsPanel.screenshotUnavailable' => '截图不可用',
 			'extensionsPanel.canReach' => '此扩展可以连接',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}，通过持续连接',
 			'extensionsPanel.canHoldLocalConnection' => '本地网络上的设备，通过持续连接',
 			'extensionsPanel.canUseLocation' => '您的位置',
 			'extensionsPanel.canReadRadio' => '您的电台，用于读取其频率和模式',
 			'extensionsPanel.canControlRadio' => '您的电台，用于控制和发射——调谐、功率、CW、语音存储和 PTT',
-			'extensionsPanel.canSetUserAgent' => '以自己的名称向服务器标识自身',
+			'extensionsPanel.canCommandRadioRaw' => '您的电台，用其自身协议向它发送任何命令——包括发射或更改其设置的命令',
+			'extensionsPanel.canReadCluster' => 'DX 集群，以您的身份登录，读取它发送的内容',
+			'extensionsPanel.canSpotCluster' => 'DX 集群，以您的身份登录，以您的名义发布 Spot',
+			'extensionsPanel.canCommandCluster' => 'DX 集群，以您的身份登录，以您的名义向它发送任何命令',
+			'extensionsPanel.canSetUserAgent' => '以自己的名义向服务器表明身份',
+			'extensionsPanel.canChangeSettings' => '您的设置，通过其命令更改：任何设置、开发者模式和实验',
 			'extensionsPanel.noCapabilities' => '它不请求应用之外的任何权限。',
-			'extensionsPanel.sandboxNote' => '扩展在沙盒中运行：无法访问您的文件，也只能访问此处列出的网络。',
+			'extensionsPanel.sandboxNote' => '扩展在沙盒中运行：无法访问您的文件，网络访问也仅限于此处列出的范围。',
 			'extensionsPanel.installAction' => '安装',
 			'extensionsPanel.updateAction' => '更新',
 			'extensionsPanel.installFailed' => '无法安装该扩展',
@@ -3664,7 +4631,7 @@ extension on TranslationsZh {
 			'extensionsPanel.builtIn' => '内置',
 			'extensionsPanel.updateAvailableBadge' => '有可用更新',
 			'extensionsPanel.updatesAvailableTitle' => '扩展更新',
-			'extensionsPanel.updateAvailableFor' => ({required Object name}) => '${name} 有可用更新。',
+			'extensionsPanel.updateAvailableFor' => ({required Object name}) => '${name} 有更新可用。',
 			'extensionsPanel.updatesAvailable' => ({required Object names, required Object count}) => '${names} 及其他 ${count} 个扩展需要更新。',
 			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} 需要更新。',
 			'extensionsPanel.pendingUpdatesSection' => '待更新',
@@ -3688,8 +4655,8 @@ extension on TranslationsZh {
 			'extensionsPanel.upgradeRuntimeDeadTitle' => '您的扩展未在运行',
 			'extensionsPanel.restoreTitle' => '您的部分扩展缺失',
 			'extensionsPanel.restoreBody' => '您安装的这些扩展不在此设备上。我们可以从 Ham2K 扩展目录重新下载：',
-			'extensionsPanel.restoreFromFile' => '从文件安装。请从文件重新安装，或忘记它们：',
-			'extensionsPanel.restoreOtherCatalog' => '从其他扩展目录安装，因此此处无法获取：',
+			'extensionsPanel.restoreFromFile' => '这些是从文件安装的。请从原文件重新安装，或忘记它们：',
+			'extensionsPanel.restoreOtherCatalog' => '这些是从其他扩展目录安装的，因此此处无法获取：',
 			'extensionsPanel.restoreForget' => '忘记',
 			'extensionsPanel.restoreInstall' => '安装',
 			'extensionsPanel.restoreLater' => '稍后',
@@ -3702,19 +4669,28 @@ extension on TranslationsZh {
 			'extensionsPanel.restoreRuntimeDeadBody' => '我们已重新安装，但您的扩展无法启动。重启应用应该可以恢复。',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} 已被撤回',
 			'extensionsPanel.revokedBody' => '目录撤回了此版本，因此已将其禁用。',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} 已被禁用',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K 暂时禁用了此扩展。',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} 已被替换',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '由 ${replacement} 取而代之。您可以在扩展中切换过去。',
+			'extensionsPanel.replacedBy' => ({required Object name}) => '已由 ${name} 替换',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => '已由 ${name} 替换，您已安装了它',
+			'extensionsPanel.replaceAction' => '替换',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => '它的设置将转移到您已安装的 ${replacement}。您的日志不受影响。',
 			'extensionsPanel.downloadHashMismatch' => '该下载与目录描述的扩展不符。',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object key, required Object version}) => '目录中没有 ${key} 的 ${version} 版本。',
 			'extensionsPanel.catalogLinkUnknown' => '该目录链接未指明扩展版本。',
-			'extensionsPanel.catalogNoRelease' => ({required Object key}) => '目录中没有 ${key} 在该轨道上的发布版本。',
+			'extensionsPanel.catalogNoRelease' => ({required Object key}) => '目录中没有 ${key} 在该通道上的发布版本。',
 			'extensionsPanel.installFromLink' => '从链接安装',
-			'extensionsPanel.unstableReleaseWarning' => '这是不稳定版本，发布者尚未将其定为完成版。它可能运行异常，并将持续接收不稳定版更新。',
-			'extensionsPanel.bleedingReleaseWarning' => '这是前沿版本：仍在开发中，可能出错或丢失设置。它将持续接收前沿版更新。',
+			'extensionsPanel.unstableReleaseWarning' => '这是不稳定版本，发布者尚未将其视为完成。它可能运行异常，并会持续接收不稳定版更新。',
+			'extensionsPanel.bleedingReleaseWarning' => '这是前沿版本：仍在开发中，可能出错或丢失设置。它会持续接收前沿版更新。',
 			'extensionsPanel.channelUnstable' => '不稳定',
 			'extensionsPanel.channelBleeding' => '前沿',
 			'extensionsPanel.followsUnstable' => '接收不稳定版和稳定版',
 			'extensionsPanel.followsBleeding' => '接收前沿版、不稳定版和稳定版',
 			'extensionsPanel.followStableAction' => '仅接收稳定版',
 			'extensionsPanel.revokedBadge' => '已撤回',
+			'extensionsPanel.forceDisabledBadge' => '已被 Ham2K 禁用',
 			'extensionsPanel.refusedBadge' => '未加载',
 			'extensionsPanel.downloadNotHttps' => '该下载未使用安全连接。',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '无法连接 ${source} 获取该扩展。',
@@ -3731,6 +4707,8 @@ extension on TranslationsZh {
 			'extensionsPanel.hookSpots' => '信号',
 			'extensionsPanel.hookHunting' => ({required Object program}) => '猎取 ${program}',
 			'extensionsPanel.hookActivating' => ({required Object program}) => '激活 ${program}',
+			'extensionsPanel.suggestedSection' => '推荐',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => '更多可用（${count}）',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => '新操作',
 			'home.stationCallsign' => '电台呼号',
@@ -3762,6 +4740,23 @@ extension on TranslationsZh {
 			'home.logs.pendingDeleteBody' => '此 QSO 已标记为删除。',
 			'home.logs.editGone' => '未保存：该 QSO 已不在此日志中。',
 			'home.logs.discard' => '放弃',
+			'home.logs.sheet.callsigns' => '电台呼号',
+			'home.logs.sheet.groupBy' => '分组方式',
+			'home.logs.sheet.period' => '时间段',
+			'home.logs.groupBy.none' => '不分组',
+			'home.logs.groupBy.date' => '日期',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => '未知大洲',
+			'home.logs.groupBy.unknownEntity' => '未知实体',
+			'home.logs.groupBy.unknownDate' => '无日期',
+			'home.logs.period.thisMonth' => '本月',
+			'home.logs.period.last3Months' => '最近 3 个月',
+			'home.logs.period.thisYear' => '今年',
+			'home.logs.period.lastYear' => '去年',
+			'home.logs.period.allTime' => '全部时间',
+			'home.logs.period.custom' => '自定义范围',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => '（${span}）',
+			'home.logs.periodTitle.custom' => '自定义范围',
 			'home.logs.columns.date' => '日期',
 			'home.logs.columns.time' => '时间',
 			'home.logs.columns.freq' => '频率',
@@ -3813,18 +4808,55 @@ extension on TranslationsZh {
 			'chase.period.thisMonth' => '本月',
 			'chase.goals.title' => '追逐目标',
 			'chase.goals.remove' => ({required Object name}) => '停止追逐 ${name}',
-			'chase.goals.extensionsTitle' => '包含追逐功能的扩展',
+			'chase.goals.extensionsTitle' => '更多追逐项目',
 			'chase.panels.logging' => 'QSO',
 			'chase.panels.loggingDescription' => '记录控件，下方是该时段内追逐到的 QSO。',
 			'chase.panels.info' => '信息',
 			'chase.panels.infoDescription' => '正在记录的呼号，或该时段的统计。',
 			'chase.panels.spots' => '信号',
-			'chase.panels.spotsDescription' => '空中被 Spot 的电台，随时可以追逐。',
+			'chase.panels.spotsDescription' => '空中被 Spot 到的电台，随时可以追逐。',
 			'chase.panels.map' => '地图',
 			'chase.panels.mapDescription' => '该时段的 QSO 以及正在记录的电台。',
+			'chase.claims.checking' => '正在检查 QSO 的追逐情况',
+			'chase.claims.rebuilding' => ({required Object program}) => '正在为 ${program} 检查日志',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done}/${total} 个 QSO',
+			'chase.notice.newRef' => ({required Object program}) => '新 ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => '可能是新 ${program}',
+			'chase.notice.newBand' => ({required Object program}) => '${program} 新频段',
+			'chase.notice.newBandGuess' => ({required Object program}) => '可能是 ${program} 新频段',
+			'chase.notice.newMode' => ({required Object program}) => '${program} 新模式',
+			'chase.notice.newModeGuess' => ({required Object program}) => '可能是 ${program} 新模式',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} 未确认',
+			'chase.notice.programGuess' => ({required Object notice}) => '可能是${notice}',
+			'chase.alerts.title' => '提醒',
+			'chase.alerts.newRef' => '新参考',
+			'chase.alerts.newBand' => '新频段',
+			'chase.alerts.newMode' => '新模式',
+			'chase.alerts.unconfirmed' => '未确认',
+			'chase.checklists' => '追逐进度',
+			'chase.imports.importFrom' => ({required Object label}) => '导入 ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => '将 ${file} 导入为',
+			'chase.imports.dropHint' => '拖放文件以导入到追逐项目',
+			'chase.imports.done' => ({required Object file, required Object count, required Object program}) => '已从 ${file} 导入 ${count} 条 ${program} 记录',
+			'chase.imports.doneSkipped' => ({required Object file, required Object count, required Object program, required Object skipped}) => '已从 ${file} 导入 ${count} 条 ${program} 记录，跳过了 ${skipped} 条无法读取的记录',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} 中没有 ${program} 可导入的内容',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} 无法读取 ${file}',
+			'chase.imports.unreadable' => ({required Object file, required Object skipped, required Object program}) => '${file} 中的 ${skipped} 条记录 ${program} 都无法读取',
+			'chase.imports.noProgram' => ({required Object file}) => '没有追逐项目能导入 ${file}',
 			'dialogs.operationDetails' => '操作详情',
 			'dialogs.activities' => '活动',
 			'dialogs.stationCallsign' => '电台呼号',
+			'dialogs.advanced' => '高级',
+			'dialogs.operatingPosition' => '操作位（多电台）',
+			'dialogs.assistance' => '辅助',
+			'dialogs.assistanceDescription' => '使用 Spot 服务和其他信息来源',
+			'dialogs.selfSpotting' => '自我 Spot',
+			'dialogs.selfSpottingDescription' => '允许上报您自己频率信息的功能',
+			'dialogs.disabledByRules' => ({required Object rules}) => '为遵守 ${rules} 规则已禁用',
+			'dialogs.lookupDespiteAssistance.title' => '在线查询？',
+			'dialogs.lookupDespiteAssistance.body' => '此操作已禁用辅助。查询所有 QSO 将仅此一次使用 QRZ 等在线服务。',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => '为遵守 ${rules} 规则，此操作已禁用辅助。查询所有 QSO 将仅此一次使用 QRZ 等在线服务。',
+			'dialogs.lookupDespiteAssistance.action' => '在线查询',
 			'dialogs.notes' => '备注',
 			'dialogs.deleteOperationTitle' => '删除操作',
 			'dialogs.purgeTestsTitle' => '清除测试操作',
@@ -3858,10 +4890,12 @@ extension on TranslationsZh {
 			'operation.tabs.weather' => '天气',
 			'operation.tabs.website' => '网站',
 			'operation.tabs.remoteScreen' => '远程屏幕',
-			'operation.tabs.solar' => '太阳',
+			'operation.tabs.solar' => '太阳活动',
 			'operation.tabs.radio' => '电台',
+			'operation.tabs.rotator' => '旋转器',
+			'operation.tabs.summaries' => '操作摘要',
 			'operation.positions.nobodyYet' => '还没有其他操作位共享此操作。',
-			'operation.positions.positionLabel' => ({required Object number}) => '位：${number}',
+			'operation.positions.positionLabel' => ({required Object number}) => '操作位：${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => '操作员：${call}',
 			'operation.positions.unnamedPosition' => '另一个操作位',
 			'operation.positions.thisDevice' => '我们的操作位',
@@ -3885,7 +4919,7 @@ extension on TranslationsZh {
 			'operation.menu.showDeletedOps' => '显示已删除的操作',
 			'operation.menu.showQsoNumbers' => '显示 QSO 编号',
 			'operation.menu.lookupAllQsos' => '查询所有 QSO',
-			'operation.menu.loggingSettingsTitle' => '记录设置',
+			'operation.menu.loggingSettingsTitle' => '日志设置',
 			'operation.menu.mapSettingsTitle' => '地图设置',
 			'operation.menu.actionsSection' => '操作',
 			'operation.layout.title' => '添加面板',
@@ -3894,7 +4928,7 @@ extension on TranslationsZh {
 			'operation.layout.panelSettingsAction' => '面板设置',
 			'operation.layout.viewName' => '操作视图',
 			'operation.layout.viewOptions' => '视图布局选项',
-			'operation.layout.viewTitleBuiltIn' => '此视图为应用内置，其名称也是',
+			'operation.layout.viewTitleBuiltIn' => '此视图是应用内置的，名称也是',
 			'operation.layout.resetOptions' => '恢复默认',
 			'operation.layout.removePane' => '移除',
 			'operation.layout.resetPaneConfirm' => ({required Object panel}) => '将 ${panel} 恢复为默认值？',
@@ -3912,8 +4946,72 @@ extension on TranslationsZh {
 			'operation.layout.addPanel' => ({required Object panel}) => '添加 ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => '预览 ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => '缺少扩展“${name}”',
+			'operation.layout.missingExtensionEnable' => '启用',
+			'operation.layout.missingExtensionInstall' => '安装…',
+			'operation.layout.missingExtensionWontRun' => '此版本无法运行。请在 设置 › 扩展 中更新。',
+			'operation.layout.missingExtensionUnavailable' => '此应用中不可用',
+			'operation.layout.missingExtensionNotInCatalog' => '不在目录中',
+			'operation.layout.missingExtensionCatalogUnreachable' => '无法访问目录。请重试',
+			'operation.layout.missingExtensionFailed' => '没有成功。请重试',
 			'operation.layout.previewUnavailable' => '无法显示此面板的预览图。',
 			'operation.layout.nestedPaneTitle' => '更多',
+			'operation.layout.layouts.defaultName' => '默认',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => '布局 ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => '布局：${name}',
+			'operation.layout.layouts.menuNew' => '新建…',
+			'operation.layout.layouts.menuExport' => '导出…',
+			'operation.layout.layouts.menuImport' => '导入…',
+			'operation.layout.layouts.menuTitle' => '布局',
+			'operation.layout.layouts.newTitle' => '新建布局',
+			'operation.layout.layouts.editTitle' => '编辑布局',
+			'operation.layout.layouts.edit' => '编辑',
+			'operation.layout.layouts.duplicateCurrent' => '复制当前布局',
+			'operation.layout.layouts.startFromDefault' => '从默认布局开始',
+			'operation.layout.layouts.nameLabel' => '名称',
+			'operation.layout.layouts.descriptionLabel' => '描述',
+			'operation.layout.layouts.create' => '创建',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => '保存对“${name}”的更改？',
+			'operation.layout.layouts.leaveEditBody' => '此布局有未保存的更改。',
+			'operation.layout.layouts.discard' => '放弃',
+			'operation.layout.layouts.deleteTitle' => '删除此布局？',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => '确定要删除“${name}”布局吗？',
+			'operation.layout.layouts.exportTitle' => '导出布局',
+			'operation.layout.layouts.exportPick' => '要导出的面板',
+			'operation.layout.layouts.tabSet' => '标签组',
+			'operation.layout.layouts.exportAction' => '导出',
+			'operation.layout.layouts.exported' => ({required Object location}) => '布局已保存到 ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => '无法导出布局：${error}',
+			'operation.layout.layouts.importTitle' => '导入布局',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '为 ${view} 视图制作：仅该视图才有的面板已被省略。',
+			'operation.layout.layouts.viewHome' => '主页',
+			'operation.layout.layouts.viewOperation' => '操作',
+			'operation.layout.layouts.viewLogs' => '日志',
+			'operation.layout.layouts.viewChase' => '追逐',
+			'operation.layout.layouts.importAsNew' => '作为新布局',
+			'operation.layout.layouts.importReplace' => '替换此布局',
+			'operation.layout.layouts.importAdd' => '添加到此布局',
+			'operation.layout.layouts.importAddHint' => '面板将出现在右侧的新列中。',
+			'operation.layout.layouts.importPick' => '要导入的面板',
+			'operation.layout.layouts.importReplaceSettings' => '替换此处已设置好的面板的设置',
+			'operation.layout.layouts.importAction' => '导入',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的布局：${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）',
+			'operation.layout.layouts.problemNotLayoutFile' => '它不是 Ham2K 布局文件',
+			'operation.layout.layouts.problemNewerVersion' => '它是由更新版本的应用写入的',
+			'operation.layout.layouts.problemNoArrangement' => '它不包含任何排列',
+			'operation.layout.layouts.problemMalformed' => '其中部分内容不符合布局格式',
+			'operation.layout.layouts.problemTooLarge' => '它太大了',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => '无法打开文件：${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => '无法导入布局：${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '无法复制布局：${error}',
+			'operation.layout.layouts.importNothing' => '未选择任何面板，因此未导入任何内容。',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => '已省略：${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '已保留 ${panels}：小屏幕排列离不开它。',
+			'operation.layout.layouts.notOffered' => '此视图中不可用',
+			'operation.layout.layouts.alreadyPlaced' => '已在此布局中',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => '需要 ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => '无法读取布局名称',
+			'operation.layout.layouts.listRecoveredBody' => '无法读取此视图的布局列表。所有布局仍在，以编号代替名称。',
 			'operation.layout.editLayout' => '编辑布局',
 			'operation.layout.saveLayout' => '保存布局',
 			'operation.layout.revertLayout' => '放弃布局更改',
@@ -3921,13 +5019,29 @@ extension on TranslationsZh {
 			'operation.layout.layoutUnreadableTitle' => '无法读取布局',
 			'operation.layout.layoutUnreadableBody' => '无法读取您保存的布局，因此显示默认排列。在您选择保留之前，它不会覆盖您原来的布局。',
 			'operation.layout.layoutUnreadableAction' => '使用此布局',
-			'operation.layout.panelRenderFailed' => ({required Object panel}) => '无法显示 ${panel}',
+			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} 无法显示',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => '${panel} 无法显示：它发送了超过 ${max} 个字符',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} 无法显示：其图形包含超过 ${max} 个元素',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} 无法显示：其图形嵌套超过 ${max} 层',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} 无法显示：其图形不是自包含的',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个图层',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个控件',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} 无法显示：某个场景字符串长度超过 ${max} 个字符',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} 无法显示：其布局嵌套超过 ${max} 层',
 			'operation.layout.panelRenderRetry' => '重试',
 			'operation.layout.panelActionFailed' => '该面板操作失败，请重试。',
 			'operation.layout.panels.loggingDescription' => '日志和输入字段',
 			'operation.layout.panels.infoDescription' => '关于正在通联电台的信息',
-			'operation.layout.panels.spotsDescription' => '来自集群和活动项目的信号',
+			'operation.layout.panels.spotsDescription' => '来自 DX 集群和活动项目的信号',
 			'operation.layout.panels.mapDescription' => '通联对象的位置',
+			'operation.layout.panels.summariesDescription' => '操作的统计和得分，按您选择的分区和顺序显示',
+			'operation.layout.panels.summariesSections' => '分区与顺序',
+			'operation.layout.panels.summariesDays' => '每天',
+			'operation.layout.panels.summariesReset' => '全部显示',
+			'operation.layout.panels.summariesAllHidden' => '所有分区都已隐藏。请在此面板的设置中选择要显示的分区。',
 			'operation.layout.panels.clockDescription' => '任意时区的时钟',
 			'operation.layout.panels.clockFace' => '表盘',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -3956,7 +5070,7 @@ extension on TranslationsZh {
 			'operation.layout.panels.weatherConditions.partlyCloudy' => '局部多云',
 			'operation.layout.panels.weatherConditions.cloudy' => '多云',
 			'operation.layout.panels.weatherConditions.foggy' => '雾',
-			'operation.layout.panels.weatherConditions.rimeFog' => '雾凇',
+			'operation.layout.panels.weatherConditions.rimeFog' => '冻雾',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => '小毛毛雨',
 			'operation.layout.panels.weatherConditions.drizzle' => '毛毛雨',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => '大毛毛雨',
@@ -4052,6 +5166,30 @@ extension on TranslationsZh {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR 过高',
+			'operation.layout.panels.rotatorDescription' => '天线的指向，显示在以电台为中心的地图上。点按地图可转动天线。',
+			'operation.layout.panels.rotatorRotator' => '旋转器',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => '自动 — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => '自动 — 尚无旋转器',
+			'operation.layout.panels.rotatorBeamWidth' => '波束宽度',
+			'operation.layout.panels.rotatorBeamWidthDescription' => '以度为单位，绘制在指向周围。0 表示不绘制。',
+			'operation.layout.panels.rotatorLocation' => '位置',
+			'operation.layout.panels.rotatorLocationDescription' => '网格或经纬度，用作地图中心。留空则使用操作的位置。',
+			'operation.layout.panels.rotatorTheme' => '主题',
+			'operation.layout.panels.rotatorThemeColor' => '彩色',
+			'operation.layout.panels.rotatorThemeGray' => '灰色',
+			'operation.layout.panels.rotatorThemeMuted' => '柔和',
+			'operation.layout.panels.rotatorGrayline' => '显示灰线',
+			'operation.layout.panels.rotatorNoRotator' => '没有可显示的旋转器。请在此面板的设置中选择，或在“电台配置”中添加。',
+			'operation.layout.panels.rotatorNoLocation' => '没有可作为地图中心的位置。请在此面板的设置中设置。',
+			'operation.layout.panels.rotatorDisconnected' => '已断开',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => '无响应',
+			'operation.layout.panels.rotatorLocationInvalid' => '无法读取此面板设置中的位置。请使用网格，或 40.7, -74.0 这样的经纬度。',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '仰角 ${degrees}°',
+			'operation.layout.panels.rotatorNorth' => '北',
+			'operation.layout.panels.rotatorEast' => '东',
+			'operation.layout.panels.rotatorSouth' => '南',
+			'operation.layout.panels.rotatorWest' => '西',
 			'operation.layout.htmlPanelUnsupported' => '此面板需要网页视图，但此平台不提供',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => '此面板需要沙盒，但网页版无法提供',
 			'operation.export.title' => '操作导出',
@@ -4078,8 +5216,6 @@ extension on TranslationsZh {
 			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '分享 ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '导出 ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => '下载 ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存 ${count} 个文件', other: '暂存 ${count} 个文件', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '暂存合并的 ${count} 个文件', other: '暂存合并的 ${count} 个文件', ), 
@@ -4129,8 +5265,9 @@ extension on TranslationsZh {
 			'operation.spots.phoneAndCw' => '话音和 CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个信号', other: '${count} 个信号', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => '显示 ${count} / ${total} 个信号',
+			'operation.spots.spotsDisabled' => '此操作已禁用信号',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} 分钟',
-			'operation.spots.callsOfNote' => '注意的呼号',
+			'operation.spots.callsOfNote' => '有备注的呼号',
 			'operation.spots.yourSpots' => '您的信号',
 			'operation.spots.allSpots' => '所有信号',
 			'operation.spots.continents.af' => '非洲',
@@ -4149,8 +5286,10 @@ extension on TranslationsZh {
 			'operation.spots.filters.sorting' => '排序',
 			'operation.spots.filters.sortByTime' => '按信号时间',
 			'operation.spots.filters.sortByFrequency' => '按频率',
+			'operation.spots.filters.sortByWanted' => '最想要的',
 			'operation.spots.filters.groupByBand' => '按频段分组',
 			'operation.spots.filters.groupCallsWithNotes' => '将有备注的呼号分组',
+			'operation.spots.filters.alertingOnly' => '仅有提醒的信号',
 			'operation.spots.filters.sourceNoReply' => '无响应',
 			'operation.spots.filters.sourceError' => '错误',
 			'operation.spots.unavailableTitle' => '信号不可用',
@@ -4217,7 +5356,7 @@ extension on TranslationsZh {
 			'map.boundariesCredit' => ({required Object sources}) => '行政边界：${sources}',
 			'map.facilitiesCredit' => ({required Object sources}) => '设施：${sources}',
 			'map.fullCredits' => '完整数据来源',
-			'map.fewerCredits' => '更少来源',
+			'map.fewerCredits' => '收起来源',
 			'map.emptyState' => '还没有 QSO 位置。\n带有网格、州或国家的 QSO 会显示在这里。',
 			'map.unavailable' => '地图目前不可用。',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH：${grid}',
@@ -4227,6 +5366,7 @@ extension on TranslationsZh {
 			'map.globe' => '地球仪',
 			'map.zoomIn' => '放大',
 			'map.zoomOut' => '缩小',
+			'map.resetNorth' => '恢复正北朝上',
 			'map.postcard.button' => '操作明信片',
 			'map.postcard.title' => ({required Object title}) => '${title} 的明信片',
 			'map.postcard.portrait' => '纵向',
@@ -4249,6 +5389,11 @@ extension on TranslationsZh {
 			'map.postcard.previousPage' => '上一页',
 			'map.postcard.nextPage' => '下一页',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => '第 ${page} / ${count} 页',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} Q', other: '${count} Q', ), 
+			'map.postcard.options' => '明信片选项',
+			'map.postcard.bandLegend' => '显示频段图例',
+			'map.postcard.grayline' => '显示灰线',
+			'map.postcard.sectionsAndOrder' => '摘要分区与顺序',
 			'map.postcard.sectionDays' => '每天',
 			'map.postcard.reset' => '重置',
 			'map.postcard.failed' => ({required Object error}) => '无法制作明信片：${error}',
@@ -4262,7 +5407,7 @@ extension on TranslationsZh {
 			'mapsView.activities' => '活动',
 			'mapsView.layers' => '图层',
 			'mapsView.baseMap' => '底图',
-			'mapsView.satellite' => '卫星影像 (Esri)',
+			'mapsView.satellite' => '卫星影像（Esri）',
 			'mapsView.facilities' => '公园设施',
 			'mapsView.boundaries' => '行政边界',
 			'mapsView.currentLocation' => '当前位置',
@@ -4301,7 +5446,7 @@ extension on TranslationsZh {
 			'activitiesView.locationSettingsUnavailable' => '请在系统设置中允许访问位置',
 			'activitiesView.locationGrantRefused' => '仍无法获取位置——系统再次拒绝',
 			'activitiesView.searchUnavailableTitle' => '活动搜索不可用',
-			'activitiesView.searchUnavailableReason' => '没有活动扩展能执行此搜索。请稍后重试。',
+			'activitiesView.searchUnavailableReason' => '某个活动扩展无法响应此搜索。请稍后重试。',
 			'activitiesView.emptySheet' => '使用下方的建议和搜索来添加',
 			'activitiesView.exports' => '导出',
 			'activitiesView.exportLogs' => '导出日志',
@@ -4339,20 +5484,24 @@ extension on TranslationsZh {
 			'activitiesView.mapEmptyState' => '没有可在地图上显示的结果',
 			'activitiesView.mapEmptyStateHint' => '切换回列表，或搜索其他内容',
 			'activitiesView.imports' => '导入',
-			'loggingControls.timeUtc' => '时间 (UTC)',
+			'loggingControls.timeUtc' => '时间（UTC）',
 			'loggingControls.date' => '日期',
 			'loggingControls.now' => '现在',
+			'loggingControls.manualTimeSettings' => '手动时间',
+			'loggingControls.manualTimeIncrement' => '每个 QSO 递增',
+			'loggingControls.manualTimeIncrementNone' => '无',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 分钟', other: '${count} 分钟', ), 
 			'loggingControls.frequency' => '频率',
 			'loggingControls.mode' => '模式',
-			'loggingControls.theirCall' => '对方呼号',
+			'loggingControls.theirCall' => '对方的呼号',
 			'loggingControls.noteField' => '备注',
 			'loggingControls.todoField' => '待办',
 			'loggingControls.sent' => '发送',
 			'loggingControls.rcvd' => '接收',
 			'loggingControls.more' => '更多',
-			'loggingControls.revert' => '恢复',
+			'loggingControls.revert' => '还原',
 			'loggingControls.undoDelete' => '撤销删除',
-			'loggingControls.restore' => '还原',
+			'loggingControls.restore' => '恢复',
 			'loggingControls.wipe' => '清空',
 			'loggingControls.undo' => '撤销',
 			'loggingControls.pendingDeleteTapWarning' => '再点按一次垃圾桶即可删除此 QSO',
@@ -4374,16 +5523,31 @@ extension on TranslationsZh {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} 于 ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Spot ${call} 为时已晚',
 			'loggingControls.spotNoFreq' => '请先设置要 Spot 的频率',
+			'loggingControls.selfSpotDisabled' => '自我 Spot 已禁用',
 			'loggingControls.spotComment' => '评论',
+			'loggingControls.spottingAutoControl' => '自动重新 Spot',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '每 ${minutes} 分钟重新 Spot',
+			'loggingControls.spotAutoNext' => ({required Object time}) => '${time} 后自动 Spot。停止？',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => '${minutes} 分后自动',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '${seconds} 秒后自动',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => '${seconds} 秒后自动',
+			'loggingControls.spotAutoNotStarted' => '自动重新 Spot 未启动：Spot 未成功发送',
+			'loggingControls.spotAutoMoved' => '自动重新 Spot 未启动：Spot 时频率发生了变化',
+			'loggingControls.spotAutoStopped' => '自动重新 Spot 已停止',
+			'loggingControls.spotAutoLeftFreq' => '自动重新 Spot 已停止：频率已更改',
+			'loggingControls.spotAutoNoFreq' => '自动重新 Spot 已停止：电台未报告频率',
+			'loggingControls.spotBusy' => '另一个 Spot 仍在发送中',
 			'loggingControls.bandOrFreqRequired' => '记录前请设置频率或频段',
 			'loggingControls.missingBand' => '无频段',
 			'loggingControls.missingMode' => '无模式',
 			'loggingControls.saveFailed' => ({required Object error}) => '无法保存：${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => '无法删除：${error}',
-			'loggingControls.info.noQsos' => '尚未有 QSO… 让我们开始上线吧！',
+			'loggingControls.info.noQsos' => '还没有 QSO…开始通联吧！',
 			'loggingControls.info.qsoCountOne' => '1 个 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} 个 QSO',
-			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 内 ${count} 个',
+			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 内 ${count}',
 			'loggingControls.info.sinceLast' => ({required Object time}) => '距离上次 ${time}',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '最近 10 个：${rate} Q/h',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '最近 100 个：${rate} Q/h',
@@ -4407,6 +5571,7 @@ extension on TranslationsZh {
 			'loggingControls.info.noticeInvalidMode' => '模式错误',
 			'loggingControls.info.noticeInvalidBand' => '频段错误',
 			'loggingControls.info.noticeInvalidCategory' => '不可通联',
+			'loggingControls.info.noticeOverTime' => '超出时间',
 			'loggingControls.info.noticeWorkedBefore' => '曾通联',
 			'loggingControls.info.noticeNewPark' => '新公园',
 			'loggingControls.info.noticeNewSection' => '新分部',
@@ -4414,13 +5579,14 @@ extension on TranslationsZh {
 			'loggingControls.info.noticeMissingExchange' => '无交换',
 			'loggingControls.info.noticeInvalidExchange' => '交换错误',
 			'loggingControls.info.noticeUnknownEvent' => '未知活动',
+			'loggingControls.info.noticeIncompleteCall' => '呼号不完整——不计分',
 			'loggingControls.info.noticeOurGrid' => '设置我方网格',
 			'loggingControls.info.noticeRareCounty' => '稀有县！',
 			'loggingControls.info.noticeOurLocation' => '设置我方县',
 			'loggingControls.info.noticeShortGrid' => '网格太短',
 			'formChrome.untitled' => '（无标题）',
 			'formChrome.showMore' => '显示更多',
-			'formChrome.showAll' => '显示全部',
+			'formChrome.showAll' => '全部显示',
 			'formChrome.showFewer' => '显示更少',
 			'formChrome.defaults' => '默认',
 			'formChrome.search' => '搜索',
@@ -4437,7 +5603,8 @@ extension on TranslationsZh {
 			'formChrome.validationError' => ({required Object error}) => '验证错误：${error}',
 			'formChrome.transformationError' => ({required Object error}) => '转换错误：${error}',
 			'formChrome.actionError' => ({required Object error}) => '错误：${error}',
-			'formChrome.removeItem' => '移除',
+			'formChrome.removeItem' => '删除',
+			'formChrome.deleteItemTitle' => ({required Object name}) => '删除 ${name}？',
 			'formChrome.storageUnavailable' => '登录信息不可用',
 			'qsoEditForm.title' => '编辑 QSO',
 			'qsoEditForm.operatorCall' => '操作员',
@@ -4460,11 +5627,21 @@ extension on TranslationsZh {
 			'qsoEditForm.theirLat' => '纬度',
 			'qsoEditForm.theirLon' => '经度',
 			'qsoEditForm.theirPower' => '对方功率',
-			'qsoList.empty' => '还没有 QSO——去联络吧！',
+			'qsoList.empty' => '还没有 QSO——去通联吧！',
 			'qsoList.bandOrModeWarning' => '请确认您的频段和模式正确',
 			'qsoList.today' => '今天',
 			'qsoList.yesterday' => '昨天',
 			'qsoList.tomorrow' => '明天',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => '在日志中查找（${shortcut}）',
+			'qsoList.find.menuItemNoShortcut' => '在日志中查找',
+			'qsoList.find.hint' => 'QSO 编号或呼号',
+			'qsoList.find.noMatches' => '无匹配',
+			'qsoList.find.noOperationQsos' => '此操作中没有 QSO',
+			'qsoList.find.noPeriodQsos' => '此时段内没有 QSO',
+			'qsoList.find.outsideQsosOne' => '1 个此操作以外的 QSO',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} 个此操作以外的 QSO',
+			'qsoList.find.pastQsosOne' => '1 个过去的 QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} 个过去的 QSO',
 			'loggingPanel.stats' => '操作统计',
 			'loggingPanel.scoring' => '计分',
 			'loggingPanel.dxccEntities' => 'DXCC 实体',
@@ -4494,14 +5671,14 @@ extension on TranslationsZh {
 			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${n} 个 QSO', other: '${n} 个 QSO', ), 
 			'settings.title' => '设置',
 			'settings.language' => '语言',
-			'settings.languageSystem' => ({required Object language}) => '跟随系统设置 (${language})',
+			'settings.languageSystem' => ({required Object language}) => '跟随系统设置（${language}）',
 			'settings.theme.title' => '主题模式',
 			'settings.theme.system' => '跟随系统设置',
-			'settings.theme.light' => '明亮',
-			'settings.theme.dark' => '黑暗',
+			'settings.theme.light' => '浅色',
+			'settings.theme.dark' => '深色',
 			'settings.themeDescription.system' => '正在跟随系统设置',
-			'settings.themeDescription.light' => '保持明亮模式',
-			'settings.themeDescription.dark' => '保持黑暗模式',
+			'settings.themeDescription.light' => '始终使用浅色模式',
+			'settings.themeDescription.dark' => '始终使用深色模式',
 			'settings.fontScale' => '字体缩放',
 			'settings.fontScaleOpts.smallestMinusMinus' => '最小--',
 			'settings.fontScaleOpts.smallestMinus' => '最小-',
@@ -4580,6 +5757,11 @@ extension on TranslationsZh {
 			'settings.catServer.openAccess' => '开放访问',
 			'settings.catServer.openAccessOn' => '本地网络上的任何计算机都可以连接。',
 			'settings.catServer.openAccessOff' => '只有本计算机上的应用可以连接。',
+			'settings.catServer.allowTransmit' => '允许应用发射',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => '应用可以按下电台的 PTT，每次最长 ${minutes} 分钟。',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => '本地网络上任何计算机上的应用都可以按下电台的 PTT，每次最长 ${minutes} 分钟。',
+			'settings.catServer.allowTransmitOff' => '应用无法按下电台的 PTT。请使用 VOX 或它们自己的 PTT 设置。',
+			'settings.catServer.allowTransmitUnsupported' => 'Ham2K Logger 无法按下主 VFO 电台的 PTT，因此应用无法通过它发射。',
 			'settings.catServer.off' => '关闭。',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}，启动中…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} 在端口 ${port} 上。已连接客户端：${clients}。',
@@ -4588,12 +5770,58 @@ extension on TranslationsZh {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：另一个程序正在使用它，通常是 ${protocol} 本身。请关闭该程序或选择其他端口。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：此计算机不允许。请选择 1024 以上的端口。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…',
+			'settings.cluster.title' => 'DX 集群',
+			'settings.cluster.description' => '扩展用来发布和读取 Spot 的服务器，以操作员身份登录。',
+			'settings.cluster.connect' => '连接到集群',
+			'settings.cluster.connectOn' => '扩展在需要时连接到集群',
+			'settings.cluster.connectOff' => '不连接集群',
+			'settings.cluster.console' => '显示控制台',
+			'settings.cluster.consoleDescription' => '集群发送的内容，以及输入命令的地方',
+			'settings.cluster.consoleTitle' => '集群控制台',
+			'settings.cluster.consoleConnect' => '连接',
+			'settings.cluster.consoleDisconnect' => '断开',
+			'settings.cluster.consoleCommand' => '命令',
+			'settings.cluster.consoleEmpty' => '暂无内容。请连接，或等待扩展使用集群。',
+			'settings.cluster.consoleRetry' => ({required Object command}) => '正在重新发送：${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => '未发送：${command}（${reason}）',
+			'settings.cluster.server' => '集群服务器',
+			'settings.cluster.selectServer' => '选择服务器',
+			'settings.cluster.serverOther' => '其他',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => '尚未输入主机，因此 Spot 发往 ${node}',
+			'settings.cluster.customHost' => '服务器',
+			'settings.cluster.customPort' => '端口',
+			'settings.cluster.password' => '密码',
+			'settings.cluster.passwordDescription' => '仅在需要时填写',
+			'settings.cluster.passwordStored' => ({required Object node}) => '已保存 ${node} 的密码',
+			'settings.cluster.scrollback' => '保留行数',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} 行',
+			'settings.cluster.connection' => '连接',
+			'settings.cluster.statusIdle' => '未连接。扩展需要时会连接。点按以测试。',
+			'settings.cluster.statusConnecting' => ({required Object node}) => '正在连接 ${node}…',
+			'settings.cluster.statusConnected' => ({required Object call, required Object node}) => '已以 ${call} 身份连接到 ${node}。',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => '无法连接到 ${node}：${reason}',
+			'settings.cluster.statusUnsupported' => '网页版不可用。',
+			'settings.cluster.statusOff' => '已关闭。请开启“连接到集群”以使用。',
+			'settings.cluster.errors.noCall' => '没有可用于登录的操作员呼号',
+			'settings.cluster.errors.connectFailed' => '无法连接到该节点',
+			'settings.cluster.errors.needsPassword' => '该节点要求密码，但未保存密码',
+			'settings.cluster.errors.loginFailed' => '该节点不接受此登录',
+			'settings.cluster.errors.disconnected' => '该节点关闭了连接',
+			'settings.cluster.errors.timeout' => '该节点没有应答',
+			'settings.cluster.errors.off' => '“连接到集群”已关闭',
+			'settings.spotting.title' => 'Spot',
+			'settings.spotting.respotInterval' => '自动重新 Spot 间隔',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} 分钟',
+			'settings.spotting.autoRespotByDefault' => '默认自动重新 Spot',
+			'settings.spotting.autoRespotByDefaultOn' => '发布任何 Spot 后启用自动重新 Spot',
+			'settings.spotting.autoRespotByDefaultOff' => '需用户手动启用自动重新 Spot',
+			'settings.spotting.pulseBeforeRespot' => '每次自动重新 Spot 前闪烁',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => '每次重新 Spot 前的 ${seconds} 秒内，Spot 标签会闪烁蓝色',
+			'settings.spotting.pulseBeforeRespotOff' => '自动重新 Spot 前不闪烁',
 			'settings.radio.title' => 'CAT 控制',
 			'settings.radio.loggingAndCat' => '记录与 CAT',
 			'settings.radio.tuningSection' => '调谐',
-			'settings.radio.keyerSection' => '电键',
-			_ => null,
-		} ?? switch (path) {
+			'settings.radio.keyerSection' => '键控器',
 			'settings.radio.servicesSection' => '服务',
 			'settings.radio.stationConfigurationSection' => '电台配置',
 			'settings.radio.moreSettings' => '更多电台配置设置',
@@ -4601,6 +5829,14 @@ extension on TranslationsZh {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => '用键盘控制 PTT',
+			'settings.radio.pttKey.modes.off' => '否',
+			'settings.radio.pttKey.modes.toggle' => '切换',
+			'settings.radio.pttKey.modes.hold' => '按住',
+			'settings.radio.pttKey.descriptions.off' => '键盘不会按下电台的 PTT。',
+			'settings.radio.pttKey.descriptions.toggle' => '在话音模式下，按 PTT 键使电台发射，再按一次停止发射。一分钟后会自动停止。',
+			'settings.radio.pttKey.descriptions.hold' => '在话音模式下，按住 PTT 键期间电台发射，最长一分钟。',
+			'settings.radio.pttKey.key' => 'PTT 键',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => '正在发射',
 			'settings.radio.smartVfoSnap.title' => '智能 VFO 吸附',
@@ -4622,14 +5858,14 @@ extension on TranslationsZh {
 			'settings.radio.enterSends.run' => 'Run',
 			'settings.radio.enterSends.sp' => 'S&P',
 			'settings.radio.enterSends.semantics' => ({required Object state}) => '回车发送消息：${state}。点按以更改。',
-			'settings.radio.keyerSpeed.title' => '电键速度',
+			'settings.radio.keyerSpeed.title' => '键控速度',
 			'settings.radio.keyerSpeed.unit' => 'WPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
-			'settings.radio.cwMessages.title' => 'CW 电键消息',
+			'settings.radio.cwMessages.title' => 'CW 键控消息',
 			'settings.radio.cwMessages.notSupported' => '当前电台不支持 CW 键控',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => '消息 (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => '消息 ${n}',
 			'settings.radio.cwMessages.labelField' => '标签',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} 标签',
 			'settings.radio.cwMessages.details' => '详情',
@@ -4643,7 +5879,10 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM 消息',
 			'settings.radio.cwMessages.setSaved' => '我的消息',
-			'settings.radio.cwMessages.repeat' => '重复消息 #1',
+			'settings.radio.cwMessages.repeat' => '重复消息 1',
+			'settings.radio.cwMessages.repeatShort' => '重复 M1',
+			'settings.radio.cwMessages.cooldown' => '重复前的冷却时间',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} 秒',
 			'settings.radio.cwMessages.repeatWait' => '重复中',
 			'settings.radio.cwMessages.keyboard' => '键入发送',
 			'settings.radio.cwMessages.keyboardField' => '键入发送',
@@ -4651,8 +5890,8 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.helpTitle' => '编写 CW 消息',
 			'settings.radio.cwMessages.helpIntro' => '消息可以使用包含以下值的模板：',
 			'settings.radio.cwMessages.helpOpCall' => '您的呼号',
-			'settings.radio.cwMessages.helpQsoCall' => '对方呼号——在 // 堆栈中，为将要记录的呼号',
-			'settings.radio.cwMessages.helpQsoFullCall' => '对方呼号（如为有效呼号）；部分呼号时为空',
+			'settings.radio.cwMessages.helpQsoCall' => '对方的呼号——在 // 堆栈中，为将要记录的呼号',
+			'settings.radio.cwMessages.helpQsoFullCall' => '对方的呼号（如为有效呼号）；部分呼号时为空',
 			'settings.radio.cwMessages.helpQsoPartial' => '部分呼号；如为完整有效呼号则为空',
 			'settings.radio.cwMessages.helpQsoNextCall' => '在 // 堆栈中，接下来将被选中记录的呼号（如为有效完整呼号）',
 			'settings.radio.cwMessages.helpQsoNextPartial' => '在 // 堆栈中，记录当前通联后的下一个部分呼号',
@@ -4669,15 +5908,19 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.helpEsmIntro' => '开启“回车发送消息”后，回车会按功能键发送消息，与 N1MM 相同。ESM 消息组默认包含以下内容：',
 			'settings.radio.cwMessages.helpEsmCq' => 'Run 模式下，呼号字段为空时按回车呼叫 CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => '您的交换信息：Run 模式下在对方呼号之后发送，S&P 模式下在对方回应后发送',
-			'settings.radio.cwMessages.helpEsmThanks' => '致谢，在通联记录后发送：其中的占位符指向下一个通联，而不是本次通联',
+			'settings.radio.cwMessages.helpEsmThanks' => '致谢，在通联记录后发送：qso 为已记录的通联，next 为接下来的通联',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'S&P 模式下，向您回应的电台发送您的呼号',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Run 模式下，在交换信息前发送对方呼号',
 			'settings.radio.cwMessages.helpEsmAgain' => '未抄收到对方任何交换信息时请求重发',
-			'settings.radio.cwMessages.helpEsmStackThanks' => '建议用于 // 堆栈的 F3：TU 在通联记录后发出，因此先致谢，再呼叫堆栈中的下一个电台并发送您的交换信息，或回询部分呼号（TU KR?）；如果没有剩余，则只发 TU',
-			'settings.radio.voiceMessages.title' => '话音电键消息',
+			'settings.radio.cwMessages.helpEsmStackThanks' => '建议用于 // 堆栈的 F3：先致谢，再呼叫堆栈中的下一个电台并发送您的交换信息，或回询部分呼号（TU KR?）；如果没有剩余，则只发 TU',
+			'settings.radio.keyerControl.label' => '键控器',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => '语音',
+			'settings.radio.voiceMessages.title' => '话音消息',
 			'settings.radio.voiceMessages.notSupported' => '当前电台不支持话音消息',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '语音存储 (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => '语音存储 ${n}',
 			'settings.radio.voiceMessages.labelField' => '标签',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => '语音存储 ${n} 标签',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
@@ -4686,9 +5929,9 @@ extension on TranslationsZh {
 			'settings.radio.voiceMessages.playButton' => '播放',
 			'settings.radio.voiceMessages.recordButton' => '录制',
 			'settings.radio.voiceMessages.stopButton' => '停止',
-			'settings.radio.voiceMessages.repeat' => '重复消息 #1',
+			'settings.radio.voiceMessages.repeat' => '重复消息 1',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} 说明：',
-			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度归该设备所有。',
+			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => '这些存储位于 ${device} 的电台中。其名称和长度属于该设备。',
 			'settings.radio.voiceMessages.namedOnRadio' => '保存在电台中，电台的其他客户端也能看到。',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => '等待电台上出现 [REC] 指示，然后按住 PTT 按钮录制您的消息。松开 PTT 之前，先按本应用中的 STOP 按钮结束录制，以避免多余的咔嗒声。',
 			'settings.radio.voiceMessages.recordHelpFt891' => '等待 [REC] 指示至少闪烁四次，然后按住 PTT 按钮录制您的消息。松开 PTT 之前，先按本应用中的 STOP 按钮结束录制，以避免多余的咔嗒声。',
@@ -4701,9 +5944,83 @@ extension on TranslationsZh {
 			'settings.radio.voiceMessages.recording' => '录制中…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '正在播放 ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '正在录制 ${label}',
-			'settings.radio.voiceMessages.doubtful' => '电台播放了吗？它立即报告为空闲。',
-			'settings.radio.voiceMessages.recordOnRadio' => '必须在电台本身上录制存储。',
-			'settings.radio.avoidZeroBeat.title' => '避免在信号上零差拍',
+			'settings.radio.voiceMessages.doubtful' => '电台播放了吗？它立刻就报告为空闲。',
+			'settings.radio.voiceMessages.recordOnRadio' => '存储必须在电台本身上录制。',
+			'settings.radio.voiceMessages.sets' => '消息组',
+			'settings.radio.voiceMessages.soundFilesSet' => '本计算机上的声音文件',
+			'settings.radio.voiceMessages.openFileButton' => '打开文件',
+			'settings.radio.voiceMessages.newSet' => '新建消息组',
+			'settings.radio.voiceMessages.renameSet' => '重命名消息组',
+			'settings.radio.voiceMessages.deleteSet' => '删除消息组',
+			'settings.radio.voiceMessages.newSetName' => '名称',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '删除 ${name} 及其录音？此操作无法撤销。',
+			'settings.radio.voiceMessages.output' => '音频输出到',
+			'settings.radio.voiceMessages.input' => '录音来源',
+			'settings.radio.voiceMessages.outputRadio' => '通过网络发送到电台',
+			'settings.radio.voiceMessages.inputDefault' => '系统默认',
+			'settings.radio.voiceMessages.pickDevice' => '选择声音设备',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name}（未连接）',
+			'settings.radio.voiceMessages.lead' => '发射前延迟',
+			'settings.radio.voiceMessages.tail' => '发射后延迟',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => '试听',
+			'settings.radio.voiceMessages.notRecorded' => '未录制',
+			'settings.radio.voiceMessages.unplayable' => '无法播放此文件',
+			'settings.radio.voiceMessages.problemNoOutput' => '播放消息前，请先选择向电台送音频的声音设备。',
+			'settings.radio.voiceMessages.problemOutputMissing' => '向电台送音频的声音设备未连接。',
+			'settings.radio.voiceMessages.problemInputMissing' => '录音设备未连接。',
+			'settings.radio.voiceMessages.problemDeviceFailed' => '无法打开声音设备。',
+			'settings.radio.voiceMessages.problemNotRecorded' => '该消息尚无录音。',
+			'settings.radio.voiceMessages.problemRecordingSilent' => '录音设备没有录到任何声音，消息保持原样。请检查输入设备，并确认允许本应用使用麦克风。',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => '电台目前没有从本应用获取音频。需要与电台建立网络连接。',
+			'settings.radio.voiceMessages.problemSourceRefused' => '电台不肯将发射音频切换到本应用，因此消息已停止。请将电台设置为发射本应用的音频。',
+			'settings.radio.voiceMessages.problemCannotKey' => '此电台无法通过 CAT 按下 PTT，因此计算机无法向其播放消息。',
+			'settings.radio.voiceMessages.problemUnplayable' => '该消息的文件不是本应用能播放的声音文件。请使用 WAV、FLAC 或 MP3 文件，或重新录制。',
+			'settings.radio.voiceMessages.problemRecordingFailed' => '录音被中断，消息保持原样。请检查录音设备是否仍已连接，以及磁盘是否有空间。',
+			'settings.radio.voiceMessages.problemFileFailed' => '录音无法保存到该消息的位置，消息保持原样。',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => '该消息需要您尚未录制的词语：${words}。',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => '该消息的模板有问题：${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => '用您的话语说出的消息只能在操作中播放，因为那里才有可以为之说话的通联。',
+			'settings.radio.voiceMessages.problemNothingSaid' => '该消息对此通联没有可说的内容。',
+			'settings.radio.voiceMessages.templateField' => '用我的话语说出',
+			'settings.radio.voiceMessages.templateHelp' => '留空则播放录音。否则，消息会用您录制的词语说出，并按每个通联填入以下值：',
+			'settings.radio.voiceMessages.help' => '帮助',
+			'settings.radio.voiceMessages.helpTitle' => '用您的话语说出消息',
+			'settings.radio.voiceMessages.helpFullExample' => '完整消息：',
+			'settings.radio.voiceMessages.helpExample' => '对方的呼号、对方的报告，以及您录制的“QSL?”',
+			'settings.radio.voiceMessages.playOnRadio' => '在电台上播放',
+			'settings.radio.voiceMessages.templateHelpCall' => '对方的呼号',
+			'settings.radio.voiceMessages.templateHelpReport' => '您给对方的报告',
+			'settings.radio.voiceMessages.templateHelpMessage' => '消息 2 的录音，按原样播放',
+			'settings.radio.voiceMessages.voiced' => '用您的话语说出',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => '内容：${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => '尚未录制：${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => '打开一个操作以查看它会说什么。',
+			'settings.radio.voiceMessages.wordsDescription' => '用您自己的声音说出呼号、数字等。',
+			'settings.radio.voiceWords.title' => '词语录音',
+			'settings.radio.voiceWords.callField' => '操作员的词语',
+			'settings.radio.voiceWords.intro' => '每个词或数字连续快速录三遍，就像您念呼号时那样。较长的短语只录一遍。',
+			'settings.radio.voiceWords.recordAll' => '全部录制',
+			'settings.radio.voiceWords.recordAllGuide' => '每个词连着读三遍，几个词的短语读一遍，每行之间换口气。最后一个读完后按停止。',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '说“${word} ${word} ${word}”，然后按停止。',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '说“${words}”，然后按停止。',
+			'settings.radio.voiceWords.recorded' => '已录制',
+			'settings.radio.voiceWords.notRecorded' => '未录制',
+			'settings.radio.voiceWords.addPhrase' => '添加短语',
+			'settings.radio.voiceWords.phraseField' => '短语，按您在消息中书写的形式',
+			'settings.radio.voiceWords.deletePhrase' => '删除短语',
+			'settings.radio.voiceWords.tryField' => '试说',
+			'settings.radio.voiceWords.pauseLetters' => '字母间停顿',
+			'settings.radio.voiceWords.pauseWords' => '词语间停顿',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => '速度',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => '高级设置',
+			'settings.radio.voiceWords.splitSilent' => '录音中没有听到任何声音。',
+			'settings.radio.voiceWords.splitNotThreeTakes' => '找不到三遍读音。请把这个词连着说三遍，然后重试。',
+			'settings.radio.voiceWords.splitLineCount' => '未能在录音中找到每个词。请每个词读三遍，词与词之间换口气。',
+			'settings.radio.voiceWords.splitLinesTooClose' => '无法区分各个词。请在词与词之间留更长的停顿。',
+			'settings.radio.avoidZeroBeat.title' => '避免与信号零差拍',
 			'settings.radio.avoidZeroBeat.descriptionOn' => '连接电台时，调谐到偏离 CW 信号几 Hz 的位置，这样回应它的人不会都在同一音调上呼叫。',
 			'settings.radio.avoidZeroBeat.descriptionOff' => '精确调谐到信号频率。',
 			'settings.radio.zeroBeatRange.title' => '零差拍：规避范围',
@@ -4723,20 +6040,31 @@ extension on TranslationsZh {
 			'settings.help.contact' => '联系我们',
 			'settings.help.contactDescription' => 'help@ham2k.com——但请先尝试使用论坛或聊天！',
 			'settings.exports.title' => '导出',
+			'settings.extensionSections.activities' => '活动',
+			'settings.extensionSections.hunting' => '猎取',
+			'settings.extensionSections.contests' => '竞赛',
+			'settings.extensionSections.lookups' => '查询',
+			'settings.extensionSections.dashboard' => '仪表板',
 			'settings.map.title' => '地图',
 			'settings.map.style.title' => '地图样式',
+			'settings.map.showCallsigns.title' => '显示呼号',
+			'settings.map.showCallsigns.description' => '每个通联显示为一个带呼号的标签，颜色为其频段的颜色',
+			'settings.map.showGrayline.title' => '显示灰线',
+			'settings.map.showGrayline.description' => '为地球的夜侧加上阴影，晨昏以渐变显示',
 			'settings.map.styleOpts.automatic' => '自动',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '隐私',
 			'settings.privacy.shareAppData.title' => '分享应用使用数据',
-			'settings.privacy.shareAppData.descriptionOn' => '共享使用情况、配置、崩溃和性能数据，帮助我们改进应用',
+			'settings.privacy.shareAppData.descriptionOn' => '分享使用情况、配置、崩溃和性能数据，帮助我们改进应用',
 			'settings.privacy.shareAppData.descriptionOff' => '保持应用使用数据私密。\nHam2K 团队将无法检测崩溃或其他问题。',
-			'settings.privacy.shareOpData.title' => '共享操作数据',
-			'settings.privacy.shareOpData.descriptionOn' => '公开并与其他用户共享部分操作数据',
+			'settings.privacy.shareOpData.title' => '分享操作数据',
+			'settings.privacy.shareOpData.descriptionOn' => '公开并与其他用户分享部分操作数据',
 			'settings.privacy.shareOpData.descriptionOff' => '保持操作数据私密',
 			'settings.privacy.privacyPolicy' => '隐私政策',
 			'settings.privacy.termsOfService' => '服务条款',
@@ -4841,7 +6169,7 @@ extension on TranslationsZh {
 			'settings.syncPanel.authIssueTitle' => '同步无法连接',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer 一直拒绝此设备。请在同步设置中检查您的呼号。',
 			'settings.syncPanel.openSettings' => '打开同步设置',
-			'settings.accounts.title' => '账户、服务和数据源',
+			'settings.accounts.title' => '账户、服务与数据源',
 			'settings.accounts.none' => '没有带账户的活动扩展',
 			'settings.accounts.notConfigured' => '未配置',
 			'settings.accounts.connected' => '已连接',
@@ -4932,13 +6260,28 @@ extension on TranslationsZh {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => '端口 ${n} / ${total}',
 			'settings.station.serialPortSuggested' => '建议',
 			'settings.station.serialPortJustNow' => '最近连接',
+			'settings.station.serialPortNoDriver' => '无驱动',
 			'settings.station.serialDeviceRequest' => '添加 USB 设备…',
+			'settings.station.bleDevice' => '低功耗蓝牙设备',
+			'settings.station.bleDeviceDescription' => '您的电台所连接的串口桥接器，例如处于模式 4 的 LiNK500MP 或 BLE 串口适配器。',
+			'settings.station.bleScan' => '扫描低功耗蓝牙设备…',
+			'settings.station.bleScanNoneFound' => '未找到低功耗蓝牙设备。请检查桥接器已开机、就在附近，并处于低功耗蓝牙模式（LiNK500MP 上为模式 4）。',
+			'settings.station.bleScanFailed' => ({required Object reason}) => '无法运行低功耗蓝牙扫描：${reason}',
+			'settings.station.bleOff' => '蓝牙已关闭。',
+			'settings.station.bleDenied' => '未授予蓝牙权限。请在系统设置中允许，然后重试。',
+			'settings.station.bleUnsupported' => '此设备没有低功耗蓝牙。',
+			'settings.station.bleStarting' => '蓝牙仍在启动中。请稍后重试。',
+			'settings.station.bleConnectFailed' => '无法连接低功耗蓝牙设备。请检查它已开机、就在附近，且未连接到其他应用。',
+			'settings.station.bleNoSerialService' => ({required Object services}) => '此低功耗蓝牙设备没有本应用能识别的串口服务。请连同其服务一起报告：${services}',
 			'settings.station.baudRate' => '速率（波特）',
 			'settings.station.baudRateDescription' => '必须与电台的 CAT 菜单一致。不一致时，电台会返回乱码且不报错。',
 			'settings.station.serialRtsHigh' => '保持 RTS 为高',
 			'settings.station.serialRtsHighDescription' => '仅适用于响应前等待 RTS 的电台，例如开启了 CAT RTS 的 Yaesu。在 Digirig、SignaLink 和大多数自制线缆上，RTS 就是 PTT，保持为高会导致发射。',
 			'settings.station.serialDtrHigh' => '保持 DTR 为高',
 			'settings.station.serialDtrHighDescription' => '仅适用于从 DTR 取电的 CAT 接口，例如某些用于 FT-817 的 RS-232 线缆。在许多线缆上 DTR 用于 CW 键控或 PTT，保持为高会导致发射。',
+			'settings.station.serialUsbDriver' => 'USB 芯片驱动',
+			'settings.station.serialUsbDriverDescription' => '自动可识别大多数适配器。只有端口列表显示无驱动时才选择芯片——其包装或 USB 设备列表会注明芯片型号。',
+			'settings.station.serialUsbDriverAuto' => '自动',
 			'settings.station.civAddress' => '电台 CI-V 地址',
 			'settings.station.civAddressDescription' => '十六进制，与电台 CI-V 菜单中显示的一致。IC-705 出厂为 A4。',
 			'settings.station.civAddressInvalid' => 'CI-V 地址为两位十六进制数，01 到 FF',
@@ -4959,16 +6302,50 @@ extension on TranslationsZh {
 			'settings.station.spectrumNoPanadapter' => '此 Slice 在电台上没有全景显示',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => '电台拒绝了 DAX IQ 流（错误 ${code}）',
 			'settings.station.spectrumNoUdp' => '电台的频谱数据无法到达此设备',
+			'settings.station.spectrumK4Unavailable' => '无法接收 K4 的 LAN 频谱。正在重试…',
+			'settings.station.spectrumK4RemoteUnavailable' => '无法接收 K4 的远程频谱',
 			'settings.station.spectrumScopeRefused' => '电台拒绝了频谱仪命令',
 			'settings.station.spectrumOutOfRange' => '电台的频谱仪设置超出了可显示的范围',
+			'settings.station.spectrumBandUnsupported' => '电台的频谱仪无法在此频段显示',
+			'settings.station.spectrumSdrNoRadio' => '等待所链接电台的频率…',
+			'settings.station.spectrumSdrNotConnected' => 'SDR 未连接',
+			'settings.station.spectrumSdrNoIf' => '请在此 SDR 的设置中设置电台的中频频率',
+			'settings.station.sdrRadio' => '为以下电台显示频谱',
+			'settings.station.sdrRadioDescription' => '此电台上的频谱显示取自此接收机，而不是电台自带的频谱仪。',
+			'settings.station.sdrRadioMain' => '主电台',
+			'settings.station.sdrTuning' => '天线输入',
+			'settings.station.sdrTuningDescription' => '接收机的信号来源。接在自己的天线上时，它会自行调谐以跟随电台；接在电台的中频输出上时，它停留在中频上。',
+			'settings.station.sdrTuningIndependent' => '自己的天线',
+			'settings.station.sdrTuningIfTap' => '电台的中频输出',
+			'settings.station.sdrIfHz' => '中频频率（Hz）',
+			'settings.station.sdrIfHzDescription' => '仅用于中频输出：电台当前频率在其中频上所处的频率，例如 FT-817 上的 68330000。',
+			'settings.station.sdrIfInverted' => '中频反转',
+			'settings.station.sdrGainDb' => '增益（dB）',
+			'settings.station.sdrGainDbDescription' => '留空则使用接收机的自动增益。',
+			'settings.station.sdrOffsetHz' => '频率偏移（Hz）',
+			'settings.station.sdrOffsetHzDescription' => '加到发送给接收机的每个频率上，用于上变频器：Ham It Up 为 125000000。',
+			'settings.station.sdrPpm' => '频率校正（ppm）',
+			'settings.station.rtlDirectSampling' => '直接采样',
+			'settings.station.rtlDirectSamplingDescription' => '用于没有上变频器的 RTL-SDR V3 接收 HF。RTL-SDR V4 不需要它即可接收 HF。',
+			'settings.station.rtlDirectSamplingOff' => '关闭',
+			'settings.station.rtlDirectSamplingI' => 'I 支路',
+			'settings.station.rtlDirectSamplingQ' => 'Q 支路',
+			'settings.station.rtlTcpNotAServer' => '这不是 rtl_tcp 服务器',
+			'settings.station.rtlTcpNotes' => '此项连接到您**自己运行的 rtl_tcp 服务器**，该服务器运行在插着接收棒的计算机上。\n\n- **启动它**时使用 `rtl_tcp -a 0.0.0.0`，以便其他机器能访问；在同一台机器上，只用 `rtl_tcp` 即可。\n- **端口**为 1234，除非您启动时用 `-p` 另行指定。\n- **一次只能一个程序：**rtl_tcp 只服务一个客户端。本应用只在显示频谱时连接，并在关闭后几秒钟释放。\n- **在 Android 上**，*SDR driver* 应用在手机上运行同样的服务器。',
+			'settings.station.rspTcpNotes' => '此项连接到您**自己运行的 rsp_tcp 服务器**，该服务器运行在插着 RSP 且安装了 SDRplay API 的计算机上。\n\n- **启动它**时使用 `rsp_tcp -a 0.0.0.0`。\n- **端口**为 1234，除非您启动时用 `-p` 另行指定。\n- **一次只能一个程序：**该服务器只接受一个客户端。本应用只在显示频谱时连接。',
 			'settings.station.n3fjpNoRig' => 'N3FJP 未设置电台接口，因此这里跟随的是在 N3FJP 中输入的内容，而不是电台',
 			'settings.station.winkeyerKeyPort' => '键控输出',
-			'settings.station.winkeyerKeyPortDescription' => '您的电台插在电键器两个输出插孔中的哪一个。',
+			'settings.station.winkeyerKeyPortDescription' => '您的电台插在键控器两个输出插孔中的哪一个。',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => '端口 ${n}',
-			'settings.station.winkeyerPtt' => '使用电键器的 PTT',
+			'settings.station.winkeyerPtt' => '使用键控器的 PTT',
 			'settings.station.winkeyerPttDescription' => '在同一插孔上键控 PTT 线，用于需要它的功放或电台。如电台通过其电键插孔键控，请保持关闭。',
 			'settings.station.winkeyerNoAnswer' => '此端口上没有 WinKeyer 响应',
 			'settings.station.winkeyerStoppedAnswering' => 'WinKeyer 在发送时停止响应；该消息已丢弃',
+			'settings.station.icomControlPort' => '控制端口（UDP）',
+			'settings.station.icomControlPortDescription' => '电台的 Control Port (UDP)——除非在其网络设置中更改或转发到其他端口，否则为 50001。',
+			'settings.station.icomSerialPort' => '串口（UDP）',
+			'settings.station.icomSerialPortDescription' => '电台的 Serial Port (UDP)——除非在其网络设置中更改或转发到其他端口，否则为 50002。',
+			'settings.station.icomPortsDiffer' => '控制端口和串口必须不同',
 			'settings.station.radioUser' => '电台用户名',
 			'settings.station.radioPass' => '电台密码',
 			'settings.station.radioLoginDescription' => '电台的 Network → Remote 登录信息，不是您的 WiFi 密码。',
@@ -4976,8 +6353,10 @@ extension on TranslationsZh {
 			'settings.station.connectFailedBusy' => '设备正在使用中',
 			'settings.station.connectFailedDenied' => '访问被拒绝',
 			'settings.station.connectFailedDevice' => '未找到设备',
+			'settings.station.connectFailedUnsupported' => '没有驱动能识别此 USB 适配器的芯片。如果您知道是哪种芯片，请在高级设置的 USB 芯片驱动中选择。',
 			'settings.station.connectFailedLines' => '无法按设置保持 RTS/DTR，因此已关闭端口。可能有其他程序开启了硬件握手——请拔下线缆后重新插入。',
 			'settings.station.connectFailedNetwork' => '无法通过网络找到电台。请检查其地址，并确认它已开机且可访问。',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => '此设备上的端口 ${port} 已被占用，而应答会到达该端口。请关闭其他监听该端口的程序——包括另一个 PstRotator 节点——或更改端口。',
 			'settings.station.connectFailedTimeout' => '电台未及时响应。请确认它已开机且可访问。',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsZh {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - 通用',
 			'settings.station.models.icomGeneric' => 'Icom - 通用',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - 通用',
@@ -4997,6 +6385,8 @@ extension on TranslationsZh {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - 通用',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsZh {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => '通过 rigctld 控制的电台',
@@ -5028,34 +6422,64 @@ extension on TranslationsZh {
 			'settings.station.models.placeholderRadioNodeName' => '我的电台',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 同轴开关',
+			'settings.station.models.gs232a' => 'Yaesu GS-232A 旋转器接口',
+			'settings.station.models.pstRotator' => 'PstRotator（UDP 控制）',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => '网络/WiFi',
+			'settings.station.transports.secureNetwork' => '安全网络/WiFi',
 			'settings.station.transports.usbSerial' => 'USB 串口',
 			'settings.station.transports.wifi' => '网络/WiFi',
 			'settings.station.transports.bluetoothSerial' => '蓝牙串口',
+			'settings.station.transports.bleSerial' => '低功耗蓝牙',
 			'settings.station.transports.placeholder' => '占位',
 			'settings.station.troubleshootingTitle' => '如果电台已连接但不显示频率',
-			'settings.station.ft891Troubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **电台上的 CAT RTS 必须为 OFF**（FT-891 菜单 **05-08**）。开启时，电台会等待一条握手线，而应用将其保持为低。在 Digirig、SignaLink 或大多数自制线缆上，这条线就是 PTT，拉高它会让发射机发射。如使用电台自带的 USB 端口，可改为在高级设置中开启 **保持 RTS 为高**。\n- **速率必须与电台的 CAT RATE 一致**（菜单 **05-06**）。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
+			'settings.station.ft891Troubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **在电台上关闭 CAT RTS，或开启“保持 RTS 为高”。** 当 **CAT RTS** 开启时（FT-891 菜单 **05-08**），只要 RTS 为低，电台就保持沉默——它可能在端口打开时应答一次，然后再无回应。选择电台自带的 USB 端口会自动开启高级设置中的 **保持 RTS 为高**。在 Digirig、SignaLink 或大多数自制线缆上，RTS 就是 PTT，保持为高会让您的发射机发射：此时应改为在电台上关闭 CAT RTS。\n- **速率必须与电台的 CAT RATE 一致**（菜单 **05-06**）。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => '如果电台已连接但不显示频率',
 			'settings.station.yaesuBinaryTroubleshooting' => '此电台使用 Yaesu 较早的五字节 CAT 协议，只要有任何问题就完全不响应。几乎总是以下原因之一：\n\n- **线缆必须转换电平。** 背面的 CAT 插孔既不是 RS-232 也不是 USB；需要 CT-62 或同等适配器。普通音频线或数据线无法用于 CAT。\n- **速率必须与电台的 CAT RATE 菜单一致**（FT-817 上为 **#14**，FT-857 或 FT-897 上为 **#19**）。不一致时，电台什么都不返回，而且从不报错。\n- **绝不要让任何程序拉高此端口的 RTS 或 DTR。** 在这些电台的大多数线缆上，这两条线用于 PTT 和键控。例外是由 DTR 供电的老式接口：对于这种接口，请在高级设置中开启 **保持 DTR 为高**。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此驱动根据 Yaesu 公布的 CAT 表编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。',
+			'settings.station.tenTecTroubleshootingTitle' => '如果电台已连接但不显示频率',
+			'settings.station.tenTecEagleTroubleshooting' => '- **背面的 USB-B 端口就是 CAT 连接。** 电台会显示为一个 USB 串口；在 Windows 上需要 Ten-Tec 的 USB to UART 驱动，它在设备管理器中显示为 "USB to UART (COMx)"。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开，Ten-Tec 的固件更新程序也是。\n- **从应用设置滤波器宽度后，BW 旋钮会失去控制**，直到电台关机再开机。这是电台本身的工作方式。\n\n此驱动根据 Ten-Tec 的编程参考指南编写。如果它只部分可用，非常值得报告，并附上电台菜单中的固件版本。',
+			'settings.station.tenTecOrionTroubleshooting' => '- **使用直通 DB-9 串口线**连接 SERIAL DATA 端口，不要用交叉（null-modem）线。\n- **此条目保持 RTS 为高**，因为 Orion 使用 RTS 和 CTS 作为握手。在通过 RTS 键控 PTT 的接口（如 Digirig）上，请在高级设置中关闭“保持 RTS 为高”，否则应用一连接电台就会发射。\n- **从应用发送 CW 需要开启电台的内置键控器。** 关闭时，电台会忽略应用发送的内容。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此驱动根据 Ten-Tec 的编程参考指南编写，尚未在 Orion 上实际运行过。如果它只部分可用，非常值得报告，并附上电台菜单中的固件版本。',
+			'settings.station.tenTecNoCw' => '此电台的固件不接受来自应用的 CW。Ten-Tec 在 Orion 固件 1.366 中加入了此功能。',
+			'settings.station.tenTecKeyerOff' => '电台的内置键控器已关闭，因此会忽略应用发送的 CW。请在电台菜单中开启键控器。',
 			'settings.station.guohetecTroubleshootingTitle' => '如果电台已连接但不显示频率',
 			'settings.station.guohetecTroubleshooting' => 'Q900 有两种 CAT 协议，此条目使用其原生协议，而不是模仿 FT-817 的协议。请在此选择 **Guohetec Q900**，而不是 FT-817——模仿协议支持的命令更少，而且电台不会说明它正在使用哪一种。\n\n- **USB-C 线就是 CAT 连接**，它同时也连接声卡。在这条线上速率无关紧要；端口会忽略所设置的任何值。\n- **绝不要让任何程序拉高此端口的 RTS 或 DTR。** 在串口线上，这两条线用于 PTT 和键控。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **第二代电台的行为与第一代不同。** 长按 Menu，然后选择 About：HW 2.0 即为第二代。\n\n此驱动根据制造商公布的协议编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.yaesuTroubleshootingTitle' => '如果电台已连接但不显示频率',
 			'settings.station.yaesuTroubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而应用将其保持为低。在 Digirig、SignaLink 或大多数自制线缆上，这条线就是 PTT，拉高它会让发射机发射。如使用电台自带的 USB 端口，可改为在高级设置中开启 **保持 RTS 为高**。该设置的位置因型号而异（FT-891 上为菜单 **05-08**）。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **模式遵循 FT-891 的对照表。** 大多数 Yaesu 电台与之相符，但模式编号不同的电台在这些模式上会显示和设置错误的模式。频率不受影响。',
+			'settings.station.ftdx3000Troubleshooting' => '**菜单 037 CAT SELECT 必须设为 USB**，才能通过电台的 USB 端口使用 CAT；设为 RS232C 时，CAT 在背面的插孔上。\n\n此条目根据公开的 CAT 文档编写，尚未在 FTDX3000 上实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.yaesuRs232Troubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **CAT 插孔是 RS-232。** 需要 USB 转串口适配器和直通 DB-9 线缆——交叉（null-modem）线会交换信号线，电台将什么都收不到。\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而除非在高级设置中开启 **保持 RTS 为高**，应用会将其保持为低。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n此条目根据公开的 CAT 文档编写，尚未在这些电台上实际运行过。如果它只部分可用，非常值得报告。',
-			'settings.station.yaesuUsbTroubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **使用电台两个 USB 端口中的第一个。** CAT 通常在第一个端口上（Windows 上为 **Enhanced** COM 端口）；第二个（**Standard**）用于 PTT 和键控。只要能区分两者，端口选择器都会指向第一个。\n- **电台上的 CAT RTS 必须为 OFF。** 开启时，电台会等待一条握手线，而除非在高级设置中开启 **保持 RTS 为高**，应用会将其保持为低。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
-			'settings.station.k4SerialNotes' => '连接 K4 背面的 USB-B (PC) 插座。USB-PC1 或 USB-PC2 都可用于 CAT；请选择未使用的端口，并使其与电台上的 Serial USB-PCn: Baud Rate 设置一致。HaLo 预填为 38400；如有需要请更改。其他应用必须使用另一个端口或以太网。\n\n此连接控制电台及其电键器；不会向 HaLo 发送音频。',
-			'settings.station.k4TcpNotes' => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。这是 CAT 控制，不是端口 9204 上单独的远程音频连接。\n\nHaLo 控制电台及其电键器，不传输音频或全景显示数据。',
+			'settings.station.yaesuUsbTroubleshooting' => '电台正在接收命令，但没有响应。几乎总是以下原因之一：\n\n- **使用电台两个 USB 端口中的第一个。** CAT 通常在第一个端口上（Windows 上为 **Enhanced** COM 端口）；第二个（**Standard**）用于 PTT 和键控。只要能区分两者，端口选择器都会指向第一个。\n- **在电台上关闭 CAT RTS，或开启“保持 RTS 为高”。** 当电台的 **CAT RTS** 菜单开启时，只要 RTS 为低，电台就保持沉默——它可能在端口打开时应答一次，然后再无回应。选择电台自带的 USB 端口会自动开启高级设置中的 **保持 RTS 为高**。在 Digirig、SignaLink 或大多数自制线缆上，RTS 就是 PTT，保持为高会让您的发射机发射：此时应改为在电台上关闭 CAT RTS。\n- **速率必须与电台的 CAT RATE 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
+			'settings.station.k4SerialNotes' => '连接 K4 背面的 USB-B (PC) 插座。USB-PC1 或 USB-PC2 都可用于 CAT；请选择未使用的端口，并使其与电台上的 Serial USB-PCn: Baud Rate 设置一致。HaLo 预填为 38400；如有需要请更改。其他应用必须使用另一个端口或以太网。\n\n此连接控制电台及其键控器；不会向 HaLo 发送音频。',
+			'settings.station.k4TcpNotes' => '将 K4 的以太网插座连接到您的本地网络。输入其主机名或 IP 地址，以及 CAT 端口 9200。当显示全景或瀑布图时，HaLo 会使用同一主机上的固定端口 9201；更改 CAT 端口不会改变频谱端口。\n\n频谱显示的是主接收机。其缩放、参考电平调整和速度控制只影响 HaLo 的显示。不支持音频流。',
 			'settings.station.k4PowerTimeout' => 'K4 功率未更改，因为电台没有确认其输出范围。请重试。',
+			'settings.station.k4RemoteNotes' => '在您的 K4 上启用远程访问，并输入其网络密码。主接收机和副接收机共用一条加密连接，用于电台控制和频谱。默认端口为 9204；远程连接时请输入您转发的端口。\n\n不支持音频播放和麦克风流。',
+			'settings.station.k4Receiver' => '接收机',
+			'settings.station.k4ReceiverMain' => '主',
+			'settings.station.k4ReceiverSub' => '副',
+			'settings.station.k4ReceiverInvalid' => '请选择主或副',
+			'settings.station.k4ReceiverAlreadyConfigured' => '此 K4 已配置了该接收机',
+			'settings.station.k4SubReceiverOff' => 'K4 副接收机已关闭',
+			'settings.station.k4RemotePasswordRequired' => '请输入 K4 的网络密码以安全连接。',
+			'settings.station.k4RemoteHandshakeFailed' => 'K4 无法建立安全连接。请检查其网络密码和远程访问设置。',
+			'settings.station.k4RemoteUnreachable' => '无法访问 K4 的安全连接。请检查其地址、端口和远程访问设置。',
 			'settings.station.k4PowerRange' => 'K4 功率必须为 0.1–110 W；当变频器毫瓦输出启用时，必须为 0.0001–0.01 W。',
 			'settings.station.elecraftTroubleshootingTitle' => '如果电台已连接但不显示频率',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft 电台使用 Kenwood CAT 协议，KX2 和 KX3 都已用这种方式实测——VFO 双向同步、模式切换和 CW 零差拍均可正常工作。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台菜单中 **RS232** 下设置的速率一致。** 这些电台出厂为 38400。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n\n**如果频率正确但模式错误**，请告诉我们。KX2 和 KX3 条目从电台状态回复中的某个位置读取模式，这个位置是根据我们见过的电台确定的；如果某个固件把它放在别处，只有通过报告我们才能得知。\n\n目前还没有关于 K3 的任何报告，如果您在使用，请告诉我们结果。K4 有单独的条目。',
+			'settings.station.lab599TroubleshootingTitle' => '如果电台已连接但不显示频率',
+			'settings.station.lab599Troubleshooting' => 'TX-500 系列使用 Kenwood CAT 协议。频率和模式已通过 LiNK500MP 实测；功率和表头根据 Lab599 的 CAT 资料编写，因此无论结果如何，都请报告。\n\n- **速率必须与电台的 CAT 设置一致**，除非您更改过，否则为 9600。不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **在电台上选择 CAT 协议。** TS-2000 涵盖频率、模式和功率。LAB599 还允许应用将电台切换到 DIG、看到它在 DIG 下发射，并读取其供电电压。\n- **通过 LiNK500MP 时**，按住 VFO 旋钮约三秒，将 CAT 控制交给该接口。\n- **按连接方式设置 LiNK500MP 的模式**：蓝牙为模式 3，低功耗蓝牙为模式 4。在其他模式下，低功耗蓝牙扫描找不到它。\n- **通过蓝牙时**，LiNK500MP 会配对为两个串口，只有一个承载 CAT。如果电台保持沉默，请选择另一个。',
+			'settings.station.lab599TroubleshootingIos' => 'TX-500 系列使用 Kenwood CAT 协议。频率和模式已通过 LiNK500MP 实测；功率和表头根据 Lab599 的 CAT 资料编写，因此无论结果如何，都请报告。\n\n- **扫描前先将 LiNK500MP 设为模式 4**，即其低功耗蓝牙模式。在其他模式下，iPhone 或 iPad 找不到它。\n- **将 CAT 控制交给 LiNK500MP**：按住电台的 VFO 旋钮约三秒。\n- **在电台上选择 CAT 协议。** TS-2000 涵盖频率、模式和功率。LAB599 还允许应用将电台切换到 DIG、看到它在 DIG 下发射，并读取其供电电压。',
 			'settings.station.kenwoodTroubleshootingTitle' => '如果电台已连接但不显示频率',
-			'settings.station.kenwoodTroubleshooting' => '此驱动已在 Kenwood 的 TS-590SG 和 TS-480、QRP Labs 的 QMX 和 QCX-mini，以及 Elecraft 的 KX2 和 KX3 上验证。其余型号根据公开的 CAT 资料编写，因此无论结果如何，都请报告。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台的 CAT 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **某些电台需要先在菜单中启用 CAT**，否则完全不响应。\n\n**一些 SDR 前端也使用相同的协议**，因此对它们也值得尝试此条目；Elecraft 电台单独列在 Elecraft 下。如果频率正确但模式错误或缺失，这正是各型号之间唯一不同的部分——应用会根据电台推断模式，失败时再直接查询，因此模式可能只是稍有延迟。',
+			'settings.station.kenwoodTroubleshooting' => '此驱动已在 Kenwood 的 TS-590SG 和 TS-480、QRP Labs 的 QMX 和 QCX-mini，以及 Elecraft 的 KX2 和 KX3 上验证。其余型号根据公开的 CAT 资料编写，因此无论结果如何，都请报告。\n\n如果电台没有响应，几乎总是以下原因之一：\n\n- **速率必须与电台的 CAT 菜单一致。** 不一致时，电台会返回乱码或什么都不返回，而且从不报错。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。\n- **某些电台需要先在菜单中启用 CAT**，否则完全不响应。\n- **Kenwood 电台会等待 RTS**：其 CAT 端口将它用作握手信号，因此必须开启“保持 RTS 为高”（在高级设置中）。在它成为默认开启之前建立的连接可能处于关闭状态。在 Digirig 或其他通过 RTS 键控 PTT 的线缆上，请将其关闭，否则电台会发射。\n\n**一些 SDR 前端也使用相同的协议**，因此对它们也值得尝试此条目；Elecraft 电台单独列在 Elecraft 下。如果频率正确但模式错误或缺失，这正是各型号之间唯一不同的部分——应用会根据电台推断模式，失败时再直接查询，因此模式可能只是稍有延迟。',
 			'settings.station.statusConnected' => '已连接',
 			'settings.station.statusLost' => '已断开',
 			'settings.station.notConfigured' => '未配置',
 			'settings.station.currentConfiguration' => '当前配置',
 			'settings.station.currentTransceiver' => '当前收发信机',
+			'settings.station.currentTransceivers' => '当前收发信机',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}：${name}',
+			'settings.station.so2rQueueMessages' => '消息排队而不打断',
+			'settings.station.noRadioBSelected' => '未选择电台 B',
 			'settings.station.radioMode' => '电台模式',
 			'settings.station.keyerNotSupported' => '当前电台不支持',
 			'settings.station.catControlPreferences' => 'CAT 控制偏好',
@@ -5074,13 +6498,25 @@ extension on TranslationsZh {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} 位于另一台设备上',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '此电台连接在 ${device} 上。其连接和设置需在该设备上配置。',
 			'settings.station.antennaInUse' => '使用中的天线',
-			'settings.station.keyInUse' => '使用中的电键',
+			'settings.station.keyInUse' => 'CW 键控',
+			'settings.station.phoneKeying' => '话音键控',
+			'settings.station.phoneKeyingNone' => '无',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '${radio} 中的存储',
+			'settings.station.phoneKeyingComputer' => '本计算机的音频',
+			'settings.station.phoneKeyingOff' => '话音键控已关闭',
+			'settings.station.computerVoiceSettings' => '计算机音频',
+			'settings.station.cwKeyingOptions' => 'CW 键控选项',
 			'settings.station.noneSelected' => '无',
 			'settings.station.moreSettings' => '更多设置',
 			'settings.station.icomCivTroubleshootingTitle' => '如果同一台电台出现两个串口',
 			'settings.station.icomCivTroubleshooting' => '包括 IC-705 在内的多款 Icom 电台会同时提供**两个** USB 串口（Icom 称为 Port A 和 Port B），默认都设为 CI-V。除此之外，本应用和您的操作系统都无法区分它们：同一个 USB 厂商/产品 ID 只是出现两次，有时在这里会带有 `#2` 后缀。**通常 Port A 才是正确的**——一般是操作系统或浏览器列出的第一个，在本应用能区分两个端口时，会将其标记为建议。如果命令已发出而电台始终没有响应，请改试另一个端口。',
 			'settings.station.civAddressTroubleshootingTitle' => '如果电台始终没有响应',
 			'settings.station.civAddressTroubleshooting' => '- **CI-V 地址必须与电台菜单一致。** 此条目预填了该型号的出厂地址，但多台电台共用 CI-V 总线时，正是需要更改这个地址的情况。发往错误地址的帧会被静默忽略，看起来就像线缆坏了一样。\n- **速率必须与电台的 CI-V BAUD RATE 一致**（USB 上为 CI-V USB Baud Rate）。请将电台设为与此处显示相同的数值，**不要用 Auto**。设为 Auto 时，包括 IC-7300 在内的一些电台连接后大约一分钟就会停止响应。\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **CI-V 地址必须与电台菜单一致。** 此条目预填了该型号的出厂地址，但多台电台共用 CI-V 总线时，正是需要更改这个地址的情况。发往错误地址的帧会被静默忽略，看起来就像线缆坏了一样。\n${speed}\n- **其他应用可能占用了端口**：WSJT-X、fldigi 和 rigctld 都会保持端口打开。',
+			'settings.station.icomUsbSpeedFollows' => '- **没有速率需要设置。** 通过 USB 时，此电台使用计算机所用的任何速率通信，而此条目始终使用 115200，即频谱仪所需的速率。',
+			'settings.station.ic7610UsbSpeed' => '- **将 CI-V USB Baud Rate 设为 115200**，这是此条目始终使用的速率，因为频谱仪需要它——**不要用 Auto**。设为其他任何速率的电台都会以沉默回应。',
+			'settings.station.civTransceiveTitle' => '如果应用跟随电台较慢',
+			'settings.station.civTransceive' => '如果应用需要数秒才能显示在电台上所做的频率或模式更改，请开启电台的 **CI-V Transceive** 设置（在大多数现款机型上位于 SET > Connectors > CI-V）。开启后，电台会在每次更改发生时立即报告。关闭时，应用只能在下次查询（每隔几秒）时才看到更改。',
 			'settings.station.ic7300Mk2Note' => '\n- **IC-7300 MK2** 出厂地址为 `B6`，而不是此处预填的 `94`——请改选 IC-7300 MK2 条目。',
 			'settings.station.ic705PortNote' => '\n- **IC-705** 提供两个 USB 串口，都以电台名称命名。CI-V 在其中的**第一个**上，只要能区分两者，端口选择器都会指向它。',
 			'settings.station.ic7760PortNote' => '\n- **IC-7760** 在其提供的两个 USB 串口中的 **Port A** 上使用 CI-V。',
@@ -5090,13 +6526,14 @@ extension on TranslationsZh {
 			'settings.station.flrigTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.flrigTroubleshooting' => '这会连接到**您自行运行的 flrig 程序**，而不是直接连接电台——由 flrig 与电台通信，支持大多数品牌和型号。\n\n- **flrig 必须已在运行**，并已配置和连接其收发信机。\n- **端口**为 12345，除非您在 flrig 的配置中更改过（Config → Setup → Server）。\n- **从另一台计算机连接时**，请确保 flrig 的服务器可以访问。它监听所有网络接口，但您的防火墙可能不允许。\n- 连接后如果没有频率，通常意味着 flrig 本身无法访问电台。请检查 flrig 的显示是否跟随旋钮变化。',
 			'settings.station.hrdTroubleshootingTitle' => '如果应用无法连接',
-			'settings.station.hrdTroubleshooting' => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际运行过。如果它只部分可用，非常值得报告。',
+			'settings.station.hrdTroubleshooting' => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际测试过。如果它只部分可用，非常值得报告。',
 			'settings.station.n3fjpTroubleshootingTitle' => '如果应用无法连接',
-			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。',
+			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际测试过。如果它只部分可用，非常值得报告。',
 			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
-			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
+			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际测试过。如果它只部分可用，非常值得报告。',
 			'settings.station.ic705TroubleshootingTitle' => '如果电台始终没有响应',
-			'settings.station.ic705Troubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。',
+			'settings.station.ic705Troubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- **端口必须一致**：与电台的 Control Port 和 Serial Port (UDP) 一致，或与转发到它们的端口一致。端口错误时电台毫无回应，和没开机一样。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。',
+			'settings.station.icomLanTroubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview、RS-BA1 或 Icom 的 Remote Utility 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 其 LAN 端口必须与此设备连接到同一网络，必须开启其 **Network Control**，并且用户名和密码必须已在电台上设置为网络用户。\n- **端口必须一致**：与电台的 Control Port 和 Serial Port (UDP) 一致，或与转发到它们的端口一致。端口错误时电台毫无回应，和没开机一样。\n- **如果能连接但始终没有应答**，这里的 CI-V 地址必须与电台的 CI-V ADDRESS 菜单一致。此条目预填了该型号的出厂地址。\n- 如果一直卡住，**请将电台关机再开机**。',
 			'settings.station.statusStale' => '无响应',
 			'settings.station.statusDisconnected' => '未连接',
 			'settings.station.statusConnecting' => '连接中…',
@@ -5104,11 +6541,9 @@ extension on TranslationsZh {
 			'settings.station.statusError' => '连接失败',
 			'settings.station.currentRadioSettings' => '当前电台设置',
 			'settings.station.notSupportedByThisRadio' => '此电台不支持',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => '话音',
-			_ => null,
-		} ?? switch (path) {
-			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '语音电键：电台中有 ${count} 个存储',
+			'settings.station.cwMessagesButton' => 'CW 消息',
+			'settings.station.voiceMessagesButton' => '话音消息',
+			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '语音键控器：电台中有 ${count} 个存储',
 			'settings.station.antennaBands' => '频段',
 			'settings.station.antennaType' => '天线类型',
 			'settings.station.antennaTypeRequired' => '请选择天线类型',
@@ -5122,8 +6557,8 @@ extension on TranslationsZh {
 			'settings.station.keyTypeRequired' => '请选择电键类型',
 			'settings.station.keyTypes.straight' => '手键',
 			'settings.station.keyTypes.sideswiper' => '侧摆键',
-			'settings.station.keyTypes.bug' => '机械半自动键（Bug）',
-			'settings.station.keyTypes.fullyAutomatic' => '全自动电键器',
+			'settings.station.keyTypes.bug' => 'Bug 键（机械半自动）',
+			'settings.station.keyTypes.fullyAutomatic' => '全自动键控器',
 			'settings.station.keyTypes.singlePaddle' => '单桨键',
 			'settings.station.keyTypes.dualPaddle' => '双桨键',
 			'settings.station.keyTypes.computerDriven' => '计算机驱动',
@@ -5134,7 +6569,9 @@ extension on TranslationsZh {
 			'settings.station.newAntenna' => '新天线',
 			'settings.station.newKey' => '新电键',
 			'settings.station.newKeyer' => 'WinKeyer（K1EL 或兼容）',
-			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 电键器',
+			_ => null,
+		} ?? switch (path) {
+			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 键控器',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} 上的电键',
 			'settings.station.trackStationInfo' => '为每个 QSO 记录电台信息',
 			'settings.station.includeStationInfoInAdif' => '包含在 ADIF 导出中',
@@ -5144,21 +6581,21 @@ extension on TranslationsZh {
 			'settings.station.watts' => '瓦',
 			'settings.station.trackFieldAntenna' => '天线',
 			'settings.station.trackFieldKey' => 'CW 电键',
-			'settings.station.placeholderConnectDelay' => '连接延迟 (ms)',
+			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
 			'settings.station.placeholderConnectDelayDescription' => '模拟握手所需的时间。留空或 0 表示立即连接。',
-			'settings.station.placeholderDropAfter' => '断开时间（秒）',
+			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
 			'settings.station.placeholderFailConnect' => '总是连接失败',
 			'settings.station.placeholderConnectFailure' => '占位电台被设置为拒绝此连接',
-			'settings.station.placeholderFreq' => '频率 (kHz)',
+			'settings.station.placeholderFreq' => '频率（kHz）',
 			'settings.station.placeholderFreqDescription' => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
 			'settings.station.placeholderMode' => '模式',
 			'settings.station.placeholderModeDescription' => '占位电台的起始模式，例如 USB、CW、FT8。',
 			'settings.station.placeholderPower' => '功率（瓦）',
-			'settings.station.placeholderPurpose' => '用此电台记录您在记录时使用的是哪台设备',
-			'settings.station.placeholderReplyDelay' => '回复延迟 (ms)',
+			'settings.station.placeholderPurpose' => '用它来记下您正在使用哪台电台，以便记入日志',
+			'settings.station.placeholderReplyDelay' => '回复延迟（ms）',
 			'settings.station.placeholderReplyDelayDescription' => '占位电台报告变化所需的时间。留空或 0 表示立即回复。',
-			'settings.station.cwKeyerField' => 'CAT CW 电键器',
+			'settings.station.cwKeyerField' => 'CAT CW 键控器',
 			'settings.station.cwKeyerFieldDescription' => '此电台是否通过 CAT 将文本键控为 CW。对于应用不认识的电台请关闭。',
 			'settings.station.voiceMemories' => '语音存储',
 			'settings.station.voiceMemoriesDescription' => '电台可通过 CAT 播放的语音存储数量。0 表示没有。',
@@ -5166,11 +6603,11 @@ extension on TranslationsZh {
 			'settings.station.yaesuMeterCapture' => '捕获表头读数',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => '在发射时读取电台的输出功率表和 SWR 过高标志，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
 			'settings.station.yaesuMeterCaptureDescription' => '在发射时读取电台的 PO、SWR 和 ALC 表头，并将原始值输出到日志。用于建立 Yaesu 未公布的刻度——这些值不会以表头形式显示。',
-			'settings.station.telemetryInterval' => '表头读取间隔 (ms)',
-			'settings.station.telemetryIntervalDescription' => '电台发射时读取其表头的频率。留空则使用此连接能承受的最快速度，最高 200 ms。',
+			'settings.station.telemetryInterval' => '表头读取间隔（ms）',
+			'settings.station.telemetryIntervalDescription' => '电台发射时多久读取一次表头。留空则使用此连接能承受的最快速度，上限 200 ms。',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
-			'settings.station.pollInterval' => '空闲轮询间隔 (ms)',
-			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，向电台查询频率和模式的频率。留空则为 ${fallback} ms。',
+			'settings.station.pollInterval' => '空闲轮询间隔（ms）',
+			'settings.station.pollIntervalDescription' => ({required Object fallback}) => '在频率和模式都没有变化时，多久向电台查询一次频率和模式。留空则为 ${fallback} ms。',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => '整数毫秒，${min} 到 ${max}',
 			'settings.station.advancedSettings' => '高级设置',
 			'settings.station.placeholderSwr' => 'SWR 读数',
@@ -5181,11 +6618,11 @@ extension on TranslationsZh {
 			'settings.station.cwDialectDescription' => '此电台接受哪种格式的 KY 命令。“无”表示不通过 CAT 进行 CW 键控。',
 			'settings.station.cwDialectKenwood' => 'Kenwood（KY，补齐到 24）',
 			'settings.station.cwDialectElecraft' => 'Elecraft（KY 文本）',
-			'settings.station.voiceDialect' => '语音电键方言',
+			'settings.station.voiceDialect' => '语音键控器方言',
 			'settings.station.voiceDialectDescription' => '此电台如何通过 CAT 播放语音存储。“无”表示不通过 CAT 播放语音存储。选择了方言但未设数量时，使用该方言的默认数量。',
 			'settings.station.voiceDialectPb' => 'Kenwood（PB，TS-590 风格）',
 			'settings.station.voiceDialectK4' => 'Elecraft K4（PB 和 DA）',
-			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3（开关点按）',
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3（按键点按）',
 			'settings.station.placeholderDiagnostic' => '模拟',
 			'settings.station.placeholderWholeNumberInvalid' => '必须是整数，0 或更大',
 			'settings.station.placeholderFreqInvalid' => '必须是以 kHz 为单位且大于零的频率',
@@ -5212,6 +6649,43 @@ extension on TranslationsZh {
 			'settings.station.switchCurrentStateDescription' => '每个电台端口当前连接的天线。更改立即生效。',
 			'settings.station.switchWiringHeader' => '接线',
 			'settings.station.switchPortInhibitedHint' => '禁止发射',
+			'settings.station.rotatorAxes' => '轴',
+			'settings.station.rotatorAxesDescription' => '旋转器是只在方位角上转动，还是也在仰角上转动（G-5500 或类似型号）。',
+			'settings.station.rotatorAxesAzimuth' => '仅方位角',
+			'settings.station.rotatorAxesAzimuthElevation' => '方位角和仰角',
+			'settings.station.rotatorAzimuthOffset' => '方位角偏移',
+			'settings.station.rotatorAzimuthOffsetDescription' => '控制器的零点不是正北时，要加到其读数上的度数。转动会相应修正。',
+			'settings.station.rotatorElevationOffset' => '仰角偏移',
+			'settings.station.rotatorAzimuthMin' => '最小方位角',
+			'settings.station.rotatorAzimuthMax' => '最大方位角',
+			'settings.station.rotatorAzimuthMaxDescription' => '以控制器自身的度数计。有重叠区的旋转器可超过 360，此时会走较短的一边。',
+			'settings.station.rotatorElevationMin' => '最小仰角',
+			'settings.station.rotatorElevationMax' => '最大仰角',
+			'settings.station.rotatorElevationMaxDescription' => '以控制器自身的度数计。可翻转的旋转器可超过 90。',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => '整数度数，${min} 到 ${max}',
+			'settings.station.rotatorLimitsInvalid' => '下限必须低于上限',
+			'settings.station.rotatorPollInterval' => '轮询间隔（ms）',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => '多久向旋转器查询一次指向。留空则为 ${fallback} ms。',
+			'settings.station.rotatorAxesRequired' => '请选择旋转器转动的轴',
+			'settings.station.rotatorRefused' => '控制器拒绝了命令。请检查它是否设为 GS-232 模式。',
+			'settings.station.pstRotatorTroubleshooting' => 'PstRotator 只有在设置好之后才会应答，否则完全不出声：\n\n- **开启 UDP Control**：在 PstRotator 的 Setup 菜单中。\n- **端口要一致**：Communication → UDP Control Port，除非更改过，否则为 12000。PstRotator 会在下一个端口（12001）上应答，该端口在此设备上必须空闲。\n- **将 PstRotator 连接到其控制器。** 在此之前，它不会通过 UDP 应答任何内容。\n- **在防火墙中放行**：既要在运行 PstRotator 的 PC 上，也要在此设备上（它负责监听应答）。\n- **在 Mac、iPhone 或 iPad 上**，Ham2K Logger 需要本地网络访问权限（设置 → 隐私与安全性 → 本地网络）。',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => '当前状态：${position}',
+			'settings.station.rotatorDisconnected' => '已断开',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '方位角 ${degrees}°',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '方位 ${degrees}°',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '仰角 ${degrees}°',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '仰角 ${degrees}°',
+			'settings.station.rotatorNoReading' => '等待控制器报告其位置…',
+			'settings.station.rotatorNotResponding' => '无响应',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => '正在转向 ${heading}，到此旋转器限位允许的最远处',
+			'settings.station.rotatorTargetAzimuth' => '转到方位角',
+			'settings.station.rotatorTargetAzimuthShort' => '转到方位',
+			'settings.station.rotatorTargetElevation' => '转到仰角',
+			'settings.station.rotatorTargetElevationShort' => '转到仰角',
+			'settings.station.rotatorAzimuthInvalid' => '必须在 0 到 360 之间',
+			'settings.station.rotatorElevationInvalid' => '必须在 0 到 180 之间',
+			'settings.station.rotatorTurn' => '转动',
+			'settings.station.rotatorStop' => '停止',
 			'settings.station.configUnreadable' => '无法读取此电台保存的设置。请打开其设置并重新输入，或将其移除后重新添加。',
 			'settings.station.autoConnectHeld' => 'HaLo 上次连接此电台时停止了响应，因此这次没有自动连接。请按“连接”重试。',
 			'settings.offlineData.title' => '离线数据',
@@ -5243,6 +6717,11 @@ extension on TranslationsZh {
 			'settings.search.hint' => '搜索偏好设置',
 			'settings.developer.developerModeDescription' => '启用开发者警告、调试日志和工具。',
 			'settings.developer.experiments' => '实验',
+			'settings.developer.showIdleMetrics' => '显示空闲指标',
+			'settings.developer.showIdleMetricsDescription' => '在状态栏中显示扩展引擎在过去一秒内的空闲程度。点按可查看 10 秒和 60 秒的平均值。',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '空闲 ${percent}%',
+			'settings.developer.idleMetricsAverages' => '空闲平均：',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}s ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已启用 ${count} 个', other: '已启用 ${count} 个', ), 
 			'settings.developer.patchTrack' => '代码推送轨道',
 			'settings.developer.patchTrackDescription' => '此设备跟随哪个空中代码推送轨道。越激进的轨道越早获得修复，但测试越少。代码推送在下次重启时生效。',
@@ -5250,7 +6729,7 @@ extension on TranslationsZh {
 			'settings.developer.trackUnstable' => '不稳定',
 			'settings.developer.trackBleeding' => '前沿',
 			'settings.developer.checkingTrack' => ({required Object track}) => '正在“${track}”上检查代码推送…',
-			'settings.developer.patchDownloaded' => '代码推送已下载——重启应用以应用。',
+			'settings.developer.patchDownloaded' => '代码推送已下载——重启应用即可生效。',
 			'settings.developer.noNewPatch' => ({required Object track}) => '“${track}”上没有新的代码推送。',
 			'settings.developer.noPatchInstalled' => '未安装代码推送——正在运行发布版本。',
 			'settings.developer.runningPatch' => ({required Object patch}) => '正在运行代码推送 #${patch}。',
@@ -5290,7 +6769,7 @@ extension on TranslationsZh {
 			'settings.about.releaseNotes' => '发布说明',
 			'settings.about.copiedVersion' => '已将版本详情复制到剪贴板',
 			'settings.panels.settings' => '应用偏好设置',
-			'settings.panels.settingsDescription' => '按您的方式使用应用',
+			'settings.panels.settingsDescription' => '让应用按您想要的方式工作',
 			'settings.panels.commonSettings' => '常用偏好设置',
 			'settings.panels.syncDescription' => '备份日志并在设备间同步',
 			'settings.panels.accountsDescription' => '服务凭证、离线数据等',
@@ -5310,8 +6789,8 @@ extension on TranslationsZh {
 			'settings.panels.peersDescription' => '连接附近的其他设备',
 			'settings.showMoreSettings' => '显示更多设置',
 			'settings.gridPrecision' => '网格精度',
-			'settings.gridPrecisionOpts.six' => '6 位 (FN31pr)',
-			'settings.gridPrecisionOpts.eight' => '8 位 (FN31pr55)',
+			'settings.gridPrecisionOpts.six' => '6 位（FN31pr）',
+			'settings.gridPrecisionOpts.eight' => '8 位（FN31pr55）',
 			'settings.gridPrecisionDescription.six' => '6 位',
 			'settings.gridPrecisionDescription.eight' => '8 位',
 			'commands.enableSyncFirst' => '请先在设置中启用同步。',
@@ -5324,9 +6803,14 @@ extension on TranslationsZh {
 			'commands.experimentEnabled' => ({required Object name}) => '已启用 ${name}',
 			'commands.experimentDisabled' => ({required Object name}) => '已禁用 ${name}',
 			'commands.sentryTestSent' => '测试错误报告已发送到 Sentry',
+			'commands.idleMetricsEnabled' => '已在状态栏中启用空闲指标',
+			'commands.idleMetricsDisabled' => '已禁用空闲指标',
 			'commands.sentryTestLocalOnly' => '此构建中已禁用 Sentry——测试错误仅在本地记录',
 			'commands.noOperationOpen' => '该命令需要打开一个操作',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '不知道如何标记“${kind}”',
+			'commands.goUnavailable' => ({required Object place}) => '此应用中未开启 ${place}',
+			'commands.goUnknown' => ({required Object to}) => '不知道如何转到“${to}”',
+			'commands.goBlocked' => '请先关闭打开的对话框',
 			'commands.operationAlreadyStarted' => '此操作已有开始标记',
 			'commands.couldNotOpenLocation' => '已添加休息，但无法打开位置界面',
 			'commands.noTestOperations' => '没有可清除的测试操作',
@@ -5353,12 +6837,16 @@ extension on TranslationsZh {
 			'commands.settingVanished' => ({required Object label}) => '“${label}”已不再可用',
 			'commands.noCwKeyer' => '没有已连接的电台能键控 CW',
 			'commands.noKeyer' => '没有已连接的电台能键控 CW 或播放语音存储',
-			'commands.keyerNeedsOperation' => '请打开一个操作以使用 CW 电键器',
+			'commands.keyerNeedsOperation' => '请打开一个操作以使用 CW 键控器',
 			'commands.keyerExperimentOff' => 'CW 键控已关闭——使用 EXP KEYER 开启',
 			'commands.esmExperimentOff' => '回车发送消息已关闭——使用 EXP ESM 开启',
 			'commands.cwSending' => ({required Object text}) => '正在发送 CW：${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW 消息 F${n}：${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW 消息 F${n} 未发送：扩展尚未就绪',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => '话音消息 M${n}：${error}',
+			'commands.voiceMessageNotRendered' => '扩展尚未就绪',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => '未发送：电台 ${radio} 无法键控该内容',
+			'commands.so2rNoRadioB' => '未发送：请先在电台配置中选择电台 B，才能从此消息组键控',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}”不接受该值',
 			'commandDialog.hint' => '搜索呼号或输入命令',
 			'commandDialog.noResults' => ({required Object text}) => '没有与“${text}”匹配的内容',
@@ -5372,22 +6860,117 @@ extension on TranslationsZh {
 			'commandDialog.sectionSuggestions' => '试试',
 			'commandDialog.lookingUp' => '正在查询呼号…',
 			'commandDialog.blockedByPane' => '面板或对话框打开时无法使用命令',
+			'keyboardShortcuts.title' => '键盘快捷键',
+			'keyboardShortcuts.description' => '自定义按键映射',
+			'keyboardShortcuts.search' => '搜索命令和按键',
+			'keyboardShortcuts.import' => '导入…',
+			'keyboardShortcuts.export' => '导出…',
+			'keyboardShortcuts.resetAll' => '全部重置',
+			'keyboardShortcuts.resetAllTitle' => '重置所有快捷键？',
+			'keyboardShortcuts.resetAllBody' => '每个命令都恢复为默认按键，绑定到键入命令的按键会被移除。',
+			'keyboardShortcuts.reset' => '重置',
+			'keyboardShortcuts.noKey' => '无按键',
+			'keyboardShortcuts.changed' => '已更改',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} 也绑定到了 ${commands}',
+			'keyboardShortcuts.groupApp' => '应用',
+			'keyboardShortcuts.groupKeying' => '键控',
+			'keyboardShortcuts.groupLogging' => '记录',
+			'keyboardShortcuts.groupCommands' => '命令',
+			'keyboardShortcuts.groupFixed' => '固定按键',
+			'keyboardShortcuts.contextApp' => '任何位置',
+			'keyboardShortcuts.contextLogView' => '操作、追逐和日志视图',
+			'keyboardShortcuts.contextOperation' => '操作视图，键控 CAT 电台时',
+			'keyboardShortcuts.contextLogging' => '在记录面板中',
+			'keyboardShortcuts.addCommand' => '添加命令…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => '未知命令：${command}',
+			'keyboardShortcuts.command.commandDialog' => '打开命令对话框',
+			'keyboardShortcuts.command.toggleTheme' => '在浅色和深色之间切换',
+			'keyboardShortcuts.command.toggleLanguage' => '在英语和西班牙语之间切换',
+			'keyboardShortcuts.command.fontScaleUp' => '放大文字',
+			'keyboardShortcuts.command.fontScaleDown' => '缩小文字',
+			'keyboardShortcuts.command.fontScaleReset' => '正常文字大小',
+			'keyboardShortcuts.command.densityLooser' => '更宽松的布局',
+			'keyboardShortcuts.command.densityDenser' => '更紧凑的布局',
+			'keyboardShortcuts.command.densityAuto' => '自动布局密度',
+			'keyboardShortcuts.command.find' => '在日志中查找',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '发送消息 ${n}',
+			'keyboardShortcuts.command.keyboardMode' => '开启或关闭键盘模式',
+			'keyboardShortcuts.command.ptt' => '按键通话（PTT）',
+			'keyboardShortcuts.command.wipe' => '清空正在记录的通联',
+			'keyboardShortcuts.fixed.callsign' => '输入呼号',
+			'keyboardShortcuts.fixed.escape' => '停止发送、后退一步或关闭',
+			'keyboardShortcuts.fixed.enter' => '记录通联',
+			'keyboardShortcuts.fixed.space' => '下一个字段',
+			'keyboardShortcuts.fixed.tab' => '下一个或上一个字段',
+			'keyboardShortcuts.fixed.arrows' => '在字段、控件和日志之间移动',
+			'keyboardShortcuts.fixed.walk' => '在日志中翻页，或跳到首尾',
+			'keyboardShortcuts.fixed.undo' => '撤销清空或删除',
+			'keyboardShortcuts.editor.addShortcut' => '添加快捷键',
+			'keyboardShortcuts.editor.listening' => '请按下快捷键的按键…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc 停止监听',
+			'keyboardShortcuts.editor.add' => '添加',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} 属于记录字段或对话框，无法更改。',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} 用于输入呼号。请同时按住 Cmd、Ctrl 或 Alt。',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => '系统可能会在应用看到 ${keys} 之前将其截获。',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} 已是此命令的按键之一。',
+			'keyboardShortcuts.editor.takeIt' => ({required Object command, required Object keys}) => '从“${command}”取走 ${keys}',
+			'keyboardShortcuts.editor.resetDefault' => '重置为默认',
+			'keyboardShortcuts.editor.remove' => '移除',
+			'keyboardShortcuts.editor.commandLabel' => '命令',
+			'keyboardShortcuts.editor.commandHint' => '输入任何有效命令，或用“;”分隔多个命令',
+			'keyboardShortcuts.editor.removeCommand' => '移除命令',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '没有名为“${text}”的命令',
+			'keyboardShortcuts.editor.noShortcuts' => '尚无按键',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => '快捷键已保存到 ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => '无法导出快捷键：${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => '无法打开文件：${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的快捷键文件：${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）',
+			'keyboardShortcuts.file.problemNotKeysFile' => '它不是 Ham2K 键盘快捷键文件',
+			'keyboardShortcuts.file.problemNewerVersion' => '它由较新版本的应用写入',
+			'keyboardShortcuts.file.problemMalformed' => '其中一部分不符合快捷键格式',
+			'keyboardShortcuts.file.problemTooLarge' => '它太大了',
+			'keyboardShortcuts.file.importTitle' => '导入快捷键',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '在 ${platform} 上写入。',
+			'keyboardShortcuts.file.writtenOnUnknown' => '文件没有说明它是在哪种键盘上写入的。',
+			'keyboardShortcuts.file.translate' => '这些按键在此键盘上应各自对应哪个键？',
+			'keyboardShortcuts.file.leaveOut' => '不导入这些快捷键',
+			'keyboardShortcuts.file.replace' => '替换此设备的配置',
+			'keyboardShortcuts.file.replaceHint' => '文件中没有的每个快捷键都恢复为默认。',
+			'keyboardShortcuts.file.merge' => '添加到此设备的配置',
+			'keyboardShortcuts.file.mergeHint' => '相同命令以文件中的快捷键为准，其余保持不变。',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => '此版本不认识，因此已略过：${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => '不是快捷键，因此已略过：${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => '应用保留给自己的按键，因此已略过：${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => '导入后绑定到多个命令：${keys}',
+			'keyboardShortcuts.file.importAction' => '导入',
+			'keyboardShortcuts.file.imported' => '快捷键已导入',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => '此构建已过期',
 			'expiredBuild.body' => '请访问 ham2k.com 获取较新版本。',
 			'expiredBuild.visit' => '访问 ham2k.com',
 			'expiredBuild.dismiss' => '仍然继续',
 			'staleness.codePushFloorTitle' => '有一个重要更新等待应用',
 			'staleness.codePushFloorBody' => '此版本包含一项您尚未获得的修复。',
-			'staleness.restartToApply' => '重启应用以应用。',
-			'staleness.quitAndReopen' => '退出应用并重新打开以应用。',
-			'staleness.reopenToApply' => '关闭应用并重新打开以应用。',
+			'staleness.restartToApply' => '重启应用即可生效。',
+			'staleness.quitAndReopen' => '退出应用并重新打开即可生效。',
+			'staleness.reopenToApply' => '关闭应用并重新打开即可生效。',
 			'staleness.ignoreForNow' => '暂时忽略',
 			'spotting.noQsoYet' => '尚未记录可 Spot 的 QSO。',
 			'spotting.setFrequencyFirst' => '请先设置频率。',
 			'spotting.nothingToSpot' => '没有可 Spot 的内容——此处没有扩展提供 Spot 功能。',
+			'spotting.incompleteCall' => '无法 Spot 不完整的呼号——请先输完呼号。',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} 失败：${message}',
 			'spotting.unknownError' => '未知错误',
 			'spotting.notSent' => 'Spot 未发送。',
+			'spotting.allSkipped' => 'Spot 未发送：所有信号来源都跳过了它。',
 			'spotting.notRefreshedOffline' => '没有网络连接——信号未刷新',
 			'dataFiles.downloading' => '下载中…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '无法下载 ${name}',
@@ -5395,6 +6978,8 @@ extension on TranslationsZh {
 			'dataFiles.downloadTimedOut' => '服务器响应时间过长。请稍后重试。',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} 返回了错误（HTTP ${status}）。请稍后重试。',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} 无法提供此文件（HTTP ${status}）。请检查其地址是否仍然正确。',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM 没有 ${stem} 的呼号历史文件。',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => '从 N1MM 下载 ${stem} 的呼号历史失败。请稍后重试。',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => '无法处理 ${name}',
 			'dataFiles.importTooSmall' => ({required Object existing, required Object imported}) => '下载的数据只有此设备上 ${existing} 条记录中的 ${imported} 条，因此保留了缺少的记录。在 设置 › 离线数据 中刷新即可强制接受。',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '已为 ${label} 导入 ${count} 条记录。', other: '已为 ${label} 导入 ${count} 条记录。', ), 
@@ -5408,7 +6993,7 @@ extension on TranslationsZh {
 			'updates.getIt' => '获取',
 			'updates.ok' => '确定',
 			'updates.updateReady' => '更新已就绪',
-			'updates.restartToApply' => '更新已下载。重启以应用。',
+			'updates.restartToApply' => '更新已下载。重启即可生效。',
 			'updates.appliesNextLaunch' => '更新已下载。将在下次打开应用时生效。',
 			'updates.restartNow' => '立即重启',
 			'updates.reloadToUpdate' => '此页面有较新版本可用。重新加载即可获取。',
@@ -5426,8 +7011,14 @@ extension on TranslationsZh {
 			'extensionService.validationError' => ({required Object error}) => '验证错误：${error}',
 			'extensionService.actionFailed' => ({required Object error}) => '操作失败：${error}',
 			'extensionService.commandFailed' => '命令运行失败',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} 无法更改设置：它在安装时没有申请此权限',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} 无法控制电台：它在安装时没有申请此权限',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} 无法运行该命令：这是应用自身的开发者命令',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => '目前无法发送报告',
 			'extensionService.stashUnavailable' => '目前无法访问 Ham2K File Stash',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} 没有响应活动搜索，因此可能缺少部分结果。',
+			'extensionService.activitySearchSomeSourcesFailed' => '部分活动扩展没有响应搜索，因此可能缺少部分结果。',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} 在计时器中花费了太多时间。在扩展重启之前，其计时器已停止。',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name} 的计时器反复失败。在扩展重启之前，其计时器已停止。',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} 卡在了一个计时器中。在扩展重启之前，其计时器已停止。',
@@ -5492,6 +7083,8 @@ extension on TranslationsZh {
 			'switchAccounts.linkWithSiblingDescription' => '您安装了另一个 Ham2K 应用。与该应用使用的账户链接。',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '请在 ${app} 中批准请求，然后返回这里。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '再次打开 ${app}',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => '没有成功？请再次打开它，或返回并用其他方式链接。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '无法打开 ${app}。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '链接已过期，新的链接已准备好——请再次打开 ${app}。',
@@ -5521,6 +7114,17 @@ extension on TranslationsZh {
 			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个 QSO', other: '${count} 个 QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
+			'qsonImport.title' => '导入 QSON 操作',
+			'qsonImport.description' => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。',
+			'qsonImport.dropHint' => '拖放 QSON 文件以导入为新操作',
+			'qsonImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => '无法打开要导入的文件：${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} 不是 UTF-8 文本，因此不是 QSON 文件',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} 不包含 QSON 操作',
+			'qsonImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
+			'qsonImport.oneFileOnly' => '一次只能拖放一个 QSON 文件——每个文件会作为单独的操作打开。',
 			'adifImport.title' => '从 ADIF 导入 QSO',
 			'adifImport.reading' => ({required Object filename}) => '正在读取 ${filename}…',
 			'adifImport.dropHint' => '拖放 ADIF 文件以导入',
@@ -5549,6 +7153,8 @@ extension on TranslationsZh {
 			'adifImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
 			'adifImport.oneFileOnly' => '一次只能拖放一个 ADIF 文件——文件的导入顺序决定了哪些数据优先。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。',
+			'adifImport.importAnyway' => '仍然导入',
 			'offline.statusOffline' => '互联网：离线',
 			'offline.statusOnline' => '互联网：已连接',
 			'offline.noRoute' => '完全没有网络连接。',

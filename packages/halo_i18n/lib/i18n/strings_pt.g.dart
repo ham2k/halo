@@ -60,6 +60,7 @@ class TranslationsPt extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final Translations$settings$pt settings = Translations$settings$pt.internal(_root);
 	@override late final Translations$commands$pt commands = Translations$commands$pt.internal(_root);
 	@override late final Translations$commandDialog$pt commandDialog = Translations$commandDialog$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$pt keyboardShortcuts = Translations$keyboardShortcuts$pt.internal(_root);
 	@override late final Translations$expiredBuild$pt expiredBuild = Translations$expiredBuild$pt.internal(_root);
 	@override late final Translations$staleness$pt staleness = Translations$staleness$pt.internal(_root);
 	@override late final Translations$spotting$pt spotting = Translations$spotting$pt.internal(_root);
@@ -73,6 +74,7 @@ class TranslationsPt extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final Translations$deepLink$pt deepLink = Translations$deepLink$pt.internal(_root);
 	@override late final Translations$confirmDevice$pt confirmDevice = Translations$confirmDevice$pt.internal(_root);
 	@override late final Translations$switchAccounts$pt switchAccounts = Translations$switchAccounts$pt.internal(_root);
+	@override late final Translations$qsonImport$pt qsonImport = Translations$qsonImport$pt.internal(_root);
 	@override late final Translations$adifImport$pt adifImport = Translations$adifImport$pt.internal(_root);
 	@override late final Translations$offline$pt offline = Translations$offline$pt.internal(_root);
 	@override late final Translations$exportSettings$pt exportSettings = Translations$exportSettings$pt.internal(_root);
@@ -97,6 +99,7 @@ class Translations$common$pt extends Translations$common$en {
 	@override String get callsign => 'Indicativo';
 	@override String get clear => 'Limpar';
 	@override String get dismiss => 'Dispensar';
+	@override String get copyDetails => 'Copiar detalhes';
 	@override String get expand => 'Expandir';
 	@override String get collapse => 'Recolher';
 }
@@ -133,8 +136,14 @@ class Translations$onboarding$pt extends Translations$onboarding$en {
 	@override String get activityPota => 'Parks On The Air';
 	@override String get activitySota => 'Summits On The Air';
 	@override String get activityWwff => 'World Wide Flora & Fauna';
+	@override String get syncTitle => 'Sincronização na Nuvem';
+	@override String get syncBody => 'O Ham2K Log Filer guarda uma cópia de segurança dos seus registos na nuvem e sincroniza-os entre todos os dispositivos onde usa apps Ham2K.';
+	@override String get syncPricing => 'É gratuito! Mas uma subscrição paga torna-o mais rápido.';
+	@override String get syncLabel => 'Ativar Sincronização na Nuvem';
+	@override String get syncOffWarning => 'AVISO: isto aumenta as hipóteses de perder dados de operação, por exemplo se o seu dispositivo avariar ou for perdido.';
+	@override String get notNow => 'Agora não';
 	@override String get consentTitle => 'Dados e Privacidade';
-	@override String get consentUsageBody => 'Para nos ajudar a melhorar a app, gostaríamos de recolher dados de desempenho, falhas e utilização da app.';
+	@override String get consentUsageBody => 'Para nos ajudar a melhorar a app, gostaríamos de recolher dados de desempenho, falhas e uso da app.';
 	@override String get consentUsageLabel => 'Partilhar dados de uso da app';
 	@override String get consentOperationBody => 'Algumas funcionalidades podem envolver partilhar os seus dados de operação com outros utilizadores. Pode desativar a qualquer momento.';
 	@override String get consentOperationLabel => 'Partilhar Dados de Operação';
@@ -173,23 +182,34 @@ class Translations$extensionsPanel$pt extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Atividades';
+	@override String get categoryAward => 'Diplomas';
 	@override String get categoryContest => 'Concursos';
-	@override String get categoryLookup => 'Pesquisas de Indicativo';
+	@override String get categoryLookup => 'Consultas de Indicativo';
 	@override String get categorySpots => 'Fontes de Spot';
 	@override String get categoryDashboard => 'Painéis';
 	@override String get categoryOther => 'Outras Extensões';
-	@override String get searchHint => 'Procurar extensões';
+	@override String get searchHint => 'Pesquisar extensões';
 	@override String get applying => 'A ativar as alterações às extensões, isto pode demorar um pouco…';
 	@override String get noMatches => 'Nenhuma extensão corresponde à pesquisa';
 	@override String get installFromFile => 'Instalar a partir de ficheiro…';
 	@override String installVersion({required Object version}) => 'Versão ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => 'Captura de ecrã ${n} de ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'Captura de ecrã anterior';
+	@override String get nextScreenshot => 'Captura de ecrã seguinte';
+	@override String get screenshotUnavailable => 'Captura de ecrã indisponível';
 	@override String get canReach => 'Esta extensão pode contactar';
 	@override String canHoldConnection({required Object host}) => '${host}, através de uma ligação ativa';
 	@override String get canHoldLocalConnection => 'Dispositivos na sua rede local, através de uma ligação ativa';
 	@override String get canUseLocation => 'A sua localização';
 	@override String get canReadRadio => 'O seu rádio, para ler a frequência e o modo';
 	@override String get canControlRadio => 'O seu rádio, para o controlar e transmitir com ele — sintonia, potência, CW, memórias de voz e PTT';
+	@override String get canCommandRadioRaw => 'O seu rádio, para lhe enviar qualquer comando no protocolo dele — incluindo comandos que transmitem ou alteram as suas configurações';
+	@override String get canReadCluster => 'O cluster DX, com sessão iniciada como o seu indicativo, para ler o que ele envia';
+	@override String get canSpotCluster => 'O cluster DX, com sessão iniciada como o seu indicativo, para publicar spots em seu nome';
+	@override String get canCommandCluster => 'O cluster DX, com sessão iniciada como o seu indicativo, para lhe enviar qualquer comando em seu nome';
 	@override String get canSetUserAgent => 'Identificar-se perante os servidores com o seu próprio nome';
+	@override String get canChangeSettings => 'As suas configurações, para as alterar através dos seus comandos: qualquer configuração, o modo de desenvolvedor e as experiências';
 	@override String get noCapabilities => 'Não pede nada fora da app.';
 	@override String get sandboxNote => 'As extensões correm isoladas: sem acesso aos seus ficheiros e sem rede além do que está aqui indicado.';
 	@override String get installAction => 'Instalar';
@@ -212,7 +232,7 @@ class Translations$extensionsPanel$pt extends Translations$extensionsPanel$en {
 	@override String get dropHint => 'Largue aqui uma extensão .h2kext para a instalar';
 	@override String get dropOneOnly => 'Largue uma extensão de cada vez.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} respondeu ${status} para essa extensão.';
-	@override String get downloadTooLarge => 'Esse ficheiro é demasiado grande para ser uma extensão.';
+	@override String get downloadTooLarge => 'Esse download é demasiado grande para ser uma extensão.';
 	@override String get downloadNotSecure => 'Esse download foi redirecionado para um local inseguro.';
 	@override String get catalogSection => 'Catálogo';
 	@override String get catalogLoading => 'A carregar o catálogo…';
@@ -261,11 +281,19 @@ class Translations$extensionsPanel$pt extends Translations$extensionsPanel$en {
 	@override String get restoreRuntimeDeadBody => 'Reinstalámo-las, mas as suas extensões não arrancaram. Reiniciar a app deve trazê-las de volta.';
 	@override String revokedTitle({required Object name}) => '${name} foi retirada';
 	@override String get revokedBody => 'O catálogo retirou esta versão, por isso foi desativada.';
+	@override String forceDisabledTitle({required Object name}) => '${name} foi desativada';
+	@override String get forceDisabledBody => 'A Ham2K desativou esta extensão por agora.';
+	@override String replacedTitle({required Object name}) => '${name} foi substituída';
+	@override String replacedBody({required Object replacement}) => '${replacement} toma o seu lugar. Pode mudar em Extensões.';
+	@override String replacedBy({required Object name}) => 'Substituída por ${name}';
+	@override String replacedByInstalled({required Object name}) => 'Substituída por ${name}, que já tem';
+	@override String get replaceAction => 'Substituir';
+	@override String replaceInstalledBody({required Object replacement}) => 'As suas configurações passam para ${replacement}, que já tem. Os seus registos ficam intactos.';
 	@override String get downloadHashMismatch => 'Esse download não é a extensão que o catálogo descreveu.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'O catálogo não tem a versão ${version} de ${key}.';
-	@override String get catalogLinkUnknown => 'Essa ligação do catálogo não indica uma versão de extensão.';
+	@override String get catalogLinkUnknown => 'Esse link do catálogo não indica uma versão de extensão.';
 	@override String catalogNoRelease({required Object key}) => 'O catálogo não tem nenhuma versão de ${key} nesse canal.';
-	@override String get installFromLink => 'Instalar a partir de ligação';
+	@override String get installFromLink => 'Instalar a partir de link';
 	@override String get unstableReleaseWarning => 'Esta é uma versão instável, que o seu autor não deu como concluída. Pode comportar-se mal e continuará a receber atualizações instáveis.';
 	@override String get bleedingReleaseWarning => 'Esta é uma versão de vanguarda: trabalho em curso que pode falhar ou perder as suas configurações. Continuará a receber atualizações de vanguarda.';
 	@override String get channelUnstable => 'Instável';
@@ -274,6 +302,7 @@ class Translations$extensionsPanel$pt extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => 'Recebe versões de vanguarda, instáveis e estáveis';
 	@override String get followStableAction => 'Seguir apenas versões estáveis';
 	@override String get revokedBadge => 'Revogada';
+	@override String get forceDisabledBadge => 'Desativada pela Ham2K';
 	@override String get refusedBadge => 'Não carregou';
 	@override String get downloadNotHttps => 'Esse download não usa uma ligação segura.';
 	@override String downloadUnreachable({required Object source}) => 'Não foi possível contactar ${source} para essa extensão.';
@@ -285,11 +314,13 @@ class Translations$extensionsPanel$pt extends Translations$extensionsPanel$en {
 	@override String get hookCallNotes => 'Notas de indicativos';
 	@override String get hookDataFile => 'Dados offline';
 	@override String get hookExport => 'Exportação';
-	@override String get hookLookup => 'Pesquisas de indicativo';
+	@override String get hookLookup => 'Consultas de indicativo';
 	@override String get hookScoring => 'Pontuação';
 	@override String get hookSpots => 'Spots';
-	@override String hookHunting({required Object program}) => 'Caça de ${program}';
-	@override String hookActivating({required Object program}) => 'Ativação de ${program}';
+	@override String hookHunting({required Object program}) => 'Caça ${program}';
+	@override String hookActivating({required Object program}) => 'Ativação ${program}';
+	@override String get suggestedSection => 'Sugeridas';
+	@override String moreAvailableSection({required Object count}) => 'Mais disponíveis (${count})';
 }
 
 // Path: home
@@ -328,6 +359,11 @@ class Translations$chase$pt extends Translations$chase$en {
 	@override late final Translations$chase$period$pt period = Translations$chase$period$pt.internal(_root);
 	@override late final Translations$chase$goals$pt goals = Translations$chase$goals$pt.internal(_root);
 	@override late final Translations$chase$panels$pt panels = Translations$chase$panels$pt.internal(_root);
+	@override late final Translations$chase$claims$pt claims = Translations$chase$claims$pt.internal(_root);
+	@override late final Translations$chase$notice$pt notice = Translations$chase$notice$pt.internal(_root);
+	@override late final Translations$chase$alerts$pt alerts = Translations$chase$alerts$pt.internal(_root);
+	@override String get checklists => 'Progresso da Caça';
+	@override late final Translations$chase$imports$pt imports = Translations$chase$imports$pt.internal(_root);
 }
 
 // Path: dialogs
@@ -340,6 +376,14 @@ class Translations$dialogs$pt extends Translations$dialogs$en {
 	@override String get operationDetails => 'Detalhes da operação';
 	@override String get activities => 'Atividades';
 	@override String get stationCallsign => 'Indicativo da Estação';
+	@override String get advanced => 'Avançado';
+	@override String get operatingPosition => 'Posição de Operação (multi-estação)';
+	@override String get assistance => 'Assistência';
+	@override String get assistanceDescription => 'Usar serviços de spotting e outras fontes de informação';
+	@override String get selfSpotting => 'Self-spotting';
+	@override String get selfSpottingDescription => 'Permitir funcionalidades que divulgam a sua própria frequência';
+	@override String disabledByRules({required Object rules}) => 'Desativado para cumprir as regras de ${rules}';
+	@override late final Translations$dialogs$lookupDespiteAssistance$pt lookupDespiteAssistance = Translations$dialogs$lookupDespiteAssistance$pt.internal(_root);
 	@override String get notes => 'Notas';
 	@override String get deleteOperationTitle => 'Eliminar Operação';
 	@override String get purgeTestsTitle => 'Purgar Operações de Teste';
@@ -412,6 +456,7 @@ class Translations$map$pt extends Translations$map$en {
 	@override String get globe => 'Globo';
 	@override String get zoomIn => 'Aproximar';
 	@override String get zoomOut => 'Afastar';
+	@override String get resetNorth => 'Repor norte para cima';
 	@override late final Translations$map$postcard$pt postcard = Translations$map$postcard$pt.internal(_root);
 }
 
@@ -423,7 +468,7 @@ class Translations$mapsView$pt extends Translations$mapsView$en {
 
 	// Translations
 	@override String get title => 'Mapas';
-	@override String get searchHint => 'Procurar parques, cumes e mais';
+	@override String get searchHint => 'Pesquisar parques, cumes e mais';
 	@override String get activities => 'Atividades';
 	@override String get layers => 'Camadas';
 	@override String get baseMap => 'Mapa base';
@@ -462,9 +507,9 @@ class Translations$activitiesView$pt extends Translations$activitiesView$en {
 	@override String get reference => 'Referência';
 	@override String get invalidReference => 'Inválida';
 	@override String get duplicateReference => 'Já adicionada';
-	@override String get searchHint => 'Procurar por nome, referência ou qualquer outra coisa…';
+	@override String get searchHint => 'Pesquisar por nome, referência ou qualquer outra coisa…';
 	@override String get noSuggestions => 'Sem resultados';
-	@override String get noSuggestionsHint => 'Procure acima pelo nome ou número da referência';
+	@override String get noSuggestionsHint => 'Pesquise acima pelo nome ou número da referência';
 	@override String get noSuggestionsExample => '(por exemplo \'trilho\' ou \'4556\')';
 	@override String get allOptions => 'Tipos de Atividade';
 	@override String get determiningLocation => 'A determinar a localização atual…\nA aguardar o GPS para encontrar referências próximas';
@@ -472,13 +517,13 @@ class Translations$activitiesView$pt extends Translations$activitiesView$en {
 	@override String get locationDeniedTitle => 'Permissão de localização negada';
 	@override String get locationBlockedTitle => 'Permissão de localização bloqueada';
 	@override String get noNearbyReason => 'Não é possível determinar referências próximas';
-	@override String locationManualHint({required Object icon}) => 'Toque em ${icon} para introduzir a localização manualmente,\nou simplesmente procure referências pelo nome';
+	@override String locationManualHint({required Object icon}) => 'Toque em ${icon} para introduzir a localização manualmente,\nou simplesmente pesquise referências pelo nome';
 	@override String get locationGrantAction => 'Permitir acesso à localização';
 	@override String get locationSettingsAction => 'Abrir Configurações';
 	@override String get locationSettingsUnavailable => 'Permita o acesso à localização nas configurações do sistema';
 	@override String get locationGrantRefused => 'Continua sem localização — o sistema voltou a recusar';
 	@override String get searchUnavailableTitle => 'Pesquisa de atividades indisponível';
-	@override String get searchUnavailableReason => 'Nenhuma extensão de atividade conseguiu fazer a pesquisa. Tente novamente daqui a pouco.';
+	@override String get searchUnavailableReason => 'Uma extensão de atividade não conseguiu responder à pesquisa. Tente novamente daqui a pouco.';
 	@override String get emptySheet => 'Use as sugestões e a pesquisa abaixo para adicionar uma';
 	@override String get exports => 'Exportações';
 	@override String get exportLogs => 'Exportar Registos';
@@ -514,7 +559,7 @@ class Translations$activitiesView$pt extends Translations$activitiesView$en {
 	@override String get addToOperation => 'Adicionar à Operação';
 	@override String get addToOperationShort => 'Adicionar à Op.';
 	@override String get mapEmptyState => 'Sem resultados para mostrar no mapa';
-	@override String get mapEmptyStateHint => 'Volte à lista, ou procure outra coisa';
+	@override String get mapEmptyStateHint => 'Volte à lista, ou pesquise outra coisa';
 	@override String get imports => 'Importações';
 }
 
@@ -528,6 +573,13 @@ class Translations$loggingControls$pt extends Translations$loggingControls$en {
 	@override String get timeUtc => 'Hora (UTC)';
 	@override String get date => 'Data';
 	@override String get now => 'Agora';
+	@override String get manualTimeSettings => 'Hora Manual';
+	@override String get manualTimeIncrement => 'Incremento por QSO';
+	@override String get manualTimeIncrementNone => 'Nenhum';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
+		one: '${count} minuto',
+		other: '${count} minutos',
+	);
 	@override String get frequency => 'Frequência';
 	@override String get mode => 'Modo';
 	@override String get theirCall => 'Indicativo';
@@ -537,7 +589,7 @@ class Translations$loggingControls$pt extends Translations$loggingControls$en {
 	@override String get rcvd => 'Recebido';
 	@override String get more => 'Mais';
 	@override String get revert => 'Reverter';
-	@override String get undoDelete => 'Anular eliminação';
+	@override String get undoDelete => 'Desfazer eliminação';
 	@override String get restore => 'Repor';
 	@override String get wipe => 'Apagar';
 	@override String get undo => 'Desfazer';
@@ -557,10 +609,23 @@ class Translations$loggingControls$pt extends Translations$loggingControls$en {
 	@override String get spottingControl => 'Spotting';
 	@override String get spottingSelfControl => 'Self-spotting';
 	@override String spotSelfAt({required Object freq}) => 'Self-spot em ${freq}';
-	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot de ${call} em ${freq}';
-	@override String spotTooLate({required Object call}) => 'Tarde demais para fazer spot de ${call}';
+	@override String spotOtherAt({required Object call, required Object freq}) => 'Spot ${call} em ${freq}';
+	@override String spotTooLate({required Object call}) => 'Tarde demais para spot de ${call}';
 	@override String get spotNoFreq => 'Defina primeiro uma frequência para o spot';
+	@override String get selfSpotDisabled => 'Self-spot desativado';
 	@override String get spotComment => 'Comentário';
+	@override String get spottingAutoControl => 'Re-spot automático';
+	@override String spotAutoEvery({required Object minutes}) => 'Re-spot a cada ${minutes} min';
+	@override String spotAutoNext({required Object time}) => 'Auto em ${time}. Parar?';
+	@override String spotAutoInMinutes({required Object minutes}) => 'Auto em ${minutes}m';
+	@override String spotAutoInSeconds({required Object seconds}) => 'Auto em ${seconds}s';
+	@override String spotAutoInCount({required Object seconds}) => 'Auto em ${seconds}';
+	@override String get spotAutoNotStarted => 'Re-spot automático não iniciado: o spot não foi publicado';
+	@override String get spotAutoMoved => 'Re-spot automático não iniciado: a frequência mudou durante o spot';
+	@override String get spotAutoStopped => 'Re-spot automático parado';
+	@override String get spotAutoLeftFreq => 'Re-spot automático parado: a frequência mudou';
+	@override String get spotAutoNoFreq => 'Re-spot automático parado: o rádio não indica frequência';
+	@override String get spotBusy => 'Ainda está a ser enviado outro spot';
 	@override String get bandOrFreqRequired => 'Defina uma frequência ou banda antes de registar';
 	@override String get missingBand => 'Sem Banda';
 	@override String get missingMode => 'Sem Modo';
@@ -581,7 +646,7 @@ class Translations$formChrome$pt extends Translations$formChrome$en {
 	@override String get showAll => 'Mostrar tudo';
 	@override String get showFewer => 'Mostrar menos';
 	@override String get defaults => 'Predefinições';
-	@override String get search => 'Procurar';
+	@override String get search => 'Pesquisar';
 	@override String get clear => 'Limpar';
 	@override String get openPage => 'Abrir página';
 	@override String get connected => 'Ligado';
@@ -595,7 +660,8 @@ class Translations$formChrome$pt extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'Erro de validação: ${error}';
 	@override String transformationError({required Object error}) => 'Erro de transformação: ${error}';
 	@override String actionError({required Object error}) => 'Erro: ${error}';
-	@override String get removeItem => 'Remover';
+	@override String get removeItem => 'Eliminar';
+	@override String deleteItemTitle({required Object name}) => 'Eliminar ${name}?';
 	@override String get storageUnavailable => 'Credenciais indisponíveis';
 }
 
@@ -641,6 +707,7 @@ class Translations$qsoList$pt extends Translations$qsoList$en {
 	@override String get today => 'Hoje';
 	@override String get yesterday => 'Ontem';
 	@override String get tomorrow => 'Amanhã';
+	@override late final Translations$qsoList$find$pt find = Translations$qsoList$find$pt.internal(_root);
 }
 
 // Path: loggingPanel
@@ -710,9 +777,12 @@ class Translations$settings$pt extends Translations$settings$en {
 	@override String get userInterface => 'Interface';
 	@override late final Translations$settings$logging$pt logging = Translations$settings$logging$pt.internal(_root);
 	@override late final Translations$settings$catServer$pt catServer = Translations$settings$catServer$pt.internal(_root);
+	@override late final Translations$settings$cluster$pt cluster = Translations$settings$cluster$pt.internal(_root);
+	@override late final Translations$settings$spotting$pt spotting = Translations$settings$spotting$pt.internal(_root);
 	@override late final Translations$settings$radio$pt radio = Translations$settings$radio$pt.internal(_root);
 	@override late final Translations$settings$help$pt help = Translations$settings$help$pt.internal(_root);
 	@override late final Translations$settings$exports$pt exports = Translations$settings$exports$pt.internal(_root);
+	@override late final Translations$settings$extensionSections$pt extensionSections = Translations$settings$extensionSections$pt.internal(_root);
 	@override late final Translations$settings$map$pt map = Translations$settings$map$pt.internal(_root);
 	@override late final Translations$settings$privacy$pt privacy = Translations$settings$privacy$pt.internal(_root);
 	@override String get operatorCall => 'Indicativo do Operador';
@@ -742,7 +812,7 @@ class Translations$commands$pt extends Translations$commands$en {
 
 	// Translations
 	@override String get enableSyncFirst => 'Ative primeiro a sincronização nas Configurações.';
-	@override String get fullResyncStarted => 'Ressincronização completa iniciada — os dados locais foram primeiro salvaguardados.';
+	@override String get fullResyncStarted => 'Ressincronização completa iniciada — foi feita primeiro uma cópia de segurança dos dados locais.';
 	@override String noDataFilesMatched({required Object target}) => 'Nenhum ficheiro de dados corresponde a "${target}".';
 	@override String reloadFailed({required Object error}) => 'O recarregamento falhou: ${error}';
 	@override String get reloadingAll => 'A recarregar todos os ficheiros de dados…';
@@ -751,9 +821,14 @@ class Translations$commands$pt extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name} ativada';
 	@override String experimentDisabled({required Object name}) => '${name} desativada';
 	@override String get sentryTestSent => 'Relatório de erro de teste enviado para o Sentry';
+	@override String get idleMetricsEnabled => 'Métricas de inatividade ativadas na barra de estado';
+	@override String get idleMetricsDisabled => 'Métricas de inatividade desativadas';
 	@override String get sentryTestLocalOnly => 'O Sentry está desativado nesta build — erro de teste registado apenas localmente';
 	@override String get noOperationOpen => 'Esse comando precisa de uma operação aberta';
-	@override String unknownSegmentKind({required Object kind}) => 'Não é possível marcar um \'${kind}\'';
+	@override String unknownSegmentKind({required Object kind}) => 'Não sei como marcar um \'${kind}\'';
+	@override String goUnavailable({required Object place}) => '${place} não está ativado nesta app';
+	@override String goUnknown({required Object to}) => 'Não sei como ir para \'${to}\'';
+	@override String get goBlocked => 'Feche primeiro o diálogo aberto';
 	@override String get operationAlreadyStarted => 'Esta operação já tem um marcador de início';
 	@override String get couldNotOpenLocation => 'A pausa foi adicionada, mas não foi possível abrir o ecrã de localização';
 	@override String get noTestOperations => 'Nenhuma Operação de Teste para purgar';
@@ -795,6 +870,10 @@ class Translations$commands$pt extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'A enviar CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Mensagem CW F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'A mensagem CW F${n} não foi enviada: as extensões não estão prontas';
+	@override String voiceMessageError({required Object n, required Object error}) => 'Mensagem de voz M${n}: ${error}';
+	@override String get voiceMessageNotRendered => 'as extensões não estão prontas';
+	@override String so2rRadioCannotKey({required Object radio}) => 'Nada enviado: o Rádio ${radio} não consegue manipular isso';
+	@override String get so2rNoRadioB => 'Nada enviado: escolha um Rádio B em Configuração da Estação para manipular a partir deste conjunto';
 	@override String settingNotStored({required Object label}) => '“${label}” não aceitou esse valor';
 }
 
@@ -805,7 +884,7 @@ class Translations$commandDialog$pt extends Translations$commandDialog$en {
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
-	@override String get hint => 'Procure indicativos ou escreva um comando';
+	@override String get hint => 'Pesquise indicativos ou escreva um comando';
 	@override String noResults({required Object text}) => 'Nada corresponde a “${text}”';
 	@override String get sectionCommands => 'Comandos';
 	@override String get sectionGoTo => 'Ir para';
@@ -817,6 +896,44 @@ class Translations$commandDialog$pt extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'Experimente';
 	@override String get lookingUp => 'A pesquisar indicativo…';
 	@override String get blockedByPane => 'Não é possível usar comandos com um painel ou diálogo aberto';
+}
+
+// Path: keyboardShortcuts
+class Translations$keyboardShortcuts$pt extends Translations$keyboardShortcuts$en {
+	Translations$keyboardShortcuts$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Atalhos de Teclado';
+	@override String get description => 'Personalizar as combinações de teclas';
+	@override String get search => 'Pesquisar comandos e teclas';
+	@override String get import => 'Importar…';
+	@override String get export => 'Exportar…';
+	@override String get resetAll => 'Repor Tudo';
+	@override String get resetAllTitle => 'Repor todos os atalhos?';
+	@override String get resetAllBody => 'Todos os comandos voltam às suas teclas predefinidas, e as teclas atribuídas a comandos escritos são removidas.';
+	@override String get reset => 'Repor';
+	@override String get noKey => 'Sem tecla';
+	@override String get changed => 'Alterado';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} também está atribuído a ${commands}';
+	@override String get groupApp => 'App';
+	@override String get groupKeying => 'Manipulação';
+	@override String get groupLogging => 'Registo';
+	@override String get groupCommands => 'Comandos';
+	@override String get groupFixed => 'Teclas Fixas';
+	@override String get contextApp => 'Em qualquer lado';
+	@override String get contextLogView => 'Vistas de Operação, Caça e Registos';
+	@override String get contextOperation => 'Vista de Operação, a manipular um rádio CAT';
+	@override String get contextLogging => 'No painel de registo';
+	@override String get addCommand => 'Adicionar um Comando…';
+	@override String unknownCommand({required Object command}) => 'Comando desconhecido: ${command}';
+	@override late final Translations$keyboardShortcuts$command$pt command = Translations$keyboardShortcuts$command$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$fixed$pt fixed = Translations$keyboardShortcuts$fixed$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$editor$pt editor = Translations$keyboardShortcuts$editor$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$file$pt file = Translations$keyboardShortcuts$file$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$modifier$pt modifier = Translations$keyboardShortcuts$modifier$pt.internal(_root);
+	@override late final Translations$keyboardShortcuts$platform$pt platform = Translations$keyboardShortcuts$platform$pt.internal(_root);
 }
 
 // Path: expiredBuild
@@ -857,9 +974,11 @@ class Translations$spotting$pt extends Translations$spotting$en {
 	@override String get noQsoYet => 'Ainda não há QSO registado para fazer spot.';
 	@override String get setFrequencyFirst => 'Defina primeiro uma frequência.';
 	@override String get nothingToSpot => 'Nada para fazer spot — nenhuma extensão oferece spotting aqui.';
+	@override String get incompleteCall => 'Não é possível fazer spot de um indicativo incompleto — termine primeiro o indicativo.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} falhou: ${message}';
 	@override String get unknownError => 'erro desconhecido';
 	@override String get notSent => 'Spot não enviado.';
+	@override String get allSkipped => 'Spot não enviado: todas as fontes de spots o ignoraram.';
 	@override String get notRefreshedOffline => 'Sem ligação — os spots não foram atualizados';
 }
 
@@ -876,6 +995,8 @@ class Translations$dataFiles$pt extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'O servidor demorou demasiado a responder. Tente novamente mais tarde.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} respondeu com um erro (HTTP ${status}). Tente novamente mais tarde.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} não conseguiu fornecer este ficheiro (HTTP ${status}). Verifique se o endereço ainda está certo.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'O N1MM não tem ficheiro de histórico de indicativos para ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'O download do histórico de indicativos do N1MM para ${stem} não funcionou. Tente novamente mais tarde.';
 	@override String processingFailedTitle({required Object name}) => 'Não foi possível processar ${name}';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'O download tinha apenas ${imported} dos ${existing} registos deste dispositivo, por isso os que ficaram de fora foram mantidos. Atualizá-lo em Configurações › Dados Offline aceita-o mesmo assim.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
@@ -931,8 +1052,14 @@ class Translations$extensionService$pt extends Translations$extensionService$en 
 	@override String validationError({required Object error}) => 'Erro de validação: ${error}';
 	@override String actionFailed({required Object error}) => 'A ação falhou: ${error}';
 	@override String get commandFailed => 'Não foi possível executar o comando';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} não pode alterar configurações: não o pediu na instalação';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} não pode controlar o rádio: não o pediu na instalação';
+	@override String commandDeveloperOnly({required Object name}) => '${name} não pode executar isso: é um dos comandos de desenvolvimento da própria app';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'Não é possível enviar relatórios neste momento';
 	@override String get stashUnavailable => 'O Arquivo de Ficheiros do Ham2K está inacessível neste momento';
+	@override String activitySearchSourcesFailed({required Object names}) => 'Sem resposta de ${names} à pesquisa de atividades, por isso podem faltar alguns resultados.';
+	@override String get activitySearchSomeSourcesFailed => 'Algumas extensões de atividades não responderam à pesquisa, por isso podem faltar alguns resultados.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} gastou demasiado tempo nos seus temporizadores. Ficam parados até as extensões reiniciarem.';
 	@override String timersSuspendedFailures({required Object name}) => 'Os temporizadores de ${name} continuaram a falhar. Ficam parados até as extensões reiniciarem.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} ficou bloqueado num temporizador. Os seus temporizadores ficam parados até as extensões reiniciarem.';
@@ -994,7 +1121,7 @@ class Translations$notices$pt extends Translations$notices$en {
 	@override String get preferencesResetTitle => 'Configurações repostas';
 	@override String get preferencesReset => 'Não foi possível ler o ficheiro de configurações e não havia cópia de segurança a que recorrer, por isso o HaLo arrancou com as predefinições. O ficheiro ilegível fica guardado na pasta de dados da app, com o nome shared_preferences.corrupt-….json.';
 	@override String autoConnectHeldTitle({required Object name}) => '${name} não foi ligado automaticamente';
-	@override String autoConnectHeld({required Object name}) => 'O HaLo deixou de responder da última vez que começou a ligar-se a ${name}, por isso desta vez não lhe tocou, para não arriscar que voltasse a acontecer. Verifique se o rádio está ligado e o cabo está ligado, e depois prima Ligar nesse rádio nas Configurações.';
+	@override String autoConnectHeld({required Object name}) => 'O HaLo deixou de responder da última vez que começou a ligar-se a ${name}, por isso desta vez não lhe tocou, para não arriscar que voltasse a acontecer. Verifique se o rádio está ligado e o cabo bem encaixado, e depois prima Ligar nesse rádio nas Configurações.';
 }
 
 // Path: syncAccount
@@ -1066,26 +1193,26 @@ class Translations$switchAccounts$pt extends Translations$switchAccounts$en {
 	@override String get tryAgain => 'Tentar novamente';
 	@override String get linkWithQr => 'Vincular com um código QR';
 	@override String get linkWithQrDescription => 'Leia-o a partir de um dispositivo que já usa a conta';
-	@override String get linkWithEmail => 'Vincular com um endereço de e-mail';
-	@override String get linkWithEmailDescription => 'Confirme com um código ou uma ligação por e-mail';
-	@override String get enterEmailPrompt => 'Introduza o endereço de e-mail da conta que quer que este dispositivo use.';
-	@override String get emailAddress => 'Endereço de e-mail';
+	@override String get linkWithEmail => 'Vincular com um endereço de email';
+	@override String get linkWithEmailDescription => 'Confirme com um código ou uma ligação por email';
+	@override String get enterEmailPrompt => 'Introduza o endereço de email da conta que quer que este dispositivo use.';
+	@override String get emailAddress => 'Endereço de email';
 	@override String get linkAccount => 'Vincular conta';
 	@override String get copiedCode => 'Código copiado para a área de transferência';
 	@override String get copyCode => 'Copiar código';
 	@override String codePrompt({required Object email}) => 'Abra a app Ham2K num dispositivo já vinculado a ${email} e introduza este código para aprovar o pedido:';
 	@override String get waitingForConfirmation => 'A aguardar confirmação…';
-	@override String get sendEmailInstead => 'Enviar antes um e-mail de confirmação';
-	@override String emailSent({required Object email}) => 'Foi enviado um e-mail para ${email}. Abra-o e confirme o pedido para vincular este dispositivo.';
-	@override String get resendEmail => 'Reenviar e-mail';
+	@override String get sendEmailInstead => 'Enviar antes um email de confirmação';
+	@override String emailSent({required Object email}) => 'Foi enviado um email para ${email}. Abra-o e confirme o pedido para vincular este dispositivo.';
+	@override String get resendEmail => 'Reenviar email';
 	@override String get qrPrompt => 'Leia este código QR a partir de um dispositivo já vinculado à conta que quer — por exemplo com o Ham2K Portable Logger no seu telemóvel.';
 	@override String get serverUnreachable => 'Não foi possível contactar o servidor de sincronização. Tente novamente mais tarde.';
-	@override String get emailRequired => 'Introduza um endereço de e-mail para vincular.';
+	@override String get emailRequired => 'Introduza um endereço de email para vincular.';
 	@override String noAccountForEmail({required Object email}) => 'Nenhuma conta encontrada para ${email}.';
 	@override String serverRejected({required Object error}) => 'O servidor de sincronização rejeitou o pedido: ${error}';
 	@override String get noLinkCode => 'O servidor de sincronização não devolveu um código de ligação. Tente novamente mais tarde.';
 	@override String get noConfirmationCode => 'O servidor de sincronização não enviou um código de confirmação. Tente novamente mais tarde.';
-	@override String get switchNotAccepted => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de e-mail.';
+	@override String get switchNotAccepted => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de email.';
 	@override String get requestFailed => 'Algo correu mal na comunicação com o servidor de sincronização. Tente novamente mais tarde.';
 	@override String qsoCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: '${count} QSO',
@@ -1095,6 +1222,26 @@ class Translations$switchAccounts$pt extends Translations$switchAccounts$en {
 		one: '${count} operação',
 		other: '${count} operações',
 	);
+}
+
+// Path: qsonImport
+class Translations$qsonImport$pt extends Translations$qsonImport$en {
+	Translations$qsonImport$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Importar Operação QSON';
+	@override String get description => 'Criar uma nova operação a partir de um ficheiro QSON, como o Modo de Desenvolvedor exporta aqui ou no PoLo.';
+	@override String get dropHint => 'Largue um ficheiro QSON para o importar como nova operação';
+	@override String importing({required Object filename}) => 'A importar ${filename}…';
+	@override String failed({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}';
+	@override String pickerFailed({required Object error}) => 'Não foi possível abrir um ficheiro para importar: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} não é texto UTF-8, por isso não é um ficheiro QSON';
+	@override String notJson({required Object filename}) => '${filename} não é um ficheiro JSON, por isso não é um ficheiro QSON';
+	@override String notOperation({required Object filename}) => '${filename} não contém uma operação QSON';
+	@override String get busy => 'Já está a decorrer uma importação. Aguarde que termine antes de iniciar outra.';
+	@override String get oneFileOnly => 'Largue um ficheiro QSON de cada vez — cada um abre como uma operação própria.';
 }
 
 // Path: adifImport
@@ -1165,6 +1312,8 @@ class Translations$adifImport$pt extends Translations$adifImport$en {
 	@override String get busy => 'Já está a decorrer uma importação. Aguarde que termine antes de iniciar outra.';
 	@override String get oneFileOnly => 'Largue um ficheiro ADIF de cada vez — a ordem em que os ficheiros são importados decide que dados prevalecem.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} tem mais de ${limit} QSOs, o máximo que uma operação pode importar de uma vez.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} tem mais de ${limit} QSOs. Importar um ADIF para uma operação destina-se a acrescentar alguns QSOs, não a trazer um registo grande — para isso use a vista de Registos. O modo de desenvolvedor permite importá-lo mesmo assim, se tiver a certeza.';
+	@override String get importAnyway => 'Importar mesmo assim';
 }
 
 // Path: offline
@@ -1212,8 +1361,8 @@ class Translations$exportSettings$pt extends Translations$exportSettings$en {
 	@override String get retry => 'Tentar novamente';
 	@override String get compactFileNamesDescriptionOn => 'Nomes de ficheiro compactos, como N0CALL@US-1234-20260715.adi.';
 	@override String get compactFileNamesDescriptionOff => 'Nomes de ficheiro descritivos, como 2026-07-15 N0CALL at US-1234.adi.';
-	@override String get includePrivateDataDescriptionOn => 'A incluir nomes, moradas, e-mails, notas e localizações precisas nos ficheiros ADIF.';
-	@override String get includePrivateDataDescriptionOff => 'A omitir nomes, moradas, e-mails e notas; a limitar as localizações a grids de seis caracteres.';
+	@override String get includePrivateDataDescriptionOn => 'A incluir nomes, moradas, emails, notas e localizações precisas nos ficheiros ADIF.';
+	@override String get includePrivateDataDescriptionOff => 'A omitir nomes, moradas, emails e notas; a limitar as localizações a grids de seis caracteres.';
 	@override String get includeLookupDataDescriptionOn => 'A incluir informação de serviços de pesquisa de indicativos.';
 	@override String get includeLookupDataDescriptionOff => 'A omitir informação de serviços de pesquisa de indicativos; a manter os valores introduzidos manualmente.';
 	@override String get customTemplatesDescriptionOn => 'Os seus modelos personalizados estão ativos e podem ser editados abaixo.';
@@ -1290,7 +1439,7 @@ class Translations$home$logs$pt extends Translations$home$logs$en {
 	@override String get emptyCallsigns => 'Ainda não há QSOs registados';
 	@override String emptyQsos({required Object call}) => 'Nenhum QSO para ${call}';
 	@override String get mapNoSelection => 'Selecione um QSO para o ver no mapa';
-	@override String get searchHint => 'Procurar indicativo ou nome';
+	@override String get searchHint => 'Pesquisar indicativo ou nome';
 	@override String get noSearchMatches => 'Nenhum QSO corresponde à pesquisa';
 	@override String get titleAll => 'Todos os Registos';
 	@override String get allCallsigns => 'Todos os indicativos';
@@ -1300,6 +1449,10 @@ class Translations$home$logs$pt extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'Este QSO está marcado para eliminação.';
 	@override String get editGone => 'Não guardado: esse QSO já não está neste registo.';
 	@override String get discard => 'Descartar';
+	@override late final Translations$home$logs$sheet$pt sheet = Translations$home$logs$sheet$pt.internal(_root);
+	@override late final Translations$home$logs$groupBy$pt groupBy = Translations$home$logs$groupBy$pt.internal(_root);
+	@override late final Translations$home$logs$period$pt period = Translations$home$logs$period$pt.internal(_root);
+	@override late final Translations$home$logs$periodTitle$pt periodTitle = Translations$home$logs$periodTitle$pt.internal(_root);
 	@override late final Translations$home$logs$columns$pt columns = Translations$home$logs$columns$pt.internal(_root);
 	@override late final Translations$home$logs$panels$pt panels = Translations$home$logs$panels$pt.internal(_root);
 	@override late final Translations$home$logs$import$pt import = Translations$home$logs$import$pt.internal(_root);
@@ -1366,7 +1519,7 @@ class Translations$chase$goals$pt extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Objetivos de Caça';
 	@override String remove({required Object name}) => 'Deixar de caçar ${name}';
-	@override String get extensionsTitle => 'Extensões que incluem caça';
+	@override String get extensionsTitle => 'Mais programas de caça';
 }
 
 // Path: chase.panels
@@ -1378,12 +1531,86 @@ class Translations$chase$panels$pt extends Translations$chase$panels$en {
 	// Translations
 	@override String get logging => 'QSOs';
 	@override String get loggingDescription => 'Controlos de registo por cima dos QSOs caçados no período.';
-	@override String get info => 'Info';
+	@override String get info => 'Informações';
 	@override String get infoDescription => 'O indicativo a ser registado, ou as estatísticas do período.';
 	@override String get spots => 'Spots';
 	@override String get spotsDescription => 'Estações anunciadas no ar, prontas a caçar.';
 	@override String get map => 'Mapa';
 	@override String get mapDescription => 'Os QSOs do período e a estação a ser registada.';
+}
+
+// Path: chase.claims
+class Translations$chase$claims$pt extends Translations$chase$claims$en {
+	Translations$chase$claims$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'A verificar QSOs para a caça';
+	@override String rebuilding({required Object program}) => 'A verificar o registo para ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} de ${total} QSOs';
+}
+
+// Path: chase.notice
+class Translations$chase$notice$pt extends Translations$chase$notice$en {
+	Translations$chase$notice$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'Novo ${program}';
+	@override String newRefGuess({required Object program}) => 'Provavelmente novo ${program}';
+	@override String newBand({required Object program}) => 'Nova banda ${program}';
+	@override String newBandGuess({required Object program}) => 'Provavelmente nova banda ${program}';
+	@override String newMode({required Object program}) => 'Novo modo ${program}';
+	@override String newModeGuess({required Object program}) => 'Provavelmente novo modo ${program}';
+	@override String unconfirmed({required Object program}) => '${program} não confirmado';
+	@override String programGuess({required Object notice}) => 'Provavelmente ${notice}';
+}
+
+// Path: chase.alerts
+class Translations$chase$alerts$pt extends Translations$chase$alerts$en {
+	Translations$chase$alerts$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Alertas';
+	@override String get newRef => 'Nova referência';
+	@override String get newBand => 'Nova banda';
+	@override String get newMode => 'Novo modo';
+	@override String get unconfirmed => 'Não confirmado';
+}
+
+// Path: chase.imports
+class Translations$chase$imports$pt extends Translations$chase$imports$en {
+	Translations$chase$imports$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => 'Importar ${label}';
+	@override String pickTitle({required Object file}) => 'Importar ${file} como';
+	@override String get dropHint => 'Largue um ficheiro para o importar num programa de caça';
+	@override String done({required Object count, required Object program, required Object file}) => 'Importadas ${count} entradas ${program} de ${file}';
+	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Importadas ${count} entradas ${program} de ${file}; ignoradas ${skipped} que não foi possível ler';
+	@override String nothing({required Object file, required Object program}) => '${file} não tem nada que ${program} possa importar';
+	@override String failed({required Object program, required Object file}) => '${program} não conseguiu ler ${file}';
+	@override String unreadable({required Object program, required Object skipped, required Object file}) => '${program} não conseguiu ler nenhum dos ${skipped} registos em ${file}';
+	@override String noProgram({required Object file}) => 'Nenhum programa de caça importa ${file}';
+}
+
+// Path: dialogs.lookupDespiteAssistance
+class Translations$dialogs$lookupDespiteAssistance$pt extends Translations$dialogs$lookupDespiteAssistance$en {
+	Translations$dialogs$lookupDespiteAssistance$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Consultar online?';
+	@override String get body => 'A assistência está desativada nesta operação. Consultar todos os QSOs vai usar serviços online como o QRZ, só desta vez.';
+	@override String bodyRules({required Object rules}) => 'A assistência está desativada nesta operação para cumprir as regras de ${rules}. Consultar todos os QSOs vai usar serviços online como o QRZ, só desta vez.';
+	@override String get action => 'Consultar Online';
 }
 
 // Path: dialogs.callChange
@@ -1426,6 +1653,8 @@ class Translations$operation$tabs$pt extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'Ecrã Remoto';
 	@override String get solar => 'Solar';
 	@override String get radio => 'Rádio';
+	@override String get rotator => 'Rotor';
+	@override String get summaries => 'Resumos da Operação';
 }
 
 // Path: operation.positions
@@ -1458,7 +1687,7 @@ class Translations$operation$menu$pt extends Translations$operation$menu$en {
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
 	@override String get showDeletedOps => 'Mostrar operações eliminadas';
 	@override String get showQsoNumbers => 'Mostrar Números de QSO';
-	@override String get lookupAllQsos => 'Pesquisar todos os QSOs';
+	@override String get lookupAllQsos => 'Consultar todos os QSOs';
 	@override String get loggingSettingsTitle => 'Configurações de Registo';
 	@override String get mapSettingsTitle => 'Configurações do Mapa';
 	@override String get actionsSection => 'Ações';
@@ -1489,14 +1718,22 @@ class Translations$operation$layout$pt extends Translations$operation$layout$en 
 	@override String get paneShowHeader => 'Mostrar cabeçalho';
 	@override String get paneShowHeaderTabset => 'Sempre visível enquanto este painel partilha um grupo — é pelo cabeçalho que se chega aos outros';
 	@override String get paneInherit => 'Igual à app';
-	@override String get searchHint => 'Procurar painéis';
+	@override String get searchHint => 'Pesquisar painéis';
 	@override String get noPanelsMatch => 'Nenhum painel corresponde à pesquisa.';
 	@override String get nothingToAdd => 'Esta vista já tem todos os painéis possíveis';
 	@override String addPanel({required Object panel}) => 'Adicionar ${panel}';
 	@override String showPreview({required Object panel}) => 'Pré-visualizar ${panel}';
 	@override String missingExtension({required Object name}) => 'Falta a extensão "${name}"';
+	@override String get missingExtensionEnable => 'Ativar';
+	@override String get missingExtensionInstall => 'Instalar…';
+	@override String get missingExtensionWontRun => 'Esta versão não arranca. Atualize-a em Configurações › Extensões.';
+	@override String get missingExtensionUnavailable => 'Não disponível nesta app';
+	@override String get missingExtensionNotInCatalog => 'Não está no catálogo';
+	@override String get missingExtensionCatalogUnreachable => 'Não foi possível contactar o catálogo. Tente novamente';
+	@override String get missingExtensionFailed => 'Não funcionou. Tente novamente';
 	@override String get previewUnavailable => 'Não foi possível mostrar a imagem de pré-visualização deste painel.';
 	@override String get nestedPaneTitle => 'Mais';
+	@override late final Translations$operation$layout$layouts$pt layouts = Translations$operation$layout$layouts$pt.internal(_root);
 	@override String get editLayout => 'Editar Disposição';
 	@override String get saveLayout => 'Guardar Disposição';
 	@override String get revertLayout => 'Descartar alterações à disposição';
@@ -1505,6 +1742,15 @@ class Translations$operation$layout$pt extends Translations$operation$layout$en 
 	@override String get layoutUnreadableBody => 'Não foi possível ler a disposição guardada, por isso está a ser mostrada a disposição predefinida. A original só será substituída se escolher manter esta.';
 	@override String get layoutUnreadableAction => 'Usar esta disposição';
 	@override String panelRenderFailed({required Object panel}) => 'Não foi possível mostrar ${panel}';
+	@override String panelOverCharacters({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: enviou mais de ${max} caracteres';
+	@override String panelOverElements({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua ilustração tem mais de ${max} elementos';
+	@override String panelOverDepth({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua ilustração tem mais de ${max} níveis de aninhamento';
+	@override String panelNotArtwork({required Object panel}) => 'Não foi possível mostrar ${panel}: a sua ilustração não é autónoma';
+	@override String panelOverLayers({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} camadas';
+	@override String panelOverControls({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} controlos';
+	@override String panelOverItems({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: parte da sua cena tem mais de ${max} entradas';
+	@override String panelOverStringLength({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: um texto da cena tem mais de ${max} caracteres';
+	@override String panelOverLayoutDepth({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua disposição tem mais de ${max} níveis de aninhamento';
 	@override String get panelRenderRetry => 'Tentar novamente';
 	@override String get panelActionFailed => 'A ação desse painel falhou. Tente novamente.';
 	@override late final Translations$operation$layout$panels$pt panels = Translations$operation$layout$panels$pt.internal(_root);
@@ -1621,12 +1867,13 @@ class Translations$operation$spots$pt extends Translations$operation$spots$en {
 	@override String get any => 'Qualquer';
 	@override String get allBands => 'Todas as Bandas';
 	@override String get allModes => 'Todos os Modos';
-	@override String get phoneAndCw => 'Telefone e CW';
+	@override String get phoneAndCw => 'Fonia e CW';
 	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: '${count} spot',
 		other: '${count} spots',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'A mostrar ${count} de ${total} spots';
+	@override String get spotsDisabled => 'Spots desativados nesta operação';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutos';
 	@override String get callsOfNote => 'Indicativos Notáveis';
 	@override String get yourSpots => 'Os Seus Spots';
@@ -1659,7 +1906,7 @@ class Translations$operation$import$pt extends Translations$operation$import$en 
 	@override String get protocolPortInvalid => 'Introduza uma porta entre 1 e 65535';
 	@override String get protocolAddressInvalid => 'Introduza um endereço IP válido (ex. 127.0.0.1 ou 239.239.0.2)';
 	@override String get protocolStatusReceiving => 'A receber dados';
-	@override String get protocolStatusNoData => 'Nenhuns dados recebidos recentemente';
+	@override String get protocolStatusNoData => 'Sem dados recebidos recentemente';
 	@override String protocolBindError({required Object error}) => 'Não foi possível começar a escutar: ${error}';
 	@override String captureFailed({required Object error}) => 'Não foi possível guardar os QSOs recebidos; a tentar novamente: ${error}';
 	@override String get n1mmProtocolName => 'N1MM+ Contact Broadcast';
@@ -1680,7 +1927,7 @@ class Translations$operation$import$pt extends Translations$operation$import$en 
 	@override String stationMismatch({required Object call}) => 'Registado como ${call}, não a estação desta operação';
 	@override String get discardAction => 'Descartar';
 	@override String get gapDialogTitle => 'Incluir capturas anteriores?';
-	@override String gapDialogBody({required Object count}) => 'Foram capturados mais ${count} QSOs antes, antes de uma falha nos dados. Incluí-los também?';
+	@override String gapDialogBody({required Object count}) => 'Foram capturados mais ${count} QSOs anteriormente, antes de uma interrupção nos dados. Incluí-los também?';
 	@override String get gapDialogRecentOnly => 'Só os recentes';
 	@override String gapDialogIncludeAll({required Object count}) => 'Incluir todos os ${count}';
 }
@@ -1737,6 +1984,14 @@ class Translations$map$postcard$pt extends Translations$map$postcard$en {
 	@override String get previousPage => 'Página anterior';
 	@override String get nextPage => 'Página seguinte';
 	@override String pageOf({required Object page, required Object count}) => 'Página ${page} de ${count}';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
+		one: '${count} Q',
+		other: '${count} Qs',
+	);
+	@override String get options => 'Opções do Postal';
+	@override String get bandLegend => 'Mostrar legenda de bandas';
+	@override String get grayline => 'Mostrar a linha cinzenta';
+	@override String get sectionsAndOrder => 'Secções e Ordem do Resumo';
 	@override String get sectionDays => 'Cada dia';
 	@override String get reset => 'Repor';
 	@override String failed({required Object error}) => 'Não foi possível criar o postal: ${error}';
@@ -1781,17 +2036,38 @@ class Translations$loggingControls$info$pt extends Translations$loggingControls$
 	@override String get noticeInvalidMode => 'Modo Errado';
 	@override String get noticeInvalidBand => 'Banda Errada';
 	@override String get noticeInvalidCategory => 'Não Contactável';
+	@override String get noticeOverTime => 'Tempo Esgotado';
 	@override String get noticeWorkedBefore => 'Já Contactado';
 	@override String get noticeNewPark => 'Novo Parque';
 	@override String get noticeNewSection => 'Nova Secção';
 	@override String get noticeBonusStation => 'Estação Bónus!';
-	@override String get noticeMissingExchange => 'Sem Câmbio';
-	@override String get noticeInvalidExchange => 'Câmbio Inválido';
+	@override String get noticeMissingExchange => 'Sem Intercâmbio';
+	@override String get noticeInvalidExchange => 'Intercâmbio Inválido';
 	@override String get noticeUnknownEvent => 'Evento Desconhecido';
+	@override String get noticeIncompleteCall => 'Indicativo Incompleto — Não Pontuado';
 	@override String get noticeOurGrid => 'Definir o Nosso Grid';
 	@override String get noticeRareCounty => 'Município Raro!';
 	@override String get noticeOurLocation => 'Definir o Nosso Município';
 	@override String get noticeShortGrid => 'Grid Demasiado Curto';
+}
+
+// Path: qsoList.find
+class Translations$qsoList$find$pt extends Translations$qsoList$find$en {
+	Translations$qsoList$find$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'Localizar no Registo (${shortcut})';
+	@override String get menuItemNoShortcut => 'Localizar no Registo';
+	@override String get hint => 'Número de QSO ou indicativo';
+	@override String get noMatches => 'Sem correspondência';
+	@override String get noOperationQsos => 'Sem QSOs nesta operação';
+	@override String get noPeriodQsos => 'Sem QSOs neste período';
+	@override String get outsideQsosOne => '1 QSO fora desta operação';
+	@override String outsideQsosOther({required Object count}) => '${count} QSOs fora desta operação';
+	@override String get pastQsosOne => '1 QSO anterior';
+	@override String pastQsosOther({required Object count}) => '${count} QSOs anteriores';
 }
 
 // Path: callInfo.history
@@ -1931,6 +2207,11 @@ class Translations$settings$catServer$pt extends Translations$settings$catServer
 	@override String get openAccess => 'Acesso aberto';
 	@override String get openAccessOn => 'Qualquer computador na rede local pode ligar-se.';
 	@override String get openAccessOff => 'Só as apps neste computador se podem ligar.';
+	@override String get allowTransmit => 'Permitir que as apps transmitam';
+	@override String allowTransmitOn({required Object minutes}) => 'As apps podem acionar o PTT do rádio, até ${minutes} minutos de cada vez.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'As apps em qualquer computador na rede local podem acionar o PTT do rádio, até ${minutes} minutos de cada vez.';
+	@override String get allowTransmitOff => 'As apps não podem acionar o PTT do rádio. Use VOX ou a configuração de PTT própria delas.';
+	@override String get allowTransmitUnsupported => 'O rádio de VFO Principal não pode ser posto em transmissão a partir do Ham2K Logger, por isso as apps não podem transmitir através dele.';
 	@override String get off => 'Desligado.';
 	@override String starting({required Object protocol}) => '${protocol}, a iniciar…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} na porta ${port}. Clientes ligados: ${clients}.';
@@ -1939,6 +2220,66 @@ class Translations$settings$catServer$pt extends Translations$settings$catServer
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: outro programa está a usá-la, muitas vezes o próprio ${protocol}. Feche esse programa ou escolha outra porta.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: este computador não o permite. Escolha uma porta acima de 1024.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} deixou de escutar na porta ${port}. A tentar novamente…';
+}
+
+// Path: settings.cluster
+class Translations$settings$cluster$pt extends Translations$settings$cluster$en {
+	Translations$settings$cluster$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Cluster DX';
+	@override String get description => 'O servidor onde as extensões publicam e leem spots, com sessão iniciada como o operador.';
+	@override String get connect => 'Ligar ao cluster';
+	@override String get connectOn => 'As extensões ligam-se ao cluster quando precisam';
+	@override String get connectOff => 'Nada se liga ao cluster';
+	@override String get console => 'Mostrar Consola';
+	@override String get consoleDescription => 'O que o cluster envia, e um lugar para escrever comandos';
+	@override String get consoleTitle => 'Consola do Cluster';
+	@override String get consoleConnect => 'Ligar';
+	@override String get consoleDisconnect => 'Desligar';
+	@override String get consoleCommand => 'Comando';
+	@override String get consoleEmpty => 'Ainda nada. Ligue-se, ou espere que uma extensão use o cluster.';
+	@override String consoleRetry({required Object command}) => 'A enviar novamente: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'Não enviado: ${command} (${reason})';
+	@override String get server => 'Servidor do Cluster';
+	@override String get selectServer => 'Selecionar Servidor';
+	@override String get serverOther => 'Outro';
+	@override String serverOtherIncomplete({required Object node}) => 'Ainda não indicou um servidor, por isso os spots vão para ${node}';
+	@override String get customHost => 'Servidor';
+	@override String get customPort => 'Porta';
+	@override String get password => 'Senha';
+	@override String get passwordDescription => 'Só se for necessária';
+	@override String passwordStored({required Object node}) => 'Senha guardada para ${node}';
+	@override String get scrollback => 'Linhas guardadas';
+	@override String scrollbackOpt({required Object count}) => '${count} linhas';
+	@override String get connection => 'Ligação';
+	@override String get statusIdle => 'Não ligado. Liga-se quando uma extensão precisar. Toque para testar.';
+	@override String statusConnecting({required Object node}) => 'A ligar a ${node}…';
+	@override String statusConnected({required Object node, required Object call}) => 'Ligado a ${node} como ${call}.';
+	@override String statusFailed({required Object node, required Object reason}) => 'Não foi possível ligar a ${node}: ${reason}';
+	@override String get statusUnsupported => 'Não disponível na versão web.';
+	@override String get statusOff => 'Desligado. Ative Ligar ao cluster para o usar.';
+	@override late final Translations$settings$cluster$errors$pt errors = Translations$settings$cluster$errors$pt.internal(_root);
+}
+
+// Path: settings.spotting
+class Translations$settings$spotting$pt extends Translations$settings$spotting$en {
+	Translations$settings$spotting$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Spotting';
+	@override String get respotInterval => 'Re-spot automático a cada';
+	@override String minutes({required Object minutes}) => '${minutes} min';
+	@override String get autoRespotByDefault => 'Re-spot automático por predefinição';
+	@override String get autoRespotByDefaultOn => 'Ativar o re-spot automático depois de qualquer spot publicado';
+	@override String get autoRespotByDefaultOff => 'Exigir uma ação do utilizador para ativar o re-spot automático';
+	@override String get pulseBeforeRespot => 'Pulsar antes de cada re-spot automático';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'O indicador de Spotting pulsa a azul durante os ${seconds} segundos antes de cada re-spot';
+	@override String get pulseBeforeRespotOff => 'Sem pulsar antes de um re-spot automático';
 }
 
 // Path: settings.radio
@@ -1965,7 +2306,9 @@ class Translations$settings$radio$pt extends Translations$settings$radio$en {
 	@override late final Translations$settings$radio$enterSends$pt enterSends = Translations$settings$radio$enterSends$pt.internal(_root);
 	@override late final Translations$settings$radio$keyerSpeed$pt keyerSpeed = Translations$settings$radio$keyerSpeed$pt.internal(_root);
 	@override late final Translations$settings$radio$cwMessages$pt cwMessages = Translations$settings$radio$cwMessages$pt.internal(_root);
+	@override late final Translations$settings$radio$keyerControl$pt keyerControl = Translations$settings$radio$keyerControl$pt.internal(_root);
 	@override late final Translations$settings$radio$voiceMessages$pt voiceMessages = Translations$settings$radio$voiceMessages$pt.internal(_root);
+	@override late final Translations$settings$radio$voiceWords$pt voiceWords = Translations$settings$radio$voiceWords$pt.internal(_root);
 	@override late final Translations$settings$radio$avoidZeroBeat$pt avoidZeroBeat = Translations$settings$radio$avoidZeroBeat$pt.internal(_root);
 	@override late final Translations$settings$radio$zeroBeatRange$pt zeroBeatRange = Translations$settings$radio$zeroBeatRange$pt.internal(_root);
 }
@@ -2003,6 +2346,20 @@ class Translations$settings$exports$pt extends Translations$settings$exports$en 
 	@override String get title => 'Exportações';
 }
 
+// Path: settings.extensionSections
+class Translations$settings$extensionSections$pt extends Translations$settings$extensionSections$en {
+	Translations$settings$extensionSections$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'Atividades';
+	@override String get hunting => 'Caça';
+	@override String get contests => 'Concursos';
+	@override String get lookups => 'Consultas';
+	@override String get dashboard => 'Painéis';
+}
+
 // Path: settings.map
 class Translations$settings$map$pt extends Translations$settings$map$en {
 	Translations$settings$map$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
@@ -2012,6 +2369,8 @@ class Translations$settings$map$pt extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'Mapas';
 	@override late final Translations$settings$map$style$pt style = Translations$settings$map$style$pt.internal(_root);
+	@override late final Translations$settings$map$showCallsigns$pt showCallsigns = Translations$settings$map$showCallsigns$pt.internal(_root);
+	@override late final Translations$settings$map$showGrayline$pt showGrayline = Translations$settings$map$showGrayline$pt.internal(_root);
 	@override late final Translations$settings$map$styleOpts$pt styleOpts = Translations$settings$map$styleOpts$pt.internal(_root);
 }
 
@@ -2049,7 +2408,7 @@ class Translations$settings$peers$pt extends Translations$settings$peers$en {
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Dispositivos Pares';
+	@override String get title => 'Dispositivos Próximos';
 	@override String get enable => 'Ligar a outros dispositivos';
 	@override String get enableDescription => 'Permitir partilhar operações, registo, CAT e GPS com outros dispositivos na rede local';
 	@override String get bleEnable => 'Ligar por Bluetooth';
@@ -2084,7 +2443,7 @@ class Translations$settings$peers$pt extends Translations$settings$peers$en {
 	@override String bleProblem({required Object error}) => 'Bluetooth: ${error}';
 	@override String statusConnected({required Object device}) => 'Ligado a ${device}';
 	@override String statusLost({required Object device}) => 'Ligação a ${device} perdida';
-	@override String statusPerma({required Object connected, required Object linked}) => 'Dispositivos Pares: ${connected} de ${linked} ligados';
+	@override String statusPerma({required Object connected, required Object linked}) => 'Dispositivos Próximos: ${connected} de ${linked} ligados';
 	@override String get screenEnable => 'Partilhar ecrãs e janelas';
 	@override String get screenDescription => 'Permitir que outros dispositivos mostrem ecrãs ou janelas deste computador';
 	@override String get screenSources => 'Ecrãs e Janelas';
@@ -2123,15 +2482,15 @@ class Translations$settings$syncPanel$pt extends Translations$settings$syncPanel
 	@override String get account => 'Conta';
 	@override String get refresh => 'Atualizar';
 	@override String get switchAccounts => 'Mudar de Conta';
-	@override String get switchAccountsDescription => 'Vincular este dispositivo a outra conta com um código QR ou e-mail';
+	@override String get switchAccountsDescription => 'Vincular este dispositivo a outra conta com um código QR ou email';
 	@override String get connectionRequests => 'Pedidos de Ligação';
 	@override String connectionRequestsDescription({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: 'Um dispositivo está à espera de se juntar a esta conta',
 		other: '${n} dispositivos estão à espera de se juntar a esta conta',
 	);
-	@override String get accountEmailTitle => 'E-mail da conta';
-	@override String accountEmailSent({required Object email}) => 'Confirmação enviada para ${email}. Abra a ligação lá para concluir a alteração.';
-	@override String get resendConfirmation => 'Reenviar E-mail de Confirmação';
+	@override String get accountEmailTitle => 'Email da conta';
+	@override String accountEmailSent({required Object email}) => 'Confirmação enviada para ${email}. Abra o link que lá está para concluir a alteração.';
+	@override String get resendConfirmation => 'Reenviar Email de Confirmação';
 	@override String resendConfirmationDescription({required Object email}) => 'A aguardar ${email}';
 	@override String accountEmailResent({required Object email}) => 'Enviado novamente para ${email}.';
 	@override String get deviceLinked => 'Esse dispositivo está agora vinculado a esta conta.';
@@ -2188,15 +2547,15 @@ class Translations$settings$accounts$pt extends Translations$settings$accounts$e
 	@override String loginFailed({required Object error}) => 'Falha no início de sessão: ${error}';
 	@override String get lookupFailed => 'As contas estão indisponíveis neste momento — tente novamente daqui a pouco';
 	@override String get browserLoginTitle => 'Conclua o início de sessão no navegador';
-	@override String browserLoginSteps({required Object prefix}) => 'Quando terminar, o navegador vai tentar abrir uma ligação que começa por "${prefix}". O mais provável é o seu computador não ter nada registado para a abrir, por isso copie essa ligação (da barra de endereço, ou da página de erro que o navegador mostrar) e cole-a aqui.';
-	@override String browserLoginNotOpened({required Object prefix}) => 'O Ham2K Logger não conseguiu abrir o navegador. Copie a ligação de início de sessão abaixo e abra-a manualmente, depois copie a ligação para onde for reencaminhado (começa por "${prefix}") e cole-a aqui.';
-	@override String get copyLoginLink => 'Copiar ligação de início de sessão';
-	@override String get pastedLinkLabel => 'Cole a ligação aqui';
+	@override String browserLoginSteps({required Object prefix}) => 'Quando terminar, o navegador vai tentar abrir um link que começa por "${prefix}". O mais provável é o seu computador não ter nada registado para o abrir, por isso copie esse link (da barra de endereço, ou da página de erro que o navegador mostrar) e cole-o aqui.';
+	@override String browserLoginNotOpened({required Object prefix}) => 'O Ham2K Logger não conseguiu abrir o navegador. Copie o link de início de sessão abaixo e abra-o manualmente, depois copie o link para onde for reencaminhado (começa por "${prefix}") e cole-o aqui.';
+	@override String get copyLoginLink => 'Copiar link de início de sessão';
+	@override String get pastedLinkLabel => 'Cole o link aqui';
 	@override String get finishLogin => 'Concluir Início de Sessão';
-	@override String pastedLinkNotARedirect({required Object prefix}) => 'Essa não é a ligação de início de sessão — deve começar por "${prefix}".';
-	@override String get pastedLinkWrongLogin => 'Essa ligação pertence a outra tentativa de início de sessão. Feche esta página e ligue novamente.';
-	@override String get pastedLinkNoCode => 'Essa ligação não tem código de início de sessão. Conclua primeiro o início de sessão, depois copie a ligação para onde for reencaminhado.';
-	@override String get pastedLinkMalformed => 'Essa ligação parece cortada. Copie-a por inteiro e cole-a novamente.';
+	@override String pastedLinkNotARedirect({required Object prefix}) => 'Esse não é o link de início de sessão — deve começar por "${prefix}".';
+	@override String get pastedLinkWrongLogin => 'Esse link pertence a outra tentativa de início de sessão. Feche esta página e ligue novamente.';
+	@override String get pastedLinkNoCode => 'Esse link não tem código de início de sessão. Conclua primeiro o início de sessão, depois copie o link para onde for reencaminhado.';
+	@override String get pastedLinkMalformed => 'Esse link parece cortado. Copie-o por inteiro e cole-o novamente.';
 	@override String get relayLoginWaiting => 'A aguardar que conclua o início de sessão — continuará automaticamente quando o fizer.';
 	@override String get loginNoResponse => 'Este dispositivo ainda não recebeu resposta do início de sessão. Se já concluiu no navegador, cancele e tente ligar novamente.';
 	@override String get relayLoginNotOpened => 'O Ham2K Logger não conseguiu abrir o navegador automaticamente. Use o botão abaixo para abrir a página de início de sessão.';
@@ -2219,7 +2578,7 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get none => 'Nenhum equipamento configurado';
 	@override String get add => 'Adicionar';
 	@override String get addTitle => 'Adicionar equipamento';
-	@override String get searchHint => 'Procurar equipamento';
+	@override String get searchHint => 'Pesquisar equipamento';
 	@override String get noMatches => 'Nenhum equipamento corresponde';
 	@override String get detectedEquipment => 'Equipamento Detetado';
 	@override String discoveryUnavailable({required Object error}) => 'Não é possível escutar rádios: ${error}';
@@ -2271,13 +2630,28 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'porta ${n} de ${total}';
 	@override String get serialPortSuggested => 'sugerida';
 	@override String get serialPortJustNow => 'Ligada recentemente';
+	@override String get serialPortNoDriver => 'sem controlador';
 	@override String get serialDeviceRequest => 'Adicionar um dispositivo USB…';
+	@override String get bleDevice => 'Dispositivo Bluetooth LE';
+	@override String get bleDeviceDescription => 'A ponte série através da qual o rádio está ligado, como um LiNK500MP em Modo 4 ou um adaptador série BLE.';
+	@override String get bleScan => 'Procurar dispositivos Bluetooth LE…';
+	@override String get bleScanNoneFound => 'Nenhum dispositivo Bluetooth LE encontrado. Verifique que a ponte está ligada, perto, e no modo Bluetooth LE (Modo 4 num LiNK500MP).';
+	@override String bleScanFailed({required Object reason}) => 'Não foi possível fazer a procura Bluetooth LE: ${reason}';
+	@override String get bleOff => 'O Bluetooth está desligado.';
+	@override String get bleDenied => 'A permissão de Bluetooth não foi concedida. Permita-a nas configurações do sistema e tente novamente.';
+	@override String get bleUnsupported => 'Este dispositivo não tem Bluetooth LE.';
+	@override String get bleStarting => 'O Bluetooth ainda está a arrancar. Tente novamente daqui a pouco.';
+	@override String get bleConnectFailed => 'Não é possível contactar o dispositivo Bluetooth LE. Verifique que está ligado, perto, e não está ligado a outra app.';
+	@override String bleNoSerialService({required Object services}) => 'Este dispositivo Bluetooth LE não tem nenhum serviço série que a app reconheça. Por favor reporte-o com os seus serviços: ${services}';
 	@override String get baudRate => 'Velocidade (baud)';
 	@override String get baudRateDescription => 'Tem de corresponder ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo e nenhum erro.';
 	@override String get serialRtsHigh => 'Manter RTS alto';
 	@override String get serialRtsHighDescription => 'Só para um rádio que espera pelo RTS antes de responder, como um Yaesu com CAT RTS ligado. Num Digirig, SignaLink e na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o rádio a transmitir.';
 	@override String get serialDtrHigh => 'Manter DTR alto';
 	@override String get serialDtrHighDescription => 'Só para uma interface CAT alimentada pelo DTR, como alguns cabos RS-232 para o FT-817. Em muitos cabos o DTR manipula o CW ou o PTT, e mantê-lo alto põe o rádio a transmitir.';
+	@override String get serialUsbDriver => 'Controlador do chip USB';
+	@override String get serialUsbDriverDescription => 'Automático reconhece a maioria dos adaptadores. Escolha o chip só para um que a lista de portas diga não ter controlador — a embalagem ou uma lista de dispositivos USB indica-o.';
+	@override String get serialUsbDriverAuto => 'Automático';
 	@override String get civAddress => 'Endereço CI-V do rádio';
 	@override String get civAddressDescription => 'Em hexadecimal, tal como aparece no menu CI-V do rádio. O IC-705 vem de fábrica com A4.';
 	@override String get civAddressInvalid => 'Um endereço CI-V tem dois dígitos hexadecimais, de 01 a FF';
@@ -2298,8 +2672,37 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get spectrumNoPanadapter => 'Esta slice não tem panadapter no rádio';
 	@override String spectrumStreamRefused({required Object code}) => 'O rádio recusou um fluxo DAX IQ (erro ${code})';
 	@override String get spectrumNoUdp => 'Os dados de espectro do rádio não chegam a este dispositivo';
+	@override String get spectrumK4Unavailable => 'Não é possível receber o espectro do K4 pela rede local. A tentar novamente…';
+	@override String get spectrumK4RemoteUnavailable => 'Não é possível receber o espectro remoto do K4';
 	@override String get spectrumScopeRefused => 'O rádio recusou os comandos do scope';
 	@override String get spectrumOutOfRange => 'O scope do rádio está definido fora do intervalo que consegue mostrar';
+	@override String get spectrumBandUnsupported => 'O scope do rádio não pode ser mostrado nesta banda';
+	@override String get spectrumSdrNoRadio => 'A aguardar a frequência do rádio associado…';
+	@override String get spectrumSdrNotConnected => 'O SDR não está ligado';
+	@override String get spectrumSdrNoIf => 'Defina a frequência de FI do rádio nas configurações deste SDR';
+	@override String get sdrRadio => 'Mostra o espectro de';
+	@override String get sdrRadioDescription => 'Uma visualização de espectro neste rádio usa este recetor em vez do scope do próprio rádio.';
+	@override String get sdrRadioMain => 'O rádio Principal';
+	@override String get sdrTuning => 'Entrada de antena';
+	@override String get sdrTuningDescription => 'De onde vem o sinal do recetor. Com antena própria, sintoniza-se sozinho para seguir o rádio; na saída de FI do rádio, fica na FI.';
+	@override String get sdrTuningIndependent => 'Antena própria';
+	@override String get sdrTuningIfTap => 'A saída de FI do rádio';
+	@override String get sdrIfHz => 'Frequência de FI (Hz)';
+	@override String get sdrIfHzDescription => 'Só para uma saída de FI: a frequência a que o VFO do rádio fica na sua FI, como 68330000 num FT-817.';
+	@override String get sdrIfInverted => 'A FI está invertida';
+	@override String get sdrGainDb => 'Ganho (dB)';
+	@override String get sdrGainDbDescription => 'Deixe em branco para o ganho automático do recetor.';
+	@override String get sdrOffsetHz => 'Desvio de frequência (Hz)';
+	@override String get sdrOffsetHzDescription => 'Somado a cada frequência enviada ao recetor, para um upconverter: 125000000 para um Ham It Up.';
+	@override String get sdrPpm => 'Correção de frequência (ppm)';
+	@override String get rtlDirectSampling => 'Amostragem direta';
+	@override String get rtlDirectSamplingDescription => 'Para HF num RTL-SDR V3 sem upconverter. Um RTL-SDR V4 chega a HF sem isto.';
+	@override String get rtlDirectSamplingOff => 'Desligada';
+	@override String get rtlDirectSamplingI => 'Ramo I';
+	@override String get rtlDirectSamplingQ => 'Ramo Q';
+	@override String get rtlTcpNotAServer => 'Isto não é um servidor rtl_tcp';
+	@override String get rtlTcpNotes => 'Isto liga-se a um **servidor rtl_tcp que corre por sua conta** no computador onde o dongle está ligado.\n\n- **Inicie-o** com `rtl_tcp -a 0.0.0.0` para que outras máquinas o alcancem; na mesma máquina, basta `rtl_tcp`.\n- **A porta** é 1234, a menos que o tenha iniciado com `-p`.\n- **Um programa de cada vez:** o rtl_tcp serve um único cliente. A app só se liga enquanto uma visualização de espectro estiver visível, e larga-o alguns segundos depois de ela fechar.\n- **No Android**, a app *SDR driver* corre o mesmo servidor no telemóvel.';
+	@override String get rspTcpNotes => 'Isto liga-se a um **servidor rsp_tcp que corre por sua conta** no computador onde o RSP está ligado, com a API da SDRplay aí instalada.\n\n- **Inicie-o** com `rsp_tcp -a 0.0.0.0`.\n- **A porta** é 1234, a menos que o tenha iniciado com `-p`.\n- **Um programa de cada vez:** o servidor aceita um único cliente. A app só se liga enquanto uma visualização de espectro estiver visível.';
 	@override String get n3fjpNoRig => 'O N3FJP não tem nenhuma interface de rádio configurada, por isso isto segue o que é escrito no N3FJP, não um rádio';
 	@override String get winkeyerKeyPort => 'Saída de manipulação';
 	@override String get winkeyerKeyPortDescription => 'Em qual das duas tomadas de saída do manipulador está ligado o seu rádio.';
@@ -2308,41 +2711,71 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get winkeyerPttDescription => 'Aciona a linha de PTT na mesma tomada, para um amplificador ou um rádio que precise dela. Deixe desligado para um rádio manipulado pela tomada da chave.';
 	@override String get winkeyerNoAnswer => 'Nenhum WinKeyer respondeu nesta porta';
 	@override String get winkeyerStoppedAnswering => 'O WinKeyer deixou de responder durante o envio; a mensagem foi descartada';
+	@override String get icomControlPort => 'Porta de controlo (UDP)';
+	@override String get icomControlPortDescription => 'A Control Port (UDP) do rádio — 50001, a menos que tenha sido alterada nas configurações de rede do rádio, ou reencaminhada para outra.';
+	@override String get icomSerialPort => 'Porta série (UDP)';
+	@override String get icomSerialPortDescription => 'A Serial Port (UDP) do rádio — 50002, a menos que tenha sido alterada nas configurações de rede do rádio, ou reencaminhada para outra.';
+	@override String get icomPortsDiffer => 'As portas de controlo e série têm de ser diferentes';
 	@override String get radioUser => 'Nome de utilizador do rádio';
-	@override String get radioPass => 'Palavra-passe do rádio';
-	@override String get radioLoginDescription => 'O login Network → Remote do rádio, não a palavra-passe do WiFi.';
+	@override String get radioPass => 'Senha do rádio';
+	@override String get radioLoginDescription => 'O login Network → Remote do rádio, não a senha do WiFi.';
 	@override String get radioUserRequired => 'É necessário o nome de utilizador de controlo remoto do rádio';
 	@override String get connectFailedBusy => 'O dispositivo está em uso';
 	@override String get connectFailedDenied => 'Acesso negado';
 	@override String get connectFailedDevice => 'Dispositivo não encontrado';
+	@override String get connectFailedUnsupported => 'Nenhum controlador reconhece o chip deste adaptador USB. Se souber qual é o chip, escolha-o em Controlador do chip USB, nas Configurações Avançadas.';
 	@override String get connectFailedLines => 'Não foi possível manter o RTS/DTR como definido, por isso a porta foi fechada. Outro programa pode ter deixado o controlo de fluxo por hardware ligado — desligue e volte a ligar o cabo.';
 	@override String get connectFailedNetwork => 'Não é possível encontrar o rádio na rede. Verifique o endereço e se está ligado e acessível.';
+	@override String connectFailedReplyPort({required Object port}) => 'A porta ${port} neste dispositivo já está em uso, e é lá que chegam as respostas. Feche o que mais estiver a escutar nela — incluindo outro nó PstRotator — ou mude a porta.';
 	@override String get connectFailedTimeout => 'O rádio não respondeu a tempo. Verifique se está ligado e acessível.';
 	@override late final Translations$settings$station$models$pt models = Translations$settings$station$models$pt.internal(_root);
 	@override late final Translations$settings$station$transports$pt transports = Translations$settings$station$transports$pt.internal(_root);
 	@override String get troubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
-	@override String get ft891Troubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **O CAT RTS tem de estar OFF no rádio** (menu **05-08** do FT-891). Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo. Num Digirig, SignaLink ou na maioria dos cabos caseiros essa mesma linha é o PTT, por isso subi-la poria o emissor a transmitir. Na porta USB do próprio rádio, a alternativa é **Manter RTS alto** em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao CAT RATE do rádio (menu **05-06**). Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
+	@override String get ft891Troubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **CAT RTS desligado no rádio, ou Manter RTS alto ativo.** Com o **CAT RTS** ligado (menu **05-08** do FT-891), o rádio fica em silêncio enquanto o RTS está em baixo — pode responder uma vez quando a porta abre, e depois nada. Escolher a porta USB do próprio rádio ativa **Manter RTS alto** em Configurações Avançadas. Num Digirig, SignaLink ou na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o emissor a transmitir: em vez disso, desligue o CAT RTS no rádio.\n- **A velocidade tem de corresponder** ao CAT RATE do rádio (menu **05-06**). Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
 	@override String get yaesuBinaryTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
 	@override String get yaesuBinaryTroubleshooting => 'Este rádio usa o CAT antigo de cinco bytes da Yaesu, e não responde de todo quando algo está errado. Quase sempre é uma destas causas:\n\n- **O cabo tem de converter níveis.** A tomada CAT na traseira não é RS-232 nem USB; precisa de um CT-62 ou de um adaptador equivalente. Um cabo simples de áudio ou de dados não funciona para CAT.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio (**#14** num FT-817, **#19** num FT-857 ou FT-897). Se não corresponder, o rádio não devolve nada, e nunca um erro.\n- **Nunca deixe nada subir o RTS ou o DTR nesta porta.** Na maioria dos cabos para estes rádios essas linhas são o PTT e a manipulação. Uma interface antiga alimentada pelo DTR é a exceção: para essa, ative **Manter DTR alto** em Configurações Avançadas.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEste controlador foi escrito a partir da tabela CAT publicada pela Yaesu e ainda não foi testado com um destes rádios. Se funcionar só em parte, vale a pena reportar.';
+	@override String get tenTecTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
+	@override String get tenTecEagleTroubleshooting => '- **A porta USB-B na traseira é a ligação CAT.** O rádio aparece como uma porta série USB; no Windows precisa do controlador USB to UART da Ten-Tec, que aparece no Gestor de Dispositivos como "USB to UART (COMx)".\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta, e o atualizador de firmware da Ten-Tec também.\n- **Definir a largura do filtro a partir da app tira-a ao botão BW** até o rádio ser desligado e ligado de novo. É assim que o rádio funciona.\n\nEste controlador foi escrito a partir do guia de referência do programador da Ten-Tec. Se funcionar só em parte, vale a pena reportar, com a versão de firmware do menu do rádio.';
+	@override String get tenTecOrionTroubleshooting => '- **Use um cabo série DB-9 direto** para a porta SERIAL DATA, não um null-modem.\n- **Esta entrada mantém o RTS alto**, porque o Orion usa o RTS e o CTS como handshake. Numa interface que aciona o PTT a partir do RTS, como um Digirig, desative Manter RTS alto em Configurações Avançadas, ou o rádio transmite assim que a app se liga.\n- **CW a partir da app precisa do manipulador interno do rádio ligado.** Com ele desligado, o rádio ignora o que a app envia.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEste controlador foi escrito a partir do guia de referência do programador da Ten-Tec e ainda não foi testado com um Orion. Se funcionar só em parte, vale a pena reportar, com a versão de firmware do menu do rádio.';
+	@override String get tenTecNoCw => 'O firmware deste rádio não aceita CW da app. A Ten-Tec acrescentou-o no firmware 1.366 do Orion.';
+	@override String get tenTecKeyerOff => 'O manipulador interno do rádio está desligado, por isso ignora o CW enviado pela app. Ligue o manipulador no menu do rádio.';
 	@override String get guohetecTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
 	@override String get guohetecTroubleshooting => 'O Q900 tem dois protocolos CAT, e esta entrada usa o nativo em vez da imitação do FT-817. Escolha aqui **Guohetec Q900**, não um FT-817 — a imitação suporta menos comandos, e o rádio não diz qual está a usar.\n\n- **O cabo USB-C é a ligação CAT**, e também liga a placa de som. A velocidade não importa nele; a porta ignora o valor definido.\n- **Nunca deixe nada subir o RTS ou o DTR nesta porta.** Num cabo série essas linhas são o PTT e a manipulação.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Um rádio de segunda geração comporta-se de forma diferente** de um de primeira. Prima longamente Menu, depois About: HW 2.0 é a segunda geração.\n\nEste controlador foi escrito a partir do protocolo publicado pelo fabricante e ainda não foi testado com um destes rádios. Se funcionar só em parte, vale a pena reportar.';
 	@override String get yaesuTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
 	@override String get yaesuTroubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo. Num Digirig, SignaLink ou na maioria dos cabos caseiros essa mesma linha é o PTT, por isso subi-la poria o emissor a transmitir. Na porta USB do próprio rádio, a alternativa é **Manter RTS alto** em Configurações Avançadas. O local dessa configuração varia com o modelo (menu **05-08** num FT-891).\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Os modos seguem a tabela do FT-891.** A maior parte da gama Yaesu corresponde-lhe, mas um rádio que numere os modos de outra forma vai mostrar e definir o modo errado nesses casos. A frequência não é afetada.';
+	@override String get ftdx3000Troubleshooting => '**O menu 037 CAT SELECT tem de estar em USB** para CAT pela porta USB do rádio; em RS232C, o CAT fica na tomada da traseira.\n\nEsta entrada foi escrita a partir de documentação CAT publicada e ainda não foi testada com um FTDX3000. Se funcionar só em parte, vale a pena reportar.';
 	@override String get yaesuRs232Troubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **A tomada CAT é RS-232.** Precisa de um adaptador USB-série e de um cabo DB-9 direto — um cabo null-modem troca as linhas, e o rádio nunca recebe nada.\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo, a menos que **Manter RTS alto** esteja ativo em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEsta entrada foi escrita a partir de documentação CAT publicada e ainda não foi testada com um destes rádios. Se funcionar só em parte, vale a pena reportar.';
-	@override String get yaesuUsbTroubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **Use a primeira das duas portas USB do rádio.** O CAT está normalmente na primeira (a porta COM **Enhanced** no Windows); a segunda (**Standard**) é para PTT e manipulação. O seletor aponta para a primeira sempre que consegue distinguir as duas.\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo, a menos que **Manter RTS alto** esteja ativo em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
+	@override String get yaesuUsbTroubleshooting => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **Use a primeira das duas portas USB do rádio.** O CAT está normalmente na primeira (a porta COM **Enhanced** no Windows); a segunda (**Standard**) é para PTT e manipulação. O seletor aponta para a primeira sempre que consegue distinguir as duas.\n- **CAT RTS desligado no rádio, ou Manter RTS alto ativo.** Com o menu **CAT RTS** do rádio ligado, este fica em silêncio enquanto o RTS está em baixo — pode responder uma vez quando a porta abre, e depois nada. Escolher a porta USB do próprio rádio ativa **Manter RTS alto** em Configurações Avançadas. Num Digirig, SignaLink ou na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o emissor a transmitir: em vez disso, desligue o CAT RTS no rádio.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
 	@override String get k4SerialNotes => 'Ligue a tomada USB-B (PC) traseira do K4. Tanto USB-PC1 como USB-PC2 servem para CAT; escolha uma porta livre e faça corresponder a configuração Serial USB-PCn: Baud Rate no rádio. O HaLo preenche 38400; altere se necessário. Outra aplicação tem de usar a outra porta ou a Ethernet.\n\nEsta ligação controla o rádio e os seus manipuladores; não envia áudio para o HaLo.';
-	@override String get k4TcpNotes => 'Ligue a tomada Ethernet do K4 à sua rede local. Introduza o nome de anfitrião ou o endereço IP e a porta CAT 9200. Isto é controlo CAT, não a ligação de áudio remoto separada na porta 9204.\n\nO HaLo controla o rádio e os seus manipuladores sem transmitir áudio nem dados do panadapter.';
+	@override String get k4TcpNotes => 'Ligue a tomada Ethernet do K4 à sua rede local. Introduza o nome de anfitrião ou o endereço IP e a porta CAT 9200. O HaLo usa o mesmo anfitrião na porta fixa 9201 quando um panadapter ou waterfall está visível; mudar a porta CAT não muda a porta do espectro.\n\nO espectro mostra o recetor principal. Os controlos de zoom, ajuste de referência e velocidade afetam só a visualização do HaLo. A transmissão de áudio não é suportada.';
 	@override String get k4PowerTimeout => 'A potência do K4 não foi alterada porque o rádio não confirmou a sua gama de saída. Tente novamente.';
+	@override String get k4RemoteNotes => 'Ative o acesso remoto no seu K4 e introduza a senha de rede dele. Main e Sub partilham uma ligação encriptada para controlo do rádio e espectro. A porta predefinida é 9204; introduza a porta reencaminhada quando se ligar remotamente.\n\nA reprodução de áudio e a transmissão do microfone não são suportadas.';
+	@override String get k4Receiver => 'Recetor';
+	@override String get k4ReceiverMain => 'Main';
+	@override String get k4ReceiverSub => 'Sub';
+	@override String get k4ReceiverInvalid => 'Escolha Main ou Sub';
+	@override String get k4ReceiverAlreadyConfigured => 'Esse recetor já está configurado para este K4';
+	@override String get k4SubReceiverOff => 'O recetor Sub do K4 está desligado';
+	@override String get k4RemotePasswordRequired => 'Introduza a senha de rede do K4 para ligar de forma segura.';
+	@override String get k4RemoteHandshakeFailed => 'O K4 não conseguiu estabelecer uma ligação segura. Verifique a senha de rede e as configurações de acesso remoto.';
+	@override String get k4RemoteUnreachable => 'Não foi possível alcançar a ligação segura do K4. Verifique o endereço, a porta e as configurações de acesso remoto.';
 	@override String get k4PowerRange => 'A potência do K4 tem de estar entre 0,1–110 W, ou 0,0001–0,01 W quando a saída de miliwatts do transverter está ativa.';
 	@override String get elecraftTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
 	@override String get elecraftTroubleshooting => 'Os rádios Elecraft falam CAT Kenwood, e um KX2 e um KX3 já foram usados desta forma — VFO nos dois sentidos, mudança de modo e batimento zero em CW, tudo a funcionar.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** à definida em **RS232** no menu do rádio. Estes rádios vêm de fábrica com 38400. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\n**Se a frequência estiver certa mas o modo errado**, diga-nos. As entradas do KX2 e KX3 leem o modo numa posição da resposta de estado do rádio que fixámos a partir dos rádios que vimos, e um firmware que o coloque noutro sítio só chega até nós através de um relatório.\n\nO K3 ainda não foi reportado em nenhum sentido, por isso diga-nos o que acontece se usar um. O K4 tem a sua própria entrada.';
+	@override String get lab599TroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
+	@override String get lab599Troubleshooting => 'A gama TX-500 fala CAT Kenwood. Frequência e modo já foram usados através de um LiNK500MP; potência e medidores foram escritos a partir da referência CAT da Lab599, por isso reporte o que acontecer, corra bem ou mal.\n\n- **A velocidade tem de corresponder** à configuração CAT do rádio, 9600 a menos que a tenha alterado. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Escolha o protocolo CAT no rádio.** TS-2000 cobre frequência, modo e potência. LAB599 permite ainda à app mudar o rádio para DIG, vê-lo transmitir em DIG e ler a tensão de alimentação.\n- **Através de um LiNK500MP**, prima e mantenha o botão do VFO durante cerca de três segundos para passar o controlo CAT à interface.\n- **Defina o modo do LiNK500MP para a ligação**: Modo 3 para Bluetooth, Modo 4 para Bluetooth LE. Em qualquer outro modo, uma procura Bluetooth LE não o encontra.\n- **Por Bluetooth**, o LiNK500MP emparelha como duas portas série e só uma transporta CAT. Se o rádio ficar em silêncio, escolha a outra.';
+	@override String get lab599TroubleshootingIos => 'A gama TX-500 fala CAT Kenwood. Frequência e modo já foram usados através de um LiNK500MP; potência e medidores foram escritos a partir da referência CAT da Lab599, por isso reporte o que acontecer, corra bem ou mal.\n\n- **Ponha o LiNK500MP em Modo 4**, o seu modo Bluetooth LE, antes de o procurar. Em qualquer outro modo, um iPhone ou iPad não o encontra.\n- **Passe o controlo CAT ao LiNK500MP**: prima e mantenha o botão do VFO do rádio durante cerca de três segundos.\n- **Escolha o protocolo CAT no rádio.** TS-2000 cobre frequência, modo e potência. LAB599 permite ainda à app mudar o rádio para DIG, vê-lo transmitir em DIG e ler a tensão de alimentação.';
 	@override String get kenwoodTroubleshootingTitle => 'Se o rádio liga mas não mostra a frequência';
-	@override String get kenwoodTroubleshooting => 'Este controlador está comprovado com os TS-590SG e TS-480 da Kenwood, os QMX e QCX-mini da QRP Labs, e os KX2 e KX3 da Elecraft. O resto da gama foi escrito a partir de referências CAT publicadas, por isso reporte o que acontecer, corra bem ou mal.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Alguns rádios precisam de ter o CAT ativado** no menu antes de responderem.\n\n**Vários front-ends SDR falam este mesmo protocolo**, por isso vale a pena experimentar esta entrada também com eles; os rádios Elecraft estão listados à parte, em Elecraft. Se a frequência estiver certa mas o modo estiver errado ou em falta, essa é a única parte que difere ao longo da gama — a app deduz o modo a partir do rádio e, se não conseguir, pergunta-lhe diretamente, por isso o modo pode simplesmente chegar com atraso.';
+	@override String get kenwoodTroubleshooting => 'Este controlador está comprovado com os TS-590SG e TS-480 da Kenwood, os QMX e QCX-mini da QRP Labs, e os KX2 e KX3 da Elecraft. O resto da gama foi escrito a partir de referências CAT publicadas, por isso reporte o que acontecer, corra bem ou mal.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Alguns rádios precisam de ter o CAT ativado** no menu antes de responderem.\n- **Os rádios Kenwood esperam pelo RTS**: a porta CAT usa-o como handshake, por isso Manter RTS alto (em Configurações Avançadas) tem de estar ativo. Uma ligação configurada antes de isso ser a predefinição pode tê-lo desativado. Num Digirig ou noutro cabo que acione o PTT a partir do RTS, desative-o, ou o rádio transmite.\n\n**Vários front-ends SDR falam este mesmo protocolo**, por isso vale a pena experimentar esta entrada também com eles; os rádios Elecraft estão listados à parte, em Elecraft. Se a frequência estiver certa mas o modo estiver errado ou em falta, essa é a única parte que difere ao longo da gama — a app deduz o modo a partir do rádio e, se não conseguir, pergunta-lhe diretamente, por isso o modo pode simplesmente chegar com atraso.';
 	@override String get statusConnected => 'Ligado';
 	@override String get statusLost => 'Desligado';
 	@override String get notConfigured => 'Não configurado';
 	@override String get currentConfiguration => 'Configuração Atual';
 	@override String get currentTransceiver => 'Transcetor Atual';
+	@override String get currentTransceivers => 'Transcetores Atuais';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'Mensagens em fila em vez de interromper';
+	@override String get noRadioBSelected => 'Nenhum Rádio B selecionado';
 	@override String get radioMode => 'Modo do Rádio';
 	@override String get keyerNotSupported => 'Não suportado pelo rádio atual';
 	@override String get catControlPreferences => 'Preferências do Controlo CAT';
@@ -2371,13 +2804,25 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String peerRadioElsewhereTitle({required Object radio}) => '${radio} está noutro dispositivo';
 	@override String peerRadioElsewhereMessage({required Object device}) => 'Este rádio está ligado a ${device}. A ligação e as configurações são feitas nesse dispositivo.';
 	@override String get antennaInUse => 'Antena em Uso';
-	@override String get keyInUse => 'Chave em Uso';
+	@override String get keyInUse => 'Manipulação CW';
+	@override String get phoneKeying => 'Manipulação de Voz';
+	@override String get phoneKeyingNone => 'Nenhuma';
+	@override String phoneKeyingRadio({required Object radio}) => 'Memórias em ${radio}';
+	@override String get phoneKeyingComputer => 'Áudio neste computador';
+	@override String get phoneKeyingOff => 'A manipulação de voz está desligada';
+	@override String get computerVoiceSettings => 'Áudio do Computador';
+	@override String get cwKeyingOptions => 'Opções de Manipulação CW';
 	@override String get noneSelected => 'Nenhuma';
 	@override String get moreSettings => 'Mais Configurações';
 	@override String get icomCivTroubleshootingTitle => 'Se aparecerem duas portas série para o mesmo rádio';
 	@override String get icomCivTroubleshooting => 'Vários rádios Icom, entre eles o IC-705, apresentam **duas** portas série USB ao mesmo tempo (a Icom chama-lhes Port A e Port B), ambas definidas para CI-V por omissão. Nem esta app nem o seu sistema operativo as conseguem distinguir além disso: o mesmo ID de fabricante/produto USB aparece simplesmente duas vezes, por vezes marcado aqui com o sufixo `#2`. **A Port A é normalmente a certa** — em geral a primeira que o sistema operativo ou o navegador lista, e quando esta app consegue distinguir as duas portas marca essa como sugerida. Se os comandos saem e o rádio nunca responde, experimente a outra porta.';
 	@override String get civAddressTroubleshootingTitle => 'Se o rádio nunca responder';
 	@override String get civAddressTroubleshooting => '- **O endereço CI-V tem de corresponder** ao menu do rádio. Esta entrada preenche o endereço de fábrica do modelo, mas um rádio que partilha um barramento CI-V é exatamente onde ele é alterado. Uma trama enviada para o endereço errado é ignorada em silêncio, o que parece exatamente um cabo avariado.\n- **A velocidade tem de corresponder** ao CI-V BAUD RATE do rádio (em USB, CI-V USB Baud Rate). Defina no rádio o mesmo número mostrado aqui, **não Auto**. Em Auto alguns rádios, entre eles o IC-7300, ligam e deixam de responder ao fim de um minuto ou assim.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
+	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **O endereço CI-V tem de corresponder** ao menu do rádio. Esta entrada preenche o endereço de fábrica do modelo, mas um rádio que partilha um barramento CI-V é exatamente onde ele é alterado. Uma trama enviada para o endereço errado é ignorada em silêncio, o que parece exatamente um cabo avariado.\n${speed}\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.';
+	@override String get icomUsbSpeedFollows => '- **Não há velocidade a definir.** Por USB este rádio fala à velocidade que o computador usar, e esta entrada usa sempre 115200, a velocidade de que o scope precisa.';
+	@override String get ic7610UsbSpeed => '- **Defina CI-V USB Baud Rate para 115200**, a velocidade que esta entrada usa sempre, porque o scope precisa dela — **não Auto**. Um rádio definido para qualquer outra velocidade responde com silêncio.';
+	@override String get civTransceiveTitle => 'Se a app demora a seguir o rádio';
+	@override String get civTransceive => 'Se a app demora vários segundos a mostrar uma mudança de frequência ou de modo feita no rádio, ative a configuração **CI-V Transceive** do rádio (na maioria dos modelos atuais, em SET > Connectors > CI-V). Com ela ativa, o rádio reporta cada mudança no momento em que acontece. Com ela desativada, a app só vê uma mudança na próxima vez que perguntar, de poucos em poucos segundos.';
 	@override String get ic7300Mk2Note => '\n- O **IC-7300 MK2** vem de fábrica com o endereço `B6`, não o `94` aqui preenchido — escolha antes a entrada IC-7300 MK2.';
 	@override String get ic705PortNote => '\n- O **IC-705** apresenta duas portas série USB, ambas com o nome do rádio. O CI-V está na **primeira**, para a qual o seletor aponta sempre que consegue distinguir as duas.';
 	@override String get ic7760PortNote => '\n- O **IC-7760** fala CI-V na **Port A** das duas portas série USB que apresenta.';
@@ -2393,7 +2838,8 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get commanderTroubleshootingTitle => 'Se a app não conseguir ligar';
 	@override String get commanderTroubleshooting => 'Isto liga ao **DXLab Commander, a correr no seu computador**, não diretamente ao rádio — é o Commander que fala com o rádio.\n\n- **O Commander já tem de estar a correr** e ligado ao rádio.\n- **O serviço de rede dele tem de estar ligado**: o botão **Net Serv** no painel Radio da janela Configuration do Commander.\n- **A porta** é 52002, a terceira porta do bloco que começa na **Base Port** do Net Serv (52000, a menos que a tenha alterado).\n- **A partir de outra máquina**, garanta que a firewall deixa passar a ligação.\n\nEsta entrada foi escrita a partir das mensagens TCP publicadas do Commander e ainda não foi testada com o Commander. Se funcionar só em parte, vale a pena reportar.';
 	@override String get ic705TroubleshootingTitle => 'Se o rádio nunca responder';
-	@override String get ic705Troubleshooting => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **palavra-passe errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a palavra-passe.';
+	@override String get ic705Troubleshooting => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **As portas têm de corresponder** à Control Port e à Serial Port (UDP) do rádio, ou às portas reencaminhadas para elas. Uma porta errada recebe silêncio, tal como um rádio desligado.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **senha errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a senha.';
+	@override String get icomLanTroubleshooting => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview, RS-BA1 ou Remote Utility da Icom ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** A porta LAN tem de estar ligada à mesma rede que este dispositivo, o **Network Control** tem de estar ativado, e o nome de utilizador e a senha têm de estar configurados como utilizador de rede no rádio.\n- **As portas têm de corresponder** à Control Port e à Serial Port (UDP) do rádio, ou às portas reencaminhadas para elas. Uma porta errada recebe silêncio, tal como um rádio desligado.\n- **Se liga mas nunca responde**, o endereço CI-V aqui tem de corresponder ao menu CI-V ADDRESS do rádio. Esta entrada preenche o endereço de fábrica do modelo.\n- **Desligue e volte a ligar o rádio** se continuar bloqueado.';
 	@override String get statusStale => 'Não responde';
 	@override String get statusDisconnected => 'Não ligado';
 	@override String get statusConnecting => 'A ligar…';
@@ -2401,8 +2847,8 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get statusError => 'A ligação falhou';
 	@override String get currentRadioSettings => 'Configurações atuais do rádio';
 	@override String get notSupportedByThisRadio => 'Não suportado por este rádio';
-	@override String get cwMessagesButton => 'CW';
-	@override String get voiceMessagesButton => 'Voz';
+	@override String get cwMessagesButton => 'Mensagens CW';
+	@override String get voiceMessagesButton => 'Mensagens de Voz';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memórias no rádio';
 	@override String get antennaBands => 'Bandas';
 	@override String get antennaType => 'Tipo de antena';
@@ -2429,18 +2875,18 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get trackFieldKey => 'Chave CW';
 	@override String get placeholderConnectDelay => 'Atraso de ligação (ms)';
 	@override String get placeholderConnectDelayDescription => 'Quanto tempo demora o handshake simulado. Vazio ou 0 liga instantaneamente.';
-	@override String get placeholderDropAfter => 'Cair após (segundos)';
-	@override String get placeholderDropAfterDescription => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca cai.';
+	@override String get placeholderDropAfter => 'Desligar após (segundos)';
+	@override String get placeholderDropAfterDescription => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca desliga.';
 	@override String get placeholderFailConnect => 'Falhar sempre a ligação';
-	@override String get placeholderConnectFailure => 'O rádio marcador foi instruído a recusar esta ligação';
+	@override String get placeholderConnectFailure => 'O rádio simulado foi instruído a recusar esta ligação';
 	@override String get placeholderFreq => 'Frequência (kHz)';
-	@override String get placeholderFreqDescription => 'Onde o rádio marcador começa. Depois reporta o que quer que a app sintonize.';
+	@override String get placeholderFreqDescription => 'Onde o rádio simulado começa. Depois, reporta o que a app lhe sintonizar.';
 	@override String get placeholderMode => 'Modo';
-	@override String get placeholderModeDescription => 'O modo em que o rádio marcador começa, por ex. USB, CW, FT8.';
+	@override String get placeholderModeDescription => 'O modo em que o rádio simulado começa, por ex. USB, CW, FT8.';
 	@override String get placeholderPower => 'Potência (watts)';
-	@override String get placeholderPurpose => 'Use este rádio para registar que equipamento está a usar, para efeitos de registo';
+	@override String get placeholderPurpose => 'Use este rádio para anotar que equipamento está a usar, para efeitos de registo';
 	@override String get placeholderReplyDelay => 'Atraso de resposta (ms)';
-	@override String get placeholderReplyDelayDescription => 'Quanto tempo o rádio marcador demora a reportar uma alteração. Vazio ou 0 responde de imediato.';
+	@override String get placeholderReplyDelayDescription => 'Quanto tempo o rádio simulado demora a reportar uma alteração. Vazio ou 0 responde de imediato.';
 	@override String get cwKeyerField => 'Manipulador CW por CAT';
 	@override String get cwKeyerFieldDescription => 'Se este rádio manipula CW a partir de texto por CAT. Desligado para um rádio que a app não conhece.';
 	@override String get voiceMemories => 'Memórias de voz';
@@ -2493,8 +2939,45 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String get switchPortTransmittingHint => 'a transmitir — não pode ser alterada agora';
 	@override String get switchCurrentStateHeader => 'Estado Atual';
 	@override String get switchCurrentStateDescription => 'Em que antena está cada porta de rádio neste momento. As alterações têm efeito imediato.';
-	@override String get switchWiringHeader => 'Ligações';
+	@override String get switchWiringHeader => 'Cablagem';
 	@override String get switchPortInhibitedHint => 'transmissão inibida';
+	@override String get rotatorAxes => 'Eixos';
+	@override String get rotatorAxesDescription => 'Se o rotor roda só em azimute, ou também em elevação (um G-5500 ou semelhante).';
+	@override String get rotatorAxesAzimuth => 'Só azimute';
+	@override String get rotatorAxesAzimuthElevation => 'Azimute e elevação';
+	@override String get rotatorAzimuthOffset => 'Desvio de azimute';
+	@override String get rotatorAzimuthOffsetDescription => 'Graus a somar à leitura do controlador, quando o zero dele não é o norte verdadeiro. As rotações são corrigidas em conformidade.';
+	@override String get rotatorElevationOffset => 'Desvio de elevação';
+	@override String get rotatorAzimuthMin => 'Azimute mínimo';
+	@override String get rotatorAzimuthMax => 'Azimute máximo';
+	@override String get rotatorAzimuthMaxDescription => 'Nos graus do próprio controlador. Acima de 360 para um rotor com sobreposição, que passa então a fazer a rotação mais curta.';
+	@override String get rotatorElevationMin => 'Elevação mínima';
+	@override String get rotatorElevationMax => 'Elevação máxima';
+	@override String get rotatorElevationMaxDescription => 'Nos graus do próprio controlador. Acima de 90 para um rotor que passa além da vertical.';
+	@override String rotatorDegreesInvalid({required Object min, required Object max}) => 'Graus inteiros, de ${min} a ${max}';
+	@override String get rotatorLimitsInvalid => 'O limite mínimo tem de ser inferior ao máximo';
+	@override String get rotatorPollInterval => 'Intervalo de consulta (ms)';
+	@override String rotatorPollIntervalDescription({required Object fallback}) => 'Com que frequência perguntar ao rotor para onde aponta. Deixe vazio para ${fallback} ms.';
+	@override String get rotatorAxesRequired => 'Escolha em que eixos o rotor roda';
+	@override String get rotatorRefused => 'O controlador recusou um comando. Verifique se está no modo GS-232.';
+	@override String get pstRotatorTroubleshooting => 'O PstRotator só responde depois de configurado para isso, e de outro modo não diz absolutamente nada:\n\n- **Ative o UDP Control** no menu Setup do PstRotator.\n- **Faça corresponder a porta**: Communication → UDP Control Port, 12000 a menos que tenha sido alterada. O PstRotator responde na porta seguinte (12001), que tem de estar livre neste dispositivo.\n- **Ligue o PstRotator ao seu controlador.** Até lá, não responde nada por UDP.\n- **Deixe-o passar na firewall** do PC onde corre o PstRotator, e neste dispositivo, que fica à escuta das respostas.\n- **Num Mac, iPhone ou iPad**, o Ham2K Logger precisa de acesso à Rede Local (Definições → Privacidade e Segurança → Rede Local).';
+	@override String rotatorCurrentStateHeader({required Object position}) => 'Estado Atual: ${position}';
+	@override String get rotatorDisconnected => 'desligado';
+	@override String rotatorAzimuthReading({required Object degrees}) => '${degrees}° de azimute';
+	@override String rotatorAzimuthReadingShort({required Object degrees}) => '${degrees}° az';
+	@override String rotatorElevationReading({required Object degrees}) => '${degrees}° de elevação';
+	@override String rotatorElevationReadingShort({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNoReading => 'A aguardar que o controlador reporte a sua posição…';
+	@override String get rotatorNotResponding => 'não responde';
+	@override String rotatorHeldAtLimit({required Object heading}) => 'A rodar para ${heading}, até onde os limites deste rotor permitem';
+	@override String get rotatorTargetAzimuth => 'Rodar para azimute';
+	@override String get rotatorTargetAzimuthShort => 'Rodar para az';
+	@override String get rotatorTargetElevation => 'Rodar para elevação';
+	@override String get rotatorTargetElevationShort => 'Rodar para el';
+	@override String get rotatorAzimuthInvalid => 'Tem de ser de 0 a 360';
+	@override String get rotatorElevationInvalid => 'Tem de ser de 0 a 180';
+	@override String get rotatorTurn => 'Rodar';
+	@override String get rotatorStop => 'Parar';
 	@override String get configUnreadable => 'Não foi possível ler as configurações guardadas deste rádio. Abra as configurações e introduza-as novamente, ou remova-o e volte a adicioná-lo.';
 	@override String get autoConnectHeld => 'O HaLo deixou de responder da última vez que se ligou a este rádio, por isso desta vez não se ligou sozinho. Prima Ligar para tentar novamente.';
 }
@@ -2535,7 +3018,7 @@ class Translations$settings$profiles$pt extends Translations$settings$profiles$e
 	@override String get personalInfo => 'Informações Pessoais';
 	@override String get personalInfoNote => 'Pode ser incluído nos registos gerados quando for relevante para submissões';
 	@override String get name => 'Nome';
-	@override String get email => 'E-mail';
+	@override String get email => 'Email';
 	@override String get club => 'Clube';
 	@override String get arrlSection => 'Secção ARRL';
 	@override String get racSection => 'Secção RAC';
@@ -2550,7 +3033,7 @@ class Translations$settings$search$pt extends Translations$settings$search$en {
 
 	// Translations
 	@override String get clear => 'Limpar';
-	@override String get hint => 'Procurar preferências';
+	@override String get hint => 'Pesquisar preferências';
 }
 
 // Path: settings.developer
@@ -2562,6 +3045,11 @@ class Translations$settings$developer$pt extends Translations$settings$developer
 	// Translations
 	@override String get developerModeDescription => 'Ativar avisos de desenvolvimento, registos de depuração e ferramentas.';
 	@override String get experiments => 'Experiências';
+	@override String get showIdleMetrics => 'Mostrar métricas de inatividade';
+	@override String get showIdleMetricsDescription => 'Mostrar na barra de estado quão inativo esteve o motor de extensões no último segundo. Toque para ver as médias a 10 e a 60 segundos.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent}% inativo';
+	@override String get idleMetricsAverages => 'Inatividade média:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}s ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: '${count} ativada',
 		other: '${count} ativadas',
@@ -2652,7 +3140,7 @@ class Translations$settings$panels$pt extends Translations$settings$panels$en {
 	@override String get unavailableText => 'As extensões não arrancaram, por isso faltam as configurações que elas fornecem.';
 	@override String get station => 'Configuração da Estação';
 	@override String get stationDescription => 'Controlo CAT e mais opções';
-	@override String get peers => 'Dispositivos Pares';
+	@override String get peers => 'Dispositivos Próximos';
 	@override String get peersDescription => 'Ligar a outros dispositivos próximos';
 }
 
@@ -2676,6 +3164,183 @@ class Translations$settings$gridPrecisionDescription$pt extends Translations$set
 	// Translations
 	@override String get six => '6 dígitos';
 	@override String get eight => '8 dígitos';
+}
+
+// Path: keyboardShortcuts.command
+class Translations$keyboardShortcuts$command$pt extends Translations$keyboardShortcuts$command$en {
+	Translations$keyboardShortcuts$command$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'Abrir o diálogo de comandos';
+	@override String get toggleTheme => 'Alternar entre claro e escuro';
+	@override String get toggleLanguage => 'Alternar entre inglês e espanhol';
+	@override String get fontScaleUp => 'Texto maior';
+	@override String get fontScaleDown => 'Texto menor';
+	@override String get fontScaleReset => 'Tamanho de texto normal';
+	@override String get densityLooser => 'Disposição mais espaçosa';
+	@override String get densityDenser => 'Disposição mais densa';
+	@override String get densityAuto => 'Densidade da disposição automática';
+	@override String get find => 'Localizar no registo';
+	@override String keyerMessage({required Object n}) => 'Enviar mensagem ${n}';
+	@override String get keyboardMode => 'Modo de teclado ligado ou desligado';
+	@override String get ptt => 'PTT (premir para falar)';
+	@override String get wipe => 'Apagar o contacto que está a ser registado';
+}
+
+// Path: keyboardShortcuts.fixed
+class Translations$keyboardShortcuts$fixed$pt extends Translations$keyboardShortcuts$fixed$en {
+	Translations$keyboardShortcuts$fixed$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'Escrever indicativos';
+	@override String get escape => 'Parar o envio, recuar um passo ou fechar';
+	@override String get enter => 'Registar o contacto';
+	@override String get space => 'Campo seguinte';
+	@override String get tab => 'Campo seguinte ou anterior';
+	@override String get arrows => 'Mover entre campos, controlos e o registo';
+	@override String get walk => 'Percorrer o registo página a página, ou ir para os seus extremos';
+	@override String get undo => 'Recuperar um contacto apagado ou eliminado';
+}
+
+// Path: keyboardShortcuts.editor
+class Translations$keyboardShortcuts$editor$pt extends Translations$keyboardShortcuts$editor$en {
+	Translations$keyboardShortcuts$editor$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'Adicionar Atalho';
+	@override String get listening => 'Prima as teclas do atalho…';
+	@override String get listeningHint => 'Esc deixa de escutar';
+	@override String get add => 'Adicionar';
+	@override String refusedFixed({required Object keys}) => '${keys} pertence aos campos de registo ou a um diálogo, e não pode ser alterado.';
+	@override String refusedCallsign({required Object keys}) => '${keys} é como se escrevem os indicativos. Combine-o com Cmd, Ctrl ou Alt.';
+	@override String reserved({required Object keys}) => 'O sistema pode intercetar ${keys} antes de a app o ver.';
+	@override String already({required Object keys}) => '${keys} já é uma das teclas deste comando.';
+	@override String takeIt({required Object keys, required Object command}) => 'Tirar ${keys} a “${command}”';
+	@override String get resetDefault => 'Repor Predefinição';
+	@override String get remove => 'Remover';
+	@override String get commandLabel => 'Comando';
+	@override String get commandHint => 'Introduza um comando válido, ou vários comandos separados por ";"';
+	@override String get removeCommand => 'Remover Comando';
+	@override String commandUnknown({required Object text}) => 'Nenhum comando corresponde a “${text}”';
+	@override String get noShortcuts => 'Ainda sem tecla';
+}
+
+// Path: keyboardShortcuts.file
+class Translations$keyboardShortcuts$file$pt extends Translations$keyboardShortcuts$file$en {
+	Translations$keyboardShortcuts$file$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'Atalhos guardados em ${location}';
+	@override String exportFailed({required Object error}) => 'Não foi possível exportar os atalhos: ${error}';
+	@override String importPickerFailed({required Object error}) => 'Não foi possível abrir o ficheiro: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} não é um ficheiro de atalhos que esta app consiga ler: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'o texto não é YAML válido (linha ${line})';
+	@override String get problemNotKeysFile => 'não é um ficheiro de atalhos de teclado do Ham2K';
+	@override String get problemNewerVersion => 'foi escrito por uma versão mais recente da app';
+	@override String get problemMalformed => 'parte dele não segue o formato de atalhos';
+	@override String get problemTooLarge => 'é demasiado grande';
+	@override String get importTitle => 'Importar Atalhos';
+	@override String writtenOn({required Object platform}) => 'Escrito em ${platform}.';
+	@override String get writtenOnUnknown => 'O ficheiro não indica em que teclado foi escrito.';
+	@override String get translate => 'A que deve corresponder cada uma destas teclas neste teclado?';
+	@override String get leaveOut => 'Deixar esses atalhos de fora';
+	@override String get replace => 'Substituir a configuração deste dispositivo';
+	@override String get replaceHint => 'Todos os atalhos que não estão no ficheiro voltam à predefinição.';
+	@override String get merge => 'Adicionar à configuração deste dispositivo';
+	@override String get mergeHint => 'Os atalhos do ficheiro substituem os deste dispositivo para os mesmos comandos, e os restantes mantêm-se.';
+	@override String unknown({required Object commands}) => 'Desconhecidos nesta versão, por isso deixados de fora: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'Não são atalhos, por isso deixados de fora: ${chords}';
+	@override String refusedChords({required Object chords}) => 'Teclas que a app reserva para si, por isso deixadas de fora: ${chords}';
+	@override String conflicts({required Object keys}) => 'Atribuídas a mais de um comando após a importação: ${keys}';
+	@override String get importAction => 'Importar';
+	@override String get imported => 'Atalhos importados';
+}
+
+// Path: keyboardShortcuts.modifier
+class Translations$keyboardShortcuts$modifier$pt extends Translations$keyboardShortcuts$modifier$en {
+	Translations$keyboardShortcuts$modifier$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ Command';
+	@override String get ctrl => 'Ctrl';
+	@override String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class Translations$keyboardShortcuts$platform$pt extends Translations$keyboardShortcuts$platform$en {
+	Translations$keyboardShortcuts$platform$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'macOS';
+	@override String get ios => 'iPadOS';
+	@override String get windows => 'Windows';
+	@override String get linux => 'Linux';
+	@override String get android => 'Android';
+}
+
+// Path: home.logs.sheet
+class Translations$home$logs$sheet$pt extends Translations$home$logs$sheet$en {
+	Translations$home$logs$sheet$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'Indicativos de Estação';
+	@override String get groupBy => 'Agrupar Por';
+	@override String get period => 'Período';
+}
+
+// Path: home.logs.groupBy
+class Translations$home$logs$groupBy$pt extends Translations$home$logs$groupBy$en {
+	Translations$home$logs$groupBy$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'Sem agrupamento';
+	@override String get date => 'Data';
+	@override String get dx => 'DX';
+	@override String get unknownContinent => 'Continente desconhecido';
+	@override String get unknownEntity => 'Entidade desconhecida';
+	@override String get unknownDate => 'Sem data';
+}
+
+// Path: home.logs.period
+class Translations$home$logs$period$pt extends Translations$home$logs$period$en {
+	Translations$home$logs$period$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'Este mês';
+	@override String get last3Months => 'Últimos 3 meses';
+	@override String get thisYear => 'Este ano';
+	@override String get lastYear => 'Ano passado';
+	@override String get allTime => 'Desde sempre';
+	@override String get custom => 'Intervalo personalizado';
+}
+
+// Path: home.logs.periodTitle
+class Translations$home$logs$periodTitle$pt extends Translations$home$logs$periodTitle$en {
+	Translations$home$logs$periodTitle$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => 'em ${span}';
+	@override String get custom => 'Intervalo Personalizado';
 }
 
 // Path: home.logs.columns
@@ -2710,8 +3375,8 @@ class Translations$home$logs$panels$pt extends Translations$home$logs$panels$en 
 	// Translations
 	@override String get qsos => 'Registo de QSOs';
 	@override String get qsosDescription => 'Os QSOs do indicativo selecionado, em todas as operações.';
-	@override String get info => 'Info';
-	@override String get infoDescription => 'Total de QSOs, ou a pesquisa do indicativo do QSO selecionado.';
+	@override String get info => 'Informações';
+	@override String get infoDescription => 'Total de QSOs, ou a consulta do indicativo do QSO selecionado.';
 	@override String get map => 'Mapa';
 	@override String get mapDescription => 'A localização do QSO selecionado.';
 }
@@ -2734,6 +3399,72 @@ class Translations$home$logs$import$pt extends Translations$home$logs$import$en 
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} importados, de ${total}';
 }
 
+// Path: operation.layout.layouts
+class Translations$operation$layout$layouts$pt extends Translations$operation$layout$layouts$en {
+	Translations$operation$layout$layouts$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'Predefinida';
+	@override String untitledName({required Object number}) => 'Disposição ${number}';
+	@override String switcherLabel({required Object name}) => 'Disposição: ${name}';
+	@override String get menuNew => 'Nova…';
+	@override String get menuExport => 'Exportar…';
+	@override String get menuImport => 'Importar…';
+	@override String get menuTitle => 'Disposições';
+	@override String get newTitle => 'Nova Disposição';
+	@override String get editTitle => 'Editar Disposição';
+	@override String get edit => 'Editar';
+	@override String get duplicateCurrent => 'Duplicar a disposição atual';
+	@override String get startFromDefault => 'Começar da disposição predefinida';
+	@override String get nameLabel => 'Nome';
+	@override String get descriptionLabel => 'Descrição';
+	@override String get create => 'Criar';
+	@override String leaveEditTitle({required Object name}) => 'Guardar as alterações a "${name}"?';
+	@override String get leaveEditBody => 'Esta disposição tem alterações que não guardou.';
+	@override String get discard => 'Descartar';
+	@override String get deleteTitle => 'Eliminar esta disposição?';
+	@override String deleteBody({required Object name}) => 'Tem a certeza de que quer eliminar a disposição "${name}"?';
+	@override String get exportTitle => 'Exportar Disposição';
+	@override String get exportPick => 'Painéis a exportar';
+	@override String get tabSet => 'Grupo de Separadores';
+	@override String get exportAction => 'Exportar';
+	@override String exported({required Object location}) => 'Disposição guardada em ${location}';
+	@override String exportFailed({required Object error}) => 'Não foi possível exportar a disposição: ${error}';
+	@override String get importTitle => 'Importar Disposição';
+	@override String importFromOtherView({required Object view}) => 'Feita para a vista ${view}: os painéis que só essa vista tem ficam de fora.';
+	@override String get viewHome => 'Início';
+	@override String get viewOperation => 'Operação';
+	@override String get viewLogs => 'Registos';
+	@override String get viewChase => 'Caça';
+	@override String get importAsNew => 'Como nova disposição';
+	@override String get importReplace => 'No lugar desta disposição';
+	@override String get importAdd => 'Adicionada a esta disposição';
+	@override String get importAddHint => 'Os painéis chegam numa nova coluna à direita.';
+	@override String get importPick => 'Painéis a importar';
+	@override String get importReplaceSettings => 'Substituir as configurações dos painéis já configurados aqui';
+	@override String get importAction => 'Importar';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} não é uma disposição que esta app consiga ler: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'o texto não é YAML válido (linha ${line})';
+	@override String get problemNotLayoutFile => 'não é um ficheiro de disposição do Ham2K';
+	@override String get problemNewerVersion => 'foi escrito por uma versão mais recente da app';
+	@override String get problemNoArrangement => 'não contém a organização dos painéis';
+	@override String get problemMalformed => 'parte dele não segue o formato de disposição';
+	@override String get problemTooLarge => 'é demasiado grande';
+	@override String importPickerFailed({required Object error}) => 'Não foi possível abrir o ficheiro: ${error}';
+	@override String importFailed({required Object error}) => 'Não foi possível importar a disposição: ${error}';
+	@override String duplicateFailed({required Object error}) => 'Não foi possível copiar a disposição: ${error}';
+	@override String get importNothing => 'Nenhum painel escolhido, por isso nada foi importado.';
+	@override String importSkipped({required Object panels}) => 'Ficaram de fora: ${panels}';
+	@override String importKeptPinned({required Object panels}) => 'Mantidos ${panels}: a organização para ecrãs pequenos não pode passar sem eles.';
+	@override String get notOffered => 'Não disponível nesta vista';
+	@override String get alreadyPlaced => 'Já está nesta disposição';
+	@override String needsExtension({required Object name}) => 'Precisa de ${name}';
+	@override String get listRecoveredTitle => 'Não foi possível ler os nomes das disposições';
+	@override String get listRecoveredBody => 'Não foi possível ler a lista de disposições desta vista. Todas as disposições continuam aqui, numeradas em vez de nomeadas.';
+}
+
 // Path: operation.layout.panels
 class Translations$operation$layout$panels$pt extends Translations$operation$layout$panels$en {
 	Translations$operation$layout$panels$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
@@ -2745,6 +3476,11 @@ class Translations$operation$layout$panels$pt extends Translations$operation$lay
 	@override String get infoDescription => 'O que sabemos sobre a estação contactada';
 	@override String get spotsDescription => 'Spots dos clusters e dos programas de atividade';
 	@override String get mapDescription => 'Onde estão os contactos';
+	@override String get summariesDescription => 'As estatísticas e pontuações da operação, nas secções e pela ordem que escolher';
+	@override String get summariesSections => 'Secções e Ordem';
+	@override String get summariesDays => 'Cada dia';
+	@override String get summariesReset => 'Mostrar tudo';
+	@override String get summariesAllHidden => 'Todas as secções estão ocultas. Escolha as que quer mostrar nas configurações deste painel.';
 	@override String get clockDescription => 'Um mostrador de relógio, em qualquer fuso horário';
 	@override String get clockFace => 'Mostrador';
 	@override String get clockFaceLcd => 'LCD';
@@ -2791,7 +3527,7 @@ class Translations$operation$layout$panels$pt extends Translations$operation$lay
 	@override String get remoteScreenTarget => 'Ecrã';
 	@override String get remoteScreenChoose => 'Escolher um ecrã…';
 	@override String get remoteScreenPickerTitle => 'Ecrãs Partilhados';
-	@override String get remoteScreenPickerEmpty => 'Nenhum dos seus dispositivos está a partilhar um ecrã. Ative Partilhar ecrãs e janelas em Configurações → Dispositivos Pares, no dispositivo que quer ver.';
+	@override String get remoteScreenPickerEmpty => 'Nenhum dos seus dispositivos está a partilhar um ecrã. Ative Partilhar ecrãs e janelas em Configurações → Dispositivos Próximos, no dispositivo que quer ver.';
 	@override String get remoteScreenUnset => 'Nenhum ecrã escolhido. Abra as configurações deste painel para escolher um que os seus outros dispositivos estejam a partilhar.';
 	@override String get remoteScreenConnecting => 'A ligar…';
 	@override String get remoteScreenPeerAway => 'Esse dispositivo não está ligado neste momento.';
@@ -2845,6 +3581,30 @@ class Translations$operation$layout$panels$pt extends Translations$operation$lay
 	@override String get radioAlc => 'ALC';
 	@override String get radioVolts => 'V';
 	@override String get radioSwrHigh => 'SWR alta';
+	@override String get rotatorDescription => 'Para onde aponta a antena, num mapa centrado na estação. Toque no mapa para a rodar.';
+	@override String get rotatorRotator => 'Rotor';
+	@override String rotatorAutoNamed({required Object name}) => 'Automático — ${name}';
+	@override String get rotatorAutoNone => 'Automático — ainda sem rotor';
+	@override String get rotatorBeamWidth => 'Largura do feixe';
+	@override String get rotatorBeamWidthDescription => 'Em graus, desenhada à volta do azimute. 0 não desenha nada.';
+	@override String get rotatorLocation => 'Localização';
+	@override String get rotatorLocationDescription => 'Um grid, ou latitude e longitude, para centrar o mapa. Em branco usa a localização da operação.';
+	@override String get rotatorTheme => 'Tema';
+	@override String get rotatorThemeColor => 'Cor';
+	@override String get rotatorThemeGray => 'Cinzento';
+	@override String get rotatorThemeMuted => 'Discreto';
+	@override String get rotatorGrayline => 'Mostrar a linha cinzenta';
+	@override String get rotatorNoRotator => 'Nenhum rotor para mostrar. Escolha um nas configurações deste painel, ou adicione um em Configuração da Estação.';
+	@override String get rotatorNoLocation => 'Sem localização para centrar o mapa. Defina uma nas configurações deste painel.';
+	@override String get rotatorDisconnected => 'desligado';
+	@override String get rotatorNoReading => '—';
+	@override String get rotatorNotResponding => 'não responde';
+	@override String get rotatorLocationInvalid => 'Não é possível ler a localização nas configurações deste painel. Use um grid, ou latitude e longitude como 40.7, -74.0.';
+	@override String rotatorElevation({required Object degrees}) => '${degrees}° el';
+	@override String get rotatorNorth => 'N';
+	@override String get rotatorEast => 'E';
+	@override String get rotatorSouth => 'S';
+	@override String get rotatorWest => 'O';
 }
 
 // Path: operation.export.compactFileNames
@@ -2867,8 +3627,8 @@ class Translations$operation$export$includePrivateData$pt extends Translations$o
 
 	// Translations
 	@override String get title => 'Incluir informação privada';
-	@override String get descriptionOn => 'Nomes, moradas, e-mails, grids e notas são incluídos';
-	@override String get descriptionOff => 'Nomes, moradas, e-mails, grids e notas são omitidos';
+	@override String get descriptionOn => 'Nomes, moradas, emails, grids e notas são incluídos';
+	@override String get descriptionOff => 'Nomes, moradas, emails, grids e notas são omitidos';
 	@override String get note => 'A Exportação ADIF Completa inclui sempre tudo';
 }
 
@@ -2879,32 +3639,32 @@ class Translations$operation$export$stash$pt extends Translations$operation$expo
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
-	@override String get needsEmailTitle => 'Adicione primeiro um endereço de e-mail';
-	@override String get needsEmailBody => 'O Arquivo de Ficheiros do Ham2K envia os seus ficheiros para o endereço de e-mail da sua conta LoFi, e é com ele que inicia sessão em stash.ham2k.net. A sua conta ainda não tem um confirmado — adicione-o em Configurações › Sincronização na Nuvem.';
+	@override String get needsEmailTitle => 'Adicione primeiro um endereço de email';
+	@override String get needsEmailBody => 'O Ham2K File Stash envia os seus ficheiros para o endereço de email da sua conta LoFi, e é com ele que inicia sessão em stash.ham2k.net. A sua conta ainda não tem um confirmado — adicione-o em Configurações › Sincronização na Nuvem.';
 	@override String get openSyncSettings => 'Abrir Sincronização na Nuvem';
-	@override String get replaceTitle => 'O arquivo recente será substituído';
-	@override String replaceBody({required Object name}) => 'Enviou “${name}” há menos de 6 horas e ainda não foi descarregado. As contas gratuitas mantêm um arquivo de cada vez, por isso enviar agora substitui-o.';
-	@override String get replaceConfirm => 'Enviar Mesmo Assim';
-	@override String get failedTitle => 'Não foi possível enviar para o Arquivo de Ficheiros do Ham2K';
-	@override String get sentTitle => 'Enviado para o Arquivo de Ficheiros do Ham2K';
+	@override String get replaceTitle => 'O envio recente será substituído';
+	@override String replaceBody({required Object name}) => 'Enviou “${name}” há menos de 6 horas e ainda não foi descarregado. As contas gratuitas mantêm um stash de cada vez, por isso enviar agora substitui-o.';
+	@override String get replaceConfirm => 'Enviar mesmo assim';
+	@override String get failedTitle => 'Não foi possível enviar para o Ham2K File Stash';
+	@override String get sentTitle => 'Enviado para o Ham2K File Stash';
 	@override String retrieve({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: 'Pode obter este ficheiro em **[stash.ham2k.net](https://stash.ham2k.net)** em qualquer navegador.',
 		other: 'Pode obter estes ficheiros em **[stash.ham2k.net](https://stash.ham2k.net)** em qualquer navegador.',
 	);
-	@override String get mayHaveArrived => 'O arquivo não respondeu — o ficheiro pode ter chegado na mesma. Verifique stash.ham2k.net antes de enviar novamente';
+	@override String get mayHaveArrived => 'O stash não respondeu — o ficheiro pode ter chegado na mesma. Verifique stash.ham2k.net antes de enviar novamente';
 	@override String get notSent => 'não enviado';
 	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		one: 'Este ficheiro não chegou:',
 		other: 'Estes ${count} ficheiros não chegaram:',
 	);
-	@override String get emailOffer => 'Ou, para sua conveniência, podemos enviar-lhe um e-mail com uma ligação direta.';
-	@override String get emailMe => 'Enviar-me uma Ligação por E-mail';
-	@override String get emailSent => 'Enviámos-lhe por e-mail uma ligação para descarregar.';
-	@override String emailFailed({required Object error}) => 'Não foi possível enviar o e-mail: ${error}';
-	@override String get freeTier => 'As contas gratuitas só podem manter um arquivo de cada vez. Os assinantes podem manter quantos quiserem.';
+	@override String get emailOffer => 'Ou, para sua conveniência, podemos enviar-lhe um email com um link direto.';
+	@override String get emailMe => 'Enviar-me um Link por Email';
+	@override String get emailSent => 'Enviámos-lhe por email um link para descarregar.';
+	@override String emailFailed({required Object error}) => 'Não foi possível enviar o email: ${error}';
+	@override String get freeTier => 'As contas gratuitas só podem manter um stash de cada vez. Os subscritores podem manter quantos quiserem.';
 	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
-		one: '${count} ficheiro enviado para o Arquivo de Ficheiros do Ham2K (stash.ham2k.net)',
-		other: '${count} ficheiros enviados para o Arquivo de Ficheiros do Ham2K (stash.ham2k.net)',
+		one: '${count} ficheiro enviado para o Ham2K File Stash (stash.ham2k.net)',
+		other: '${count} ficheiros enviados para o Ham2K File Stash (stash.ham2k.net)',
 	);
 }
 
@@ -2940,8 +3700,10 @@ class Translations$operation$spots$filters$pt extends Translations$operation$spo
 	@override String get sorting => 'Ordenação';
 	@override String get sortByTime => 'Por Hora do Spot';
 	@override String get sortByFrequency => 'Por Frequência';
+	@override String get sortByWanted => 'Mais Procurados';
 	@override String get groupByBand => 'Agrupar por Banda';
 	@override String get groupCallsWithNotes => 'Agrupar Indicativos com Notas';
+	@override String get alertingOnly => 'Só Spots com Alertas';
 	@override String get sourceNoReply => 'Sem resposta';
 	@override String get sourceError => 'Erro';
 }
@@ -3064,7 +3826,7 @@ class Translations$settings$logging$defaultReport$pt extends Translations$settin
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Relatório predefinido — Telefone';
+	@override String get title => 'Relatório predefinido — Fonia';
 	@override String get description => 'Usado quando Enviado ou Recebido fica vazio em SSB, FM ou AM';
 }
 
@@ -3137,6 +3899,22 @@ class Translations$settings$catServer$protocolOpts$pt extends Translations$setti
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class Translations$settings$cluster$errors$pt extends Translations$settings$cluster$errors$en {
+	Translations$settings$cluster$errors$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'não há indicativo de operador para iniciar sessão';
+	@override String get connectFailed => 'não foi possível contactar o nó';
+	@override String get needsPassword => 'o nó pede uma senha, e não há nenhuma guardada';
+	@override String get loginFailed => 'o nó não aceitou o início de sessão';
+	@override String get disconnected => 'o nó fechou a ligação';
+	@override String get timeout => 'o nó não respondeu';
+	@override String get off => 'Ligar ao cluster está desligado';
+}
+
 // Path: settings.radio.units
 class Translations$settings$radio$units$pt extends Translations$settings$radio$units$en {
 	Translations$settings$radio$units$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
@@ -3157,6 +3935,10 @@ class Translations$settings$radio$pttKey$pt extends Translations$settings$radio$
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
+	@override String get title => 'Controlar o PTT com o Teclado';
+	@override late final Translations$settings$radio$pttKey$modes$pt modes = Translations$settings$radio$pttKey$modes$pt.internal(_root);
+	@override late final Translations$settings$radio$pttKey$descriptions$pt descriptions = Translations$settings$radio$pttKey$descriptions$pt.internal(_root);
+	@override String get key => 'Tecla PTT';
 	@override String get pill => 'TX';
 	@override String get transmitting => 'A transmitir';
 }
@@ -3242,9 +4024,9 @@ class Translations$settings$radio$keyerSpeed$pt extends Translations$settings$ra
 
 	// Translations
 	@override String get title => 'Velocidade do manipulador';
-	@override String get unit => 'PPM';
-	@override String pill({required Object wpm}) => '${wpm} ppm';
-	@override String get pillUnknown => '– ppm';
+	@override String get unit => 'WPM';
+	@override String pill({required Object wpm}) => '${wpm} wpm';
+	@override String get pillUnknown => '– wpm';
 }
 
 // Path: settings.radio.cwMessages
@@ -3256,8 +4038,8 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	// Translations
 	@override String get title => 'Mensagens do Manipulador CW';
 	@override String get notSupported => 'O rádio atual não suporta manipulação CW';
-	@override String key({required Object n}) => 'F${n}';
-	@override String messageTitle({required Object n}) => 'Mensagem (${n})';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Mensagem ${n}';
 	@override String get labelField => 'Etiqueta';
 	@override String labelKey({required Object n}) => 'Etiqueta de F${n}';
 	@override String get details => 'Detalhes';
@@ -3271,7 +4053,10 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Mensagens ESM';
 	@override String get setSaved => 'As Minhas Mensagens';
-	@override String get repeat => 'Repetir Mensagem #1';
+	@override String get repeat => 'Repetir Mensagem 1';
+	@override String get repeatShort => 'Repetir M1';
+	@override String get cooldown => 'Pausa antes de repetir';
+	@override String cooldownSeconds({required Object n}) => '${n} segundos';
 	@override String get repeatWait => 'A repetir';
 	@override String get keyboard => 'Escrever para enviar';
 	@override String get keyboardField => 'Escrever para enviar';
@@ -3284,8 +4069,8 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	@override String get helpQsoPartial => 'Um indicativo parcial; vazio se houver um indicativo completo válido';
 	@override String get helpQsoNextCall => 'Numa pilha //, o indicativo que será selecionado para registar a seguir, se houver um indicativo completo válido';
 	@override String get helpQsoNextPartial => 'Numa pilha //, o parcial seguinte depois de registar o contacto atual';
-	@override String get helpQsoName => 'O nome próprio deles, tal como escrito ou, se não, da pesquisa';
-	@override String get helpQsoState => 'O estado deles, tal como escrito ou, se não, da pesquisa';
+	@override String get helpQsoName => 'O nome próprio deles, tal como escrito ou, se não, da consulta';
+	@override String get helpQsoState => 'O estado deles, tal como escrito ou, se não, da consulta';
 	@override String get helpKeyerMsg => 'A mensagem 1 tal como seria enviada, dentro de outra mensagem. Válido para as mensagens 1 a 8';
 	@override String get helpQsoRst => 'O relatório que está a enviar';
 	@override String get helpQsoSerial => 'O seu número de série, num concurso que o envie';
@@ -3296,12 +4081,25 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	@override String get helpExample => 'Envia W1AW 5NN TT7';
 	@override String get helpEsmIntro => 'Com Enter Envia Mensagens ligado, o Enter emite as mensagens pela sua tecla de função, como faz o N1MM. O conjunto Mensagens ESM começa com estas:';
 	@override String get helpEsmCq => 'Em Run, Enter com o campo do indicativo vazio chama CQ';
-	@override String get helpEsmExchange => 'O seu câmbio: depois do indicativo deles em Run, depois de eles responderem em S&P';
-	@override String get helpEsmThanks => 'Agradecimento, depois de o contacto ser registado: os seus marcadores referem-se ao próximo contacto, não a este';
+	@override String get helpEsmExchange => 'O seu intercâmbio: depois do indicativo deles em Run, depois de eles responderem em S&P';
+	@override String get helpEsmThanks => 'Agradecimento, depois de o contacto ser registado: qso é o contacto tal como registado, next o que se segue';
 	@override String get helpEsmMyCall => 'Em S&P, o seu indicativo para a estação a que está a responder';
-	@override String get helpEsmHisCall => 'Em Run, o indicativo deles antes do seu câmbio';
-	@override String get helpEsmAgain => 'Pede novamente quando nada do câmbio deles foi copiado';
-	@override String get helpEsmStackThanks => 'F3 sugerido para pilhas //: o TU sai depois de o contacto ser registado, por isso agradece, depois chama a próxima estação da pilha e envia o seu câmbio, ou pede de volta um parcial (TU KR?); sem nada na pilha, só TU';
+	@override String get helpEsmHisCall => 'Em Run, o indicativo deles antes do seu intercâmbio';
+	@override String get helpEsmAgain => 'Pede novamente quando nada do intercâmbio deles foi copiado';
+	@override String get helpEsmStackThanks => 'F3 sugerido para pilhas //: agradece, depois chama a próxima estação da pilha e envia o seu intercâmbio, ou pede de volta um parcial (TU KR?); sem nada na pilha, só TU';
+}
+
+// Path: settings.radio.keyerControl
+class Translations$settings$radio$keyerControl$pt extends Translations$settings$radio$keyerControl$en {
+	Translations$settings$radio$keyerControl$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'Manipulador';
+	@override String get cw => 'WPM';
+	@override String cwSpeed({required Object wpm}) => '${wpm} WPM';
+	@override String get voice => 'Voz';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3311,10 +4109,10 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	final TranslationsPt _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Mensagens de Voz';
+	@override String get title => 'Mensagens do Manipulador de Voz';
 	@override String get notSupported => 'O rádio atual não suporta mensagens de voz';
 	@override String key({required Object n}) => 'M${n}';
-	@override String messageTitle({required Object n}) => 'Memória de voz (${n})';
+	@override String messageTitle({required Object n}) => 'Memória de voz ${n}';
 	@override String get labelField => 'Etiqueta';
 	@override String labelKey({required Object n}) => 'Etiqueta da memória de voz ${n}';
 	@override String durationSeconds({required Object n}) => '${n} s';
@@ -3323,7 +4121,7 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	@override String get playButton => 'Reproduzir';
 	@override String get recordButton => 'Gravar';
 	@override String get stopButton => 'Parar';
-	@override String get repeat => 'Repetir Mensagem #1';
+	@override String get repeat => 'Repetir Mensagem 1';
 	@override String recordHelpTitle({required Object model}) => 'Notas sobre o ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Estas memórias estão no rádio de ${device}. Os nomes e durações pertencem a esse dispositivo.';
 	@override String get namedOnRadio => 'Guardado no rádio, onde os outros clientes também o veem.';
@@ -3340,6 +4138,89 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	@override String recordingMemory({required Object label}) => 'A gravar ${label}';
 	@override String get doubtful => 'O rádio reproduziu-a? Reportou logo que estava inativo.';
 	@override String get recordOnRadio => 'Tem de gravar as memórias no próprio rádio.';
+	@override String get sets => 'Conjunto de Mensagens';
+	@override String get soundFilesSet => 'Ficheiros de som neste computador';
+	@override String get openFileButton => 'Abrir Ficheiro';
+	@override String get newSet => 'Novo Conjunto';
+	@override String get renameSet => 'Mudar o Nome do Conjunto';
+	@override String get deleteSet => 'Eliminar Conjunto';
+	@override String get newSetName => 'Nome';
+	@override String deleteSetConfirm({required Object name}) => 'Eliminar ${name} e as suas gravações? Não pode ser desfeito.';
+	@override String get output => 'Enviar áudio para';
+	@override String get input => 'Gravar de';
+	@override String get outputRadio => 'Enviar para o rádio pela rede';
+	@override String get inputDefault => 'Predefinição do sistema';
+	@override String get pickDevice => 'Escolha um dispositivo de som';
+	@override String deviceMissing({required Object name}) => '${name} (não ligado)';
+	@override String get lead => 'Atraso ao entrar em transmissão';
+	@override String get tail => 'Atraso ao sair de transmissão';
+	@override String millis({required Object n}) => '${n} ms';
+	@override String get listenButton => 'Ouvir';
+	@override String get notRecorded => 'Não gravada';
+	@override String get unplayable => 'Não é possível reproduzir este ficheiro';
+	@override String get problemNoOutput => 'Escolha o dispositivo de som que alimenta o rádio antes de reproduzir uma mensagem.';
+	@override String get problemOutputMissing => 'O dispositivo de som que alimenta o rádio não está ligado.';
+	@override String get problemInputMissing => 'O dispositivo de gravação não está ligado.';
+	@override String get problemDeviceFailed => 'Não foi possível abrir o dispositivo de som.';
+	@override String get problemNotRecorded => 'Essa mensagem ainda não tem gravação.';
+	@override String get problemRecordingSilent => 'Não se ouviu nada do dispositivo de gravação, por isso a mensagem ficou como estava. Verifique a entrada, e que a app tem permissão para usar o microfone.';
+	@override String get problemRadioAudioUnavailable => 'O rádio não está a receber áudio da app neste momento. Precisa de uma ligação de rede ao rádio.';
+	@override String get problemSourceRefused => 'O rádio não mudou o áudio de transmissão para a app, por isso a mensagem parou. Configure o rádio para transmitir o áudio da app.';
+	@override String get problemCannotKey => 'Este rádio não pode ser posto em transmissão por CAT, por isso o computador não consegue reproduzir mensagens nele.';
+	@override String get problemUnplayable => 'O ficheiro dessa mensagem não é um ficheiro de som que a app consiga reproduzir. Use um ficheiro WAV, FLAC ou MP3, ou grave-a novamente.';
+	@override String get problemRecordingFailed => 'A gravação foi interrompida, por isso a mensagem ficou como estava. Verifique que o dispositivo de gravação continua ligado e que há espaço no disco.';
+	@override String get problemFileFailed => 'Não foi possível guardar a gravação no lugar da mensagem, por isso a mensagem ficou como estava.';
+	@override String problemWordsMissing({required Object words}) => 'Essa mensagem precisa de palavras que ainda não gravou: ${words}.';
+	@override String problemTemplateFailed({required Object error}) => 'O modelo dessa mensagem tem um problema: ${error}';
+	@override String get problemNoOperation => 'As mensagens ditas com as suas palavras só tocam numa operação, onde há um contacto para quem as dizer.';
+	@override String get problemNothingSaid => 'Essa mensagem não diz nada para este contacto.';
+	@override String get templateField => 'Dizer com as minhas palavras';
+	@override String get templateHelp => 'Deixe vazio para reproduzir a gravação. Caso contrário, a mensagem é dita com as palavras que gravou, preenchidas para cada contacto, usando estes valores:';
+	@override String get help => 'Ajuda';
+	@override String get helpTitle => 'Dizer Mensagens com as Suas Palavras';
+	@override String get helpFullExample => 'Uma mensagem completa:';
+	@override String get helpExample => 'O indicativo deles, o relatório deles e a sua gravação de “QSL?”';
+	@override String get playOnRadio => 'Reproduzir no Rádio';
+	@override String get templateHelpCall => 'O indicativo deles';
+	@override String get templateHelpReport => 'O relatório que lhes dá';
+	@override String get templateHelpMessage => 'A gravação da Mensagem 2, reproduzida tal como gravada';
+	@override String get voiced => 'Dita com as suas palavras';
+	@override String willSay({required Object words}) => 'Diz: ${words}';
+	@override String willSayMissing({required Object words}) => 'Ainda não gravado: ${words}';
+	@override String get previewNoOperation => 'Abra uma operação para ver o que vai dizer.';
+	@override String get wordsDescription => 'Use a sua própria voz para indicativos, números e mais.';
+}
+
+// Path: settings.radio.voiceWords
+class Translations$settings$radio$voiceWords$pt extends Translations$settings$radio$voiceWords$en {
+	Translations$settings$radio$voiceWords$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Gravações de Palavras';
+	@override String get callField => 'Palavras do operador';
+	@override String get intro => 'Grave cada palavra ou número três vezes, seguidas e depressa, como as diz num indicativo. As frases mais longas gravam-se só uma vez.';
+	@override String get recordAll => 'Gravar Tudo';
+	@override String get recordAllGuide => 'Leia cada palavra três vezes seguidas, e cada frase de várias palavras uma vez, respirando entre linhas. Prima Parar depois da última.';
+	@override String recordingOne({required Object word}) => 'Diga “${word} ${word} ${word}” e depois prima Parar.';
+	@override String recordingOnce({required Object words}) => 'Diga “${words}” e depois prima Parar.';
+	@override String get recorded => 'Gravada';
+	@override String get notRecorded => 'Não gravada';
+	@override String get addPhrase => 'Adicionar Frase';
+	@override String get phraseField => 'Frase, tal como a escreve numa mensagem';
+	@override String get deletePhrase => 'Eliminar frase';
+	@override String get tryField => 'Experimente dizer';
+	@override String get pauseLetters => 'Pausa entre letras';
+	@override String get pauseWords => 'Pausa entre palavras';
+	@override String pauseValue({required Object ms}) => '${ms} ms';
+	@override String get speed => 'Velocidade';
+	@override String speedValue({required Object speed}) => '${speed}×';
+	@override String get advancedSettings => 'Configurações Avançadas';
+	@override String get splitSilent => 'Não se ouviu nada na gravação.';
+	@override String get splitNotThreeTakes => 'Não foi possível encontrar três repetições. Diga a palavra três vezes seguidas e tente novamente.';
+	@override String get splitLineCount => 'Não foi possível encontrar todas as palavras na leitura. Leia cada uma três vezes, respirando entre palavras.';
+	@override String get splitLinesTooClose => 'Não foi possível distinguir as palavras. Deixe uma respiração mais longa entre palavras.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3351,7 +4232,7 @@ class Translations$settings$radio$avoidZeroBeat$pt extends Translations$settings
 	// Translations
 	@override String get title => 'Evitar Batimento Zero nos Spots';
 	@override String get descriptionOn => 'Com um rádio ligado, sintoniza alguns Hz ao lado de um spot de CW, para que nem todos os que lhe respondem chamem na mesma nota.';
-	@override String get descriptionOff => 'Sintoniza exatamente a frequência anunciada.';
+	@override String get descriptionOff => 'Sintoniza exatamente a frequência do spot.';
 }
 
 // Path: settings.radio.zeroBeatRange
@@ -3362,7 +4243,7 @@ class Translations$settings$radio$zeroBeatRange$pt extends Translations$settings
 
 	// Translations
 	@override String get title => 'Batimento Zero: Margem a evitar';
-	@override String get description => 'A que distância da frequência anunciada sintonizar, para qualquer lado. O desvio nunca fica perto de zero — isso voltaria a ser um batimento zero.';
+	@override String get description => 'A que distância da frequência do spot sintonizar, para qualquer lado. O desvio nunca fica perto de zero — isso voltaria a ser um batimento zero.';
 }
 
 // Path: settings.map.style
@@ -3373,6 +4254,28 @@ class Translations$settings$map$style$pt extends Translations$settings$map$style
 
 	// Translations
 	@override String get title => 'Estilo do Mapa';
+}
+
+// Path: settings.map.showCallsigns
+class Translations$settings$map$showCallsigns$pt extends Translations$settings$map$showCallsigns$en {
+	Translations$settings$map$showCallsigns$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mostrar Indicativos';
+	@override String get description => 'Cada contacto é uma etiqueta com o seu indicativo, na cor da banda';
+}
+
+// Path: settings.map.showGrayline
+class Translations$settings$map$showGrayline$pt extends Translations$settings$map$showGrayline$en {
+	Translations$settings$map$showGrayline$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mostrar Linha Cinzenta';
+	@override String get description => 'Sombreia o lado noturno da Terra, com o crepúsculo em gradiente';
 }
 
 // Path: settings.map.styleOpts
@@ -3431,7 +4334,16 @@ class Translations$settings$station$models$pt extends Translations$settings$stat
 	@override String get ft857 => 'Yaesu FT-857';
 	@override String get ft897 => 'Yaesu FT-897';
 	@override String get ft450 => 'Yaesu FT-450 / FT-450D';
+	@override String get ftdx3000 => 'Yaesu FTDX3000';
+	@override String get ft950 => 'Yaesu FT-950';
+	@override String get ftdx1200 => 'Yaesu FTDX1200';
+	@override String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+	@override String get ftdx5000 => 'Yaesu FTDX5000';
 	@override String get q900 => 'Guohetec Q900';
+	@override String get tenTecEagle => 'Ten-Tec Eagle (599)';
+	@override String get tenTecOrion => 'Ten-Tec Orion (565)';
+	@override String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+	@override String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 	@override String get yaesuGeneric => 'Yaesu - Genérico';
 	@override String get icomGeneric => 'Icom - Genérico';
 	@override String get kenwoodGeneric => 'Kenwood - Genérico';
@@ -3439,6 +4351,8 @@ class Translations$settings$station$models$pt extends Translations$settings$stat
 	@override String get ts480 => 'Kenwood TS-480';
 	@override String get qmx => 'QRP Labs QMX';
 	@override String get fx4cr => 'BG2FX FX-4CR';
+	@override String get tx500 => 'Lab599 TX-500';
+	@override String get tx500mp => 'Lab599 TX-500MP';
 	@override String get qcx => 'QRP Labs QCX';
 	@override String get elecraftGeneric => 'Elecraft - Genérico';
 	@override String get kx2 => 'Elecraft KX2';
@@ -3451,6 +4365,10 @@ class Translations$settings$station$models$pt extends Translations$settings$stat
 	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
+	@override String get ic9700 => 'Icom IC-9700';
+	@override String get ic905 => 'Icom IC-905';
+	@override String get ic7850 => 'Icom IC-7850';
+	@override String get ic7851 => 'Icom IC-7851';
 	@override String get x6100 => 'Xiegu X6100';
 	@override String get g90 => 'Xiegu G90';
 	@override String get rigctld => 'Rádio controlado via rigctld';
@@ -3466,10 +4384,15 @@ class Translations$settings$station$models$pt extends Translations$settings$stat
 	@override String get antenna => 'Antena';
 	@override String get key => 'Chave CW';
 	@override String get winkeyer => 'WinKeyer';
-	@override String get placeholderRadio => 'Rádio Genérico (Marcador)';
+	@override String get placeholderRadio => 'Rádio Genérico (Simulado)';
 	@override String get placeholderRadioNodeName => 'O Meu Rádio';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 	@override String get sierraCoax => 'Comutador Coaxial Sierra Radio CX-1';
+	@override String get gs232a => 'Interface de Rotor Yaesu GS-232A';
+	@override String get pstRotator => 'PstRotator (Controlo UDP)';
+	@override String get rtlSdr => 'RTL-SDR';
+	@override String get nesdr => 'Nooelec NESDR';
+	@override String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -3480,10 +4403,12 @@ class Translations$settings$station$transports$pt extends Translations$settings$
 
 	// Translations
 	@override String get network => 'Rede/WiFi';
+	@override String get secureNetwork => 'Rede/WiFi Segura';
 	@override String get usbSerial => 'USB Série';
 	@override String get wifi => 'Rede/WiFi';
 	@override String get bluetoothSerial => 'Bluetooth Série';
-	@override String get placeholder => 'Marcador';
+	@override String get bleSerial => 'Bluetooth LE';
+	@override String get placeholder => 'Simulado';
 }
 
 // Path: settings.station.antennaTypes
@@ -3528,34 +4453,58 @@ class Translations$operation$layout$panels$weatherConditions$pt extends Translat
 	@override String get unknown => 'Desconhecido';
 	@override String get sunny => 'Sol';
 	@override String get clear => 'Céu limpo';
-	@override String get mainlySunny => 'Predominantemente Sol';
-	@override String get mainlyClear => 'Predominantemente Limpo';
-	@override String get partlyCloudy => 'Parcialmente Nublado';
+	@override String get mainlySunny => 'Sol com nuvens';
+	@override String get mainlyClear => 'Céu pouco nublado';
+	@override String get partlyCloudy => 'Parcialmente nublado';
 	@override String get cloudy => 'Nublado';
 	@override String get foggy => 'Nevoeiro';
-	@override String get rimeFog => 'Nevoeiro com Geada';
-	@override String get lightDrizzle => 'Chuvisco Fraco';
+	@override String get rimeFog => 'Nevoeiro gelado';
+	@override String get lightDrizzle => 'Chuvisco fraco';
 	@override String get drizzle => 'Chuvisco';
-	@override String get heavyDrizzle => 'Chuvisco Forte';
-	@override String get lightFreezingDrizzle => 'Chuvisco Gelado Fraco';
-	@override String get freezingDrizzle => 'Chuvisco Gelado';
-	@override String get lightRain => 'Chuva Fraca';
+	@override String get heavyDrizzle => 'Chuvisco forte';
+	@override String get lightFreezingDrizzle => 'Chuvisco gelado fraco';
+	@override String get freezingDrizzle => 'Chuvisco gelado';
+	@override String get lightRain => 'Chuva fraca';
 	@override String get rain => 'Chuva';
-	@override String get heavyRain => 'Chuva Forte';
-	@override String get lightFreezingRain => 'Chuva Gelada Fraca';
-	@override String get freezingRain => 'Chuva Gelada';
-	@override String get lightSnow => 'Neve Fraca';
+	@override String get heavyRain => 'Chuva forte';
+	@override String get lightFreezingRain => 'Chuva gelada fraca';
+	@override String get freezingRain => 'Chuva gelada';
+	@override String get lightSnow => 'Neve fraca';
 	@override String get snow => 'Neve';
-	@override String get heavySnow => 'Neve Forte';
-	@override String get snowGrains => 'Grãos de Neve';
-	@override String get lightShowers => 'Aguaceiros Fracos';
+	@override String get heavySnow => 'Neve forte';
+	@override String get snowGrains => 'Neve em grãos';
+	@override String get lightShowers => 'Aguaceiros fracos';
 	@override String get showers => 'Aguaceiros';
-	@override String get heavyShowers => 'Aguaceiros Fortes';
-	@override String get lightSnowShowers => 'Aguaceiros de Neve Fracos';
-	@override String get snowShowers => 'Aguaceiros de Neve';
+	@override String get heavyShowers => 'Aguaceiros fortes';
+	@override String get lightSnowShowers => 'Aguaceiros de neve fracos';
+	@override String get snowShowers => 'Aguaceiros de neve';
 	@override String get thunderstorm => 'Trovoada';
-	@override String get lightThunderstormsWithHail => 'Trovoada Fraca com Granizo';
-	@override String get thunderstormWithHail => 'Trovoada com Granizo';
+	@override String get lightThunderstormsWithHail => 'Trovoada fraca com granizo';
+	@override String get thunderstormWithHail => 'Trovoada com granizo';
+}
+
+// Path: settings.radio.pttKey.modes
+class Translations$settings$radio$pttKey$modes$pt extends Translations$settings$radio$pttKey$modes$en {
+	Translations$settings$radio$pttKey$modes$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'Não';
+	@override String get toggle => 'Alternar';
+	@override String get hold => 'Manter premida';
+}
+
+// Path: settings.radio.pttKey.descriptions
+class Translations$settings$radio$pttKey$descriptions$pt extends Translations$settings$radio$pttKey$descriptions$en {
+	Translations$settings$radio$pttKey$descriptions$pt.internal(TranslationsPt root) : this._root = root, super.internal(root);
+
+	final TranslationsPt _root; // ignore: unused_field
+
+	// Translations
+	@override String get off => 'O teclado não aciona o PTT do rádio.';
+	@override String get toggle => 'Nos modos de fonia, a tecla PTT põe o rádio em transmissão e premi-la de novo tira-o. Sai de transmissão sozinho passado um minuto.';
+	@override String get hold => 'Nos modos de fonia, o rádio transmite enquanto a tecla PTT estiver premida, até um minuto.';
 }
 
 /// The flat map containing all translations for locale <pt>.
@@ -3577,6 +4526,7 @@ extension on TranslationsPt {
 			'common.callsign' => 'Indicativo',
 			'common.clear' => 'Limpar',
 			'common.dismiss' => 'Dispensar',
+			'common.copyDetails' => 'Copiar detalhes',
 			'common.expand' => 'Expandir',
 			'common.collapse' => 'Recolher',
 			'onboarding.welcomeTitle' => 'Bem-vindo ao Ham2K Portable Logger!',
@@ -3604,8 +4554,14 @@ extension on TranslationsPt {
 			'onboarding.activityPota' => 'Parks On The Air',
 			'onboarding.activitySota' => 'Summits On The Air',
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
+			'onboarding.syncTitle' => 'Sincronização na Nuvem',
+			'onboarding.syncBody' => 'O Ham2K Log Filer guarda uma cópia de segurança dos seus registos na nuvem e sincroniza-os entre todos os dispositivos onde usa apps Ham2K.',
+			'onboarding.syncPricing' => 'É gratuito! Mas uma subscrição paga torna-o mais rápido.',
+			'onboarding.syncLabel' => 'Ativar Sincronização na Nuvem',
+			'onboarding.syncOffWarning' => 'AVISO: isto aumenta as hipóteses de perder dados de operação, por exemplo se o seu dispositivo avariar ou for perdido.',
+			'onboarding.notNow' => 'Agora não',
 			'onboarding.consentTitle' => 'Dados e Privacidade',
-			'onboarding.consentUsageBody' => 'Para nos ajudar a melhorar a app, gostaríamos de recolher dados de desempenho, falhas e utilização da app.',
+			'onboarding.consentUsageBody' => 'Para nos ajudar a melhorar a app, gostaríamos de recolher dados de desempenho, falhas e uso da app.',
 			'onboarding.consentUsageLabel' => 'Partilhar dados de uso da app',
 			'onboarding.consentOperationBody' => 'Algumas funcionalidades podem envolver partilhar os seus dados de operação com outros utilizadores. Pode desativar a qualquer momento.',
 			'onboarding.consentOperationLabel' => 'Partilhar Dados de Operação',
@@ -3617,23 +4573,34 @@ extension on TranslationsPt {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Novidades na build ${build}',
 			'testerOverlay.thanks' => 'Obrigado por arriscar o seu registo para nos ajudar a melhorar esta app!',
 			'extensionsPanel.categoryActivity' => 'Atividades',
+			'extensionsPanel.categoryAward' => 'Diplomas',
 			'extensionsPanel.categoryContest' => 'Concursos',
-			'extensionsPanel.categoryLookup' => 'Pesquisas de Indicativo',
+			'extensionsPanel.categoryLookup' => 'Consultas de Indicativo',
 			'extensionsPanel.categorySpots' => 'Fontes de Spot',
 			'extensionsPanel.categoryDashboard' => 'Painéis',
 			'extensionsPanel.categoryOther' => 'Outras Extensões',
-			'extensionsPanel.searchHint' => 'Procurar extensões',
+			'extensionsPanel.searchHint' => 'Pesquisar extensões',
 			'extensionsPanel.applying' => 'A ativar as alterações às extensões, isto pode demorar um pouco…',
 			'extensionsPanel.noMatches' => 'Nenhuma extensão corresponde à pesquisa',
 			'extensionsPanel.installFromFile' => 'Instalar a partir de ficheiro…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versão ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Captura de ecrã ${n} de ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Captura de ecrã anterior',
+			'extensionsPanel.nextScreenshot' => 'Captura de ecrã seguinte',
+			'extensionsPanel.screenshotUnavailable' => 'Captura de ecrã indisponível',
 			'extensionsPanel.canReach' => 'Esta extensão pode contactar',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, através de uma ligação ativa',
 			'extensionsPanel.canHoldLocalConnection' => 'Dispositivos na sua rede local, através de uma ligação ativa',
 			'extensionsPanel.canUseLocation' => 'A sua localização',
 			'extensionsPanel.canReadRadio' => 'O seu rádio, para ler a frequência e o modo',
 			'extensionsPanel.canControlRadio' => 'O seu rádio, para o controlar e transmitir com ele — sintonia, potência, CW, memórias de voz e PTT',
+			'extensionsPanel.canCommandRadioRaw' => 'O seu rádio, para lhe enviar qualquer comando no protocolo dele — incluindo comandos que transmitem ou alteram as suas configurações',
+			'extensionsPanel.canReadCluster' => 'O cluster DX, com sessão iniciada como o seu indicativo, para ler o que ele envia',
+			'extensionsPanel.canSpotCluster' => 'O cluster DX, com sessão iniciada como o seu indicativo, para publicar spots em seu nome',
+			'extensionsPanel.canCommandCluster' => 'O cluster DX, com sessão iniciada como o seu indicativo, para lhe enviar qualquer comando em seu nome',
 			'extensionsPanel.canSetUserAgent' => 'Identificar-se perante os servidores com o seu próprio nome',
+			'extensionsPanel.canChangeSettings' => 'As suas configurações, para as alterar através dos seus comandos: qualquer configuração, o modo de desenvolvedor e as experiências',
 			'extensionsPanel.noCapabilities' => 'Não pede nada fora da app.',
 			'extensionsPanel.sandboxNote' => 'As extensões correm isoladas: sem acesso aos seus ficheiros e sem rede além do que está aqui indicado.',
 			'extensionsPanel.installAction' => 'Instalar',
@@ -3656,7 +4623,7 @@ extension on TranslationsPt {
 			'extensionsPanel.dropHint' => 'Largue aqui uma extensão .h2kext para a instalar',
 			'extensionsPanel.dropOneOnly' => 'Largue uma extensão de cada vez.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} respondeu ${status} para essa extensão.',
-			'extensionsPanel.downloadTooLarge' => 'Esse ficheiro é demasiado grande para ser uma extensão.',
+			'extensionsPanel.downloadTooLarge' => 'Esse download é demasiado grande para ser uma extensão.',
 			'extensionsPanel.downloadNotSecure' => 'Esse download foi redirecionado para um local inseguro.',
 			'extensionsPanel.catalogSection' => 'Catálogo',
 			'extensionsPanel.catalogLoading' => 'A carregar o catálogo…',
@@ -3702,11 +4669,19 @@ extension on TranslationsPt {
 			'extensionsPanel.restoreRuntimeDeadBody' => 'Reinstalámo-las, mas as suas extensões não arrancaram. Reiniciar a app deve trazê-las de volta.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} foi retirada',
 			'extensionsPanel.revokedBody' => 'O catálogo retirou esta versão, por isso foi desativada.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} foi desativada',
+			'extensionsPanel.forceDisabledBody' => 'A Ham2K desativou esta extensão por agora.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} foi substituída',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} toma o seu lugar. Pode mudar em Extensões.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Substituída por ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Substituída por ${name}, que já tem',
+			'extensionsPanel.replaceAction' => 'Substituir',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'As suas configurações passam para ${replacement}, que já tem. Os seus registos ficam intactos.',
 			'extensionsPanel.downloadHashMismatch' => 'Esse download não é a extensão que o catálogo descreveu.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'O catálogo não tem a versão ${version} de ${key}.',
-			'extensionsPanel.catalogLinkUnknown' => 'Essa ligação do catálogo não indica uma versão de extensão.',
+			'extensionsPanel.catalogLinkUnknown' => 'Esse link do catálogo não indica uma versão de extensão.',
 			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'O catálogo não tem nenhuma versão de ${key} nesse canal.',
-			'extensionsPanel.installFromLink' => 'Instalar a partir de ligação',
+			'extensionsPanel.installFromLink' => 'Instalar a partir de link',
 			'extensionsPanel.unstableReleaseWarning' => 'Esta é uma versão instável, que o seu autor não deu como concluída. Pode comportar-se mal e continuará a receber atualizações instáveis.',
 			'extensionsPanel.bleedingReleaseWarning' => 'Esta é uma versão de vanguarda: trabalho em curso que pode falhar ou perder as suas configurações. Continuará a receber atualizações de vanguarda.',
 			'extensionsPanel.channelUnstable' => 'Instável',
@@ -3715,6 +4690,7 @@ extension on TranslationsPt {
 			'extensionsPanel.followsBleeding' => 'Recebe versões de vanguarda, instáveis e estáveis',
 			'extensionsPanel.followStableAction' => 'Seguir apenas versões estáveis',
 			'extensionsPanel.revokedBadge' => 'Revogada',
+			'extensionsPanel.forceDisabledBadge' => 'Desativada pela Ham2K',
 			'extensionsPanel.refusedBadge' => 'Não carregou',
 			'extensionsPanel.downloadNotHttps' => 'Esse download não usa uma ligação segura.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'Não foi possível contactar ${source} para essa extensão.',
@@ -3726,11 +4702,13 @@ extension on TranslationsPt {
 			'extensionsPanel.hookCallNotes' => 'Notas de indicativos',
 			'extensionsPanel.hookDataFile' => 'Dados offline',
 			'extensionsPanel.hookExport' => 'Exportação',
-			'extensionsPanel.hookLookup' => 'Pesquisas de indicativo',
+			'extensionsPanel.hookLookup' => 'Consultas de indicativo',
 			'extensionsPanel.hookScoring' => 'Pontuação',
 			'extensionsPanel.hookSpots' => 'Spots',
-			'extensionsPanel.hookHunting' => ({required Object program}) => 'Caça de ${program}',
-			'extensionsPanel.hookActivating' => ({required Object program}) => 'Ativação de ${program}',
+			'extensionsPanel.hookHunting' => ({required Object program}) => 'Caça ${program}',
+			'extensionsPanel.hookActivating' => ({required Object program}) => 'Ativação ${program}',
+			'extensionsPanel.suggestedSection' => 'Sugeridas',
+			'extensionsPanel.moreAvailableSection' => ({required Object count}) => 'Mais disponíveis (${count})',
 			'home.title' => 'Logger Portátil',
 			'home.newOperation' => 'Nova operação',
 			'home.stationCallsign' => 'Indicativo da estação',
@@ -3752,7 +4730,7 @@ extension on TranslationsPt {
 			'home.logs.emptyCallsigns' => 'Ainda não há QSOs registados',
 			'home.logs.emptyQsos' => ({required Object call}) => 'Nenhum QSO para ${call}',
 			'home.logs.mapNoSelection' => 'Selecione um QSO para o ver no mapa',
-			'home.logs.searchHint' => 'Procurar indicativo ou nome',
+			'home.logs.searchHint' => 'Pesquisar indicativo ou nome',
 			'home.logs.noSearchMatches' => 'Nenhum QSO corresponde à pesquisa',
 			'home.logs.titleAll' => 'Todos os Registos',
 			'home.logs.allCallsigns' => 'Todos os indicativos',
@@ -3762,6 +4740,23 @@ extension on TranslationsPt {
 			'home.logs.pendingDeleteBody' => 'Este QSO está marcado para eliminação.',
 			'home.logs.editGone' => 'Não guardado: esse QSO já não está neste registo.',
 			'home.logs.discard' => 'Descartar',
+			'home.logs.sheet.callsigns' => 'Indicativos de Estação',
+			'home.logs.sheet.groupBy' => 'Agrupar Por',
+			'home.logs.sheet.period' => 'Período',
+			'home.logs.groupBy.none' => 'Sem agrupamento',
+			'home.logs.groupBy.date' => 'Data',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Continente desconhecido',
+			'home.logs.groupBy.unknownEntity' => 'Entidade desconhecida',
+			'home.logs.groupBy.unknownDate' => 'Sem data',
+			'home.logs.period.thisMonth' => 'Este mês',
+			'home.logs.period.last3Months' => 'Últimos 3 meses',
+			'home.logs.period.thisYear' => 'Este ano',
+			'home.logs.period.lastYear' => 'Ano passado',
+			'home.logs.period.allTime' => 'Desde sempre',
+			'home.logs.period.custom' => 'Intervalo personalizado',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'em ${span}',
+			'home.logs.periodTitle.custom' => 'Intervalo Personalizado',
 			'home.logs.columns.date' => 'Data',
 			'home.logs.columns.time' => 'Hora',
 			'home.logs.columns.freq' => 'Frequência',
@@ -3778,8 +4773,8 @@ extension on TranslationsPt {
 			'home.logs.columns.refs' => 'Refs',
 			'home.logs.panels.qsos' => 'Registo de QSOs',
 			'home.logs.panels.qsosDescription' => 'Os QSOs do indicativo selecionado, em todas as operações.',
-			'home.logs.panels.info' => 'Info',
-			'home.logs.panels.infoDescription' => 'Total de QSOs, ou a pesquisa do indicativo do QSO selecionado.',
+			'home.logs.panels.info' => 'Informações',
+			'home.logs.panels.infoDescription' => 'Total de QSOs, ou a consulta do indicativo do QSO selecionado.',
 			'home.logs.panels.map' => 'Mapa',
 			'home.logs.panels.mapDescription' => 'A localização do QSO selecionado.',
 			'home.logs.import.callsigns' => ({required Object calls}) => 'Indicativos: ${calls}',
@@ -3813,18 +4808,55 @@ extension on TranslationsPt {
 			'chase.period.thisMonth' => 'Este Mês',
 			'chase.goals.title' => 'Objetivos de Caça',
 			'chase.goals.remove' => ({required Object name}) => 'Deixar de caçar ${name}',
-			'chase.goals.extensionsTitle' => 'Extensões que incluem caça',
+			'chase.goals.extensionsTitle' => 'Mais programas de caça',
 			'chase.panels.logging' => 'QSOs',
 			'chase.panels.loggingDescription' => 'Controlos de registo por cima dos QSOs caçados no período.',
-			'chase.panels.info' => 'Info',
+			'chase.panels.info' => 'Informações',
 			'chase.panels.infoDescription' => 'O indicativo a ser registado, ou as estatísticas do período.',
 			'chase.panels.spots' => 'Spots',
 			'chase.panels.spotsDescription' => 'Estações anunciadas no ar, prontas a caçar.',
 			'chase.panels.map' => 'Mapa',
 			'chase.panels.mapDescription' => 'Os QSOs do período e a estação a ser registada.',
+			'chase.claims.checking' => 'A verificar QSOs para a caça',
+			'chase.claims.rebuilding' => ({required Object program}) => 'A verificar o registo para ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} de ${total} QSOs',
+			'chase.notice.newRef' => ({required Object program}) => 'Novo ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'Provavelmente novo ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'Nova banda ${program}',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'Provavelmente nova banda ${program}',
+			'chase.notice.newMode' => ({required Object program}) => 'Novo modo ${program}',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'Provavelmente novo modo ${program}',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} não confirmado',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Provavelmente ${notice}',
+			'chase.alerts.title' => 'Alertas',
+			'chase.alerts.newRef' => 'Nova referência',
+			'chase.alerts.newBand' => 'Nova banda',
+			'chase.alerts.newMode' => 'Novo modo',
+			'chase.alerts.unconfirmed' => 'Não confirmado',
+			'chase.checklists' => 'Progresso da Caça',
+			'chase.imports.importFrom' => ({required Object label}) => 'Importar ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => 'Importar ${file} como',
+			'chase.imports.dropHint' => 'Largue um ficheiro para o importar num programa de caça',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Importadas ${count} entradas ${program} de ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Importadas ${count} entradas ${program} de ${file}; ignoradas ${skipped} que não foi possível ler',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} não tem nada que ${program} possa importar',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} não conseguiu ler ${file}',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => '${program} não conseguiu ler nenhum dos ${skipped} registos em ${file}',
+			'chase.imports.noProgram' => ({required Object file}) => 'Nenhum programa de caça importa ${file}',
 			'dialogs.operationDetails' => 'Detalhes da operação',
 			'dialogs.activities' => 'Atividades',
 			'dialogs.stationCallsign' => 'Indicativo da Estação',
+			'dialogs.advanced' => 'Avançado',
+			'dialogs.operatingPosition' => 'Posição de Operação (multi-estação)',
+			'dialogs.assistance' => 'Assistência',
+			'dialogs.assistanceDescription' => 'Usar serviços de spotting e outras fontes de informação',
+			'dialogs.selfSpotting' => 'Self-spotting',
+			'dialogs.selfSpottingDescription' => 'Permitir funcionalidades que divulgam a sua própria frequência',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'Desativado para cumprir as regras de ${rules}',
+			'dialogs.lookupDespiteAssistance.title' => 'Consultar online?',
+			'dialogs.lookupDespiteAssistance.body' => 'A assistência está desativada nesta operação. Consultar todos os QSOs vai usar serviços online como o QRZ, só desta vez.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'A assistência está desativada nesta operação para cumprir as regras de ${rules}. Consultar todos os QSOs vai usar serviços online como o QRZ, só desta vez.',
+			'dialogs.lookupDespiteAssistance.action' => 'Consultar Online',
 			'dialogs.notes' => 'Notas',
 			'dialogs.deleteOperationTitle' => 'Eliminar Operação',
 			'dialogs.purgeTestsTitle' => 'Purgar Operações de Teste',
@@ -3860,6 +4892,8 @@ extension on TranslationsPt {
 			'operation.tabs.remoteScreen' => 'Ecrã Remoto',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Rádio',
+			'operation.tabs.rotator' => 'Rotor',
+			'operation.tabs.summaries' => 'Resumos da Operação',
 			'operation.positions.nobodyYet' => 'Ainda não há outras posições de operação a partilhar esta operação.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
@@ -3884,7 +4918,7 @@ extension on TranslationsPt {
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
 			'operation.menu.showDeletedOps' => 'Mostrar operações eliminadas',
 			'operation.menu.showQsoNumbers' => 'Mostrar Números de QSO',
-			'operation.menu.lookupAllQsos' => 'Pesquisar todos os QSOs',
+			'operation.menu.lookupAllQsos' => 'Consultar todos os QSOs',
 			'operation.menu.loggingSettingsTitle' => 'Configurações de Registo',
 			'operation.menu.mapSettingsTitle' => 'Configurações do Mapa',
 			'operation.menu.actionsSection' => 'Ações',
@@ -3906,14 +4940,78 @@ extension on TranslationsPt {
 			'operation.layout.paneShowHeader' => 'Mostrar cabeçalho',
 			'operation.layout.paneShowHeaderTabset' => 'Sempre visível enquanto este painel partilha um grupo — é pelo cabeçalho que se chega aos outros',
 			'operation.layout.paneInherit' => 'Igual à app',
-			'operation.layout.searchHint' => 'Procurar painéis',
+			'operation.layout.searchHint' => 'Pesquisar painéis',
 			'operation.layout.noPanelsMatch' => 'Nenhum painel corresponde à pesquisa.',
 			'operation.layout.nothingToAdd' => 'Esta vista já tem todos os painéis possíveis',
 			'operation.layout.addPanel' => ({required Object panel}) => 'Adicionar ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Pré-visualizar ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Falta a extensão "${name}"',
+			'operation.layout.missingExtensionEnable' => 'Ativar',
+			'operation.layout.missingExtensionInstall' => 'Instalar…',
+			'operation.layout.missingExtensionWontRun' => 'Esta versão não arranca. Atualize-a em Configurações › Extensões.',
+			'operation.layout.missingExtensionUnavailable' => 'Não disponível nesta app',
+			'operation.layout.missingExtensionNotInCatalog' => 'Não está no catálogo',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Não foi possível contactar o catálogo. Tente novamente',
+			'operation.layout.missingExtensionFailed' => 'Não funcionou. Tente novamente',
 			'operation.layout.previewUnavailable' => 'Não foi possível mostrar a imagem de pré-visualização deste painel.',
 			'operation.layout.nestedPaneTitle' => 'Mais',
+			'operation.layout.layouts.defaultName' => 'Predefinida',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Disposição ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Disposição: ${name}',
+			'operation.layout.layouts.menuNew' => 'Nova…',
+			'operation.layout.layouts.menuExport' => 'Exportar…',
+			'operation.layout.layouts.menuImport' => 'Importar…',
+			'operation.layout.layouts.menuTitle' => 'Disposições',
+			'operation.layout.layouts.newTitle' => 'Nova Disposição',
+			'operation.layout.layouts.editTitle' => 'Editar Disposição',
+			'operation.layout.layouts.edit' => 'Editar',
+			'operation.layout.layouts.duplicateCurrent' => 'Duplicar a disposição atual',
+			'operation.layout.layouts.startFromDefault' => 'Começar da disposição predefinida',
+			'operation.layout.layouts.nameLabel' => 'Nome',
+			'operation.layout.layouts.descriptionLabel' => 'Descrição',
+			'operation.layout.layouts.create' => 'Criar',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'Guardar as alterações a "${name}"?',
+			'operation.layout.layouts.leaveEditBody' => 'Esta disposição tem alterações que não guardou.',
+			'operation.layout.layouts.discard' => 'Descartar',
+			'operation.layout.layouts.deleteTitle' => 'Eliminar esta disposição?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'Tem a certeza de que quer eliminar a disposição "${name}"?',
+			'operation.layout.layouts.exportTitle' => 'Exportar Disposição',
+			'operation.layout.layouts.exportPick' => 'Painéis a exportar',
+			'operation.layout.layouts.tabSet' => 'Grupo de Separadores',
+			'operation.layout.layouts.exportAction' => 'Exportar',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Disposição guardada em ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Não foi possível exportar a disposição: ${error}',
+			'operation.layout.layouts.importTitle' => 'Importar Disposição',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Feita para a vista ${view}: os painéis que só essa vista tem ficam de fora.',
+			'operation.layout.layouts.viewHome' => 'Início',
+			'operation.layout.layouts.viewOperation' => 'Operação',
+			'operation.layout.layouts.viewLogs' => 'Registos',
+			'operation.layout.layouts.viewChase' => 'Caça',
+			'operation.layout.layouts.importAsNew' => 'Como nova disposição',
+			'operation.layout.layouts.importReplace' => 'No lugar desta disposição',
+			'operation.layout.layouts.importAdd' => 'Adicionada a esta disposição',
+			'operation.layout.layouts.importAddHint' => 'Os painéis chegam numa nova coluna à direita.',
+			'operation.layout.layouts.importPick' => 'Painéis a importar',
+			'operation.layout.layouts.importReplaceSettings' => 'Substituir as configurações dos painéis já configurados aqui',
+			'operation.layout.layouts.importAction' => 'Importar',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} não é uma disposição que esta app consiga ler: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'o texto não é YAML válido (linha ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'não é um ficheiro de disposição do Ham2K',
+			'operation.layout.layouts.problemNewerVersion' => 'foi escrito por uma versão mais recente da app',
+			'operation.layout.layouts.problemNoArrangement' => 'não contém a organização dos painéis',
+			'operation.layout.layouts.problemMalformed' => 'parte dele não segue o formato de disposição',
+			'operation.layout.layouts.problemTooLarge' => 'é demasiado grande',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Não foi possível abrir o ficheiro: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Não foi possível importar a disposição: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Não foi possível copiar a disposição: ${error}',
+			'operation.layout.layouts.importNothing' => 'Nenhum painel escolhido, por isso nada foi importado.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Ficaram de fora: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Mantidos ${panels}: a organização para ecrãs pequenos não pode passar sem eles.',
+			'operation.layout.layouts.notOffered' => 'Não disponível nesta vista',
+			'operation.layout.layouts.alreadyPlaced' => 'Já está nesta disposição',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'Precisa de ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'Não foi possível ler os nomes das disposições',
+			'operation.layout.layouts.listRecoveredBody' => 'Não foi possível ler a lista de disposições desta vista. Todas as disposições continuam aqui, numeradas em vez de nomeadas.',
 			'operation.layout.editLayout' => 'Editar Disposição',
 			'operation.layout.saveLayout' => 'Guardar Disposição',
 			'operation.layout.revertLayout' => 'Descartar alterações à disposição',
@@ -3922,12 +5020,28 @@ extension on TranslationsPt {
 			'operation.layout.layoutUnreadableBody' => 'Não foi possível ler a disposição guardada, por isso está a ser mostrada a disposição predefinida. A original só será substituída se escolher manter esta.',
 			'operation.layout.layoutUnreadableAction' => 'Usar esta disposição',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'Não foi possível mostrar ${panel}',
+			'operation.layout.panelOverCharacters' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: enviou mais de ${max} caracteres',
+			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua ilustração tem mais de ${max} elementos',
+			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua ilustração tem mais de ${max} níveis de aninhamento',
+			'operation.layout.panelNotArtwork' => ({required Object panel}) => 'Não foi possível mostrar ${panel}: a sua ilustração não é autónoma',
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} camadas',
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} controlos',
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: parte da sua cena tem mais de ${max} entradas',
+			_ => null,
+		} ?? switch (path) {
+			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: um texto da cena tem mais de ${max} caracteres',
+			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua disposição tem mais de ${max} níveis de aninhamento',
 			'operation.layout.panelRenderRetry' => 'Tentar novamente',
 			'operation.layout.panelActionFailed' => 'A ação desse painel falhou. Tente novamente.',
 			'operation.layout.panels.loggingDescription' => 'O registo e os campos de entrada',
 			'operation.layout.panels.infoDescription' => 'O que sabemos sobre a estação contactada',
 			'operation.layout.panels.spotsDescription' => 'Spots dos clusters e dos programas de atividade',
 			'operation.layout.panels.mapDescription' => 'Onde estão os contactos',
+			'operation.layout.panels.summariesDescription' => 'As estatísticas e pontuações da operação, nas secções e pela ordem que escolher',
+			'operation.layout.panels.summariesSections' => 'Secções e Ordem',
+			'operation.layout.panels.summariesDays' => 'Cada dia',
+			'operation.layout.panels.summariesReset' => 'Mostrar tudo',
+			'operation.layout.panels.summariesAllHidden' => 'Todas as secções estão ocultas. Escolha as que quer mostrar nas configurações deste painel.',
 			'operation.layout.panels.clockDescription' => 'Um mostrador de relógio, em qualquer fuso horário',
 			'operation.layout.panels.clockFace' => 'Mostrador',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -3951,34 +5065,34 @@ extension on TranslationsPt {
 			'operation.layout.panels.weatherConditions.unknown' => 'Desconhecido',
 			'operation.layout.panels.weatherConditions.sunny' => 'Sol',
 			'operation.layout.panels.weatherConditions.clear' => 'Céu limpo',
-			'operation.layout.panels.weatherConditions.mainlySunny' => 'Predominantemente Sol',
-			'operation.layout.panels.weatherConditions.mainlyClear' => 'Predominantemente Limpo',
-			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Parcialmente Nublado',
+			'operation.layout.panels.weatherConditions.mainlySunny' => 'Sol com nuvens',
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'Céu pouco nublado',
+			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Parcialmente nublado',
 			'operation.layout.panels.weatherConditions.cloudy' => 'Nublado',
 			'operation.layout.panels.weatherConditions.foggy' => 'Nevoeiro',
-			'operation.layout.panels.weatherConditions.rimeFog' => 'Nevoeiro com Geada',
-			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Chuvisco Fraco',
+			'operation.layout.panels.weatherConditions.rimeFog' => 'Nevoeiro gelado',
+			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Chuvisco fraco',
 			'operation.layout.panels.weatherConditions.drizzle' => 'Chuvisco',
-			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Chuvisco Forte',
-			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Chuvisco Gelado Fraco',
-			'operation.layout.panels.weatherConditions.freezingDrizzle' => 'Chuvisco Gelado',
-			'operation.layout.panels.weatherConditions.lightRain' => 'Chuva Fraca',
+			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Chuvisco forte',
+			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Chuvisco gelado fraco',
+			'operation.layout.panels.weatherConditions.freezingDrizzle' => 'Chuvisco gelado',
+			'operation.layout.panels.weatherConditions.lightRain' => 'Chuva fraca',
 			'operation.layout.panels.weatherConditions.rain' => 'Chuva',
-			'operation.layout.panels.weatherConditions.heavyRain' => 'Chuva Forte',
-			'operation.layout.panels.weatherConditions.lightFreezingRain' => 'Chuva Gelada Fraca',
-			'operation.layout.panels.weatherConditions.freezingRain' => 'Chuva Gelada',
-			'operation.layout.panels.weatherConditions.lightSnow' => 'Neve Fraca',
+			'operation.layout.panels.weatherConditions.heavyRain' => 'Chuva forte',
+			'operation.layout.panels.weatherConditions.lightFreezingRain' => 'Chuva gelada fraca',
+			'operation.layout.panels.weatherConditions.freezingRain' => 'Chuva gelada',
+			'operation.layout.panels.weatherConditions.lightSnow' => 'Neve fraca',
 			'operation.layout.panels.weatherConditions.snow' => 'Neve',
-			'operation.layout.panels.weatherConditions.heavySnow' => 'Neve Forte',
-			'operation.layout.panels.weatherConditions.snowGrains' => 'Grãos de Neve',
-			'operation.layout.panels.weatherConditions.lightShowers' => 'Aguaceiros Fracos',
+			'operation.layout.panels.weatherConditions.heavySnow' => 'Neve forte',
+			'operation.layout.panels.weatherConditions.snowGrains' => 'Neve em grãos',
+			'operation.layout.panels.weatherConditions.lightShowers' => 'Aguaceiros fracos',
 			'operation.layout.panels.weatherConditions.showers' => 'Aguaceiros',
-			'operation.layout.panels.weatherConditions.heavyShowers' => 'Aguaceiros Fortes',
-			'operation.layout.panels.weatherConditions.lightSnowShowers' => 'Aguaceiros de Neve Fracos',
-			'operation.layout.panels.weatherConditions.snowShowers' => 'Aguaceiros de Neve',
+			'operation.layout.panels.weatherConditions.heavyShowers' => 'Aguaceiros fortes',
+			'operation.layout.panels.weatherConditions.lightSnowShowers' => 'Aguaceiros de neve fracos',
+			'operation.layout.panels.weatherConditions.snowShowers' => 'Aguaceiros de neve',
 			'operation.layout.panels.weatherConditions.thunderstorm' => 'Trovoada',
-			'operation.layout.panels.weatherConditions.lightThunderstormsWithHail' => 'Trovoada Fraca com Granizo',
-			'operation.layout.panels.weatherConditions.thunderstormWithHail' => 'Trovoada com Granizo',
+			'operation.layout.panels.weatherConditions.lightThunderstormsWithHail' => 'Trovoada fraca com granizo',
+			'operation.layout.panels.weatherConditions.thunderstormWithHail' => 'Trovoada com granizo',
 			'operation.layout.panels.websiteDescription' => 'Uma página web à sua escolha, num painel',
 			'operation.layout.panels.websiteUrl' => 'Endereço',
 			'operation.layout.panels.websiteRefresh' => 'Atualizar',
@@ -3998,7 +5112,7 @@ extension on TranslationsPt {
 			'operation.layout.panels.remoteScreenTarget' => 'Ecrã',
 			'operation.layout.panels.remoteScreenChoose' => 'Escolher um ecrã…',
 			'operation.layout.panels.remoteScreenPickerTitle' => 'Ecrãs Partilhados',
-			'operation.layout.panels.remoteScreenPickerEmpty' => 'Nenhum dos seus dispositivos está a partilhar um ecrã. Ative Partilhar ecrãs e janelas em Configurações → Dispositivos Pares, no dispositivo que quer ver.',
+			'operation.layout.panels.remoteScreenPickerEmpty' => 'Nenhum dos seus dispositivos está a partilhar um ecrã. Ative Partilhar ecrãs e janelas em Configurações → Dispositivos Próximos, no dispositivo que quer ver.',
 			'operation.layout.panels.remoteScreenUnset' => 'Nenhum ecrã escolhido. Abra as configurações deste painel para escolher um que os seus outros dispositivos estejam a partilhar.',
 			'operation.layout.panels.remoteScreenConnecting' => 'A ligar…',
 			'operation.layout.panels.remoteScreenPeerAway' => 'Esse dispositivo não está ligado neste momento.',
@@ -4052,6 +5166,30 @@ extension on TranslationsPt {
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'SWR alta',
+			'operation.layout.panels.rotatorDescription' => 'Para onde aponta a antena, num mapa centrado na estação. Toque no mapa para a rodar.',
+			'operation.layout.panels.rotatorRotator' => 'Rotor',
+			'operation.layout.panels.rotatorAutoNamed' => ({required Object name}) => 'Automático — ${name}',
+			'operation.layout.panels.rotatorAutoNone' => 'Automático — ainda sem rotor',
+			'operation.layout.panels.rotatorBeamWidth' => 'Largura do feixe',
+			'operation.layout.panels.rotatorBeamWidthDescription' => 'Em graus, desenhada à volta do azimute. 0 não desenha nada.',
+			'operation.layout.panels.rotatorLocation' => 'Localização',
+			'operation.layout.panels.rotatorLocationDescription' => 'Um grid, ou latitude e longitude, para centrar o mapa. Em branco usa a localização da operação.',
+			'operation.layout.panels.rotatorTheme' => 'Tema',
+			'operation.layout.panels.rotatorThemeColor' => 'Cor',
+			'operation.layout.panels.rotatorThemeGray' => 'Cinzento',
+			'operation.layout.panels.rotatorThemeMuted' => 'Discreto',
+			'operation.layout.panels.rotatorGrayline' => 'Mostrar a linha cinzenta',
+			'operation.layout.panels.rotatorNoRotator' => 'Nenhum rotor para mostrar. Escolha um nas configurações deste painel, ou adicione um em Configuração da Estação.',
+			'operation.layout.panels.rotatorNoLocation' => 'Sem localização para centrar o mapa. Defina uma nas configurações deste painel.',
+			'operation.layout.panels.rotatorDisconnected' => 'desligado',
+			'operation.layout.panels.rotatorNoReading' => '—',
+			'operation.layout.panels.rotatorNotResponding' => 'não responde',
+			'operation.layout.panels.rotatorLocationInvalid' => 'Não é possível ler a localização nas configurações deste painel. Use um grid, ou latitude e longitude como 40.7, -74.0.',
+			'operation.layout.panels.rotatorElevation' => ({required Object degrees}) => '${degrees}° el',
+			'operation.layout.panels.rotatorNorth' => 'N',
+			'operation.layout.panels.rotatorEast' => 'E',
+			'operation.layout.panels.rotatorSouth' => 'S',
+			'operation.layout.panels.rotatorWest' => 'O',
 			'operation.layout.htmlPanelUnsupported' => 'Este painel precisa de uma vista web, que esta plataforma não fornece',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este painel precisa de um ambiente isolado que a versão web não pode fornecer',
 			'operation.export.title' => 'Exportações da Operação',
@@ -4078,8 +5216,6 @@ extension on TranslationsPt {
 			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Partilhar ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarregar ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Arquivar ${count} ficheiro', other: 'Arquivar ${count} ficheiros', ), 
 			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Arquivar ${count} ficheiro combinado', other: 'Arquivar ${count} ficheiros combinados', ), 
@@ -4089,8 +5225,8 @@ extension on TranslationsPt {
 			'operation.export.compactFileNames.descriptionOn' => 'Nomes curtos pensados para envio, como N0CALL@US-1234-20260727.adi',
 			'operation.export.compactFileNames.descriptionOff' => 'Nomes legíveis, como 2026-07-27 N0CALL at US-1234.adi',
 			'operation.export.includePrivateData.title' => 'Incluir informação privada',
-			'operation.export.includePrivateData.descriptionOn' => 'Nomes, moradas, e-mails, grids e notas são incluídos',
-			'operation.export.includePrivateData.descriptionOff' => 'Nomes, moradas, e-mails, grids e notas são omitidos',
+			'operation.export.includePrivateData.descriptionOn' => 'Nomes, moradas, emails, grids e notas são incluídos',
+			'operation.export.includePrivateData.descriptionOff' => 'Nomes, moradas, emails, grids e notas são omitidos',
 			'operation.export.includePrivateData.note' => 'A Exportação ADIF Completa inclui sempre tudo',
 			'operation.export.resultTitle' => 'Exportação concluída',
 			'operation.export.resultFailedTitle' => 'A exportação falhou',
@@ -4099,24 +5235,24 @@ extension on TranslationsPt {
 			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} ficheiro partilhado', other: '${count} ficheiros partilhados', ), 
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} ficheiro descarregado', other: '${count} ficheiros descarregados', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'A exportação falhou: ${error}',
-			'operation.export.stash.needsEmailTitle' => 'Adicione primeiro um endereço de e-mail',
-			'operation.export.stash.needsEmailBody' => 'O Arquivo de Ficheiros do Ham2K envia os seus ficheiros para o endereço de e-mail da sua conta LoFi, e é com ele que inicia sessão em stash.ham2k.net. A sua conta ainda não tem um confirmado — adicione-o em Configurações › Sincronização na Nuvem.',
+			'operation.export.stash.needsEmailTitle' => 'Adicione primeiro um endereço de email',
+			'operation.export.stash.needsEmailBody' => 'O Ham2K File Stash envia os seus ficheiros para o endereço de email da sua conta LoFi, e é com ele que inicia sessão em stash.ham2k.net. A sua conta ainda não tem um confirmado — adicione-o em Configurações › Sincronização na Nuvem.',
 			'operation.export.stash.openSyncSettings' => 'Abrir Sincronização na Nuvem',
-			'operation.export.stash.replaceTitle' => 'O arquivo recente será substituído',
-			'operation.export.stash.replaceBody' => ({required Object name}) => 'Enviou “${name}” há menos de 6 horas e ainda não foi descarregado. As contas gratuitas mantêm um arquivo de cada vez, por isso enviar agora substitui-o.',
-			'operation.export.stash.replaceConfirm' => 'Enviar Mesmo Assim',
-			'operation.export.stash.failedTitle' => 'Não foi possível enviar para o Arquivo de Ficheiros do Ham2K',
-			'operation.export.stash.sentTitle' => 'Enviado para o Arquivo de Ficheiros do Ham2K',
+			'operation.export.stash.replaceTitle' => 'O envio recente será substituído',
+			'operation.export.stash.replaceBody' => ({required Object name}) => 'Enviou “${name}” há menos de 6 horas e ainda não foi descarregado. As contas gratuitas mantêm um stash de cada vez, por isso enviar agora substitui-o.',
+			'operation.export.stash.replaceConfirm' => 'Enviar mesmo assim',
+			'operation.export.stash.failedTitle' => 'Não foi possível enviar para o Ham2K File Stash',
+			'operation.export.stash.sentTitle' => 'Enviado para o Ham2K File Stash',
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Pode obter este ficheiro em **[stash.ham2k.net](https://stash.ham2k.net)** em qualquer navegador.', other: 'Pode obter estes ficheiros em **[stash.ham2k.net](https://stash.ham2k.net)** em qualquer navegador.', ), 
-			'operation.export.stash.mayHaveArrived' => 'O arquivo não respondeu — o ficheiro pode ter chegado na mesma. Verifique stash.ham2k.net antes de enviar novamente',
+			'operation.export.stash.mayHaveArrived' => 'O stash não respondeu — o ficheiro pode ter chegado na mesma. Verifique stash.ham2k.net antes de enviar novamente',
 			'operation.export.stash.notSent' => 'não enviado',
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Este ficheiro não chegou:', other: 'Estes ${count} ficheiros não chegaram:', ), 
-			'operation.export.stash.emailOffer' => 'Ou, para sua conveniência, podemos enviar-lhe um e-mail com uma ligação direta.',
-			'operation.export.stash.emailMe' => 'Enviar-me uma Ligação por E-mail',
-			'operation.export.stash.emailSent' => 'Enviámos-lhe por e-mail uma ligação para descarregar.',
-			'operation.export.stash.emailFailed' => ({required Object error}) => 'Não foi possível enviar o e-mail: ${error}',
-			'operation.export.stash.freeTier' => 'As contas gratuitas só podem manter um arquivo de cada vez. Os assinantes podem manter quantos quiserem.',
-			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} ficheiro enviado para o Arquivo de Ficheiros do Ham2K (stash.ham2k.net)', other: '${count} ficheiros enviados para o Arquivo de Ficheiros do Ham2K (stash.ham2k.net)', ), 
+			'operation.export.stash.emailOffer' => 'Ou, para sua conveniência, podemos enviar-lhe um email com um link direto.',
+			'operation.export.stash.emailMe' => 'Enviar-me um Link por Email',
+			'operation.export.stash.emailSent' => 'Enviámos-lhe por email um link para descarregar.',
+			'operation.export.stash.emailFailed' => ({required Object error}) => 'Não foi possível enviar o email: ${error}',
+			'operation.export.stash.freeTier' => 'As contas gratuitas só podem manter um stash de cada vez. Os subscritores podem manter quantos quiserem.',
+			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} ficheiro enviado para o Ham2K File Stash (stash.ham2k.net)', other: '${count} ficheiros enviados para o Ham2K File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Nenhum spot corresponde aos filtros',
 			'operation.spots.error' => ({required Object error}) => 'Falha ao carregar spots: ${error}',
 			'operation.spots.unknownBand' => 'Outra',
@@ -4126,9 +5262,10 @@ extension on TranslationsPt {
 			'operation.spots.any' => 'Qualquer',
 			'operation.spots.allBands' => 'Todas as Bandas',
 			'operation.spots.allModes' => 'Todos os Modos',
-			'operation.spots.phoneAndCw' => 'Telefone e CW',
+			'operation.spots.phoneAndCw' => 'Fonia e CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'A mostrar ${count} de ${total} spots',
+			'operation.spots.spotsDisabled' => 'Spots desativados nesta operação',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
 			'operation.spots.callsOfNote' => 'Indicativos Notáveis',
 			'operation.spots.yourSpots' => 'Os Seus Spots',
@@ -4149,8 +5286,10 @@ extension on TranslationsPt {
 			'operation.spots.filters.sorting' => 'Ordenação',
 			'operation.spots.filters.sortByTime' => 'Por Hora do Spot',
 			'operation.spots.filters.sortByFrequency' => 'Por Frequência',
+			'operation.spots.filters.sortByWanted' => 'Mais Procurados',
 			'operation.spots.filters.groupByBand' => 'Agrupar por Banda',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar Indicativos com Notas',
+			'operation.spots.filters.alertingOnly' => 'Só Spots com Alertas',
 			'operation.spots.filters.sourceNoReply' => 'Sem resposta',
 			'operation.spots.filters.sourceError' => 'Erro',
 			'operation.spots.unavailableTitle' => 'Spots indisponíveis',
@@ -4174,7 +5313,7 @@ extension on TranslationsPt {
 			'operation.import.protocolPortInvalid' => 'Introduza uma porta entre 1 e 65535',
 			'operation.import.protocolAddressInvalid' => 'Introduza um endereço IP válido (ex. 127.0.0.1 ou 239.239.0.2)',
 			'operation.import.protocolStatusReceiving' => 'A receber dados',
-			'operation.import.protocolStatusNoData' => 'Nenhuns dados recebidos recentemente',
+			'operation.import.protocolStatusNoData' => 'Sem dados recebidos recentemente',
 			'operation.import.protocolBindError' => ({required Object error}) => 'Não foi possível começar a escutar: ${error}',
 			'operation.import.captureFailed' => ({required Object error}) => 'Não foi possível guardar os QSOs recebidos; a tentar novamente: ${error}',
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
@@ -4195,7 +5334,7 @@ extension on TranslationsPt {
 			'operation.import.stationMismatch' => ({required Object call}) => 'Registado como ${call}, não a estação desta operação',
 			'operation.import.discardAction' => 'Descartar',
 			'operation.import.gapDialogTitle' => 'Incluir capturas anteriores?',
-			'operation.import.gapDialogBody' => ({required Object count}) => 'Foram capturados mais ${count} QSOs antes, antes de uma falha nos dados. Incluí-los também?',
+			'operation.import.gapDialogBody' => ({required Object count}) => 'Foram capturados mais ${count} QSOs anteriormente, antes de uma interrupção nos dados. Incluí-los também?',
 			'operation.import.gapDialogRecentOnly' => 'Só os recentes',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir todos os ${count}',
 			'map.outlineIssue.link' => 'Problemas?',
@@ -4227,6 +5366,7 @@ extension on TranslationsPt {
 			'map.globe' => 'Globo',
 			'map.zoomIn' => 'Aproximar',
 			'map.zoomOut' => 'Afastar',
+			'map.resetNorth' => 'Repor norte para cima',
 			'map.postcard.button' => 'Postal da Operação',
 			'map.postcard.title' => ({required Object title}) => 'Postal de ${title}',
 			'map.postcard.portrait' => 'Vertical',
@@ -4249,6 +5389,11 @@ extension on TranslationsPt {
 			'map.postcard.previousPage' => 'Página anterior',
 			'map.postcard.nextPage' => 'Página seguinte',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Página ${page} de ${count}',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} Q', other: '${count} Qs', ), 
+			'map.postcard.options' => 'Opções do Postal',
+			'map.postcard.bandLegend' => 'Mostrar legenda de bandas',
+			'map.postcard.grayline' => 'Mostrar a linha cinzenta',
+			'map.postcard.sectionsAndOrder' => 'Secções e Ordem do Resumo',
 			'map.postcard.sectionDays' => 'Cada dia',
 			'map.postcard.reset' => 'Repor',
 			'map.postcard.failed' => ({required Object error}) => 'Não foi possível criar o postal: ${error}',
@@ -4258,7 +5403,7 @@ extension on TranslationsPt {
 			'map.postcard.shareFailed' => 'Não foi possível partilhar o postal. Tente novamente.',
 			'map.postcard.fileName' => 'postal',
 			'mapsView.title' => 'Mapas',
-			'mapsView.searchHint' => 'Procurar parques, cumes e mais',
+			'mapsView.searchHint' => 'Pesquisar parques, cumes e mais',
 			'mapsView.activities' => 'Atividades',
 			'mapsView.layers' => 'Camadas',
 			'mapsView.baseMap' => 'Mapa base',
@@ -4285,9 +5430,9 @@ extension on TranslationsPt {
 			'activitiesView.reference' => 'Referência',
 			'activitiesView.invalidReference' => 'Inválida',
 			'activitiesView.duplicateReference' => 'Já adicionada',
-			'activitiesView.searchHint' => 'Procurar por nome, referência ou qualquer outra coisa…',
+			'activitiesView.searchHint' => 'Pesquisar por nome, referência ou qualquer outra coisa…',
 			'activitiesView.noSuggestions' => 'Sem resultados',
-			'activitiesView.noSuggestionsHint' => 'Procure acima pelo nome ou número da referência',
+			'activitiesView.noSuggestionsHint' => 'Pesquise acima pelo nome ou número da referência',
 			'activitiesView.noSuggestionsExample' => '(por exemplo \'trilho\' ou \'4556\')',
 			'activitiesView.allOptions' => 'Tipos de Atividade',
 			'activitiesView.determiningLocation' => 'A determinar a localização atual…\nA aguardar o GPS para encontrar referências próximas',
@@ -4295,13 +5440,13 @@ extension on TranslationsPt {
 			'activitiesView.locationDeniedTitle' => 'Permissão de localização negada',
 			'activitiesView.locationBlockedTitle' => 'Permissão de localização bloqueada',
 			'activitiesView.noNearbyReason' => 'Não é possível determinar referências próximas',
-			'activitiesView.locationManualHint' => ({required Object icon}) => 'Toque em ${icon} para introduzir a localização manualmente,\nou simplesmente procure referências pelo nome',
+			'activitiesView.locationManualHint' => ({required Object icon}) => 'Toque em ${icon} para introduzir a localização manualmente,\nou simplesmente pesquise referências pelo nome',
 			'activitiesView.locationGrantAction' => 'Permitir acesso à localização',
 			'activitiesView.locationSettingsAction' => 'Abrir Configurações',
 			'activitiesView.locationSettingsUnavailable' => 'Permita o acesso à localização nas configurações do sistema',
 			'activitiesView.locationGrantRefused' => 'Continua sem localização — o sistema voltou a recusar',
 			'activitiesView.searchUnavailableTitle' => 'Pesquisa de atividades indisponível',
-			'activitiesView.searchUnavailableReason' => 'Nenhuma extensão de atividade conseguiu fazer a pesquisa. Tente novamente daqui a pouco.',
+			'activitiesView.searchUnavailableReason' => 'Uma extensão de atividade não conseguiu responder à pesquisa. Tente novamente daqui a pouco.',
 			'activitiesView.emptySheet' => 'Use as sugestões e a pesquisa abaixo para adicionar uma',
 			'activitiesView.exports' => 'Exportações',
 			'activitiesView.exportLogs' => 'Exportar Registos',
@@ -4337,11 +5482,15 @@ extension on TranslationsPt {
 			'activitiesView.addToOperation' => 'Adicionar à Operação',
 			'activitiesView.addToOperationShort' => 'Adicionar à Op.',
 			'activitiesView.mapEmptyState' => 'Sem resultados para mostrar no mapa',
-			'activitiesView.mapEmptyStateHint' => 'Volte à lista, ou procure outra coisa',
+			'activitiesView.mapEmptyStateHint' => 'Volte à lista, ou pesquise outra coisa',
 			'activitiesView.imports' => 'Importações',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
 			'loggingControls.date' => 'Data',
 			'loggingControls.now' => 'Agora',
+			'loggingControls.manualTimeSettings' => 'Hora Manual',
+			'loggingControls.manualTimeIncrement' => 'Incremento por QSO',
+			'loggingControls.manualTimeIncrementNone' => 'Nenhum',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} minuto', other: '${count} minutos', ), 
 			'loggingControls.frequency' => 'Frequência',
 			'loggingControls.mode' => 'Modo',
 			'loggingControls.theirCall' => 'Indicativo',
@@ -4351,7 +5500,7 @@ extension on TranslationsPt {
 			'loggingControls.rcvd' => 'Recebido',
 			'loggingControls.more' => 'Mais',
 			'loggingControls.revert' => 'Reverter',
-			'loggingControls.undoDelete' => 'Anular eliminação',
+			'loggingControls.undoDelete' => 'Desfazer eliminação',
 			'loggingControls.restore' => 'Repor',
 			'loggingControls.wipe' => 'Apagar',
 			'loggingControls.undo' => 'Desfazer',
@@ -4371,14 +5520,29 @@ extension on TranslationsPt {
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot em ${freq}',
-			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot de ${call} em ${freq}',
-			'loggingControls.spotTooLate' => ({required Object call}) => 'Tarde demais para fazer spot de ${call}',
+			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} em ${freq}',
+			'loggingControls.spotTooLate' => ({required Object call}) => 'Tarde demais para spot de ${call}',
 			'loggingControls.spotNoFreq' => 'Defina primeiro uma frequência para o spot',
+			'loggingControls.selfSpotDisabled' => 'Self-spot desativado',
 			'loggingControls.spotComment' => 'Comentário',
+			'loggingControls.spottingAutoControl' => 'Re-spot automático',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot a cada ${minutes} min',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto em ${time}. Parar?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto em ${minutes}m',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto em ${seconds}s',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto em ${seconds}',
+			'loggingControls.spotAutoNotStarted' => 'Re-spot automático não iniciado: o spot não foi publicado',
+			'loggingControls.spotAutoMoved' => 'Re-spot automático não iniciado: a frequência mudou durante o spot',
+			'loggingControls.spotAutoStopped' => 'Re-spot automático parado',
+			'loggingControls.spotAutoLeftFreq' => 'Re-spot automático parado: a frequência mudou',
+			'loggingControls.spotAutoNoFreq' => 'Re-spot automático parado: o rádio não indica frequência',
+			'loggingControls.spotBusy' => 'Ainda está a ser enviado outro spot',
 			'loggingControls.bandOrFreqRequired' => 'Defina uma frequência ou banda antes de registar',
 			'loggingControls.missingBand' => 'Sem Banda',
 			'loggingControls.missingMode' => 'Sem Modo',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Não foi possível guardar: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Não foi possível eliminar: ${error}',
 			'loggingControls.info.noQsos' => 'Ainda nenhum QSO… vamos para o ar!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -4407,13 +5571,15 @@ extension on TranslationsPt {
 			'loggingControls.info.noticeInvalidMode' => 'Modo Errado',
 			'loggingControls.info.noticeInvalidBand' => 'Banda Errada',
 			'loggingControls.info.noticeInvalidCategory' => 'Não Contactável',
+			'loggingControls.info.noticeOverTime' => 'Tempo Esgotado',
 			'loggingControls.info.noticeWorkedBefore' => 'Já Contactado',
 			'loggingControls.info.noticeNewPark' => 'Novo Parque',
 			'loggingControls.info.noticeNewSection' => 'Nova Secção',
 			'loggingControls.info.noticeBonusStation' => 'Estação Bónus!',
-			'loggingControls.info.noticeMissingExchange' => 'Sem Câmbio',
-			'loggingControls.info.noticeInvalidExchange' => 'Câmbio Inválido',
+			'loggingControls.info.noticeMissingExchange' => 'Sem Intercâmbio',
+			'loggingControls.info.noticeInvalidExchange' => 'Intercâmbio Inválido',
 			'loggingControls.info.noticeUnknownEvent' => 'Evento Desconhecido',
+			'loggingControls.info.noticeIncompleteCall' => 'Indicativo Incompleto — Não Pontuado',
 			'loggingControls.info.noticeOurGrid' => 'Definir o Nosso Grid',
 			'loggingControls.info.noticeRareCounty' => 'Município Raro!',
 			'loggingControls.info.noticeOurLocation' => 'Definir o Nosso Município',
@@ -4423,7 +5589,7 @@ extension on TranslationsPt {
 			'formChrome.showAll' => 'Mostrar tudo',
 			'formChrome.showFewer' => 'Mostrar menos',
 			'formChrome.defaults' => 'Predefinições',
-			'formChrome.search' => 'Procurar',
+			'formChrome.search' => 'Pesquisar',
 			'formChrome.clear' => 'Limpar',
 			'formChrome.openPage' => 'Abrir página',
 			'formChrome.connected' => 'Ligado',
@@ -4437,7 +5603,8 @@ extension on TranslationsPt {
 			'formChrome.validationError' => ({required Object error}) => 'Erro de validação: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Erro de transformação: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Erro: ${error}',
-			'formChrome.removeItem' => 'Remover',
+			'formChrome.removeItem' => 'Eliminar',
+			'formChrome.deleteItemTitle' => ({required Object name}) => 'Eliminar ${name}?',
 			'formChrome.storageUnavailable' => 'Credenciais indisponíveis',
 			'qsoEditForm.title' => 'Editar QSO',
 			'qsoEditForm.operatorCall' => 'Operador',
@@ -4465,6 +5632,16 @@ extension on TranslationsPt {
 			'qsoList.today' => 'Hoje',
 			'qsoList.yesterday' => 'Ontem',
 			'qsoList.tomorrow' => 'Amanhã',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Localizar no Registo (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Localizar no Registo',
+			'qsoList.find.hint' => 'Número de QSO ou indicativo',
+			'qsoList.find.noMatches' => 'Sem correspondência',
+			'qsoList.find.noOperationQsos' => 'Sem QSOs nesta operação',
+			'qsoList.find.noPeriodQsos' => 'Sem QSOs neste período',
+			'qsoList.find.outsideQsosOne' => '1 QSO fora desta operação',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} QSOs fora desta operação',
+			'qsoList.find.pastQsosOne' => '1 QSO anterior',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} QSOs anteriores',
 			'loggingPanel.stats' => 'Estatísticas da Operação',
 			'loggingPanel.scoring' => 'Pontuação',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
@@ -4554,7 +5731,7 @@ extension on TranslationsPt {
 			'settings.logging.jumpAfterRST.title' => 'Saltar para o campo seguinte após o RST',
 			'settings.logging.jumpAfterRST.descriptionOn' => 'A saltar depois de introduzido o RST',
 			'settings.logging.jumpAfterRST.descriptionOff' => 'A não saltar automaticamente',
-			'settings.logging.defaultReport.title' => 'Relatório predefinido — Telefone',
+			'settings.logging.defaultReport.title' => 'Relatório predefinido — Fonia',
 			'settings.logging.defaultReport.description' => 'Usado quando Enviado ou Recebido fica vazio em SSB, FM ou AM',
 			'settings.logging.defaultReportCW.title' => 'Relatório predefinido — CW e dados',
 			'settings.logging.defaultReportCW.description' => 'Usado quando Enviado ou Recebido fica vazio em CW, RTTY e outros modos de dados',
@@ -4580,6 +5757,11 @@ extension on TranslationsPt {
 			'settings.catServer.openAccess' => 'Acesso aberto',
 			'settings.catServer.openAccessOn' => 'Qualquer computador na rede local pode ligar-se.',
 			'settings.catServer.openAccessOff' => 'Só as apps neste computador se podem ligar.',
+			'settings.catServer.allowTransmit' => 'Permitir que as apps transmitam',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'As apps podem acionar o PTT do rádio, até ${minutes} minutos de cada vez.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'As apps em qualquer computador na rede local podem acionar o PTT do rádio, até ${minutes} minutos de cada vez.',
+			'settings.catServer.allowTransmitOff' => 'As apps não podem acionar o PTT do rádio. Use VOX ou a configuração de PTT própria delas.',
+			'settings.catServer.allowTransmitUnsupported' => 'O rádio de VFO Principal não pode ser posto em transmissão a partir do Ham2K Logger, por isso as apps não podem transmitir através dele.',
 			'settings.catServer.off' => 'Desligado.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, a iniciar…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} na porta ${port}. Clientes ligados: ${clients}.',
@@ -4588,12 +5770,58 @@ extension on TranslationsPt {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: outro programa está a usá-la, muitas vezes o próprio ${protocol}. Feche esse programa ou escolha outra porta.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: este computador não o permite. Escolha uma porta acima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} deixou de escutar na porta ${port}. A tentar novamente…',
+			'settings.cluster.title' => 'Cluster DX',
+			'settings.cluster.description' => 'O servidor onde as extensões publicam e leem spots, com sessão iniciada como o operador.',
+			'settings.cluster.connect' => 'Ligar ao cluster',
+			'settings.cluster.connectOn' => 'As extensões ligam-se ao cluster quando precisam',
+			'settings.cluster.connectOff' => 'Nada se liga ao cluster',
+			'settings.cluster.console' => 'Mostrar Consola',
+			'settings.cluster.consoleDescription' => 'O que o cluster envia, e um lugar para escrever comandos',
+			'settings.cluster.consoleTitle' => 'Consola do Cluster',
+			'settings.cluster.consoleConnect' => 'Ligar',
+			'settings.cluster.consoleDisconnect' => 'Desligar',
+			'settings.cluster.consoleCommand' => 'Comando',
+			'settings.cluster.consoleEmpty' => 'Ainda nada. Ligue-se, ou espere que uma extensão use o cluster.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'A enviar novamente: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Não enviado: ${command} (${reason})',
+			'settings.cluster.server' => 'Servidor do Cluster',
+			'settings.cluster.selectServer' => 'Selecionar Servidor',
+			'settings.cluster.serverOther' => 'Outro',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'Ainda não indicou um servidor, por isso os spots vão para ${node}',
+			'settings.cluster.customHost' => 'Servidor',
+			'settings.cluster.customPort' => 'Porta',
+			'settings.cluster.password' => 'Senha',
+			'settings.cluster.passwordDescription' => 'Só se for necessária',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'Senha guardada para ${node}',
+			'settings.cluster.scrollback' => 'Linhas guardadas',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} linhas',
+			'settings.cluster.connection' => 'Ligação',
+			'settings.cluster.statusIdle' => 'Não ligado. Liga-se quando uma extensão precisar. Toque para testar.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'A ligar a ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Ligado a ${node} como ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Não foi possível ligar a ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Não disponível na versão web.',
+			'settings.cluster.statusOff' => 'Desligado. Ative Ligar ao cluster para o usar.',
+			'settings.cluster.errors.noCall' => 'não há indicativo de operador para iniciar sessão',
+			'settings.cluster.errors.connectFailed' => 'não foi possível contactar o nó',
+			'settings.cluster.errors.needsPassword' => 'o nó pede uma senha, e não há nenhuma guardada',
+			'settings.cluster.errors.loginFailed' => 'o nó não aceitou o início de sessão',
+			'settings.cluster.errors.disconnected' => 'o nó fechou a ligação',
+			'settings.cluster.errors.timeout' => 'o nó não respondeu',
+			'settings.cluster.errors.off' => 'Ligar ao cluster está desligado',
+			'settings.spotting.title' => 'Spotting',
+			'settings.spotting.respotInterval' => 'Re-spot automático a cada',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'Re-spot automático por predefinição',
+			'settings.spotting.autoRespotByDefaultOn' => 'Ativar o re-spot automático depois de qualquer spot publicado',
+			'settings.spotting.autoRespotByDefaultOff' => 'Exigir uma ação do utilizador para ativar o re-spot automático',
+			'settings.spotting.pulseBeforeRespot' => 'Pulsar antes de cada re-spot automático',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'O indicador de Spotting pulsa a azul durante os ${seconds} segundos antes de cada re-spot',
+			'settings.spotting.pulseBeforeRespotOff' => 'Sem pulsar antes de um re-spot automático',
 			'settings.radio.title' => 'Controlo CAT',
 			'settings.radio.loggingAndCat' => 'Registo e CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.servicesSection' => 'Serviços',
 			'settings.radio.stationConfigurationSection' => 'Configuração da Estação',
 			'settings.radio.moreSettings' => 'Mais configurações da estação',
@@ -4601,6 +5829,14 @@ extension on TranslationsPt {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'Controlar o PTT com o Teclado',
+			'settings.radio.pttKey.modes.off' => 'Não',
+			'settings.radio.pttKey.modes.toggle' => 'Alternar',
+			'settings.radio.pttKey.modes.hold' => 'Manter premida',
+			'settings.radio.pttKey.descriptions.off' => 'O teclado não aciona o PTT do rádio.',
+			'settings.radio.pttKey.descriptions.toggle' => 'Nos modos de fonia, a tecla PTT põe o rádio em transmissão e premi-la de novo tira-o. Sai de transmissão sozinho passado um minuto.',
+			'settings.radio.pttKey.descriptions.hold' => 'Nos modos de fonia, o rádio transmite enquanto a tecla PTT estiver premida, até um minuto.',
+			'settings.radio.pttKey.key' => 'Tecla PTT',
 			'settings.radio.pttKey.pill' => 'TX',
 			'settings.radio.pttKey.transmitting' => 'A transmitir',
 			'settings.radio.smartVfoSnap.title' => 'Arredondamento Inteligente do VFO',
@@ -4623,13 +5859,13 @@ extension on TranslationsPt {
 			'settings.radio.enterSends.sp' => 'S&P',
 			'settings.radio.enterSends.semantics' => ({required Object state}) => 'Enter Envia Mensagens: ${state}. Toque para alterar.',
 			'settings.radio.keyerSpeed.title' => 'Velocidade do manipulador',
-			'settings.radio.keyerSpeed.unit' => 'PPM',
-			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
-			'settings.radio.keyerSpeed.pillUnknown' => '– ppm',
+			'settings.radio.keyerSpeed.unit' => 'WPM',
+			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
+			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'Mensagens do Manipulador CW',
 			'settings.radio.cwMessages.notSupported' => 'O rádio atual não suporta manipulação CW',
-			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
-			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensagem (${n})',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensagem ${n}',
 			'settings.radio.cwMessages.labelField' => 'Etiqueta',
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Etiqueta de F${n}',
 			'settings.radio.cwMessages.details' => 'Detalhes',
@@ -4643,7 +5879,10 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mensagens ESM',
 			'settings.radio.cwMessages.setSaved' => 'As Minhas Mensagens',
-			'settings.radio.cwMessages.repeat' => 'Repetir Mensagem #1',
+			'settings.radio.cwMessages.repeat' => 'Repetir Mensagem 1',
+			'settings.radio.cwMessages.repeatShort' => 'Repetir M1',
+			'settings.radio.cwMessages.cooldown' => 'Pausa antes de repetir',
+			'settings.radio.cwMessages.cooldownSeconds' => ({required Object n}) => '${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'A repetir',
 			'settings.radio.cwMessages.keyboard' => 'Escrever para enviar',
 			'settings.radio.cwMessages.keyboardField' => 'Escrever para enviar',
@@ -4656,8 +5895,8 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.helpQsoPartial' => 'Um indicativo parcial; vazio se houver um indicativo completo válido',
 			'settings.radio.cwMessages.helpQsoNextCall' => 'Numa pilha //, o indicativo que será selecionado para registar a seguir, se houver um indicativo completo válido',
 			'settings.radio.cwMessages.helpQsoNextPartial' => 'Numa pilha //, o parcial seguinte depois de registar o contacto atual',
-			'settings.radio.cwMessages.helpQsoName' => 'O nome próprio deles, tal como escrito ou, se não, da pesquisa',
-			'settings.radio.cwMessages.helpQsoState' => 'O estado deles, tal como escrito ou, se não, da pesquisa',
+			'settings.radio.cwMessages.helpQsoName' => 'O nome próprio deles, tal como escrito ou, se não, da consulta',
+			'settings.radio.cwMessages.helpQsoState' => 'O estado deles, tal como escrito ou, se não, da consulta',
 			'settings.radio.cwMessages.helpKeyerMsg' => 'A mensagem 1 tal como seria enviada, dentro de outra mensagem. Válido para as mensagens 1 a 8',
 			'settings.radio.cwMessages.helpQsoRst' => 'O relatório que está a enviar',
 			'settings.radio.cwMessages.helpQsoSerial' => 'O seu número de série, num concurso que o envie',
@@ -4668,16 +5907,20 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.helpExample' => 'Envia W1AW 5NN TT7',
 			'settings.radio.cwMessages.helpEsmIntro' => 'Com Enter Envia Mensagens ligado, o Enter emite as mensagens pela sua tecla de função, como faz o N1MM. O conjunto Mensagens ESM começa com estas:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Em Run, Enter com o campo do indicativo vazio chama CQ',
-			'settings.radio.cwMessages.helpEsmExchange' => 'O seu câmbio: depois do indicativo deles em Run, depois de eles responderem em S&P',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Agradecimento, depois de o contacto ser registado: os seus marcadores referem-se ao próximo contacto, não a este',
+			'settings.radio.cwMessages.helpEsmExchange' => 'O seu intercâmbio: depois do indicativo deles em Run, depois de eles responderem em S&P',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Agradecimento, depois de o contacto ser registado: qso é o contacto tal como registado, next o que se segue',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'Em S&P, o seu indicativo para a estação a que está a responder',
-			'settings.radio.cwMessages.helpEsmHisCall' => 'Em Run, o indicativo deles antes do seu câmbio',
-			'settings.radio.cwMessages.helpEsmAgain' => 'Pede novamente quando nada do câmbio deles foi copiado',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilhas //: o TU sai depois de o contacto ser registado, por isso agradece, depois chama a próxima estação da pilha e envia o seu câmbio, ou pede de volta um parcial (TU KR?); sem nada na pilha, só TU',
-			'settings.radio.voiceMessages.title' => 'Mensagens de Voz',
+			'settings.radio.cwMessages.helpEsmHisCall' => 'Em Run, o indicativo deles antes do seu intercâmbio',
+			'settings.radio.cwMessages.helpEsmAgain' => 'Pede novamente quando nada do intercâmbio deles foi copiado',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'F3 sugerido para pilhas //: agradece, depois chama a próxima estação da pilha e envia o seu intercâmbio, ou pede de volta um parcial (TU KR?); sem nada na pilha, só TU',
+			'settings.radio.keyerControl.label' => 'Manipulador',
+			'settings.radio.keyerControl.cw' => 'WPM',
+			'settings.radio.keyerControl.cwSpeed' => ({required Object wpm}) => '${wpm} WPM',
+			'settings.radio.keyerControl.voice' => 'Voz',
+			'settings.radio.voiceMessages.title' => 'Mensagens do Manipulador de Voz',
 			'settings.radio.voiceMessages.notSupported' => 'O rádio atual não suporta mensagens de voz',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
-			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memória de voz (${n})',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memória de voz ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta da memória de voz ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
@@ -4686,7 +5929,7 @@ extension on TranslationsPt {
 			'settings.radio.voiceMessages.playButton' => 'Reproduzir',
 			'settings.radio.voiceMessages.recordButton' => 'Gravar',
 			'settings.radio.voiceMessages.stopButton' => 'Parar',
-			'settings.radio.voiceMessages.repeat' => 'Repetir Mensagem #1',
+			'settings.radio.voiceMessages.repeat' => 'Repetir Mensagem 1',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas sobre o ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Estas memórias estão no rádio de ${device}. Os nomes e durações pertencem a esse dispositivo.',
 			'settings.radio.voiceMessages.namedOnRadio' => 'Guardado no rádio, onde os outros clientes também o veem.',
@@ -4703,11 +5946,85 @@ extension on TranslationsPt {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'A gravar ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'O rádio reproduziu-a? Reportou logo que estava inativo.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Tem de gravar as memórias no próprio rádio.',
+			'settings.radio.voiceMessages.sets' => 'Conjunto de Mensagens',
+			'settings.radio.voiceMessages.soundFilesSet' => 'Ficheiros de som neste computador',
+			'settings.radio.voiceMessages.openFileButton' => 'Abrir Ficheiro',
+			'settings.radio.voiceMessages.newSet' => 'Novo Conjunto',
+			'settings.radio.voiceMessages.renameSet' => 'Mudar o Nome do Conjunto',
+			'settings.radio.voiceMessages.deleteSet' => 'Eliminar Conjunto',
+			'settings.radio.voiceMessages.newSetName' => 'Nome',
+			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Eliminar ${name} e as suas gravações? Não pode ser desfeito.',
+			'settings.radio.voiceMessages.output' => 'Enviar áudio para',
+			'settings.radio.voiceMessages.input' => 'Gravar de',
+			'settings.radio.voiceMessages.outputRadio' => 'Enviar para o rádio pela rede',
+			'settings.radio.voiceMessages.inputDefault' => 'Predefinição do sistema',
+			'settings.radio.voiceMessages.pickDevice' => 'Escolha um dispositivo de som',
+			'settings.radio.voiceMessages.deviceMissing' => ({required Object name}) => '${name} (não ligado)',
+			'settings.radio.voiceMessages.lead' => 'Atraso ao entrar em transmissão',
+			'settings.radio.voiceMessages.tail' => 'Atraso ao sair de transmissão',
+			'settings.radio.voiceMessages.millis' => ({required Object n}) => '${n} ms',
+			'settings.radio.voiceMessages.listenButton' => 'Ouvir',
+			'settings.radio.voiceMessages.notRecorded' => 'Não gravada',
+			'settings.radio.voiceMessages.unplayable' => 'Não é possível reproduzir este ficheiro',
+			'settings.radio.voiceMessages.problemNoOutput' => 'Escolha o dispositivo de som que alimenta o rádio antes de reproduzir uma mensagem.',
+			'settings.radio.voiceMessages.problemOutputMissing' => 'O dispositivo de som que alimenta o rádio não está ligado.',
+			'settings.radio.voiceMessages.problemInputMissing' => 'O dispositivo de gravação não está ligado.',
+			'settings.radio.voiceMessages.problemDeviceFailed' => 'Não foi possível abrir o dispositivo de som.',
+			'settings.radio.voiceMessages.problemNotRecorded' => 'Essa mensagem ainda não tem gravação.',
+			'settings.radio.voiceMessages.problemRecordingSilent' => 'Não se ouviu nada do dispositivo de gravação, por isso a mensagem ficou como estava. Verifique a entrada, e que a app tem permissão para usar o microfone.',
+			'settings.radio.voiceMessages.problemRadioAudioUnavailable' => 'O rádio não está a receber áudio da app neste momento. Precisa de uma ligação de rede ao rádio.',
+			'settings.radio.voiceMessages.problemSourceRefused' => 'O rádio não mudou o áudio de transmissão para a app, por isso a mensagem parou. Configure o rádio para transmitir o áudio da app.',
+			'settings.radio.voiceMessages.problemCannotKey' => 'Este rádio não pode ser posto em transmissão por CAT, por isso o computador não consegue reproduzir mensagens nele.',
+			'settings.radio.voiceMessages.problemUnplayable' => 'O ficheiro dessa mensagem não é um ficheiro de som que a app consiga reproduzir. Use um ficheiro WAV, FLAC ou MP3, ou grave-a novamente.',
+			'settings.radio.voiceMessages.problemRecordingFailed' => 'A gravação foi interrompida, por isso a mensagem ficou como estava. Verifique que o dispositivo de gravação continua ligado e que há espaço no disco.',
+			'settings.radio.voiceMessages.problemFileFailed' => 'Não foi possível guardar a gravação no lugar da mensagem, por isso a mensagem ficou como estava.',
+			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'Essa mensagem precisa de palavras que ainda não gravou: ${words}.',
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'O modelo dessa mensagem tem um problema: ${error}',
+			'settings.radio.voiceMessages.problemNoOperation' => 'As mensagens ditas com as suas palavras só tocam numa operação, onde há um contacto para quem as dizer.',
+			'settings.radio.voiceMessages.problemNothingSaid' => 'Essa mensagem não diz nada para este contacto.',
+			'settings.radio.voiceMessages.templateField' => 'Dizer com as minhas palavras',
+			'settings.radio.voiceMessages.templateHelp' => 'Deixe vazio para reproduzir a gravação. Caso contrário, a mensagem é dita com as palavras que gravou, preenchidas para cada contacto, usando estes valores:',
+			'settings.radio.voiceMessages.help' => 'Ajuda',
+			'settings.radio.voiceMessages.helpTitle' => 'Dizer Mensagens com as Suas Palavras',
+			'settings.radio.voiceMessages.helpFullExample' => 'Uma mensagem completa:',
+			'settings.radio.voiceMessages.helpExample' => 'O indicativo deles, o relatório deles e a sua gravação de “QSL?”',
+			'settings.radio.voiceMessages.playOnRadio' => 'Reproduzir no Rádio',
+			'settings.radio.voiceMessages.templateHelpCall' => 'O indicativo deles',
+			'settings.radio.voiceMessages.templateHelpReport' => 'O relatório que lhes dá',
+			'settings.radio.voiceMessages.templateHelpMessage' => 'A gravação da Mensagem 2, reproduzida tal como gravada',
+			'settings.radio.voiceMessages.voiced' => 'Dita com as suas palavras',
+			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Diz: ${words}',
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Ainda não gravado: ${words}',
+			'settings.radio.voiceMessages.previewNoOperation' => 'Abra uma operação para ver o que vai dizer.',
+			'settings.radio.voiceMessages.wordsDescription' => 'Use a sua própria voz para indicativos, números e mais.',
+			'settings.radio.voiceWords.title' => 'Gravações de Palavras',
+			'settings.radio.voiceWords.callField' => 'Palavras do operador',
+			'settings.radio.voiceWords.intro' => 'Grave cada palavra ou número três vezes, seguidas e depressa, como as diz num indicativo. As frases mais longas gravam-se só uma vez.',
+			'settings.radio.voiceWords.recordAll' => 'Gravar Tudo',
+			'settings.radio.voiceWords.recordAllGuide' => 'Leia cada palavra três vezes seguidas, e cada frase de várias palavras uma vez, respirando entre linhas. Prima Parar depois da última.',
+			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Diga “${word} ${word} ${word}” e depois prima Parar.',
+			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Diga “${words}” e depois prima Parar.',
+			'settings.radio.voiceWords.recorded' => 'Gravada',
+			'settings.radio.voiceWords.notRecorded' => 'Não gravada',
+			'settings.radio.voiceWords.addPhrase' => 'Adicionar Frase',
+			'settings.radio.voiceWords.phraseField' => 'Frase, tal como a escreve numa mensagem',
+			'settings.radio.voiceWords.deletePhrase' => 'Eliminar frase',
+			'settings.radio.voiceWords.tryField' => 'Experimente dizer',
+			'settings.radio.voiceWords.pauseLetters' => 'Pausa entre letras',
+			'settings.radio.voiceWords.pauseWords' => 'Pausa entre palavras',
+			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
+			'settings.radio.voiceWords.speed' => 'Velocidade',
+			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
+			'settings.radio.voiceWords.advancedSettings' => 'Configurações Avançadas',
+			'settings.radio.voiceWords.splitSilent' => 'Não se ouviu nada na gravação.',
+			'settings.radio.voiceWords.splitNotThreeTakes' => 'Não foi possível encontrar três repetições. Diga a palavra três vezes seguidas e tente novamente.',
+			'settings.radio.voiceWords.splitLineCount' => 'Não foi possível encontrar todas as palavras na leitura. Leia cada uma três vezes, respirando entre palavras.',
+			'settings.radio.voiceWords.splitLinesTooClose' => 'Não foi possível distinguir as palavras. Deixe uma respiração mais longa entre palavras.',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar Batimento Zero nos Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Com um rádio ligado, sintoniza alguns Hz ao lado de um spot de CW, para que nem todos os que lhe respondem chamem na mesma nota.',
-			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exatamente a frequência anunciada.',
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exatamente a frequência do spot.',
 			'settings.radio.zeroBeatRange.title' => 'Batimento Zero: Margem a evitar',
-			'settings.radio.zeroBeatRange.description' => 'A que distância da frequência anunciada sintonizar, para qualquer lado. O desvio nunca fica perto de zero — isso voltaria a ser um batimento zero.',
+			'settings.radio.zeroBeatRange.description' => 'A que distância da frequência do spot sintonizar, para qualquer lado. O desvio nunca fica perto de zero — isso voltaria a ser um batimento zero.',
 			'settings.help.title' => 'Ajuda e Recursos',
 			'settings.help.description' => 'Comunidade e apoio',
 			'settings.help.forums' => 'Fóruns do Ham2K',
@@ -4723,12 +6040,23 @@ extension on TranslationsPt {
 			'settings.help.contact' => 'Contacte-nos',
 			'settings.help.contactDescription' => 'help@ham2k.com — mas experimente primeiro os Fóruns ou o Chat!',
 			'settings.exports.title' => 'Exportações',
+			'settings.extensionSections.activities' => 'Atividades',
+			'settings.extensionSections.hunting' => 'Caça',
+			'settings.extensionSections.contests' => 'Concursos',
+			'settings.extensionSections.lookups' => 'Consultas',
+			'settings.extensionSections.dashboard' => 'Painéis',
 			'settings.map.title' => 'Mapas',
 			'settings.map.style.title' => 'Estilo do Mapa',
+			'settings.map.showCallsigns.title' => 'Mostrar Indicativos',
+			'settings.map.showCallsigns.description' => 'Cada contacto é uma etiqueta com o seu indicativo, na cor da banda',
+			'settings.map.showGrayline.title' => 'Mostrar Linha Cinzenta',
+			'settings.map.showGrayline.description' => 'Sombreia o lado noturno da Terra, com o crepúsculo em gradiente',
 			'settings.map.styleOpts.automatic' => 'Automático',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			_ => null,
+		} ?? switch (path) {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidade',
@@ -4745,7 +6073,7 @@ extension on TranslationsPt {
 			'settings.sync.moreSettings' => 'Mais configurações de sincronização',
 			'settings.sync.enable' => 'Ativar Sincronização',
 			'settings.sync.deviceKey' => 'Chave do Dispositivo',
-			'settings.peers.title' => 'Dispositivos Pares',
+			'settings.peers.title' => 'Dispositivos Próximos',
 			'settings.peers.enable' => 'Ligar a outros dispositivos',
 			'settings.peers.enableDescription' => 'Permitir partilhar operações, registo, CAT e GPS com outros dispositivos na rede local',
 			'settings.peers.bleEnable' => 'Ligar por Bluetooth',
@@ -4780,7 +6108,7 @@ extension on TranslationsPt {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Ligado a ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Ligação a ${device} perdida',
-			'settings.peers.statusPerma' => ({required Object connected, required Object linked}) => 'Dispositivos Pares: ${connected} de ${linked} ligados',
+			'settings.peers.statusPerma' => ({required Object connected, required Object linked}) => 'Dispositivos Próximos: ${connected} de ${linked} ligados',
 			'settings.peers.screenEnable' => 'Partilhar ecrãs e janelas',
 			'settings.peers.screenDescription' => 'Permitir que outros dispositivos mostrem ecrãs ou janelas deste computador',
 			'settings.peers.screenSources' => 'Ecrãs e Janelas',
@@ -4811,12 +6139,12 @@ extension on TranslationsPt {
 			'settings.syncPanel.account' => 'Conta',
 			'settings.syncPanel.refresh' => 'Atualizar',
 			'settings.syncPanel.switchAccounts' => 'Mudar de Conta',
-			'settings.syncPanel.switchAccountsDescription' => 'Vincular este dispositivo a outra conta com um código QR ou e-mail',
+			'settings.syncPanel.switchAccountsDescription' => 'Vincular este dispositivo a outra conta com um código QR ou email',
 			'settings.syncPanel.connectionRequests' => 'Pedidos de Ligação',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Um dispositivo está à espera de se juntar a esta conta', other: '${n} dispositivos estão à espera de se juntar a esta conta', ), 
-			'settings.syncPanel.accountEmailTitle' => 'E-mail da conta',
-			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmação enviada para ${email}. Abra a ligação lá para concluir a alteração.',
-			'settings.syncPanel.resendConfirmation' => 'Reenviar E-mail de Confirmação',
+			'settings.syncPanel.accountEmailTitle' => 'Email da conta',
+			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmação enviada para ${email}. Abra o link que lá está para concluir a alteração.',
+			'settings.syncPanel.resendConfirmation' => 'Reenviar Email de Confirmação',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'A aguardar ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Enviado novamente para ${email}.',
 			'settings.syncPanel.deviceLinked' => 'Esse dispositivo está agora vinculado a esta conta.',
@@ -4858,15 +6186,15 @@ extension on TranslationsPt {
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Falha no início de sessão: ${error}',
 			'settings.accounts.lookupFailed' => 'As contas estão indisponíveis neste momento — tente novamente daqui a pouco',
 			'settings.accounts.browserLoginTitle' => 'Conclua o início de sessão no navegador',
-			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Quando terminar, o navegador vai tentar abrir uma ligação que começa por "${prefix}". O mais provável é o seu computador não ter nada registado para a abrir, por isso copie essa ligação (da barra de endereço, ou da página de erro que o navegador mostrar) e cole-a aqui.',
-			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'O Ham2K Logger não conseguiu abrir o navegador. Copie a ligação de início de sessão abaixo e abra-a manualmente, depois copie a ligação para onde for reencaminhado (começa por "${prefix}") e cole-a aqui.',
-			'settings.accounts.copyLoginLink' => 'Copiar ligação de início de sessão',
-			'settings.accounts.pastedLinkLabel' => 'Cole a ligação aqui',
+			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'Quando terminar, o navegador vai tentar abrir um link que começa por "${prefix}". O mais provável é o seu computador não ter nada registado para o abrir, por isso copie esse link (da barra de endereço, ou da página de erro que o navegador mostrar) e cole-o aqui.',
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'O Ham2K Logger não conseguiu abrir o navegador. Copie o link de início de sessão abaixo e abra-o manualmente, depois copie o link para onde for reencaminhado (começa por "${prefix}") e cole-o aqui.',
+			'settings.accounts.copyLoginLink' => 'Copiar link de início de sessão',
+			'settings.accounts.pastedLinkLabel' => 'Cole o link aqui',
 			'settings.accounts.finishLogin' => 'Concluir Início de Sessão',
-			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Essa não é a ligação de início de sessão — deve começar por "${prefix}".',
-			'settings.accounts.pastedLinkWrongLogin' => 'Essa ligação pertence a outra tentativa de início de sessão. Feche esta página e ligue novamente.',
-			'settings.accounts.pastedLinkNoCode' => 'Essa ligação não tem código de início de sessão. Conclua primeiro o início de sessão, depois copie a ligação para onde for reencaminhado.',
-			'settings.accounts.pastedLinkMalformed' => 'Essa ligação parece cortada. Copie-a por inteiro e cole-a novamente.',
+			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'Esse não é o link de início de sessão — deve começar por "${prefix}".',
+			'settings.accounts.pastedLinkWrongLogin' => 'Esse link pertence a outra tentativa de início de sessão. Feche esta página e ligue novamente.',
+			'settings.accounts.pastedLinkNoCode' => 'Esse link não tem código de início de sessão. Conclua primeiro o início de sessão, depois copie o link para onde for reencaminhado.',
+			'settings.accounts.pastedLinkMalformed' => 'Esse link parece cortado. Copie-o por inteiro e cole-o novamente.',
 			'settings.accounts.relayLoginWaiting' => 'A aguardar que conclua o início de sessão — continuará automaticamente quando o fizer.',
 			'settings.accounts.loginNoResponse' => 'Este dispositivo ainda não recebeu resposta do início de sessão. Se já concluiu no navegador, cancele e tente ligar novamente.',
 			'settings.accounts.relayLoginNotOpened' => 'O Ham2K Logger não conseguiu abrir o navegador automaticamente. Use o botão abaixo para abrir a página de início de sessão.',
@@ -4880,7 +6208,7 @@ extension on TranslationsPt {
 			'settings.station.none' => 'Nenhum equipamento configurado',
 			'settings.station.add' => 'Adicionar',
 			'settings.station.addTitle' => 'Adicionar equipamento',
-			'settings.station.searchHint' => 'Procurar equipamento',
+			'settings.station.searchHint' => 'Pesquisar equipamento',
 			'settings.station.noMatches' => 'Nenhum equipamento corresponde',
 			'settings.station.detectedEquipment' => 'Equipamento Detetado',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Não é possível escutar rádios: ${error}',
@@ -4932,13 +6260,28 @@ extension on TranslationsPt {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'porta ${n} de ${total}',
 			'settings.station.serialPortSuggested' => 'sugerida',
 			'settings.station.serialPortJustNow' => 'Ligada recentemente',
+			'settings.station.serialPortNoDriver' => 'sem controlador',
 			'settings.station.serialDeviceRequest' => 'Adicionar um dispositivo USB…',
+			'settings.station.bleDevice' => 'Dispositivo Bluetooth LE',
+			'settings.station.bleDeviceDescription' => 'A ponte série através da qual o rádio está ligado, como um LiNK500MP em Modo 4 ou um adaptador série BLE.',
+			'settings.station.bleScan' => 'Procurar dispositivos Bluetooth LE…',
+			'settings.station.bleScanNoneFound' => 'Nenhum dispositivo Bluetooth LE encontrado. Verifique que a ponte está ligada, perto, e no modo Bluetooth LE (Modo 4 num LiNK500MP).',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'Não foi possível fazer a procura Bluetooth LE: ${reason}',
+			'settings.station.bleOff' => 'O Bluetooth está desligado.',
+			'settings.station.bleDenied' => 'A permissão de Bluetooth não foi concedida. Permita-a nas configurações do sistema e tente novamente.',
+			'settings.station.bleUnsupported' => 'Este dispositivo não tem Bluetooth LE.',
+			'settings.station.bleStarting' => 'O Bluetooth ainda está a arrancar. Tente novamente daqui a pouco.',
+			'settings.station.bleConnectFailed' => 'Não é possível contactar o dispositivo Bluetooth LE. Verifique que está ligado, perto, e não está ligado a outra app.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'Este dispositivo Bluetooth LE não tem nenhum serviço série que a app reconheça. Por favor reporte-o com os seus serviços: ${services}',
 			'settings.station.baudRate' => 'Velocidade (baud)',
 			'settings.station.baudRateDescription' => 'Tem de corresponder ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo e nenhum erro.',
 			'settings.station.serialRtsHigh' => 'Manter RTS alto',
 			'settings.station.serialRtsHighDescription' => 'Só para um rádio que espera pelo RTS antes de responder, como um Yaesu com CAT RTS ligado. Num Digirig, SignaLink e na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o rádio a transmitir.',
 			'settings.station.serialDtrHigh' => 'Manter DTR alto',
 			'settings.station.serialDtrHighDescription' => 'Só para uma interface CAT alimentada pelo DTR, como alguns cabos RS-232 para o FT-817. Em muitos cabos o DTR manipula o CW ou o PTT, e mantê-lo alto põe o rádio a transmitir.',
+			'settings.station.serialUsbDriver' => 'Controlador do chip USB',
+			'settings.station.serialUsbDriverDescription' => 'Automático reconhece a maioria dos adaptadores. Escolha o chip só para um que a lista de portas diga não ter controlador — a embalagem ou uma lista de dispositivos USB indica-o.',
+			'settings.station.serialUsbDriverAuto' => 'Automático',
 			'settings.station.civAddress' => 'Endereço CI-V do rádio',
 			'settings.station.civAddressDescription' => 'Em hexadecimal, tal como aparece no menu CI-V do rádio. O IC-705 vem de fábrica com A4.',
 			'settings.station.civAddressInvalid' => 'Um endereço CI-V tem dois dígitos hexadecimais, de 01 a FF',
@@ -4959,8 +6302,37 @@ extension on TranslationsPt {
 			'settings.station.spectrumNoPanadapter' => 'Esta slice não tem panadapter no rádio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'O rádio recusou um fluxo DAX IQ (erro ${code})',
 			'settings.station.spectrumNoUdp' => 'Os dados de espectro do rádio não chegam a este dispositivo',
+			'settings.station.spectrumK4Unavailable' => 'Não é possível receber o espectro do K4 pela rede local. A tentar novamente…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'Não é possível receber o espectro remoto do K4',
 			'settings.station.spectrumScopeRefused' => 'O rádio recusou os comandos do scope',
 			'settings.station.spectrumOutOfRange' => 'O scope do rádio está definido fora do intervalo que consegue mostrar',
+			'settings.station.spectrumBandUnsupported' => 'O scope do rádio não pode ser mostrado nesta banda',
+			'settings.station.spectrumSdrNoRadio' => 'A aguardar a frequência do rádio associado…',
+			'settings.station.spectrumSdrNotConnected' => 'O SDR não está ligado',
+			'settings.station.spectrumSdrNoIf' => 'Defina a frequência de FI do rádio nas configurações deste SDR',
+			'settings.station.sdrRadio' => 'Mostra o espectro de',
+			'settings.station.sdrRadioDescription' => 'Uma visualização de espectro neste rádio usa este recetor em vez do scope do próprio rádio.',
+			'settings.station.sdrRadioMain' => 'O rádio Principal',
+			'settings.station.sdrTuning' => 'Entrada de antena',
+			'settings.station.sdrTuningDescription' => 'De onde vem o sinal do recetor. Com antena própria, sintoniza-se sozinho para seguir o rádio; na saída de FI do rádio, fica na FI.',
+			'settings.station.sdrTuningIndependent' => 'Antena própria',
+			'settings.station.sdrTuningIfTap' => 'A saída de FI do rádio',
+			'settings.station.sdrIfHz' => 'Frequência de FI (Hz)',
+			'settings.station.sdrIfHzDescription' => 'Só para uma saída de FI: a frequência a que o VFO do rádio fica na sua FI, como 68330000 num FT-817.',
+			'settings.station.sdrIfInverted' => 'A FI está invertida',
+			'settings.station.sdrGainDb' => 'Ganho (dB)',
+			'settings.station.sdrGainDbDescription' => 'Deixe em branco para o ganho automático do recetor.',
+			'settings.station.sdrOffsetHz' => 'Desvio de frequência (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Somado a cada frequência enviada ao recetor, para um upconverter: 125000000 para um Ham It Up.',
+			'settings.station.sdrPpm' => 'Correção de frequência (ppm)',
+			'settings.station.rtlDirectSampling' => 'Amostragem direta',
+			'settings.station.rtlDirectSamplingDescription' => 'Para HF num RTL-SDR V3 sem upconverter. Um RTL-SDR V4 chega a HF sem isto.',
+			'settings.station.rtlDirectSamplingOff' => 'Desligada',
+			'settings.station.rtlDirectSamplingI' => 'Ramo I',
+			'settings.station.rtlDirectSamplingQ' => 'Ramo Q',
+			'settings.station.rtlTcpNotAServer' => 'Isto não é um servidor rtl_tcp',
+			'settings.station.rtlTcpNotes' => 'Isto liga-se a um **servidor rtl_tcp que corre por sua conta** no computador onde o dongle está ligado.\n\n- **Inicie-o** com `rtl_tcp -a 0.0.0.0` para que outras máquinas o alcancem; na mesma máquina, basta `rtl_tcp`.\n- **A porta** é 1234, a menos que o tenha iniciado com `-p`.\n- **Um programa de cada vez:** o rtl_tcp serve um único cliente. A app só se liga enquanto uma visualização de espectro estiver visível, e larga-o alguns segundos depois de ela fechar.\n- **No Android**, a app *SDR driver* corre o mesmo servidor no telemóvel.',
+			'settings.station.rspTcpNotes' => 'Isto liga-se a um **servidor rsp_tcp que corre por sua conta** no computador onde o RSP está ligado, com a API da SDRplay aí instalada.\n\n- **Inicie-o** com `rsp_tcp -a 0.0.0.0`.\n- **A porta** é 1234, a menos que o tenha iniciado com `-p`.\n- **Um programa de cada vez:** o servidor aceita um único cliente. A app só se liga enquanto uma visualização de espectro estiver visível.',
 			'settings.station.n3fjpNoRig' => 'O N3FJP não tem nenhuma interface de rádio configurada, por isso isto segue o que é escrito no N3FJP, não um rádio',
 			'settings.station.winkeyerKeyPort' => 'Saída de manipulação',
 			'settings.station.winkeyerKeyPortDescription' => 'Em qual das duas tomadas de saída do manipulador está ligado o seu rádio.',
@@ -4969,15 +6341,22 @@ extension on TranslationsPt {
 			'settings.station.winkeyerPttDescription' => 'Aciona a linha de PTT na mesma tomada, para um amplificador ou um rádio que precise dela. Deixe desligado para um rádio manipulado pela tomada da chave.',
 			'settings.station.winkeyerNoAnswer' => 'Nenhum WinKeyer respondeu nesta porta',
 			'settings.station.winkeyerStoppedAnswering' => 'O WinKeyer deixou de responder durante o envio; a mensagem foi descartada',
+			'settings.station.icomControlPort' => 'Porta de controlo (UDP)',
+			'settings.station.icomControlPortDescription' => 'A Control Port (UDP) do rádio — 50001, a menos que tenha sido alterada nas configurações de rede do rádio, ou reencaminhada para outra.',
+			'settings.station.icomSerialPort' => 'Porta série (UDP)',
+			'settings.station.icomSerialPortDescription' => 'A Serial Port (UDP) do rádio — 50002, a menos que tenha sido alterada nas configurações de rede do rádio, ou reencaminhada para outra.',
+			'settings.station.icomPortsDiffer' => 'As portas de controlo e série têm de ser diferentes',
 			'settings.station.radioUser' => 'Nome de utilizador do rádio',
-			'settings.station.radioPass' => 'Palavra-passe do rádio',
-			'settings.station.radioLoginDescription' => 'O login Network → Remote do rádio, não a palavra-passe do WiFi.',
+			'settings.station.radioPass' => 'Senha do rádio',
+			'settings.station.radioLoginDescription' => 'O login Network → Remote do rádio, não a senha do WiFi.',
 			'settings.station.radioUserRequired' => 'É necessário o nome de utilizador de controlo remoto do rádio',
 			'settings.station.connectFailedBusy' => 'O dispositivo está em uso',
 			'settings.station.connectFailedDenied' => 'Acesso negado',
 			'settings.station.connectFailedDevice' => 'Dispositivo não encontrado',
+			'settings.station.connectFailedUnsupported' => 'Nenhum controlador reconhece o chip deste adaptador USB. Se souber qual é o chip, escolha-o em Controlador do chip USB, nas Configurações Avançadas.',
 			'settings.station.connectFailedLines' => 'Não foi possível manter o RTS/DTR como definido, por isso a porta foi fechada. Outro programa pode ter deixado o controlo de fluxo por hardware ligado — desligue e volte a ligar o cabo.',
 			'settings.station.connectFailedNetwork' => 'Não é possível encontrar o rádio na rede. Verifique o endereço e se está ligado e acessível.',
+			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'A porta ${port} neste dispositivo já está em uso, e é lá que chegam as respostas. Feche o que mais estiver a escutar nela — incluindo outro nó PstRotator — ou mude a porta.',
 			'settings.station.connectFailedTimeout' => 'O rádio não respondeu a tempo. Verifique se está ligado e acessível.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
@@ -4989,7 +6368,16 @@ extension on TranslationsPt {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',
 			'settings.station.models.icomGeneric' => 'Icom - Genérico',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genérico',
@@ -4997,6 +6385,8 @@ extension on TranslationsPt {
 			'settings.station.models.ts480' => 'Kenwood TS-480',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
 			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
+			'settings.station.models.tx500' => 'Lab599 TX-500',
+			'settings.station.models.tx500mp' => 'Lab599 TX-500MP',
 			'settings.station.models.qcx' => 'QRP Labs QCX',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Genérico',
 			'settings.station.models.kx2' => 'Elecraft KX2',
@@ -5009,6 +6399,10 @@ extension on TranslationsPt {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Rádio controlado via rigctld',
@@ -5024,38 +6418,68 @@ extension on TranslationsPt {
 			'settings.station.models.antenna' => 'Antena',
 			'settings.station.models.key' => 'Chave CW',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Rádio Genérico (Marcador)',
+			'settings.station.models.placeholderRadio' => 'Rádio Genérico (Simulado)',
 			'settings.station.models.placeholderRadioNodeName' => 'O Meu Rádio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Comutador Coaxial Sierra Radio CX-1',
+			'settings.station.models.gs232a' => 'Interface de Rotor Yaesu GS-232A',
+			'settings.station.models.pstRotator' => 'PstRotator (Controlo UDP)',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Rede/WiFi',
+			'settings.station.transports.secureNetwork' => 'Rede/WiFi Segura',
 			'settings.station.transports.usbSerial' => 'USB Série',
 			'settings.station.transports.wifi' => 'Rede/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth Série',
-			'settings.station.transports.placeholder' => 'Marcador',
+			'settings.station.transports.bleSerial' => 'Bluetooth LE',
+			'settings.station.transports.placeholder' => 'Simulado',
 			'settings.station.troubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
-			'settings.station.ft891Troubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **O CAT RTS tem de estar OFF no rádio** (menu **05-08** do FT-891). Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo. Num Digirig, SignaLink ou na maioria dos cabos caseiros essa mesma linha é o PTT, por isso subi-la poria o emissor a transmitir. Na porta USB do próprio rádio, a alternativa é **Manter RTS alto** em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao CAT RATE do rádio (menu **05-06**). Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
+			'settings.station.ft891Troubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **CAT RTS desligado no rádio, ou Manter RTS alto ativo.** Com o **CAT RTS** ligado (menu **05-08** do FT-891), o rádio fica em silêncio enquanto o RTS está em baixo — pode responder uma vez quando a porta abre, e depois nada. Escolher a porta USB do próprio rádio ativa **Manter RTS alto** em Configurações Avançadas. Num Digirig, SignaLink ou na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o emissor a transmitir: em vez disso, desligue o CAT RTS no rádio.\n- **A velocidade tem de corresponder** ao CAT RATE do rádio (menu **05-06**). Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
 			'settings.station.yaesuBinaryTroubleshooting' => 'Este rádio usa o CAT antigo de cinco bytes da Yaesu, e não responde de todo quando algo está errado. Quase sempre é uma destas causas:\n\n- **O cabo tem de converter níveis.** A tomada CAT na traseira não é RS-232 nem USB; precisa de um CT-62 ou de um adaptador equivalente. Um cabo simples de áudio ou de dados não funciona para CAT.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio (**#14** num FT-817, **#19** num FT-857 ou FT-897). Se não corresponder, o rádio não devolve nada, e nunca um erro.\n- **Nunca deixe nada subir o RTS ou o DTR nesta porta.** Na maioria dos cabos para estes rádios essas linhas são o PTT e a manipulação. Uma interface antiga alimentada pelo DTR é a exceção: para essa, ative **Manter DTR alto** em Configurações Avançadas.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEste controlador foi escrito a partir da tabela CAT publicada pela Yaesu e ainda não foi testado com um destes rádios. Se funcionar só em parte, vale a pena reportar.',
+			'settings.station.tenTecTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
+			'settings.station.tenTecEagleTroubleshooting' => '- **A porta USB-B na traseira é a ligação CAT.** O rádio aparece como uma porta série USB; no Windows precisa do controlador USB to UART da Ten-Tec, que aparece no Gestor de Dispositivos como "USB to UART (COMx)".\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta, e o atualizador de firmware da Ten-Tec também.\n- **Definir a largura do filtro a partir da app tira-a ao botão BW** até o rádio ser desligado e ligado de novo. É assim que o rádio funciona.\n\nEste controlador foi escrito a partir do guia de referência do programador da Ten-Tec. Se funcionar só em parte, vale a pena reportar, com a versão de firmware do menu do rádio.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **Use um cabo série DB-9 direto** para a porta SERIAL DATA, não um null-modem.\n- **Esta entrada mantém o RTS alto**, porque o Orion usa o RTS e o CTS como handshake. Numa interface que aciona o PTT a partir do RTS, como um Digirig, desative Manter RTS alto em Configurações Avançadas, ou o rádio transmite assim que a app se liga.\n- **CW a partir da app precisa do manipulador interno do rádio ligado.** Com ele desligado, o rádio ignora o que a app envia.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEste controlador foi escrito a partir do guia de referência do programador da Ten-Tec e ainda não foi testado com um Orion. Se funcionar só em parte, vale a pena reportar, com a versão de firmware do menu do rádio.',
+			'settings.station.tenTecNoCw' => 'O firmware deste rádio não aceita CW da app. A Ten-Tec acrescentou-o no firmware 1.366 do Orion.',
+			'settings.station.tenTecKeyerOff' => 'O manipulador interno do rádio está desligado, por isso ignora o CW enviado pela app. Ligue o manipulador no menu do rádio.',
 			'settings.station.guohetecTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
 			'settings.station.guohetecTroubleshooting' => 'O Q900 tem dois protocolos CAT, e esta entrada usa o nativo em vez da imitação do FT-817. Escolha aqui **Guohetec Q900**, não um FT-817 — a imitação suporta menos comandos, e o rádio não diz qual está a usar.\n\n- **O cabo USB-C é a ligação CAT**, e também liga a placa de som. A velocidade não importa nele; a porta ignora o valor definido.\n- **Nunca deixe nada subir o RTS ou o DTR nesta porta.** Num cabo série essas linhas são o PTT e a manipulação.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Um rádio de segunda geração comporta-se de forma diferente** de um de primeira. Prima longamente Menu, depois About: HW 2.0 é a segunda geração.\n\nEste controlador foi escrito a partir do protocolo publicado pelo fabricante e ainda não foi testado com um destes rádios. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
 			'settings.station.yaesuTroubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo. Num Digirig, SignaLink ou na maioria dos cabos caseiros essa mesma linha é o PTT, por isso subi-la poria o emissor a transmitir. Na porta USB do próprio rádio, a alternativa é **Manter RTS alto** em Configurações Avançadas. O local dessa configuração varia com o modelo (menu **05-08** num FT-891).\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Os modos seguem a tabela do FT-891.** A maior parte da gama Yaesu corresponde-lhe, mas um rádio que numere os modos de outra forma vai mostrar e definir o modo errado nesses casos. A frequência não é afetada.',
+			'settings.station.ftdx3000Troubleshooting' => '**O menu 037 CAT SELECT tem de estar em USB** para CAT pela porta USB do rádio; em RS232C, o CAT fica na tomada da traseira.\n\nEsta entrada foi escrita a partir de documentação CAT publicada e ainda não foi testada com um FTDX3000. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.yaesuRs232Troubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **A tomada CAT é RS-232.** Precisa de um adaptador USB-série e de um cabo DB-9 direto — um cabo null-modem troca as linhas, e o rádio nunca recebe nada.\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo, a menos que **Manter RTS alto** esteja ativo em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\nEsta entrada foi escrita a partir de documentação CAT publicada e ainda não foi testada com um destes rádios. Se funcionar só em parte, vale a pena reportar.',
-			'settings.station.yaesuUsbTroubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **Use a primeira das duas portas USB do rádio.** O CAT está normalmente na primeira (a porta COM **Enhanced** no Windows); a segunda (**Standard**) é para PTT e manipulação. O seletor aponta para a primeira sempre que consegue distinguir as duas.\n- **O CAT RTS tem de estar OFF no rádio.** Ligado, o rádio espera por uma linha de handshake que a app mantém em baixo, a menos que **Manter RTS alto** esteja ativo em Configurações Avançadas.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
+			'settings.station.yaesuUsbTroubleshooting' => 'O rádio está a receber comandos mas não responde. Quase sempre é uma destas causas:\n\n- **Use a primeira das duas portas USB do rádio.** O CAT está normalmente na primeira (a porta COM **Enhanced** no Windows); a segunda (**Standard**) é para PTT e manipulação. O seletor aponta para a primeira sempre que consegue distinguir as duas.\n- **CAT RTS desligado no rádio, ou Manter RTS alto ativo.** Com o menu **CAT RTS** do rádio ligado, este fica em silêncio enquanto o RTS está em baixo — pode responder uma vez quando a porta abre, e depois nada. Escolher a porta USB do próprio rádio ativa **Manter RTS alto** em Configurações Avançadas. Num Digirig, SignaLink ou na maioria dos cabos caseiros o RTS é o PTT, e mantê-lo alto põe o emissor a transmitir: em vez disso, desligue o CAT RTS no rádio.\n- **A velocidade tem de corresponder** ao menu CAT RATE do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
 			'settings.station.k4SerialNotes' => 'Ligue a tomada USB-B (PC) traseira do K4. Tanto USB-PC1 como USB-PC2 servem para CAT; escolha uma porta livre e faça corresponder a configuração Serial USB-PCn: Baud Rate no rádio. O HaLo preenche 38400; altere se necessário. Outra aplicação tem de usar a outra porta ou a Ethernet.\n\nEsta ligação controla o rádio e os seus manipuladores; não envia áudio para o HaLo.',
-			'settings.station.k4TcpNotes' => 'Ligue a tomada Ethernet do K4 à sua rede local. Introduza o nome de anfitrião ou o endereço IP e a porta CAT 9200. Isto é controlo CAT, não a ligação de áudio remoto separada na porta 9204.\n\nO HaLo controla o rádio e os seus manipuladores sem transmitir áudio nem dados do panadapter.',
+			'settings.station.k4TcpNotes' => 'Ligue a tomada Ethernet do K4 à sua rede local. Introduza o nome de anfitrião ou o endereço IP e a porta CAT 9200. O HaLo usa o mesmo anfitrião na porta fixa 9201 quando um panadapter ou waterfall está visível; mudar a porta CAT não muda a porta do espectro.\n\nO espectro mostra o recetor principal. Os controlos de zoom, ajuste de referência e velocidade afetam só a visualização do HaLo. A transmissão de áudio não é suportada.',
 			'settings.station.k4PowerTimeout' => 'A potência do K4 não foi alterada porque o rádio não confirmou a sua gama de saída. Tente novamente.',
+			'settings.station.k4RemoteNotes' => 'Ative o acesso remoto no seu K4 e introduza a senha de rede dele. Main e Sub partilham uma ligação encriptada para controlo do rádio e espectro. A porta predefinida é 9204; introduza a porta reencaminhada quando se ligar remotamente.\n\nA reprodução de áudio e a transmissão do microfone não são suportadas.',
+			'settings.station.k4Receiver' => 'Recetor',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Escolha Main ou Sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'Esse recetor já está configurado para este K4',
+			'settings.station.k4SubReceiverOff' => 'O recetor Sub do K4 está desligado',
+			'settings.station.k4RemotePasswordRequired' => 'Introduza a senha de rede do K4 para ligar de forma segura.',
+			'settings.station.k4RemoteHandshakeFailed' => 'O K4 não conseguiu estabelecer uma ligação segura. Verifique a senha de rede e as configurações de acesso remoto.',
+			'settings.station.k4RemoteUnreachable' => 'Não foi possível alcançar a ligação segura do K4. Verifique o endereço, a porta e as configurações de acesso remoto.',
 			'settings.station.k4PowerRange' => 'A potência do K4 tem de estar entre 0,1–110 W, ou 0,0001–0,01 W quando a saída de miliwatts do transverter está ativa.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
 			'settings.station.elecraftTroubleshooting' => 'Os rádios Elecraft falam CAT Kenwood, e um KX2 e um KX3 já foram usados desta forma — VFO nos dois sentidos, mudança de modo e batimento zero em CW, tudo a funcionar.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** à definida em **RS232** no menu do rádio. Estes rádios vêm de fábrica com 38400. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n\n**Se a frequência estiver certa mas o modo errado**, diga-nos. As entradas do KX2 e KX3 leem o modo numa posição da resposta de estado do rádio que fixámos a partir dos rádios que vimos, e um firmware que o coloque noutro sítio só chega até nós através de um relatório.\n\nO K3 ainda não foi reportado em nenhum sentido, por isso diga-nos o que acontece se usar um. O K4 tem a sua própria entrada.',
+			'settings.station.lab599TroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
+			'settings.station.lab599Troubleshooting' => 'A gama TX-500 fala CAT Kenwood. Frequência e modo já foram usados através de um LiNK500MP; potência e medidores foram escritos a partir da referência CAT da Lab599, por isso reporte o que acontecer, corra bem ou mal.\n\n- **A velocidade tem de corresponder** à configuração CAT do rádio, 9600 a menos que a tenha alterado. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Escolha o protocolo CAT no rádio.** TS-2000 cobre frequência, modo e potência. LAB599 permite ainda à app mudar o rádio para DIG, vê-lo transmitir em DIG e ler a tensão de alimentação.\n- **Através de um LiNK500MP**, prima e mantenha o botão do VFO durante cerca de três segundos para passar o controlo CAT à interface.\n- **Defina o modo do LiNK500MP para a ligação**: Modo 3 para Bluetooth, Modo 4 para Bluetooth LE. Em qualquer outro modo, uma procura Bluetooth LE não o encontra.\n- **Por Bluetooth**, o LiNK500MP emparelha como duas portas série e só uma transporta CAT. Se o rádio ficar em silêncio, escolha a outra.',
+			'settings.station.lab599TroubleshootingIos' => 'A gama TX-500 fala CAT Kenwood. Frequência e modo já foram usados através de um LiNK500MP; potência e medidores foram escritos a partir da referência CAT da Lab599, por isso reporte o que acontecer, corra bem ou mal.\n\n- **Ponha o LiNK500MP em Modo 4**, o seu modo Bluetooth LE, antes de o procurar. Em qualquer outro modo, um iPhone ou iPad não o encontra.\n- **Passe o controlo CAT ao LiNK500MP**: prima e mantenha o botão do VFO do rádio durante cerca de três segundos.\n- **Escolha o protocolo CAT no rádio.** TS-2000 cobre frequência, modo e potência. LAB599 permite ainda à app mudar o rádio para DIG, vê-lo transmitir em DIG e ler a tensão de alimentação.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Se o rádio liga mas não mostra a frequência',
-			'settings.station.kenwoodTroubleshooting' => 'Este controlador está comprovado com os TS-590SG e TS-480 da Kenwood, os QMX e QCX-mini da QRP Labs, e os KX2 e KX3 da Elecraft. O resto da gama foi escrito a partir de referências CAT publicadas, por isso reporte o que acontecer, corra bem ou mal.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Alguns rádios precisam de ter o CAT ativado** no menu antes de responderem.\n\n**Vários front-ends SDR falam este mesmo protocolo**, por isso vale a pena experimentar esta entrada também com eles; os rádios Elecraft estão listados à parte, em Elecraft. Se a frequência estiver certa mas o modo estiver errado ou em falta, essa é a única parte que difere ao longo da gama — a app deduz o modo a partir do rádio e, se não conseguir, pergunta-lhe diretamente, por isso o modo pode simplesmente chegar com atraso.',
+			'settings.station.kenwoodTroubleshooting' => 'Este controlador está comprovado com os TS-590SG e TS-480 da Kenwood, os QMX e QCX-mini da QRP Labs, e os KX2 e KX3 da Elecraft. O resto da gama foi escrito a partir de referências CAT publicadas, por isso reporte o que acontecer, corra bem ou mal.\n\nSe o rádio não responder, quase sempre é uma destas causas:\n\n- **A velocidade tem de corresponder** ao menu CAT do rádio. Se não corresponder, o rádio devolve lixo ou nada, e nunca um erro.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.\n- **Alguns rádios precisam de ter o CAT ativado** no menu antes de responderem.\n- **Os rádios Kenwood esperam pelo RTS**: a porta CAT usa-o como handshake, por isso Manter RTS alto (em Configurações Avançadas) tem de estar ativo. Uma ligação configurada antes de isso ser a predefinição pode tê-lo desativado. Num Digirig ou noutro cabo que acione o PTT a partir do RTS, desative-o, ou o rádio transmite.\n\n**Vários front-ends SDR falam este mesmo protocolo**, por isso vale a pena experimentar esta entrada também com eles; os rádios Elecraft estão listados à parte, em Elecraft. Se a frequência estiver certa mas o modo estiver errado ou em falta, essa é a única parte que difere ao longo da gama — a app deduz o modo a partir do rádio e, se não conseguir, pergunta-lhe diretamente, por isso o modo pode simplesmente chegar com atraso.',
 			'settings.station.statusConnected' => 'Ligado',
 			'settings.station.statusLost' => 'Desligado',
 			'settings.station.notConfigured' => 'Não configurado',
 			'settings.station.currentConfiguration' => 'Configuração Atual',
 			'settings.station.currentTransceiver' => 'Transcetor Atual',
+			'settings.station.currentTransceivers' => 'Transcetores Atuais',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Mensagens em fila em vez de interromper',
+			'settings.station.noRadioBSelected' => 'Nenhum Rádio B selecionado',
 			'settings.station.radioMode' => 'Modo do Rádio',
 			'settings.station.keyerNotSupported' => 'Não suportado pelo rádio atual',
 			'settings.station.catControlPreferences' => 'Preferências do Controlo CAT',
@@ -5074,13 +6498,25 @@ extension on TranslationsPt {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} está noutro dispositivo',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'Este rádio está ligado a ${device}. A ligação e as configurações são feitas nesse dispositivo.',
 			'settings.station.antennaInUse' => 'Antena em Uso',
-			'settings.station.keyInUse' => 'Chave em Uso',
+			'settings.station.keyInUse' => 'Manipulação CW',
+			'settings.station.phoneKeying' => 'Manipulação de Voz',
+			'settings.station.phoneKeyingNone' => 'Nenhuma',
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memórias em ${radio}',
+			'settings.station.phoneKeyingComputer' => 'Áudio neste computador',
+			'settings.station.phoneKeyingOff' => 'A manipulação de voz está desligada',
+			'settings.station.computerVoiceSettings' => 'Áudio do Computador',
+			'settings.station.cwKeyingOptions' => 'Opções de Manipulação CW',
 			'settings.station.noneSelected' => 'Nenhuma',
 			'settings.station.moreSettings' => 'Mais Configurações',
 			'settings.station.icomCivTroubleshootingTitle' => 'Se aparecerem duas portas série para o mesmo rádio',
 			'settings.station.icomCivTroubleshooting' => 'Vários rádios Icom, entre eles o IC-705, apresentam **duas** portas série USB ao mesmo tempo (a Icom chama-lhes Port A e Port B), ambas definidas para CI-V por omissão. Nem esta app nem o seu sistema operativo as conseguem distinguir além disso: o mesmo ID de fabricante/produto USB aparece simplesmente duas vezes, por vezes marcado aqui com o sufixo `#2`. **A Port A é normalmente a certa** — em geral a primeira que o sistema operativo ou o navegador lista, e quando esta app consegue distinguir as duas portas marca essa como sugerida. Se os comandos saem e o rádio nunca responde, experimente a outra porta.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Se o rádio nunca responder',
 			'settings.station.civAddressTroubleshooting' => '- **O endereço CI-V tem de corresponder** ao menu do rádio. Esta entrada preenche o endereço de fábrica do modelo, mas um rádio que partilha um barramento CI-V é exatamente onde ele é alterado. Uma trama enviada para o endereço errado é ignorada em silêncio, o que parece exatamente um cabo avariado.\n- **A velocidade tem de corresponder** ao CI-V BAUD RATE do rádio (em USB, CI-V USB Baud Rate). Defina no rádio o mesmo número mostrado aqui, **não Auto**. Em Auto alguns rádios, entre eles o IC-7300, ligam e deixam de responder ao fim de um minuto ou assim.\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
+			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **O endereço CI-V tem de corresponder** ao menu do rádio. Esta entrada preenche o endereço de fábrica do modelo, mas um rádio que partilha um barramento CI-V é exatamente onde ele é alterado. Uma trama enviada para o endereço errado é ignorada em silêncio, o que parece exatamente um cabo avariado.\n${speed}\n- **Outra app pode estar a ocupar a porta**: o WSJT-X, o fldigi e o rigctld mantêm-na todos aberta.',
+			'settings.station.icomUsbSpeedFollows' => '- **Não há velocidade a definir.** Por USB este rádio fala à velocidade que o computador usar, e esta entrada usa sempre 115200, a velocidade de que o scope precisa.',
+			'settings.station.ic7610UsbSpeed' => '- **Defina CI-V USB Baud Rate para 115200**, a velocidade que esta entrada usa sempre, porque o scope precisa dela — **não Auto**. Um rádio definido para qualquer outra velocidade responde com silêncio.',
+			'settings.station.civTransceiveTitle' => 'Se a app demora a seguir o rádio',
+			'settings.station.civTransceive' => 'Se a app demora vários segundos a mostrar uma mudança de frequência ou de modo feita no rádio, ative a configuração **CI-V Transceive** do rádio (na maioria dos modelos atuais, em SET > Connectors > CI-V). Com ela ativa, o rádio reporta cada mudança no momento em que acontece. Com ela desativada, a app só vê uma mudança na próxima vez que perguntar, de poucos em poucos segundos.',
 			'settings.station.ic7300Mk2Note' => '\n- O **IC-7300 MK2** vem de fábrica com o endereço `B6`, não o `94` aqui preenchido — escolha antes a entrada IC-7300 MK2.',
 			'settings.station.ic705PortNote' => '\n- O **IC-705** apresenta duas portas série USB, ambas com o nome do rádio. O CI-V está na **primeira**, para a qual o seletor aponta sempre que consegue distinguir as duas.',
 			'settings.station.ic7760PortNote' => '\n- O **IC-7760** fala CI-V na **Port A** das duas portas série USB que apresenta.',
@@ -5096,7 +6532,8 @@ extension on TranslationsPt {
 			'settings.station.commanderTroubleshootingTitle' => 'Se a app não conseguir ligar',
 			'settings.station.commanderTroubleshooting' => 'Isto liga ao **DXLab Commander, a correr no seu computador**, não diretamente ao rádio — é o Commander que fala com o rádio.\n\n- **O Commander já tem de estar a correr** e ligado ao rádio.\n- **O serviço de rede dele tem de estar ligado**: o botão **Net Serv** no painel Radio da janela Configuration do Commander.\n- **A porta** é 52002, a terceira porta do bloco que começa na **Base Port** do Net Serv (52000, a menos que a tenha alterado).\n- **A partir de outra máquina**, garanta que a firewall deixa passar a ligação.\n\nEsta entrada foi escrita a partir das mensagens TCP publicadas do Commander e ainda não foi testada com o Commander. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Se o rádio nunca responder',
-			'settings.station.ic705Troubleshooting' => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **palavra-passe errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a palavra-passe.',
+			'settings.station.ic705Troubleshooting' => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **As portas têm de corresponder** à Control Port e à Serial Port (UDP) do rádio, ou às portas reencaminhadas para elas. Uma porta errada recebe silêncio, tal como um rádio desligado.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **senha errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a senha.',
+			'settings.station.icomLanTroubleshooting' => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview, RS-BA1 ou Remote Utility da Icom ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** A porta LAN tem de estar ligada à mesma rede que este dispositivo, o **Network Control** tem de estar ativado, e o nome de utilizador e a senha têm de estar configurados como utilizador de rede no rádio.\n- **As portas têm de corresponder** à Control Port e à Serial Port (UDP) do rádio, ou às portas reencaminhadas para elas. Uma porta errada recebe silêncio, tal como um rádio desligado.\n- **Se liga mas nunca responde**, o endereço CI-V aqui tem de corresponder ao menu CI-V ADDRESS do rádio. Esta entrada preenche o endereço de fábrica do modelo.\n- **Desligue e volte a ligar o rádio** se continuar bloqueado.',
 			'settings.station.statusStale' => 'Não responde',
 			'settings.station.statusDisconnected' => 'Não ligado',
 			'settings.station.statusConnecting' => 'A ligar…',
@@ -5104,10 +6541,8 @@ extension on TranslationsPt {
 			'settings.station.statusError' => 'A ligação falhou',
 			'settings.station.currentRadioSettings' => 'Configurações atuais do rádio',
 			'settings.station.notSupportedByThisRadio' => 'Não suportado por este rádio',
-			'settings.station.cwMessagesButton' => 'CW',
-			'settings.station.voiceMessagesButton' => 'Voz',
-			_ => null,
-		} ?? switch (path) {
+			'settings.station.cwMessagesButton' => 'Mensagens CW',
+			'settings.station.voiceMessagesButton' => 'Mensagens de Voz',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memórias no rádio',
 			'settings.station.antennaBands' => 'Bandas',
 			'settings.station.antennaType' => 'Tipo de antena',
@@ -5134,6 +6569,8 @@ extension on TranslationsPt {
 			'settings.station.newAntenna' => 'Nova Antena',
 			'settings.station.newKey' => 'Nova Chave',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL ou compatível)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Chave em ${device}',
 			'settings.station.trackStationInfo' => 'Guardar Info da Estação em cada QSO',
@@ -5146,18 +6583,18 @@ extension on TranslationsPt {
 			'settings.station.trackFieldKey' => 'Chave CW',
 			'settings.station.placeholderConnectDelay' => 'Atraso de ligação (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quanto tempo demora o handshake simulado. Vazio ou 0 liga instantaneamente.',
-			'settings.station.placeholderDropAfter' => 'Cair após (segundos)',
-			'settings.station.placeholderDropAfterDescription' => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca cai.',
+			'settings.station.placeholderDropAfter' => 'Desligar após (segundos)',
+			'settings.station.placeholderDropAfterDescription' => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca desliga.',
 			'settings.station.placeholderFailConnect' => 'Falhar sempre a ligação',
-			'settings.station.placeholderConnectFailure' => 'O rádio marcador foi instruído a recusar esta ligação',
+			'settings.station.placeholderConnectFailure' => 'O rádio simulado foi instruído a recusar esta ligação',
 			'settings.station.placeholderFreq' => 'Frequência (kHz)',
-			'settings.station.placeholderFreqDescription' => 'Onde o rádio marcador começa. Depois reporta o que quer que a app sintonize.',
+			'settings.station.placeholderFreqDescription' => 'Onde o rádio simulado começa. Depois, reporta o que a app lhe sintonizar.',
 			'settings.station.placeholderMode' => 'Modo',
-			'settings.station.placeholderModeDescription' => 'O modo em que o rádio marcador começa, por ex. USB, CW, FT8.',
+			'settings.station.placeholderModeDescription' => 'O modo em que o rádio simulado começa, por ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potência (watts)',
-			'settings.station.placeholderPurpose' => 'Use este rádio para registar que equipamento está a usar, para efeitos de registo',
+			'settings.station.placeholderPurpose' => 'Use este rádio para anotar que equipamento está a usar, para efeitos de registo',
 			'settings.station.placeholderReplyDelay' => 'Atraso de resposta (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'Quanto tempo o rádio marcador demora a reportar uma alteração. Vazio ou 0 responde de imediato.',
+			'settings.station.placeholderReplyDelayDescription' => 'Quanto tempo o rádio simulado demora a reportar uma alteração. Vazio ou 0 responde de imediato.',
 			'settings.station.cwKeyerField' => 'Manipulador CW por CAT',
 			'settings.station.cwKeyerFieldDescription' => 'Se este rádio manipula CW a partir de texto por CAT. Desligado para um rádio que a app não conhece.',
 			'settings.station.voiceMemories' => 'Memórias de voz',
@@ -5210,8 +6647,45 @@ extension on TranslationsPt {
 			'settings.station.switchPortTransmittingHint' => 'a transmitir — não pode ser alterada agora',
 			'settings.station.switchCurrentStateHeader' => 'Estado Atual',
 			'settings.station.switchCurrentStateDescription' => 'Em que antena está cada porta de rádio neste momento. As alterações têm efeito imediato.',
-			'settings.station.switchWiringHeader' => 'Ligações',
+			'settings.station.switchWiringHeader' => 'Cablagem',
 			'settings.station.switchPortInhibitedHint' => 'transmissão inibida',
+			'settings.station.rotatorAxes' => 'Eixos',
+			'settings.station.rotatorAxesDescription' => 'Se o rotor roda só em azimute, ou também em elevação (um G-5500 ou semelhante).',
+			'settings.station.rotatorAxesAzimuth' => 'Só azimute',
+			'settings.station.rotatorAxesAzimuthElevation' => 'Azimute e elevação',
+			'settings.station.rotatorAzimuthOffset' => 'Desvio de azimute',
+			'settings.station.rotatorAzimuthOffsetDescription' => 'Graus a somar à leitura do controlador, quando o zero dele não é o norte verdadeiro. As rotações são corrigidas em conformidade.',
+			'settings.station.rotatorElevationOffset' => 'Desvio de elevação',
+			'settings.station.rotatorAzimuthMin' => 'Azimute mínimo',
+			'settings.station.rotatorAzimuthMax' => 'Azimute máximo',
+			'settings.station.rotatorAzimuthMaxDescription' => 'Nos graus do próprio controlador. Acima de 360 para um rotor com sobreposição, que passa então a fazer a rotação mais curta.',
+			'settings.station.rotatorElevationMin' => 'Elevação mínima',
+			'settings.station.rotatorElevationMax' => 'Elevação máxima',
+			'settings.station.rotatorElevationMaxDescription' => 'Nos graus do próprio controlador. Acima de 90 para um rotor que passa além da vertical.',
+			'settings.station.rotatorDegreesInvalid' => ({required Object min, required Object max}) => 'Graus inteiros, de ${min} a ${max}',
+			'settings.station.rotatorLimitsInvalid' => 'O limite mínimo tem de ser inferior ao máximo',
+			'settings.station.rotatorPollInterval' => 'Intervalo de consulta (ms)',
+			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'Com que frequência perguntar ao rotor para onde aponta. Deixe vazio para ${fallback} ms.',
+			'settings.station.rotatorAxesRequired' => 'Escolha em que eixos o rotor roda',
+			'settings.station.rotatorRefused' => 'O controlador recusou um comando. Verifique se está no modo GS-232.',
+			'settings.station.pstRotatorTroubleshooting' => 'O PstRotator só responde depois de configurado para isso, e de outro modo não diz absolutamente nada:\n\n- **Ative o UDP Control** no menu Setup do PstRotator.\n- **Faça corresponder a porta**: Communication → UDP Control Port, 12000 a menos que tenha sido alterada. O PstRotator responde na porta seguinte (12001), que tem de estar livre neste dispositivo.\n- **Ligue o PstRotator ao seu controlador.** Até lá, não responde nada por UDP.\n- **Deixe-o passar na firewall** do PC onde corre o PstRotator, e neste dispositivo, que fica à escuta das respostas.\n- **Num Mac, iPhone ou iPad**, o Ham2K Logger precisa de acesso à Rede Local (Definições → Privacidade e Segurança → Rede Local).',
+			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Estado Atual: ${position}',
+			'settings.station.rotatorDisconnected' => 'desligado',
+			'settings.station.rotatorAzimuthReading' => ({required Object degrees}) => '${degrees}° de azimute',
+			'settings.station.rotatorAzimuthReadingShort' => ({required Object degrees}) => '${degrees}° az',
+			'settings.station.rotatorElevationReading' => ({required Object degrees}) => '${degrees}° de elevação',
+			'settings.station.rotatorElevationReadingShort' => ({required Object degrees}) => '${degrees}° el',
+			'settings.station.rotatorNoReading' => 'A aguardar que o controlador reporte a sua posição…',
+			'settings.station.rotatorNotResponding' => 'não responde',
+			'settings.station.rotatorHeldAtLimit' => ({required Object heading}) => 'A rodar para ${heading}, até onde os limites deste rotor permitem',
+			'settings.station.rotatorTargetAzimuth' => 'Rodar para azimute',
+			'settings.station.rotatorTargetAzimuthShort' => 'Rodar para az',
+			'settings.station.rotatorTargetElevation' => 'Rodar para elevação',
+			'settings.station.rotatorTargetElevationShort' => 'Rodar para el',
+			'settings.station.rotatorAzimuthInvalid' => 'Tem de ser de 0 a 360',
+			'settings.station.rotatorElevationInvalid' => 'Tem de ser de 0 a 180',
+			'settings.station.rotatorTurn' => 'Rodar',
+			'settings.station.rotatorStop' => 'Parar',
 			'settings.station.configUnreadable' => 'Não foi possível ler as configurações guardadas deste rádio. Abra as configurações e introduza-as novamente, ou remova-o e volte a adicioná-lo.',
 			'settings.station.autoConnectHeld' => 'O HaLo deixou de responder da última vez que se ligou a este rádio, por isso desta vez não se ligou sozinho. Prima Ligar para tentar novamente.',
 			'settings.offlineData.title' => 'Dados Offline',
@@ -5234,15 +6708,20 @@ extension on TranslationsPt {
 			'settings.profiles.personalInfo' => 'Informações Pessoais',
 			'settings.profiles.personalInfoNote' => 'Pode ser incluído nos registos gerados quando for relevante para submissões',
 			'settings.profiles.name' => 'Nome',
-			'settings.profiles.email' => 'E-mail',
+			'settings.profiles.email' => 'Email',
 			'settings.profiles.club' => 'Clube',
 			'settings.profiles.arrlSection' => 'Secção ARRL',
 			'settings.profiles.racSection' => 'Secção RAC',
 			'settings.profiles.section' => 'Secção',
 			'settings.search.clear' => 'Limpar',
-			'settings.search.hint' => 'Procurar preferências',
+			'settings.search.hint' => 'Pesquisar preferências',
 			'settings.developer.developerModeDescription' => 'Ativar avisos de desenvolvimento, registos de depuração e ferramentas.',
 			'settings.developer.experiments' => 'Experiências',
+			'settings.developer.showIdleMetrics' => 'Mostrar métricas de inatividade',
+			'settings.developer.showIdleMetricsDescription' => 'Mostrar na barra de estado quão inativo esteve o motor de extensões no último segundo. Toque para ver as médias a 10 e a 60 segundos.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent}% inativo',
+			'settings.developer.idleMetricsAverages' => 'Inatividade média:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}s ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} ativada', other: '${count} ativadas', ), 
 			'settings.developer.patchTrack' => 'Canal de Code Push',
 			'settings.developer.patchTrackDescription' => 'Que anel de code push remoto este dispositivo segue. Anéis mais aventureiros recebem correções mais cedo, menos testadas. Os code pushes aplicam-se no próximo arranque.',
@@ -5306,7 +6785,7 @@ extension on TranslationsPt {
 			'settings.panels.unavailableText' => 'As extensões não arrancaram, por isso faltam as configurações que elas fornecem.',
 			'settings.panels.station' => 'Configuração da Estação',
 			'settings.panels.stationDescription' => 'Controlo CAT e mais opções',
-			'settings.panels.peers' => 'Dispositivos Pares',
+			'settings.panels.peers' => 'Dispositivos Próximos',
 			'settings.panels.peersDescription' => 'Ligar a outros dispositivos próximos',
 			'settings.showMoreSettings' => 'Mostrar mais configurações',
 			'settings.gridPrecision' => 'Precisão do Grid',
@@ -5315,7 +6794,7 @@ extension on TranslationsPt {
 			'settings.gridPrecisionDescription.six' => '6 dígitos',
 			'settings.gridPrecisionDescription.eight' => '8 dígitos',
 			'commands.enableSyncFirst' => 'Ative primeiro a sincronização nas Configurações.',
-			'commands.fullResyncStarted' => 'Ressincronização completa iniciada — os dados locais foram primeiro salvaguardados.',
+			'commands.fullResyncStarted' => 'Ressincronização completa iniciada — foi feita primeiro uma cópia de segurança dos dados locais.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Nenhum ficheiro de dados corresponde a "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'O recarregamento falhou: ${error}',
 			'commands.reloadingAll' => 'A recarregar todos os ficheiros de dados…',
@@ -5324,9 +6803,14 @@ extension on TranslationsPt {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ativada',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} desativada',
 			'commands.sentryTestSent' => 'Relatório de erro de teste enviado para o Sentry',
+			'commands.idleMetricsEnabled' => 'Métricas de inatividade ativadas na barra de estado',
+			'commands.idleMetricsDisabled' => 'Métricas de inatividade desativadas',
 			'commands.sentryTestLocalOnly' => 'O Sentry está desativado nesta build — erro de teste registado apenas localmente',
 			'commands.noOperationOpen' => 'Esse comando precisa de uma operação aberta',
-			'commands.unknownSegmentKind' => ({required Object kind}) => 'Não é possível marcar um \'${kind}\'',
+			'commands.unknownSegmentKind' => ({required Object kind}) => 'Não sei como marcar um \'${kind}\'',
+			'commands.goUnavailable' => ({required Object place}) => '${place} não está ativado nesta app',
+			'commands.goUnknown' => ({required Object to}) => 'Não sei como ir para \'${to}\'',
+			'commands.goBlocked' => 'Feche primeiro o diálogo aberto',
 			'commands.operationAlreadyStarted' => 'Esta operação já tem um marcador de início',
 			'commands.couldNotOpenLocation' => 'A pausa foi adicionada, mas não foi possível abrir o ecrã de localização',
 			'commands.noTestOperations' => 'Nenhuma Operação de Teste para purgar',
@@ -5359,8 +6843,12 @@ extension on TranslationsPt {
 			'commands.cwSending' => ({required Object text}) => 'A enviar CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Mensagem CW F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'A mensagem CW F${n} não foi enviada: as extensões não estão prontas',
+			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Mensagem de voz M${n}: ${error}',
+			'commands.voiceMessageNotRendered' => 'as extensões não estão prontas',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Nada enviado: o Rádio ${radio} não consegue manipular isso',
+			'commands.so2rNoRadioB' => 'Nada enviado: escolha um Rádio B em Configuração da Estação para manipular a partir deste conjunto',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” não aceitou esse valor',
-			'commandDialog.hint' => 'Procure indicativos ou escreva um comando',
+			'commandDialog.hint' => 'Pesquise indicativos ou escreva um comando',
 			'commandDialog.noResults' => ({required Object text}) => 'Nada corresponde a “${text}”',
 			'commandDialog.sectionCommands' => 'Comandos',
 			'commandDialog.sectionGoTo' => 'Ir para',
@@ -5372,6 +6860,99 @@ extension on TranslationsPt {
 			'commandDialog.sectionSuggestions' => 'Experimente',
 			'commandDialog.lookingUp' => 'A pesquisar indicativo…',
 			'commandDialog.blockedByPane' => 'Não é possível usar comandos com um painel ou diálogo aberto',
+			'keyboardShortcuts.title' => 'Atalhos de Teclado',
+			'keyboardShortcuts.description' => 'Personalizar as combinações de teclas',
+			'keyboardShortcuts.search' => 'Pesquisar comandos e teclas',
+			'keyboardShortcuts.import' => 'Importar…',
+			'keyboardShortcuts.export' => 'Exportar…',
+			'keyboardShortcuts.resetAll' => 'Repor Tudo',
+			'keyboardShortcuts.resetAllTitle' => 'Repor todos os atalhos?',
+			'keyboardShortcuts.resetAllBody' => 'Todos os comandos voltam às suas teclas predefinidas, e as teclas atribuídas a comandos escritos são removidas.',
+			'keyboardShortcuts.reset' => 'Repor',
+			'keyboardShortcuts.noKey' => 'Sem tecla',
+			'keyboardShortcuts.changed' => 'Alterado',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} também está atribuído a ${commands}',
+			'keyboardShortcuts.groupApp' => 'App',
+			'keyboardShortcuts.groupKeying' => 'Manipulação',
+			'keyboardShortcuts.groupLogging' => 'Registo',
+			'keyboardShortcuts.groupCommands' => 'Comandos',
+			'keyboardShortcuts.groupFixed' => 'Teclas Fixas',
+			'keyboardShortcuts.contextApp' => 'Em qualquer lado',
+			'keyboardShortcuts.contextLogView' => 'Vistas de Operação, Caça e Registos',
+			'keyboardShortcuts.contextOperation' => 'Vista de Operação, a manipular um rádio CAT',
+			'keyboardShortcuts.contextLogging' => 'No painel de registo',
+			'keyboardShortcuts.addCommand' => 'Adicionar um Comando…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Comando desconhecido: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Abrir o diálogo de comandos',
+			'keyboardShortcuts.command.toggleTheme' => 'Alternar entre claro e escuro',
+			'keyboardShortcuts.command.toggleLanguage' => 'Alternar entre inglês e espanhol',
+			'keyboardShortcuts.command.fontScaleUp' => 'Texto maior',
+			'keyboardShortcuts.command.fontScaleDown' => 'Texto menor',
+			'keyboardShortcuts.command.fontScaleReset' => 'Tamanho de texto normal',
+			'keyboardShortcuts.command.densityLooser' => 'Disposição mais espaçosa',
+			'keyboardShortcuts.command.densityDenser' => 'Disposição mais densa',
+			'keyboardShortcuts.command.densityAuto' => 'Densidade da disposição automática',
+			'keyboardShortcuts.command.find' => 'Localizar no registo',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Enviar mensagem ${n}',
+			'keyboardShortcuts.command.keyboardMode' => 'Modo de teclado ligado ou desligado',
+			'keyboardShortcuts.command.ptt' => 'PTT (premir para falar)',
+			'keyboardShortcuts.command.wipe' => 'Apagar o contacto que está a ser registado',
+			'keyboardShortcuts.fixed.callsign' => 'Escrever indicativos',
+			'keyboardShortcuts.fixed.escape' => 'Parar o envio, recuar um passo ou fechar',
+			'keyboardShortcuts.fixed.enter' => 'Registar o contacto',
+			'keyboardShortcuts.fixed.space' => 'Campo seguinte',
+			'keyboardShortcuts.fixed.tab' => 'Campo seguinte ou anterior',
+			'keyboardShortcuts.fixed.arrows' => 'Mover entre campos, controlos e o registo',
+			'keyboardShortcuts.fixed.walk' => 'Percorrer o registo página a página, ou ir para os seus extremos',
+			'keyboardShortcuts.fixed.undo' => 'Recuperar um contacto apagado ou eliminado',
+			'keyboardShortcuts.editor.addShortcut' => 'Adicionar Atalho',
+			'keyboardShortcuts.editor.listening' => 'Prima as teclas do atalho…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc deixa de escutar',
+			'keyboardShortcuts.editor.add' => 'Adicionar',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} pertence aos campos de registo ou a um diálogo, e não pode ser alterado.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} é como se escrevem os indicativos. Combine-o com Cmd, Ctrl ou Alt.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'O sistema pode intercetar ${keys} antes de a app o ver.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} já é uma das teclas deste comando.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Tirar ${keys} a “${command}”',
+			'keyboardShortcuts.editor.resetDefault' => 'Repor Predefinição',
+			'keyboardShortcuts.editor.remove' => 'Remover',
+			'keyboardShortcuts.editor.commandLabel' => 'Comando',
+			'keyboardShortcuts.editor.commandHint' => 'Introduza um comando válido, ou vários comandos separados por ";"',
+			'keyboardShortcuts.editor.removeCommand' => 'Remover Comando',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Nenhum comando corresponde a “${text}”',
+			'keyboardShortcuts.editor.noShortcuts' => 'Ainda sem tecla',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Atalhos guardados em ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Não foi possível exportar os atalhos: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Não foi possível abrir o ficheiro: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} não é um ficheiro de atalhos que esta app consiga ler: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'o texto não é YAML válido (linha ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'não é um ficheiro de atalhos de teclado do Ham2K',
+			'keyboardShortcuts.file.problemNewerVersion' => 'foi escrito por uma versão mais recente da app',
+			'keyboardShortcuts.file.problemMalformed' => 'parte dele não segue o formato de atalhos',
+			'keyboardShortcuts.file.problemTooLarge' => 'é demasiado grande',
+			'keyboardShortcuts.file.importTitle' => 'Importar Atalhos',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Escrito em ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'O ficheiro não indica em que teclado foi escrito.',
+			'keyboardShortcuts.file.translate' => 'A que deve corresponder cada uma destas teclas neste teclado?',
+			'keyboardShortcuts.file.leaveOut' => 'Deixar esses atalhos de fora',
+			'keyboardShortcuts.file.replace' => 'Substituir a configuração deste dispositivo',
+			'keyboardShortcuts.file.replaceHint' => 'Todos os atalhos que não estão no ficheiro voltam à predefinição.',
+			'keyboardShortcuts.file.merge' => 'Adicionar à configuração deste dispositivo',
+			'keyboardShortcuts.file.mergeHint' => 'Os atalhos do ficheiro substituem os deste dispositivo para os mesmos comandos, e os restantes mantêm-se.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Desconhecidos nesta versão, por isso deixados de fora: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Não são atalhos, por isso deixados de fora: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Teclas que a app reserva para si, por isso deixadas de fora: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Atribuídas a mais de um comando após a importação: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'Importar',
+			'keyboardShortcuts.file.imported' => 'Atalhos importados',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'Esta build expirou',
 			'expiredBuild.body' => 'Visite ham2k.com e obtenha uma versão mais recente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',
@@ -5385,9 +6966,11 @@ extension on TranslationsPt {
 			'spotting.noQsoYet' => 'Ainda não há QSO registado para fazer spot.',
 			'spotting.setFrequencyFirst' => 'Defina primeiro uma frequência.',
 			'spotting.nothingToSpot' => 'Nada para fazer spot — nenhuma extensão oferece spotting aqui.',
+			'spotting.incompleteCall' => 'Não é possível fazer spot de um indicativo incompleto — termine primeiro o indicativo.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falhou: ${message}',
 			'spotting.unknownError' => 'erro desconhecido',
 			'spotting.notSent' => 'Spot não enviado.',
+			'spotting.allSkipped' => 'Spot não enviado: todas as fontes de spots o ignoraram.',
 			'spotting.notRefreshedOffline' => 'Sem ligação — os spots não foram atualizados',
 			'dataFiles.downloading' => 'A descarregar…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Não foi possível descarregar ${name}',
@@ -5395,6 +6978,8 @@ extension on TranslationsPt {
 			'dataFiles.downloadTimedOut' => 'O servidor demorou demasiado a responder. Tente novamente mais tarde.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} respondeu com um erro (HTTP ${status}). Tente novamente mais tarde.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} não conseguiu fornecer este ficheiro (HTTP ${status}). Verifique se o endereço ainda está certo.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'O N1MM não tem ficheiro de histórico de indicativos para ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'O download do histórico de indicativos do N1MM para ${stem} não funcionou. Tente novamente mais tarde.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Não foi possível processar ${name}',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'O download tinha apenas ${imported} dos ${existing} registos deste dispositivo, por isso os que ficaram de fora foram mantidos. Atualizá-lo em Configurações › Dados Offline aceita-o mesmo assim.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} registo importado para ${label}.', other: '${count} registos importados para ${label}.', ), 
@@ -5426,8 +7011,14 @@ extension on TranslationsPt {
 			'extensionService.validationError' => ({required Object error}) => 'Erro de validação: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'A ação falhou: ${error}',
 			'extensionService.commandFailed' => 'Não foi possível executar o comando',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} não pode alterar configurações: não o pediu na instalação',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} não pode controlar o rádio: não o pediu na instalação',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} não pode executar isso: é um dos comandos de desenvolvimento da própria app',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Não é possível enviar relatórios neste momento',
 			'extensionService.stashUnavailable' => 'O Arquivo de Ficheiros do Ham2K está inacessível neste momento',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => 'Sem resposta de ${names} à pesquisa de atividades, por isso podem faltar alguns resultados.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Algumas extensões de atividades não responderam à pesquisa, por isso podem faltar alguns resultados.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} gastou demasiado tempo nos seus temporizadores. Ficam parados até as extensões reiniciarem.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'Os temporizadores de ${name} continuaram a falhar. Ficam parados até as extensões reiniciarem.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} ficou bloqueado num temporizador. Os seus temporizadores ficam parados até as extensões reiniciarem.',
@@ -5462,7 +7053,7 @@ extension on TranslationsPt {
 			'notices.preferencesResetTitle' => 'Configurações repostas',
 			'notices.preferencesReset' => 'Não foi possível ler o ficheiro de configurações e não havia cópia de segurança a que recorrer, por isso o HaLo arrancou com as predefinições. O ficheiro ilegível fica guardado na pasta de dados da app, com o nome shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} não foi ligado automaticamente',
-			'notices.autoConnectHeld' => ({required Object name}) => 'O HaLo deixou de responder da última vez que começou a ligar-se a ${name}, por isso desta vez não lhe tocou, para não arriscar que voltasse a acontecer. Verifique se o rádio está ligado e o cabo está ligado, e depois prima Ligar nesse rádio nas Configurações.',
+			'notices.autoConnectHeld' => ({required Object name}) => 'O HaLo deixou de responder da última vez que começou a ligar-se a ${name}, por isso desta vez não lhe tocou, para não arriscar que voltasse a acontecer. Verifique se o rádio está ligado e o cabo bem encaixado, e depois prima Ligar nesse rádio nas Configurações.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Conta Anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (confirmação pendente)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (confirmação pendente - #${id})',
@@ -5492,35 +7083,48 @@ extension on TranslationsPt {
 			'switchAccounts.linkWithSiblingDescription' => 'Tem outra app Ham2K instalada. Vincule com a conta usada nela.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprove o pedido em ${app}, e depois volte aqui.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Abrir ${app} novamente',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Não funcionou? Abra-a novamente, ou volte atrás e vincule de outra forma.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Não foi possível abrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'A ligação expirou e está pronta uma nova — abra ${app} novamente.',
 			'switchAccounts.tryAgain' => 'Tentar novamente',
 			'switchAccounts.linkWithQr' => 'Vincular com um código QR',
 			'switchAccounts.linkWithQrDescription' => 'Leia-o a partir de um dispositivo que já usa a conta',
-			'switchAccounts.linkWithEmail' => 'Vincular com um endereço de e-mail',
-			'switchAccounts.linkWithEmailDescription' => 'Confirme com um código ou uma ligação por e-mail',
-			'switchAccounts.enterEmailPrompt' => 'Introduza o endereço de e-mail da conta que quer que este dispositivo use.',
-			'switchAccounts.emailAddress' => 'Endereço de e-mail',
+			'switchAccounts.linkWithEmail' => 'Vincular com um endereço de email',
+			'switchAccounts.linkWithEmailDescription' => 'Confirme com um código ou uma ligação por email',
+			'switchAccounts.enterEmailPrompt' => 'Introduza o endereço de email da conta que quer que este dispositivo use.',
+			'switchAccounts.emailAddress' => 'Endereço de email',
 			'switchAccounts.linkAccount' => 'Vincular conta',
 			'switchAccounts.copiedCode' => 'Código copiado para a área de transferência',
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abra a app Ham2K num dispositivo já vinculado a ${email} e introduza este código para aprovar o pedido:',
 			'switchAccounts.waitingForConfirmation' => 'A aguardar confirmação…',
-			'switchAccounts.sendEmailInstead' => 'Enviar antes um e-mail de confirmação',
-			'switchAccounts.emailSent' => ({required Object email}) => 'Foi enviado um e-mail para ${email}. Abra-o e confirme o pedido para vincular este dispositivo.',
-			'switchAccounts.resendEmail' => 'Reenviar e-mail',
+			'switchAccounts.sendEmailInstead' => 'Enviar antes um email de confirmação',
+			'switchAccounts.emailSent' => ({required Object email}) => 'Foi enviado um email para ${email}. Abra-o e confirme o pedido para vincular este dispositivo.',
+			'switchAccounts.resendEmail' => 'Reenviar email',
 			'switchAccounts.qrPrompt' => 'Leia este código QR a partir de um dispositivo já vinculado à conta que quer — por exemplo com o Ham2K Portable Logger no seu telemóvel.',
 			'switchAccounts.serverUnreachable' => 'Não foi possível contactar o servidor de sincronização. Tente novamente mais tarde.',
-			'switchAccounts.emailRequired' => 'Introduza um endereço de e-mail para vincular.',
+			'switchAccounts.emailRequired' => 'Introduza um endereço de email para vincular.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'Nenhuma conta encontrada para ${email}.',
 			'switchAccounts.serverRejected' => ({required Object error}) => 'O servidor de sincronização rejeitou o pedido: ${error}',
 			'switchAccounts.noLinkCode' => 'O servidor de sincronização não devolveu um código de ligação. Tente novamente mais tarde.',
 			'switchAccounts.noConfirmationCode' => 'O servidor de sincronização não enviou um código de confirmação. Tente novamente mais tarde.',
-			'switchAccounts.switchNotAccepted' => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de e-mail.',
+			'switchAccounts.switchNotAccepted' => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de email.',
 			'switchAccounts.requestFailed' => 'Algo correu mal na comunicação com o servidor de sincronização. Tente novamente mais tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} operação', other: '${count} operações', ), 
+			'qsonImport.title' => 'Importar Operação QSON',
+			'qsonImport.description' => 'Criar uma nova operação a partir de um ficheiro QSON, como o Modo de Desenvolvedor exporta aqui ou no PoLo.',
+			'qsonImport.dropHint' => 'Largue um ficheiro QSON para o importar como nova operação',
+			'qsonImport.importing' => ({required Object filename}) => 'A importar ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'Não foi possível abrir um ficheiro para importar: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} não é texto UTF-8, por isso não é um ficheiro QSON',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} não é um ficheiro JSON, por isso não é um ficheiro QSON',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} não contém uma operação QSON',
+			'qsonImport.busy' => 'Já está a decorrer uma importação. Aguarde que termine antes de iniciar outra.',
+			'qsonImport.oneFileOnly' => 'Largue um ficheiro QSON de cada vez — cada um abre como uma operação própria.',
 			'adifImport.title' => 'Importar QSOs de ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'A ler ${filename}…',
 			'adifImport.dropHint' => 'Largue um ficheiro ADIF para importar',
@@ -5549,6 +7153,8 @@ extension on TranslationsPt {
 			'adifImport.busy' => 'Já está a decorrer uma importação. Aguarde que termine antes de iniciar outra.',
 			'adifImport.oneFileOnly' => 'Largue um ficheiro ADIF de cada vez — a ordem em que os ficheiros são importados decide que dados prevalecem.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} tem mais de ${limit} QSOs, o máximo que uma operação pode importar de uma vez.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} tem mais de ${limit} QSOs. Importar um ADIF para uma operação destina-se a acrescentar alguns QSOs, não a trazer um registo grande — para isso use a vista de Registos. O modo de desenvolvedor permite importá-lo mesmo assim, se tiver a certeza.',
+			'adifImport.importAnyway' => 'Importar mesmo assim',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: ligada',
 			'offline.noRoute' => 'Sem qualquer ligação de rede.',
@@ -5578,8 +7184,8 @@ extension on TranslationsPt {
 			'exportSettings.retry' => 'Tentar novamente',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nomes de ficheiro compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nomes de ficheiro descritivos, como 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'A incluir nomes, moradas, e-mails, notas e localizações precisas nos ficheiros ADIF.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'A omitir nomes, moradas, e-mails e notas; a limitar as localizações a grids de seis caracteres.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'A incluir nomes, moradas, emails, notas e localizações precisas nos ficheiros ADIF.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'A omitir nomes, moradas, emails e notas; a limitar as localizações a grids de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'A incluir informação de serviços de pesquisa de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'A omitir informação de serviços de pesquisa de indicativos; a manter os valores introduzidos manualmente.',
 			'exportSettings.customTemplatesDescriptionOn' => 'Os seus modelos personalizados estão ativos e podem ser editados abaixo.',

@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Improved translations: every language is complete again and uses PoLo's vocabulary (tell us what reads wrong)"
+
 "186":
   changes:
     - "Improved secondary controls: a park, note or frequency control stays open from one contact to the next"
