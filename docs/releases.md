@@ -731,9 +731,9 @@ exercised without touching the download that every Next install points at. A
 Regular Windows workflow would need this gate revisited alongside the port.
 
 The Regular workflows set it from two anchors in `codemagic.yaml`.
-`macos-prod-release` reads `hold_regular`, which is `"true"`: Regular macOS is
-public, and each build writes its entry. `ios-prod-release` and
-`android-prod-release` read `hold_regular_mobile`, which is `"false"`: the
+`macos-prod-release` reads `publish_regular_macos`, which is `"true"`: Regular
+macOS is public, and each build writes its entry. `ios-prod-release` and
+`android-prod-release` read `publish_regular_mobile`, which is `"false"`: the
 stores still get those builds, but the download page does not list them.
 Flipping either anchor changes the builds after it, never an entry already
 written.
