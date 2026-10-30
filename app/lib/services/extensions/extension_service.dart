@@ -74,6 +74,7 @@ export 'extension_ref_results.dart';
 // each is a mixin in a part of this library rather than a library of its own,
 // and each declares at its top what it reads of the rest.
 part 'extension_hook_api.dart';
+part 'extension_activity_calls.dart';
 part 'extension_sync_calls.dart';
 part 'extension_panels.dart';
 part 'extension_accounts.dart';
@@ -101,6 +102,7 @@ class ExtensionService
         ExtensionScoring,
         ExtensionChasing,
         _ExtensionHookApi,
+        _ExtensionActivityCalls,
         _ExtensionCommandGate,
         _ExtensionResolveCalls,
         _ExtensionSyncCalls,
