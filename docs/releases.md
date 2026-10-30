@@ -730,10 +730,13 @@ its symbols, then stops after the artifacts zip — which is how the pipeline is
 exercised without touching the download that every Next install points at. A
 Regular Windows workflow would need this gate revisited alongside the port.
 
-The three Regular workflows (`ios-prod-release`, `macos-prod-release`,
-`android-prod-release`) set it from the `hold_regular` anchor in
-`codemagic.yaml`, which is `"true"`: Regular is public, and each Regular build
-writes its entry. Setting it to `"false"` holds the next ones back again.
+The Regular workflows set it from two anchors in `codemagic.yaml`.
+`macos-prod-release` reads `hold_regular`, which is `"true"`: Regular macOS is
+public, and each build writes its entry. `ios-prod-release` and
+`android-prod-release` read `hold_regular_mobile`, which is `"false"`: the
+stores still get those builds, but the download page does not list them.
+Flipping either anchor changes the builds after it, never an entry already
+written.
 
 ---
 
