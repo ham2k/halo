@@ -3,11 +3,12 @@
 //
 // Receives WSJT-X's own protocol (Status, Decode, QSOLogged, ...). WSJT-X's
 // "UDP Server" setting is just a plain destination address, not necessarily
-// multicast — its default (239.239.0.2) is, but an operator can just as
-// validly point it at a specific host's unicast address, or (if WSJT-X ever
-// supports it) the broadcast address. Only the multicast case needs this
-// socket to explicitly JOIN a group; the other two are ordinary traffic a
-// plain bound socket already receives.
+// multicast — its own default is the unicast 127.0.0.1; 239.239.0.2 is the
+// multicast group its documentation recommends once more than one program
+// listens, since a unicast datagram reaches only one of them; and (if WSJT-X
+// ever supports it) the broadcast address is as valid. Only the multicast
+// case needs this socket to explicitly JOIN a group; the other two are
+// ordinary traffic a plain bound socket already receives.
 //
 // This distinction matters beyond correctness: iOS gates multicast behind
 // `com.apple.developer.networking.multicast`, an entitlement Apple grants
@@ -56,7 +57,10 @@ Stream<Uint8List> udpMulticastDatagrams({required int port, required String mult
         if (_isMulticastAddress(multicastGroup)) {
           // Unlike a broadcast or unicast bind, multicast delivers nothing
           // until the socket explicitly joins the group.
-          socket!.joinMulticast(InternetAddress(multicastGroup));
+          final interfaces = await _interfacesToJoin();
+          // Cancelled during the enumeration: `onCancel` has closed the socket.
+          if (cancelled) return;
+          joinMulticastOnEach(socket!, InternetAddress(multicastGroup), interfaces);
         }
         socket!.listen(
           (event) {
@@ -82,6 +86,52 @@ Stream<Uint8List> udpMulticastDatagrams({required int port, required String mult
   );
 
   return controller.stream;
+}
+
+/// Every IPv4 interface — the loop-back one and link-local-only ones (a
+/// laptop cabled straight to a radio's network, no DHCP) included. Empty
+/// when the system refuses to enumerate them, which [joinMulticastOnEach]
+/// reads as "the kernel's default interface".
+Future<List<NetworkInterface>> _interfacesToJoin() async {
+  try {
+    return await NetworkInterface.list(includeLoopback: true, includeLinkLocal: true, type: InternetAddressType.IPv4);
+  } on SocketException catch (e) {
+    debugPrint('[udp-multicast] cannot list interfaces: $e');
+    return const [];
+  }
+}
+
+/// Joins [group] on each of [interfaces]. Membership is per interface: a
+/// datagram the sender puts on lo0 (the interface WSJT-X's "Outgoing
+/// interfaces" list ticks by default, and the one multicast path macOS's
+/// Local Network privacy never gates) reaches only a socket joined on lo0,
+/// and one sent on the LAN interface only a socket joined there. So the
+/// listener joins every attached network, where a bare `joinMulticast(group)`
+/// covers the default route's alone — a stranger's WSJT-X on a club LAN or a
+/// VPN is thereby heard too, which is acceptable because the operator reviews
+/// every capture before it reaches a log. An interface that refuses (a VPN
+/// tunnel, a Linux `lo` without multicast enabled) is skipped. When none
+/// accepted — or there were none to try — the bare join is the fallback, and
+/// its failure is the one that propagates: that error says something about
+/// the platform (iOS without the multicast entitlement), not about whichever
+/// interface happened to be listed last.
+@visibleForTesting
+void joinMulticastOnEach(RawDatagramSocket socket, InternetAddress group, List<NetworkInterface> interfaces) {
+  var joined = 0;
+  void refused(NetworkInterface interface, Object e) => debugPrint('[udp-multicast] join ${group.address} on ${interface.name} refused: $e');
+  for (final interface in interfaces) {
+    // The native join throws OSError; the Dart side throws SocketException
+    // (an interface with no address of the group's family, a closed socket).
+    try {
+      socket.joinMulticast(group, interface);
+      joined++;
+    } on SocketException catch (e) {
+      refused(interface, e);
+    } on OSError catch (e) {
+      refused(interface, e);
+    }
+  }
+  if (joined == 0) socket.joinMulticast(group);
 }
 
 /// Whether [address] is an IPv4 multicast address — the 224.0.0.0/4 block.

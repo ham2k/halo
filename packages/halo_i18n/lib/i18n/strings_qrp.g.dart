@@ -1913,7 +1913,7 @@ class _Translations$operation$import$qrp extends Translations$operation$import$e
 	@override String get n1mmAddressValue => 'any (broadcast)';
 	@override String get wsjtxProtocolName => 'wsjt-x udp server';
 	@override String get helpN1mmSetup => 'config → configure ports, mode control… → broadcast data tab → check "enable broadcasts" for contact info. set ip address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.';
-	@override String get helpWsjtxSetup => 'file → settings → reporting tab → udp server section → check "accept udp requests". set udp server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.';
+	@override String get helpWsjtxSetup => 'file → settings → reporting tab → udp server section. set udp server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: jtalert, gridtracker or another copy of this app would receive the data instead.';
 	@override String get listenTitle => 'listen for qsos from other apps';
 	@override String get listenDescriptionOnN1mm => 'listening for n1mm+';
 	@override String get listenDescriptionOnWsjtx => 'listening for wsjt-x';
@@ -5327,7 +5327,7 @@ extension on TranslationsQrp {
 			'operation.import.n1mmAddressValue' => 'any (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'wsjt-x udp server',
 			'operation.import.helpN1mmSetup' => 'config → configure ports, mode control… → broadcast data tab → check "enable broadcasts" for contact info. set ip address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
-			'operation.import.helpWsjtxSetup' => 'file → settings → reporting tab → udp server section → check "accept udp requests". set udp server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
+			'operation.import.helpWsjtxSetup' => 'file → settings → reporting tab → udp server section. set udp server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: jtalert, gridtracker or another copy of this app would receive the data instead.',
 			'operation.import.listenTitle' => 'listen for qsos from other apps',
 			'operation.import.listenDescriptionOnN1mm' => 'listening for n1mm+',
 			'operation.import.listenDescriptionOnWsjtx' => 'listening for wsjt-x',

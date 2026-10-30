@@ -4102,8 +4102,8 @@ class Translations$operation$import$en {
 	/// en: 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.'
 	String get helpN1mmSetup => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.';
 
-	/// en: 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.'
-	String get helpWsjtxSetup => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.';
+	/// en: 'File → Settings → Reporting tab → UDP Server section. Set UDP Server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: JTAlert, GridTracker or another copy of this app would receive the data instead.'
+	String get helpWsjtxSetup => 'File → Settings → Reporting tab → UDP Server section. Set UDP Server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: JTAlert, GridTracker or another copy of this app would receive the data instead.';
 
 	/// en: 'Listen for QSOs from other apps'
 	String get listenTitle => 'Listen for QSOs from other apps';
@@ -10756,7 +10756,7 @@ extension on Translations {
 			'operation.import.n1mmAddressValue' => 'Any (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
-			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section. Set UDP Server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: JTAlert, GridTracker or another copy of this app would receive the data instead.',
 			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
 			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',

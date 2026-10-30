@@ -969,7 +969,7 @@
       "n1mmAddressValue": "Any (broadcast)",
       "wsjtxProtocolName": "WSJT-X UDP Server",
       "helpN1mmSetup": "Config → Configure Ports, Mode Control… → Broadcast Data tab → check \"Enable Broadcasts\" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.",
-      "helpWsjtxSetup": "File → Settings → Reporting tab → UDP Server section → check \"Accept UDP requests\". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.",
+      "helpWsjtxSetup": "File → Settings → Reporting tab → UDP Server section. Set UDP Server to a multicast address such as 239.239.0.2 and enter the same address above. 127.0.0.1 also works, but only while this app is the only program listening on that port: JTAlert, GridTracker or another copy of this app would receive the data instead.",
       "listenTitle": "Listen for QSOs from other apps",
       "listenDescriptionOnN1mm": "Listening for N1MM+",
       "listenDescriptionOnWsjtx": "Listening for WSJT-X",

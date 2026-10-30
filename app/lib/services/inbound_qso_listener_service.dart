@@ -252,8 +252,27 @@ class InboundQsoListenerService extends ChangeNotifier {
     debugPrint('[inbound-qso] captured ($source) ${their['call']} on ${qso['band']}/${qso['mode']}');
   }
 
+  /// Dedupe keys with a capture mid-flight. `capture()`'s unique index makes
+  /// two datagrams for one contact a single ROW, but not a single QSO: the
+  /// second copy arrives while the first's `addToOperation` has yet to reach
+  /// `markAdded`, reads the row as still pending, and logs it again. A WSJT-X
+  /// with two outgoing interfaces ticked sends every datagram twice,
+  /// microseconds apart, so without this every auto-routed QSO lands twice.
+  final Set<String> _inFlight = {};
+
   @visibleForTesting
   Future<void> captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
+    // A copy of a capture already in flight has nothing to add: it is the
+    // same row, and that row's routing is already under way.
+    if (!_inFlight.add(dedupeKey)) return;
+    try {
+      await _captureIncoming(source: source, dedupeKey: dedupeKey, qso: qso);
+    } finally {
+      _inFlight.remove(dedupeKey);
+    }
+  }
+
+  Future<void> _captureIncoming({required String source, required String dedupeKey, required Map<String, dynamic> qso}) async {
     final InboundCaptureRow row;
     try {
       row = await captures.capture(source: source, dedupeKey: dedupeKey, qsoData: qso);
