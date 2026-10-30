@@ -98,7 +98,7 @@ class DeveloperPanel extends StatelessWidget {
                 mouseCursor: SystemMouseCursors.click,
                 onTap: () => runQsonImport(context, services),
               ),
-            // The extension dev loop (docs/extensions/development.md). Below
+            // The extension dev loop (docs/extensions/in-repo.md#the-dev-server). Below
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
             // more often.
@@ -285,7 +285,7 @@ class _DataFolderValueState extends State<_DataFolderValue> {
 
 /// Settings → Developer → Extension Dev Server: connect the app to a running
 /// `npm run dev`, and see whether the loop is alive
-/// (docs/extensions/development.md).
+/// (docs/extensions/in-repo.md#the-dev-server).
 ///
 /// Stateful only for the text field's controller — everything shown comes from
 /// the client, which is a ChangeNotifier.

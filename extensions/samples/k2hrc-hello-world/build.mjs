@@ -9,7 +9,7 @@
 //   node build.mjs && node ../../tools/h2kext-pack.mjs build
 //
 // Everything the packer then checks is documented in
-// docs/extensions/distribution.md.
+// docs/extensions/packaging.md.
 
 import { build } from "esbuild"
 import { dirname, join } from "node:path"

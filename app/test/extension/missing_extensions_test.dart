@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // What the operator installed, kept apart from the store that holds it, and
-// put back when the store comes up short (docs/extensions/distribution.md,
+// put back when the store comes up short (docs/design/extension-install.md,
 // "When the store is lost"). The traps: the intent following the store, so a
 // loss erases the very record that would repair it; boot pruning an absent
 // extension's on/off choice before anything restores it; and one extension

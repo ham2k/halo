@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Bundles the engine would not evaluate, and what becomes of them
-// (docs/extensions/distribution.md).
+// (docs/design/extension-install.md).
 //
 // One bundle that throws while it is being evaluated takes the whole runtime
 // generation with it — `EngineRuntime.load` evaluates each in turn and throws

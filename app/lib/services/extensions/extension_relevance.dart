@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Where, when and for whom an extension is relevant: the manifest's
-// `relevance` (docs/extensions/distribution.md), matched against the
+// `relevance` (docs/extensions/manifest.md), matched against the
 // operator's own callsign.
 
 import 'dart:convert' show jsonEncode;

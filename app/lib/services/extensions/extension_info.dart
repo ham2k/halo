@@ -22,7 +22,7 @@ enum ExtensionSource {
   /// Installed by the operator from a `.h2kext` (HALO-422).
   installed,
 
-  /// Served by a dev server (HALO-118, docs/extensions/development.md).
+  /// Served by a dev server (HALO-118, docs/extensions/in-repo.md#the-dev-server).
   dev;
 
   /// Only what the app shipped. An extension that arrived any other way gets

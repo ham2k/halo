@@ -10,7 +10,7 @@
 //
 // Its manifest still lists the host's shared libraries in `sharedDependencies`:
 // the SDK reaches them, and declaring them makes the bundle use the host's
-// copy rather than carry its own — see docs/extensions/distribution.md.
+// copy rather than carry its own — see docs/extensions/packaging.md.
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/extension-sdk"

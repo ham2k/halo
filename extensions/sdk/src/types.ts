@@ -2437,7 +2437,7 @@ export interface ActivationApi {
 }
 
 /// Where, when and for whom an extension is relevant
-/// (docs/extensions/distribution.md). Relevance ranks, it does not gate:
+/// (docs/extensions/manifest.md). Relevance ranks, it does not gate:
 /// nothing is hidden for failing to match.
 ///
 /// The four GEOGRAPHIC keys are allowlists over the OPERATOR's own callsign:

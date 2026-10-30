@@ -1075,7 +1075,7 @@ const kernel = {
   /// an ordinary `hooks` entry under the extension's key), and their
   /// activation marks, so a re-evaluation of the bundle activates afresh.
   ///
-  /// Only the DEV loop reloads a bundle (docs/extensions/development.md); the
+  /// Only the DEV loop reloads a bundle (docs/extensions/in-repo.md#the-dev-server); the
   /// app never unloads one at runtime. Two properties of this runtime are what
   /// make it safe to drop an extension mid-session: every bundle is its own
   /// IIFE closure, so re-evaluating gives genuinely fresh module state, and

@@ -34,14 +34,30 @@
 
 ## Extensions
 
-- [extensions/README.md](extensions/README.md) — what extensions are, anatomy,
-  host API, build and dev loop.
-- [extensions/hooks.md](extensions/hooks.md) — the hook reference, linking a page
-  per group of hook categories.
-- [extensions/scenes.md](extensions/scenes.md) — panel scenes.
-- [extensions/radio.md](extensions/radio.md) — radio control.
-- [extensions/forms.md](extensions/forms.md) — the form description schema.
-- [extensions/settings.md](extensions/settings.md) — settings panel hooks.
+The pages under `extensions/` are the extension authors' documentation,
+shipped inside `@ham2k/extension-sdk` and published on catalog.ham2k.net;
+they are written for an author with the SDK from npm.
+
+- [extensions/README.md](extensions/README.md) — the overview, the reading
+  path and the index of every page.
+- [extensions/concepts.md](extensions/concepts.md) — how extensions run: the
+  sandbox, activation, hooks, the host, budgets, API levels.
+- [extensions/manifest.md](extensions/manifest.md), [extensions/host.md](extensions/host.md),
+  [extensions/hooks.md](extensions/hooks.md) — the manifest, the host API and
+  the hook context, how hooks work; then one page per hook group.
+- [extensions/packaging.md](extensions/packaging.md), [extensions/publishing.md](extensions/publishing.md)
+  — the bundle, the build, keys, API levels; the catalog.
+- [extensions/agents.md](extensions/agents.md) — the suggested `AGENTS.md`
+  for an extension project; the SDK build ships it as the package's own.
+- [extensions/in-repo.md](extensions/in-repo.md) — **for contributors to this
+  repository:** the extensions workspace, the dev server, `halo-ext`, the
+  test harness, build secrets, pre-loads.
+- [design/extension-install.md](design/extension-install.md) — the app's side
+  of installed extensions: pre-loads, the retired built-ins, tracks,
+  pulling, replacement, the store.
+- [design/extension-docs.md](design/extension-docs.md) — how the extension
+  docs are written: audience, voice, where each fact lives, and what the
+  guard test refuses. **Read before changing a page under `extensions/`.**
 
 ## Shipping
 

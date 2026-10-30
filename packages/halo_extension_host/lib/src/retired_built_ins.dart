@@ -8,7 +8,7 @@
 
 /// Every extension the app used to build in beyond its core ones, and whether
 /// it was on by default — what an install that ran them still needs to know
-/// once they are gone (docs/extensions/distribution.md, "Retired built-ins").
+/// once they are gone (docs/design/extension-install.md, "The retired built-ins").
 ///
 /// Each one's catalog copy is the same extension under the reserved prefix
 /// (`ham2k-pota` for `pota`): the catalog cannot serve a bare `pota`, since the

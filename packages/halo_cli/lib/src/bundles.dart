@@ -47,7 +47,7 @@ class BundleEntry {
   final List<String> hooks;
 
   /// Served by a dev server rather than read from the built bundle directory
-  /// (docs/extensions/development.md). Carries the same consequence it does in
+  /// (docs/extensions/in-repo.md#the-dev-server). Carries the same consequence it does in
   /// the app: no configured secret is visible to it, whatever key it claims
   /// (HALO-425). The CLI has no installed-bundle store, so this stays a bool
   /// where the app needs a three-way source.
@@ -206,7 +206,7 @@ class BundleIndex {
   Directory? preloadedDirectory;
 
   /// Replaces this index's entries with what a running dev server is serving
-  /// (docs/extensions/development.md), so `halo-ext` exercises the code an
+  /// (docs/extensions/in-repo.md#the-dev-server), so `halo-ext` exercises the code an
   /// author is editing rather than the last thing they built.
   ///
   /// An OVERLAY, not a replacement: the dev server serves no kernel, and only

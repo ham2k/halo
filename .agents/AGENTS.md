@@ -19,7 +19,15 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](../docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead. A catch that tells the operator about the failure itself says so to `ErrorReportingService.report` — `notice:` for a status-bar notice it words, `told:` for a snackbar or dialog it actually showed — never a notice beside a plain `report()`, which stacks the generic "Something went wrong" on top.
 
-- The extension system and hooks are defined under `docs/extensions/`.
+- The extension system and hooks are defined under `docs/extensions/`, which
+  is also what extension authors read: it ships inside the SDK package and
+  on the catalog site. A change to the SDK's public surface (the `host`
+  object, a hook category or interface, a manifest field, a scene field, the
+  API level, a packer rule) lands with its sentence on the page that owns it,
+  in the same commit, following [extension-docs.md](../docs/design/extension-docs.md):
+  who the pages are for, how they sound, where each fact lives.
+  `extensions/docs.test.ts` fails the build when the surface and the pages
+  disagree, or when the prose slips back into notes.
 
 - User-facing strings live in `packages/halo_i18n` — edit **only** `en`, then regenerate with `mise run strings`; every other language comes from Crowdin (the package README says how). The gate fails on a stale output.
 

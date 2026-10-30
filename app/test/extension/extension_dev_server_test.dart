@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The app end of the extension dev loop (HALO-118, docs/extensions/development.md):
+// The app end of the extension dev loop (HALO-118, docs/extensions/in-repo.md#the-dev-server):
 // what it accepts as a dev server, what it does with what the server says, and
 // the one property that has to hold whatever the server claims — a dev-served
 // extension never receives a build secret.

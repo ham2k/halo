@@ -1,8 +1,18 @@
-# Spot hooks
+# Spots
 
-The [hook reference](hooks.md) says how hooks are registered and invoked, and what every hook is handed.
+A spot source feeds the Spots Panel and lets the operator spot themselves
+and others. The DX cluster is a connection the app holds and extensions
+share. [How hooks work](hooks.md) covers registration, keys, priority and
+`ctx`.
 
-## ✅ `spots` — spot sources and spotting (ham2k/halo-dist#9, #10)
+## `spots`
+
+**For:** a spot feed (a program's API, a chat, a cluster) and the posting of
+spots to it.
+
+**Called:** every registered source, each on its own. `fetchSpots` on the
+board's refresh; the eligibility methods once, when the Spotting control is
+built; the posting methods only for sources that answered `enabled: true`.
 
 ```ts
 interface SpotsHook {
@@ -13,84 +23,98 @@ interface SpotsHook {
   postSelfSpot?(args: PostSelfSpotRequest, ctx): Promise<PostResult>
   postOtherSpot?(args: PostOtherSpotRequest, ctx): Promise<PostResult>
 }
-// Spot: {their: {call}, freq?, band?, mode?, refs?: Ref[],
-//        spot: {timeInMillis, source, label?, sourceInfo?}}
-// SpotEligibility: {enabled, icon?}
-// PostResult: {ok, message?, userMessage?, skipped?}
-// PostSelfSpotRequest: {operation, freq, mode?, comment?}
-// PostOtherSpotRequest: {qso, comment?, spotterCall?}
+// Spot:                 { their: { call }, freq?, band?, mode?, refs?: Ref[], icon?,
+//                         spot: { timeInMillis, source, label?, sourceInfo? } }
+// SpotEligibility:      { enabled, icon? }
+// PostSelfSpotRequest:  { operation, freq, mode?, comment? }
+// PostOtherSpotRequest: { qso, comment?, spotterCall? }
+// PostResult:           { ok, message?, userMessage?, skipped? }
 ```
 
-Map upstream spots into QSON-shaped spot objects; filter out QRT/stale
-entries at the source. `Spot` may also carry an `icon` (MDI/FontAwesome
-name, same convention as `activity` controls). Implemented by: `pota`,
-`sota` (SOTAWatch) — fetch only.
+**`fetchSpots`** maps the upstream feed into `Spot` objects: the station,
+the frequency, the mode, the references it carries, and when it was
+spotted. Filter QRT and stale entries at the source. `icon` is a Material
+Design Icons name or a FontAwesome `fa-` name, drawn on the row.
 
-The four posting methods are all optional; a hook that omits them just
-never appears in the Spotting control's icon row (same "silently absent"
-convention as `export`'s `suggestExportOptions`). `isSelfSpotEnabled`/
-`isOtherSpotEnabled` are checked once to decide whether to show a source's
-icon at all (e.g. only when the operation/QSO has a matching activation
-ref); `postSelfSpot`/`postOtherSpot` are only called for sources that
-reported `enabled: true`. Implemented by: `pota` (self + other, posts
-directly to the POTA API, no auth required). `sota`'s spot API requires an
-authenticated account app-halo doesn't have yet, so `sota` stays
-fetch-only for now.
+**Posting** is optional method by method. A source that omits the posting
+methods never appears in the Spotting control's icon row. The eligibility
+methods decide whether to show the source's icon at all, for instance only
+when the operation carries a matching activation reference. `postSelfSpot`
+is handed the operation and the frequency; `postOtherSpot` the contact being
+logged.
 
-**An operation without assistance asks no spot source.** The board stops
-calling `fetchSpots` while such an operation is open, and `ctx.getSpots`
-answers it with nothing. Without self-spotting, no source is asked
-`isSelfSpotEnabled` and no self-spot is posted. Spotting somebody else
-(`isOtherSpotEnabled`/`postOtherSpot`) is allowed under both. Both are the
-operator's switches or a ref's rules ([`ref:<type>`](activities.md)).
+**`PostResult`:**
 
-A poster whose own rules decline a particular spot — a Discord channel whose
-message template renders blank for it — answers `{ok: true, skipped: true}`.
-Its icon stays neutral gray instead of lighting as sent, and no failure is
-reported. The Spotting chip's color counts only the sources that did not skip.
-When every one did, the chip stays neutral and the operator is told so, in
-each source's `message` when it gives one; that spot is never what
-auto-respotting repeats, and a round of it every source skips ends it.
-`skipped` without `ok` is still a failure.
+- `ok: true` means the service took it; `message` is for the log,
+  `userMessage` for the operator.
+- `ok: true, skipped: true` means your own rules declined this one (a
+  channel whose message template rendered blank). The icon stays neutral
+  instead of lighting as sent, no failure is reported, and the Spotting
+  chip's colour counts only the sources that did not skip. A round every
+  source skips is reported to the operator through each source's `message`,
+  is never what auto-respotting repeats, and ends an auto-respot.
+- `skipped` without `ok` is a failure.
 
-## ✅ `cluster` — the DX cluster connection
+**Rules:**
+
+- **An operation without assistance asks no source for spots.** The board
+  stops calling `fetchSpots` while such an operation is open, and
+  `ctx.getSpots` answers nothing. Without self-spotting, no source is asked
+  `isSelfSpotEnabled` and no self-spot is posted. Spotting somebody else is
+  allowed under both. Both come from the operator's switches or from a
+  reference's rules ([Activities](activities.md#what-a-reference-forbids)).
+- Identify the app to the service with `ctx.appName`, never a hard-coded
+  name.
+
+**Example:** `ham2k-parksnpeaks` in
+[ham2k/extensions](https://github.com/ham2k/extensions) is a feed in and
+spots out; `ki2d-discord-spotting` posts only, with its own settings panel;
+`ham2k-pota` does all of it.
+
+## `cluster`
+
+Extension API 10. The app holds **one** telnet connection to the DX cluster
+node the operator picked in Settings, logged in as the operator. Extensions
+share it rather than opening their own, because a node logs a call in once.
+Not available on the web build, where every cluster call answers
+`error: 'unsupported'`.
 
 ```ts
 interface ClusterHook {
   onLines(args: { lines: ClusterLine[] }, ctx): Promise<void>
 }
-// ClusterLine: {seq, at, text}
-// host.clusterSubscribe(): Promise<ClusterStatus>   // then onLines, until
-// host.clusterUnsubscribe(): Promise<ClusterStatus> // this
-// host.clusterLines({after?, limit?}): Promise<ClusterLine[]>
-// host.clusterStatus(): Promise<ClusterStatus>
-// host.clusterPostSpot({freq, call, comment?}): Promise<ClusterReply>
-// host.clusterSend(command): Promise<ClusterReply>
-// ClusterReply: {ok, lines: string[], error?, message?}
+// ClusterLine: { seq, at, text }
 ```
 
-The app holds one telnet connection to the DX cluster node the operator picked
-in Settings, logged in as the operator. Extensions share it rather than open
-their own, because a node logs a call in once
-([docs/design/cluster.md](../design/cluster.md)). Not on web, where every call
-answers `error: 'unsupported'`. Extension API 10.
+```ts
+host.clusterStatus(): Promise<ClusterStatus>
+host.clusterLines({ after?, limit? }): Promise<ClusterLine[]>
+host.clusterSubscribe(): Promise<ClusterStatus>     // then onLines, until
+host.clusterUnsubscribe(): Promise<ClusterStatus>   // this
+host.clusterPostSpot({ freq, call, comment? }): Promise<ClusterReply>
+host.clusterSend(command): Promise<ClusterReply>
+// ClusterReply: { ok, lines: string[], error?, message? }
+```
 
-`clusterPostSpot` is how a `spots` hook posts to the cluster: the host builds
-the `DX` command, sends at most 60 characters of comment, and spaces spots five
-seconds apart. A reply with `ok: true` means the node took the spot without
-refusing it. It does not prove the spot left that node: a DXSpider node can keep
-a self-spot local and still echo it.
+**Three manifest grants**, each including the ones before it:
+`requiresClusterRead` for status, lines and subscribing;
+`requiresClusterSpot` adds `clusterPostSpot`; `requiresClusterCommand` adds
+`clusterSend`, which sends any command in the operator's name. The consent
+screen names the grant; declare the least you need.
 
-`onLines` is called only for an extension that called `clusterSubscribe()`,
-with the lines since the last batch, at most once a second. Register the hook
-under the extension's own key (the default): that is the key the host delivers
-to. A subscription lasts until `clusterUnsubscribe()` or the runtime restarts,
-and keeps the session open while it lasts. A reader that only polls
-`clusterLines({ after })` holds nothing open.
+**Reading.** `onLines` is called only for an extension that called
+`clusterSubscribe()`, with the lines since the last batch, at most once a
+second. Register the hook under your extension's own key (the default): that
+is the key the app delivers to. A subscription lasts until
+`clusterUnsubscribe()` or the runtime restarts, and keeps the session open
+while it lasts. A reader that only polls `clusterLines({ after })` holds
+nothing open.
 
-Three manifest grants gate it, each including the ones before it:
-`"requiresClusterRead": true` for status, lines and subscribing;
-`"requiresClusterSpot": true` adds `clusterPostSpot`;
-`"requiresClusterCommand": true` adds `clusterSend`, which sends any command in
-the operator's name. Declare the least you need: the consent screen names it.
-Implemented by: `ki2d-cluster-spotter` (spot).
+**Spotting.** `clusterPostSpot` is how a `spots` hook posts to the cluster:
+the app builds the `DX` command, sends at most 60 characters of comment,
+and spaces spots five seconds apart. `ok: true` means the node took the spot
+without refusing it. It does not prove the spot left that node: a DXSpider
+node can keep a self-spot local and still echo it.
+
+**Example:** `ham2k-cluster-spots` in
+[ham2k/extensions](https://github.com/ham2k/extensions).

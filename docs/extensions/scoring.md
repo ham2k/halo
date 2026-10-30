@@ -1,267 +1,219 @@
-# Scoring & chasing hooks
+# Scoring & chasing
 
-The [hook reference](hooks.md) says how hooks are registered and invoked, and what every hook is handed.
+A **scorer** keeps the score of one operation: a contest's points and
+multipliers, an activation's progress toward its threshold, the app's own
+duplicate and new-entity rules. A **chasing program** keeps an award's
+checklist across every operation: which entities, parks or states a station
+has worked and confirmed, so the app can rank spots by what working them
+would add. [How hooks work](hooks.md) covers registration, keys, priority
+and `ctx`.
 
-## ✅ `scoring` — per-operation score batches
+## `scoring`
 
-One hook call scores an entire operation's QSOs at once (DESIGN.md §4:
-"score 500 QSOs in one call, not 500 calls"). Day-sectioning (24h UTC
-buckets, following app-polo/web-lofi's convention) and accumulation both
-happen inside the runtime — the host just supplies the operation and its
-QSOs and gets back everything it needs to cache.
+**For:** a contest's rules, an activity's activation rules, any score kept
+per operation.
 
-Authors don't implement this directly. Write a **`ContestScorer`** — three
-pure functions — and wrap it with `contestScorer()`, which supplies the loop,
-day sectioning, checkpointing and the live single-QSO path
-(docs/design/contests.md §5.2):
+**Called:** once per operation per scorer whose scope matches, with every
+contact at once: the app asks for 500 verdicts in one call, not 500 calls.
+The day sectioning (24-hour UTC buckets) and the accumulation happen inside
+the runtime; the app supplies the operation and its contacts and caches
+everything that comes back. Then, as the operator works, for one draft
+contact at a time and for the spots board's candidates.
+
+You do not implement the wire shape. You write a **`ContestScorer`**, three
+pure functions, and wrap it with `contestScorer()`, which supplies the loop,
+the day sectioning, the checkpoints and both live paths:
 
 ```ts
 interface ContestScorer<S> {
-  startScoresheet({operation, ref?}, ctx): S
-  scoreQso({scoresheet, qso, operation, ref?, isNewDay}, ctx): {scoresheet: S, score}
-  summarizeScore({scoresheet, operation, ref?, scope}, ctx): Record<string, ScoreTally>
+  startScoresheet({ operation, ref? }, ctx): S
+  scoreQso({ scoresheet, qso, operation, ref?, isNewDay }, ctx): { scoresheet: S, score: QsoScoreVerdict }
+  summarizeScore({ scoresheet, operation, ref?, scope }, ctx): Record<string, ScoreTally>
 }
+// QsoScoreVerdict: { value, dupe?, notices?, alerts?, icon?, color? }
+// ScoreTally:      { key, for: 'day' | 'operation', total, label?, summary?, longSummary?, icon?, grid? }
 
-registerHook('scoring', {
-  hook: contestScorer(MyScorer, { scope: { refTypes: ['cqww'] } }),
-  key: 'cqww',
+registerHook("scoring", {
+  key: "cqww",
+  hook: contestScorer(MyScorer, { scope: { refTypes: ["cqww"] } }),
 })
 ```
 
-`scope` decides which operations the scorer applies to, and the host reads it
-*before* invoking anything: `'always'` (core dupe/DXCC/bands) or a `refTypes`
-list, so an operation that doesn't carry the ref never crosses the bridge.
-Several scorers run on one operation — contests alongside core — and their
-results are namespaced per scorer. An `'always'` scorer is the **lowest priority
-on the worked-before axis**: for a QSO some other scorer has judged on that axis
-— a verdict carrying `dupe`, a `duplicate` alert, or a
-`newBand`/`newMode`/`newDay`/`newRef` notice — the host drops the `always`
-scorer's own `dupe`, `duplicate` and those notices, so core's call+band+mode
-rule never contradicts an activity's. What core alone reports — `newDXCC`,
-`newState`, `newProvince` — always survives, and a verdict that says nothing
-about a prior contact (`invalidBand`, `missingExchange`, a bare `{value}`)
-displaces nothing: core's dupe warning is then the only one there is.
+- **`scope`** decides which operations the scorer applies to, and the app
+  reads it before invoking anything: `'always'`, or `{ refTypes: [...] }`,
+  so an operation that does not carry the reference never crosses the
+  bridge. Several scorers run on one operation, a contest's beside the app's
+  own, and their results are namespaced by key.
+- **The contacts arrive ordered by start time, deleted ones excluded**, so a
+  day-bucketed rule can fold them as they come.
+- **The scoresheet is yours.** Its rules stay private; only notices, alerts,
+  points and summary tallies cross the boundary. `scoreQso` **may mutate** the
+  scoresheet it is given and return it; copying accumulated state per
+  contact is quadratic. The live paths hand you a copy-on-write view that
+  takes every kind of write and refuses the ones that would reach the held
+  sheet by other means: `Object.freeze`, `seal` or `preventExtensions` on it
+  throws. A sheet is plain JSON; one that is frozen or carries accessors is
+  outside the contract and throws at the first touch.
+- **`summarizeScore`** answers tallies for the `day` and `operation` scopes.
+  A contest returns `contestSummary(...)`: one tally titled with the
+  contest's name and score, its detail opening on a `contestArithmetic(...)`
+  line, and nothing for the `day` scope, since a contest's multipliers run
+  the whole event. The SDK's `tally()` builds any other.
+- **`scoreQso` on the live path** judges one not-yet-logged contact, the
+  callsign being typed. A draft with no time of its own reaches you stamped
+  with the current time, so a day-bucketed rule judges it as of now. The
+  harness replays the contacts logged since the last checkpoint onto a view
+  of it and scores the candidate against the result.
+- **Candidates from the spots board** are scored many at once, each against
+  its own view of the folded log, so no candidate becomes another's
+  duplicate. A candidate's verdict may name an `icon` (Material Design
+  Icons or `fa-`) and a `color` to mark its spot, before the chasing
+  programs' and the references' icons, in the order the scorers run, each
+  name once. Name one only where the spot is worth the operator's eye: a
+  multiplier, a station the contest is after. `contestScorer()` passes on
+  the `icon` and `color` a `scoreQso` verdict carries to the candidates and
+  leaves them out of the logged contacts' cached verdicts. An `'always'`
+  scorer's icon goes with a verdict that said only worked-before things
+  where another scorer ruled on that axis; one that answers an icon and
+  nothing else keeps it.
 
-So emit `dupe` whenever your dupe test actually ran, `dupe: false` included —
-that is what tells the host you have ruled on the question. It travels on the
-live paths too (`scoreQso`, `scoreCandidates`), not just in `qsoScores`. Rule
-only on what you have seen: a scorer folds only the segments it was running
-for, so a station absent from YOUR history may have been worked in a stretch
-you skipped, and staying silent there hands the question to the scorer holding
-the whole log. And when your
-verdict means "worked before, and this one counts anyway", say it in one of
-those notice keys (`newPark` is state-parks' spelling of `newRef`) rather than
-inventing a spelling of your own: an unrecognized key leaves core's `duplicate`
-standing beside your credit, on the one row that can show only one.
+**Worked-before is shared between scorers**, and the rule for who speaks is
+worth learning once. An `'always'` scorer is the lowest priority on that
+axis: for a contact another scorer has judged there (a verdict carrying
+`dupe`, a `duplicate` alert, or a `newBand`/`newMode`/`newDay`/`newRef`
+notice) the app drops the `'always'` scorer's own `dupe`, `duplicate` and
+those notices, so the app's call-band-mode rule never contradicts an
+activity's. What the app alone reports (`newDXCC`, `newState`,
+`newProvince`) always survives, and a verdict that says nothing about a
+prior contact displaces nothing. So:
 
-A contest's `summarizeScore` returns `contestSummary(...)` rather than
-building its tallies by hand: one tally titled with the contest's name and
-score, its detail opening on a `contestArithmetic(...)` line, and nothing at
-all for the `day` scope — a contest's multipliers run the whole event
-(docs/design/contests.md §5.2).
+- **Emit `dupe` whenever your dupe test ran**, `dupe: false` included; that
+  is what tells the app you have ruled. Rule only on what you have seen: a
+  scorer folds only the segments it runs for, so stay silent about a station
+  absent from your history.
+- When your verdict means "worked before, and this one counts anyway", say
+  it in one of those notice keys rather than inventing a spelling, or the
+  app's `duplicate` stands beside your credit on the one row that can show
+  only one. `newPark` is accepted as a spelling of `newRef`.
 
-A scorer's internal *rules* stay private to its scoresheet: contests don't
-share a rule vocabulary, so only notices, alerts, points and summary tallies
-cross the boundary. `scoreQso` **may mutate** the scoresheet it's given and
-return it; copying accumulated state per QSO is quadratic. The batch pass
-copies the checkpoint it resumes from, once; the live paths hand the scorer a
-copy-on-write view of it instead (`copyOnWrite` in the SDK), so a candidate's
-writes land in the view and the held sheet is never touched.
+**Checkpoints** are the harness's business. A sheet the size of a long log's
+worked-call map crossing the bridge on every keystroke would be most of the
+keystroke's cost, so the app names each checkpoint and the harness keeps the
+end sheet under that name, one per operation, for the last few operations;
+a live call carries the name alone. A name the harness no longer holds is an
+error, never a silent cold fold, and the app answers it by sending the sheet
+once more. A scorer written against the SDK gets all of this without
+knowing it exists; one built on an SDK from before the cache never says it
+holds a checkpoint, and keeps receiving the sheet.
 
-```ts
-// The wire shape the harness produces, for reference:
-interface ScoringHook {
-  scoreQsos(args: ScoreQsosRequest, ctx): Promise<ScoreQsosResult>
-  scoreQso?(args: ScoreQsoRequest, ctx): Promise<QsoScoreNotices>
-  scoreCandidates?(args: ScoreCandidatesRequest, ctx): Promise<ScoreCandidatesResult>
-}
-// ScoreQsosRequest: {operation, qsos, ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, checkpointKey?}
-// ScoreQsosResult:  {
-//   qsoScores: Record<uuid, QsoScoreVerdict>,   // one per QSO claimed; see above
-//   daySections: {day, count, scores: Record<tallyKey, ScoreTally>}[],
-//   operationSummary: Record<tallyKey, ScoreTally>,
-//   scoresheet,                                  // checkpoint to resume from
-//   scoresheetDay?,                              // the day it ends on, handed back as resumeDay
-//   checkpointHeld?,                             // true: the harness kept the end sheet under checkpointKey
-// }
-// ScoreQsoRequest:        {operation, qso, excludeUuid?, ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, qsos?}
-// QsoScoreNotices:        {notices, alerts, dupe?, checkpointHeld?}
-// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?, resumeDay?, resumeKey?, qsos?}
-// ScoreCandidatesResult:  Record<candidateKey, QsoScoreNotices> + {"$checkpointHeld": true} when a checkpoint was named
-```
+### Scoring an activity
 
-All three arrive already implemented by `contestScorer()`; a scorer writes the
-three pure `ContestScorer` functions and gets the loop, the checkpointing and
-both live paths for free.
-
-`scoreQso` answers for ONE not-yet-logged QSO — the callsign being typed.
-A candidate that carries no `startAtMillis` (the draft's time is still
-automatic) reaches the scorer stamped with the current time on both live
-paths, so a day-bucketed rule judges it as of now rather than at the epoch; a
-candidate that states a time keeps it. On both live paths a checkpoint, with
-the `qsos` logged since it, stands in for the whole-log read: the harness
-views the checkpoint copy-on-write, replays that tail onto the view
-(continuing the day `resumeDay` names, so no scorer's per-day tally restarts
-mid-day) and scores the candidate against the result. The host sends a
-checkpoint only when it can prove the log is what the checkpoint folded plus
-appended contacts; otherwise the harness reads the log through `ctx.getQsos`
-and folds it cold. The batched `scoreQsos` resumes the same way: after the
-first pass of a session, an append arrives as a checkpoint plus the appended
-contacts, and only their verdicts come back.
-
-**A checkpoint is held in the runtime and named, not sent, once it is
-there.** A sheet the size of a long log's worked-call map crossing the bridge
-on every keystroke would be most of the keystroke's cost. So the host names
-each checkpoint (`checkpointKey`, derived from the checkpoint's stamp) when
-the batch pass produces it, and the harness keeps the end sheet under that
-name — one per operation, the last few operations. A live call, or the next
-append, then carries `resumeKey` alone; a `resumeFrom` that arrives beside a
-`resumeKey` is filed under it too. A name the harness does not hold — a
-runtime restarted since, or one operation more than it keeps — is an error
-(`resume-missing`), never a silent cold fold, and the host answers it by
-sending the sheet once more. The host names a checkpoint only to a harness
-that has said `checkpointHeld: true` for it; a scorer built on an SDK without
-the cache never says so and keeps receiving the sheet. A `scoreCandidates`
-answer says it under the reserved key `$checkpointHeld`, since its other
-entries are the caller's candidate keys — a candidate key never starts with
-`$`.
-
-The view a scorer gets on the live paths takes every kind of write —
-assignment, `push`, `delete`, `Object.defineProperty` — and refuses the ones
-that would reach the base sheet by other means: `Object.freeze` (or `seal`,
-`preventExtensions`) on it throws. A sheet is plain JSON; one that is frozen
-or carries accessors is outside the contract and throws at the first touch.
-
-`scoreCandidates` answers the same question for many at once, which is what the
-Spots Panel asks to mark the spots already worked: the log is folded once per
-scorer and every candidate scored against its own copy-on-write VIEW of the
-result, so no candidate can become another's duplicate and no candidate pays
-for a copy of the log. Candidates carry no uuid — a spot is not a record — so
-results come back under caller-chosen keys.
-
-A candidate's answer may name an `icon` (an MDI or `fa-` name) and a `color`
-(`#RRGGBB`) to mark its spot: the row shows it before the chasing programs'
-and the references' icons (see `getSpots`' `display.icons`), in the order the
-scorers run, each name once. Name one only where the spot is worth the
-operator's eye — a multiplier, a station a contest is after — since a row has
-room for few. A `contestScorer()` passes on the `icon` and `color` its
-`scoreQso` verdict carries to `scoreCandidates`, and leaves them out of the
-logged contacts' cached verdicts. An `'always'` scorer's icon goes with a
-verdict that said only worked-before things, where another scorer ruled on
-that axis; one that answers with an icon and nothing else keeps it, so a
-scorer that judges nothing can still mark a spot.
-
-`QsosRepository.forOperation` already filters deleted rows and orders by
-`startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no
-`deleted`/`event` row bookkeeping on this side of the bridge.
-`ScoringService` (`app/lib/services/scoring_service.dart`) writes
-`qsoScores` into each QSO's `score_cache` column (`QsosRepository.updateScoreCache`,
-one batched transaction) and `daySections`/`operationSummary` into the
-operation's `local_data` (`OperationsRepository.updateLocalData`) — never
-synced content, so list scroll and score displays both read from SQLite and
-never wait on the JS runtime. Triggered on operation open; per-edit debounced
-rescoring is not wired up yet (see [backlog.md](../backlog.md)).
-
-Implemented by: `scoring` (key `core`) — three rules so far: duplicate-contact
-detection, DXCC entities worked (via `@ham2k/lib-country-files`'
-`useBuiltinCountryFile`, no network needed), and bands/modes worked. US
-States and Canadian Provinces rules are deferred (see [backlog.md](../backlog.md)).
-
-## ✅ `chasing` — what a contact counts toward
-
-A chasing program — DXCC, POTA hunting, WAS — says which lines of its
-checklist each contact fills. The app keeps the best claim per line and ranks
-spots against the result; [claims.md](../design/claims.md) is the design.
-
-One registration per program, keyed by the program's key — the extension's own
-key, or one prefixed `<extension key>_`, so one extension may register
-several:
+A reference program's rules (so many contacts to activate a park, repeats
+on a new band count, a hunted reference rescues a repeat) are a
+`ContestScorer` too, built by `activityScorer(rules)` and wrapped like any
+other:
 
 ```ts
-registerHook("chasing", { key: "dxcc", hook: {
-  program: { label: "DXCC", icon: "earth", version: 1, editions: "lifetime" },
-  claimsForQsos({ qsos }, ctx) { /* { [uuid]: QsoClaim[] } */ },
-  holdersFor({ station }, ctx) { /* string[] */ },
-  summarizeClaims({ holder, edition, slots }, ctx) { /* { [key]: ClaimsTally } */ },
-  importClaims({ importer, file, station }, ctx) { /* { claims: ImportedClaim[], skipped? } */ }, // optional
-}})
+registerHook("scoring", {
+  hook: contestScorer(activityScorer(RULES), { scope: { refTypes: [ACTIVATION_TYPE, HUNTING_TYPE] } }),
+})
 ```
 
-- **`program`** is plain data, read across every extension in one call
-  without invoking anything. Raise `version` whenever the same contacts would
-  claim something different: the app keeps no claim from an older version.
-  `refLabel` is what one reference is called where a notice names it
-  ("New POTA Park"), the program's `label` when left out. A program may
-  instead word a verdict's notice itself: `notices` by verdict (`newRef`,
-  `newBand`, `newMode`, `unconfirmed`), where `{{band}}` names the band a
-  new band is on and `{{mode}}` the mode a new mode is in, through
-  `modeLabels`, with both per language under `translations` (`{ es: {
-  notices, modeLabels } }`). A verdict it leaves out, or one whose notice
-  lacks the band or mode its words name, reads the app's way; a guess reads
-  "Probably …" around the program's words.
-  `supersedes` names the scoring notices the program's verdicts stand in for
-  (DXCC: `newDXCC`): wherever the program judges a call or a spot, the
-  scorer's notice is dropped in favor of the verdict.
-  `icon` and `color` (`#RRGGBB`) mark a spot the program's verdict alerts
-  for: its row shows the icon, tinted, beside the references' (see
-  `getSpots`' `display.icons`). A verdict that does not alert adds none.
-- **`claimsForQsos`** answers every contact in the batch, by `uuid` — a
-  caller asking about something that is not a stored contact (a spot, the
-  call being typed) gives it a `uuid` of its own, and a contact without one
-  is left out — with the
-  slots it fills: `{holder, ref, band, mode, level, edition?, by?, label?,
-  guess?}`. `band` and `mode` are explicit — `null` means "any", and a
-  program usually claims several granularities per contact (DXCC: Mixed, the
-  band, the mode). `mode` is the program's own grouping; the app never maps
-  modes for it. `level` is `worked`, `confirmed` (a QSL the program accepts,
-  from `qso.qsl`) or `verified` (sponsor credit, `qso.credits.<program>`).
-  **It must be a pure function of each contact** and the extension's own
-  data — never the log — because the app asks it about spots, and about
-  contacts on a device that holds only part of the log. An empty list is an
-  answer: that contact claims nothing. So is the list for an event marker
-  (`band: 'event'`), whose placeholder calls are not stations. A contact's
-  `our` carries the place it was made from — `grid`, `lat`/`lon` — its own,
-  or its operation's when it states none, for a program that keeps a
-  checklist per place. A spot candidate's `their` carries the lookup's
-  `guess.state` when an offline lookup knows one.
-- **`holdersFor`** lists the holders a station claims as — the opaque
-  strings the program puts on its claims — so the app knows whose checklist
-  to show: the first, in the current edition. `station` carries its call
-  and, when it has one, its place, as a contact's `our` does. An `annual`
-  program names its editions by UTC year (`'2026'`), which is how the app
-  tells the current one; an `event` program's checklist has no current
+| Rule | |
+| --- | --- |
+| `label`, `icon` | The tally's name and glyph |
+| `activationType`, `huntingType` | The reference types, as for `referenceActivity`; omit `huntingType` for an award with no hunting side |
+| `qsosToActivate` | Contacts one reference needs before it counts as activated (POTA 10, SOTA 4, WWFF 44), or a function of the activated references for a program whose bar varies by place; the highest bar among references activated at once applies |
+| `tracksActivation` | Whether there is a threshold at all; `false` reports no activation tally rather than inventing one |
+| `tracksOperators` | Whether progress also breaks down per operator once someone other than the station call logs a contact; default true |
+| `freshRefRescuesActivation` | Whether a hunted reference this station has not given before also counts toward the activation on an otherwise-repeat contact; default true |
+| `distinctCallsPerDay` | Whether the activation counts different stations in a UTC day rather than contacts; default false |
+| `allowsMultipleReferences` | Whether one contact can credit several hunted references |
+| `uniquePer` | Which axes make a repeat fresh again: `day`, `band`, `mode`, `ref`; empty means any repeat is a duplicate |
+| `activates` | `'daily'` (the default), a reference is activated per UTC day; `'once'`, the count accrues across the operation |
+| `refNoun`, `refNounPlural`, `p2pLabel` | The program's own words ("park", "summit", "P2P"), as strings or functions of `ctx` for translation |
+
+`k2hrc-llota` in the SDK's samples registers one beside the factory's hooks;
+`k2hrc-cqww` is a contest written out in full.
+
+## `chasing`
+
+Extension API 9. **For:** an award kept as a checklist: DXCC, WAS, parks
+hunted. The app keeps the best claim per line, shows the holder's progress,
+and ranks spots against it.
+
+**Called:** every program, isolated from each other; one that throws or
+times out answers nothing for that call.
+
+```ts
+registerHook("chasing", {
+  key: "w7abc-lakes",                                   // your key, or <key>_suffix: one extension may register several programs
+  hook: {
+    program: { label: "LLOTA", icon: "waves", version: 1, editions: "lifetime", refLabel: "lake" },
+    claimsForQsos({ qsos }, ctx) { /* { [uuid]: QsoClaim[] } */ },
+    holdersFor({ station }, ctx) { /* string[] */ },
+    summarizeClaims({ holder, edition, slots }, ctx) { /* { [key]: ClaimsTally } */ },
+    importClaims({ importer, file, station }, ctx) { /* { claims: ImportedClaim[], skipped? } */ },   // optional
+  },
+})
+// QsoClaim: { holder, ref, band: string | null, mode: string | null, level: 'worked' | 'confirmed' | 'verified', edition?, by?, label?, guess? }
+```
+
+- **`program`** is plain data, read across every extension without invoking
+  anything. `version`: raise it whenever the same contacts would claim
+  something different; the app keeps no claim from an older version.
+  `editions`: `lifetime`, `annual` (named by UTC year) or `event`.
+  `refLabel` is what one reference is called in a notice ("New POTA Park"),
+  the program's `label` when left out. `notices` words a verdict's notice
+  yourself (`newRef`, `newBand`, `newMode`, `unconfirmed`), with `{{band}}`
+  naming the band and `{{mode}}` the mode, through `modeLabels`, both
+  translatable under `translations` (`{ es: { notices, modeLabels } }`); a
+  verdict you leave out, or whose notice lacks the band or mode its words
+  name, reads the app's way, and a guess reads "Probably …" around your
+  words. `supersedes` names the scoring notices your verdicts stand in for
+  (DXCC: `newDXCC`). `icon` and `color` mark a spot your verdict alerts for.
+  `imports` lists the importers `importClaims` accepts, each
+  `{ key, label, extensions }`.
+- **`claimsForQsos`** answers every contact in the batch, by `uuid`, with
+  the slots it fills. A caller asking about something that is not a stored
+  contact (a spot, the call being typed) gives it a `uuid` of its own, and a
+  contact without one is left out. `band` and `mode` are explicit, `null`
+  meaning "any", and a program usually claims several granularities per
+  contact (DXCC: Mixed, the band, the mode); `mode` is the program's own
+  grouping, never mapped by the app. `level` is `worked`, `confirmed` (a QSL
+  the program accepts, from `qso.qsl`) or `verified` (sponsor credit, from
+  `qso.credits.<program>`). **It must be a pure function of each contact and
+  your own data, never of the log**, because the app asks it about spots,
+  and about contacts on a device that holds only part of the log. An empty
+  list is an answer, and so is one for an event marker (`band: 'event'`),
+  whose placeholder call is not a station. A contact's `our` carries the
+  place it was made from (`grid`, `lat`/`lon`; its own, or its operation's),
+  for a program that keeps a checklist per place; a spot candidate's `their`
+  carries the lookup's `guess.state` when an offline lookup knows one.
+- **`holdersFor`** lists the holders a station claims as, the opaque strings
+  you put on claims, so the app knows whose checklist to show: the first, in
+  the current edition. `station` carries its call and, when it has one, its
+  place, as a contact's `our` does. An `annual` program names its editions
+  by UTC year (`'2026'`); an `event` program's checklist has no current
   edition to show.
-- **`summarizeClaims`** reads one holder's filled slots (`{ref, band, mode,
-  level, label?}` each) into tallies, a `ScoreTally` without its `for`.
-- **`importClaims`**, for a program whose `program.imports` lists importers
-  (`{key, label, extensions}`), reads one file — `{name, text}` — that the
-  operator picked or dropped, for the station they chase as (`station`, its
-  call and place as `holdersFor` gets them). It answers the
-  claims the file makes, each a `QsoClaim` plus `at` (epoch millis, when the
-  slot was earned) if the file says, and `skipped`, the records it could not
-  read. Each claim is kept in the log as a claim record — an event row, so it
-  syncs with the log ([claims.md](../design/claims.md) §9) — and
-  `claimsForQsos` is never asked about one: the app reads the claim it holds.
-  The file is the whole of its importer's records: importing the same kind of
-  file again replaces every claim the last one gave, and a file answered with
-  no claims replaces nothing.
+- **`summarizeClaims`** reads one holder's filled slots
+  (`{ ref, band, mode, level, label? }` each) into tallies, a `ScoreTally`
+  without its `for`.
+- **`importClaims`** reads one file (`{ name, text }`) the operator picked or
+  dropped, for the station they chase as (`station`, as `holdersFor` gets
+  it), and answers the claims it makes, each a `QsoClaim` plus `at` (epoch
+  millis) if the file says when, and `skipped`, the records it could not
+  read. Each claim is kept in the log as a claim record and synced with it,
+  and `claimsForQsos` is never asked about one. The file is the whole of its
+  importer's records: importing the same kind of file again replaces every
+  claim the last one gave, and a file answered with no claims replaces
+  nothing.
 
-The host isolates programs from each other
-(`app/lib/services/extensions/extension_chasing.dart`): a program that throws
-or times out answers nothing for that call, and a contact with any
-malformed claim is left out of the answer, keeping the claims it already
-holds, since dropping one claim would read as the contact no longer making
-it. Both are reported once per program and method. The category is
-extension API 9: a bundle that registers a program declares `"api": 9`, which
-the packer enforces, so an older app — which would install it and never ask
-it anything — is never offered it.
+A contact with any malformed claim is left out of the answer, keeping the
+claims it already holds. The packer refuses a `chasing` hook under `api` 9,
+so an older app, which would install it and never ask it anything, is never
+offered it.
 
-Implemented by: `ham2k-dxcc` (catalog, pre-loaded; core `dxcc` until
-HALO-844) — Mixed, per-mode and per-band slots for the station call worked
-from each entity, worded "DXCC ATNO", "DXCC in CW", "DXCC in 80m"; LoTW and
-paper QSLs confirm, `credits.dxcc` verifies; the DXCC Challenge is a tally of
-its band slots. A stored goal for `dxcc` carries to it
-(`kRenamedChasePrograms`). `k2hrc-dxcc` is the SDK's worked example. `ham2k-pota` — one slot per park hunted, worked only; its
-hunted-parks export verifies. `ham2k-was` — Mixed, per-band and per-mode
-slots (plus FT8 and RTTY) for the station call worked from one 4-character
-grid; LoTW and paper QSLs confirm, `WAS` credit verifies.
+**Examples:** `k2hrc-dxcc` in the SDK's samples; `ham2k-dxcc`, `ham2k-was`
+and `ham2k-pota`'s hunted-parks program in
+[ham2k/extensions](https://github.com/ham2k/extensions).

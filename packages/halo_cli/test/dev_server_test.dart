@@ -3,7 +3,7 @@
 //
 // `halo-ext --dev-server`: running hooks against the extension an author is
 // editing, instead of the last thing they built
-// (HALO-118, docs/extensions/development.md).
+// (HALO-118, docs/extensions/in-repo.md#the-dev-server).
 //
 // The overlay is the interesting part. The dev server serves no kernel and only
 // the extensions it was asked to watch, so this cannot replace the built index

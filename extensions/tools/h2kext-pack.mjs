@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Packages an extension into a `.h2kext` a user can install
-// (HALO-422, docs/extensions/distribution.md).
+// (HALO-422, docs/extensions/packaging.md).
 //
 //   node tools/h2kext-pack.mjs <directory> [-o out.h2kext]
 //

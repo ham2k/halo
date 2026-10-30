@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The catalog bundles the app ships pre-loaded, held to what the catalog
-// serves (docs/extensions/distribution.md, "Pre-loaded extensions").
+// serves (docs/design/extension-install.md, "What the app builds in, and what it pre-loads").
 //
 //   node scripts/preloaded-extensions.mjs check
 //   node scripts/preloaded-extensions.mjs update [key…]

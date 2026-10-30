@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The app end of the extension dev loop (HALO-118, docs/extensions/development.md):
+// The app end of the extension dev loop (HALO-118, docs/extensions/in-repo.md#the-dev-server):
 // connects to the dev server an author is running, takes its extensions over the
 // ones baked into the app, and swaps one of them in place on every save.
 //

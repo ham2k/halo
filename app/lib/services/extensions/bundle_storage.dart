@@ -6,7 +6,7 @@
 // files in the app data directory natively, IndexedDB on web. Everything that
 // decides WHAT gets stored (the zip walk, the manifest rules, the key checks)
 // stays in InstalledExtensions and runs the same everywhere.
-// See docs/extensions/distribution.md, "Where installed bundles live".
+// See docs/design/extension-install.md, "Where installed bundles live".
 
 export 'bundle_storage_io.dart' if (dart.library.js_interop) 'bundle_storage_web.dart' show createBundleStorage;
 

@@ -181,7 +181,7 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   /// Where each installed extension's bytes came from, for the ones that
   /// arrived hash-verified from the extension catalog
-  /// (`{key: {host, sha256, version}}`, docs/extensions/distribution.md).
+  /// (`{key: {host, sha256, version}}`, docs/design/extension-install.md).
   /// The record is what waives the `ham2k-` key refusal for that key on
   /// every read, so it is written ONLY by an install whose bytes matched the
   /// catalog listing's sha256, and any other install of the same key clears

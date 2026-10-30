@@ -162,8 +162,15 @@ await writeFile(dts, `// @ham2k/extension-sdk ${version}\n${declared}`)
 ///
 /// Curated, because this repo's own inner loop is not an author's. The dev
 /// server and `halo-ext` need a checkout, `mise` and the app's built bundles —
-/// documented, they would send a reader after tooling they cannot run.
+/// documented (`in-repo.md`), they would send a reader after tooling they
+/// cannot run. `agents.md` ships too, but as the package's `AGENTS.md`.
 const shippedDocs = [
+  "README.md",
+  "getting-started.md",
+  "concepts.md",
+  "manifest.md",
+  "host.md",
+  "localization.md",
   "hooks.md",
   "lookups.md",
   "spots.md",
@@ -175,11 +182,16 @@ const shippedDocs = [
   "scenes.md",
   "radio.md",
   "accounts.md",
+  "settings.md",
   "forms.md",
   "templates.md",
-  "settings.md",
-  "distribution.md",
+  "packaging.md",
+  "publishing.md",
 ]
+
+/// The suggested AGENTS.md, written once in docs/extensions and shipped at the
+/// package root, where `h2kext-init`'s scaffold points an agent at it.
+const agentsDoc = "agents.md"
 
 const docsSrc = join(here, "../../docs/extensions")
 const docsOut = join(here, "docs")
@@ -191,7 +203,7 @@ const RELATIVE_LINK = /\]\((?!https?:|#|mailto:)([^)\s]+)\)/g
 await rm(docsOut, { recursive: true, force: true })
 await mkdir(docsOut, { recursive: true })
 
-for (const name of shippedDocs) {
+for (const name of [...shippedDocs, agentsDoc]) {
   const text = await readFile(join(docsSrc, name), "utf8")
 
   const rewritten = text.replace(RELATIVE_LINK, (whole, target) => {
@@ -232,7 +244,7 @@ for (const name of shippedDocs) {
     }
   }
 
-  await writeFile(join(docsOut, name), rewritten)
+  await writeFile(name === agentsDoc ? join(here, "AGENTS.md") : join(docsOut, name), rewritten)
 }
 
 /// How to run one. Short on purpose: the samples themselves are the document,

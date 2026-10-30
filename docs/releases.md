@@ -1071,7 +1071,7 @@ the same release-binding discipline Shorebird enforces for code pushes.
 The app builds in only its core extensions; everything else is a catalog
 bundle, and the ones a new install needs ship inside the binary as pre-loads
 (`app/assets/preloaded-extensions/`, see
-[distribution.md](extensions/distribution.md#pre-loaded-extensions)). A binary
+[extension-install.md](design/extension-install.md#what-the-app-builds-in-and-what-it-pre-loads)). A binary
 freezes them, so each release must carry the catalog's **current stable
 release** of every one: an older one starts every new install behind the
 catalog, and an install moving off the retired built-ins onto it offline, until

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 //
 // The `.h2kext` bundle format: what one contains, what makes one valid, and how
-// to write it (HALO-422, docs/extensions/distribution.md).
+// to write it (HALO-422, docs/extensions/packaging.md).
 //
 // Deliberately standalone. It imports nothing from this repo — not the bundle
 // list, not the esbuild options, not the SDK — because its whole purpose is to
@@ -483,7 +483,7 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   // discarded rather than refused. It is the one stale key certain to
   // arrive, because it is what every older manifest says.
   if (manifest.geo !== undefined) {
-    say("'geo' is now 'relevance' — rename it (docs/extensions/distribution.md)")
+    say("'geo' is now 'relevance' — rename it (docs/extensions/manifest.md)")
   }
 
   // `enabledByDefault` is the shipping app's answer for its OWN extensions,

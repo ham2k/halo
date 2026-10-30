@@ -3,7 +3,7 @@
 //
 // `ExtensionHost.reloadBundle` — swapping one extension's code while the rest
 // of the runtime keeps running, which is what the extension dev loop iterates
-// on (HALO-118, docs/extensions/development.md).
+// on (HALO-118, docs/extensions/in-repo.md#the-dev-server).
 //
 // The reason it needs its own tests rather than riding on the boot path: a
 // reload is the ONLY operation that removes something from the kernel's

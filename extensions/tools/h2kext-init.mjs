@@ -2,7 +2,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 //
-// Scaffolds an extension project (HALO-452, docs/extensions/distribution.md).
+// Scaffolds an extension project (HALO-452, docs/extensions/packaging.md).
 //
 //   npx h2kext-init <yourcallsign>-<name>
 //

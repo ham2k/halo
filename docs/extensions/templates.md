@@ -1,13 +1,11 @@
 # Templates
 
-One templating engine for every place HaLo turns log data into text: a
-panel's document, an export's filename, an ADIF field. One vocabulary too —
-`{{ op.station }}` means the same thing wherever it appears.
+One templating engine for every place the app turns log data into text: a
+panel's document, an export's filename, an ADIF field, a CW message. One
+vocabulary too: `{{ op.station }}` means the same thing wherever it appears.
 
-The engine is **[Liquid](https://liquidjs.com)** (`liquidjs`), a kernel
-shared module wrapped by `sdk/src/templates.ts`. Everything goes through that
-wrapper: it owns the option set, and a second engine built elsewhere would
-disagree about timezones without anyone noticing.
+The engine is [Liquid](https://liquidjs.com), `liquidjs`, which the app
+carries and every bundle reaches through the SDK's wrapper:
 
 ```ts
 import { renderTemplate, templateContext, triggersForTemplate } from "@ham2k/extension-sdk"
@@ -15,171 +13,130 @@ import { renderTemplate, templateContext, triggersForTemplate } from "@ham2k/ext
 const text = renderTemplate("{{ op.station }} — {{ op.qsoCount }} QSOs", templateContext({ operation, qsoCount }))
 ```
 
-## Why Liquid rather than app-polo's Handlebars
-
-A template is DATA. Liquid parses and interprets; Handlebars compiles
-through `new Function`. These templates are written by operators, copied
-between operators, and are editable in settings, so the one
-that cannot become code is the one to have. Liquid also has comparisons
-(`{% if op.qsoCount > 100 %}`) and loops built in, where Handlebars needs a
-registered helper for `>` and Mustache cannot compare at all.
-
-Measured in the shipped QuickJS-NG build: 80 KB minified (24 KB gzipped),
-6 ms to evaluate at startup, 0.33 ms per parse+render of a small template —
-and parsed templates are cached, so repeated renders of one document cost
-about 2 µs each.
-
-**Porting from PoLo**: the plain majority of polo's templates —
-`{{ op.date }} {{ log.station }} at {{ log.ref }}` — parse unchanged, because
-the namespaces are deliberately polo's. The syntax around them does not:
-`{{#if}}` is `{% if %}{% endif %}`, `{{#each}}` is `{% for %}{% endfor %}`,
-`{{> Partial}}` has no equivalent, and helpers are filters
-(`{{ dash x }}` → `{{ x | dash }}`). polo's
-`{{#join op.refs separator=", " final=" & "}}{{or shortLabel label key}}{{/join}}`
-is `{{ op.refs | refLabels | sentence }}`.
+Always go through the wrapper rather than constructing a `Liquid` of your
+own: it owns the options, and UTC is one of them. Liquid because a template
+is **data**. It parses and interprets rather than compiling to code, which
+matters for text operators write, copy from each other and edit in
+Settings; and it has comparisons and loops built in.
 
 ## What a template can name
 
-| namespace | panel `render` | export filename | ADIF fields | CW message |
-|---|---|---|---|---|
-| `app` | ✓ | — | ✓ | ✓ |
+| Namespace | Panel `render` | Export filename | ADIF fields | CW message |
+| --- | --- | --- | --- | --- |
+| `app` | ✓ | | ✓ | ✓ |
 | `now` | ✓ | ✓ | ✓ | ✓ |
 | `op` | ✓ | ✓ | ✓ | ✓ |
-| `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed — in ESM's thanks, the contact as logged |
-| `next` | — | — | — | ESM's thanks only |
-| `config` | ✓ | — | — | — |
-| `log` | — | ✓ | ✓ | — |
-| `keyer` | — | — | — | ✓ (and the keyer area's labels) |
+| `qso` | when the placement's triggers ask for it | | ✓ | the draft, as far as it is typed; in the thanks after logging, the contact as logged |
+| `next` | | | | the thanks after logging only |
+| `config` | ✓ | | | |
+| `log` | | ✓ | ✓ | |
+| `keyer` | | | | ✓, and the keyer area's labels |
 
-A namespace a surface has nothing for is **absent**, not blank — which is
-what makes `{% if qso %}` an honest question. Registered exports get the operation plus the selected file’s `log` values.
-The low-level `exportFilename(parts)` helper still supplies only dates and
-filename parts.
+A namespace a surface has nothing for is **absent**, not blank, which is what
+makes `{% if qso %}` an honest question.
 
 ### `app`
-`app.name` — the platform-appropriate name ("Ham2K Logger" on desktop,
-"Ham2K Portable Logger" on mobile).
+
+`app.name`: the app's name on this platform.
 
 ### `now`
+
 An ISO-8601 UTC string, for the `date` filter: `{{ now | date: '%H:%M' }}`.
+On a panel it is refreshed on a 30-second tick, so show minutes, not
+seconds.
 
-### `op` — the operation
+### `op`, the operation
+
 `station` (the field as typed, which may hold several comma-separated
-callsigns; `call` is the same value, the name `qso.call` has), `stations`
-(that list, uppercased and deduped), `operator` (who is at the key on this
-device, empty when nobody is named),
-`title` (the generated, ref-derived one), `userTitle` (the operator's own
-words), `grid`, `refs`, `uuid`, `qsoCount`, `date`, `dateCompact`, `time`,
-`at`, `startDate`, `startTime`, `startAt`, `endDate`, `endTime`, `endAt`.
+callsigns; `call` is the same value), `stations` (that list, uppercased and
+deduplicated), `operator` (who is at the key on this device, empty when
+nobody is named), `title` (the generated, reference-derived one),
+`userTitle` (the operator's own words), `grid`, `refs`, `uuid`, `qsoCount`,
+`date`, `dateCompact`, `time`, `at`, `startDate`, `startTime`, `startAt`,
+`endDate`, `endTime`, `endAt`.
 
-`endDate` / `endTime` / `endAt` are the LAST CONTACT'S START — an operation
-row records when its final QSO began and not when it ended, so a template
-printing `{{ op.startTime }}–{{ op.endTime }}` understates the session by
-that contact's length.
+`endDate`, `endTime` and `endAt` are the **last contact's start**: an
+operation records when its final contact began, not when it ended.
 
-### `qso` — one contact
-`call`, `fullCall`, `partial`, `nextCall`, `nextPartial`, `state`, `name`, `their`, `our` (both whole, so `qso.their.guess.name` reaches the
-lookup's answer), `band`, `mode`, `freq`, `rstSent`, `rstRcvd`, `serialSent`,
+The `start…` and `end…` values, and `op.date`, are empty where the caller
+did not supply the span: a panel's render and an export have it; a surface
+that does not renders empty rather than inventing today's date.
+
+### `qso`, one contact
+
+`call`, `fullCall`, `partial`, `nextCall`, `nextPartial`, `state`, `name`,
+`their`, `our` (both whole, so `qso.their.guess.name` reaches the lookup's
+answer), `band`, `mode`, `freq`, `rstSent`, `rstRcvd`, `serialSent`,
 `serialRcvd`, `notes`, `date`, `dateCompact`, `time`, `at`, `startAtMillis`,
-`refs` — and two short forms for the sent side, `rst` (= `rstSent`) and
-`serial` (= `serialSent`), since a CW message is what we send and that is
-where these get typed: `{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}`.
+`refs`, and two short forms for the sent side, `rst` and `serial`, since a
+CW message is what we send: `{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}`.
 
-In a draft, `call` is ONE call, read at the cursor as the call-info line
-reads it — not the field as typed, which may hold a `//` stack or a comma
-list ([logging-fields.md](../design/logging-fields.md)). On a stack it is
-the call Enter logs, or — when there is none — the partial under the
-cursor, or the nearest one beside it when the cursor sits in an empty
-segment a just-typed `//` opened; in
-a comma list, where Enter logs every call, it is the one the cursor is on.
-`their.call` stays the field as typed. On a stack, two more name the rest of
-it: `nextCall`, the call the Enter after this one would log, and
-`nextPartial`, the last entry left in the field once this one logs —
-usually the call still being copied. With `KN2//KI2D//NK2Y//FR` and the
-cursor at the end, that is `NK2Y`, `KI2D` and `FR`; with the cursor on
-`KI2D`, it is `KI2D`, `NK2Y` and `FR`. Both are empty outside a stack and on
-a logged contact.
+- In a draft, **`call` is one call, read at the cursor**, not the field as
+  typed. On a `//` stack it is the call Enter logs, or, when there is none,
+  the partial under the cursor, or the nearest one beside it when the cursor
+  sits in an empty segment a just-typed `//` opened; in a comma list, where
+  Enter logs every call, it is the one the cursor is on. `their.call` stays
+  the field as typed. On a stack, `nextCall` is the call the Enter after this
+  one would log and `nextPartial` the last entry left in the field once this
+  one logs, usually the call still being copied: with `KN2//KI2D//NK2Y//FR`
+  and the cursor at the end, `call`, `nextCall` and `nextPartial` are `NK2Y`,
+  `KI2D` and `FR`; with the cursor on `KI2D`, they are `KI2D`, `NK2Y` and
+  `FR`. Both are empty outside a stack and on a logged contact.
+- `call` may be a partial still being copied, right for asking it back
+  (`{{ qso.call }}?`) and wrong for answering it. `fullCall` is `call` when
+  it reads as a callsign and blank otherwise; `partial` is the reverse;
+  exactly one of them is `call`, so a message can branch:
+  `{% if qso.fullCall != blank %}…{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`.
+  A logged contact's call is always a `fullCall`.
+- `state` and `name` are what was typed, else what the lookup found, and
+  `name` is only the first word, since `GM {{ qso.name }}` is a greeting.
+  The whole name is `qso.their.name` or `qso.their.guess.name`.
+- `rstSent` is what we sent. `serialSent` and `serialRcvd` are a contest's
+  serials, blank outside one, found by field name on the first ref carrying
+  `ourSerial`/`theirSerial`; in a CW message `serialSent` is the number the
+  serial field is showing, unpadded (`7`, not `007`): use `pad`.
 
-`call` may be a partial still being copied, which is right for asking it
-back (`{{ qso.call }}?`) and wrong for answering it. `fullCall` is `call`
-when it reads as a callsign and blank otherwise; `partial` is the reverse.
-Exactly one of them is `call`, so a message can branch on which:
-`{% if qso.fullCall != blank %}…{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`.
-A logged contact's call is always a `fullCall`.
+### `next`, the contact up next
 
-`state` and `name` are what was typed, else what the lookup found
-(`their.state` or `their.guess.state`, likewise for the name) — and `name`
-is only the first word, since `GM {{ qso.name }}` is a greeting, not a
-directory entry. Reach the whole name through `qso.their.name` /
-`qso.their.guess.name`.
+Only in the thanks rendered after a contact logs: the entry the log left,
+shaped like a draft's `qso`, with the rest of a `//` stack back in the
+field, so `next.call` is the station to answer next or a partial to ask
+back. In that same thanks, `qso` is the contact as it was saved, with
+whatever an extension's `processQsoBeforeSave` added and the serial it was
+logged with.
 
-Enter Sends Messages renders its thanks AFTER the contact logs
-([logging-fields.md](../design/logging-fields.md) § Enter Sends Messages):
-`qso` is the contact as it was saved, with whatever an extension's
-`decorateQsoBeforeSave` added, and the serial it was logged with.
+### `config`, a panel's own form values
 
-`rstSent` is what WE sent — QSON stores each side's report under its own
-`sent`, and these are named for the operator's view of the contact.
+Whatever the panel's `form` declared, under the keys it used.
 
-`serialSent` / `serialRcvd` are a contest's serial numbers, blank outside
-one. A contest keeps them on its own ref, so they are found by field name —
-the first ref carrying `ourSerial` / `theirSerial` — which is what lets one
-message serve every serial contest (docs/design/contests.md §5.8). In a CW
-message `serialSent` is the number the serial field is SHOWING, the one the
-QSO will be logged with — in ESM's thanks, the one it WAS logged with. It is
-unpadded (`7`, not `007`): use `pad`.
+### `log`, one export
 
-### `next` — the contact up next
-Only in Enter Sends Messages' thanks, beside a `qso` just logged: the entry
-the log left, in the same shape as a draft's `qso` — wiped, with the rest of
-a `//` stack back in the field, so `next.call` is the station to answer
-next, or a partial to ask back. Absent everywhere else.
-
-### `config` — a panel's own form values
-Whatever that panel's `form` declared, under the keys it used.
-
-### `log` — one export
 `station`, `ref`, `refName`, `refShortName`, `activity`, `handlerName`,
 `handlerShortName`, `format`, `exportType`, `modifier`, `extension`,
 `compact`.
 
-### `keyer` — the CW messages
-`msg1` … `msg8`: the active set's messages, each RENDERED against the same
-context, so one message can include another —
-`TU {{ keyer.msg1 }}` thanks the station and calls CQ again with whatever F1
-holds. A message is expanded only where a template names it, so a branch
-not taken costs nothing — which is what lets ESM's thanks answer the next
-stacked caller or ask a partial back, and send nothing more when there is
-neither:
-`TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}`.
-An included message renders against the same context — there, the `qso`
-just logged, not `next`.
+### `keyer`, the CW messages
 
-A message that reaches itself — directly, or through others — is an error
-naming the loop (`a message includes itself: F3 → F1 → F3`), and like any
-template error it keys nothing: a message that quietly dropped the part that
-looped would go on the air looking fine. A label may name its own message;
-only a message being SENT is part of the chain.
+`msg1` … `msg8`: the active set's messages, each rendered against the same
+context, so one message can include another: `TU {{ keyer.msg1 }}`. A
+message is expanded only where a template names it, so a branch not taken
+costs nothing, which is what lets a thanks answer the next stacked caller or
+ask a partial back and send nothing more when there is neither:
+`TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}`.
+An included message renders against the same context (there, the `qso` just
+logged, not `next`). A message that reaches itself, directly or through
+others, is an error naming the loop (`a message includes itself: F3 → F1 →
+F3`), and like any template error keys nothing. A label may name its own
+message; only a message being sent is part of the chain.
 
 ## Timestamps
 
-Two forms, and the rule is worth learning once:
-
-- **`…At` fields are ISO-8601 UTC strings** — feed these to the `date`
+- **`…At` values are ISO-8601 UTC strings.** Feed these to the `date`
   filter: `{{ qso.at | date: '%H:%MZ' }}`.
-- **`date` / `dateCompact` / `time` are preformatted UTC** —
-  `2026-07-27`, `20260727`, `1430`.
+- **`date`, `dateCompact` and `time` are preformatted UTC**: `2026-07-27`,
+  `20260727`, `1430`.
 
-Everything is UTC. A log is kept in UTC, and a filename that shifted with
-the reader's zone would name the wrong day.
-
-**`op`'s dates can be empty.** `startAtMillisMin`/`startAtMillisMax` are
-columns on the operation row, not keys in the QSON `data` a hook is handed,
-so they arrive only where the caller adds them: the panel host does, and the
-ADIF export passes the first QSO's time instead. Where neither happens,
-`op.date` and the `start…`/`end…` fields render empty rather than falling
-back to today — a pane showing yesterday's log must not print today's date
-with nothing to say it was invented.
+Everything is UTC.
 
 ## Filters
 
@@ -187,130 +144,89 @@ All of Liquid's own (`date`, `downcase`, `upcase`, `strip`, `default`,
 `join`, `size`, `first`, `last`, `round`, `truncate`, `replace`, `map`,
 `where`, …), plus six:
 
-| filter | does | example |
-|---|---|---|
-| `dash` | non-alphanumerics → `-`, collapsed and trimmed, **case preserved** | `N0CALL/P` → `N0CALL-P` |
+| Filter | Does | Example |
+| --- | --- | --- |
+| `dash` | non-alphanumerics to `-`, collapsed and trimmed, **case preserved** | `N0CALL/P` → `N0CALL-P` |
 | `alnum` | strip to alphanumerics | `2026-07-27` → `20260727` |
 | `pad: n` | zero-pad on the left to `n` characters (default 3); **blank stays blank** | `7` → `007` |
-| `cut: "digits"` | CW cut numbers for the listed digits, of `0`→`T` `1`→`A` `5`→`E` `9`→`N`; default `"09"` | `599` → `5NN`, `{{ 9 \| pad: 3 \| cut }}` → `TTN` |
-| `refLabels` | a list of refs → each one's `shortLabel`, else `label`, else `ref`; a ref with none of them is skipped — an operation's contest ref HAS a label (`CQ WPX CW`) and is listed | `op.refs` → `POTA US-1234`, `KFF-9999` |
-| `sentence: "sep", "final"` | joins a list with a different LAST separator (defaults `", "` and `" & "`); blanks are dropped | `A, B & C`, `A & B` |
+| `cut: "digits"` | CW cut numbers for the listed digits, from `0`→`T` `1`→`A` `5`→`E` `9`→`N`; default `"09"` | `599` → `5NN`; `{{ 9 \| pad: 3 \| cut }}` → `TTN` |
+| `refLabels` | a list of refs to each one's `shortLabel`, else `label`, else `ref`; a ref with none is skipped | `op.refs` → `POTA US-1234`, `KFF-9999` |
+| `sentence: "sep", "final"` | joins a list with a different last separator (defaults `", "` and `" & "`); blanks dropped | `A, B & C`, `A & B` |
 
 `pad` leaves a blank alone because a CW message can be keyed before the
 serial field has a number, and `000` sent in that gap is a serial the log
-will never agree with. Order matters with `cut`: pad first, or the padding
-zeros go out uncut.
-
-`refLabels` exists because `map` reads one field: `map: "shortLabel"` drops a
-reference that resolved to nothing, since it carries no labels — an
-operation at an unlisted park would print as though it had none. Liquid's own
-`array_to_sentence_string` is the near miss for `sentence`: it always writes
-the serial comma (`A, B, & C`).
+will never agree with. Pad before you cut, or the zeros go out uncut.
+`dash` keeps case because callsigns and references stop being legible
+flattened; `{{ x | downcase | dash }}` is the slug form for free text.
 
 ### Fallbacks
 
-`default` chains, taking the first value that isn't blank — and the values
-above are `""` when there is nothing to say, which counts as blank:
+`default` chains, taking the first value that is not blank, and the values
+above are `""` when there is nothing to say:
 
 ```liquid
-{{ qso.their.state | default: qso.their.guess.state | default: qso.their.county | default: "none" }}
+{{ qso.their.state | default: qso.their.guess.state | default: "none" }}
 ```
 
-The same as a tag, for when each branch wants more than one value. Compare
-against `blank` rather than testing the bare value: in Liquid only `nil` and
-`false` are false, so `{% if "" %}` takes the branch and prints nothing.
+As a tag, compare against `blank` rather than testing the bare value, since
+in Liquid only `nil` and `false` are false:
 
 ```liquid
-{% if qso.their.state != blank %}{{ qso.their.state }}{% elsif qso.their.county != blank %}{{ qso.their.county }}{% else %}none{% endif %}
+{% if qso.their.state != blank %}{{ qso.their.state }}{% else %}none{% endif %}
 ```
-
-`alnum` is app-polo's `compact` helper under a different name: Liquid already
-has a `compact` (it drops nils from an **array**, and `op.refs`/`qso.refs` are
-arrays), and `registerFilter` overwrites without warning, so taking that name
-would silently break templates written against Liquid's own documentation.
-
-`dash` keeps case because callsigns and references are written in capitals
-and stop being legible flattened. For free text, `{{ x | downcase | dash }}`
-is the slug form.
 
 ## Traps
 
-Each of these was measured against the shipped runtime, not assumed.
-
-**An empty string is TRUE.** In Liquid only `nil` and `false` are falsy, so
-`{% if log.modifier %}` fires on `""`. Ask for blankness explicitly:
-`{% if log.modifier != blank %}`.
-
-**A raw millisecond timestamp is not a date.** The `date` filter reads a
-number as SECONDS, so epoch millis render in the year 58567. Use the `…At`
-strings.
-
-**`cut`'s digit list must be quoted.** Liquid reads a bare `0159` as the
-number 159 before the filter sees it, so `{{ n | cut: 09 }}` cuts only the
-nines — the zero is gone with no error. Write `cut: "09"`.
-
-**Unknown names are silent.** An unknown variable renders empty and an
-unknown filter passes its value through. That is deliberate — an operator's
-typo costs one line, not the document — but it means a misspelled
-`{{ op.stationCall }}` looks like missing data rather than a mistake.
-
-**Text written before templating existed can lose a span.** `{{ TODO }}` in
-an old note is a perfectly valid reference to a variable that doesn't exist,
-so it renders as nothing at all rather than as an error — the note quietly
-comes back a few words shorter. Only clearly broken syntax (`{% if` with no
-`{% endif %}`) reports itself; `custom-text` then shows the message with the
-operator's own text intact below it, because a pane that answered by
-deleting what somebody wrote would be the worse failure.
-
-**Literal braces need `{% raw %}`.** That is also the fix for the case
-above: wrap the passage and it renders as typed.
-
-**`{% include %}` throws.** There is no filesystem in the runtime. Partials
-would have to be supplied in memory.
-
-**Loops are bounded by time, not by iterations.** A render is abandoned
-after 250 ms with a `TemplateError` naming the limit.
+- **An empty string is true.** `{% if log.modifier %}` fires on `""`. Ask
+  `{% if log.modifier != blank %}`.
+- **A raw millisecond timestamp is not a date.** The `date` filter reads a
+  number as seconds. Use the `…At` strings.
+- **`cut`'s digit list must be quoted.** A bare `0159` is read as the number
+  159 before the filter sees it. Write `cut: "09"`.
+- **Unknown names are silent.** An unknown variable renders empty and an
+  unknown filter passes its value through, so a misspelled `{{ op.stationCall }}`
+  looks like missing data rather than a mistake.
+- **Literal braces need `{% raw %}`.** Text written before a surface was
+  templated can lose a span, since `{{ TODO }}` is a valid reference to a
+  variable that does not exist.
+- **`{% include %}` throws.** There is no filesystem.
+- **Loops are bounded by time.** A render is abandoned after 250 ms with a
+  `TemplateError` naming the limit.
 
 ## Errors
 
-`renderTemplate` throws `TemplateError`, carrying Liquid's own message with
-the line and column. It does not fall back: a broken template is either an
-operator's typo, which they can only fix if they are told, or a bug in one
-of ours, which tests should catch. Where the template is the operator's,
-show them the message — `custom-text` renders it in the pane.
+`renderTemplate` throws `TemplateError`, carrying Liquid's message with the
+line and column, and does not fall back. Where the template is the
+operator's, show them the message; a panel that answered a typo by deleting
+what somebody wrote would be the worse failure.
 
 ## Panel triggers
 
 `triggersForTemplate(text)` reports which panel triggers a template needs,
-derived from the namespaces it names: `qso` → `qso` + `lookup`, `qsoCount` →
+from the namespaces it names: `qso` → `qso` and `lookup`, `qsoCount` →
 `qsoLogged`, `op` → `operation`, `now` → `tick:30`. A panel rendering
-operator-written text passes these back as `PanelContent.triggers`
-([panels.md](panels.md)), so each pane pays only for what its own text asks for.
+operator-written text passes these back as the render result's `triggers`
+([Panels](panels.md#the-render-results-other-fields)), so each pane pays
+only for what its own text asks for. Only `{{ … }}` and `{% … %}` spans are
+read, never the prose around them ("Goal: 100 qso today" is a note, not a
+request to be woken per keystroke); inside a span it is deliberately
+generous, so `{% if qso %}` counts as naming the QSO.
 
-Only `{{ … }}` and `{% … %}` spans are read, never the prose around them —
-"Goal: 100 qso today" is a note, not a request to be woken per keystroke.
-Inside a span it is deliberately generous: `{% if qso %}` counts as naming
-the QSO, since a false negative shows stale text with no clue why.
+## Where templates are used
 
-`now` is refreshed on a **30-second** tick, so `{{ now | date: '%H:%M:%S' }}`
-will jump rather than count. Show HH:MM.
+| What | Editable by the operator |
+| --- | --- |
+| Panel documents | in the panel's configuration form |
+| Export filenames and titles | Settings → Exports, globally and per export type |
+| ADIF `NOTES`, `COMMENT` and `QSLMSG` | Settings → Exports; an empty template suppresses the field |
+| CW messages | in the CW Keyer dialog |
 
-## Where templates are used today
-
-| what | where | editable |
-|---|---|---|
-| Panel documents | `custom-text`'s content and tab name | by the operator, in the panel's config form |
-| Export filenames and titles | Registered export types and `sdk/src/exportSettings.ts` | Settings → Exports, globally and per type |
-| ADIF NOTES / COMMENT / QSLMSG | Export type settings, consumed by `core/adif` | Settings → Exports; empty templates suppress a field |
-| CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (commands.md) | by the operator, in the CW Keyer dialog (Settings → Radio, or the Station dialog's keyer row) |
-
-NOTES and COMMENT default to QSO notes and are withheld when private data
-is off. QSLMSG defaults to empty for program exports, and for the whole-log
-ADIF to the operation’s references as `refLabels | sentence` names them —
-“POTA US-0001 & WWFF KFF-0002”. Custom QSL messages may use contact values.
-Templates receive no withheld private or lookup values. File titles obey the
-private-data choice; filename templates are labels for the operator’s files.
-
-The `textTemplate` form field provides sample previews and an insertable
-reference; see [forms.md](forms.md). Invalid Liquid reports an error rather
-than silently replacing the operator’s template with a default.
+`NOTES` and `COMMENT` default to the contact's notes and are withheld when
+private data is off. `QSLMSG` defaults to empty for a program's export, and
+for the full log to the operation's references as `refLabels | sentence`
+names them; a custom QSL message may use the contact's values. Templates
+receive no withheld private or lookup values. File titles obey the
+private-data choice; filename templates are labels for the operator's own
+files. The SDK's `exportFilename` helper is not templated: it supplies the
+dates and the name parts, and the templated names come from registered
+export types.

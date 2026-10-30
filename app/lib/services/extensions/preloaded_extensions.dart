@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The extensions the app ships already packaged (docs/extensions/distribution.md).
+// The extensions the app ships already packaged (docs/design/extension-install.md).
 //
 // The app builds in only its core extensions. Everything else is a catalog
 // bundle: some shipped as `.h2kext` files under `assets/preloaded-extensions/`

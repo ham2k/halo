@@ -3,7 +3,7 @@
 //
 // Once the boot has put back what it can on its own, the extensions the
 // operator installed that the store no longer holds: offered at start until
-// each is back or forgotten (docs/extensions/distribution.md, "When the store
+// each is back or forgotten (docs/design/extension-install.md, "When the store
 // is lost").
 
 import 'dart:async';

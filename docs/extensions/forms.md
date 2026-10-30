@@ -1,357 +1,193 @@
-# Form description schema
+# Forms
 
-Extensions can use the Form description schema to request user input through complex forms rendered in either a modal dialog or a dedicated view screen.
+One form schema serves every place an extension asks the operator for
+input: a dialog it opens itself with `host.showForm`, a form the app asks
+for by key through the `form` category, a [settings panel](settings.md),
+and a [panel](panels.md)'s configuration. A form is a list of fields,
+headers, dividers, markdown blocks, links and action buttons, with initial
+values and optional validation and transformation callbacks that run back in
+your extension.
 
-Forms are structured as a list of fields, headers, section dividers, and markdown text blocks. They also support initial state values and asynchronous validation/transformation callbacks executed back in the JavaScript runtime.
-
----
-
-## Form Definition Schema
-
-All types are defined in `extensions/sdk/src/types.ts`.
+## The schema
 
 ```ts
-export type FormFieldType =
-  | 'text'
-  | 'multiline'
-  | 'textTemplate'
-  | 'email'
-  | 'callsign'
-  | 'number'
-  | 'select'
-  | 'radio'
-  | 'checkbox'
-  | 'secret'  // obscured text, e.g. passwords/API keys
-  | 'list'    // a repeatable list of items, each shaped like itemFields
-  | 'account'; // a read-only reference into the separate account hook system
+type FormFieldType =
+  | "text" | "multiline" | "textTemplate" | "email" | "callsign" | "number"
+  | "select" | "radio" | "checkbox" | "multiselect"
+  | "secret"       // obscured text: a password, an API key
+  | "list"         // a repeatable list of items, each shaped like itemFields
+  | "account"      // a read-only reference into the account system
 
-export interface FormFieldOption {
-  label: string;
-  value: any;
+interface FormField {
+  type: "field"
+  fieldType: FormFieldType
+  key: string
+  label: string
+  value?: any                   // initial value, unless the state passed to the form has one
+  placeholder?: string
+  uppercase?: boolean           // force typed input to uppercase; callsign fields always are
+  options?: { label: string; value: any; common?: boolean; uncommon?: boolean }[] | string   // select, radio, multiselect; or a "$core.…" system list
+  validate?: (value, state) => string | null | undefined | Promise<…>
+  transform?: (value, state) => any | Promise<any>
+  // text: codes the field takes, offered under it as the operator types (matched on code and
+  // name) and named beside it; a value that is none of them shows in red with a `?` once the
+  // operator pauses or leaves the field, but Save still writes what was typed. `standalone`
+  // marks a code valid only as the whole value, never inside a multiValue list. A settings list
+  // row, a field with an icon, and an older app render the plain text field instead
+  suggestions?: { code: string; name?: string; standalone?: boolean }[]
+  multiValue?: { separator: string; inheritPrefix?: number }   // with suggestions: several codes joined by `separator` (ALB/SCH), each suggested, named and checked on its own
+  transforms?: { pattern: string; replacement: string; flags?: string }[]  // live reformatting passes: ALB,SCH becomes ALB/SCH
+  // secret, in a settings list: what the row says while a value is stored
+  storedText?: string
+  // list
+  itemFields?: FormField[]
+  itemTitle?: string            // "${name} — ${exchange}": templated against the item, `${key}` not Liquid
+  itemLabel?: string            // singular noun for one item, for the editor's titles and its Add button; defaults to `label`
+  orderable?: boolean
+  itemSwitch?: string           // the key of an on/off value in each item, shown as a switch on its row
+  inline?: boolean              // render the rows in the form itself rather than behind a summary row
+  // account
+  account?: { key: string; subkey?: string }
+  // textTemplate
+  templateContext?: "export" | "adif" | "text"
+  templateSample?: Record<string, JSONValue>
+  // multiselect: the string list its Defaults button restores; textTemplate: the string its Reset
+  // button restores (the SDK types it as a list, so a textTemplate's needs a cast)
+  defaultValue?: any
+  // visibility and placement; see below and Settings panels
+  devMode?: boolean
+  common?: boolean
+  environment?: string | string[]
+  target?: string | string[]
+  restartOnChange?: boolean
 }
+// A settings panel's SettingsField is a FormField without the validate/transform closures,
+// plus pattern?, patternError? and aliases?: string | string[]
 
-export interface FormField {
-  type: 'field';
-  fieldType: FormFieldType;
-  key: string;
-  label: string;
-  value?: any; // initial state value if not provided in host call state
-  placeholder?: string;
-  uppercase?: boolean; // force typed input to uppercase (callsign fields always are)
-  // Only used when fieldType === 'secret' in a settings list: what the row
-  // says while a value is stored, in place of the fixed mask. A host older
-  // than this shows the mask.
-  storedText?: string;
-  // Only used when fieldType === 'text': the codes the field takes, offered
-  // in a list under it as the operator types (matched on code and name, as a
-  // `kind: 'options'` logging control matches) and named beside it — a value
-  // that is none of them shows in red with a `?` once the operator pauses or
-  // leaves the field. Flagged, never refused: Save writes what was typed.
-  // `standalone` marks a code valid only as the WHOLE value, never inside a
-  // multiValue list. A host older than this renders the plain text field, and
-  // so does a settings list (or a field with an `icon`), which edits text in a
-  // dialog row of its own.
-  suggestions?: { code: string; name?: string; standalone?: boolean }[];
-  // Only used with `suggestions`: the field holds several codes joined by
-  // `separator` (a QSO party county line, `ALB/SCH`), each suggested, named
-  // and checked on its own. `inheritPrefix` as on a logging control's.
-  multiValue?: { separator: string; inheritPrefix?: number };
-  // Only used with `suggestions`: live-reformatting passes as a logging
-  // control's `transforms` — a county line typed `ALB,SCH` becomes `ALB/SCH`.
-  transforms?: { pattern: string; replacement: string; flags?: string }[];
-  options?: FormFieldOption[]; // required for select/radio
-  validate?: (value: any, state: Record<string, any>) => string | null | undefined | Promise<string | null | undefined>;
-  transform?: (value: any, state: Record<string, any>) => any | Promise<any>;
-  // Only used when fieldType === 'list'. `value` is then a
-  // Record<string, any>[]; each item is shaped like itemFields. By default
-  // the field renders as one summary row (from itemTitle, templated
-  // against the item's values, e.g. "${name}" — NOT "{{name}}") that opens
-  // an editor dialog with per-item rows and Add; `inline: true` instead
-  // renders those rows (with a reorder handle per row, and an Add row)
-  // directly in the form, skipping that outer dialog — for a list that's the
-  // main content of its own section. Either way, tapping a row (or Add)
-  // opens the same itemFields editor dialog (the form renderer recursively,
-  // scoped to itemFields), whose footer holds Delete for an existing item,
-  // which asks the operator to confirm.
-  itemFields?: FormField[];
-  itemTitle?: string;
-  orderable?: boolean;
-  // The key of an on/off value in each item, set from a switch at the end of
-  // the item's row; leave it out of itemFields. An item without the key reads
-  // as on. An app that predates this shows no switch.
-  itemSwitch?: string;
-  inline?: boolean;
-  // Singular noun for one item (e.g. "custom note file"), used in the
-  // editor dialog's Add/Edit titles and the Add button instead of `label`
-  // — which names the list as a whole and is typically plural. Defaults to
-  // `label` when omitted.
-  itemLabel?: string;
-  // Only used when fieldType === 'account'. See settings.md's "account
-  // field type" section — this never defines or stores account data
-  // itself, it's a pointer into the separate `account` hook system.
-  account?: { key: string; subkey?: string };
-  // Hidden entirely unless the app's developer mode is on; when shown,
-  // rendered in the orange "dev mode" accent (label/icon/subtitle tinted,
-  // no badge or border — matches app-polo's `styles.colors.devMode`
-  // convention). Every FormElement variant below supports this, not just
-  // fields — a whole section header can be dev-mode-only too.
-  devMode?: boolean;
-  // Settings-panel-only (ignored in ad hoc forms) — see settings.md's
-  // "Common Preferences and environment gating". Also shows this field on
-  // the app's Common Preferences quick-access panel.
-  common?: boolean;
-  // Settings-panel-only. Restricts which platform(s) show this field at
-  // all: one or more platform tokens (`ios`, `android`, `macos`,
-  // `windows`, `linux`, `web`), comma-separated or as an array. Unprefixed
-  // tokens are a whitelist; `-`-prefixed tokens are a blacklist. See
-  // settings.md.
-  environment?: string | string[];
-  // Settings-panel-only. Opts this field into a target-scoped settings
-  // modal elsewhere in the app — see settings.md's "Settings targets".
-  target?: string | string[];
-  // Only meaningful within a `kind: 'dynamic'` settingsPanel. After this
-  // field commits, the app restarts the extension runtime — for a value
-  // only consulted at onActivation (e.g. a list of URLs to register as
-  // dataFile hooks). See settings.md's Tier 2 section.
-  restartOnChange?: boolean;
+interface FormHeader {
+  type: "header"
+  title: string
+  subtitle?: string
+  style?: "default" | "section" | "category"   // plain text, the accent band over a hairline, the filled band
+  // a "section" folds the rows under it, up to the next band or a sectionEnd, and the app remembers
+  // how the operator left each one; `collapsed` starts it shut, `key` (unique within the panel) names
+  // it for that memory, else the title does and a reworded heading forgets the fold; both ignored
+  // for any other style
+  collapsed?: boolean
+  key?: string
+  devMode?: boolean
+  environment?: string | string[]
 }
+interface FormSectionEnd { type: "sectionEnd" }   // ends the band above it; rows after it belong to no band and do not fold with it
+interface FormSectionDivider { type: "divider"; title?: string; devMode?: boolean; environment?: string | string[] }
+interface FormMarkdownBlock { type: "markdown"; text: string; collapsible?: boolean; title?: string; devMode?: boolean; environment?: string | string[] }   // collapsible starts folded behind `title`, which it requires
+interface FormActionElement { type: "action"; key: string; label: string; method: string; style?: "row"; icon?: string; devMode?: boolean; common?: boolean; environment?: string | string[]; target?: string | string[] }   // style "row" is an icon row with a chevron; omit it for a button
+interface FormLinkElement { type: "link"; label: string; url: string; key?: string; icon?: string; description?: string; devMode?: boolean; common?: boolean; environment?: string | string[] }   // http, https and mailto only; how it opens is the app's; carries no value and never appears in form state
 
-export interface FormHeader {
-  type: 'header';
-  title: string;
-  subtitle?: string;
-  // How the heading is drawn. Omitted, it is plain text above the fields
-  // that follow. 'section' is the app's section band — the accent title
-  // over a hairline, which holds the top of the surface while its own rows
-  // scroll under it. 'category' is the FILLED band, for a heading that is
-  // the top-level grouping of its surface rather than one section inside
-  // one (docs/design/user-interface.md § Settings lists). A settings panel
-  // is already inside a category, so its own headings take 'section'.
-  style?: 'default' | 'section' | 'category';
-  // A 'section' folds the rows under it, up to the next band or
-  // `sectionEnd`, and the app
-  // remembers which way the operator left each one. `collapsed: true` starts
-  // it shut until the operator opens it; omitted, it starts open. `key` names
-  // the section for that memory (unique within the panel); without one the
-  // title does, so a new language or a reworded heading forgets the fold.
-  // Both ignored for any other style.
-  collapsed?: boolean;
-  key?: string;
-  devMode?: boolean;
-  environment?: string | string[]; // settings-panel-only; see FormField.environment (not `common` — see settings.md)
-}
+type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement
 
-// Ends the 'section' or 'category' band above it: the rows after it belong
-// to no band, and do not fold with it. A panel whose settings sit in a list
-// beside other settings (a settings panel placed in a core category) gets one
-// after its elements whenever they leave a band open, so what follows is
-// never drawn as part of its last section.
-export interface FormSectionEnd {
-  type: 'sectionEnd';
-}
-
-export interface FormSectionDivider {
-  type: 'divider';
-  title?: string;
-  devMode?: boolean;
-  environment?: string | string[]; // settings-panel-only; see FormField.environment
-}
-
-export interface FormMarkdownBlock {
-  type: 'markdown';
-  text: string;
-  devMode?: boolean;
-  environment?: string | string[]; // settings-panel-only; see FormField.environment
-  collapsible?: boolean; // starts collapsed behind a tappable `title` header; requires `title`
-  title?: string; // the tappable header shown when `collapsible` is set; ignored otherwise
-}
-
-// A button that invokes a named hook method (e.g. 'clearCache') against the
-// current form/panel state and shows the returned string as a result
-// banner. `method` isn't statically declared anywhere — it's resolved
-// against an extra, undeclared property on the registered hook object at
-// dispatch time, the same "extra property beyond the typed interface" the
-// SDK already permits (see settings.md's settingsPanel note). Not used for
-// account credentials — those have their own testCredentials on AccountHook.
-export interface FormActionElement {
-  style?: 'row'; // icon row with a chevron; omit for a button
-  icon?: string;
-  type: 'action';
-  key: string;
-  label: string;
-  method: string;
-  devMode?: boolean;
-  common?: boolean;   // settings-panel-only; see FormField.common
-  environment?: string | string[]; // settings-panel-only; see FormField.environment
-}
-
-// A row that opens an external URL (icon-row-styled tile with an
-// open-in-new icon button); how it opens is app policy. Links carry no
-// value and never appear in form state.
-export interface FormLinkElement {
-  type: 'link';
-  key?: string;
-  label: string;
-  url: string;
-  icon?: string;
-  description?: string;
-  devMode?: boolean;
-  common?: boolean;   // settings-panel-only; see FormField.common
-  environment?: string | string[]; // settings-panel-only; see FormField.environment
-}
-
-export type FormElement = FormField | FormHeader | FormSectionEnd | FormSectionDivider | FormMarkdownBlock | FormActionElement | FormLinkElement;
-
-export interface FormDefinition {
-  title?: string;
-  subtitle?: string;
-  elements: FormElement[];
+interface FormDefinition {
+  title?: string
+  subtitle?: string
+  elements: FormElement[]
 }
 ```
 
-The same `FormDefinition`/`FormField` schema is also the basis for the settings panel system — see [settings.md](./settings.md).
+The exact types are in `dist/index.d.ts`. A settings panel is already inside
+a category, so its own headings take `style: "section"`.
 
-## `devMode` elements
-
-Any element — a field, a header, a divider, a markdown block, an action
-button — can be marked `devMode: true`. It's then hidden entirely (not
-rendered at all, not part of the submitted values) unless the app's developer
-mode is on; when it is, the element renders normally but tinted in the same
-orange accent app-polo uses for dev-mode-only settings (`styles.colors.devMode`
-— label/icon/subtitle text color, no badge or border). This is host-driven —
-the renderer is told whether developer mode is on, it doesn't check any
-setting itself — so it works the same whether the form comes from an
-extension's ad hoc `host.showForm` call or a `settingsPanel`.
-
----
-
-## Usage
-
-### 1. Dialog Flow (`host.showForm`)
-
-An extension can prompt the user at any time using a modal dialog:
+## Dialogs you open: `host.showForm`
 
 ```ts
-import { host } from "@ham2k/extension-sdk";
-
-const result = await host.showForm({
-  title: "Setup Contest",
-  subtitle: "Configure exchange and operator options",
-  elements: [
-    {
-      type: "header",
-      title: "Station Parameters"
-    },
-    {
-      type: "field",
-      fieldType: "callsign",
-      key: "operatorCall",
-      label: "Operator Callsign",
-      validate: (val) => val.length < 3 ? "Invalid callsign" : null,
-      transform: (val) => val.toUpperCase()
-    },
-    {
-      type: "divider"
-    },
-    {
-      type: "field",
-      fieldType: "select",
-      key: "category",
-      label: "Contest Category",
-      options: [
-        { label: "Single Operator Low Power", value: "SOLP" },
-        { label: "Single Operator High Power", value: "SOHP" },
-        { label: "Multi Operator", value: "MULTI" }
-      ]
-    }
-  ]
-}, {
-  operatorCall: "KI2D" // pre-filled state
-});
-
-if (result) {
-  console.log("Form values submitted:", result);
-} else {
-  console.log("Form cancelled");
-}
+const result = await host.showForm(
+  {
+    title: "Set up the contest",
+    elements: [
+      { type: "header", title: "Station" },
+      { type: "field", fieldType: "callsign", key: "operatorCall", label: "Operator callsign",
+        validate: (v) => (v.length < 3 ? "Too short to be a callsign" : null),
+        transform: (v) => v.toUpperCase() },
+      { type: "divider" },
+      { type: "field", fieldType: "select", key: "category", label: "Category",
+        options: [{ label: "Single operator, low power", value: "SOLP" }, { label: "Multi operator", value: "MULTI" }] },
+    ],
+  },
+  { operatorCall: "W7ABC" },      // pre-filled state
+)
+if (result) { /* result.operatorCall, result.category */ } else { /* cancelled */ }
 ```
 
-The dialog is one extension's at a time, and the call completes when it
-closes: while another extension's dialogs are up it waits for them, at most
-three of yours waiting; you may have three open, one over the other, and open
-ten a minute, past which the call throws (the budgets are listed in
-[README.md](README.md#the-host-api)).
+The call completes when the dialog closes, with the submitted values or
+`null`. A dialog is one extension's at a time: while another extension's
+dialogs are up, yours waits for them to close. You may have **3 open**, one
+over the other, **3 waiting**, and open **10 a minute**; past any of these
+the call throws.
 
-### 2. View/Hook Flow (`form` category)
+## Forms the app asks for
 
-Extensions can also contribute static/predefined forms by registering a hook in the `form` category. The host can query the form by key, validate fields, and transform them:
+Register under the `form` category to let the app show a form by key,
+validate its fields and transform them:
 
 ```ts
-// Static registration in extension code
-api.registerHook('form', {
-  key: 'my-contest-settings',
+registerHook("form", {
+  key: "w7abc-contest_setup",
   hook: {
     async getDefinition(args, ctx) {
-      return {
-        title: "Contest Setup",
-        elements: [
-          {
-            type: "field",
-            fieldType: "text",
-            key: "exchange",
-            label: "State/Section Exchange"
-          }
-        ]
-      };
+      return { title: "Contest setup", elements: [{ type: "field", fieldType: "text", key: "exchange", label: "Exchange" }] }
     },
     async validateField({ fieldKey, value, state }, ctx) {
-      if (fieldKey === 'exchange' && value.length !== 2) {
-        return "Exchange must be a 2-character abbreviation";
-      }
-      return null;
+      return fieldKey === "exchange" && value.length !== 2 ? "Two characters" : null
     },
     async transformField({ fieldKey, value, state }, ctx) {
-      if (fieldKey === 'exchange') {
-        return value.toUpperCase();
-      }
-      return value;
-    }
-  }
-});
+      return fieldKey === "exchange" ? value.toUpperCase() : value
+    },
+  },
+})
 ```
 
----
+This is the shape a dynamic [settings panel](settings.md#tier-2-dynamicsettingspanel)
+builds on, and the `form` input kind of an activity's operation controls
+([Activities](activities.md#controls)) opens one.
 
-## Validation & Transformation Lifecycle
+## Validation and transformation
 
-1. **User input**: When a user fills out text or makes selections, the Dart UI clears any previous error for that field.
-2. **Submit validation**: When the user clicks **Save / Submit**:
-   - The Flutter form renderer triggers validation for each field asynchronously.
-   - Any validation error returns back to Dart and is displayed underneath the field. If any fields have errors, submission is aborted.
-3. **Submit transformation**: When all fields are successfully validated, Dart invokes any JS transformation callbacks for each field.
-4. **Completion**: The final transformed state is resolved and returned back to the caller (or saved in the view context).
+1. As the operator edits a field, the app clears any earlier error on it.
+2. On **Save**, the app runs every field's `validate` and shows each error
+   under its field. Any error aborts the submission.
+3. With every field valid, the app runs every field's `transform`.
+4. The transformed state is returned to the caller, or saved where the form
+   lives.
+
+In a `host.showForm` dialog the callbacks are the closures on the field; in
+a `form` hook and a dynamic settings panel they are `validateField` and
+`transformField`. A Tier 1 settings panel has neither and uses `pattern`
+instead.
+
+## devMode elements
+
+Any element marked `devMode: true` is hidden entirely, and absent from the
+submitted values, unless the app's developer mode is on. When it is, the
+element renders normally in the developer accent. The app tells the
+renderer whether developer mode is on; the form never checks a setting
+itself, so it behaves the same in a dialog and in a settings panel.
 
 ## Text templates
 
-`fieldType: 'textTemplate'` is a string field displayed as an editor row in
-forms and settings. It opens a multiline Liquid editor with a sample preview,
-syntax errors, insertable attributes and flow-control examples, and a read-only
-filter reference inside collapsed Templating Docs. Editing and preview stay
-above the scrollable reference. Template rows also display rendered samples. Save commits
-the draft; Cancel, Escape and dismissal discard it. `defaultValue` supplies
-the Reset button. Disabled fields cannot open the editor.
+`fieldType: "textTemplate"` is a string field shown as an editor row that
+also displays its rendered sample. It opens a multiline Liquid editor with
+a sample preview, syntax errors, insertable attributes, flow-control
+examples, and a read-only filter reference. Save commits the draft; Cancel,
+Escape and dismissal discard it; `defaultValue` supplies the Reset button; a
+disabled field does not open the editor.
 
 ```ts
-{
-  type: 'field', fieldType: 'textTemplate', key: 'filename',
-  label: 'File name', value: '{{ op.date }} {{ log.station }}',
-  templateContext: 'export', // 'adif' adds contact attributes; 'text' is generic
-  templateSample: { log: { activity: 'POTA', ref: 'US-1234' } },
-}
+{ type: "field", fieldType: "textTemplate", key: "filename", label: "File name",
+  value: "{{ op.date }} {{ log.station }}", templateContext: "export",
+  templateSample: { log: { activity: "LLOTA", ref: "AR-0001" } } }
 ```
 
-The preview uses the same runtime and vocabulary as exports; sample values
-are illustrative. `templateSample` can replace values in `operation`, `qso`
-and `log`. The app provides the rendering callback through
-`TemplateEditorScope`, keeping the form widget independent of extensions.
-See [templates.md](templates.md) for Liquid syntax and supported namespaces.
+`templateContext` picks the vocabulary the editor offers: `export` for
+filenames and titles, `adif` adds the contact's attributes, `text` is
+generic. `templateSample` replaces values in the preview's `operation`,
+`qso` and `log`. The preview uses the same engine and vocabulary as the
+exports; [Templates](templates.md) has both.

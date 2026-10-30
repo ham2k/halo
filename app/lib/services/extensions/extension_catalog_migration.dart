@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Keeping an install's catalog extensions in hand (docs/extensions/distribution.md):
+// Keeping an install's catalog extensions in hand (docs/design/extension-install.md):
 // the bundles the app ships, the catalog copies of the built-ins it no longer
 // has, and whatever the operator installed that the store lost.
 //

@@ -232,7 +232,7 @@ class StatusBarService extends ChangeNotifier {
   /// the namespace prefix an extension's own keys carry ('pota:sync').
   ///
   /// For when an extension stops existing in its current form: a dev-loop
-  /// reload (docs/extensions/development.md). Its transient state is the
+  /// reload (docs/extensions/in-repo.md#the-dev-server). Its transient state is the
   /// previous code's, and nothing will ever clear it — a progress bar left at
   /// 40% by a hook that no longer exists sits there for the rest of the
   /// session. Notices are DISMISSED rather than deleted, so the operator's

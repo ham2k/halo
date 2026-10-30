@@ -488,7 +488,7 @@ EXTRA_APP_FILES=""
 
 # The test runner for a package: `dart test` for one whose pubspec never names
 # the Flutter SDK, `flutter test` for the rest. A pure-Dart package runs on the
-# plain Dart VM — halo-ext is one (`dart run`, docs/extensions/cli.md) — where
+# plain Dart VM — halo-ext is one (`dart run`, docs/extensions/in-repo.md#halo-ext-the-extensions-on-the-command-line) — where
 # `dart:ui` does not exist. `flutter test` supplies `dart:ui`, so under it a
 # Flutter import anywhere in such a package's dependencies passes every test
 # and leaves the tool unable to compile; `dart test` compiles the tests the way

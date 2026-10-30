@@ -358,11 +358,11 @@ name (§2).
 
 ### Extension developer experience
 
-- `npm run dev` ([docs/extensions/development.md](docs/extensions/development.md)):
+- `npm run dev` ([the dev server](docs/extensions/in-repo.md#the-dev-server)):
   a watcher that rebundles and hot-reloads one extension into a running app.
   The runtime re-evaluates the bundle and re-registers hooks — the
   activate/deactivate lifecycle supports this.
-- `halo-ext` ([docs/extensions/cli.md](docs/extensions/cli.md)) runs hooks
+- `halo-ext` ([halo-ext](docs/extensions/in-repo.md#halo-ext-the-extensions-on-the-command-line)) runs hooks
   outside the app, and the extensions' own unit tests run under `npm test`
   with no Flutter involved — including tests that call an extension's hooks
   against fixture operations and QSOs (`sdk/src/testing.ts`), so what a hook

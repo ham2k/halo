@@ -75,7 +75,7 @@ void main() {
       // boot without them, offline or not. A twin that is not shipped has to
       // come from the catalog, and until it does the extension the operator
       // used is simply gone. Shrinking this to the long-term eight is a
-      // deliberate later step (docs/extensions/distribution.md).
+      // deliberate later step (docs/design/extension-install.md).
       expect(
         {for (final entry in index) entry.key},
         {

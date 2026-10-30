@@ -1,179 +1,175 @@
-# Panel hooks
+# Panels
 
-The [hook reference](hooks.md) says how hooks are registered and invoked, and what every hook is handed.
+A panel is a pane the operator can place in a view's layout, beside the
+app's own QSOs, Info, Spots and Map panes. An extension declares one or
+several, each with its own identity, configuration form and refresh budget,
+and answers each render with a **document** the app draws, or a
+[scene](scenes.md) the app keeps live. [How hooks work](hooks.md) covers
+registration, keys, priority and `ctx`.
 
-## ✅ `panel` — panes an extension contributes to a view
-
-A panel is a PANE the operator can put in a customizable view's layout
-(docs/design/layouts.md), listed in Layout Setup alongside the app's own
-QSOs / Info / Spots / Map. One extension may declare several, each with its
-own identity, config form and refresh budget.
+## `panel`
 
 ```ts
 interface PanelHook {
   getPanels(args: {}, ctx): Promise<PanelDescriptor[]>
   render(args: PanelRenderArgs, ctx): Promise<PanelContent>
-  onEvent?(args: PanelRenderArgs & {event: PanelSceneEvent}, ctx): Promise<PanelSceneEventResult>
+  onEvent?(args: PanelRenderArgs & { event: PanelSceneEvent }, ctx): Promise<PanelSceneEventResult>
 }
-// PanelDescriptor: {key, title, description?, icon?, preview?, on?, form?}
-// PanelRenderArgs: {panelKey, operation, qso?, qsoCount, config, reason}
-// PanelContent:    {kind: 'markdown' | 'svg' | 'html', content, title?, triggers?}
-//                | {kind: 'scene', scene, title?, triggers?}   (see scenes.md)
+// PanelDescriptor:  { key, title, description?, icon?, preview?, on?, form?, multiple? }
+// PanelRenderArgs:  { panelKey, operation, qso?, qsoCount, config, reason, environment?, clock?, instanceId? }
+// PanelContent:     { kind: 'markdown' | 'svg' | 'html', content, title?, triggers? }
+//                 | { kind: 'scene', scene, title?, triggers? }
 ```
 
-`operation` is the operation's data with its `uuid`, its
-`startAtMillisMin`/`startAtMillisMax`, and `operatorCall`: who is at the key on
-this device, resolved for its position in a multi-station operation, and empty
-when nobody is named.
+**`getPanels`** lists what the operator can place. The app addresses each
+panel as `ext:<hook key>:<key>` and stores that id inside saved layouts, so
+renaming a `key` drops the panel out of every arrangement holding it.
 
-The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
-inside saved layouts — renaming a `key` drops the panel out of every
-arrangement holding it.
+**`render`** is called when the panel appears and whenever one of its
+triggers fires. `operation` is the operation's data with its `uuid`, its
+`startAtMillisMin`/`startAtMillisMax`, and `operatorCall`, who is at the key
+on this device. `config` is the panel's own form values. `qso` is the draft
+being composed, present when a trigger asked for it. `environment`,
+`clock` and `instanceId` (which placed pane this is, since a `multiple`
+panel may be placed several times) arrive on scene-capable hosts
+([Panel scenes](scenes.md#the-render-environment)).
 
-**Content is a document, not widgets** — the same UI-catalog seam every
-other declarative hook sits behind. Prefer `markdown`: it renders with the
-app's own typography, theme, font scale and density, and costs no web view.
-`svg` is drawn as a vector image. `html` is the escape hatch and runs
-sandboxed: **no JavaScript, no network for subresources (inline what you
-need as a `data:` URI), and no navigation** — a link the operator taps opens
-in the OS browser; one the document triggers itself is blocked. The
-no-network half is enforced by content blockers on Apple platforms and
-`blockNetworkLoads` on Android; a platform whose web view honours neither
-still gets no scripts and no navigation, so treat "no network" as a rule
-your panel must follow rather than one it is held to everywhere. HTML
-panels do not render at all where there is no web view (Linux, and Windows
-without the WebView2 runtime) — the pane says so. Nor on the web build, where
-one exists but is an iframe whose sandbox grants top-level navigation and
-popups: the no-navigation rule above is the one part a panel cannot be trusted
-to keep on its own, so the pane refuses rather than render under it.
-`markdown` has none of these caveats, which is the other reason to prefer it.
+**`onEvent`** answers a scene's controls; [Panel scenes](scenes.md#events-and-results).
 
-**Budgets.** A render's `content` is at most 262,144 characters of `markdown`,
-1,048,576 of `svg` and 4,194,304 of `html`; a `preview` is at most 262,144, and
-a raster one — a `data:` URI holding a PNG, JPEG, GIF, WebP or BMP — declares
-at most 16,777,216 pixels (4,096 × 4,096, or any shape of that area), read
-from its header before anything is decoded; a `data:` image of any other
-type, or whose header does not say its size, is dropped.
-An `svg` document — content or preview — is self-contained vector artwork, as
-a scene's layers are: no `<image>`, `<script>` or `<foreignObject>` and no
-entity declarations (the DOCTYPE an editor exports declares none and is
-fine; one carrying an internal subset is refused), at most 16,384 elements,
-nested at most 32 deep. The app draws
-`markdown` and `svg` itself, on the UI thread and outside the runtime's
-memory ceiling, which is why they are bounded where the document arrives;
-`html` is the web view's to parse, so its budget bounds only what crosses the
-bridge. Over any of these the document is refused whole: the pane shows a
-placeholder naming the budget and the console says what was sent; a preview
-is dropped, its row kept. Nothing is trimmed or drawn in part.
+### Content
 
-A render may answer a **panel scene** instead of a document: artwork, text
-and controls the app draws, animates and keeps live itself, calling the
-extension only when the operator acts. [Panel scenes](scenes.md) describes
-them, and [Radio control](radio.md) the radio calls a panel commanding a
-transceiver makes.
+**A panel returns content, not widgets.** There is no way to reach the app's
+UI toolkit, by design.
 
-**`on`** is a refresh budget, not a subscription: `'operation'`,
-`'qsoLogged'`, `'spots'`, `'lookup'`, `'qso'`, `'radio'`, or `` `tick:<seconds>` ``
-(one second is the fastest; anything below it is not a recognized trigger and
-is dropped with a line in the console, so the panel gets no tick at all). The host
-keeps at least 750ms of idle between one render FINISHING and the next
-starting — a gap, not a period, so a slow panel simply runs less often
-instead of monopolising a single-threaded runtime. A tick that arrives while
-a render is already coming is DROPPED rather than queued: another is aimed at
-the next boundary, and the render that is coming reads fresh context anyway.
-Everything else waits instead of being dropped. Ticks are aimed at wall-clock
-boundaries, so panels sharing a period render in the same frame. The host
-renders nothing while the panel is behind another dock tab, or while the whole
-app is hidden — an unselected tab stays mounted, so without that a four-panel
-layout would pay for the three nobody is looking at. A trigger that arrives
-while the panel is away is remembered, and the panel renders once when it
-comes back. Do not treat the first render as something that happens at mount:
-a panel placed on a tab nobody has selected is not rendered until that tab is,
-so one-time setup belongs in the hook's own initialization, not in a render. A trigger name outside this list is dropped when
-the panel is read, with a line in the console: it would otherwise sit in the
-descriptor looking live and never fire. A descriptor with no `on` renders once when it
-appears. Omitting it is the right default: a trigger costs a bridge call
-every time it fires.
+- **`markdown`** is the one to prefer. It renders with the app's own
+  typography, theme, font scale and density, costs no web view, and has
+  none of the caveats below.
+- **`svg`** is drawn as a vector image.
+- **`html`** is the escape hatch, and runs sandboxed: **no JavaScript, no
+  network for subresources** (inline what you need as `data:` URIs), **no
+  navigation**. A link the operator taps opens in the OS browser; one the
+  document triggers itself is blocked. The no-network rule is enforced by
+  content blockers on Apple platforms and a block on Android; where a web
+  view honours neither it still gets no scripts and no navigation, so treat
+  "no network" as a rule your document follows rather than one it is held
+  to everywhere. HTML panels do not render where there is no web view
+  (Linux, and Windows without the WebView2 runtime), nor on the web build,
+  where the sandbox cannot keep the no-navigation rule; the pane says so.
+- **`scene`** is artwork, text and controls the app draws and keeps live,
+  calling you only when the operator acts. [Panel scenes](scenes.md).
 
-`'qso'` is the expensive one. `args.qso` is the whole QSO being composed —
-every field, in QSON, as it would be logged — and it changes as fast as the
-operator types. The host debounces it to one wake per pause and stops
-producing it entirely when no panel in the arrangement asked, but a panel
-that wants only the resolved callsign should declare `'lookup'` instead: it
-fires when a lookup is ANSWERED, not while a call is being typed, and the
-guess is inside `args.qso` either way — declaring `'lookup'` is enough to be
-sent the draft, so what it saves over `'qso'` is renders, not the QSO.
+**Budgets.** A render's `content` is at most **262,144** characters of
+markdown, **1,048,576** of SVG and **4,194,304** of HTML. A `preview` is at
+most 262,144; a raster preview (a `data:` URI holding a PNG, JPEG, GIF, WebP
+or BMP) declares at most **16,777,216 pixels**, read from its header before
+anything is decoded, and a `data:` image of another type, or one whose
+header does not say its size, is dropped. An SVG document, content or
+preview, is self-contained vector artwork: no `<image>`, `<script>` or
+`<foreignObject>`, no entity declarations (a DOCTYPE with an internal subset
+is refused), at most **16,384 elements** nested at most **32 deep**. Over any
+of these a document is refused whole: the pane shows a placeholder naming
+the budget and the console says what was sent. A preview over its budget is
+dropped and its row keeps its title. Nothing is trimmed or drawn in part.
 
-Beside the QSON, a draft carries one key a logged record never does:
-`callField`, the call field read at the cursor (`call`, `fullCall`,
-`partial`, `nextCall`, `nextPartial`). `their.call` is the field as typed, which may be a whole
-`//` stack or comma list; `callField.call` is the one call Enter logs. It
-is what [templates.md](templates.md)'s `qso.call` renders from, so a panel
-rendering a template needs nothing more, and moving the cursor within a
-stack or a list wakes a `'qso'` panel even when the QSON is unchanged.
+### Triggers
 
-`'lookup'` fires when the panel is shown a callsign that HAS an answer —
-which includes opening a QSO whose stored record already carries one, not
-only a fresh lookup resolving. It does not fire when a lookup starts, fails,
-or times out. A panel keyed to it alone cannot tell "still looking"
-from "no answer coming", and will sit on whatever it last drew. A panel that
-needs to show either state wants `'qso'` too, and should read
-`qso.their.guess` to decide which it is looking at.
+**`on`** is a refresh budget, not a subscription. A descriptor with no `on`
+renders once when it appears, and that is the right default: every trigger
+costs a bridge call each time it fires.
 
-`'radio'` (extension API 13) fires when any radio's dial moves — its
-frequency, mode, passband, transmit state, PTT or connection — and never for
-a meter, which moves several times a second with nothing a render needs to
-redraw. It goes through the same 750 ms gap as every other trigger, so it is
-for a panel that has to lay itself out again around the frequency, such as a
-band map; a readout that only shows the frequency binds a scene to
-`radio.frequencyHz` instead ([scenes.md](scenes.md#radio-values)) and
-follows the dial with no render at all. It needs `requiresRadioRead`: a
-panel without it is never woken for the radio. The render reads the radio
-with `readRadio()` as before.
+| Trigger | Fires |
+| --- | --- |
+| `operation` | when the operation's data changes |
+| `qsoLogged` | on every change to the log: a contact logged, edited or deleted, or one a sync brought in |
+| `spots` | whenever `ctx.getSpots()`'s answer may have moved: a refresh, new verdicts, the operator's filters or bands, the radio's band or mode |
+| `lookup` | when the panel is shown a callsign that **has** a lookup answer, including opening a QSO whose record already carries one; never when a lookup starts, fails or times out |
+| `qso` | as the draft contact changes, debounced to one wake per pause in typing |
+| `radio` | when any radio's dial moves: frequency, mode, passband, transmit state, PTT or connection; never for a meter. Extension API 13; needs `requiresRadioRead` |
+| `tick:<seconds>` | on wall-clock boundaries, one second at the fastest; a smaller value is not a trigger and is dropped |
 
-**`form`** declares the panel's own configuration in the same field schema
-a Tier 1 `settingsPanel` uses ([settings.md](./settings.md)), rendered by
-the core's `FormRenderer` and reached from the gear beside the panel in
-Layout Setup. Values are host-persisted per panel and handed back as
-`args.config`; there is no per-keystroke bridge call and nothing for the
-extension to store.
+- The app keeps **at least 750 ms of idle** between one render finishing
+  and the next starting. A gap, not a period: a slow panel runs less often
+  instead of monopolising the runtime. A tick that arrives while a render is
+  already coming is dropped, not queued, and another is aimed at the next
+  boundary; everything else waits. Ticks are aimed at wall-clock boundaries,
+  so panels sharing a period render in the same frame.
+- **Nothing renders while the panel is behind another tab or the app is
+  hidden.** A trigger that arrives meanwhile is remembered, and the panel
+  renders once when it comes back. A panel on a tab nobody has selected is
+  not rendered until that tab is, so one-time setup belongs in your hook's
+  own initialization, not in a render.
+- A trigger name outside the list is dropped when the panel is read, with a
+  line in the console.
+- **`qso` is the expensive one.** `args.qso` is the whole draft, every
+  field, as it would be logged, and it changes as fast as the operator
+  types. A panel that wants only the resolved callsign declares `lookup`
+  instead: the guess is inside `args.qso` either way, and `lookup` fires
+  when an answer lands, not while a call is being typed. A panel that must
+  show "still looking" as well as "no answer coming" wants `qso` too, and
+  reads `qso.their.guess` to tell them apart.
+- Beside the QSON, a draft carries `callField`, the call field read at the
+  cursor: `call`, `fullCall`, `partial`, `nextCall`, `nextPartial`.
+  `their.call` is the field as typed, which may be a whole `//` stack or a
+  comma list; `callField.call` is the one call Enter logs, and what
+  [Templates](templates.md) render `qso.call` from. Moving the cursor
+  within a stack or a list wakes a `qso` panel even when the QSON is
+  unchanged.
+- `radio` is for a panel that must lay itself out again around the
+  frequency, such as a band map. A readout that only shows the frequency
+  binds a scene to `radio.frequencyHz` instead and follows the dial with no
+  render at all.
 
-**`multiple`** lets an operator place more than one of your panel. Off by
-default, because most panels are one thing — two maps or two spot lists would
-be a mistake to offer. Set it where two is the point: a panel whose content
-is the operator's OWN, like `custom-text`'s notes.
+**The log and the spots are absent from `render`'s arguments** on purpose. A
+panel that needs the log calls `ctx.getQsos(operation.uuid)`, which is right
+for a `qsoLogged` render; one that shows spots declares `spots` and calls
+`ctx.getSpots()`, which answers the operator's own filtered board, judged
+against this operation.
 
-Each placement gets its own id and therefore its own config, so `args.config`
-differs per pane with nothing to do on your side. What you DO owe an
-instanceable panel is a `title` on the render result — without one every pane
-reads the same descriptor title and the operator cannot tell them apart.
+### The descriptor's other fields
 
-**`preview`** is a still image for that same list — an SVG document or a
-`data:` URI, never a URL: the list renders offline, and a remote preview
-would make opening it a fetch (and a beacon).
+- **`form`** declares the panel's own configuration, in the same field schema
+  a settings panel uses ([Settings panels](settings.md)). The app renders it
+  behind the gear beside the panel in Layout Setup, persists the values per
+  placed panel, and hands them back as `args.config`. Nothing for you to
+  store.
+- **`multiple`** lets the operator place more than one of the panel. Off by
+  default: most panels are one thing. Set it where two is the point, such as
+  a panel whose content is the operator's own notes. Each placement gets
+  its own id and its own config. What you owe an instanceable panel is a
+  `title` on the render result; without one every pane reads the same
+  descriptor title.
+- **`preview`** is a still image for the list of panels: an SVG document or
+  a `data:` URI, never a URL, since the list renders offline.
 
-A render result may carry a **`title`**, which replaces the tab label for
-that pane. Blank is ignored rather than producing a nameless tab, and a
-result with no title keeps the descriptor's.
+### The render result's other fields
 
-A render result may also carry **`triggers`** — the same names as `on`,
-added to the descriptor's for THAT PLACEMENT only. `on` is per panel and so
-is paid by every pane of it; this is per pane, and exists for panels whose
-content is written by the operator: `custom-text` derives its triggers from
-the template in each pane (`triggersForTemplate`), so a pane showing a band
-plan renders once while the pane beside it, naming the callsign being typed,
-gets woken per keystroke pause. Unknown names are dropped with a line in the
-console, exactly as in a descriptor.
+- **`title`** replaces the tab label for that pane. Blank is ignored; a
+  result without one keeps the descriptor's.
+- **`triggers`** adds trigger names to the descriptor's **for that placement
+  only**. For a panel whose content is written by the operator, so a pane
+  showing a band plan renders once while the pane beside it, naming the
+  callsign being typed, wakes per pause. `triggersForTemplate` from the SDK
+  derives them from a template ([Templates](templates.md#panel-triggers)).
+  Unknown names are dropped with a line in the console, as in a descriptor.
+  The declaration lands after the render that carried it, so declare in `on`
+  anything the panel always needs.
 
-The declaration necessarily lands AFTER the render that carried it, so a
-panel asking for `'qso'` this way is answered without one the first time and
-woken by the next change to the draft. Declare in `on` instead when the
-panel always needs the signal — a descriptor's triggers are in force before
-its first render.
+### Example
 
-The whole log is deliberately absent from `render`'s args. A panel that
-needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`
-render, which comes for every change to the log: a contact logged, edited
-or deleted, or one a sync brought in. Spots are absent for the same reason:
-a panel showing them declares `'spots'` and calls `ctx.getSpots()`, which
-answers the operator's own filtered board, judged against this operation.
+```ts
+const RatePanel: PanelHook = {
+  async getPanels() {
+    return [{ key: "rate", title: "Rate", icon: "speedometer", on: ["qsoLogged"] }]
+  },
+  async render({ operation }, ctx) {
+    const qsos = (await ctx.getQsos?.(operation.uuid)) ?? []
+    const lastHour = qsos.filter((q) => q.startAtMillis > Date.now() - 3_600_000).length   // Date follows the app clock in the sandbox
+    return { kind: "markdown", content: `# ${lastHour}\n\nQSOs in the last hour` }
+  },
+}
+```
+
+`k2hrc-hello-world` and `k2hrc-radio` in the SDK's samples are the smallest
+markdown and HTML panels; `ki2d-weather-panel`, `ki2d-rate-chart` and
+`ki2d-band-map` in [ham2k/extensions](https://github.com/ham2k/extensions)
+are published ones.

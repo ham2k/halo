@@ -3,7 +3,7 @@
 //
 // Building an extension: the esbuild settings a Ham2K bundle needs, and the
 // plugin that takes the host up on the libraries it carries (HALO-442,
-// docs/extensions/development.md).
+// docs/extensions/in-repo.md#the-dev-server).
 //
 // Standalone in the same way h2kext.mjs is, and for the same reason — that
 // module is its only import, because its whole purpose is to work for someone

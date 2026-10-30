@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Extensions the flags server force-disables (docs/extensions/distribution.md,
+// Extensions the flags server force-disables (docs/design/extension-install.md,
 // "Pulling an extension") — the fast way to stop an installed extension
 // running, for one version or for every one, without waiting on a catalog
 // deploy or the once-a-day update check.

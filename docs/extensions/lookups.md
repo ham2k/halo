@@ -1,208 +1,164 @@
-# Lookup hooks
+# Lookups
 
-The [hook reference](hooks.md) says how hooks are registered and invoked, and what every hook is handed.
+A lookup answers *who is this station*: a name, a location, a licence class,
+the parks or summits the station is at. Sources register under `lookup`;
+sources whose answer is only true for a contact in progress register under
+`recentContextLookup`; and the app's own orchestrator, registered under
+`lookupService`, runs them all and merges what they say into one guess. You
+write the first two. The third is described so you know what becomes of
+your answer.
 
-## ✅ `lookup` — callsign lookups
+[How hooks work](hooks.md) covers registration, keys, priority and `ctx`.
 
-Data sources for callsign/QSO enrichment (QRZ, HamDB, POTA, SOTA…). Never
-called directly from Dart — the `lookupService/core` hook below fans out to
-every registered `lookup` hook **sequentially, in priority order**, folding
-each result into the next hook's input, and applies the locationScope-aware
-merge rules (see below). Fired debounced from the logging panel, never
-per-keystroke.
+## `lookup`
+
+**For:** a data source about callsigns: a web service, a program's API, local
+data, the log itself.
+
+**Called:** by the orchestrator, every source in turn, **sequentially in
+priority order**, each handed the guess so far. Never per keystroke: the
+logging panel asks after a pause in typing, the spots board asks once per
+distinct spotted call, and the background queue asks once per saved contact.
 
 ```ts
 interface LookupHook {
   lookupCall(args: { callInfo: AnnotatedCallInfo; qso; operation }, ctx): Promise<LookupResult>
 }
-// AnnotatedCallInfo: CallInfo & {guess?: CallInfo, lookups?: CallInfoLookup[]}
-// LookupResult:      (CallInfoLookup & {locAccuracy?, refs?: RefInfo[], online?: boolean, largeArea?: boolean})[] —
-//                    zero or more records; [] to skip
-// CallInfoLookup:    CallInfo & {source?, scope?: 'general'|'operation'|'qso', notes?, history?}
+// AnnotatedCallInfo: CallInfo & { guess?: CallInfo, lookups?: CallInfoLookup[] }
+// LookupResult:      (CallInfoLookup & { locAccuracy?, refs?: RefInfo[], online?: boolean, largeArea?: boolean })[]
+// CallInfoLookup:    CallInfo & { source?, scope?: 'general' | 'operation' | 'qso', notes?, history? }
 ```
 
-Set `online: true` on a result ONLY when answering it required an actual
-network round-trip — never on one your source could have produced with
-`ctx.online` false. `LookupQueueService._hasOnlineLookup` reads this flag
-generically to decide whether a saved QSO already has a real online answer
-worth not re-fetching; omitting it (the default) is correct for anything
-from local/offline data — a log query, a cached reference file, notes — even
-if that source usually needs the network for OTHER calls (POTA/SOTA's
-`fetchPark`/`fetchSummit` try a local reference-data cache before falling
-back to a live fetch, so they leave it unset rather than risk mistagging a
-cache hit). The one-time offline annotation pre-step never sets it either.
+**You receive** the parsed callsign with the country-file annotation already
+applied (`callInfo`), the guess every earlier source built (`callInfo.guess`),
+their raw answers (`callInfo.lookups`), and the whole `qso` and `operation`,
+so a program's source can read `qso.refs` for a hunted reference.
 
-A result's `refs` **proposes** activity references for the QSO being logged.
-The host applies only those whose `type` the QSO does not already carry — a
-lookup never overrides a reference the operator entered — and re-runs the
-lookup once afterwards so QSO-scoped hooks (POTA/SOTA) see the new ref and
-can resolve its grid. Because an already-applied type is filtered out on the
-next pass, that re-run settles instead of cycling.
+**You return** zero or more records. Each is a `CallInfo` (name, location,
+licence and the rest, in the shape `@ham2k/lib-qson-tools` defines) plus:
 
-For an operation without assistance (see `ref:<type>`), every lookup runs
-with `ctx.online` false — the background enrichment of logged contacts
-included — so a source answers from local data or not at all. The one
-exception is a Lookup All QSOs the operator confirms after being warned.
+- `source`: who answered, shown beside each field the operator sees.
+- `scope`: `qso` for an answer about **one of the QSO's references** (a
+  park's grid, a summit's location), matched to that reference by `source`
+  being the reference's `type`; any other value (`general`, the default, or
+  `operation`) is an answer about the callsign.
+- `refs`: references you **propose** for the QSO being logged, from a spot or
+  from the log. The app applies only those whose type the QSO does not
+  already carry, then asks the sources once more so a `qso`-scoped source
+  can resolve the new reference; because an applied type is filtered out on
+  the next pass, that settles rather than cycling.
+- `online: true` **only when answering took a network round trip**. The app
+  reads it to decide whether a saved contact already has a real online
+  answer worth not fetching again. Leave it unset for anything from local
+  data, even from a source that usually needs the network for other calls.
+- `largeArea: true` for a reference that covers more ground than one point
+  can stand for (a trail, a park across several states): the station still
+  counts as away from home, but nothing places it.
+- `notes` and `history`: free text and past contacts, accumulated across
+  sources and shown as they come; never merged into the guess.
 
-Return `[]` for "can't answer" (not configured, not found, or `!ctx.online`
-and this source has no offline data) — never throw for expected conditions.
-`callInfo`/`qso`/`operation` are the full QSON-shaped objects (all from
-`@ham2k/lib-qson-tools`'s `CallInfo`/`QSON` types), so e.g. a POTA lookup can
-inspect `qso.refs` for a hunted park reference. Implemented by: `qrz`,
-`ham2k-lookup` (`scope: 'general'`), `pota`, `sota` (`scope: 'qso'`, grid of
-any hunted ref on the current QSO), `call-notes` (`scope: 'general'`,
-offline — combined `note`/`emoji` extra fields from the Hams of Note file,
-issue #17), and `call-history` (`scope: 'general'`, offline — the most
-recent past QSO's own identity fields, from `ctx.getHistoryForCall`).
-Registers at **priority -1** — below every other lookup source, and below
-the 0 an undeclared hook defaults to: the log is a fallback, filling only
-what nothing else answered, and that holds even for a field the operator
-TYPED on the past QSO — a live source describes the station today, the log
-describes it whenever it was last worked. It still labels a carried-forward
-field by where it came from (`Call History` for a typed one, `Call History
-(guess)` for a guessed one), and a station's whole location travels in one
-of the two so the merge's grid/city reconciliation cannot split it — see
-`ham2k-call-history`'s `src/index.ts` in
-[ham2k/extensions](https://github.com/ham2k/extensions).
+**Rules:**
 
-## ✅ `recentContextLookup` — live-context lookups
-
-Same `LookupHook` interface, run by the same orchestrator immediately after
-the `lookup` fan-out and folded through the same merge — but **only when the
-request sets `recentContext`**, which the logging panel does solely while
-composing a new contact.
-
-The split is about what the answer depends on. A `lookup` hook answers *who
-is this callsign*, which is true whenever asked. A `recentContextLookup` hook
-answers *what is this station doing right now* — from spots, from the last
-minutes of the log, from whatever else is live — and that is a question about
-a contact in progress. Asked about a QSO logged an hour ago, or about every
-callsign on the spots board, the answer is not just useless but wrong.
-
-Registering here rather than under `lookup` is therefore correctness first
-and economy second, though the economy is real: the spots board runs a lookup
-per distinct spotted call, and the background queue one per saved QSO, so an
-ordinary `lookup` hook is asked hundreds of times for answers nobody reads.
-
-Implemented by: `spot-history` (offline — `refs` from the host's recent
-spots, see `ctx.getSpotsForCall`).
-
-## ✅ `lookupService` — the lookup orchestrator
-
-One hook call resolves an entire callsign decoration pass: the hardcoded
-callsign-annotation pre-step (via `@ham2k/lib-country-files`, always first,
-regardless of any other hook's priority) plus every registered `lookup` hook
-above — and, when `recentContext` is set, the `recentContextLookup` hooks
-after them — merged according to the `locationScope` rules, all inside the
-runtime, mirroring `scoring`'s "one coarse call in, everything back out"
-shape.
-
-```ts
-interface LookupServiceHook {
-  lookupCallInfo(
-    args: { callInfo: CallInfo; qso; operation; recentContext?: boolean },
-    ctx,
-  ): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo }>
-  // The guess settled again from the `lookups[]` already stored on a saved
-  // QSO, asking no source anything; null for a QSO with no call, or one whose
-  // stored guess names another call. Only the core orchestrator answers it.
-  resolveCallInfo?(args: { qso }, ctx): Promise<{ lookups: CallInfoLookup[]; guess: CallInfo } | null>
-}
-```
-
-**The returned `guess` is settled** (`resolveGuess`,
-`extensions/core/lookups/src/resolveGuess.ts`): which location fields still
-describe the other station is decided there, once, and every reader in the
-app takes the guess as it stands (docs/design/locations.md). What a lookup
-author needs to know of it:
-- A result about the **callsign** (`scope` other than `qso`) keeps its name
-  and the rest, but its location is dropped when the station is away from
-  its registered address: a portable or mobile call (`/P`, `/M`, `/AM`,
-  `/MM`) or a call-area digit (`/4`); a prefixed call (`EA3/KI2D`) when the
-  result answers for the base call rather than the full one (`call` on the
-  result); or a reference on the QSO with a location.
-- A `scope: 'qso'` result is an answer **about one of the QSO's
-  references**, and is matched to it by name: its `source` is the ref's
-  `type` (`pota`, `sota`). One whose ref is no longer on the QSO takes no
-  part at all. One that carries a location places the station — and sets
-  the callsign results' locations aside.
-- A reference that covers more ground than one point can stand for — a
-  trail, a park across several states — places nothing: mark the ref
-  `largeArea` (`Ref.largeArea`), or, for a ref nobody decorated, answer
-  `largeArea: true` with no grid or coordinate. The station still counts as
-  away. A ref inside exactly one state names it (`Ref.state`), and places
-  the station there.
-- Only entries that name a reference (`ref`) count as references; a
-  contest exchange carried on `refs` does not.
-- What the operator entered (`their.lat`/`lon`, `grid`, `state`) goes on
-  last, as a group: a state that disagrees with the lookup's drops the
-  lookup's whole location, one that matches keeps it.
-
-**locationScope merge rules** (`CallInfo.locationScope`, ranked
-`qth < prefixed < portable`, most general to most specific):
-- A result whose `locationScope` is strictly more specific than the current
-  guess's clears all location fields (`locSource, lat, lon, grid, street,
-  city, state, postal, county, country`) before merging the result in, and
-  the guess adopts the more specific scope. `street` and `postal` are the
-  mailing address's own lines, grouped with the town they complete so an
-  address never puts one source's street on another source's town.
-- Otherwise, priority order applies as usual: a field already present in the
-  guess is never overwritten by a later (lower-priority) result. A
-  location field additionally requires the result's own scope to be at
-  least as specific as the guess's current scope — a more general-scoped
-  result can never populate a slot a more specific one already claimed,
-  even if that slot is currently empty.
-- Location fields merge as a group, never per field. A same-scope result
-  bringing a pin (a grid, or a full lat/lon pair) to a guess that has none
-  replaces the established city/state/county/country/location with its own
-  values (or just clears them, if it carries only the pin) — even where
-  per-field priority would have kept the earlier town. A result whose own
-  pin loses to an already-established one contributes no location fields at
-  all, and a pinless result's town is used only where the higher-priority
-  lookups left no town or pin (an entity-level `country` alone doesn't
-  count as located): a town is never spliced with a pin — or a town half —
-  it wasn't reported with.
-- Grid/lat-lon reconciliation, scoped to fields the result actually set:
-  grid-only → lat/lon computed from the grid; lat/lon-only → a 6-digit grid
-  computed from them; both given → taken verbatim. Setting grid/lat/lon
-  clears street/city/state/postal/country/county unless the *same* result
-  also supplies them. The converse clause — a town write clearing grid/lat/lon — can only
-  sweep a leftover half lat/lon pair: the group rule above blocks a town
-  from landing at all where a full pin already stands.
-- `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged
-  `guess` — they simply accumulate, unconditionally, in the returned
-  `lookups[]` array.
-- **`cqZone`, `ituZone` and `tz` are the exception to first-answer-wins.** The
-  pre-step can only answer them for a whole entity or call area (a W6 call
-  reads CQ zone 3 wherever the station lives), so once every hook has run,
-  a value the pre-step still holds goes to the first hook result that
-  carried one (`preferStationValues`) — only while the guess's scope is
-  `qth`, since on a portable or prefixed contact a source describes the
-  home QTH. `tz` is a UTC offset with its ordinary sign, `"GMT-5"` being
-  five hours behind. lib-country-files states it that way from 1.1; the
-  SDK's `annotateCallAgainstCountryFile` answers with the ordinary signs
-  whichever version the app ships, flipping an older one's west-positive
-  `tz` and `lon`.
-- **`locSource: 'prefix'` is reserved**, and a `lat`/`lon` merged under it is
-  never read as a coordinate (`locationFromGuess`, halo_core). It marks
-  lib-country-files' DXCC entity centroid, which synced records carry signed
-  either way — west-positive from versions before 1.1 — with nothing to tell
-  the two apart. A source reporting a real position must leave `locSource`
-  unset or name itself; tagging one `'prefix'` gets its coordinate
-  discarded.
-
-- **A guess field of the wrong type is dropped.** The bridge enforces none of
-  `CallInfo`'s declared types, so the app normalizes the answer
-  (`normalizeLookupResult`, halo_core) before anything reads it: a field its
-  readers cannot use — a numeric `continent`, a boolean `emoji` — is dropped
-  and reported once by name, and the rest of the guess is still used. A
+- **Return `[]` for "cannot answer"**: not configured, not found, offline
+  with no local data. Never throw for an expected condition; a hook that
+  throws takes its feature down for that call.
+- **For an operation without assistance** (a contest's non-assisted category,
+  or the operator's switch) every lookup runs with `ctx.online` false, the
+  background enrichment of logged contacts included. Answer from local data
+  or not at all. The one exception is a Lookup All QSOs the operator confirms
+  after a warning.
+- **A field of the wrong type is dropped**, and reported once by name: a
+  numeric `continent`, a boolean `emoji`. The rest of the answer is used. A
   numeric string where a number is read (`cqZone: '05'`) is taken as that
   number.
+- **`locSource: 'prefix'` is reserved** for the country file's entity
+  centroid, and a coordinate under it is never read as a position. A source
+  reporting a real position leaves `locSource` unset or names itself.
+- **Register below 0 to be a fallback.** The log-history source registers at
+  priority -1, below every live source and below the default 0, so it fills
+  only what nothing else answered: a live source describes the station
+  today, the log describes it whenever it was last worked.
 
-Implemented by: `lookups` (key `core`). The merge algorithm itself
-(`mergeLookupIntoGuess`/`runLookupPipeline` in
-`extensions/core/lookups/src/mergeLookup.ts`) is a pure, host-independent
-function with its own unit test suite
-(`extensions/core/lookups/src/mergeLookup.test.ts`, run via `npm test` in
-`extensions/`) — this is the highest-defect-risk logic in the feature, so it
-is tested in isolation from the hook/bridge plumbing.
+**Example:** `k2hrc-hamqth` in the SDK's samples is a lookup behind a login,
+with the `account` hook that holds the password. In
+[ham2k/extensions](https://github.com/ham2k/extensions), `ham2k-lookup` is
+about a hundred lines, `ham2k-qrz` adds a session, and `ham2k-call-history`
+is the fallback that reads the log through `ctx.getHistoryForCall`.
+
+## `recentContextLookup`
+
+**For:** an answer about *what this station is doing right now*: from the
+spots board, from the last minutes of the log, from anything live.
+
+**Called:** by the same orchestrator, through the same `LookupHook`
+interface, immediately after the `lookup` sources and folded through the
+same merge, but **only while a new contact is being composed**. The spots
+board and the background queue never ask.
+
+The split is about truth, not cost. A `lookup` source answers who a
+callsign is, which is true whenever asked. A source here answers a question
+about a contact in progress; asked about a QSO logged an hour ago, or about
+every call on the spots board, its answer is not just useless but wrong. The
+economy is real too: an ordinary `lookup` is asked hundreds of times for
+answers nobody reads.
+
+`ctx.getSpotsForCall` is the usual input: it reads the spots the app already
+holds, never fetches, and is cheap enough for this path.
+
+## How answers merge
+
+The orchestrator (`lookupService`, registered by the app's core and not
+something you implement) runs the country-file annotation first, whatever
+any source's priority, then every `lookup` source, then the
+`recentContextLookup` sources, and settles one `guess`. Every reader in the
+app takes that guess as it stands, so what follows decides what the operator
+sees of your answer.
+
+**Where the station is.** A result about the callsign (`scope` other than
+`qso`) keeps its name and the rest, but its **location is dropped when the
+station is away from its registered address**: a portable or mobile call
+(`/P`, `/M`, `/AM`, `/MM`) or a call-area digit (`/4`); a prefixed call
+(`EA3/KI2D`) when the result answers for the base call rather than the full
+one; or a reference on the QSO that has a location. A `scope: 'qso'` result
+that carries a location places the station and sets the callsign results'
+locations aside; one whose reference is no longer on the QSO takes no part.
+A reference inside exactly one state names it (`Ref.state`) and places the
+station there; a `largeArea` reference places nothing. Only entries that name
+a reference count; a contest exchange carried on `refs` does not. What the
+operator typed (`their.lat`/`lon`, `grid`, `state`) goes on last, as a group:
+a typed state that disagrees with the lookup's drops the lookup's whole
+location, one that matches keeps it.
+
+**Location scope.** `CallInfo.locationScope` ranks `qth < prefixed <
+portable`. A result strictly more specific than the current guess clears
+every location field (`locSource`, `lat`, `lon`, `grid`, `street`, `city`,
+`state`, `postal`, `county`, `country`) before merging, and the guess adopts
+its scope. Otherwise priority order applies: a field already in the guess is
+never overwritten by a later result, and a location field also needs the
+result's scope to be at least as specific as the guess's.
+
+**Location travels as a group.** A same-scope result bringing a pin (a grid,
+or a full `lat`/`lon`) to a guess with none replaces the established town
+(`city`, `state`, `county`, `country`, `location`) with its own, or clears
+the town if it carries only the pin. A result whose pin loses to an
+established one contributes no location fields at all. A pinless result's
+town is used only where the earlier sources left no town or pin; an
+entity-level `country` alone does not count as located. A town is never
+spliced with a pin it was not reported with. `street` and `postal` are the
+mailing address's own lines and travel with the town they complete. Grid and
+coordinates reconcile within a result: grid alone gives a computed
+coordinate, coordinates alone a computed 6-character grid, both given are
+taken verbatim; setting any of them clears `street`, `city`, `state`,
+`postal`, `county` and `country` unless the same result supplies them.
+
+**Zones are the exception to first-answer-wins.** The country file can only
+answer `cqZone`, `ituZone` and `tz` for a whole entity or call area, so once
+every source has run, a value it still holds goes to the first result that
+carried one, while the guess's scope is `qth`. `tz` is a UTC offset string
+with its ordinary sign, `"GMT-5"` being five hours behind; the SDK's
+`annotateCallAgainstCountryFile` answers with ordinary signs whichever
+version of the country file the app carries.
+
+The merge itself is a pure function with its own tests, in the app's core
+lookup extension. Where this page and its behaviour disagree, the behaviour
+is the contract and this page needs fixing.

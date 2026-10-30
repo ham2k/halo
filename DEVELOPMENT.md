@@ -162,7 +162,7 @@ for a package whose pubspec never names the Flutter SDK (`halo_core`,
 `halo_build_tools`, `halo_cli`), `flutter test` for the rest. The pure-Dart
 ones run on the plain Dart VM, where `dart:ui` does not exist, and
 `flutter test` would supply it and hide a Flutter import that breaks them
-(docs/extensions/cli.md).
+(docs/extensions/in-repo.md#halo-ext-the-extensions-on-the-command-line).
 
 Every Dart package is analyzed and format-checked before any Dart test runs.
 The app suite and then the browser-platform step run beside a second lane
@@ -520,7 +520,7 @@ Defined in [`mise.toml`](mise.toml):
 | `packages/` | Local Dart packages. First-party: `halo_core` (pure Dart — models, database, sync engine, peer protocol), `halo_widgets` (the widget catalog and the modules built from it), `halo_i18n` (the slang sources and generated strings — every first-party package may depend on it), `halo_extension_host` (the QuickJS bridge and extension manifests), `halo_quickjs` (the QuickJS-NG FFI plugin), `halo_audio` (the miniaudio FFI plugin: sound devices, playback and recording, desktop only), `halo_cli` (`halo-ext`, hooks outside the app), `halo_build_tools` (editions and version stamping). Vendored, each with a `PATCH.md` saying what it changes and why ([quirks](docs/quirks.md)): `flutter_inappwebview_macos_patched`, `flutter_inappwebview_windows_patched`, `flutter_inappwebview_linux_stub`, `universal_ble_patched`. |
 | `app_dist/` | The private distribution layer — the store, update and telemetry services the open-source app stubs out. Absent from the public mirror by design. |
 | `workers/` | Cloudflare Workers: the dev-preview proxy. |
-| `extensions/` | The SDK, the tools, and the core TypeScript extensions (every other extension is a catalog bundle, some pre-loaded from `app/assets/preloaded-extensions/` — `scripts/preloaded-extensions.mjs` keeps them current). `build.mjs` bundles the core into `app/assets/extensions/`; `dev-server.mjs` (`npm run dev`) rebuilds on save and reloads one in a running app ([docs/extensions/development.md](docs/extensions/development.md)); both build from `build-config.mjs`. |
+| `extensions/` | The SDK, the tools, and the core TypeScript extensions (every other extension is a catalog bundle, some pre-loaded from `app/assets/preloaded-extensions/` — `scripts/preloaded-extensions.mjs` keeps them current). `build.mjs` bundles the core into `app/assets/extensions/`; `dev-server.mjs` (`npm run dev`) rebuilds on save and reloads one in a running app ([the dev server](docs/extensions/in-repo.md#the-dev-server)); both build from `build-config.mjs`. |
 | `scripts/` | `test.sh`, `deploy-web.sh`, `apply-web-edition.sh`, `preloaded-extensions.mjs`, and the Linux arm64 cross-build (`build-linux-arm64.sh`, `aarch64-linux-gnu.cmake` — see below). |
 | `docs/` | [Index](docs/README.md), [design/](docs/design/), [extensions/](docs/extensions/README.md), [quirks](docs/quirks.md), [releases](docs/releases.md). |
 | `.github/workflows/`, `codemagic.yaml` | CI (GitHub Actions) and release builds (Codemagic). |

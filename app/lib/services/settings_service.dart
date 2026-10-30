@@ -821,7 +821,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   }
 
   /// The extension dev server to load extensions from
-  /// (docs/extensions/development.md). Typed by hand, never discovered: this
+  /// (docs/extensions/in-repo.md#the-dev-server). Typed by hand, never discovered: this
   /// is code the app will run, so nothing on the network gets to volunteer
   /// itself.
   String get extensionDevServerUrl => _prefs.getString(_extensionDevServerUrlKey) ?? '';

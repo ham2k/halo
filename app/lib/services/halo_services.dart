@@ -169,7 +169,7 @@ class HaLoServices with _TimeTravel {
   late final OpenedFilesService openedFiles = OpenedFilesService();
 
   /// The app end of the extension dev loop
-  /// (docs/extensions/development.md). Lazy, and inert until someone turns it
+  /// (docs/extensions/in-repo.md#the-dev-server). Lazy, and inert until someone turns it
   /// on in Developer settings and types a server address — an operator who
   /// never writes an extension pays nothing for it.
   late final ExtensionDevClient extensionDev = ExtensionDevClient(extensions: extensions);

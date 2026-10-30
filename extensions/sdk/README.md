@@ -45,8 +45,9 @@ credentials it needs, an award program, a contest and its scorer, an HTML
 panel. Each builds and packs; each says in its header what it leaves out.
 
 `AGENTS.md` beside this file is the map — the manifest, the sandbox's limits,
-and which of `docs/` answers what. `docs/` holds the references themselves:
-every hook category, forms, settings panels, templates, and the bundle format.
+and which of `docs/` answers what. `docs/` holds the documentation itself:
+getting started, how extensions run, the manifest, the host API, every hook
+category, forms, settings panels, templates, packaging and publishing.
 
 They travel in the package rather than being linked to, so they are readable
 offline and describe the version installed here rather than whatever the
@@ -55,9 +56,9 @@ repository says today. If an agent is writing your extension, point it at
 
 ## Versions
 
-The minor version is the extension API: SDK 1.12 describes API 12, and
+The minor version is the extension API: SDK 1.13 describes API 13, and
 exports it as `API_VERSION`. `@ham2k/extension-tools` follows the same rule,
-so a `^1.12.0` range says the extension needs API 12 and admits every later
+so a `^1.13.0` range says the extension needs API 13 and admits every later
 one. A major version is a change that breaks an extension already written.
 
 ## Export types and settings
