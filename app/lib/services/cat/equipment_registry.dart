@@ -572,6 +572,7 @@ const _defaultModels = [
   sierraCoaxModel,
   gs232aModel,
   pstRotatorModel,
+  rotctldModel,
   antennaModel,
   keyModel,
   winkeyerModel,

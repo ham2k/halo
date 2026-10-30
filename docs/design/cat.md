@@ -3146,7 +3146,8 @@ controller it is set up for, so this one node reaches all of them over the
 network.
 
 - **UDP Control only.** The manual also describes a rotctld server (only
-  while its Gpredict tracker is selected), N1MM rotor broadcasts on 12040
+  while its Gpredict tracker is selected — the rotctld node below reaches
+  it), N1MM rotor broadcasts on 12040
   (they turn the rotator, and nothing reports a heading back), and a TCP
   link between two PstRotator instances with no published protocol. UDP
   Control is the one that both turns the rotator and says where it points.
@@ -3183,6 +3184,47 @@ network.
   own end stops, so what it reports is already a true heading; the same
   correction set here as well would apply twice. The node carries the axes
   and the poll interval only, and `rotateTo` returns what it was asked.
+
+### Hamlib rotctld
+
+`rotctld_codec.dart` and `rotctld_driver.dart`, over the TCP transport (4533
+prefilled). From a capture of `rotctld -m 1` (Hamlib 4.7.2), and checked
+against that daemon through CatService. A `rotctld` the operator runs
+reaches any controller Hamlib has a backend for, and PstRotator answers the
+same protocol with its Gpredict tracker selected.
+
+- **Plain `p`, not `+p`.** `p` answers two bare lines, azimuth then
+  elevation; `+p` labels them. Plain is what Gpredict sends, so it is what
+  a daemon that is not Hamlib most likely answers. The session pairs bare
+  numbers; an `RPRT` or any other line resets the pairing.
+- **The daemon knows the limits.** `\dump_state`, asked once at connect,
+  names the limits it enforces — -180 to 450 for the dummy, -180 to 180 for
+  many, whatever `-C min_az=…` set — and a turn outside them is `RPRT -21`.
+  Not `\dump_caps`, whose limits are the backend's own: a daemon started
+  with `-C min_az=0,max_az=360` still reports -180 there and refuses -90.
+  So a node carries offsets (Hamlib passes the controller's degrees
+  through) but no limit fields, and a turn is placed inside the reported
+  range: `RotatorCalibration.controllerAzimuth` counts 270 as -90 where the
+  range starts below 0. Its answer is `key=value` lines ending in `done`
+  from protocol version 1 (Hamlib 4.5), four bare numbers in version 0, and
+  no `RPRT` either way — so no `p` goes out until it has been answered, or
+  for `rotctldStateWait` on a daemon that does not know it (an unknown
+  command is answered by nothing), which keeps a full turn. A reported
+  range whose minimum is not below its maximum is ignored.
+- **`P` takes both axes, always.** Sent one, the daemon takes the next line
+  as the elevation. An azimuth-only turn — every turn on an az-only node,
+  which is the default — sends the elevation last reported, or last sent:
+  an az/el rotator on that default would otherwise drop to the horizon.
+- **Answers come in the order asked.** The session keeps what it sent —
+  the state, each `p`, each `P` and `S` — and gives each `RPRT` to the
+  oldest outstanding: a `p` that failed is a failed read, a `P` or `S` a
+  refused command. A position gives up on anything asked ahead of its `p`
+  (an `S` a Gpredict-mode server does not know). A `p` is never asked while
+  another is outstanding, so a backend that is timing out cannot stack
+  polls in front of a turn. A refused command is a problem until a command
+  is answered `RPRT 0`; a failed read, or a line that is not rotctld at
+  all, is one until a position answers again — and that line does not
+  count as the node answering.
 
 ## Tuner, passband and the radio's own antenna ports
 

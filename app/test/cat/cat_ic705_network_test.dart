@@ -827,8 +827,8 @@ void main() {
     // Derived from the models, so a variant added to one has to appear here
     // without anything else being edited — including the placeholder every
     // real transceiver gains.
-    expect(registry.types, hasLength(168));
-    expect(registry.models, hasLength(63));
+    expect(registry.types, hasLength(169));
+    expect(registry.models, hasLength(64));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'bleSerial', 'icom-network', 'k4-remote', 'placeholder', 'udp']));
   });
 

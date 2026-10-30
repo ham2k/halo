@@ -293,6 +293,52 @@ class _FakeGs232 {
   Future<void> stop() => _server.close();
 }
 
+/// A rotctld daemon as `rotctld -m 1` (Hamlib 4.7.2) answers: bare `p`
+/// lines, `RPRT n` to `P` and `S`, and limits in `\dump_state` — here a
+/// backend that runs from -180 to 180.
+class _FakeRotctld {
+  final ServerSocket _server;
+  final commands = <String>[];
+  var azimuth = 0.0;
+  var elevation = 0.0;
+
+  _FakeRotctld(this._server) {
+    _server.listen((socket) {
+      unawaited(socket.done.then((_) {}, onError: (Object _) {}));
+      var pending = '';
+      socket.listen((chunk) {
+        pending += ascii.decode(chunk);
+        while (pending.contains('\n')) {
+          final end = pending.indexOf('\n');
+          final command = pending.substring(0, end);
+          pending = pending.substring(end + 1);
+          commands.add(command);
+          if (command == 'p') socket.add(ascii.encode('${azimuth.toStringAsFixed(2)}\n${elevation.toStringAsFixed(2)}\n'));
+          if (command == r'\dump_state') {
+            socket.add(ascii.encode('1\n1\nmin_az=-180.000000\nmax_az=180.000000\nmin_el=0.000000\nmax_el=90.000000\nsouth_zero=0\nrot_type=AzEl\ndone\n'));
+          }
+          if (RegExp(r'^P (-?\d+) (-?\d+)$').firstMatch(command) case final turn?) {
+            final az = double.parse(turn.group(1)!);
+            final ok = az >= -180 && az <= 180;
+            if (ok) {
+              azimuth = az;
+              elevation = double.parse(turn.group(2)!);
+            }
+            socket.add(ascii.encode(ok ? 'RPRT 0\n' : 'RPRT -21\n'));
+          }
+          if (command == 'S') socket.add(ascii.encode('RPRT 0\n'));
+        }
+      }, onError: (Object _) {});
+    });
+  }
+
+  static Future<_FakeRotctld> start() async => _FakeRotctld(await ServerSocket.bind(InternetAddress.loopbackIPv4, 0));
+
+  int get port => _server.port;
+
+  Future<void> stop() => _server.close();
+}
+
 /// PstRotator's UDP Control as its manual describes it: `<PST>…</PST>` in,
 /// `AZ:`/`EL:` answers out to the port after its own.
 class _FakePstRotator {
@@ -564,6 +610,31 @@ void main() {
       expect(rotator.commands.where((c) => c == 'C2').length - polls, greaterThanOrEqualTo(rotatorStalledAfterReadings));
     } finally {
       await rotator.stop();
+    }
+  });
+
+  test('connects to rotctld, reads where it points and turns it within the range the daemon reports', () async {
+    final rotctld = await _FakeRotctld.start();
+    try {
+      final node = await cat.addNode(typeKey: 'rotctld-tcp', name: 'Tower', config: {'host': '127.0.0.1', 'port': rotctld.port, 'rotatorAxes': 'azel'});
+      await cat.connect(node.uuid);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator != null, tries: 300);
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 0, elevation: 0));
+
+      // Past 180 on this backend: sent as 270 it is refused, and the mast
+      // never turns.
+      cat.rotateTo(node.uuid, azimuth: 270, elevation: 20);
+      await _settleUntil(() => cat.stateFor(node.uuid).rotator == const RotatorPosition(azimuth: 270, elevation: 20), tries: 300);
+      expect(rotctld.commands, contains('P -90 20'));
+      expect(cat.stateFor(node.uuid).rotator, const RotatorPosition(azimuth: 270, elevation: 20));
+      expect(cat.stateFor(node.uuid).problem, isNull);
+
+      cat.stopRotator(node.uuid);
+      await _settleUntil(() => rotctld.commands.contains('S'));
+      expect(rotctld.commands, contains('S'));
+      await cat.disconnect(node.uuid);
+    } finally {
+      await rotctld.stop();
     }
   });
 

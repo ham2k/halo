@@ -67,9 +67,10 @@ const rotatorElevationCeiling = 180;
 
 const _elevationOnly = {'field': rotatorAxesConfigKey, 'equals': rotatorAxesAzimuthElevation};
 
-/// The offsets, then the limits under Advanced. The elevation fields carry
-/// their own `visibleWhen`, so they show only for an az/el rotator.
-List<Map<String, dynamic>> rotatorConfigElements() {
+/// The offsets, then — with [limits] — the limits under Advanced. The
+/// elevation fields carry their own `visibleWhen`, so they show only for an
+/// az/el rotator. Without [limits] for a protocol that reports its own.
+List<Map<String, dynamic>> rotatorConfigElements({bool limits = true}) {
   final st = t.settings.station;
   Map<String, dynamic> degrees(String key, String label, {String? description, int? placeholder, bool advanced = false, bool elevation = false}) => {
     'type': 'field',
@@ -84,17 +85,19 @@ List<Map<String, dynamic>> rotatorConfigElements() {
   return [
     degrees(rotatorAzimuthOffsetConfigKey, st.rotatorAzimuthOffset, description: st.rotatorAzimuthOffsetDescription, placeholder: 0),
     degrees(rotatorElevationOffsetConfigKey, st.rotatorElevationOffset, placeholder: 0, elevation: true),
-    degrees(rotatorAzimuthMinConfigKey, st.rotatorAzimuthMin, placeholder: _azimuthMinDefault, advanced: true),
-    degrees(rotatorAzimuthMaxConfigKey, st.rotatorAzimuthMax, description: st.rotatorAzimuthMaxDescription, placeholder: _azimuthMaxDefault, advanced: true),
-    degrees(rotatorElevationMinConfigKey, st.rotatorElevationMin, placeholder: _elevationMinDefault, advanced: true, elevation: true),
-    degrees(
-      rotatorElevationMaxConfigKey,
-      st.rotatorElevationMax,
-      description: st.rotatorElevationMaxDescription,
-      placeholder: _elevationMaxDefault,
-      advanced: true,
-      elevation: true,
-    ),
+    if (limits) ...[
+      degrees(rotatorAzimuthMinConfigKey, st.rotatorAzimuthMin, placeholder: _azimuthMinDefault, advanced: true),
+      degrees(rotatorAzimuthMaxConfigKey, st.rotatorAzimuthMax, description: st.rotatorAzimuthMaxDescription, placeholder: _azimuthMaxDefault, advanced: true),
+      degrees(rotatorElevationMinConfigKey, st.rotatorElevationMin, placeholder: _elevationMinDefault, advanced: true, elevation: true),
+      degrees(
+        rotatorElevationMaxConfigKey,
+        st.rotatorElevationMax,
+        description: st.rotatorElevationMaxDescription,
+        placeholder: _elevationMaxDefault,
+        advanced: true,
+        elevation: true,
+      ),
+    ],
   ];
 }
 
@@ -154,6 +157,17 @@ class RotatorCalibration {
     elevationMax: _degrees(config[rotatorElevationMaxConfigKey]) ?? _elevationMaxDefault,
   );
 
+  /// These offsets inside another set of limits — the ones a protocol that
+  /// knows its controller's travel reports, in place of the node's own.
+  RotatorCalibration withLimits({required int azimuthMin, required int azimuthMax, required int elevationMin, required int elevationMax}) => RotatorCalibration(
+    azimuthOffset: azimuthOffset,
+    elevationOffset: elevationOffset,
+    azimuthMin: azimuthMin,
+    azimuthMax: azimuthMax,
+    elevationMin: elevationMin,
+    elevationMax: elevationMax,
+  );
+
   /// What the controller reported, as a true heading.
   RotatorPosition toTrue(RotatorPosition reported) =>
       RotatorPosition(azimuth: (reported.azimuth + azimuthOffset) % 360, elevation: reported.elevation == null ? null : reported.elevation! + elevationOffset);
@@ -162,10 +176,15 @@ class RotatorCalibration {
   /// limits. With overlap there can be two — 30 and 390 — and the one
   /// nearer [from] (the controller's last reading) is the shorter turn.
   /// With none, the limit nearer the heading: as close as the mast goes.
+  /// A range that starts below 0 — Hamlib's -180 to 180 — counts 270 as -90.
   int controllerAzimuth(num azimuth, {int? from}) {
     final base = (azimuth.round() - azimuthOffset) % 360;
+    var lowest = base;
+    while (lowest - 360 >= azimuthMin) {
+      lowest -= 360;
+    }
     final reachable = [
-      for (var candidate = base; candidate <= azimuthMax; candidate += 360)
+      for (var candidate = lowest; candidate <= azimuthMax; candidate += 360)
         if (candidate >= azimuthMin) candidate,
     ];
     if (reachable.isEmpty) {

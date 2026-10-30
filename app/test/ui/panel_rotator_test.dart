@@ -81,13 +81,22 @@ void main() {
       await tester.pump();
     }
 
+    /// A fixed wait for the controller's line to reach the pane is too short
+    /// on a loaded machine, and one long enough would outlast the 300 ms
+    /// silence watch the first test needs it inside.
+    Future<void> settleUntilShown(WidgetTester tester, Finder finder) async {
+      for (var tries = 0; tries < 50 && finder.evaluate().isEmpty; tries++) {
+        await settle(tester, ms: 5);
+      }
+    }
+
     // The silence watch marks the node stale, and nothing ever drops a
     // rotator that went quiet: shown as live, the last heading stays on the
     // map for good, and a tap sends a turn to a controller not answering.
     testWidgets('a rotator that stops answering is not responding, and a tap turns nothing', (tester) async {
       await pumpPane(tester);
       line.say('+0123\r\n');
-      await settle(tester);
+      await settleUntilShown(tester, find.text('123°'));
       expect(find.text('123°'), findsOneWidget);
 
       await settle(tester, ms: 400);
@@ -103,7 +112,7 @@ void main() {
     testWidgets('a controller refusing every poll says why on the pane', (tester) async {
       await pumpPane(tester);
       line.say('?>\r\n');
-      await settle(tester);
+      await settleUntilShown(tester, find.text(t.settings.station.rotatorRefused));
       expect(find.text(t.settings.station.rotatorRefused), findsOneWidget);
     });
   });

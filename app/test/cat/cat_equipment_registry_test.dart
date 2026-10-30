@@ -308,6 +308,7 @@ void main() {
       'gs232a-serial',
       'gs232a-tcp',
       'pstrotator-udp',
+      'rotctld-tcp',
       'antenna-none',
       'key-none',
       'rtl-sdr-rtltcp',

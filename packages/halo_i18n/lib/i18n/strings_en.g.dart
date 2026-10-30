@@ -6652,6 +6652,24 @@ class Translations$settings$station$en {
 	/// en: 'The controller refused a command. Check that it is set to GS-232 mode.'
 	String get rotatorRefused => 'The controller refused a command. Check that it is set to GS-232 mode.';
 
+	/// en: 'rotctld refused the command (Hamlib error ${code}).'
+	String rotctldRefused({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).';
+
+	/// en: 'rotctld could not read where the rotator points (Hamlib error ${code}).'
+	String rotctldReadFailed({required Object code}) => 'rotctld could not read where the rotator points (Hamlib error ${code}).';
+
+	/// en: 'rotctld refused that heading as past the rotator's limits (Hamlib error ${code}). Check the limits rotctld was started with.'
+	String rotctldPastLimits({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (Hamlib error ${code}). Check the limits rotctld was started with.';
+
+	/// en: 'rotctld got no answer from the rotator (Hamlib error ${code}). Check the rotator's connection to the computer running rotctld.'
+	String rotctldTimedOut({required Object code}) => 'rotctld got no answer from the rotator (Hamlib error ${code}). Check the rotator\'s connection to the computer running rotctld.';
+
+	/// en: 'Something answers on this port, but not as rotctld does. Check the host and port.'
+	String get rotctldUnreadable => 'Something answers on this port, but not as rotctld does. Check the host and port.';
+
+	/// en: 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib's backend talks to the controller and supports most of them. - **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller's model number with `rotctl -l`. - **From another machine**, allow port 4533 through that machine's firewall. rotctld listens on every address unless started with `-T`. - **Port** is 4533 unless you started the daemon with `-t`. - **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on. - Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.'
+	String get rotctldTroubleshooting => 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib\'s backend talks to the controller and supports most of them.\n\n- **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller\'s model number with `rotctl -l`.\n- **From another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **Port** is 4533 unless you started the daemon with `-t`.\n- **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on.\n- Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.';
+
 	/// en: 'PstRotator answers only once it is set up for it, and says nothing at all otherwise: - **Turn on UDP Control** in PstRotator's Setup menu. - **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device. - **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP. - **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers. - **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).'
 	String get pstRotatorTroubleshooting => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).';
 
@@ -9684,6 +9702,9 @@ class Translations$settings$station$models$en {
 	/// en: 'PstRotator (UDP Control)'
 	String get pstRotator => 'PstRotator (UDP Control)';
 
+	/// en: 'Hamlib rotctld'
+	String get rotctld => 'Hamlib rotctld';
+
 	/// en: 'RTL-SDR'
 	String get rtlSdr => 'RTL-SDR';
 
@@ -11839,6 +11860,7 @@ extension on Translations {
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
 			'settings.station.models.pstRotator' => 'PstRotator (UDP Control)',
+			'settings.station.models.rotctld' => 'Hamlib rotctld',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
@@ -11983,9 +12005,9 @@ extension on Translations {
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
-			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
@@ -12083,6 +12105,12 @@ extension on Translations {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'How often to ask the rotator where it points. Leave blank for ${fallback} ms.',
 			'settings.station.rotatorAxesRequired' => 'Choose which axes the rotator turns',
 			'settings.station.rotatorRefused' => 'The controller refused a command. Check that it is set to GS-232 mode.',
+			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (Hamlib error ${code}).',
+			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (Hamlib error ${code}).',
+			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (Hamlib error ${code}). Check the limits rotctld was started with.',
+			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (Hamlib error ${code}). Check the rotator\'s connection to the computer running rotctld.',
+			'settings.station.rotctldUnreadable' => 'Something answers on this port, but not as rotctld does. Check the host and port.',
+			'settings.station.rotctldTroubleshooting' => 'This connects to a **rotctld daemon you run yourself**, not to the rotator directly — Hamlib\'s backend talks to the controller and supports most of them.\n\n- **The daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a GS-232A. Find your controller\'s model number with `rotctl -l`.\n- **From another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **Port** is 4533 unless you started the daemon with `-t`.\n- **PstRotator** answers too, with **Gpredict** selected as its tracker and Tracking on.\n- Turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. The offsets here are for a controller whose zero is not true north.',
 			'settings.station.pstRotatorTroubleshooting' => 'PstRotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **Turn on UDP Control** in PstRotator\'s Setup menu.\n- **Match the port**: Communication → UDP Control Port, 12000 unless changed. PstRotator answers on the next port up (12001), which has to be free on this device.\n- **Connect PstRotator to its controller.** Until it is, it answers nothing over UDP.\n- **Allow it through the firewall** on the PC running PstRotator, and on this device, which listens for the answers.\n- **On a Mac, iPhone or iPad**, Ham2K Logger needs Local Network access (Settings → Privacy & Security → Local Network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'Current State: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
@@ -12491,6 +12519,8 @@ extension on Translations {
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
 			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
@@ -12498,8 +12528,6 @@ extension on Translations {
 			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approve the request in ${app}, then come back here.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Open ${app} again',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'Didn\'t work? Open it again, or go back and link another way.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Could not open ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'The link expired and a new one is ready — open ${app} again.',

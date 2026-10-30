@@ -10,6 +10,7 @@ import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
 import 'drivers/gs232_driver.dart';
 import 'drivers/pstrotator_driver.dart';
+import 'drivers/rotctld_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
@@ -26,6 +27,7 @@ const _sierraCoaxSerialKey = 'sierra-coax-serial';
 const _gs232aSerialKey = 'gs232a-serial';
 const _gs232aTcpKey = 'gs232a-tcp';
 const _pstRotatorUdpKey = 'pstrotator-udp';
+const _rotctldTcpKey = 'rotctld-tcp';
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///
@@ -146,6 +148,30 @@ const pstRotatorModel = EquipmentModel(
 );
 
 String _pstRotatorName() => t.settings.station.models.pstRotator;
+
+/// A Hamlib `rotctld` daemon: any rotator Hamlib has a backend for, and
+/// PstRotator while its Gpredict tracker is selected. No manufacturer, like
+/// the rigctld bridge.
+const rotctldModel = EquipmentModel(
+  key: 'rotctld',
+  category: kCategoryRotator,
+  name: _rotctldName,
+  variants: [
+    EquipmentVariant(
+      key: _rotctldTcpKey,
+      driver: RotctldDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'port': RotctldDriver.defaultPort, rotatorAxesConfigKey: rotatorAxesAzimuth},
+      notes: _rotctldNotes,
+    ),
+  ],
+);
+
+String _rotctldName() => t.settings.station.models.rotctld;
+
+List<Map<String, dynamic>> _rotctldNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.rotctldTroubleshooting},
+];
 
 /// PstRotator says nothing until UDP Control is on, and nothing while it has
 /// no controller of its own: a node that never hears it needs to say where

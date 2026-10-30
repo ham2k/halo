@@ -2960,6 +2960,12 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String rotatorPollIntervalDescription({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.';
 	@override String get rotatorAxesRequired => 'choose which axes the rotator turns';
 	@override String get rotatorRefused => 'the controller refused a command. check that it is set to gs-232 mode.';
+	@override String rotctldRefused({required Object code}) => 'rotctld refused the command (hamlib error ${code}).';
+	@override String rotctldReadFailed({required Object code}) => 'rotctld could not read where the rotator points (hamlib error ${code}).';
+	@override String rotctldPastLimits({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (hamlib error ${code}). check the limits rotctld was started with.';
+	@override String rotctldTimedOut({required Object code}) => 'rotctld got no answer from the rotator (hamlib error ${code}). check the rotator\'s connection to the computer running rotctld.';
+	@override String get rotctldUnreadable => 'something answers on this port, but not as rotctld does. check the host and port.';
+	@override String get rotctldTroubleshooting => 'this connects to a **rotctld daemon you run yourself**, not to the rotator directly — hamlib\'s backend talks to the controller and supports most of them.\n\n- **the daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a gs-232a. find your controller\'s model number with `rotctl -l`.\n- **from another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **port** is 4533 unless you started the daemon with `-t`.\n- **pstrotator** answers too, with **gpredict** selected as its tracker and tracking on.\n- turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. the offsets here are for a controller whose zero is not true north.';
 	@override String get pstRotatorTroubleshooting => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).';
 	@override String rotatorCurrentStateHeader({required Object position}) => 'current state: ${position}';
 	@override String get rotatorDisconnected => 'disconnected';
@@ -4390,6 +4396,7 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get sierraCoax => 'sierra radio cx-1 coax switch';
 	@override String get gs232a => 'yaesu gs-232a rotator interface';
 	@override String get pstRotator => 'pstrotator (udp control)';
+	@override String get rotctld => 'hamlib rotctld';
 	@override String get rtlSdr => 'rtl-sdr';
 	@override String get nesdr => 'nooelec nesdr';
 	@override String get sdrplay => 'sdrplay rsp';
@@ -6424,6 +6431,7 @@ extension on TranslationsQrp {
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
 			'settings.station.models.gs232a' => 'yaesu gs-232a rotator interface',
 			'settings.station.models.pstRotator' => 'pstrotator (udp control)',
+			'settings.station.models.rotctld' => 'hamlib rotctld',
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
@@ -6568,9 +6576,9 @@ extension on TranslationsQrp {
 			'settings.station.otherEquipment' => 'other equipment (antennas, keys, etc)',
 			'settings.station.newAntenna' => 'new antenna',
 			'settings.station.newKey' => 'new key',
-			'settings.station.newKeyer' => 'winkeyer (k1el or compatible)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.newKeyer' => 'winkeyer (k1el or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'cat keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'key on ${device}',
 			'settings.station.trackStationInfo' => 'track station info for each qso',
@@ -6668,6 +6676,12 @@ extension on TranslationsQrp {
 			'settings.station.rotatorPollIntervalDescription' => ({required Object fallback}) => 'how often to ask the rotator where it points. leave blank for ${fallback} ms.',
 			'settings.station.rotatorAxesRequired' => 'choose which axes the rotator turns',
 			'settings.station.rotatorRefused' => 'the controller refused a command. check that it is set to gs-232 mode.',
+			'settings.station.rotctldRefused' => ({required Object code}) => 'rotctld refused the command (hamlib error ${code}).',
+			'settings.station.rotctldReadFailed' => ({required Object code}) => 'rotctld could not read where the rotator points (hamlib error ${code}).',
+			'settings.station.rotctldPastLimits' => ({required Object code}) => 'rotctld refused that heading as past the rotator\'s limits (hamlib error ${code}). check the limits rotctld was started with.',
+			'settings.station.rotctldTimedOut' => ({required Object code}) => 'rotctld got no answer from the rotator (hamlib error ${code}). check the rotator\'s connection to the computer running rotctld.',
+			'settings.station.rotctldUnreadable' => 'something answers on this port, but not as rotctld does. check the host and port.',
+			'settings.station.rotctldTroubleshooting' => 'this connects to a **rotctld daemon you run yourself**, not to the rotator directly — hamlib\'s backend talks to the controller and supports most of them.\n\n- **the daemon must already be running**, e.g. `rotctld -m 601 -r /dev/ttyUSB0` for a gs-232a. find your controller\'s model number with `rotctl -l`.\n- **from another machine**, allow port 4533 through that machine\'s firewall. rotctld listens on every address unless started with `-T`.\n- **port** is 4533 unless you started the daemon with `-t`.\n- **pstrotator** answers too, with **gpredict** selected as its tracker and tracking on.\n- turns go only as far as the limits rotctld enforces, which it reports itself — set them with `-C min_az=…,max_az=…` when starting it. the offsets here are for a controller whose zero is not true north.',
 			'settings.station.pstRotatorTroubleshooting' => 'pstrotator answers only once it is set up for it, and says nothing at all otherwise:\n\n- **turn on udp control** in pstrotator\'s setup menu.\n- **match the port**: communication → udp control port, 12000 unless changed. pstrotator answers on the next port up (12001), which has to be free on this device.\n- **connect pstrotator to its controller.** until it is, it answers nothing over udp.\n- **allow it through the firewall** on the pc running pstrotator, and on this device, which listens for the answers.\n- **on a mac, iphone or ipad**, ham2k logger needs local network access (settings → privacy & security → local network).',
 			'settings.station.rotatorCurrentStateHeader' => ({required Object position}) => 'current state: ${position}',
 			'settings.station.rotatorDisconnected' => 'disconnected',
@@ -7076,6 +7090,8 @@ extension on TranslationsQrp {
 			'confirmDevice.linkIt' => 'link device',
 			'switchAccounts.noAccountDetails' => 'no account details yet',
 			'switchAccounts.currentAccount' => 'current account',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.otherAccounts' => 'other accounts',
 			'switchAccounts.linkToAnother' => 'link to another account',
 			'switchAccounts.linkWithSibling' => 'link with other ham2k app',
@@ -7083,8 +7099,6 @@ extension on TranslationsQrp {
 			'switchAccounts.linkWithSiblingDescription' => 'you have another ham2k app installed. link with the account in use there.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'approve the request in ${app}, then come back here.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'open ${app} again',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingNoGrant' => 'didn\'t work? open it again, or go back and link another way.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'could not open ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'the link expired and a new one is ready — open ${app} again.',
