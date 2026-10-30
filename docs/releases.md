@@ -720,23 +720,34 @@ reach a manifest write without passing it. An unrecognised or empty value is a
 build failure rather than a default — a `HALO_PUBLISH_MANIFEST: "False"` quietly
 read as "publish" would announce an edition that was being held back, and once
 the download page and every install has seen it there is no taking it back.
-**Windows is not covered**: `build-windows.ps1` publishes through a PowerShell
-sibling and writes its own WinSparkle appcast, neither of which can source the
-guard, and there is no Regular Windows workflow yet. Wiring one means porting the
-guard first. What Windows has instead is a gate on the *trigger*: the script
-publishes only when Codemagic set `CM_TAG`, i.e. a release tag started the run.
-A `windows-next-release` started by hand from a branch builds, signs and uploads
-its symbols, then stops after the artifacts zip — which is how the pipeline is
-exercised without touching the download that every Next install points at. A
-Regular Windows workflow would need this gate revisited alongside the port.
+Windows cannot source a bash file, so `app_dist/ci/manifest-guard.ps1` carries
+the same check with the same accepted values. It sits at the entry of
+`publish-download.ps1`, and `build-windows.ps1` asks it before writing the
+WinSparkle appcast — Windows's counterpart of the Sparkle feed — and reads it at
+startup, so a bad value fails before the build rather than after it.
 
-The Regular workflows set it from two anchors in `codemagic.yaml`.
-`macos-prod-release` reads `publish_regular_macos`, which is `"true"`: Regular
-macOS is public, and each build writes its entry. `ios-prod-release` and
-`android-prod-release` read `publish_regular_mobile`, which is `"false"`: the
-stores still get those builds, but the download page does not list them.
-Flipping either anchor changes the builds after it, never an entry already
-written.
+The same guard also checks the *trigger*: a Next or Regular build publishes
+only when Codemagic set `CM_TAG`, i.e. a release tag started the run. A release
+workflow started by hand from a branch still builds, signs and delivers to its
+store, and writes no manifest and no appcast — which is how a pipeline is
+exercised without touching the download that every install of that edition
+points at. Dev is exempt: its workflows have no trigger, so every Dev build is
+started by hand. A run publishes only when both the switch and the trigger
+allow it.
+
+The Regular workflows set it from one anchor per platform group in
+`codemagic.yaml`:
+
+| Anchor | Workflows | Value |
+|---|---|---|
+| `publish_regular_macos` | `macos-prod-release` | `"true"` |
+| `publish_regular_windows` | `windows-prod-release` | `"true"` |
+| `publish_regular_linux` | `linux-x64-prod-release`, `linux-arm64-prod-release` | `"true"` |
+| `publish_regular_mobile` | `ios-prod-release`, `android-prod-release` | `"false"` |
+
+The desktop builds are public, and each writes its entry. The mobile builds
+still reach the stores, but the download page does not list them. Flipping an
+anchor changes the builds after it, never an entry already written.
 
 ---
 
@@ -919,10 +930,10 @@ target release the projection no longer names that release.
 
 **Wired so far:** iOS, macOS, and Android for **Next** and for **Regular**
 (release + code push). Next's release builds run on a `next-v*` tag and
-Regular's (`ios-prod-release`, `macos-prod-release`, `android-prod-release`,
-all holding their manifests per §3.5) on a `prod-v*` tag; their code pushes run
-on `code-push-next-*` and `code-push-prod-*`. Windows/Linux are not wired for
-Regular at all.
+Regular's (every `*-prod-release`, each publishing or holding its manifest
+per §3.5) on a `prod-v*` tag; their code pushes run
+on `code-push-next-*` and `code-push-prod-*`. Windows and Linux have release
+builds for both editions and no code push.
 
 **Prerequisites (one-time):** run `shorebird init` (creates the apps and the
 committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
