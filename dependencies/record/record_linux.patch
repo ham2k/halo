@@ -1,0 +1,36 @@
+--- a/lib/record_linux.dart
++++ b/lib/record_linux.dart
+@@ -4,13 +4,12 @@
+ import 'package:flutter/services.dart';
+ import 'package:record_platform_interface/record_platform_interface.dart';
+ 
+-import 'src/codec_caps.dart';
++import 'src/alsa_iq_recorder.dart';
+ import 'src/linux_recorder.dart';
+-import 'src/pactl_devices.dart';
+ 
+ class RecordLinux extends RecordPlatform {
+   RecordLinux({@visibleForTesting LinuxRecorder Function()? newRecorder})
+-    : _newRecorder = newRecorder ?? LinuxRecorder.new;
++    : _newRecorder = newRecorder ?? AlsaIqRecorder.new;
+ 
+   static void registerWith() {
+     RecordPlatform.instance = RecordLinux();
+@@ -46,7 +45,7 @@
+ 
+   @override
+   Future<bool> isEncoderSupported(String recorderId, AudioEncoder encoder) {
+-    return Future.value(supportsEncoder(encoder));
++    return Future.value(encoder == AudioEncoder.pcm16bits);
+   }
+ 
+   @override
+@@ -98,7 +97,7 @@
+ 
+   @override
+   Future<List<InputDevice>> listInputDevices(String recorderId) {
+-    return listPactlInputDevices();
++    return listAlsaIqInputs();
+   }
+ 
+   @override

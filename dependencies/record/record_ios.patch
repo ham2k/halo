@@ -1,0 +1,245 @@
+--- a/ios/record_ios/Sources/record_ios/delegate/RecorderStreamDelegate.swift
++++ b/ios/record_ios/Sources/record_ios/delegate/RecorderStreamDelegate.swift
+@@ -16,6 +16,10 @@
+   private var m_onPause:  () -> ()
+   private var m_onStop:   () -> ()
+   private var m_interruptionObserver: NSObjectProtocol?
++  private var m_routeObservers: [NSObjectProtocol] = []
++  private var m_iqConfig: RecordConfig?
++  private var m_iqInvalidated = false
++  private var m_captureGeneration = 0
+ 
+   init(
+     queue: DispatchQueue,
+@@ -33,10 +37,36 @@
+ 
+   func start(config: RecordConfig, recordEventHandler: RecordStreamHandler) throws {
+     let engine = AVAudioEngine()
+-    m_interruptionObserver = try initAVAudioSession(config: config, manageAudioSession: m_manageAudioSession, queue: m_queue)
+-    try setVoiceProcessing(echoCancel: config.echoCancel, autoGain: config.autoGain, audioEngine: engine)
++    let generation = m_lock.withLock { () -> Int in
++      m_captureGeneration += 1
++      m_iqInvalidated = false
++      return m_captureGeneration
++    }
++    let strictIq = config.encoder == AudioEncoder.pcm16bits.rawValue && config.numChannels == 2
++    if strictIq {
++      try initIqSession(config: config)
++      m_lock.withLock { m_iqConfig = config }
++    } else {
++      m_interruptionObserver = try initAVAudioSession(config: config, manageAudioSession: m_manageAudioSession, queue: m_queue)
++    }
++    var started = false
++    defer {
++      if !started {
++        if let observer = m_interruptionObserver { NotificationCenter.default.removeObserver(observer) }
++        m_interruptionObserver = nil
++        m_lock.withLock {
++          m_iqConfig = nil
++          m_iqInvalidated = true
++        }
++        if strictIq && m_manageAudioSession {
++          try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
++        }
++      }
++    }
++    try setVoiceProcessing(echoCancel: strictIq ? false : config.echoCancel, autoGain: strictIq ? false : config.autoGain, audioEngine: engine)
+ 
+     let srcFormat = engine.inputNode.inputFormat(forBus: 0)
++    if strictIq { try validateIq(config: config, engine: engine, format: srcFormat) }
+     let processor = try AudioStreamProcessor(config: config, srcFormat: srcFormat)
+ 
+     engine.inputNode.installTap(
+@@ -44,25 +74,48 @@
+       bufferSize: AVAudioFrameCount(config.streamBufferSize ?? 1024),
+       format: srcFormat
+     ) { [weak self] buffer, _ in
+-      self?.handleTap(buffer: buffer, recordEventHandler: recordEventHandler)
++      self?.handleTap(buffer: buffer, recordEventHandler: recordEventHandler, generation: generation)
+     }
+ 
+     engine.prepare()
+     do {
+       try engine.start()
++      m_audioEngine = engine
++      if strictIq {
++        // Observe before the final validation so a same-format replacement
++        // cannot switch devices in the gap between validation and watching.
++        observeIqRoute(engine: engine, generation: generation)
++        try validateIq(config: config, engine: engine, format: engine.inputNode.inputFormat(forBus: 0))
++        guard m_lock.withLock({ !m_iqInvalidated }) else {
++          throw RecorderError.error(message: "iq_audio_device_unavailable", details: "The audio route changed during startup.")
++        }
++      }
+     } catch {
++      for observer in m_routeObservers { NotificationCenter.default.removeObserver(observer) }
++      m_routeObservers.removeAll()
++      m_audioEngine = nil
++      engine.inputNode.removeTap(onBus: m_bus)
++      engine.stop()
+       processor.dispose()
+       throw error
+     }
+ 
+-    m_audioEngine = engine
+     m_lock.withLock { m_processor = processor }
+     self.config = config
++    started = true
+     m_onRecord()
+   }
+ 
+   @discardableResult
+   func stop() -> String? {
++    for observer in m_routeObservers { NotificationCenter.default.removeObserver(observer) }
++    m_routeObservers.removeAll()
++    let ownedIqSession = m_iqConfig != nil && m_manageAudioSession
++    m_lock.withLock {
++      m_captureGeneration += 1
++      m_iqInvalidated = true
++      m_iqConfig = nil
++    }
+     if let observer = m_interruptionObserver {
+       NotificationCenter.default.removeObserver(observer)
+       m_interruptionObserver = nil
+@@ -82,6 +135,9 @@
+     }
+ 
+     config = nil
++    if ownedIqSession {
++      try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
++    }
+     m_onStop()
+     return nil
+   }
+@@ -108,13 +164,20 @@
+ 
+   // MARK: - Private
+ 
+-  private func handleTap(buffer: AVAudioPCMBuffer, recordEventHandler: RecordStreamHandler) {
+-    let processor = m_lock.withLock { m_isPaused ? nil : m_processor }
+-
+-    guard let processor else { return }
++  private func handleTap(buffer: AVAudioPCMBuffer, recordEventHandler: RecordStreamHandler, generation: Int) {
++    let state = m_lock.withLock {
++      (m_isPaused || m_iqInvalidated || generation != m_captureGeneration ? nil : m_processor, m_iqConfig)
++    }
++    guard let processor = state.0 else { return }
++    if let iqConfig = state.1,
++       (buffer.format.channelCount != 2 || abs(buffer.format.sampleRate - Double(iqConfig.sampleRate)) >= 1) {
++      invalidateIq(generation: generation)
++      return
++    }
+ 
+     guard let dataList = processor.process(buffer: buffer) else {
+       let toDispose = m_lock.withLock { () -> AudioStreamProcessor? in
++        guard generation == m_captureGeneration else { return nil }
+         let p = m_processor
+         m_processor = nil
+         return p
+@@ -122,6 +185,7 @@
+       guard toDispose != nil else { return }
+       m_queue.async {
+         toDispose?.dispose()
++        guard self.m_lock.withLock({ generation == self.m_captureGeneration }) else { return }
+         self.stop()
+       }
+       return
+@@ -129,7 +193,97 @@
+ 
+     guard let sink = recordEventHandler.eventSink else { return }
+     for data in dataList {
+-      DispatchQueue.main.async { sink(FlutterStandardTypedData(bytes: data)) }
++      DispatchQueue.main.async { [weak self] in
++        guard let self, self.m_lock.withLock({ !self.m_iqInvalidated && generation == self.m_captureGeneration }) else { return }
++        sink(FlutterStandardTypedData(bytes: data))
++      }
++    }
++  }
++
++  private func initIqSession(config: RecordConfig) throws {
++    let session = AVAudioSession.sharedInstance()
++    guard let device = config.device, !device.id.isEmpty else {
++      throw RecorderError.error(message: "iq_audio_device_unavailable", details: "Select a stereo audio input.")
++    }
++    guard !config.autoGain, !config.echoCancel, !config.noiseSuppress else {
++      throw RecorderError.error(message: "iq_audio_invalid_format", details: "I/Q capture cannot use voice processing.")
++    }
++    do {
++      if m_manageAudioSession {
++        // Measurement mode avoids voice processing. Negotiate the rate
++        // on the selected route, without the ordinary 48 kHz clamp.
++        try session.setCategory(.playAndRecord, mode: .measurement, options: [.mixWithOthers])
++        try session.setActive(true)
++      }
++      guard let selected = session.availableInputs?.first(where: { $0.uid == device.id }) else {
++        throw RecorderError.error(message: "iq_audio_device_unavailable", details: "The selected input is no longer connected.")
++      }
++      try session.setPreferredInput(selected)
++      if m_manageAudioSession { try session.setPreferredSampleRate(Double(config.sampleRate)) }
++      guard session.currentRoute.inputs.count == 1,
++            session.currentRoute.inputs.first?.uid == device.id else {
++        throw RecorderError.error(message: "iq_audio_device_unavailable", details: "The system did not route the selected input.")
++      }
++      guard selected.channels?.count == 2, session.maximumInputNumberOfChannels == 2,
++            session.mode == .measurement else {
++        throw RecorderError.error(message: "iq_audio_invalid_format", details: "I/Q requires two physical input channels in measurement mode.")
++      }
++      try session.setPreferredInputNumberOfChannels(2)
++      if #available(iOS 13.0, *) {
++        try session.setAllowHapticsAndSystemSoundsDuringRecording(false)
++      }
++    } catch {
++      if m_manageAudioSession { try? session.setActive(false, options: .notifyOthersOnDeactivation) }
++      throw error
++    }
++  }
++
++  private func validateIq(config: RecordConfig, engine: AVAudioEngine, format: AVAudioFormat) throws {
++    let session = AVAudioSession.sharedInstance()
++    let route = session.currentRoute.inputs.count == 1 ? session.currentRoute.inputs.first : nil
++    var processing = session.mode != .measurement
++    if #available(iOS 13.0, *) { processing = processing || engine.inputNode.isVoiceProcessingEnabled }
++    if let failure = IqCaptureValidation.failure(
++      selectedDeviceId: config.device?.id,
++      routedDeviceId: route?.uid,
++      physicalChannels: route?.channels?.count,
++      sessionChannels: session.inputNumberOfChannels,
++      sourceChannels: format.channelCount,
++      sessionSampleRate: session.sampleRate,
++      sourceSampleRate: format.sampleRate,
++      requestedSampleRate: config.sampleRate,
++      voiceProcessing: processing
++    ) {
++      throw RecorderError.error(message: failure, details: "The selected route must provide unchanged stereo samples at the requested rate.")
++    }
++  }
++
++  private func observeIqRoute(engine: AVAudioEngine, generation: Int) {
++    for (name, object) in [
++      (AVAudioSession.routeChangeNotification, nil as AnyObject?),
++      (AVAudioSession.interruptionNotification, nil as AnyObject?),
++      (AVAudioSession.mediaServicesWereLostNotification, nil as AnyObject?),
++      (AVAudioSession.mediaServicesWereResetNotification, nil as AnyObject?),
++      (Notification.Name.AVAudioEngineConfigurationChange, engine as AnyObject?),
++    ] {
++      m_routeObservers.append(NotificationCenter.default.addObserver(forName: name, object: object, queue: nil) { [weak self, weak engine] _ in
++        guard let self, let engine else { return }
++        self.invalidateIq(generation: generation, engine: engine)
++      })
++    }
++  }
++
++  private func invalidateIq(generation: Int, engine: AVAudioEngine? = nil) {
++    let first = m_lock.withLock { () -> Bool in
++      guard !m_iqInvalidated, generation == m_captureGeneration else { return false }
++      m_iqInvalidated = true
++      return true
++    }
++    guard first else { return }
++    m_queue.async { [weak self, weak engine] in
++      guard let self, self.m_lock.withLock({ generation == self.m_captureGeneration }) else { return }
++      if let engine, self.m_audioEngine !== engine { return }
++      self.stop()
+     }
+   }
+ 

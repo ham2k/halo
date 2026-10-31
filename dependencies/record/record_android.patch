@@ -1,0 +1,380 @@
+--- a/android/build.gradle.kts
++++ b/android/build.gradle.kts
+@@ -23,6 +23,8 @@
+ 
+ plugins {
+     id("com.android.library")
++    // HaLo uses the external Kotlin plugin (android.builtInKotlin=false).
++    id("org.jetbrains.kotlin.android")
+ }
+ 
+ android {
+--- a/android/src/main/kotlin/com/llfbandit/record/record/audio_manager/AudioEffectsManager.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/audio_manager/AudioEffectsManager.kt
+@@ -36,6 +36,9 @@
+     } else if (config.noiseSuppress) {
+       Log.d(TAG, "Noise suppressor effect is not available.")
+     }
++    if (config.isIqStream && (agc?.enabled == true || aec?.enabled == true || ns?.enabled == true)) {
++      throw Exception("iq_audio_invalid_format")
++    }
+   }
+ 
+   fun release() {
+--- a/android/src/main/kotlin/com/llfbandit/record/record/audio_manager/AudioInterruptionPolicy.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/audio_manager/AudioInterruptionPolicy.kt
+@@ -3,17 +3,24 @@
+ import com.llfbandit.record.record.model.AudioInterruption
+ import com.llfbandit.record.record.model.RecordConfig
+ 
+-enum class PolicyAction { Pause, Resume }
++enum class PolicyAction { Pause, Resume, Stop }
+ 
+ /** The single home for what `audioInterruption` means. */
+ object AudioInterruptionPolicy {
+-  fun react(config: RecordConfig, event: EnvironmentEvent): List<PolicyAction> = when (event) {
+-    EnvironmentEvent.FocusLost ->
+-      if (config.audioInterruption != AudioInterruption.NONE) listOf(PolicyAction.Pause)
+-      else emptyList()
++  fun react(config: RecordConfig, event: EnvironmentEvent): List<PolicyAction> {
++    // An interruption can change the physical source or format. I/Q must be
++    // opened and validated again rather than automatically resuming.
++    if (config.isIqStream) {
++      return if (event == EnvironmentEvent.FocusLost) listOf(PolicyAction.Stop) else emptyList()
++    }
++    return when (event) {
++      EnvironmentEvent.FocusLost ->
++        if (config.audioInterruption != AudioInterruption.NONE) listOf(PolicyAction.Pause)
++        else emptyList()
+ 
+-    EnvironmentEvent.FocusRegained ->
+-      if (config.audioInterruption == AudioInterruption.PAUSE_RESUME) listOf(PolicyAction.Resume)
+-      else emptyList()
++      EnvironmentEvent.FocusRegained ->
++        if (config.audioInterruption == AudioInterruption.PAUSE_RESUME) listOf(PolicyAction.Resume)
++        else emptyList()
++    }
+   }
+ }
+--- a/android/src/main/kotlin/com/llfbandit/record/record/format/FormatCodecSelector.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/format/FormatCodecSelector.kt
+@@ -19,7 +19,9 @@
+   ): Pair<IEncoder, MediaFormat> {
+ 
+     // Clamp config to device caps.
+-    adjustToDeviceCapabilities(config)
++    // I/Q channel/rate validation must see the original request. Clamping
++    // stereo to a mono device here would disable strict capture downstream.
++    if (!config.isIqStream) adjustToDeviceCapabilities(config)
+ 
+     // Load MediaFormat from given config and adjust it from codec caps.
+     val mediaFormat = format.getMediaFormat(config)
+--- a/android/src/main/kotlin/com/llfbandit/record/record/model/RecordConfig.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/model/RecordConfig.kt
+@@ -28,6 +28,8 @@
+   audioInterruption: Int,
+   val streamBufferSize: Int?,
+   private val rawMap: Map<String, Any?> = emptyMap(),
++  val audioManager: AudioManager? = null,
++  val requestedDeviceId: String? = null,
+ ) {
+   val audioInterruption: AudioInterruption = when (audioInterruption) {
+     0 -> AudioInterruption.NONE
+@@ -37,6 +39,7 @@
+   }
+ 
+   val encoder: AudioEncoder = AudioEncoder.from(encoder)
++  val isIqStream: Boolean = path == null && this.encoder == AudioEncoder.Pcm16bits && numChannels == 2
+ 
+   fun toMap(): Map<String, Any?> = rawMap + mapOf(
+     "sampleRate" to sampleRate,
+@@ -49,7 +52,7 @@
+     device, autoGain, echoCancel, noiseSuppress,
+     useLegacy, muteAudio, manageBluetoothSco, audioSource,
+     speakerphone, audioManagerMode, audioInterruption.ordinal,
+-    streamBufferSize, rawMap,
++    streamBufferSize, rawMap, audioManager, requestedDeviceId,
+   )
+ 
+   fun isModified(other: RecordConfig): Boolean =
+@@ -109,7 +112,7 @@
+         else -> AudioManager.MODE_NORMAL
+       }
+ 
+-      return RecordConfig(
++      val config = RecordConfig(
+         call.argument("path"),
+         Utils.firstNonNull(call.argument("encoder"), "aacLc"),
+         Utils.firstNonNull(call.argument("bitRate"), 128000),
+@@ -131,7 +134,15 @@
+         ),
+         call.argument("streamBufferSize"),
+         rawMap,
++        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager,
++        call.argument<Map<String, Any?>>("device")?.get("id") as? String,
+       )
++      // Refuse a stale selection before the environment can probe or route
++      // the default microphone while preparing Bluetooth/audio focus.
++      if (config.isIqStream && (config.requestedDeviceId.isNullOrBlank() || config.device?.id?.toString() != config.requestedDeviceId)) {
++        throw Exception("iq_audio_device_unavailable")
++      }
++      return config
+     }
+   }
+ }
+--- a/android/src/main/kotlin/com/llfbandit/record/record/recorder/PCMReader.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/recorder/PCMReader.kt
+@@ -1,7 +1,16 @@
+ package com.llfbandit.record.record.recorder
+ 
+ import android.annotation.SuppressLint
++import android.media.AudioDeviceInfo
++import android.media.AudioDeviceCallback
+ import android.media.AudioFormat
++import android.media.AudioManager
++import android.media.AudioRecordingConfiguration
++import android.media.AudioRouting
++import android.media.MediaRecorder
++import android.os.Build
++import android.os.Handler
++import android.os.Looper
+ import android.media.AudioRecord
+ import android.media.MediaFormat
+ import android.util.Log
+@@ -22,10 +31,38 @@
+     private const val MAX_PCM_VALUE = 32767.0 // 2^15 - 1 for 16-bit signed
+   }
+ 
++  private val strictIq = config.isIqStream
++  @Volatile private var iqFailure: String? = null
++  @Volatile private var observing = false
++  private val observerHandler by lazy { Handler(Looper.getMainLooper()) }
++  private val routingListener = AudioRouting.OnRoutingChangedListener {
++    if (observing && reader.routedDevice?.id?.toString() != config.requestedDeviceId) invalidateIq("iq_audio_device_unavailable")
++  }
++  private val deviceCallback = object : AudioDeviceCallback() {
++    override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
++      if (removedDevices.any { it.id.toString() == config.requestedDeviceId }) invalidateIq("iq_audio_device_unavailable")
++    }
++  }
++  private val recordingCallback = object : AudioManager.AudioRecordingCallback() {
++    override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
++      if (!observing) return
++      val current = configs.firstOrNull { it.clientAudioSessionId == reader.audioSessionId }
++      if (current == null) invalidateIq("iq_audio_device_unavailable")
++      else captureFailure(current)?.let(::invalidateIq)
++    }
++  }
+   private val bufferSize: Int = initBufferSize()
+   private val readBuffer: ShortArray = ShortArray(bufferSize / 2)
+   private val reader: AudioRecord = createReader()
+-  private val effects = AudioEffectsManager(reader.audioSessionId).also { it.apply(config) }
++  private val effects = AudioEffectsManager(reader.audioSessionId).also {
++    try {
++      it.apply(config)
++    } catch (error: Exception) {
++      it.release()
++      reader.release()
++      throw error
++    }
++  }
+ 
+   // Written by the capture loop, read from the control thread.
+   @Volatile
+@@ -33,6 +70,12 @@
+ 
+   fun start() {
+     reader.startRecording()
++    if (strictIq) {
++      observing = true
++      reader.addOnRoutingChangedListener(routingListener, observerHandler)
++      config.audioManager!!.registerAudioDeviceCallback(deviceCallback, observerHandler)
++      config.audioManager!!.registerAudioRecordingCallback(recordingCallback, observerHandler)
++    }
+   }
+ 
+   fun stop() {
+@@ -44,8 +87,24 @@
+   @Throws(Exception::class)
+   fun read(): ByteArray {
+     val readResult = reader.read(readBuffer, 0, readBuffer.size)
++    iqFailure?.let { throw Exception(it) }
+     if (readResult < 0) {
++      if (strictIq && readResult == AudioRecord.ERROR_DEAD_OBJECT) throw Exception("iq_audio_device_unavailable")
+       throw Exception(getReadFailureReason(readResult))
++    }
++
++    if (strictIq) {
++      // Read hardware metadata after the blocking read, before any bytes
++      // reach the encoder. AudioRecord's own format can describe an upmix
++      // or a resampled stream rather than the interface's actual capture.
++      val active = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++        reader.activeRecordingConfiguration
++      } else {
++        config.audioManager!!.activeRecordingConfigurations.firstOrNull {
++          it.clientAudioSessionId == reader.audioSessionId
++        }
++      } ?: throw Exception("iq_audio_invalid_format")
++      captureFailure(active)?.let { throw Exception(it) }
+     }
+ 
+     if (readResult > 0) {
+@@ -62,9 +121,43 @@
+   }
+ 
+   fun release() {
+-    stop()
+-    effects.release()
+-    reader.release()
++    if (observing) {
++      observing = false
++      reader.removeOnRoutingChangedListener(routingListener)
++      config.audioManager?.unregisterAudioDeviceCallback(deviceCallback)
++      config.audioManager?.unregisterAudioRecordingCallback(recordingCallback)
++    }
++    try {
++      stop()
++    } finally {
++      effects.release()
++      reader.release()
++    }
++  }
++
++  private fun captureFailure(active: AudioRecordingConfiguration): String? {
++    val processing = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
++      active.effects.isNotEmpty() || active.clientEffects.isNotEmpty() || active.isClientSilenced ||
++        active.audioSource !in setOf(MediaRecorder.AudioSource.UNPROCESSED, MediaRecorder.AudioSource.VOICE_RECOGNITION)
++    } else false
++    return IqCaptureValidation.failure(
++      config.requestedDeviceId,
++      reader.routedDevice?.id?.toString(),
++      active.audioDevice?.id?.toString(),
++      active.format.channelCount,
++      active.clientFormat.channelCount,
++      active.format.sampleRate,
++      active.clientFormat.sampleRate,
++      config.sampleRate,
++      processing,
++    )
++  }
++
++  private fun invalidateIq(failure: String) {
++    if (!observing) return
++    iqFailure = failure
++    // Unblock a read even if unplugging has stopped callbacks entirely.
++    try { stop() } catch (_: Exception) {}
+   }
+ 
+   @SuppressLint("MissingPermission")
+@@ -74,9 +167,25 @@
+     val channels = getChannelsConfig()
+     val audioFormat = getAudioFormat()
+ 
++    if (strictIq) {
++      if (config.requestedDeviceId.isNullOrBlank() || config.device?.id?.toString() != config.requestedDeviceId) {
++        throw Exception("iq_audio_device_unavailable")
++      }
++      if (config.audioManager == null || config.autoGain || config.echoCancel || config.noiseSuppress) {
++        throw Exception("iq_audio_invalid_format")
++      }
++    }
++    val source = if (strictIq) {
++      if (config.audioManager!!.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED) == "true") {
++        MediaRecorder.AudioSource.UNPROCESSED
++      } else {
++        // Android documents this source as the fallback without AGC or NS.
++        MediaRecorder.AudioSource.VOICE_RECOGNITION
++      }
++    } else config.audioSource
+     val reader = try {
+       AudioRecord(
+-        config.audioSource,
++        source,
+         sampleRate,
+         channels,
+         audioFormat,
+@@ -93,6 +202,10 @@
+ 
+     if (config.device != null) {
+       if (!reader.setPreferredDevice(config.device)) {
++        if (strictIq) {
++          reader.release()
++          throw Exception("iq_audio_device_unavailable")
++        }
+         Log.w(TAG, "Unable to set device: ${config.device.productName}")
+       }
+     }
+--- a/android/src/main/kotlin/com/llfbandit/record/record/recorder/RecorderController.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/recorder/RecorderController.kt
+@@ -124,6 +124,7 @@
+         PolicyAction.Pause ->
+           if (s.state == RecordState.RECORD && s.engine.pause()) moveTo(s, RecordState.PAUSE)
+         PolicyAction.Resume -> resume()
++        PolicyAction.Stop -> stop {}
+       }
+     }
+   }
+--- a/android/src/main/kotlin/com/llfbandit/record/record/recorder/engine/PcmCaptureEngine.kt
++++ b/android/src/main/kotlin/com/llfbandit/record/record/recorder/engine/PcmCaptureEngine.kt
+@@ -70,6 +70,11 @@
+     }
+     // The loop owns the teardown, so it answers.
+     inbox.put(Msg.Stop(delete, done))
++    if (config.isIqStream) {
++      // AudioRecord.read may block after focus/device loss. Wake it so the
++      // loop can consume Stop and complete teardown without another sample.
++      try { reader?.stop() } catch (_: Exception) {}
++    }
+   }
+ 
+   override fun onEncoderFailure(ex: Exception) {
+--- a/android/src/test/kotlin/com/llfbandit/record/record/audio_manager/AudioInterruptionPolicyTest.kt
++++ b/android/src/test/kotlin/com/llfbandit/record/record/audio_manager/AudioInterruptionPolicyTest.kt
+@@ -43,4 +43,16 @@
+     assertEquals(listOf(PolicyAction.Pause), AudioInterruptionPolicy.react(config, EnvironmentEvent.FocusLost))
+     assertEquals(listOf(PolicyAction.Resume), AudioInterruptionPolicy.react(config, EnvironmentEvent.FocusRegained))
+   }
++  @Test
++  fun `I-Q streams stop on interruption and never automatically resume`() {
++    for (mode in AudioInterruption.values()) {
++      val config = testRecordConfig(
++        path = null, encoder = "pcm16bits", numChannels = 2,
++        audioInterruption = mode.ordinal,
++      )
++      assertEquals(listOf(PolicyAction.Stop), AudioInterruptionPolicy.react(config, EnvironmentEvent.FocusLost))
++      assertEquals(emptyList<PolicyAction>(), AudioInterruptionPolicy.react(config, EnvironmentEvent.FocusRegained))
++    }
++  }
++
+ }
+--- a/android/src/test/kotlin/com/llfbandit/record/record/recorder/RecorderControllerTest.kt
++++ b/android/src/test/kotlin/com/llfbandit/record/record/recorder/RecorderControllerTest.kt
+@@ -253,6 +253,28 @@
+     assertTrue(engine.calls.isEmpty())
+   }
+ 
++  @Test
++  fun `I-Q interruption releases capture before focus regain and cannot resume`() {
++    startRecording(testRecordConfig(
++      path = null, encoder = "pcm16bits", numChannels = 2,
++      audioInterruption = AudioInterruption.PAUSE_RESUME.ordinal,
++    ))
++    engine.deferStop = true
++    engine.calls.clear()
++    env.calls.clear()
++
++    controller.onEnvironmentEvent(EnvironmentEvent.FocusLost)
++    controller.onEnvironmentEvent(EnvironmentEvent.FocusRegained)
++    assertEquals(listOf("stop"), engine.calls)
++    assertFalse(controller.isRecording)
++    engine.completeStop()
++    controller.onEnvironmentEvent(EnvironmentEvent.FocusRegained)
++
++    assertEquals(listOf("stop"), engine.calls)
++    assertEquals(listOf("release"), env.calls)
++    assertEquals(listOf(RecordState.RECORD, RecordState.STOP), sink.states)
++  }
++
+   // --- stop / cancel / dispose ---
+ 
+   @Test

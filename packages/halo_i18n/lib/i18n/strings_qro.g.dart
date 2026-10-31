@@ -2682,6 +2682,26 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get spectrumNoPanadapter => 'THIS SLICE HAS NO PANADAPTER ON THE RADIO';
 	@override String spectrumStreamRefused({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})';
 	@override String get spectrumNoUdp => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE';
+	@override String get kx3IqEnabled => 'SHOW KX3 I/Q PANADAPTER';
+	@override String get kx3IqDescription => 'CONNECT RX I/Q (OR THE PX3 RX I/Q PC OUTPUT) TO A TRUE STEREO LINE INPUT. ENABLE RX I/Q ON THE KX3. A MONO MICROPHONE CANNOT PROVIDE A PANADAPTER. AUDIO IS CAPTURED ONLY WHILE THE SPECTRUM IS DISPLAYED; LEVELS ARE RELATIVE, NOT CALIBRATED DBM.';
+	@override String get kx3IqDevice => 'STEREO I/Q INPUT';
+	@override String get kx3IqAllowInput => 'ALLOW AUDIO INPUT AND REFRESH DEVICES';
+	@override String get kx3IqRefreshInputs => 'REFRESH AUDIO INPUTS';
+	@override String get kx3IqRate => 'I/Q SAMPLE RATE';
+	@override String get kx3IqSwap => 'SWAP I AND Q CHANNELS';
+	@override String get kx3IqOffset => 'I/Q CENTER CORRECTION (HZ)';
+	@override String get kx3IqOffsetDescription => 'ADDED TO THE CAT DIAL FREQUENCY TO LOCATE THE CENTER OF THE CAPTURED SPECTRUM. CHECK A KNOWN SIGNAL AFTER CHANGING RX SHFT, BAND OR MODE. LEAVE BLANK FOR 0 HZ.';
+	@override String get kx3IqSelectDevice => 'SELECT THE STEREO INPUT CONNECTED TO THE KX3.';
+	@override String get kx3IqInvalidRate => 'CHOOSE 48, 96 OR 192 KHZ.';
+	@override String get kx3IqInvalidOffset => 'ENTER A WHOLE NUMBER FROM -24000 TO 24000 HZ.';
+	@override String get kx3IqStarting => 'OPENING THE KX3 STEREO I/Q INPUT…';
+	@override String get kx3IqWaitingForRadio => 'WAITING FOR THE KX3 FREQUENCY.';
+	@override String get kx3IqPermissionDenied => 'ALLOW AUDIO INPUT IN THE KX3 INPUT SELECTOR AND YOUR SYSTEM OR BROWSER SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqDeviceUnavailable => 'THE SELECTED I/Q INPUT IS UNAVAILABLE. CONNECT IT, SELECT IT IN THE KX3 SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqUnsupported => 'AUDIO CAPTURE IS UNAVAILABLE IN THIS ENVIRONMENT. IN A BROWSER, USE HTTPS AND ALLOW MICROPHONE ACCESS.';
+	@override String get kx3IqInvalidFormat => 'THE I/Q INPUT MUST PROVIDE TWO AUDIO CHANNELS. SELECT A TRUE STEREO LINE INPUT.';
+	@override String get kx3IqSampleRateMismatch => 'THE INPUT COULD NOT CAPTURE AT THE SELECTED I/Q SAMPLE RATE. CHOOSE A SUPPORTED RATE IN HALO AND THE DEVICE SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqFailed => 'THE I/Q AUDIO STREAM STOPPED OR COULD NOT START. CHECK THE STEREO INPUT, THEN REOPEN THE SPECTRUM.';
 	@override String get spectrumK4Unavailable => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…';
 	@override String get spectrumK4RemoteUnavailable => 'CANNOT RECEIVE THE K4’S REMOTE SPECTRUM';
 	@override String get spectrumScopeRefused => 'THE RADIO REFUSED ITS SCOPE COMMANDS';
@@ -6321,6 +6341,26 @@ extension on TranslationsQro {
 			'settings.station.spectrumNoPanadapter' => 'THIS SLICE HAS NO PANADAPTER ON THE RADIO',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})',
 			'settings.station.spectrumNoUdp' => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE',
+			'settings.station.kx3IqEnabled' => 'SHOW KX3 I/Q PANADAPTER',
+			'settings.station.kx3IqDescription' => 'CONNECT RX I/Q (OR THE PX3 RX I/Q PC OUTPUT) TO A TRUE STEREO LINE INPUT. ENABLE RX I/Q ON THE KX3. A MONO MICROPHONE CANNOT PROVIDE A PANADAPTER. AUDIO IS CAPTURED ONLY WHILE THE SPECTRUM IS DISPLAYED; LEVELS ARE RELATIVE, NOT CALIBRATED DBM.',
+			'settings.station.kx3IqDevice' => 'STEREO I/Q INPUT',
+			'settings.station.kx3IqAllowInput' => 'ALLOW AUDIO INPUT AND REFRESH DEVICES',
+			'settings.station.kx3IqRefreshInputs' => 'REFRESH AUDIO INPUTS',
+			'settings.station.kx3IqRate' => 'I/Q SAMPLE RATE',
+			'settings.station.kx3IqSwap' => 'SWAP I AND Q CHANNELS',
+			'settings.station.kx3IqOffset' => 'I/Q CENTER CORRECTION (HZ)',
+			'settings.station.kx3IqOffsetDescription' => 'ADDED TO THE CAT DIAL FREQUENCY TO LOCATE THE CENTER OF THE CAPTURED SPECTRUM. CHECK A KNOWN SIGNAL AFTER CHANGING RX SHFT, BAND OR MODE. LEAVE BLANK FOR 0 HZ.',
+			'settings.station.kx3IqSelectDevice' => 'SELECT THE STEREO INPUT CONNECTED TO THE KX3.',
+			'settings.station.kx3IqInvalidRate' => 'CHOOSE 48, 96 OR 192 KHZ.',
+			'settings.station.kx3IqInvalidOffset' => 'ENTER A WHOLE NUMBER FROM -24000 TO 24000 HZ.',
+			'settings.station.kx3IqStarting' => 'OPENING THE KX3 STEREO I/Q INPUT…',
+			'settings.station.kx3IqWaitingForRadio' => 'WAITING FOR THE KX3 FREQUENCY.',
+			'settings.station.kx3IqPermissionDenied' => 'ALLOW AUDIO INPUT IN THE KX3 INPUT SELECTOR AND YOUR SYSTEM OR BROWSER SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqDeviceUnavailable' => 'THE SELECTED I/Q INPUT IS UNAVAILABLE. CONNECT IT, SELECT IT IN THE KX3 SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqUnsupported' => 'AUDIO CAPTURE IS UNAVAILABLE IN THIS ENVIRONMENT. IN A BROWSER, USE HTTPS AND ALLOW MICROPHONE ACCESS.',
+			'settings.station.kx3IqInvalidFormat' => 'THE I/Q INPUT MUST PROVIDE TWO AUDIO CHANNELS. SELECT A TRUE STEREO LINE INPUT.',
+			'settings.station.kx3IqSampleRateMismatch' => 'THE INPUT COULD NOT CAPTURE AT THE SELECTED I/Q SAMPLE RATE. CHOOSE A SUPPORTED RATE IN HALO AND THE DEVICE SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqFailed' => 'THE I/Q AUDIO STREAM STOPPED OR COULD NOT START. CHECK THE STEREO INPUT, THEN REOPEN THE SPECTRUM.',
 			'settings.station.spectrumK4Unavailable' => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'CANNOT RECEIVE THE K4’S REMOTE SPECTRUM',
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
@@ -6567,6 +6607,8 @@ extension on TranslationsQro {
 			'settings.station.antennaBands' => 'BANDS',
 			'settings.station.antennaType' => 'ANTENNA TYPE',
 			'settings.station.antennaTypeRequired' => 'CHOOSE AN ANTENNA TYPE',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'DIPOLE',
 			'settings.station.antennaTypes.vertical' => 'VERTICAL',
 			'settings.station.antennaTypes.yagiBeam' => 'YAGI / BEAM',
@@ -6587,8 +6629,6 @@ extension on TranslationsQro {
 			'settings.station.otherBrands' => 'OTHER BRANDS',
 			'settings.station.otherEquipment' => 'OTHER EQUIPMENT (ANTENNAS, KEYS, ETC)',
 			'settings.station.newAntenna' => 'NEW ANTENNA',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT KEYER IN ${radio}',
@@ -7081,6 +7121,8 @@ extension on TranslationsQro {
 			'notices.emptyHistory' => 'NO NOTICES YET',
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',
 			'notices.webStorageUnreliable' => 'THIS BROWSER IS USING FALLBACK STORAGE THAT IS NOT SAFE WITH MULTIPLE TABS — KEEP A SINGLE TAB OPEN, AND KEEP SYNC ON.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. OPEN THIS LOG WITH THAT NEWER VERSION INSTEAD.',
@@ -7101,8 +7143,6 @@ extension on TranslationsQro {
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',

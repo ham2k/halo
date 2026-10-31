@@ -1,0 +1,8 @@
+# Source verification and patch application must agree on every build host.
+dependencies/record/** text eol=lf
+# Unified diffs require leading context spaces, including on blank lines.
+dependencies/record/*.patch -whitespace
+mise-tasks/prepare-record text eol=lf
+# Discovery scaffolds are verified against the normalized source inventory.
+packages/record_*_patched/pubspec.yaml text eol=lf
+packages/record_android_patched/android/src/main/kotlin/com/ham2k/halo/record/HaloRecordPlugin.kt text eol=lf
