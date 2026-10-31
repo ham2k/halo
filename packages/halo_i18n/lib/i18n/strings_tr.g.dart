@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$tr extends Translations$settings$r
 	@override String get callField => 'Şu operatör için sözcükler';
 	@override String get intro => 'Her sözcüğü veya sayıyı, bir çağrı işaretinde söylediğiniz gibi hızlıca art arda üç kez kaydedin. Daha uzun ifadeler yalnızca bir kez kaydedilir.';
 	@override String get recordAll => 'Tümünü Kaydet';
-	@override String get recordAllGuide => 'Her sözcüğü art arda üç kez, birkaç sözcüklük ifadeleri bir kez okuyun, satırlar arasında bir nefes alın. Sonuncudan sonra Durdur\'a basın.';
 	@override String recordingOne({required Object word}) => '“${word} ${word} ${word}” deyin, sonra Durdur\'a basın.';
 	@override String recordingOnce({required Object words}) => '“${words}” deyin, sonra Durdur\'a basın.';
-	@override String get recorded => 'Kaydedildi';
 	@override String get notRecorded => 'Kaydedilmedi';
 	@override String get addPhrase => 'İfade Ekle';
 	@override String get phraseField => 'İfade, bir mesajda yazdığınız gibi';
@@ -5999,10 +5997,8 @@ extension on TranslationsTr {
 			'settings.radio.voiceWords.callField' => 'Şu operatör için sözcükler',
 			'settings.radio.voiceWords.intro' => 'Her sözcüğü veya sayıyı, bir çağrı işaretinde söylediğiniz gibi hızlıca art arda üç kez kaydedin. Daha uzun ifadeler yalnızca bir kez kaydedilir.',
 			'settings.radio.voiceWords.recordAll' => 'Tümünü Kaydet',
-			'settings.radio.voiceWords.recordAllGuide' => 'Her sözcüğü art arda üç kez, birkaç sözcüklük ifadeleri bir kez okuyun, satırlar arasında bir nefes alın. Sonuncudan sonra Durdur\'a basın.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '“${word} ${word} ${word}” deyin, sonra Durdur\'a basın.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '“${words}” deyin, sonra Durdur\'a basın.',
-			'settings.radio.voiceWords.recorded' => 'Kaydedildi',
 			'settings.radio.voiceWords.notRecorded' => 'Kaydedilmedi',
 			'settings.radio.voiceWords.addPhrase' => 'İfade Ekle',
 			'settings.radio.voiceWords.phraseField' => 'İfade, bir mesajda yazdığınız gibi',
@@ -6054,10 +6050,10 @@ extension on TranslationsTr {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Gizlilik',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Uygulama kullanım verilerini paylaş',
 			'settings.privacy.shareAppData.descriptionOn' => 'Kullanım, yapılandırma, çökme ve performans verilerini paylaşarak uygulamayı geliştirmemize yardımcı oluyorsunuz',
 			'settings.privacy.shareAppData.descriptionOff' => 'Uygulama kullanım verileri gizli tutuluyor.\nHam2K ekibi çökmeleri veya diğer sorunları tespit edemeyecek.',
@@ -6568,10 +6564,10 @@ extension on TranslationsTr {
 			'settings.station.newKey' => 'Yeni Anahtar',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL veya uyumlu)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} üzerindeki anahtar',
 			'settings.station.trackStationInfo' => 'Her QSO için İstasyon Bilgisini Kaydet',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIF dışa aktarımlarına dahil et',
 			'settings.station.whatToTrack' => 'Neler kaydedilsin?',
 			'settings.station.trackFieldRig' => 'Telsiz',
@@ -7082,10 +7078,10 @@ extension on TranslationsTr {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'İsteği ${app} içinde onaylayın, ardından buraya geri dönün.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} uygulamasını yeniden aç',
 			'switchAccounts.siblingNoGrant' => 'Olmadı mı? Yeniden açın ya da geri dönüp başka bir yolla bağlayın.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} açılamadı.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Bağlantının süresi doldu ve yenisi hazır — ${app} uygulamasını yeniden açın.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Tekrar dene',
 			'switchAccounts.linkWithQr' => 'QR koduyla bağla',
 			'switchAccounts.linkWithQrDescription' => 'Hesabı zaten kullanan bir cihazdan tarayın',

@@ -9396,23 +9396,71 @@ class Translations$settings$radio$voiceWords$en {
 	/// en: 'Words for operator'
 	String get callField => 'Words for operator';
 
-	/// en: 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once.'
-	String get intro => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once.';
+	/// en: 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once. Record another reading, up to five, and messages mix them, so they never sound the same twice.'
+	String get intro => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once. Record another reading, up to five, and messages mix them, so they never sound the same twice.';
+
+	/// en: 'Record Another'
+	String get recordAnother => 'Record Another';
+
+	/// en: 'Recording $n'
+	String reading({required Object n}) => 'Recording ${n}';
+
+	/// en: 'First take $n'
+	String takeOpening({required Object n}) => 'First take ${n}';
+
+	/// en: 'Middle take $n'
+	String takeMiddle({required Object n}) => 'Middle take ${n}';
+
+	/// en: 'Last take $n'
+	String takeClosing({required Object n}) => 'Last take ${n}';
+
+	/// en: 'Delete recording'
+	String get deleteReading => 'Delete recording';
+
+	/// en: 'Delete this recording of “$word”?'
+	String deleteReadingTitle({required Object word}) => 'Delete this recording of “${word}”?';
 
 	/// en: 'Record All'
 	String get recordAll => 'Record All';
 
-	/// en: 'Read each word three times, run together, and a phrase of several words once, with a breath between lines. Press Stop after the last one.'
-	String get recordAllGuide => 'Read each word three times, run together, and a phrase of several words once, with a breath between lines. Press Stop after the last one.';
+	/// en: 'Delete All'
+	String get deleteAll => 'Delete All';
+
+	/// en: 'Delete every recording for $call?'
+	String deleteAllTitle({required Object call}) => 'Delete every recording for ${call}?';
+
+	/// en: 'Read each one as you would on the air, then stop. Each word you said plays back on its own: take it and go on to the next, or record it again.'
+	String get recordAllIntro => 'Read each one as you would on the air, then stop. Each word you said plays back on its own: take it and go on to the next, or record it again.';
+
+	/// en: 'Set $n: $missing of $total still to record'
+	String recordAllSet({required Object n, required Object missing, required Object total}) => 'Set ${n}: ${missing} of ${total} still to record';
+
+	/// en: 'Every word has all five of each take.'
+	String get recordAllDone => 'Every word has all five of each take.';
+
+	/// en: 'Re-record (Backspace)'
+	String get reRecord => 'Re-record (Backspace)';
+
+	/// en: 'Next (Space)'
+	String get acceptNext => 'Next (Space)';
+
+	/// en: 'Record (Space)'
+	String get recordSpace => 'Record (Space)';
+
+	/// en: 'Stop (Space)'
+	String get stopSpace => 'Stop (Space)';
+
+	/// en: 'Skip'
+	String get skip => 'Skip';
+
+	/// en: 'Could not find every word in it. Read it again, a little more clearly.'
+	String get splitWordCount => 'Could not find every word in it. Read it again, a little more clearly.';
 
 	/// en: 'Say “$word $word $word”, then press Stop.'
 	String recordingOne({required Object word}) => 'Say “${word} ${word} ${word}”, then press Stop.';
 
 	/// en: 'Say “$words”, then press Stop.'
 	String recordingOnce({required Object words}) => 'Say “${words}”, then press Stop.';
-
-	/// en: 'Recorded'
-	String get recorded => 'Recorded';
 
 	/// en: 'Not recorded'
 	String get notRecorded => 'Not recorded';
@@ -11807,12 +11855,28 @@ extension on Translations {
 			'settings.radio.voiceMessages.wordsDescription' => 'Use your own voice for calls, numbers and more.',
 			'settings.radio.voiceWords.title' => 'Word Recordings',
 			'settings.radio.voiceWords.callField' => 'Words for operator',
-			'settings.radio.voiceWords.intro' => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once.',
+			'settings.radio.voiceWords.intro' => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once. Record another reading, up to five, and messages mix them, so they never sound the same twice.',
+			'settings.radio.voiceWords.recordAnother' => 'Record Another',
+			'settings.radio.voiceWords.reading' => ({required Object n}) => 'Recording ${n}',
+			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'First take ${n}',
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'Middle take ${n}',
+			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'Last take ${n}',
+			'settings.radio.voiceWords.deleteReading' => 'Delete recording',
+			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'Delete this recording of “${word}”?',
 			'settings.radio.voiceWords.recordAll' => 'Record All',
-			'settings.radio.voiceWords.recordAllGuide' => 'Read each word three times, run together, and a phrase of several words once, with a breath between lines. Press Stop after the last one.',
+			'settings.radio.voiceWords.deleteAll' => 'Delete All',
+			'settings.radio.voiceWords.deleteAllTitle' => ({required Object call}) => 'Delete every recording for ${call}?',
+			'settings.radio.voiceWords.recordAllIntro' => 'Read each one as you would on the air, then stop. Each word you said plays back on its own: take it and go on to the next, or record it again.',
+			'settings.radio.voiceWords.recordAllSet' => ({required Object n, required Object missing, required Object total}) => 'Set ${n}: ${missing} of ${total} still to record',
+			'settings.radio.voiceWords.recordAllDone' => 'Every word has all five of each take.',
+			'settings.radio.voiceWords.reRecord' => 'Re-record (Backspace)',
+			'settings.radio.voiceWords.acceptNext' => 'Next (Space)',
+			'settings.radio.voiceWords.recordSpace' => 'Record (Space)',
+			'settings.radio.voiceWords.stopSpace' => 'Stop (Space)',
+			'settings.radio.voiceWords.skip' => 'Skip',
+			'settings.radio.voiceWords.splitWordCount' => 'Could not find every word in it. Read it again, a little more clearly.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Say “${word} ${word} ${word}”, then press Stop.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Say “${words}”, then press Stop.',
-			'settings.radio.voiceWords.recorded' => 'Recorded',
 			'settings.radio.voiceWords.notRecorded' => 'Not recorded',
 			'settings.radio.voiceWords.addPhrase' => 'Add Phrase',
 			'settings.radio.voiceWords.phraseField' => 'Phrase, as you write it in a message',
@@ -11844,6 +11908,8 @@ extension on Translations {
 			'settings.help.instagram' => 'Ham2K Instagram',
 			'settings.help.instagramDescription' => 'Because you cannot have too many photos…',
 			'settings.help.bluesky' => 'Ham2K BlueSky',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.blueskyDescription' => 'Follow us for news and updates',
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
@@ -11860,8 +11926,6 @@ extension on Translations {
 			'settings.map.showGrayline.title' => 'Show Grayline',
 			'settings.map.showGrayline.description' => 'Shades the night side of the Earth, with twilight as a gradient',
 			'settings.map.styleOpts.automatic' => 'Automatic',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
@@ -12358,6 +12422,8 @@ extension on Translations {
 			'settings.station.statusDisconnected' => 'Not connected',
 			'settings.station.statusConnecting' => 'Connecting…',
 			'settings.station.statusDisconnecting' => 'Disconnecting…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
@@ -12374,8 +12440,6 @@ extension on Translations {
 			'settings.station.antennaTypes.longWire' => 'Long Wire / EFHW',
 			'settings.station.antennaTypes.other' => 'Other',
 			'settings.station.keyType' => 'Key type',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyTypeRequired' => 'Choose a key type',
 			'settings.station.keyTypes.straight' => 'Straight Key',
 			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
@@ -12872,6 +12936,8 @@ extension on Translations {
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'No spot source matches "${source}" — installed: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'Self-spot to ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'Self-spot to ${sources} with "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'Self-spotting to ${sources}…',
@@ -12888,8 +12954,6 @@ extension on Translations {
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',

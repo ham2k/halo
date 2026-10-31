@@ -4202,10 +4202,8 @@ class _Translations$settings$radio$voiceWords$pt_BR extends Translations$setting
 	@override String get callField => 'Palavras do operador';
 	@override String get intro => 'Grave cada palavra ou número três vezes, emendadas rapidamente, do jeito que você fala em um indicativo. Frases mais longas são gravadas só uma vez.';
 	@override String get recordAll => 'Gravar tudo';
-	@override String get recordAllGuide => 'Leia cada palavra três vezes, emendadas, e uma frase de várias palavras uma vez, respirando entre as linhas. Aperte Parar depois da última.';
 	@override String recordingOne({required Object word}) => 'Diga “${word} ${word} ${word}” e aperte Parar.';
 	@override String recordingOnce({required Object words}) => 'Diga “${words}” e aperte Parar.';
-	@override String get recorded => 'Gravada';
 	@override String get notRecorded => 'Não gravada';
 	@override String get addPhrase => 'Adicionar frase';
 	@override String get phraseField => 'Frase, como você a escreve em uma mensagem';
@@ -6000,10 +5998,8 @@ extension on TranslationsPtBr {
 			'settings.radio.voiceWords.callField' => 'Palavras do operador',
 			'settings.radio.voiceWords.intro' => 'Grave cada palavra ou número três vezes, emendadas rapidamente, do jeito que você fala em um indicativo. Frases mais longas são gravadas só uma vez.',
 			'settings.radio.voiceWords.recordAll' => 'Gravar tudo',
-			'settings.radio.voiceWords.recordAllGuide' => 'Leia cada palavra três vezes, emendadas, e uma frase de várias palavras uma vez, respirando entre as linhas. Aperte Parar depois da última.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Diga “${word} ${word} ${word}” e aperte Parar.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Diga “${words}” e aperte Parar.',
-			'settings.radio.voiceWords.recorded' => 'Gravada',
 			'settings.radio.voiceWords.notRecorded' => 'Não gravada',
 			'settings.radio.voiceWords.addPhrase' => 'Adicionar frase',
 			'settings.radio.voiceWords.phraseField' => 'Frase, como você a escreve em uma mensagem',
@@ -6055,10 +6051,10 @@ extension on TranslationsPtBr {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidade',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Compartilhar dados de uso do app',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ajudando a melhorar o app ao compartilhar dados de uso, configuração, falhas e desempenho',
 			'settings.privacy.shareAppData.descriptionOff' => 'Mantendo privados os dados de uso do app.\nA equipe do Ham2K não poderá detectar falhas ou outros problemas.',
@@ -6569,10 +6565,10 @@ extension on TranslationsPtBr {
 			'settings.station.newKey' => 'Novo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL ou compatível)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador em ${device}',
 			'settings.station.trackStationInfo' => 'Registrar dados da estação em cada QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Incluir nas exportações ADIF',
 			'settings.station.whatToTrack' => 'O que registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
@@ -7083,10 +7079,10 @@ extension on TranslationsPtBr {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprove a solicitação no ${app} e depois volte aqui.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Abrir ${app} novamente',
 			'switchAccounts.siblingNoGrant' => 'Não funcionou? Abra-o novamente ou volte e vincule de outra forma.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Não foi possível abrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'O link expirou e um novo está pronto — abra ${app} novamente.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Tentar novamente',
 			'switchAccounts.linkWithQr' => 'Vincular com um código QR',
 			'switchAccounts.linkWithQrDescription' => 'Escaneie-o de um dispositivo que já usa a conta',

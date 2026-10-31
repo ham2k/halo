@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$ko extends Translations$settings$r
 	@override String get callField => '오퍼레이터 단어 녹음';
 	@override String get intro => '각 단어나 숫자를 콜사인을 말할 때처럼 빠르게 이어서 세 번 녹음하세요. 긴 구절은 한 번만 녹음합니다.';
 	@override String get recordAll => '모두 녹음';
-	@override String get recordAllGuide => '각 단어는 이어서 세 번, 여러 단어로 된 구절은 한 번 읽고, 줄 사이에는 숨을 고르세요. 마지막까지 읽은 후 정지를 누르세요.';
 	@override String recordingOne({required Object word}) => '“${word} ${word} ${word}”라고 말한 후 정지를 누르세요.';
 	@override String recordingOnce({required Object words}) => '“${words}”라고 말한 후 정지를 누르세요.';
-	@override String get recorded => '녹음됨';
 	@override String get notRecorded => '녹음되지 않음';
 	@override String get addPhrase => '구절 추가';
 	@override String get phraseField => '메시지에 쓰는 대로의 구절';
@@ -5999,10 +5997,8 @@ extension on TranslationsKo {
 			'settings.radio.voiceWords.callField' => '오퍼레이터 단어 녹음',
 			'settings.radio.voiceWords.intro' => '각 단어나 숫자를 콜사인을 말할 때처럼 빠르게 이어서 세 번 녹음하세요. 긴 구절은 한 번만 녹음합니다.',
 			'settings.radio.voiceWords.recordAll' => '모두 녹음',
-			'settings.radio.voiceWords.recordAllGuide' => '각 단어는 이어서 세 번, 여러 단어로 된 구절은 한 번 읽고, 줄 사이에는 숨을 고르세요. 마지막까지 읽은 후 정지를 누르세요.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '“${word} ${word} ${word}”라고 말한 후 정지를 누르세요.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '“${words}”라고 말한 후 정지를 누르세요.',
-			'settings.radio.voiceWords.recorded' => '녹음됨',
 			'settings.radio.voiceWords.notRecorded' => '녹음되지 않음',
 			'settings.radio.voiceWords.addPhrase' => '구절 추가',
 			'settings.radio.voiceWords.phraseField' => '메시지에 쓰는 대로의 구절',
@@ -6054,10 +6050,10 @@ extension on TranslationsKo {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '개인정보',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => '앱 사용 데이터 공유',
 			'settings.privacy.shareAppData.descriptionOn' => '사용량, 구성, 충돌 및 성능 데이터를 공유하여 앱 개선에 도움',
 			'settings.privacy.shareAppData.descriptionOff' => '앱 사용 데이터를 비공개로 유지합니다.\nHam2K 팀은 앱 충돌 또는 기타 문제를 감지할 수 없습니다.',
@@ -6568,10 +6564,10 @@ extension on TranslationsKo {
 			'settings.station.newKey' => '새 키',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL 또는 호환)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}의 CAT 키어',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}의 키',
 			'settings.station.trackStationInfo' => 'QSO마다 무선국 정보 기록',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIF 내보내기에 포함',
 			'settings.station.whatToTrack' => '무엇을 기록할까요?',
 			'settings.station.trackFieldRig' => '트랜시버',
@@ -7082,10 +7078,10 @@ extension on TranslationsKo {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '${app}에서 요청을 승인한 후 여기로 돌아오세요.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} 다시 열기',
 			'switchAccounts.siblingNoGrant' => '작동하지 않았나요? 다시 열거나, 돌아가서 다른 방법으로 연결하세요.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}을(를) 열 수 없습니다.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '링크가 만료되어 새 링크가 준비되었습니다. ${app}을(를) 다시 여세요.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '다시 시도',
 			'switchAccounts.linkWithQr' => 'QR 코드로 연결',
 			'switchAccounts.linkWithQrDescription' => '이미 계정을 사용 중인 기기로 스캔하세요',

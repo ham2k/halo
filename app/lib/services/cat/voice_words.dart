@@ -46,6 +46,15 @@ class VoiceWord {
   /// several words, whose own rise and fall is the take for every place.
   bool get once => phrase?.contains(' ') ?? false;
 
+  /// The takes a message says it in, and all a message needs of it:
+  /// "stroke" only inside a call, a slashed suffix ("/P") only closing one,
+  /// a phrase of several words its one recording, any other word all three.
+  List<WordTake> get saidIn {
+    if (this == strokeWord) return const [WordTake.middle];
+    if (phrase?.startsWith('/') ?? false) return const [WordTake.closing];
+    return once ? const [WordTake.middle] : WordTake.values;
+  }
+
   @override
   bool operator ==(Object other) => other is VoiceWord && other.key == key;
 
@@ -559,7 +568,8 @@ Float32List changeTempo(Float32List s, double speed) {
 /// with its tail cut and at [speed], a message's recording as it is — laid
 /// down at its gap, a negative one overlapping the piece before.
 ///
-/// [starts], given, gets the sample each piece starts at.
+/// [starts], given, gets the sample each piece starts at. [load] is called
+/// once for each piece, in order.
 Float32List joinVoicedPlan(VoicedPlan plan, Float32List Function(VoicedPiece piece) load, {double speed = 1, List<int>? starts}) {
   final pieces = [
     for (final piece in plan.pieces)
@@ -605,6 +615,10 @@ enum VoiceWordSplitProblem {
   /// A reading's lines are not clearly apart: a pause inside a line is as
   /// long as the pauses between them.
   linesTooClose,
+
+  /// Words read run together do not come apart into as many as were asked
+  /// for.
+  wordCount,
 }
 
 class VoiceWordSplitException implements Exception {
@@ -757,14 +771,20 @@ List<List<(int, int)>> splitReading(Float32List s, List<int> takes) {
   }
   return [
     for (final line in lines)
-      [for (final (a, b) in line) _trimmed(env, a, b, levels.quiet) ?? (throw const VoiceWordSplitException(VoiceWordSplitProblem.notThreeTakes))],
+      [
+        for (final (i, (a, b)) in line.indexed)
+          _trimmed(env, a, b, levels.quiet, from: i > 0 ? a : null) ?? (throw const VoiceWordSplitException(VoiceWordSplitProblem.notThreeTakes)),
+      ],
   ];
 }
 
 /// Frames [a]..[b] trimmed to the voice in them, as samples: 20 ms before
 /// the first frame over [quiet] and 50 ms after the last, for the soft ends
-/// a level line misses.
-(int, int)? _trimmed(List<double> env, int a, int b, double quiet) {
+/// a level line misses — but never past [b], nor before [from]. Words run
+/// together meet at a cut with no quiet between them, and a take that runs
+/// on past its cut ends on the next word's first consonant, or starts on the
+/// last one's.
+(int, int)? _trimmed(List<double> env, int a, int b, double quiet, {int? from}) {
   int? first, last;
   for (var i = a; i < b && i < env.length; i++) {
     if (env[i] > quiet) {
@@ -773,7 +793,118 @@ List<List<(int, int)>> splitReading(Float32List s, List<int> takes) {
     }
   }
   if (first == null || last == null) return null;
-  return (math.max(0, first - 2) * _frame, math.min(env.length, last + 5) * _frame);
+  return (math.max(from ?? 0, first - 2) * _frame, math.min(math.min(b, env.length), last + 5) * _frame);
+}
+
+/// Different words read run together, as a call is said on the air
+/// ("Alpha Bravo One Charlie"), as each one's sample range in [s].
+/// [expected] is how long each word is said, in any one unit: the cuts are
+/// the dips that best fit those lengths, deeper dips breaking near-ties —
+/// the words are no one length, so evenness alone cuts "Golf" in the
+/// middle of "November". Read with a pause after every word, the pauses
+/// are the cuts.
+List<(int, int)> splitSaid(Float32List s, List<double> expected) {
+  final n = expected.length;
+  final env = _envelope(s);
+  if (env.isEmpty || n == 0) throw const VoiceWordSplitException(VoiceWordSplitProblem.silent);
+  final levels = _levels(env);
+  final single = _spoken(env, levels.voiced);
+  if (single.isEmpty) throw const VoiceWordSplitException(VoiceWordSplitProblem.silent);
+
+  List<_Run> words;
+  if (single.length == n) {
+    // Ten frames either side, for the soft starts and ends under the line.
+    words = [for (final (a, b) in single) (math.max(0, a - 10), math.min(env.length, b + 10))];
+  } else {
+    // Only the runs inside speech, as for a reading: a click on its own
+    // otherwise starts the first word early.
+    final runs = [
+      for (final run in _runs(env, (v) => v > levels.voiced))
+        if (single.any((speech) => run.$1 >= speech.$1 && run.$2 <= speech.$2)) run,
+    ];
+    final a = runs.first.$1, b = runs.last.$2;
+    final cuts = _cutSaid(env, a, b, expected);
+    if (cuts == null) throw const VoiceWordSplitException(VoiceWordSplitProblem.wordCount);
+    final edges = [a, ...cuts, math.min(env.length, b + 30)];
+    words = [for (var i = 0; i < n; i++) (edges[i], edges[i + 1])];
+  }
+  return [
+    for (final (i, (a, b)) in words.indexed)
+      _trimmed(env, a, b, levels.quiet, from: i > 0 && single.length != n ? a : null) ?? (throw const VoiceWordSplitException(VoiceWordSplitProblem.wordCount)),
+  ];
+}
+
+/// The [expected].length - 1 cuts in frames [a]..[b] that best fit the
+/// words' expected lengths: each cut at a dip, each word's length off its
+/// share of the line by as little as can be, a deeper dip winning a near
+/// tie — the same balance a word's three takes are cut by.
+List<int>? _cutSaid(List<double> env, int a, int b, List<double> expected) {
+  final n = expected.length;
+  if (n == 1) return const [];
+  final length = b - a;
+  if (length < 9 * n) return null;
+  final smooth = [
+    for (var i = a; i < b; i++)
+      [for (var j = math.max(a, i - 1); j < math.min(b, i + 2); j++) env[j]].reduce((x, y) => x + y) / (math.min(b, i + 2) - math.max(a, i - 1)),
+  ];
+  final top = smooth.reduce(math.max);
+  final dips = [
+    for (var i = 1; i < length - 1; i++)
+      if (smooth[i] < top - 6 && smooth[i] <= smooth[i - 1] && smooth[i] <= smooth[i + 1]) i,
+  ];
+  final sum = expected.reduce((x, y) => x + y);
+  final share = [for (final e in expected) e / sum * length];
+  // Off by a word's own length counts one, whatever the word: a short word
+  // a frame out is as wrong as a long one many frames out.
+  double off(int word, int from, int to) => ((to - from) - share[word]).abs() / share[word];
+  double depth(int dip) => (smooth[dip] - top) / 100;
+  // best[w][d]: the cost of words 0..w ending at dips[d], and the dip before.
+  final best = List.generate(n - 1, (_) => List<(double, int)?>.filled(dips.length, null));
+  for (var d = 0; d < dips.length; d++) {
+    if (dips[d] >= 4) best[0][d] = (off(0, 0, dips[d]) + depth(dips[d]), -1);
+  }
+  for (var w = 1; w < n - 1; w++) {
+    for (var d = 0; d < dips.length; d++) {
+      for (var p = 0; p < d; p++) {
+        final before = best[w - 1][p];
+        if (before == null || dips[d] - dips[p] < 4) continue;
+        final cost = before.$1 + off(w, dips[p], dips[d]) + depth(dips[d]);
+        if (best[w][d] == null || cost < best[w][d]!.$1) best[w][d] = (cost, p);
+      }
+    }
+  }
+  (double, int)? end;
+  for (var d = 0; d < dips.length; d++) {
+    final before = best[n - 2][d];
+    if (before == null || length - dips[d] < 4) continue;
+    final cost = before.$1 + off(n - 1, dips[d], length);
+    if (end == null || cost < end.$1) end = (cost, d);
+  }
+  if (end == null) return null;
+  final cuts = <int>[];
+  for (var w = n - 2, d = end.$2; w >= 0; d = best[w][d]!.$2, w--) {
+    cuts.add(a + dips[d]);
+  }
+  return cuts.reversed.toList();
+}
+
+/// Words cut from one recording ([splitSaid]), at one gain — so a call's
+/// last word keeps the drop it was said with — that brings the words
+/// [inside] it to the common loudness, short of clipping.
+List<Float32List> saidTakes(Float32List s, List<(int, int)> ranges, {required List<bool> inside}) {
+  final takes = [for (final (a, b) in ranges) Float32List.fromList(s.sublist(a, b))];
+  final measured = [
+    for (final (i, take) in takes.indexed)
+      if (inside[i] || !inside.contains(true)) take,
+  ];
+  final energy = measured.fold(0.0, (sum, t) => sum + t.fold(0.0, (e, v) => e + v * v));
+  final count = measured.fold(0, (sum, t) => sum + t.length);
+  final rms = math.sqrt(energy / math.max(1, count));
+  final loudest = takes.expand((t) => t).fold(0.0, (m, v) => math.max(m, v.abs()));
+  final gain = rms == 0 ? 1.0 : math.min(_wordLoudness / rms, 0.9 / math.max(loudest, 1e-9));
+  return [
+    for (final take in takes) _fadeEdges(Float32List.fromList([for (final v in take) v * gain])),
+  ];
 }
 
 /// One word's three takes cut from [s], all at one gain — so the closing

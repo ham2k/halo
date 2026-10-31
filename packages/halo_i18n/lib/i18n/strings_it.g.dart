@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$it extends Translations$settings$r
 	@override String get callField => 'Parole per l\'operatore';
 	@override String get intro => 'Registra ogni parola o numero tre volte, di seguito e velocemente, come lo diresti in un nominativo. Le frasi più lunghe si registrano una volta sola.';
 	@override String get recordAll => 'Registra Tutto';
-	@override String get recordAllGuide => 'Leggi ogni parola tre volte, di seguito, e una frase di più parole una volta sola, con una pausa di respiro tra le righe. Premi Stop dopo l\'ultima.';
 	@override String recordingOne({required Object word}) => 'Di\' “${word} ${word} ${word}”, poi premi Stop.';
 	@override String recordingOnce({required Object words}) => 'Di\' “${words}”, poi premi Stop.';
-	@override String get recorded => 'Registrata';
 	@override String get notRecorded => 'Non registrata';
 	@override String get addPhrase => 'Aggiungi Frase';
 	@override String get phraseField => 'Frase, come la scrivi in un messaggio';
@@ -5999,10 +5997,8 @@ extension on TranslationsIt {
 			'settings.radio.voiceWords.callField' => 'Parole per l\'operatore',
 			'settings.radio.voiceWords.intro' => 'Registra ogni parola o numero tre volte, di seguito e velocemente, come lo diresti in un nominativo. Le frasi più lunghe si registrano una volta sola.',
 			'settings.radio.voiceWords.recordAll' => 'Registra Tutto',
-			'settings.radio.voiceWords.recordAllGuide' => 'Leggi ogni parola tre volte, di seguito, e una frase di più parole una volta sola, con una pausa di respiro tra le righe. Premi Stop dopo l\'ultima.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Di\' “${word} ${word} ${word}”, poi premi Stop.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Di\' “${words}”, poi premi Stop.',
-			'settings.radio.voiceWords.recorded' => 'Registrata',
 			'settings.radio.voiceWords.notRecorded' => 'Non registrata',
 			'settings.radio.voiceWords.addPhrase' => 'Aggiungi Frase',
 			'settings.radio.voiceWords.phraseField' => 'Frase, come la scrivi in un messaggio',
@@ -6054,10 +6050,10 @@ extension on TranslationsIt {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Condividi i dati di utilizzo dell\'app',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ci aiuta a migliorare l\'app condividendo dati di utilizzo, configurazione, arresti anomali e prestazioni',
 			'settings.privacy.shareAppData.descriptionOff' => 'Mantiene privati i dati sull\'utilizzo dell\'app.\nIl team Ham2K non sarà in grado di rilevare arresti anomali o altri problemi.',
@@ -6568,10 +6564,10 @@ extension on TranslationsIt {
 			'settings.station.newKey' => 'Nuovo tasto',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatibile)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT in ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Tasto su ${device}',
 			'settings.station.trackStationInfo' => 'Registra le informazioni di stazione per ogni QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Includi nelle esportazioni ADIF',
 			'settings.station.whatToTrack' => 'Cosa registrare?',
 			'settings.station.trackFieldRig' => 'Ricetrasmettitore',
@@ -7082,10 +7078,10 @@ extension on TranslationsIt {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approva la richiesta in ${app}, poi torna qui.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Apri di nuovo ${app}',
 			'switchAccounts.siblingNoGrant' => 'Non ha funzionato? Aprila di nuovo, o torna indietro e collegati in un altro modo.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Impossibile aprire ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Il link è scaduto e ne è pronto uno nuovo — apri di nuovo ${app}.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Riprova',
 			'switchAccounts.linkWithQr' => 'Collega con un codice QR',
 			'switchAccounts.linkWithQrDescription' => 'Scansionalo da un dispositivo che usa già l\'account',

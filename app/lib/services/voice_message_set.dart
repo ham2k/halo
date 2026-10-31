@@ -87,6 +87,7 @@ class VoiceMessageSet {
 /// The Radio group key the word sets' phrases are kept under.
 const voicePhrasesKey = 'voicePhrases';
 const voicePacingKey = 'voicePacing';
+const voiceTryTextKey = 'voiceTryText';
 
 /// [call] as a word set is named by — its directory and its phrases' key:
 /// upper case, a slash (a portable call) made something a path can hold.
@@ -198,6 +199,14 @@ extension VoiceMessageSetSettings on SettingsService {
     all[voiceWordSetCall(call)] = spacing.toJson();
     return updateSettingsGroup(SettingsService.radioGroup, {voicePacingKey: all});
   }
+
+  /// What the Word Recordings pane last tried its words out on.
+  String get voiceTryText => switch (_voiceSettings.group[voiceTryTextKey]) {
+    final String text => text,
+    _ => '',
+  };
+
+  Future<void> setVoiceTryText(String text) => updateSettingsGroup(SettingsService.radioGroup, {voiceTryTextKey: text});
 
   /// Writes the sets and which one is in use, in one write.
   Future<void> setVoiceMessageSets(List<VoiceMessageSet> sets, {required String active}) => updateSettingsGroup(SettingsService.radioGroup, {

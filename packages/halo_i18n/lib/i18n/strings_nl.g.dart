@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$nl extends Translations$settings$r
 	@override String get callField => 'Woorden voor operator';
 	@override String get intro => 'Neem elk woord of cijfer drie keer op, snel achter elkaar, zoals je het voor een roepnaam uitspreekt. Langere zinnen neem je maar één keer op.';
 	@override String get recordAll => 'Alles opnemen';
-	@override String get recordAllGuide => 'Lees elk woord drie keer achter elkaar, en een zin van meerdere woorden één keer, met een ademhaling tussen de regels. Druk na de laatste op Stop.';
 	@override String recordingOne({required Object word}) => 'Zeg “${word} ${word} ${word}” en druk dan op Stop.';
 	@override String recordingOnce({required Object words}) => 'Zeg “${words}” en druk dan op Stop.';
-	@override String get recorded => 'Opgenomen';
 	@override String get notRecorded => 'Niet opgenomen';
 	@override String get addPhrase => 'Zin toevoegen';
 	@override String get phraseField => 'Zin, zoals je die in een bericht schrijft';
@@ -5999,10 +5997,8 @@ extension on TranslationsNl {
 			'settings.radio.voiceWords.callField' => 'Woorden voor operator',
 			'settings.radio.voiceWords.intro' => 'Neem elk woord of cijfer drie keer op, snel achter elkaar, zoals je het voor een roepnaam uitspreekt. Langere zinnen neem je maar één keer op.',
 			'settings.radio.voiceWords.recordAll' => 'Alles opnemen',
-			'settings.radio.voiceWords.recordAllGuide' => 'Lees elk woord drie keer achter elkaar, en een zin van meerdere woorden één keer, met een ademhaling tussen de regels. Druk na de laatste op Stop.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Zeg “${word} ${word} ${word}” en druk dan op Stop.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Zeg “${words}” en druk dan op Stop.',
-			'settings.radio.voiceWords.recorded' => 'Opgenomen',
 			'settings.radio.voiceWords.notRecorded' => 'Niet opgenomen',
 			'settings.radio.voiceWords.addPhrase' => 'Zin toevoegen',
 			'settings.radio.voiceWords.phraseField' => 'Zin, zoals je die in een bericht schrijft',
@@ -6054,10 +6050,10 @@ extension on TranslationsNl {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Deel app-gebruiksgegevens',
 			'settings.privacy.shareAppData.descriptionOn' => 'Help ons de app te verbeteren door gebruiks-, configuratie-, crash- en prestatiegegevens te delen',
 			'settings.privacy.shareAppData.descriptionOff' => 'Appgebruiksgegevens privé houden.\nHet Ham2K-team kan crashes of andere problemen niet detecteren.',
@@ -6568,10 +6564,10 @@ extension on TranslationsNl {
 			'settings.station.newKey' => 'Nieuwe seinsleutel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL of compatibel)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Seinsleutel op ${device}',
 			'settings.station.trackStationInfo' => 'Stationsinfo per QSO bijhouden',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Opnemen in ADIF-exports',
 			'settings.station.whatToTrack' => 'Wat bijhouden?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -7082,10 +7078,10 @@ extension on TranslationsNl {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Keur het verzoek goed in ${app} en kom dan hier terug.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} opnieuw openen',
 			'switchAccounts.siblingNoGrant' => 'Werkte het niet? Open het opnieuw, of ga terug en koppel op een andere manier.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kon ${app} niet openen.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'De link was verlopen en er staat een nieuwe klaar — open ${app} opnieuw.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Opnieuw proberen',
 			'switchAccounts.linkWithQr' => 'Koppelen met een QR-code',
 			'switchAccounts.linkWithQrDescription' => 'Scan hem vanaf een apparaat dat het account al gebruikt',

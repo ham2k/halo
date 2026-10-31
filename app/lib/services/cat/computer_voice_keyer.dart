@@ -268,6 +268,9 @@ abstract class VoiceAudio {
   /// Whether there is a file at [path] at all: with [lengthOf] null, one
   /// that cannot be decoded.
   bool exists(String path);
+
+  /// When the file at [path] was last written; null for no file.
+  DateTime? modifiedAt(String path);
   AudioOutput openOutput({required String deviceId});
 
   /// Plays [path] on the system's default output, never into a keyed radio:
@@ -354,9 +357,12 @@ class HaloVoiceAudio implements VoiceAudio {
   }
 
   @override
-  bool exists(String path) {
+  bool exists(String path) => modifiedAt(path) != null;
+
+  @override
+  DateTime? modifiedAt(String path) {
     lengthOf(path);
-    return _lengths[path]?.modified != null;
+    return _lengths[path]?.modified;
   }
 
   @override

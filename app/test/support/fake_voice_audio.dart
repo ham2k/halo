@@ -173,6 +173,14 @@ class FakeVoiceAudio implements VoiceAudio {
   @override
   bool exists(String path) => lengths.containsKey(path) || unreadable.contains(path);
 
+  /// When each file was written, where the order matters: the app's own
+  /// writes stamp one a tick after the last; a file set by hand has none.
+  final modified = <String, DateTime>{};
+  var _writes = 0;
+
+  @override
+  DateTime? modifiedAt(String path) => exists(path) ? modified[path] : null;
+
   @override
   AudioOutput openOutput({required String deviceId}) {
     if (failingOpens.contains(deviceId) || !outputDevices.any((d) => d.id == deviceId)) {
@@ -222,6 +230,7 @@ class FakeVoiceAudio implements VoiceAudio {
   void write(String path, Uint8List bytes) {
     written[path] = bytes;
     lengths[path] = Duration(microseconds: (bytes.length - 44) ~/ 2 * 1000000 ~/ 48000);
+    modified[path] = DateTime.utc(2026).add(Duration(seconds: _writes++));
   }
 
   @override
@@ -230,6 +239,7 @@ class FakeVoiceAudio implements VoiceAudio {
     deleted.add(path);
     lengths.remove(path);
     unreadable.remove(path);
+    modified.remove(path);
   }
 
   @override
@@ -242,8 +252,12 @@ class FakeVoiceAudio implements VoiceAudio {
   /// Files that are there and will not decode, as a damaged one does.
   final failingDecodes = <String>{};
 
+  /// Every file decoded, in order.
+  final decodes = <String>[];
+
   @override
   Float32List decode(String path, {required int rate, required int channels}) {
+    decodes.add(path);
     if (failingDecodes.contains(path)) throw HaloAudioException('decode: not a sound file');
     if (samples[path] case final decoded?) return decoded;
     final length = lengths[path];
@@ -262,5 +276,6 @@ class FakeVoiceAudio implements VoiceAudio {
   void deleteDirectory(String path) {
     deleted.add(path);
     lengths.removeWhere((file, _) => file.startsWith('$path/'));
+    modified.removeWhere((file, _) => file.startsWith('$path/'));
   }
 }

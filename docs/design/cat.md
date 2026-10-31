@@ -2510,15 +2510,35 @@ the closing take keeps the drop it was said with, brought to a common loudness a
 (`wordTakes`). **A phrase of several words is recorded once** (`VoiceWord.once`): it carries its own
 rise and fall, and that one recording is its take wherever it falls.
 
+**A word keeps up to five of each take** (`voiceWordReadings`), a reading's three takes kept and
+deleted each on its own — a bad closing take goes without the good opening one said with it — and a
+message draws **each take from any reading that has it, on its own** (`VoicedWords._anyReading`): a
+word said twice in a message, or a message said twice, does not sound the same twice, as one reading
+of every word makes a CQ on repeat sound like a recording. A word is recorded while it has every
+take — a message can say it wherever it falls — and records another reading while every take has
+room. The
+takes of one reading keep its gain; across readings each is brought to the common loudness, so
+mixed takes sit at one level.
+
 **Splitting a recording into takes.** A line read run together is cut at the pair of dips that
 splits it most evenly, deeper dips breaking near-ties (`splitReading`): the three takes are one
 word, about one length, and a pause's length alone takes the stop inside a word — the "sk" of
-Whiskey — for the gap between two. **Record All** reads every word, one line each with a breath
-between, and the lines are its longest gaps, as many as there are words less one: a breath between
+Whiskey — for the gap between two. Run together, two takes meet at their cut with no quiet between
+them, so each keeps to its side of it: the lead-in and tail a take is given for its soft ends would
+otherwise carry the next word's first consonant, or the last one's vowel. The pane records one word at a time; `splitReading` also cuts a
+reading of several words, one line each with a breath between, and the lines are its longest gaps, as many as there are words less one: a breath between
 lines can be shorter than the stop in "eight, eight, eight", so no fixed pause length tells them
 apart, and lines no further apart than the pauses inside them are refused rather than guessed. A once
 phrase's line is kept whole, its own pauses inside it. Read with a pause after every word, the runs
-are one per take, and go to the words in order. A recording
+are one per take, and go to the words in order. Different words read run together — a call, for
+Record All — are cut by `splitSaid` at the dips that best fit each word's expected length, deeper
+dips breaking near-ties: the operator's own middle takes of the word where there are any, else a
+guess (`voiceWordLengthGuess`, 300 ms and 80 per syllable — most words run 350-550 ms whatever
+their syllables, so a count alone overstates "November" against "Golf"). Against calls joined from
+real takes, own lengths put five cuts in six within 60 ms; the guess, before any take is recorded,
+about the same with the words apart and fewer run hard together — so what was just read stays in
+view to listen to and redo. The words share one gain, from those inside the call
+(`saidTakes`), so its last keeps the drop it was said with. A recording
 that does not split says why (`VoiceWordSplitProblem`) and changes nothing.
 
 **Whose words.** A word set is an operator's: the open operation's operator, else its station call
@@ -2528,12 +2548,38 @@ voice. A set holds A-Z as the ITU phonetics, 0-9, "stroke", the phrases every se
 since they are there whether or not the operator says them), plus phrases the operator adds
 ("CQ POTA", "de") — refused by name while not recorded — each with an id that names its files, so editing the text keeps the
 recording. The takes are `<voice messages>/words/<CALL>/<key>-{i,m,f}.wav` (a once phrase's one
-recording `<key>.wav`), the call with anything
+recording `<key>.wav`), a later reading's `<key>~<n>-{i,m,f}.wav`, each take in the first place free of it, the call with anything
 but letters and digits made `_`; the phrases are in the Radio group by call (`voicePhrases`). The
 **Word Recordings** pane, from the first row of the Phone Keyer pane's messages while the radio says
-words — they are what its messages are made of — records, lists and
-plays them; Listen plays a word's
-three takes as they will be said.
+words — they are what its messages are made of — lists the words, one row each: the word, its
+takes as pills in a strip that scrolls, in the order recorded (by when each file was written: a
+place a deleted take left is filled again, so the places alone do not say), and a record button
+(an icon alone, until a take has five). A pill is drawn as where its take falls in a part — a ray
+ending (opening), a segment (middle), a ray starting (closing) — a tap plays that take alone, and
+its X deletes it alone, once confirmed, since a take recorded well is not got back. Below the list, the **Try saying** field says its text in the operator's words, lighting each
+take on its pill as it is said and bringing its row into view — which reading a message drew each
+take from is otherwise heard and never seen — and keeps its text across the pane's openings.
+
+**Delete All**, beside the operator's call, deletes every take of the set once confirmed; its
+phrases stay, to be recorded again. **Record All**, under it, collects takes faster than a word at a time: the
+operator reads calls as on the air ("AB1C", in a large type, "alpha bravo one charlie" under it),
+each cut into its words, every word kept as the take it is where it falls, in the first place free
+of it. The places to fill (`voicePromptSlots`) are every letter and digit opening a call, inside one
+and closing it, "stroke" inside a call and a slashed suffix closing one, the only places they are
+said. A message needs no more of those words (`VoiceWord.saidIn`), so a set Record All filled says
+every suffix; a word the planner places where it has no take — "/P" read alone, placed as an
+opening — is said from one it has. Phrases are recorded on their own rows: "TU" or "QRP" read after
+a call sounds like neither.
+Each prompt (`nextVoicePrompt`) is one call, at times with a suffix ("/P", "/4"), built around
+places the set still lacks — a missing opening letter first, a closing one last — with no character
+twice ("JJ5L" is no fun to say), and drawn from the better few of a handful rather than the best,
+so the calls vary for a few readings more; each is scored by what the planner makes of it, so it is
+cut as a message would say it. A progress bar counts the
+set being collected: the first until every place has a take (about 38 calls), then the second, on to five. When a reading ends cut cleanly its words play back
+apart (`listenToTakes`, 300 ms between), each pill lit as it plays, so a bad cut is heard rather
+than found later in a message; Space takes the reading and shows the next call, Backspace deletes
+its takes and records the same call again. Space also starts and stops a recording, bound on the
+dialog itself so a focused button never takes the key, and a session runs from the keyboard.
 
 **Saying a message.** The template is rendered by the core `templates` hook against the operation
 and the draft, as a CW message is, at play time — so a repeat says the call as it is now — through a

@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$nb extends Translations$settings$r
 	@override String get callField => 'Ord for operatør';
 	@override String get intro => 'Ta opp hvert ord eller tall tre ganger, raskt etter hverandre, slik du sier det i et kallesignal. Lengre fraser tas opp bare én gang.';
 	@override String get recordAll => 'Ta opp alle';
-	@override String get recordAllGuide => 'Les hvert ord tre ganger, raskt etter hverandre, og en frase på flere ord én gang, med et pust mellom linjene. Trykk Stopp etter det siste.';
 	@override String recordingOne({required Object word}) => 'Si «${word} ${word} ${word}», og trykk så Stopp.';
 	@override String recordingOnce({required Object words}) => 'Si «${words}», og trykk så Stopp.';
-	@override String get recorded => 'Tatt opp';
 	@override String get notRecorded => 'Ikke tatt opp';
 	@override String get addPhrase => 'Legg til frase';
 	@override String get phraseField => 'Frase, slik du skriver den i en melding';
@@ -5999,10 +5997,8 @@ extension on TranslationsNb {
 			'settings.radio.voiceWords.callField' => 'Ord for operatør',
 			'settings.radio.voiceWords.intro' => 'Ta opp hvert ord eller tall tre ganger, raskt etter hverandre, slik du sier det i et kallesignal. Lengre fraser tas opp bare én gang.',
 			'settings.radio.voiceWords.recordAll' => 'Ta opp alle',
-			'settings.radio.voiceWords.recordAllGuide' => 'Les hvert ord tre ganger, raskt etter hverandre, og en frase på flere ord én gang, med et pust mellom linjene. Trykk Stopp etter det siste.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Si «${word} ${word} ${word}», og trykk så Stopp.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Si «${words}», og trykk så Stopp.',
-			'settings.radio.voiceWords.recorded' => 'Tatt opp',
 			'settings.radio.voiceWords.notRecorded' => 'Ikke tatt opp',
 			'settings.radio.voiceWords.addPhrase' => 'Legg til frase',
 			'settings.radio.voiceWords.phraseField' => 'Frase, slik du skriver den i en melding',
@@ -6054,10 +6050,10 @@ extension on TranslationsNb {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Personvern',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Del data om bruken din',
 			'settings.privacy.shareAppData.descriptionOn' => 'Hjelper oss å forbedre appen ved å dele bruks-, oppsett-, krasj- og ytelsesdata',
 			'settings.privacy.shareAppData.descriptionOff' => 'Holder appbruksdata private.\nHam2K-teamet vil ikke kunne oppdage krasj eller andre problemer.',
@@ -6568,10 +6564,10 @@ extension on TranslationsNb {
 			'settings.station.newKey' => 'Ny nøkkel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL eller kompatibel)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Nøkkel på ${device}',
 			'settings.station.trackStationInfo' => 'Registrer stasjonsinfo for hver QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Ta med i ADIF-eksport',
 			'settings.station.whatToTrack' => 'Hva skal registreres?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -7082,10 +7078,10 @@ extension on TranslationsNb {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Godkjenn forespørselen i ${app}, og kom så tilbake hit.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Åpne ${app} igjen',
 			'switchAccounts.siblingNoGrant' => 'Virket det ikke? Åpne den igjen, eller gå tilbake og koble til på en annen måte.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kunne ikke åpne ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Lenken utløp, og en ny er klar — åpne ${app} igjen.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Prøv igjen',
 			'switchAccounts.linkWithQr' => 'Koble til med en QR-kode',
 			'switchAccounts.linkWithQrDescription' => 'Skann den fra en enhet som allerede bruker kontoen',

@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$ca extends Translations$settings$r
 	@override String get callField => 'Paraules de l\'operador';
 	@override String get intro => 'Grava cada paraula o número tres vegades, seguides i de pressa, tal com ho dius en un indicatiu. Les frases més llargues només es graven una vegada.';
 	@override String get recordAll => 'Grava-ho tot';
-	@override String get recordAllGuide => 'Llegeix cada paraula tres vegades, seguides, i una frase de diverses paraules una vegada, respirant entre línies. Prem Atura després de l\'última.';
 	@override String recordingOne({required Object word}) => 'Digues “${word} ${word} ${word}” i després prem Atura.';
 	@override String recordingOnce({required Object words}) => 'Digues “${words}” i després prem Atura.';
-	@override String get recorded => 'Gravada';
 	@override String get notRecorded => 'Sense gravar';
 	@override String get addPhrase => 'Afegeix una frase';
 	@override String get phraseField => 'Frase, tal com l\'escrius en un missatge';
@@ -5999,10 +5997,8 @@ extension on TranslationsCa {
 			'settings.radio.voiceWords.callField' => 'Paraules de l\'operador',
 			'settings.radio.voiceWords.intro' => 'Grava cada paraula o número tres vegades, seguides i de pressa, tal com ho dius en un indicatiu. Les frases més llargues només es graven una vegada.',
 			'settings.radio.voiceWords.recordAll' => 'Grava-ho tot',
-			'settings.radio.voiceWords.recordAllGuide' => 'Llegeix cada paraula tres vegades, seguides, i una frase de diverses paraules una vegada, respirant entre línies. Prem Atura després de l\'última.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Digues “${word} ${word} ${word}” i després prem Atura.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Digues “${words}” i després prem Atura.',
-			'settings.radio.voiceWords.recorded' => 'Gravada',
 			'settings.radio.voiceWords.notRecorded' => 'Sense gravar',
 			'settings.radio.voiceWords.addPhrase' => 'Afegeix una frase',
 			'settings.radio.voiceWords.phraseField' => 'Frase, tal com l\'escrius en un missatge',
@@ -6054,10 +6050,10 @@ extension on TranslationsCa {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacitat',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Comparteix dades d\'ús de l\'aplicació',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ens ajudes a millorar l\'aplicació compartint dades d\'ús, configuració, fallades i rendiment',
 			'settings.privacy.shareAppData.descriptionOff' => 'Es mantenen privades les dades d\'ús de l\'aplicació.\nL\'equip de Ham2K no podrà detectar fallades ni altres incidències.',
@@ -6568,10 +6564,10 @@ extension on TranslationsCa {
 			'settings.station.newKey' => 'Manipulador nou',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT a ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador a ${device}',
 			'settings.station.trackStationInfo' => 'Registra la informació de l\'estació per a cada QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Inclou-la a les exportacions ADIF',
 			'settings.station.whatToTrack' => 'Què vols registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
@@ -7082,10 +7078,10 @@ extension on TranslationsCa {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprova la sol·licitud a ${app} i després torna aquí.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Torna a obrir ${app}',
 			'switchAccounts.siblingNoGrant' => 'No ha funcionat? Torna-la a obrir, o torna enrere i vincula d\'una altra manera.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'No s\'ha pogut obrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'L\'enllaç ha caducat i n\'hi ha un de nou a punt — torna a obrir ${app}.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Torna-ho a provar',
 			'switchAccounts.linkWithQr' => 'Vincula amb un codi QR',
 			'switchAccounts.linkWithQrDescription' => 'Escaneja\'l des d\'un dispositiu que ja utilitzi el compte',

@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$zh extends Translations$settings$r
 	@override String get callField => '操作员的词语';
 	@override String get intro => '每个词或数字连续快速录三遍，就像您念呼号时那样。较长的短语只录一遍。';
 	@override String get recordAll => '全部录制';
-	@override String get recordAllGuide => '每个词连着读三遍，几个词的短语读一遍，每行之间换口气。最后一个读完后按停止。';
 	@override String recordingOne({required Object word}) => '说“${word} ${word} ${word}”，然后按停止。';
 	@override String recordingOnce({required Object words}) => '说“${words}”，然后按停止。';
-	@override String get recorded => '已录制';
 	@override String get notRecorded => '未录制';
 	@override String get addPhrase => '添加短语';
 	@override String get phraseField => '短语，按您在消息中书写的形式';
@@ -5999,10 +5997,8 @@ extension on TranslationsZh {
 			'settings.radio.voiceWords.callField' => '操作员的词语',
 			'settings.radio.voiceWords.intro' => '每个词或数字连续快速录三遍，就像您念呼号时那样。较长的短语只录一遍。',
 			'settings.radio.voiceWords.recordAll' => '全部录制',
-			'settings.radio.voiceWords.recordAllGuide' => '每个词连着读三遍，几个词的短语读一遍，每行之间换口气。最后一个读完后按停止。',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '说“${word} ${word} ${word}”，然后按停止。',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '说“${words}”，然后按停止。',
-			'settings.radio.voiceWords.recorded' => '已录制',
 			'settings.radio.voiceWords.notRecorded' => '未录制',
 			'settings.radio.voiceWords.addPhrase' => '添加短语',
 			'settings.radio.voiceWords.phraseField' => '短语，按您在消息中书写的形式',
@@ -6054,10 +6050,10 @@ extension on TranslationsZh {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '隐私',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => '分享应用使用数据',
 			'settings.privacy.shareAppData.descriptionOn' => '分享使用情况、配置、崩溃和性能数据，帮助我们改进应用',
 			'settings.privacy.shareAppData.descriptionOff' => '保持应用使用数据私密。\nHam2K 团队将无法检测崩溃或其他问题。',
@@ -6568,10 +6564,10 @@ extension on TranslationsZh {
 			'settings.station.newKey' => '新电键',
 			'settings.station.newKeyer' => 'WinKeyer（K1EL 或兼容）',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 键控器',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} 上的电键',
 			'settings.station.trackStationInfo' => '为每个 QSO 记录电台信息',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => '包含在 ADIF 导出中',
 			'settings.station.whatToTrack' => '记录哪些内容？',
 			'settings.station.trackFieldRig' => '收发信机',
@@ -7082,10 +7078,10 @@ extension on TranslationsZh {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '请在 ${app} 中批准请求，然后返回这里。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '再次打开 ${app}',
 			'switchAccounts.siblingNoGrant' => '没有成功？请再次打开它，或返回并用其他方式链接。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '无法打开 ${app}。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '链接已过期，新的链接已准备好——请再次打开 ${app}。',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '重试',
 			'switchAccounts.linkWithQr' => '用二维码链接',
 			'switchAccounts.linkWithQrDescription' => '从已在使用该账户的设备上扫描',

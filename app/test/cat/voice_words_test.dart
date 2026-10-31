@@ -236,9 +236,71 @@ void main() {
       }
     });
 
+    test('words run together are cut where they meet, and no take reaches into the next', () {
+      // "Bravo" three times with no quiet between, only the closure of the
+      // next "b": a take kept past its cut ends on the next word's "b", or
+      // starts on the "o" before it.
+      final bravo = [(160, -10.0), (40, -30.0), (200, -12.0)];
+      final s = _signal([(200, null), ...bravo, (50, -24), ...bravo, (50, -24), ...bravo, (300, null)]);
+      final takes = splitWordTakes(s);
+      for (var i = 1; i < takes.length; i++) {
+        expect(takes[i - 1].$2, lessThanOrEqualTo(takes[i].$1), reason: 'take ${i - 1} overlaps take $i');
+      }
+      for (final (a, b) in takes) {
+        expect(_ms(b - a), inInclusiveRange(380, 520), reason: 'a take is a whole word');
+      }
+    });
+
     test('a word said only twice is not three takes', () {
       final s = _signal([(200, null), (300, -10), (300, null), (300, -10), (300, null)]);
       expect(() => splitWordTakes(s), throwsA(isA<VoiceWordSplitException>()));
+    });
+  });
+
+  group('splitSaid', () {
+    // "Golf November One Charlie" run together: words of four lengths, a dip
+    // between each, and a stop inside November as deep as those dips.
+    const lengths = [250, 600, 300, 450];
+    List<(int, double?)> word(int ms) => ms < 500 ? [(ms, -10.0)] : [(ms ~/ 2 - 15, -10.0), (30, -27.0), (ms - ms ~/ 2 - 15, -12.0)];
+    final s = _signal([
+      (300, null),
+      for (final (i, ms) in lengths.indexed) ...[if (i > 0) (30, -28.0), ...word(ms)],
+      (300, null),
+    ]);
+    // Where each word after the first starts, in ms.
+    final starts = [for (var i = 1; i < lengths.length; i++) 300 + lengths.take(i).fold(0, (a, b) => a + b) + 30 * i];
+
+    test("the cuts fit the words' own lengths, not one length for all", () {
+      final words = splitSaid(s, lengths.map((ms) => ms.toDouble()).toList());
+      expect(words, hasLength(4));
+      for (var i = 1; i < words.length; i++) {
+        expect(_ms(words[i].$1), closeTo(starts[i - 1], 40), reason: 'word $i starts where it is said');
+        expect(words[i - 1].$2, lessThanOrEqualTo(words[i].$1), reason: 'no word reaches into the next');
+      }
+    });
+
+    test('read with a pause after every word, the pauses are the cuts', () {
+      final paused = _signal([
+        (300, null),
+        for (final ms in lengths) ...[(ms, -10.0), (400, null)],
+      ]);
+      final words = splitSaid(paused, const [1, 1, 1, 1]);
+      expect(words, hasLength(4));
+      expect(_ms(words[1].$1), inInclusiveRange(300 + 250 + 400 - 120, 300 + 250 + 400));
+    });
+
+    test("a call's words share one gain: the last keeps the drop it was said with, the inside ones a common level", () {
+      final quiet = _signal([(400, -30.0), (400, -30.0), (400, -36.0)]);
+      final third = 400 * _rate ~/ 1000;
+      final takes = saidTakes(quiet, [(0, third), (third, 2 * third), (2 * third, 3 * third)], inside: const [false, true, false]);
+      double rms(Float32List t) => math.sqrt(t.fold(0.0, (sum, v) => sum + v * v) / t.length);
+      double db(double v) => 20 * math.log(v) / math.ln10;
+      expect(db(rms(takes[1])), closeTo(-20, 1), reason: 'the inside word brought to the common loudness');
+      expect(db(rms(takes[2])) - db(rms(takes[1])), closeTo(-6, 1), reason: 'the last word 6 dB down, as said');
+    });
+
+    test('a recording with no voice in it is refused', () {
+      expect(() => splitSaid(_signal([(1000, null)]), const [1, 1]), throwsA(isA<VoiceWordSplitException>()));
     });
   });
 

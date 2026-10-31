@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$cs extends Translations$settings$r
 	@override String get callField => 'Slova pro operátora';
 	@override String get intro => 'Každé slovo nebo číslo nahrajte třikrát, rychle za sebou, tak jak ho říkáte ve volací značce. Delší fráze se nahrávají jen jednou.';
 	@override String get recordAll => 'Nahrát vše';
-	@override String get recordAllGuide => 'Každé slovo přečtěte třikrát za sebou a frázi o několika slovech jednou, s nádechem mezi řádky. Po posledním stiskněte Stop.';
 	@override String recordingOne({required Object word}) => 'Řekněte „${word} ${word} ${word}“ a pak stiskněte Stop.';
 	@override String recordingOnce({required Object words}) => 'Řekněte „${words}“ a pak stiskněte Stop.';
-	@override String get recorded => 'Nahráno';
 	@override String get notRecorded => 'Nenahráno';
 	@override String get addPhrase => 'Přidat frázi';
 	@override String get phraseField => 'Fráze tak, jak ji píšete ve zprávě';
@@ -5999,10 +5997,8 @@ extension on TranslationsCs {
 			'settings.radio.voiceWords.callField' => 'Slova pro operátora',
 			'settings.radio.voiceWords.intro' => 'Každé slovo nebo číslo nahrajte třikrát, rychle za sebou, tak jak ho říkáte ve volací značce. Delší fráze se nahrávají jen jednou.',
 			'settings.radio.voiceWords.recordAll' => 'Nahrát vše',
-			'settings.radio.voiceWords.recordAllGuide' => 'Každé slovo přečtěte třikrát za sebou a frázi o několika slovech jednou, s nádechem mezi řádky. Po posledním stiskněte Stop.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Řekněte „${word} ${word} ${word}“ a pak stiskněte Stop.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Řekněte „${words}“ a pak stiskněte Stop.',
-			'settings.radio.voiceWords.recorded' => 'Nahráno',
 			'settings.radio.voiceWords.notRecorded' => 'Nenahráno',
 			'settings.radio.voiceWords.addPhrase' => 'Přidat frázi',
 			'settings.radio.voiceWords.phraseField' => 'Fráze tak, jak ji píšete ve zprávě',
@@ -6054,10 +6050,10 @@ extension on TranslationsCs {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Soukromí',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Sdílet údaje o používání aplikace',
 			'settings.privacy.shareAppData.descriptionOn' => 'Pomáháte nám vylepšovat aplikaci sdílením údajů o používání, konfiguraci, pádech a výkonu',
 			'settings.privacy.shareAppData.descriptionOff' => 'Údaje o používání aplikace zůstávají soukromé.\nTým Ham2K nebude moci detekovat pády ani jiné problémy.',
@@ -6568,10 +6564,10 @@ extension on TranslationsCs {
 			'settings.station.newKey' => 'Nový klíč',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL nebo kompatibilní)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT klíčovač v ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Klíč na ${device}',
 			'settings.station.trackStationInfo' => 'Zaznamenávat informace o stanici u každého QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Zahrnout do exportů ADIF',
 			'settings.station.whatToTrack' => 'Co zaznamenávat?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -7082,10 +7078,10 @@ extension on TranslationsCs {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Schvalte žádost v ${app} a pak se vraťte sem.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Znovu otevřít ${app}',
 			'switchAccounts.siblingNoGrant' => 'Nefungovalo to? Otevřete ji znovu, nebo se vraťte a propojte jiným způsobem.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nelze otevřít.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Odkaz vypršel a je připraven nový — znovu otevřete ${app}.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Zkusit znovu',
 			'switchAccounts.linkWithQr' => 'Propojit pomocí QR kódu',
 			'switchAccounts.linkWithQrDescription' => 'Naskenujte ho ze zařízení, které už účet používá',

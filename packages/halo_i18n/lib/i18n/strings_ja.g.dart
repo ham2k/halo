@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$ja extends Translations$settings$r
 	@override String get callField => 'オペレーター別の単語';
 	@override String get intro => '各単語や数字を、コールサインを言うときのように続けて素早く3回録音します。長いフレーズは1回だけ録音します。';
 	@override String get recordAll => 'すべて録音';
-	@override String get recordAllGuide => '各単語は続けて3回、複数の単語からなるフレーズは1回読み上げ、行の間で息継ぎをしてください。最後まで読んだら停止を押してください。';
 	@override String recordingOne({required Object word}) => '「${word} ${word} ${word}」と言ってから、停止を押してください。';
 	@override String recordingOnce({required Object words}) => '「${words}」と言ってから、停止を押してください。';
-	@override String get recorded => '録音済み';
 	@override String get notRecorded => '未録音';
 	@override String get addPhrase => 'フレーズを追加';
 	@override String get phraseField => 'フレーズ（メッセージに書くとおりに）';
@@ -5999,10 +5997,8 @@ extension on TranslationsJa {
 			'settings.radio.voiceWords.callField' => 'オペレーター別の単語',
 			'settings.radio.voiceWords.intro' => '各単語や数字を、コールサインを言うときのように続けて素早く3回録音します。長いフレーズは1回だけ録音します。',
 			'settings.radio.voiceWords.recordAll' => 'すべて録音',
-			'settings.radio.voiceWords.recordAllGuide' => '各単語は続けて3回、複数の単語からなるフレーズは1回読み上げ、行の間で息継ぎをしてください。最後まで読んだら停止を押してください。',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => '「${word} ${word} ${word}」と言ってから、停止を押してください。',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => '「${words}」と言ってから、停止を押してください。',
-			'settings.radio.voiceWords.recorded' => '録音済み',
 			'settings.radio.voiceWords.notRecorded' => '未録音',
 			'settings.radio.voiceWords.addPhrase' => 'フレーズを追加',
 			'settings.radio.voiceWords.phraseField' => 'フレーズ（メッセージに書くとおりに）',
@@ -6054,10 +6050,10 @@ extension on TranslationsJa {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'プライバシー',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'アプリ使用データを共有',
 			'settings.privacy.shareAppData.descriptionOn' => '使用状況、設定、クラッシュ、パフォーマンスのデータを共有して、アプリの改善に協力しています',
 			'settings.privacy.shareAppData.descriptionOff' => 'アプリの使用データを非公開にしています。\nHam2Kチームはクラッシュやその他の問題を検出できません。',
@@ -6568,10 +6564,10 @@ extension on TranslationsJa {
 			'settings.station.newKey' => '新しいキー',
 			'settings.station.newKeyer' => 'WinKeyer（K1ELまたは互換機）',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}のキー',
 			'settings.station.trackStationInfo' => 'QSOごとにステーション情報を記録',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIFエクスポートに含める',
 			'settings.station.whatToTrack' => '記録する項目',
 			'settings.station.trackFieldRig' => 'トランシーバー',
@@ -7082,10 +7078,10 @@ extension on TranslationsJa {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '${app}でリクエストを承認してから、ここに戻ってください。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app}をもう一度開く',
 			'switchAccounts.siblingNoGrant' => 'うまくいきませんでしたか？もう一度開くか、戻って別の方法でリンクしてください。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}を開けませんでした。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'リンクの期限が切れたため、新しいリンクを用意しました。${app}をもう一度開いてください。',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '再試行',
 			'switchAccounts.linkWithQr' => 'QRコードでリンク',
 			'switchAccounts.linkWithQrDescription' => 'そのアカウントを使用中のデバイスからスキャン',

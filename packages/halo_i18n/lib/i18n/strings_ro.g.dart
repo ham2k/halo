@@ -4201,10 +4201,8 @@ class _Translations$settings$radio$voiceWords$ro extends Translations$settings$r
 	@override String get callField => 'Cuvintele operatorului';
 	@override String get intro => 'Înregistrați fiecare cuvânt sau număr de trei ori, legat și repede, așa cum l-ați spune într-un indicativ. Frazele mai lungi se înregistrează o singură dată.';
 	@override String get recordAll => 'Înregistrează tot';
-	@override String get recordAllGuide => 'Citiți fiecare cuvânt de trei ori, legat, iar o frază de mai multe cuvinte o singură dată, cu o respirație între rânduri. Apăsați Stop după ultimul.';
 	@override String recordingOne({required Object word}) => 'Spuneți „${word} ${word} ${word}”, apoi apăsați Stop.';
 	@override String recordingOnce({required Object words}) => 'Spuneți „${words}”, apoi apăsați Stop.';
-	@override String get recorded => 'Înregistrat';
 	@override String get notRecorded => 'Neînregistrat';
 	@override String get addPhrase => 'Adaugă frază';
 	@override String get phraseField => 'Fraza, așa cum o scrieți într-un mesaj';
@@ -5999,10 +5997,8 @@ extension on TranslationsRo {
 			'settings.radio.voiceWords.callField' => 'Cuvintele operatorului',
 			'settings.radio.voiceWords.intro' => 'Înregistrați fiecare cuvânt sau număr de trei ori, legat și repede, așa cum l-ați spune într-un indicativ. Frazele mai lungi se înregistrează o singură dată.',
 			'settings.radio.voiceWords.recordAll' => 'Înregistrează tot',
-			'settings.radio.voiceWords.recordAllGuide' => 'Citiți fiecare cuvânt de trei ori, legat, iar o frază de mai multe cuvinte o singură dată, cu o respirație între rânduri. Apăsați Stop după ultimul.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'Spuneți „${word} ${word} ${word}”, apoi apăsați Stop.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'Spuneți „${words}”, apoi apăsați Stop.',
-			'settings.radio.voiceWords.recorded' => 'Înregistrat',
 			'settings.radio.voiceWords.notRecorded' => 'Neînregistrat',
 			'settings.radio.voiceWords.addPhrase' => 'Adaugă frază',
 			'settings.radio.voiceWords.phraseField' => 'Fraza, așa cum o scrieți într-un mesaj',
@@ -6054,10 +6050,10 @@ extension on TranslationsRo {
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Confidențialitate',
+			_ => null,
+		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Partajează datele de utilizare a aplicației',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ne ajutați să îmbunătățim aplicația partajând date despre utilizare, configurare, blocări și performanță',
 			'settings.privacy.shareAppData.descriptionOff' => 'Datele de utilizare ale aplicației rămân private.\nEchipa Ham2K nu va putea detecta blocări sau alte probleme.',
@@ -6568,10 +6564,10 @@ extension on TranslationsRo {
 			'settings.station.newKey' => 'Manipulator nou',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL sau compatibil)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT în ${radio}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulator pe ${device}',
 			'settings.station.trackStationInfo' => 'Înregistrează informațiile stației la fiecare QSO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Include în exporturile ADIF',
 			'settings.station.whatToTrack' => 'Ce se înregistrează?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -7082,10 +7078,10 @@ extension on TranslationsRo {
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprobați cererea în ${app}, apoi reveniți aici.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Deschide din nou ${app}',
 			'switchAccounts.siblingNoGrant' => 'Nu a funcționat? Deschideți-o din nou sau reveniți și conectați-vă în alt mod.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nu a putut fi deschisă.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Linkul a expirat și unul nou este pregătit — deschideți din nou ${app}.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Încercați din nou',
 			'switchAccounts.linkWithQr' => 'Conectare cu un cod QR',
 			'switchAccounts.linkWithQrDescription' => 'Scanați-l de pe un dispozitiv care folosește deja contul',

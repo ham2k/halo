@@ -4247,12 +4247,28 @@ class _Translations$settings$radio$voiceWords$qro extends Translations$settings$
 	// Translations
 	@override String get title => 'WORD RECORDINGS';
 	@override String get callField => 'WORDS FOR OPERATOR';
-	@override String get intro => 'RECORD EACH WORD OR NUMBER THREE TIMES, RUN TOGETHER QUICKLY, THE WAY YOU SAY IT FOR A CALLSIGN. LONGER PHRASES ARE RECORDED ONLY ONCE.';
+	@override String get intro => 'RECORD EACH WORD OR NUMBER THREE TIMES, RUN TOGETHER QUICKLY, THE WAY YOU SAY IT FOR A CALLSIGN. LONGER PHRASES ARE RECORDED ONLY ONCE. RECORD ANOTHER READING, UP TO FIVE, AND MESSAGES MIX THEM, SO THEY NEVER SOUND THE SAME TWICE.';
+	@override String get recordAnother => 'RECORD ANOTHER';
+	@override String reading({required Object n}) => 'RECORDING ${n}';
+	@override String takeOpening({required Object n}) => 'FIRST TAKE ${n}';
+	@override String takeMiddle({required Object n}) => 'MIDDLE TAKE ${n}';
+	@override String takeClosing({required Object n}) => 'LAST TAKE ${n}';
+	@override String get deleteReading => 'DELETE RECORDING';
+	@override String deleteReadingTitle({required Object word}) => 'DELETE THIS RECORDING OF “${word}”?';
 	@override String get recordAll => 'RECORD ALL';
-	@override String get recordAllGuide => 'READ EACH WORD THREE TIMES, RUN TOGETHER, AND A PHRASE OF SEVERAL WORDS ONCE, WITH A BREATH BETWEEN LINES. PRESS STOP AFTER THE LAST ONE.';
+	@override String get deleteAll => 'DELETE ALL';
+	@override String deleteAllTitle({required Object call}) => 'DELETE EVERY RECORDING FOR ${call}?';
+	@override String get recordAllIntro => 'READ EACH ONE AS YOU WOULD ON THE AIR, THEN STOP. EACH WORD YOU SAID PLAYS BACK ON ITS OWN: TAKE IT AND GO ON TO THE NEXT, OR RECORD IT AGAIN.';
+	@override String recordAllSet({required Object n, required Object missing, required Object total}) => 'SET ${n}: ${missing} OF ${total} STILL TO RECORD';
+	@override String get recordAllDone => 'EVERY WORD HAS ALL FIVE OF EACH TAKE.';
+	@override String get reRecord => 'RE-RECORD (BACKSPACE)';
+	@override String get acceptNext => 'NEXT (SPACE)';
+	@override String get recordSpace => 'RECORD (SPACE)';
+	@override String get stopSpace => 'STOP (SPACE)';
+	@override String get skip => 'SKIP';
+	@override String get splitWordCount => 'COULD NOT FIND EVERY WORD IN IT. READ IT AGAIN, A LITTLE MORE CLEARLY.';
 	@override String recordingOne({required Object word}) => 'SAY “${word} ${word} ${word}”, THEN PRESS STOP.';
 	@override String recordingOnce({required Object words}) => 'SAY “${words}”, THEN PRESS STOP.';
-	@override String get recorded => 'RECORDED';
 	@override String get notRecorded => 'NOT RECORDED';
 	@override String get addPhrase => 'ADD PHRASE';
 	@override String get phraseField => 'PHRASE, AS YOU WRITE IT IN A MESSAGE';
@@ -6171,12 +6187,28 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.wordsDescription' => 'USE YOUR OWN VOICE FOR CALLS, NUMBERS AND MORE.',
 			'settings.radio.voiceWords.title' => 'WORD RECORDINGS',
 			'settings.radio.voiceWords.callField' => 'WORDS FOR OPERATOR',
-			'settings.radio.voiceWords.intro' => 'RECORD EACH WORD OR NUMBER THREE TIMES, RUN TOGETHER QUICKLY, THE WAY YOU SAY IT FOR A CALLSIGN. LONGER PHRASES ARE RECORDED ONLY ONCE.',
+			'settings.radio.voiceWords.intro' => 'RECORD EACH WORD OR NUMBER THREE TIMES, RUN TOGETHER QUICKLY, THE WAY YOU SAY IT FOR A CALLSIGN. LONGER PHRASES ARE RECORDED ONLY ONCE. RECORD ANOTHER READING, UP TO FIVE, AND MESSAGES MIX THEM, SO THEY NEVER SOUND THE SAME TWICE.',
+			'settings.radio.voiceWords.recordAnother' => 'RECORD ANOTHER',
+			'settings.radio.voiceWords.reading' => ({required Object n}) => 'RECORDING ${n}',
+			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'FIRST TAKE ${n}',
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'MIDDLE TAKE ${n}',
+			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'LAST TAKE ${n}',
+			'settings.radio.voiceWords.deleteReading' => 'DELETE RECORDING',
+			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'DELETE THIS RECORDING OF “${word}”?',
 			'settings.radio.voiceWords.recordAll' => 'RECORD ALL',
-			'settings.radio.voiceWords.recordAllGuide' => 'READ EACH WORD THREE TIMES, RUN TOGETHER, AND A PHRASE OF SEVERAL WORDS ONCE, WITH A BREATH BETWEEN LINES. PRESS STOP AFTER THE LAST ONE.',
+			'settings.radio.voiceWords.deleteAll' => 'DELETE ALL',
+			'settings.radio.voiceWords.deleteAllTitle' => ({required Object call}) => 'DELETE EVERY RECORDING FOR ${call}?',
+			'settings.radio.voiceWords.recordAllIntro' => 'READ EACH ONE AS YOU WOULD ON THE AIR, THEN STOP. EACH WORD YOU SAID PLAYS BACK ON ITS OWN: TAKE IT AND GO ON TO THE NEXT, OR RECORD IT AGAIN.',
+			'settings.radio.voiceWords.recordAllSet' => ({required Object n, required Object missing, required Object total}) => 'SET ${n}: ${missing} OF ${total} STILL TO RECORD',
+			'settings.radio.voiceWords.recordAllDone' => 'EVERY WORD HAS ALL FIVE OF EACH TAKE.',
+			'settings.radio.voiceWords.reRecord' => 'RE-RECORD (BACKSPACE)',
+			'settings.radio.voiceWords.acceptNext' => 'NEXT (SPACE)',
+			'settings.radio.voiceWords.recordSpace' => 'RECORD (SPACE)',
+			'settings.radio.voiceWords.stopSpace' => 'STOP (SPACE)',
+			'settings.radio.voiceWords.skip' => 'SKIP',
+			'settings.radio.voiceWords.splitWordCount' => 'COULD NOT FIND EVERY WORD IN IT. READ IT AGAIN, A LITTLE MORE CLEARLY.',
 			'settings.radio.voiceWords.recordingOne' => ({required Object word}) => 'SAY “${word} ${word} ${word}”, THEN PRESS STOP.',
 			'settings.radio.voiceWords.recordingOnce' => ({required Object words}) => 'SAY “${words}”, THEN PRESS STOP.',
-			'settings.radio.voiceWords.recorded' => 'RECORDED',
 			'settings.radio.voiceWords.notRecorded' => 'NOT RECORDED',
 			'settings.radio.voiceWords.addPhrase' => 'ADD PHRASE',
 			'settings.radio.voiceWords.phraseField' => 'PHRASE, AS YOU WRITE IT IN A MESSAGE',
@@ -6208,6 +6240,8 @@ extension on TranslationsQro {
 			'settings.help.instagram' => 'HAM2K INSTAGRAM',
 			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
 			'settings.help.bluesky' => 'HAM2K BLUESKY',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.blueskyDescription' => 'FOLLOW US FOR NEWS AND UPDATES',
 			'settings.help.contact' => 'CONTACT US',
 			'settings.help.contactDescription' => 'HELP@HAM2K.COM — BUT TRY THE FORUMS OR CHAT FIRST!',
@@ -6224,8 +6258,6 @@ extension on TranslationsQro {
 			'settings.map.showGrayline.title' => 'SHOW GRAYLINE',
 			'settings.map.showGrayline.description' => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT',
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
-			_ => null,
-		} ?? switch (path) {
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
 			'settings.map.styleOpts.positron' => 'POSITRON',
@@ -6722,6 +6754,8 @@ extension on TranslationsQro {
 			'settings.station.statusDisconnected' => 'NOT CONNECTED',
 			'settings.station.statusConnecting' => 'CONNECTING…',
 			'settings.station.statusDisconnecting' => 'DISCONNECTING…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusError' => 'CONNECTION FAILED',
 			'settings.station.currentRadioSettings' => 'CURRENT RADIO SETTINGS',
 			'settings.station.notSupportedByThisRadio' => 'NOT SUPPORTED BY THIS RADIO',
@@ -6738,8 +6772,6 @@ extension on TranslationsQro {
 			'settings.station.antennaTypes.longWire' => 'LONG WIRE / EFHW',
 			'settings.station.antennaTypes.other' => 'OTHER',
 			'settings.station.keyType' => 'KEY TYPE',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyTypeRequired' => 'CHOOSE A KEY TYPE',
 			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
 			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
@@ -7236,6 +7268,8 @@ extension on TranslationsQro {
 			'spotting.nothingToSpot' => 'NOTHING TO SPOT — NO EXTENSION OFFERS SPOTTING HERE.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'NO SPOT SOURCE MATCHES "${source}" — INSTALLED: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" ISN\'T SPOTTING HERE — ON OFFER: ${sources}.',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'SELF-SPOT TO ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'SELF-SPOT TO ${sources} WITH "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'SELF-SPOTTING TO ${sources}…',
@@ -7252,8 +7286,6 @@ extension on TranslationsQro {
 			'spotting.notRefreshedOffline' => 'NO CONNECTION — SPOTS WERE NOT REFRESHED',
 			'dataFiles.downloading' => 'DOWNLOADING…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
