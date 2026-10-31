@@ -464,6 +464,62 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.7+1"
+  flutter_midi_command:
+    dependency: "direct main"
+    description:
+      name: flutter_midi_command
+      sha256: "8e614fe2eafc1288f4e99e9eb34e36dfee1f363de919cf1b6434db44f0c44d5e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_android:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_android
+      sha256: "1e3e09f8fad8b78d342fcebc203af6662a7e26d274ced266d7e2c8c05a2a0cff"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_darwin:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_darwin
+      sha256: "3b7ca5ac66e99c6a7f81a09710d84ea9f4a9b596970d4e74a64e6d99b60b0b84"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_linux:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_linux
+      sha256: "54e974fa4f694b3452294a9cfadb8a8ad570b58433e4efc32b32801ba4ec962a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_platform_interface
+      sha256: b461b95c4b30056cbe1188bf5991664e92ce6e878ff6631e4047824c9da1b1b0
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_web:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_web
+      sha256: "4a08f522fb627902b9b906486436c6b6e5ebc0e65029912fa9d05dfbec0c7d7e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
+  flutter_midi_command_windows:
+    dependency: transitive
+    description:
+      name: flutter_midi_command_windows
+      sha256: ccf2e75a4094c1ed8e3a759308aee9c75375171f99b2cb4b3279486a681d0164
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.0"
   flutter_secure_storage:
     dependency: "direct main"
     description:

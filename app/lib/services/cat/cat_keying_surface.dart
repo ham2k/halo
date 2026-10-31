@@ -118,6 +118,14 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   ValueNotifier<CwLiveTyping?> get cwTyping => operatorKeyer.cwTyping;
   void toggleKeyboardMode() => operatorKeyer.toggleKeyboardMode();
   void openKeyerControl() => _keying.openKeyerControl();
+
+  /// A function key pressed somewhere other than the keyboard — a MIDI
+  /// controller's message button: the operation in front keys message
+  /// `message` as its own F-key would, from its draft. A sequence, so the
+  /// same message pressed twice is heard twice.
+  final messageKeyRequests = ValueNotifier<({int message, int sequence})?>(null);
+
+  void requestMessageKey(int n) => messageKeyRequests.value = (message: n, sequence: (messageKeyRequests.value?.sequence ?? 0) + 1);
   ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
 
   /// [running] is the operator's radio's under SO2R — see [setRunning].

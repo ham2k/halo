@@ -132,12 +132,35 @@ Windows.
 
 Per device, never synced: a keyboard belongs to a device. The
 `keyBindings` preference (`KeyBindingsService`) holds only what differs from
-the defaults — `{commands: {id: [chord]}, text: {command: [chord]}}`. A command's
+the defaults — `{commands: {id: [chord]}, text: {command: [chord]}, midi: {id: [control]}}`. A command's
 list replaces its defaults whole; an empty list means no key. A command put
 back to its defaults leaves no entry behind, so a file of changes never pins
 the defaults of the version that wrote it. A list none of whose chords this
 version can read is dropped rather than kept empty, so a key a newer version
 names never costs an older one the command's defaults.
+
+## MIDI
+
+Behind `EXP MIDI` as well as `kb`: with a MIDI controller in Station Configuration
+([cat.md § MIDI controllers](cat.md#midi-controllers)), the editor's **Add MIDI Control**
+binds the next button pressed on it to the command, beside its chords. `midi` maps a command
+id — or a `text:` id — to controls as `MidiControl` writes them (`note:1:60`, `cc:2:64`); a
+control presses one command at most, so binding it moves it. A control the controller's own
+mapping uses is refused: that mapping wins, and the two would otherwise both act on every press.
+
+A press is a key event on a key no keyboard has (`CommandKeyDownEvent`, sent by
+`KeyCommandPresser`): to the keyboard handlers first, then up the focus chain from the focused
+node — the two places a key reaches — and `KeyBindings` answers it as its command's whatever
+that command's chords are, and never as a character a field takes. So every handler keeps
+asking `match`/`claim` as it does for a key, and the command acts exactly where its key would:
+F1 only with an operation in front, Wipe only with the logging panel focused. The release
+follows the button's, so a held command (PTT on Hold) holds for as long as the button does,
+and a device unplugged lets go of what it held. With `kb` off nothing reads `midi`, as nothing
+reads a rebound key.
+
+Files carry no `midi`: it belongs to a controller, not a keyboard. Replace and Reset All keep
+the device's own, less any bound to command text they remove — a control left pressing text
+no row shows would act with nothing on screen to say why.
 
 ## Conflicts
 

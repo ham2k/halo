@@ -28,6 +28,16 @@ void main() {
     expect(file.overrides.text, overrides.text);
   });
 
+  test('carries no MIDI controls', () {
+    // They belong to the controller on this desk: a file opened on another
+    // device would bind its buttons to whatever that device's controller
+    // happens to send on the same numbers.
+    final overrides = const KeyBindingOverrides().withCommand('logging.wipe', [chord('alt+Backspace')]).withMidi('logging.wipe', ['note:1:60']);
+    final written = KeyBindingsFile(platform: 'macos', overrides: overrides).toYaml();
+    expect(written, isNot(contains('midi')));
+    expect(KeyBindingsFile.parse(written).overrides.commands, overrides.commands);
+  });
+
   test('reads a file written by hand, in the names a person would use', () {
     final file = KeyBindingsFile.parse('''
 ham2k-keys: 1

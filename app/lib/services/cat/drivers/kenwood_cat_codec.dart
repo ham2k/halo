@@ -109,6 +109,12 @@ String buildKenwoodReadInfoCommand() => 'IF;';
 /// seen a real radio reject beats a malformed command it silently ignores.
 String buildKenwoodSetPowerCommand(num watts) => 'PC${watts.round().clamp(0, 100).toString().padLeft(3, '0')};';
 
+/// `AG0nnn;` and `RGnnn;`: the TS-590SG's and TS-480's AF and RF gain,
+/// 000–255. Elecraft's and Lab599's take other ranges, and are not sent
+/// these (KenwoodDriver.receiveLevelsKey).
+String buildKenwoodSetAfGainCommand(int value) => 'AG0${value.clamp(0, 255).toString().padLeft(3, '0')};';
+String buildKenwoodSetRfGainCommand(int value) => 'RG${value.clamp(0, 255).toString().padLeft(3, '0')};';
+
 String buildKenwoodReadPowerCommand() => 'PC;';
 
 /// `PC100;` → 100. Null unless it's exactly three digits, the same

@@ -92,6 +92,12 @@ class KenwoodDriver extends EquipmentDriver {
   /// shows no choice. Never the K4's: its `AN` is its own.
   static const antennaDialectKey = 'antennaDialect';
 
+  /// Whether the radio takes `AG0nnn;`/`RGnnn;` for its AF and RF gain on
+  /// 000–255, pinned per entry like the dialects above: the TS-590SG and
+  /// TS-480. Absent sets neither — an Elecraft's and a Lab599's ranges are
+  /// their own.
+  static const receiveLevelsKey = 'receiveLevels';
+
   /// Which `MD` table the radio speaks ([KenwoodModeDialect] by name), pinned
   /// per entry like the dialects above. Absent is Kenwood's own.
   static const modeDialectKey = 'modeDialect';
@@ -146,6 +152,7 @@ class KenwoodDriver extends EquipmentDriver {
     passbandDialectKey,
     antennaDialectKey,
     modeDialectKey,
+    receiveLevelsKey,
     meterInfoConfigKey,
     'maxWatts',
   };
@@ -209,6 +216,7 @@ class KenwoodDriver extends EquipmentDriver {
       },
       antennaDialect: isK4 ? null : antennaDialectFrom(config),
       modeDialect: isK4 ? null : modeDialectFrom(config),
+      setsReceiveLevels: !isK4 && config[receiveLevelsKey] == true,
       config: config,
     );
   }

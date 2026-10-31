@@ -98,6 +98,28 @@ mixin _RadioControls {
     }
   }
 
+  /// Which receive levels [uuid]'s radio takes — none for a radio whose
+  /// driver sets none, or one not connected.
+  ReceiveLevels receiveLevelsFor(String uuid) => switch (connectedSession(uuid)) {
+    final ReceiveLevelSession session => session.receiveLevels,
+    _ => (af: false, rf: false, mute: false),
+  };
+
+  /// Sets [uuid]'s AF gain, RF gain or mute — see [ReceiveLevelSession]. A
+  /// no-op for one its radio does not take.
+  void setNodeReceiveLevel(String uuid, {double? af, double? rf, bool? muted}) {
+    final session = connectedSession(uuid);
+    if (session is! ReceiveLevelSession) return;
+    final levels = session.receiveLevels;
+    try {
+      if (af != null && levels.af) session.setAfGain(af);
+      if (rf != null && levels.rf) session.setRfGain(rf);
+      if (muted != null && levels.mute) session.setMute(muted);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:set-receive-level');
+    }
+  }
+
   /// Puts [uuid]'s antenna tuner in line or bypasses it. A no-op for a radio
   /// whose driver has no tuner control; on a FlexRadio, in line is a tune —
   /// see [AntennaTunerSession].

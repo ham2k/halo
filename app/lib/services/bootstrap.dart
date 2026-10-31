@@ -288,6 +288,10 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
     unawaited(services.cat.reconnectDesignatedRadio());
   }
 
+  // Every platform, the web's Web MIDI included: it asks for nothing until a
+  // MIDI controller node exists with the experiment on.
+  services.midi.start();
+
   // shutdown() is a no-op when nothing is connected, so installing it always
   // costs nothing.
   if (!kIsWeb) shutdownOnExit(services);

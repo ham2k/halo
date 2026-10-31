@@ -577,6 +577,7 @@ const _defaultModels = [
   antennaModel,
   keyModel,
   winkeyerModel,
+  midiControllerModel,
   ...sdrModels,
 ];
 

@@ -3789,6 +3789,75 @@ server computing the FFT), and USB on desktop through the vendors' libraries
 An RTL-SDR has no USB path: librtlsdr is GPL-2.0, and a sandboxed macOS app
 cannot load a copy the operator installed.
 
+## MIDI controllers
+
+Behind `EXP MIDI` (private). A knob box, DJ controller or footswitch is a Station Configuration
+node of its own category, `midiController`, whose controls drive Radio A and — while SO2R is on —
+Radio B: VFO coarse and fine encoders, PTT, power, keyer speed, band up and down, next mode, the
+passband's two edges, F1–F8 and Stop.
+
+**Nothing in CAT connects it.** Its transport is `none`, like an antenna's or a key's;
+`MidiService` (`app/lib/services/midi/`) binds its device and feeds a `MidiController`, which acts
+through `MidiStation`. That is the same path a panel takes (`PanelRadioService`): Radio A through
+`vfoA` and Radio B through `vfoB` — so the logging fields follow the knob and Smart VFO Snap
+settles it (`VfoOrigin.dial`) — and PTT through the app's own latch, so SO2R's one-radio-on-the-air
+rule and `CatPtt`'s timeout hold for a footswitch as for the PTT key. F1–F8 go to the operation in
+front (`CatKeying.messageKeyRequests`), which keys them exactly as its function keys do, rendered
+against its draft. Nothing asks the platform for MIDI until the experiment is on and a controller
+node exists: on the web that first ask is a permission prompt.
+
+**The node's config is edited in its own pane** (`midi_controller_pane.dart`), not the equipment
+form. Learn writes the mapping the moment a control moves, and the form saves back the config it
+was opened with, which would undo it. The device is stored by NAME: an id is the platform's own and
+does not survive a replug everywhere.
+
+What the controller does that a keyboard does not:
+
+- **Coalescing.** An encoder can send hundreds of messages a second and each target costs a CAT
+  command, so ticks and fader values are summed per target and applied every 40 ms — one tune per
+  radio however many of its knobs turned, coarse then fine, each snapped to its own step's grid.
+- **A hold against lagging echoes.** Nothing in CatService holds a dial move's echo (only a band
+  pick has one, `catBandPickGrace`), so a radio whose poll lags a fast knob writes an older
+  frequency back into `vfoA`. Stepping from that would walk the dial backwards, so for
+  `midiHoldMillis` after a tune the controller steps from what it sent rather than from the VFO —
+  but only while the VFO shows a frequency the knob sent (or started from). One it never sent is a
+  change made elsewhere, a spot clicked or the radio's own dial, and the next step builds on it
+  rather than tuning back. Keyer speed and the passband hold the same way.
+- **Safety.** A device that disappears takes its key with it; Learn releases what the controller
+  keyed before it starts swallowing messages; a toggle press never takes over a key something else
+  put down, and once the controller's own key is dropped elsewhere (Escape, the timeout) its release
+  leaves alone whatever keys that radio next; PTT keys only in a Phone mode; a Digital mode is never
+  tuned. Removing the node closes its device.
+
+A control the controller maps to nothing can still press a Keyboard Shortcuts command bound to
+it ([keyboard-shortcuts.md § MIDI](keyboard-shortcuts.md#midi)); the controller's own mapping
+wins where both name a control.
+
+**AF gain, RF gain and mute** are a session capability of their own, `ReceiveLevelSession`: each
+level 0…1 of the radio's range, write-only — nothing reads one back, so the radio's own knob is
+not followed. Each driver says which of the three it takes, and only where the command and its
+range are known for the whole entry:
+
+| Driver | AF | RF | Mute |
+|---|---|---|---|
+| Hamlib rigctld | `L AF` | `L RF` | `U MUTE` |
+| flrig | `rig.set_volume` (0–100) | `rig.set_rfgain` (0–100) | — |
+| Icom CI-V | `0x14 01` (0–255) | `0x14 02` (0–255) | — |
+| Yaesu ASCII (FT-450 … FTX-1) | `AG0` (000–255) | `RG0` (000–255) | — |
+| Kenwood TS-590SG, TS-480 (`receiveLevels` pin) | `AG0` (000–255) | `RG` (000–255) | — |
+| FlexRadio | slice `audio_level` (0–100) | — (the panadapter's, per model) | slice `audio_mute` |
+
+The Elecraft line, the K4, the Lab599 radios and the QRP Labs radios answer `AG` and `RG` on
+ranges of their own, so the Kenwood driver sends them neither until an entry pins one. Where a
+radio has no mute, the controller's Mute takes the AF gain to zero and back to where the
+controller last set it — so it waits for the AF control to have moved once — and moving the AF
+gain ends it.
+
+Not here yet: Bluetooth MIDI beyond what the
+OS already presents as a MIDI device (macOS and iOS through CoreMIDI) — `flutter_midi_command`'s BLE
+companion runs its own universal_ble scans, which `BleScanCoordinator` forbids; and MIDI output
+(LEDs, motor faders).
+
 ## Where this is going
 
 Shipped: the type registry, the TCP transport, the FlexRadio driver, UDP discovery, a Station

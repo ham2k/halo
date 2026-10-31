@@ -925,6 +925,7 @@ class _Translations$keyboardShortcuts$cw extends Translations$keyboardShortcuts$
 	@override String get resetAll => '·—· · ··· · — / ·— ·—·· ·—··';
 	@override String get resetAllTitle => '·—· · ··· · — / · ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — ··——··';
 	@override String get resetAllBody => '· ···— · ·—· —·—— / —·—· ——— —— —— ·— —· —·· / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — / —·— · —·—— ··· ——··—— / ·— —· —·· / — ···· · / —·— · —·—— ··· / —··· ——— ··— —· —·· / — ——— / — —·—— ·——· · —·· / —·—· ——— —— —— ·— —· —·· ··· / ·— ·—· · / ·—· · —— ——— ···— · —·· ·—·—·—';
+	@override String get resetAllKeepsMidi => '—·—· ——— —— —— ·— —· —·· ··· / —·— · · ·——· / — ···· · / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ··· / —··· ——— ··— —· —·· / — ——— / — ···· · —— ·—·—·—';
 	@override String get reset => '·—· · ··· · —';
 	@override String get noKey => '—· ——— / —·— · —·——';
 	@override String get changed => '—·—· ···· ·— —· ——· · —··';
@@ -2890,6 +2891,8 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get newAntenna => '—· · ·—— / ·— —· — · —· —· ·—';
 	@override String get newKey => '—· · ·—— / —·— · —·——';
 	@override String get newKeyer => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—';
+	@override String get newMidiController => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
+	@override late final _Translations$settings$station$midi$cw midi = _Translations$settings$station$midi$cw._(_root);
 	@override String keyViaRadio({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}';
 	@override String keyOnDevice({required Object device}) => '—·— · —·—— / ——— —· / ${device}';
 	@override String get trackStationInfo => '— ·—· ·— —·—· —·— / ··· — ·— — ·· ——— —· / ·· —· ··—· ——— / ··—· ——— ·—· / · ·— —·—· ···· / ——·— ··· ———';
@@ -3250,6 +3253,14 @@ class _Translations$keyboardShortcuts$editor$cw extends Translations$keyboardSho
 	@override String get addShortcut => '·— —·· —·· / ··· ···· ——— ·—· — —·—· ··— —';
 	@override String get listening => '·——· ·—· · ··· ··· / — ···· · / —·— · —·—— ··· / ··—· ——— ·—· / — ···· · / ··· ···· ——— ·—· — —·—· ··— — …';
 	@override String get listeningHint => '· ··· —·—· / ··· — ——— ·——· ··· / ·—·· ·· ··· — · —· ·· —· ——·';
+	@override String get addMidi => '·— —·· —·· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—··';
+	@override String get listeningMidi => '·——· ·—· · ··· ··· / ·— / —··· ··— — — ——— —· / ——— —· / —·—— ——— ··— ·—· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· …';
+	@override String get listeningMidiHint => '·——· ·—· · ··· ··· / ·— —·· —·· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· / ·— ——· ·— ·· —· / — ——— / ··· — ——— ·——·';
+	@override String get midiNoController => '—· ——— / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ··· / —·—· ——— —· —· · —·—· — · —·· ·—·—·— / ·— —·· —·· / ——— —· · / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ·—·—·—';
+	@override String midiMappedInController({required Object controller}) => '— ···· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·· ··· / —— ·— ·——· ·——· · —·· / ·· —· / ${controller} ’ ··· / ——— ·—— —· / ··· · — — ·· —· ——· ··· ——··—— / ·—— ···· ·· —·—· ···· / ·—— ·· —· / ——— ···— · ·—· / ·— / ··· ···· ——— ·—· — —·—· ··— — ·—·—·—';
+	@override String get midiAlready => '— ···· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ···· · ·—· · ·—·—·—';
+	@override String midiMoves({required Object command}) => '·· — / ·——· ·—· · ··· ··· · —·· / ${command} —·—·—· / ··· ·— ···— ·· —· ——· / —— ——— ···— · ··· / ·· — / ···· · ·—· · ·—·—·—';
+	@override String midiCap({required Object control}) => '—— ·· —·· ·· / ${control}';
 	@override String get add => '·— —·· —··';
 	@override String refusedFixed({required Object keys}) => '${keys} / —··· · ·—·· ——— —· ——· ··· / — ——— / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ··· / ——— ·—· / ·— / —·· ·· ·— ·—·· ——— ——· ——··—— / ·— —· —·· / —·—· ·— —· ’ — / —··· · / —·—· ···· ·— —· ——· · —·· ·—·—·—';
 	@override String refusedCallsign({required Object keys}) => '${keys} / ·· ··· / ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ·— ·—· · / — —·—— ·——· · —·· ·—·—·— / ···· ——— ·—·· —·· / —·—· —— —·· ——··—— / —·—· — ·—· ·—·· / ——— ·—· / ·— ·—·· — / ·—— ·· — ···· / ·· — ·—·—·—';
@@ -4418,6 +4429,7 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get commanderNodeName => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —·—· ——— —— —— ·— —· —·· · ·—· —·——·—';
 	@override String get antenna => '·— —· — · —· —· ·—';
 	@override String get key => '—·—· ·—— / —·— · —·——';
+	@override String get midiController => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·';
 	@override String get winkeyer => '·—— ·· —· —·— · —·—— · ·—·';
 	@override String get placeholderRadio => '——· · —· · ·—· ·· —·—· / ·—· ·— —·· ·· ——— / —·——· ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· —·——·—';
 	@override String get placeholderRadioNodeName => '—— —·—— / ·—· ·— —·· ·· ———';
@@ -4483,6 +4495,53 @@ class _Translations$settings$station$keyTypes$cw extends Translations$settings$s
 	@override String get other => '——— — ···· · ·—·';
 }
 
+// Path: settings.station.midi
+class _Translations$settings$station$midi$cw extends Translations$settings$station$midi$en {
+	_Translations$settings$station$midi$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get name => '—· ·— —— ·';
+	@override String get device => '—·· · ···— ·· —·—· ·';
+	@override String get deviceNone => '—·—· ···· ——— ——— ··· · / ·— / —·· · ···— ·· —·—· ·';
+	@override String deviceMissing({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—';
+	@override String get statusConnected => '—·—· ——— —· —· · —·—· — · —··';
+	@override String get statusWaiting => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· / — / ·——· ·—·· ··— ——· / ·· — / ·· —· / ——— ·—· / — ··— ·—· —· / ·· — / ——— —·';
+	@override String get statusNoDevice => '—·—· ···· ——— ——— ··· · / — ···· · / —·· · ···— ·· —·—· · / — ···· ·· ··· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ···';
+	@override String get statusUnavailable => '—— ·· —·· ·· / ·· ··· —· ’ — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·';
+	@override String statusFailed({required Object message}) => '—·—· ——— ··— ·—·· —·· —· ’ — / ——— ·——· · —· / ·· — ———··· / ${message}';
+	@override String get findBluetooth => '··—· ·· —· —·· / —··· ·—·· ··— · — ——— ——— — ···· / —·· · ···— ·· —·—· · ···';
+	@override String get findingBluetooth => '··· · ·— ·—· —·—· ···· ·· —· ——· / ··—· ——— ·—· / —··· ·—·· ··— · — ——— ——— — ···· / —·· · ···— ·· —·—· · ··· …';
+	@override String get lastMessage => '·—·· ·— ··· — / —— · ··· ··· ·— ——· ·';
+	@override String get lastNone => '—— ——— ···— · / ·— / —·—· ——— —· — ·—· ——— ·—·· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ··· · —· —·· ···';
+	@override String get notMapped => '—· ——— — / —— ·— ·——· ·——· · —··';
+	@override String shortcut({required Object command}) => '··· ···· ——— ·—· — —·—· ··— — / ${command}';
+	@override String get sectionRadioA => '·—· ·— —·· ·· ——— / ·—';
+	@override String get sectionRadioB => '·—· ·— —·· ·· ——— / —···';
+	@override String get radioBNeedsSo2r => '·—· ·— —·· ·· ——— / —··· ’ ··· / —·—· ——— —· — ·—· ——— ·—·· ··· / ·— —·—· — / ——— —· ·—·· —·—— / ·—— ···· ·· ·—·· · / ··· ——— ··——— ·—· / ·· ··· / ——— —· ·—·—·—';
+	@override String get sectionKeying => '—— · ··· ··· ·— ——· · ···';
+	@override String get keyingNeedsExperiment => '—·— · —·—— · ·—· / ··· ·——· · · —·· ——··—— / ·——· — — / ·— —· —·· / —— · ··· ··· ·— ——· · ··· / ·— —·—· — / ——— —· ·—·· —·—— / ·—— ···· ·· ·—·· · / — ···· · / —·— · —·—— ·· —· ——· / · —··— ·——· · ·—· ·· —— · —· — / ·· ··· / ——— —· ·—·—·—';
+	@override String get learn => '·—·· · ·— ·—· —·';
+	@override String get learning => '—— ——— ···— · / ·— / —·—· ——— —· — ·—· ——— ·—·· …';
+	@override String get clear => '—·—· ·—·· · ·— ·—·';
+	@override String get unmapped => '—';
+	@override String get needsButton => '—· · · —·· ··· / ·— / —··· ··— — — ——— —· / ——— ·—· / ·——· ·— —·· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·';
+	@override String get needsEncoder => '—· · · —·· ··· / ·— / —·— —· ——— —··· / ··· · —· —·· ·· —· ——· / —·—· —·—· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·';
+	@override String get needsFader => '—· · · —·· ··· / ·— / —·— —· ——— —··· / ——— ·—· / ··· ·—·· ·· —·· · ·—· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·';
+	@override String get coding => '—·—· ——— —·· ·· —· ——·';
+	@override late final _Translations$settings$station$midi$codings$cw codings = _Translations$settings$station$midi$codings$cw._(_root);
+	@override String get step => '··· — · ·——·';
+	@override String get stepCw => '—·—· ·—— / ··· — · ·——·';
+	@override String get pttHold => '···· ——— ·—·· —··';
+	@override String get pttToggle => '— ——— ——· ——· ·—·· ·';
+	@override String get pttMode => '·——· — — / —— ——— —·· ·';
+	@override String settingsFor({required Object target}) => '${target} / ··· · — — ·· —· ——· ···';
+	@override late final _Translations$settings$station$midi$control$cw control = _Translations$settings$station$midi$control$cw._(_root);
+	@override late final _Translations$settings$station$midi$targets$cw targets = _Translations$settings$station$midi$targets$cw._(_root);
+	@override late final _Translations$settings$station$midi$ignored$cw ignored = _Translations$settings$station$midi$ignored$cw._(_root);
+}
+
 // Path: operation.layout.panels.weatherConditions
 class _Translations$operation$layout$panels$weatherConditions$cw extends Translations$operation$layout$panels$weatherConditions$en {
 	_Translations$operation$layout$panels$weatherConditions$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -4545,6 +4604,75 @@ class _Translations$settings$radio$pttKey$descriptions$cw extends Translations$s
 	@override String get off => '— ···· · / —·— · —·—— —··· ——— ·— ·—· —·· / —·· ——— · ··· / —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—';
 	@override String get toggle => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·——· — — / —·— · —·—— / —·— · —·—— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / ·——· ·—· · ··· ··· ·· —· ——· / ·· — / ·— ——· ·— ·· —· / ··— —· —·— · —·—— ··· / ·· — ·—·—·— / ·· — / ··— —· —·— · —·—— ··· / —··· —·—— / ·· — ··· · ·—·· ··—· / ·— ··—· — · ·—· / ·— / —— ·· —· ··— — · ·—·—·—';
 	@override String get hold => '·· —· / ·——· ···· ——— —· · / —— ——— —·· · ··· ——··—— / — ···· · / ·—· ·— —·· ·· ——— / — ·—· ·— —· ··· —— ·· — ··· / ·—— ···· ·· ·—·· · / — ···· · / ·——· — — / —·— · —·—— / ·· ··· / ···· · ·—·· —·· / —·· ——— ·—— —· ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ·— / —— ·· —· ··— — · ·—·—·—';
+}
+
+// Path: settings.station.midi.codings
+class _Translations$settings$station$midi$codings$cw extends Translations$settings$station$midi$codings$en {
+	_Translations$settings$station$midi$codings$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get relative => '·—· · ·—·· ·— — ·· ···— · / —·——· ·— ··— — ——— —·——·—';
+	@override String get twos => '·—· · ·—·· ·— — ·· ···— · / —·——· — ·—— ——— ’ ··· / —·—· ——— —— ·——· ·—·· · —— · —· — —·——·—';
+	@override String get offset64 => '·—· · ·—·· ·— — ·· ···— · / —·——· ——— ··—· ··—· ··· · — / —···· ····— —·——·—';
+	@override String get sign => '·—· · ·—·· ·— — ·· ···— · / —·——· ··· ·· ——· —· / —··· ·· — —·——·—';
+	@override String get absolute => '·— —··· ··· ——— ·—·· ··— — · / —·— —· ——— —···';
+}
+
+// Path: settings.station.midi.control
+class _Translations$settings$station$midi$control$cw extends Translations$settings$station$midi$control$en {
+	_Translations$settings$station$midi$control$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String cc({required Object number, required Object channel}) => '—·—· —·—· / ${number} / · / —·—· ···· / ${channel}';
+	@override String note({required Object number, required Object channel}) => '—· ——— — · / ${number} / · / —·—· ···· / ${channel}';
+	@override String pb({required Object channel}) => '·——· ·· — —·—· ···· / —··· · —· —·· / · / —·—· ···· / ${channel}';
+}
+
+// Path: settings.station.midi.targets
+class _Translations$settings$station$midi$targets$cw extends Translations$settings$station$midi$targets$en {
+	_Translations$settings$station$midi$targets$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get vfoCoarse => '···— ··—· ——— / —·—· ——— ·— ·—· ··· ·';
+	@override String get vfoFine => '···— ··—· ——— / ··—· ·· —· ·';
+	@override String get ptt => '·——· — —';
+	@override String get power => '·——· ——— ·—— · ·—·';
+	@override String get wpm => '—·— · —·—— · ·—· / ··· ·——· · · —··';
+	@override String get bandUp => '—··· ·— —· —·· / ··— ·——·';
+	@override String get bandDown => '—··· ·— —· —·· / —·· ——— ·—— —·';
+	@override String get modeNext => '—· · —··— — / —— ——— —·· ·';
+	@override String get passbandLow => '·——· ·— ··· ··· —··· ·— —· —·· / ·—·· ——— ·—— / · —·· ——· ·';
+	@override String get passbandHigh => '·——· ·— ··· ··· —··· ·— —· —·· / ···· ·· ——· ···· / · —·· ——· ·';
+	@override String get afGain => '·— ··—· / ——· ·— ·· —·';
+	@override String get rfGain => '·—· ··—· / ——· ·— ·· —·';
+	@override String get mute => '—— ··— — ·';
+	@override String message({required Object n}) => '—— · ··· ··· ·— ——· · / ${n}';
+	@override String get stop => '··· — ——— ·——· / — ·—· ·— —· ··· —— ·· — — ·· —· ——·';
+}
+
+// Path: settings.station.midi.ignored
+class _Translations$settings$station$midi$ignored$cw extends Translations$settings$station$midi$ignored$en {
+	_Translations$settings$station$midi$ignored$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get noRadio => '—· ——— / ·—· ·— —·· ·· ———';
+	@override String get so2rOff => '··· ——— ··——— ·—· / ·· ··· / ——— ··—· ··—·';
+	@override String get dataMode => '—· ——— — / — ··— —· · —·· / ·· —· / ·— / —·· ·· ——· ·· — ·— ·—·· / —— ——— —·· ·';
+	@override String get keyingOff => '— ···· · / —·— · —·—— ·· —· ——· / · —··— ·——· · ·—· ·· —— · —· — / ·· ··· / ——— ··—· ··—·';
+	@override String get noPtt => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— / ·——· — — / — ···· · / ·— ·——· ·——· / —·—· ·— —· / —·— · —·——';
+	@override String get notPhone => '·——· — — / —·— · —·—— ··· / ——— —· ·—·· —·—— / ·· —· / ·——· ···· ——— —· · / —— ——— —·· · ···';
+	@override String get keyedElsewhere => '·— ·—·· ·—· · ·— —·· —·—— / —·— · —·—— · —·· / ··—· ·—· ——— —— / · ·—·· ··· · ·—— ···· · ·—· · / — / ·—·· · ··—· — / ·— ·—·· ——— —· ·';
+	@override String get unsupported => '— ···· · / ·—· ·— —·· ·· ——— / —·· ——— · ··· —· ’ — / ·—· · ·——· ——— ·—· — / ·· —';
+	@override String get noMovement => '—· ——— / —— ——— ···— · —— · —· —';
+	@override String get muteNeedsAf => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —— ··— — · ··· / —··· —·—— / ·· — ··· / ·— ··—· / ——· ·— ·· —· / — / —— ——— ···— · / — ···· · / ·— ··—· / ——· ·— ·· —· / —·—· ——— —· — ·—· ——— ·—·· / ——— —· —·—· · / ··—· ·· ·—· ··· —';
 }
 
 /// The flat map containing all translations for locale <cw>.
@@ -6460,6 +6588,7 @@ extension on TranslationsCw {
 			'settings.station.models.commanderNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —·—· ——— —— —— ·— —· —·· · ·—· —·——·—',
 			'settings.station.models.antenna' => '·— —· — · —· —· ·—',
 			'settings.station.models.key' => '—·—· ·—— / —·— · —·——',
+			'settings.station.models.midiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
 			'settings.station.models.winkeyer' => '·—— ·· —· —·— · —·—— · ·—·',
 			'settings.station.models.placeholderRadio' => '——· · —· · ·—· ·· —·—· / ·—· ·— —·· ·· ——— / —·——· ·——· ·—·· ·— —·—· · ···· ——— ·—·· —·· · ·—· —·——·—',
 			'settings.station.models.placeholderRadioNodeName' => '—— —·—— / ·—· ·— —·· ·· ———',
@@ -6608,9 +6737,9 @@ extension on TranslationsCw {
 			'settings.station.antennaTypes.other' => '——— — ···· · ·—·',
 			'settings.station.keyType' => '—·— · —·—— / — —·—— ·——· ·',
 			'settings.station.keyTypeRequired' => '—·—· ···· ——— ——— ··· · / ·— / —·— · —·—— / — —·—— ·——· ·',
-			'settings.station.keyTypes.straight' => '··· — ·—· ·— ·· ——· ···· — / —·— · —·——',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.straight' => '··· — ·—· ·— ·· ——· ···· — / —·— · —·——',
 			'settings.station.keyTypes.sideswiper' => '··· ·· —·· · ··· ·—— ·· ·——· · ·—·',
 			'settings.station.keyTypes.bug' => '—··· ··— ——· / —·——· —— · —·—· ···· ·— —· ·· —·—· ·— ·—·· / ··· · —— ·· —····— ·— ··— — ——— —— ·— — ·· —·—· —·——·—',
 			'settings.station.keyTypes.fullyAutomatic' => '··—· ··— ·—·· ·—·· —·—— —····— ·— ··— — ——— —— ·— — ·· —·—· / —·— · —·—— · ·—·',
@@ -6624,6 +6753,74 @@ extension on TranslationsCw {
 			'settings.station.newAntenna' => '—· · ·—— / ·— —· — · —· —· ·—',
 			'settings.station.newKey' => '—· · ·—— / —·— · —·——',
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
+			'settings.station.newMidiController' => '—— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—·',
+			'settings.station.midi.name' => '—· ·— —— ·',
+			'settings.station.midi.device' => '—·· · ···— ·· —·—· ·',
+			'settings.station.midi.deviceNone' => '—·—· ···· ——— ——— ··· · / ·— / —·· · ···— ·· —·—· ·',
+			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} / —·——· —· ——— — / —·—· ——— —· —· · —·—· — · —·· —·——·—',
+			'settings.station.midi.statusConnected' => '—·—· ——— —· —· · —·—· — · —··',
+			'settings.station.midi.statusWaiting' => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· / — / ·——· ·—·· ··— ——· / ·· — / ·· —· / ——— ·—· / — ··— ·—· —· / ·· — / ——— —·',
+			'settings.station.midi.statusNoDevice' => '—·—· ···· ——— ——— ··· · / — ···· · / —·· · ···— ·· —·—· · / — ···· ·· ··· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ···',
+			'settings.station.midi.statusUnavailable' => '—— ·· —·· ·· / ·· ··· —· ’ — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ——— —· / — ···· ·· ··· / —·· · ···— ·· —·—· ·',
+			'settings.station.midi.statusFailed' => ({required Object message}) => '—·—· ——— ··— ·—·· —·· —· ’ — / ——— ·——· · —· / ·· — ———··· / ${message}',
+			'settings.station.midi.findBluetooth' => '··—· ·· —· —·· / —··· ·—·· ··— · — ——— ——— — ···· / —·· · ···— ·· —·—· · ···',
+			'settings.station.midi.findingBluetooth' => '··· · ·— ·—· —·—· ···· ·· —· ——· / ··—· ——— ·—· / —··· ·—·· ··— · — ——— ——— — ···· / —·· · ···— ·· —·—· · ··· …',
+			'settings.station.midi.lastMessage' => '·—·· ·— ··· — / —— · ··· ··· ·— ——· ·',
+			'settings.station.midi.lastNone' => '—— ——— ···— · / ·— / —·—· ——— —· — ·—· ——— ·—·· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ··· · —· —·· ···',
+			'settings.station.midi.notMapped' => '—· ——— — / —— ·— ·——· ·——· · —··',
+			'settings.station.midi.shortcut' => ({required Object command}) => '··· ···· ——— ·—· — —·—· ··— — / ${command}',
+			'settings.station.midi.sectionRadioA' => '·—· ·— —·· ·· ——— / ·—',
+			'settings.station.midi.sectionRadioB' => '·—· ·— —·· ·· ——— / —···',
+			'settings.station.midi.radioBNeedsSo2r' => '·—· ·— —·· ·· ——— / —··· ’ ··· / —·—· ——— —· — ·—· ——— ·—·· ··· / ·— —·—· — / ——— —· ·—·· —·—— / ·—— ···· ·· ·—·· · / ··· ——— ··——— ·—· / ·· ··· / ——— —· ·—·—·—',
+			'settings.station.midi.sectionKeying' => '—— · ··· ··· ·— ——· · ···',
+			'settings.station.midi.keyingNeedsExperiment' => '—·— · —·—— · ·—· / ··· ·——· · · —·· ——··—— / ·——· — — / ·— —· —·· / —— · ··· ··· ·— ——· · ··· / ·— —·—· — / ——— —· ·—·· —·—— / ·—— ···· ·· ·—·· · / — ···· · / —·— · —·—— ·· —· ——· / · —··— ·——· · ·—· ·· —— · —· — / ·· ··· / ——— —· ·—·—·—',
+			'settings.station.midi.learn' => '·—·· · ·— ·—· —·',
+			'settings.station.midi.learning' => '—— ——— ···— · / ·— / —·—· ——— —· — ·—· ——— ·—·· …',
+			'settings.station.midi.clear' => '—·—· ·—·· · ·— ·—·',
+			'settings.station.midi.unmapped' => '—',
+			'settings.station.midi.needsButton' => '—· · · —·· ··· / ·— / —··· ··— — — ——— —· / ——— ·—· / ·——· ·— —·· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·',
+			'settings.station.midi.needsEncoder' => '—· · · —·· ··· / ·— / —·— —· ——— —··· / ··· · —· —·· ·· —· ——· / —·—· —·—· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·',
+			'settings.station.midi.needsFader' => '—· · · —·· ··· / ·— / —·— —· ——— —··· / ——— ·—· / ··· ·—·· ·· —·· · ·—· / — / — ·—· —·—— / ·— —· ——— — ···· · ·—·',
+			'settings.station.midi.coding' => '—·—· ——— —·· ·· —· ——·',
+			'settings.station.midi.codings.relative' => '·—· · ·—·· ·— — ·· ···— · / —·——· ·— ··— — ——— —·——·—',
+			'settings.station.midi.codings.twos' => '·—· · ·—·· ·— — ·· ···— · / —·——· — ·—— ——— ’ ··· / —·—· ——— —— ·——· ·—·· · —— · —· — —·——·—',
+			'settings.station.midi.codings.offset64' => '·—· · ·—·· ·— — ·· ···— · / —·——· ——— ··—· ··—· ··· · — / —···· ····— —·——·—',
+			'settings.station.midi.codings.sign' => '·—· · ·—·· ·— — ·· ···— · / —·——· ··· ·· ——· —· / —··· ·· — —·——·—',
+			'settings.station.midi.codings.absolute' => '·— —··· ··· ——— ·—·· ··— — · / —·— —· ——— —···',
+			'settings.station.midi.step' => '··· — · ·——·',
+			'settings.station.midi.stepCw' => '—·—· ·—— / ··· — · ·——·',
+			'settings.station.midi.pttHold' => '···· ——— ·—·· —··',
+			'settings.station.midi.pttToggle' => '— ——— ——· ——· ·—·· ·',
+			'settings.station.midi.pttMode' => '·——· — — / —— ——— —·· ·',
+			'settings.station.midi.settingsFor' => ({required Object target}) => '${target} / ··· · — — ·· —· ——· ···',
+			'settings.station.midi.control.cc' => ({required Object number, required Object channel}) => '—·—· —·—· / ${number} / · / —·—· ···· / ${channel}',
+			'settings.station.midi.control.note' => ({required Object number, required Object channel}) => '—· ——— — · / ${number} / · / —·—· ···· / ${channel}',
+			'settings.station.midi.control.pb' => ({required Object channel}) => '·——· ·· — —·—· ···· / —··· · —· —·· / · / —·—· ···· / ${channel}',
+			'settings.station.midi.targets.vfoCoarse' => '···— ··—· ——— / —·—· ——— ·— ·—· ··· ·',
+			'settings.station.midi.targets.vfoFine' => '···— ··—· ——— / ··—· ·· —· ·',
+			'settings.station.midi.targets.ptt' => '·——· — —',
+			'settings.station.midi.targets.power' => '·——· ——— ·—— · ·—·',
+			'settings.station.midi.targets.wpm' => '—·— · —·—— · ·—· / ··· ·——· · · —··',
+			'settings.station.midi.targets.bandUp' => '—··· ·— —· —·· / ··— ·——·',
+			'settings.station.midi.targets.bandDown' => '—··· ·— —· —·· / —·· ——— ·—— —·',
+			'settings.station.midi.targets.modeNext' => '—· · —··— — / —— ——— —·· ·',
+			'settings.station.midi.targets.passbandLow' => '·——· ·— ··· ··· —··· ·— —· —·· / ·—·· ——— ·—— / · —·· ——· ·',
+			'settings.station.midi.targets.passbandHigh' => '·——· ·— ··· ··· —··· ·— —· —·· / ···· ·· ——· ···· / · —·· ——· ·',
+			'settings.station.midi.targets.afGain' => '·— ··—· / ——· ·— ·· —·',
+			'settings.station.midi.targets.rfGain' => '·—· ··—· / ——· ·— ·· —·',
+			'settings.station.midi.targets.mute' => '—— ··— — ·',
+			'settings.station.midi.targets.message' => ({required Object n}) => '—— · ··· ··· ·— ——· · / ${n}',
+			'settings.station.midi.targets.stop' => '··· — ——— ·——· / — ·—· ·— —· ··· —— ·· — — ·· —· ——·',
+			'settings.station.midi.ignored.noRadio' => '—· ——— / ·—· ·— —·· ·· ———',
+			'settings.station.midi.ignored.so2rOff' => '··· ——— ··——— ·—· / ·· ··· / ——— ··—· ··—·',
+			'settings.station.midi.ignored.dataMode' => '—· ——— — / — ··— —· · —·· / ·· —· / ·— / —·· ·· ——· ·· — ·— ·—·· / —— ——— —·· ·',
+			'settings.station.midi.ignored.keyingOff' => '— ···· · / —·— · —·—— ·· —· ——· / · —··— ·——· · ·—· ·· —— · —· — / ·· ··· / ——— ··—· ··—·',
+			'settings.station.midi.ignored.noPtt' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ···· ·— ··· / —· ——— / ·——· — — / — ···· · / ·— ·——· ·——· / —·—· ·— —· / —·— · —·——',
+			'settings.station.midi.ignored.notPhone' => '·——· — — / —·— · —·—— ··· / ——— —· ·—·· —·—— / ·· —· / ·——· ···· ——— —· · / —— ——— —·· · ···',
+			'settings.station.midi.ignored.keyedElsewhere' => '·— ·—·· ·—· · ·— —·· —·—— / —·— · —·—— · —·· / ··—· ·—· ——— —— / · ·—·· ··· · ·—— ···· · ·—· · / — / ·—·· · ··—· — / ·— ·—·· ——— —· ·',
+			'settings.station.midi.ignored.unsupported' => '— ···· · / ·—· ·— —·· ·· ——— / —·· ——— · ··· —· ’ — / ·—· · ·——· ——— ·—· — / ·· —',
+			'settings.station.midi.ignored.noMovement' => '—· ——— / —— ——— ···— · —— · —· —',
+			'settings.station.midi.ignored.muteNeedsAf' => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / —— ··— — · ··· / —··· —·—— / ·· — ··· / ·— ··—· / ——· ·— ·· —· / — / —— ——— ···— · / — ···· · / ·— ··—· / ——· ·— ·· —· / —·—· ——— —· — ·—· ——— ·—·· / ——— —· —·—· · / ··—· ·· ·—· ··· —',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => '—·— · —·—— / ——— —· / ${device}',
 			'settings.station.trackStationInfo' => '— ·—· ·— —·—· —·— / ··· — ·— — ·· ——— —· / ·· —· ··—· ——— / ··—· ——— ·—· / · ·— —·—· ···· / ——·— ··· ———',
@@ -6927,6 +7124,7 @@ extension on TranslationsCw {
 			'keyboardShortcuts.resetAll' => '·—· · ··· · — / ·— ·—·· ·—··',
 			'keyboardShortcuts.resetAllTitle' => '·—· · ··· · — / · ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — ··——··',
 			'keyboardShortcuts.resetAllBody' => '· ···— · ·—· —·—— / —·—· ——— —— —— ·— —· —·· / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — / —·— · —·—— ··· ——··—— / ·— —· —·· / — ···· · / —·— · —·—— ··· / —··· ——— ··— —· —·· / — ——— / — —·—— ·——· · —·· / —·—· ——— —— —— ·— —· —·· ··· / ·— ·—· · / ·—· · —— ——— ···— · —·· ·—·—·—',
+			'keyboardShortcuts.resetAllKeepsMidi' => '—·—· ——— —— —— ·— —· —·· ··· / —·— · · ·——· / — ···· · / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ··· / —··· ——— ··— —· —·· / — ——— / — ···· · —— ·—·—·—',
 			'keyboardShortcuts.reset' => '·—· · ··· · —',
 			'keyboardShortcuts.noKey' => '—· ——— / —·— · —·——',
 			'keyboardShortcuts.changed' => '—·—· ···· ·— —· ——· · —··',
@@ -6968,6 +7166,14 @@ extension on TranslationsCw {
 			'keyboardShortcuts.editor.addShortcut' => '·— —·· —·· / ··· ···· ——— ·—· — —·—· ··— —',
 			'keyboardShortcuts.editor.listening' => '·——· ·—· · ··· ··· / — ···· · / —·— · —·—— ··· / ··—· ——— ·—· / — ···· · / ··· ···· ——— ·—· — —·—· ··— — …',
 			'keyboardShortcuts.editor.listeningHint' => '· ··· —·—· / ··· — ——— ·——· ··· / ·—·· ·· ··· — · —· ·· —· ——·',
+			'keyboardShortcuts.editor.addMidi' => '·— —·· —·· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—··',
+			'keyboardShortcuts.editor.listeningMidi' => '·——· ·—· · ··· ··· / ·— / —··· ··— — — ——— —· / ——— —· / —·—— ——— ··— ·—· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· …',
+			'keyboardShortcuts.editor.listeningMidiHint' => '·——· ·—· · ··· ··· / ·— —·· —·· / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· / ·— ——· ·— ·· —· / — ——— / ··· — ——— ·——·',
+			'keyboardShortcuts.editor.midiNoController' => '—· ——— / —— ·· —·· ·· / —·—· ——— —· — ·—· ——— ·—·· ·—·· · ·—· / ·· ··· / —·—· ——— —· —· · —·—· — · —·· ·—·—·— / ·— —·· —·· / ——— —· · / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· ·—·—·—',
+			'keyboardShortcuts.editor.midiMappedInController' => ({required Object controller}) => '— ···· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·· ··· / —— ·— ·——· ·——· · —·· / ·· —· / ${controller} ’ ··· / ——— ·—— —· / ··· · — — ·· —· ——· ··· ——··—— / ·—— ···· ·· —·—· ···· / ·—— ·· —· / ——— ···— · ·—· / ·— / ··· ···· ——— ·—· — —·—· ··— — ·—·—·—',
+			'keyboardShortcuts.editor.midiAlready' => '— ···· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ···· · ·—· · ·—·—·—',
+			'keyboardShortcuts.editor.midiMoves' => ({required Object command}) => '·· — / ·——· ·—· · ··· ··· · —·· / ${command} —·—·—· / ··· ·— ···— ·· —· ——· / —— ——— ···— · ··· / ·· — / ···· · ·—· · ·—·—·—',
+			'keyboardShortcuts.editor.midiCap' => ({required Object control}) => '—— ·· —·· ·· / ${control}',
 			'keyboardShortcuts.editor.add' => '·— —·· —··',
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} / —··· · ·—·· ——— —· ——· ··· / — ——— / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ··· / ——— ·—· / ·— / —·· ·· ·— ·—·· ——— ——· ——··—— / ·— —· —·· / —·—· ·— —· ’ — / —··· · / —·—· ···· ·— —· ——· · —·· ·—·—·—',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} / ·· ··· / ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ·— ·—· · / — —·—— ·——· · —·· ·—·—·— / ···· ——— ·—·· —·· / —·—· —— —·· ——··—— / —·—· — ·—· ·—·· / ——— ·—· / ·— ·—·· — / ·—— ·· — ···· / ·· — ·—·—·—',
@@ -7045,6 +7251,8 @@ extension on TranslationsCw {
 			'dataFiles.downloading' => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
 			'dataFiles.downloadFailedWebHint' => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadTimedOut' => '— ···· · / ··· · ·—· ···— · ·—· / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·—· · ··· ·——· ——— —· —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} / ·— —· ··· ·—— · ·—· · —·· / ·—— ·· — ···· / ·— —· / · ·—· ·—· ——— ·—· / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} / —·—· ——— ··— ·—·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / — ···· ·· ··· / ··—· ·· ·—·· · / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — ··· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ··· — ·· ·—·· ·—·· / ·—· ·· ——· ···· — ·—·—·—',
@@ -7123,8 +7331,6 @@ extension on TranslationsCw {
 			'notices.preferencesResetTitle' => '··· · — — ·· —· ——· ··· / ·—· · ··· · —',
 			'notices.preferencesReset' => '— ···· · / ··· · — — ·· —· ——· ··· / ··—· ·· ·—·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· / ·— —· —·· / — ···· · ·—· · / ·—— ·— ··· / —· ——— / —··· ·— —·—· —·— ··— ·——· / — ——— / ··—· ·— ·—·· ·—·· / —··· ·— —·—· —·— / ——— —· ——··—— / ··· ——— / ···· ·— ·—·· ——— / ··· — ·— ·—· — · —·· / ·—— ·· — ···· / ·· — ··· / —·· · ··—· ·— ··— ·—·· — ··· ·—·—·— / — ···· · / ··— —· ·—· · ·— —·· ·— —··· ·—·· · / ··—· ·· ·—·· · / ·· ··· / —·— · ·——· — / ·· —· / — ···· · / ·— ·——· ·——· ·————· ··· / —·· ·— — ·— / ··—· ——— ·—·· —·· · ·—· ——··—— / —· ·— —— · —·· / ··· ···· ·— ·—· · —·· ··——·— ·——· ·—· · ··—· · ·—· · —· —·—· · ··· ·—·—·— —·—· ——— ·—· ·—· ··— ·——· — —····— … ·—·—·— ·——— ··· ——— —· ·—·—·—',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeld' => ({required Object name}) => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / ··· — ·— ·—· — · —·· / —·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${name} ——··—— / ··· ——— / ·· — / ·—·· · ··—· — / ·· — / ·— ·—·· ——— —· · / — ···· ·· ··· / — ·· —— · / ·—· ·— — ···· · ·—· / — ···· ·— —· / ·—· ·· ··· —·— / —·· ——— ·· —· ——· / ·· — / ·— ——· ·— ·· —· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / ··· ·—— ·· — —·—· ···· · —·· / ——— —· / ·— —· —·· / ·· — ··· / —·—· ·— —··· ·—·· · / ·· ··· / ·——· ·—·· ··— ——· ——· · —·· / ·· —· ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / ——— —· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'syncAccount.anonymous' => ({required Object id}) => '·— —· ——— —· —·—— —— ——— ··— ··· / ·— —·—· —·—· ——— ··— —· — / —·——· # ${id} —·——·—',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· —·——·—',

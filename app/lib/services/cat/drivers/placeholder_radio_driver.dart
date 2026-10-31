@@ -18,6 +18,8 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 import '../equipment.dart';
@@ -189,7 +191,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   }
 }
 
-class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
+class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, ReceiveLevelSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports
@@ -370,6 +372,20 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _watts = watts;
     _afterDelay(() => _sink.reportPower(_watts));
   }
+
+  /// All three, so a MIDI controller's AF, RF and mute rows can be tried on
+  /// a bench with no radio: the console says what landed.
+  @override
+  ReceiveLevels get receiveLevels => (af: true, rf: true, mute: true);
+
+  @override
+  void setAfGain(double level) => debugPrint('[cat] placeholder: AF gain ${receiveLevelOn(level, 100)}%');
+
+  @override
+  void setRfGain(double level) => debugPrint('[cat] placeholder: RF gain ${receiveLevelOn(level, 100)}%');
+
+  @override
+  void setMute(bool muted) => debugPrint('[cat] placeholder: ${muted ? 'muted' : 'unmuted'}');
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);

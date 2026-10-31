@@ -13,6 +13,7 @@ import 'drivers/pstrotator_driver.dart';
 import 'drivers/rotctld_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
+import 'drivers/midi_controller_driver.dart';
 import 'drivers/otrsp_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
 import 'equipment.dart';
@@ -209,6 +210,18 @@ const keyModel = EquipmentModel(
 );
 
 String _keyModelName() => t.settings.station.models.key;
+
+/// A MIDI controller — see [EquipmentModel.hiddenFromCatalog]. Offered from
+/// the Add dialog's "Other Equipment" section while `EXP MIDI` is on.
+const midiControllerModel = EquipmentModel(
+  key: 'midi-controller',
+  category: kCategoryMidi,
+  name: _midiControllerModelName,
+  hiddenFromCatalog: true,
+  variants: [EquipmentVariant(key: 'midi-controller-none', driver: MidiControllerDriver(), transport: NoneTransport())],
+);
+
+String _midiControllerModelName() => t.settings.station.models.midiController;
 
 /// A K1EL Winkeyer over its own serial (USB) port — see winkeyer_driver.dart.
 /// Offered from the Add dialog's "Other Equipment" rows beside a plain key,

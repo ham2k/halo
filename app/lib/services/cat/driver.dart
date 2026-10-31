@@ -340,6 +340,25 @@ abstract class PassbandSession implements EquipmentSession {
   void setPassband(Passband passband);
 }
 
+/// Which receive levels a [ReceiveLevelSession] takes.
+typedef ReceiveLevels = ({bool af, bool rf, bool mute});
+
+/// A transceiver whose CAT can set its AF gain, its RF gain and — where the
+/// protocol has one — a mute of its own (docs/design/cat.md § MIDI
+/// controllers). Each level is 0…1 of the radio's own range, top meaning
+/// loudest and most gain. Write-only: nothing reads a level back, so a
+/// knob on the radio itself is not followed.
+abstract class ReceiveLevelSession implements EquipmentSession {
+  /// What this session sets; a call for one it does not is ignored.
+  ReceiveLevels get receiveLevels;
+  void setAfGain(double level);
+  void setRfGain(double level);
+  void setMute(bool muted);
+}
+
+/// The radio's own scale for a 0…1 [level]: `0` to [top], rounded.
+int receiveLevelOn(double level, int top) => (level.clamp(0, 1) * top).round();
+
 /// A transceiver whose CAT can put its antenna tuner in line or bypass it.
 ///
 /// What "in line" takes is the radio's: an Icom, Kenwood or Yaesu switches

@@ -60,6 +60,11 @@ const kCategoryRotator = 'rotator';
 /// an antenna switch: it switches what the operator hears, not coax.
 const kCategorySo2rSwitch = 'so2rSwitch';
 
+/// A MIDI controller — a knob box, a DJ controller, a footswitch — whose
+/// controls drive Radio A and SO2R's Radio B (docs/design/cat.md § MIDI
+/// controllers). Nothing in CAT connects to it: MidiService binds its device.
+const kCategoryMidi = 'midiController';
+
 /// The config key naming the radio an SDR shows the spectrum for: a node's
 /// uuid, or [sdrRadioMain] (also what an absent value means).
 const sdrRadioConfigKey = 'sdrRadio';

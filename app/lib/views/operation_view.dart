@@ -417,6 +417,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // widget, because the keys must work whichever field has focus, and the
     // main key handler (main.dart) only looks at modified chords.
     HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
+    widget.services.cat.messageKeyRequests.addListener(_onMessageKeyRequest);
     widget.services.cat.pttKeys.addTarget(_pttTarget);
     widget.services.cat.keyer('A').voicedWords?.attach(_voiceRender, operatorCall: _voiceOperatorCall, refused: _voiceRefused);
     // Opening the view is the first activity on it; every key, pointer
@@ -633,6 +634,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
+    widget.services.cat.messageKeyRequests.removeListener(_onMessageKeyRequest);
     widget.services.cat.pttKeys.removeTarget(_pttTarget);
     widget.services.cat.keyer('A').voicedWords?.detach(_voiceRender);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);

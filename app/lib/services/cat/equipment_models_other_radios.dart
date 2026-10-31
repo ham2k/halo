@@ -8,6 +8,7 @@
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/placeholder_radio_driver.dart';
+import 'drivers/flex_discovery.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/guohetec_driver.dart';
 import 'drivers/rigctld_driver.dart';

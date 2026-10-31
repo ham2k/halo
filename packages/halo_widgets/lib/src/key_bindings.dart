@@ -8,7 +8,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' show BuildContext, EditableText, FocusManager, IconData, TextEditingValue, TextSelection;
+import 'package:flutter/widgets.dart' show BuildContext, EditableText, FocusManager, FocusNode, IconData, KeyEventResult, TextEditingValue, TextSelection;
 
 import 'logging_controls.dart' show LoggingControls;
 import 'logging_controls_entry_row.dart' show LoggingEntryRow;
@@ -402,14 +402,20 @@ const so2rStereoCommandId = 'so2r.stereo';
 
 /// What the operator changed from the defaults: a command's chords in place
 /// of its defaults (none at all, for a command they took every key from),
-/// and the chords bound to typed command text. The shape stored in the
-/// settings and carried by a keyboard shortcuts file.
+/// the chords bound to typed command text, and the MIDI controls bound to
+/// either. The shape stored in the settings; a keyboard shortcuts file
+/// carries all but [midi], which belongs to a controller, not a keyboard.
 @immutable
 class KeyBindingOverrides {
   final Map<String, List<KeyChord>> commands;
   final Map<String, List<KeyChord>> text;
 
-  const KeyBindingOverrides({this.commands = const {}, this.text = const {}});
+  /// Command id — or [textCommandId] — to the MIDI controls that press it,
+  /// each as MidiControl writes itself (`note:1:60`). Opaque here: the app
+  /// owns MIDI. A control presses one command at most ([withMidi]).
+  final Map<String, List<String>> midi;
+
+  const KeyBindingOverrides({this.commands = const {}, this.text = const {}, this.midi = const {}});
 
   /// [json] as [toJson] writes it. A chord that does not parse is left out,
   /// and its text added to [unreadable] when given; a command keeps the
@@ -424,7 +430,15 @@ class KeyBindingOverrides {
           if (entry.value is List)
             if (_chordList(entry.value as List, unreadable) case final chords when chords.isNotEmpty || (entry.value as List).isEmpty) '${entry.key}': chords,
     };
-    return KeyBindingOverrides(commands: read(json['commands']), text: read(json['text']));
+    return KeyBindingOverrides(
+      commands: read(json['commands']),
+      text: read(json['text']),
+      midi: {
+        if (json['midi'] case final Map<dynamic, dynamic> midi)
+          for (final entry in midi.entries)
+            if (entry.value case final List<dynamic> controls when controls.isNotEmpty) '${entry.key}': [for (final c in controls) '$c'],
+      },
+    );
   }
 
   static List<KeyChord> _chordList(List<dynamic> texts, List<String>? unreadable) {
@@ -449,20 +463,26 @@ class KeyBindingOverrides {
       'text': {
         for (final e in text.entries) e.key: [for (final c in e.value) '$c'],
       },
+    if (midi.isNotEmpty) 'midi': midi,
   };
 
-  bool get isEmpty => commands.isEmpty && text.isEmpty;
+  bool get isEmpty => commands.isEmpty && text.isEmpty && midi.isEmpty;
 
   /// Every chord [KeyChord.translated] through [translation]; a command or
   /// command text whose chords are all left out stays, with none.
   KeyBindingOverrides translated(Map<KeyModifier, KeyModifier?> translation) {
     List<KeyChord> each(List<KeyChord> chords) => [for (final chord in chords) ?chord.translated(translation)];
-    return KeyBindingOverrides(commands: {for (final e in commands.entries) e.key: each(e.value)}, text: {for (final e in text.entries) e.key: each(e.value)});
+    return KeyBindingOverrides(
+      commands: {for (final e in commands.entries) e.key: each(e.value)},
+      text: {for (final e in text.entries) e.key: each(e.value)},
+      midi: midi,
+    );
   }
 
   /// [other] on top of these: its commands and command text in place of the
   /// same ones here, the rest kept.
-  KeyBindingOverrides mergedWith(KeyBindingOverrides other) => KeyBindingOverrides(commands: {...commands, ...other.commands}, text: {...text, ...other.text});
+  KeyBindingOverrides mergedWith(KeyBindingOverrides other) =>
+      KeyBindingOverrides(commands: {...commands, ...other.commands}, text: {...text, ...other.text}, midi: {...midi, ...other.midi});
 
   /// The modifiers among `cmd`, `ctrl` and `meta` that any chord here holds.
   Set<KeyModifier> get platformModifiers => {
@@ -486,6 +506,7 @@ class KeyBindingOverrides {
         if (!isDefault) id: List.unmodifiable(chords),
       },
       text: text,
+      midi: midi,
     );
   }
 
@@ -499,16 +520,56 @@ class KeyBindingOverrides {
         if (entry.key != command) entry.key: entry.value,
       command: List.unmodifiable(chords),
     },
+    midi: midi,
   );
 
-  /// Without [command] at all.
+  /// Without [command] at all, its MIDI controls included.
   KeyBindingOverrides withoutText(String command) => KeyBindingOverrides(
     commands: commands,
     text: {
       for (final entry in text.entries)
         if (entry.key != command) entry.key: entry.value,
     },
+    midi: {
+      for (final entry in midi.entries)
+        if (entry.key != textCommandId(command)) entry.key: entry.value,
+    },
   );
+
+  /// With [id] pressed by [controls] — and none of them pressing any other
+  /// command: a control that pressed two would run both on every press.
+  KeyBindingOverrides withMidi(String id, List<String> controls) => KeyBindingOverrides(
+    commands: commands,
+    text: text,
+    midi: {
+      for (final entry in midi.entries)
+        if (entry.key != id)
+          if ([
+                for (final c in entry.value)
+                  if (!controls.contains(c)) c,
+              ]
+              case final kept when kept.isNotEmpty)
+            entry.key: kept,
+      if (controls.isNotEmpty) id: List.unmodifiable(controls),
+    },
+  );
+
+  /// [midi] alone, less the bindings to command text [text] does not hold:
+  /// what replacing or resetting the keys leaves. The controls belong to a
+  /// controller, not a keyboard; one left bound to command text that is gone
+  /// would press a command no row shows.
+  Map<String, List<String>> midiKeptWith(Map<String, List<KeyChord>> text) => {
+    for (final entry in midi.entries)
+      if (!entry.key.startsWith(textCommandPrefix) || text.containsKey(entry.key.substring(textCommandPrefix.length))) entry.key: entry.value,
+  };
+
+  /// The command [control] presses, or null.
+  String? midiCommandFor(String control) {
+    for (final entry in midi.entries) {
+      if (entry.value.contains(control)) return entry.key;
+    }
+    return null;
+  }
 }
 
 /// The bindings in force: each command's chords, and the chords bound to
@@ -536,6 +597,7 @@ class KeyBindings {
 
   /// The chord of [id]'s that [event] is, or null.
   KeyChord? match(String id, KeyEvent event) {
+    if (event is CommandKeyEvent) return _commandChord(id, event);
     for (final chord in chordsFor(id)) {
       if (chord.matches(event)) return chord;
     }
@@ -559,13 +621,18 @@ class KeyBindings {
   /// modifier that types something the field would take
   /// ([fieldTakesKey]). Asked by every handler once its chord has matched.
   bool yieldsToField(String id, KeyChord chord, KeyEvent event) {
-    if (chord.hasCommandModifier) return false;
+    if (event is CommandKeyEvent || chord.hasCommandModifier) return false;
     final character = _typed(event);
     return character != null && fieldTakesKey(FocusManager.instance.primaryFocus?.context, character);
   }
 
   /// The typed command text [event] is bound to, with the chord it matched.
   ({String text, KeyChord chord})? textCommandFor(KeyEvent event) {
+    if (event is CommandKeyEvent) {
+      final id = event.commandId;
+      if (!id.startsWith(textCommandPrefix)) return null;
+      return (text: id.substring(textCommandPrefix.length), chord: _commandChord(id, event)!);
+    }
     for (final entry in chords.entries) {
       if (!entry.key.startsWith(textCommandPrefix)) continue;
       for (final chord in entry.value) {
@@ -595,6 +662,12 @@ class KeyBindings {
     ];
   }
 
+  /// What [match] answers for a [CommandKeyEvent]: [id]'s first chord when
+  /// the event presses [id] — or, for a command with no key at all, a chord
+  /// on a key no keyboard has, which no handler reads more of than that it
+  /// matched.
+  KeyChord? _commandChord(String id, CommandKeyEvent event) => event.commandId == id ? (chordsFor(id).firstOrNull ?? KeyChord(LogicalKeyboardKey.f24)) : null;
+
   /// The commands other than [id] that [chord] is bound to.
   List<String> othersOn(KeyChord chord, {String? id}) => [
     for (final entry in chords.entries)
@@ -611,6 +684,7 @@ class LegacyKeyBindings extends KeyBindings {
 
   @override
   KeyChord? match(String id, KeyEvent event) {
+    if (event is CommandKeyEvent) return _commandChord(id, event);
     if (!_legacyMatches(id, event)) return null;
     final chords = chordsFor(id);
     // The keyer's ⌥-digit form is the one that types a character — the
@@ -627,6 +701,7 @@ class LegacyKeyBindings extends KeyBindings {
   /// them.
   @override
   bool yieldsToField(String id, KeyChord chord, KeyEvent event) {
+    if (event is CommandKeyEvent) return false;
     if (id.startsWith('keyer.message')) return chord.modifiers.contains(KeyModifier.alt) && focusInFreeText();
     if (id == pttCommandId || id == so2rStereoCommandId) {
       final character = _typed(event);
@@ -814,4 +889,70 @@ bool isReservedKeyChord(KeyChord chord, [TargetPlatform? platform]) {
     ],
   ];
   return reserved.any((text) => KeyChord.parse(text)!.samePressAs(chord));
+}
+
+/// A command pressed by something that is not a key — a MIDI control bound
+/// in Keyboard Shortcuts (docs/design/keyboard-shortcuts.md § MIDI). It is a
+/// key event on a key no keyboard has, dispatched as the platform's are, so
+/// every handler that asks [KeyBindings] whether an event is its command's
+/// gets "yes" for [commandId] alone, whatever chords that command has — and
+/// nothing reads it as a character.
+abstract interface class CommandKeyEvent implements KeyEvent {
+  String get commandId;
+}
+
+class CommandKeyDownEvent extends KeyDownEvent implements CommandKeyEvent {
+  @override
+  final String commandId;
+
+  const CommandKeyDownEvent(this.commandId, {required super.physicalKey, required super.logicalKey}) : super(timeStamp: Duration.zero);
+}
+
+class CommandKeyUpEvent extends KeyUpEvent implements CommandKeyEvent {
+  @override
+  final String commandId;
+
+  const CommandKeyUpEvent(this.commandId, {required super.physicalKey, required super.logicalKey}) : super(timeStamp: Duration.zero);
+}
+
+/// Presses and lets go of commands for something that is not a keyboard,
+/// one held press per [Object] source (a MIDI control). A press goes to the
+/// keyboard handlers first, then up the focus chain from the focused node —
+/// the two places a key reaches — and its release follows it, so a command
+/// that acts while held (PTT) holds for as long as the source does.
+class KeyCommandPresser {
+  KeyCommandPresser._();
+
+  static final instance = KeyCommandPresser._();
+
+  /// Each press gets a key of its own: two held at once are two keys down.
+  /// Vendor-defined HID usage page, and a logical plane Flutter assigns
+  /// nothing on — no keyboard reports either.
+  static const _physicalBase = 0x00ff0000, _logicalBase = 0x0e00000000;
+
+  final _held = <Object, CommandKeyDownEvent>{};
+  int _next = 0;
+
+  /// Presses [id] for [source], releasing whatever [source] held first.
+  /// Whether anything acted on it.
+  bool press(Object source, String id) {
+    release(source);
+    final n = _next = (_next + 1) & 0xffff;
+    final down = CommandKeyDownEvent(id, physicalKey: PhysicalKeyboardKey(_physicalBase + n), logicalKey: LogicalKeyboardKey(_logicalBase + n));
+    _held[source] = down;
+    if (HardwareKeyboard.instance.handleKeyEvent(down)) return true;
+    for (FocusNode? node = FocusManager.instance.primaryFocus; node != null; node = node.parent) {
+      final result = node.onKeyEvent?.call(node, down) ?? KeyEventResult.ignored;
+      if (result == KeyEventResult.handled) return true;
+      if (result == KeyEventResult.skipRemainingHandlers) return false;
+    }
+    return false;
+  }
+
+  /// Lets go of what [source] holds, if anything.
+  void release(Object source) {
+    final down = _held.remove(source);
+    if (down == null) return;
+    HardwareKeyboard.instance.handleKeyEvent(CommandKeyUpEvent(down.commandId, physicalKey: down.physicalKey, logicalKey: down.logicalKey));
+  }
 }

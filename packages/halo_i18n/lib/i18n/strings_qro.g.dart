@@ -925,6 +925,7 @@ class _Translations$keyboardShortcuts$qro extends Translations$keyboardShortcuts
 	@override String get resetAll => 'RESET ALL';
 	@override String get resetAllTitle => 'RESET EVERY SHORTCUT?';
 	@override String get resetAllBody => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.';
+	@override String get resetAllKeepsMidi => 'COMMANDS KEEP THE MIDI CONTROLS BOUND TO THEM.';
 	@override String get reset => 'RESET';
 	@override String get noKey => 'NO KEY';
 	@override String get changed => 'CHANGED';
@@ -2890,6 +2891,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get newAntenna => 'NEW ANTENNA';
 	@override String get newKey => 'NEW KEY';
 	@override String get newKeyer => 'WINKEYER (K1EL OR COMPATIBLE)';
+	@override String get newMidiController => 'MIDI CONTROLLER';
+	@override late final _Translations$settings$station$midi$qro midi = _Translations$settings$station$midi$qro._(_root);
 	@override String keyViaRadio({required Object radio}) => 'CAT KEYER IN ${radio}';
 	@override String keyOnDevice({required Object device}) => 'KEY ON ${device}';
 	@override String get trackStationInfo => 'TRACK STATION INFO FOR EACH QSO';
@@ -3250,6 +3253,14 @@ class _Translations$keyboardShortcuts$editor$qro extends Translations$keyboardSh
 	@override String get addShortcut => 'ADD SHORTCUT';
 	@override String get listening => 'PRESS THE KEYS FOR THE SHORTCUT…';
 	@override String get listeningHint => 'ESC STOPS LISTENING';
+	@override String get addMidi => 'ADD MIDI CONTROL';
+	@override String get listeningMidi => 'PRESS A BUTTON ON YOUR MIDI CONTROLLER…';
+	@override String get listeningMidiHint => 'PRESS ADD MIDI CONTROL AGAIN TO STOP';
+	@override String get midiNoController => 'NO MIDI CONTROLLER IS CONNECTED. ADD ONE IN STATION CONFIGURATION.';
+	@override String midiMappedInController({required Object controller}) => 'THAT CONTROL IS MAPPED IN ${controller}’S OWN SETTINGS, WHICH WIN OVER A SHORTCUT.';
+	@override String get midiAlready => 'THAT CONTROL IS ALREADY HERE.';
+	@override String midiMoves({required Object command}) => 'IT PRESSED ${command}; SAVING MOVES IT HERE.';
+	@override String midiCap({required Object control}) => 'MIDI ${control}';
 	@override String get add => 'ADD';
 	@override String refusedFixed({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.';
 	@override String refusedCallsign({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.';
@@ -4418,6 +4429,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get commanderNodeName => 'MY RADIO (VIA COMMANDER)';
 	@override String get antenna => 'ANTENNA';
 	@override String get key => 'CW KEY';
+	@override String get midiController => 'MIDI CONTROLLER';
 	@override String get winkeyer => 'WINKEYER';
 	@override String get placeholderRadio => 'GENERIC RADIO (PLACEHOLDER)';
 	@override String get placeholderRadioNodeName => 'MY RADIO';
@@ -4483,6 +4495,53 @@ class _Translations$settings$station$keyTypes$qro extends Translations$settings$
 	@override String get other => 'OTHER';
 }
 
+// Path: settings.station.midi
+class _Translations$settings$station$midi$qro extends Translations$settings$station$midi$en {
+	_Translations$settings$station$midi$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get name => 'NAME';
+	@override String get device => 'DEVICE';
+	@override String get deviceNone => 'CHOOSE A DEVICE';
+	@override String deviceMissing({required Object name}) => '${name} (NOT CONNECTED)';
+	@override String get statusConnected => 'CONNECTED';
+	@override String get statusWaiting => 'NOT CONNECTED — PLUG IT IN OR TURN IT ON';
+	@override String get statusNoDevice => 'CHOOSE THE DEVICE THIS CONTROLLER IS';
+	@override String get statusUnavailable => 'MIDI ISN’T AVAILABLE ON THIS DEVICE';
+	@override String statusFailed({required Object message}) => 'COULDN’T OPEN IT: ${message}';
+	@override String get findBluetooth => 'FIND BLUETOOTH DEVICES';
+	@override String get findingBluetooth => 'SEARCHING FOR BLUETOOTH DEVICES…';
+	@override String get lastMessage => 'LAST MESSAGE';
+	@override String get lastNone => 'MOVE A CONTROL TO SEE WHAT IT SENDS';
+	@override String get notMapped => 'NOT MAPPED';
+	@override String shortcut({required Object command}) => 'SHORTCUT ${command}';
+	@override String get sectionRadioA => 'RADIO A';
+	@override String get sectionRadioB => 'RADIO B';
+	@override String get radioBNeedsSo2r => 'RADIO B’S CONTROLS ACT ONLY WHILE SO2R IS ON.';
+	@override String get sectionKeying => 'MESSAGES';
+	@override String get keyingNeedsExperiment => 'KEYER SPEED, PTT AND MESSAGES ACT ONLY WHILE THE KEYING EXPERIMENT IS ON.';
+	@override String get learn => 'LEARN';
+	@override String get learning => 'MOVE A CONTROL…';
+	@override String get clear => 'CLEAR';
+	@override String get unmapped => '—';
+	@override String get needsButton => 'NEEDS A BUTTON OR PAD — TRY ANOTHER';
+	@override String get needsEncoder => 'NEEDS A KNOB SENDING CC — TRY ANOTHER';
+	@override String get needsFader => 'NEEDS A KNOB OR SLIDER — TRY ANOTHER';
+	@override String get coding => 'CODING';
+	@override late final _Translations$settings$station$midi$codings$qro codings = _Translations$settings$station$midi$codings$qro._(_root);
+	@override String get step => 'STEP';
+	@override String get stepCw => 'CW STEP';
+	@override String get pttHold => 'HOLD';
+	@override String get pttToggle => 'TOGGLE';
+	@override String get pttMode => 'PTT MODE';
+	@override String settingsFor({required Object target}) => '${target} SETTINGS';
+	@override late final _Translations$settings$station$midi$control$qro control = _Translations$settings$station$midi$control$qro._(_root);
+	@override late final _Translations$settings$station$midi$targets$qro targets = _Translations$settings$station$midi$targets$qro._(_root);
+	@override late final _Translations$settings$station$midi$ignored$qro ignored = _Translations$settings$station$midi$ignored$qro._(_root);
+}
+
 // Path: operation.layout.panels.weatherConditions
 class _Translations$operation$layout$panels$weatherConditions$qro extends Translations$operation$layout$panels$weatherConditions$en {
 	_Translations$operation$layout$panels$weatherConditions$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -4545,6 +4604,75 @@ class _Translations$settings$radio$pttKey$descriptions$qro extends Translations$
 	@override String get off => 'THE KEYBOARD DOES NOT KEY THE RADIO.';
 	@override String get toggle => 'IN PHONE MODES, THE PTT KEY KEYS THE RADIO AND PRESSING IT AGAIN UNKEYS IT. IT UNKEYS BY ITSELF AFTER A MINUTE.';
 	@override String get hold => 'IN PHONE MODES, THE RADIO TRANSMITS WHILE THE PTT KEY IS HELD DOWN, FOR UP TO A MINUTE.';
+}
+
+// Path: settings.station.midi.codings
+class _Translations$settings$station$midi$codings$qro extends Translations$settings$station$midi$codings$en {
+	_Translations$settings$station$midi$codings$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get relative => 'RELATIVE (AUTO)';
+	@override String get twos => 'RELATIVE (TWO’S COMPLEMENT)';
+	@override String get offset64 => 'RELATIVE (OFFSET 64)';
+	@override String get sign => 'RELATIVE (SIGN BIT)';
+	@override String get absolute => 'ABSOLUTE KNOB';
+}
+
+// Path: settings.station.midi.control
+class _Translations$settings$station$midi$control$qro extends Translations$settings$station$midi$control$en {
+	_Translations$settings$station$midi$control$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String cc({required Object number, required Object channel}) => 'CC ${number} · CH ${channel}';
+	@override String note({required Object number, required Object channel}) => 'NOTE ${number} · CH ${channel}';
+	@override String pb({required Object channel}) => 'PITCH BEND · CH ${channel}';
+}
+
+// Path: settings.station.midi.targets
+class _Translations$settings$station$midi$targets$qro extends Translations$settings$station$midi$targets$en {
+	_Translations$settings$station$midi$targets$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get vfoCoarse => 'VFO COARSE';
+	@override String get vfoFine => 'VFO FINE';
+	@override String get ptt => 'PTT';
+	@override String get power => 'POWER';
+	@override String get wpm => 'KEYER SPEED';
+	@override String get bandUp => 'BAND UP';
+	@override String get bandDown => 'BAND DOWN';
+	@override String get modeNext => 'NEXT MODE';
+	@override String get passbandLow => 'PASSBAND LOW EDGE';
+	@override String get passbandHigh => 'PASSBAND HIGH EDGE';
+	@override String get afGain => 'AF GAIN';
+	@override String get rfGain => 'RF GAIN';
+	@override String get mute => 'MUTE';
+	@override String message({required Object n}) => 'MESSAGE ${n}';
+	@override String get stop => 'STOP TRANSMITTING';
+}
+
+// Path: settings.station.midi.ignored
+class _Translations$settings$station$midi$ignored$qro extends Translations$settings$station$midi$ignored$en {
+	_Translations$settings$station$midi$ignored$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get noRadio => 'NO RADIO';
+	@override String get so2rOff => 'SO2R IS OFF';
+	@override String get dataMode => 'NOT TUNED IN A DIGITAL MODE';
+	@override String get keyingOff => 'THE KEYING EXPERIMENT IS OFF';
+	@override String get noPtt => 'THIS RADIO HAS NO PTT THE APP CAN KEY';
+	@override String get notPhone => 'PTT KEYS ONLY IN PHONE MODES';
+	@override String get keyedElsewhere => 'ALREADY KEYED FROM ELSEWHERE — LEFT ALONE';
+	@override String get unsupported => 'THE RADIO DOESN’T REPORT IT';
+	@override String get noMovement => 'NO MOVEMENT';
+	@override String get muteNeedsAf => 'THIS RADIO MUTES BY ITS AF GAIN — MOVE THE AF GAIN CONTROL ONCE FIRST';
 }
 
 /// The flat map containing all translations for locale <qro>.
@@ -6460,6 +6588,7 @@ extension on TranslationsQro {
 			'settings.station.models.commanderNodeName' => 'MY RADIO (VIA COMMANDER)',
 			'settings.station.models.antenna' => 'ANTENNA',
 			'settings.station.models.key' => 'CW KEY',
+			'settings.station.models.midiController' => 'MIDI CONTROLLER',
 			'settings.station.models.winkeyer' => 'WINKEYER',
 			'settings.station.models.placeholderRadio' => 'GENERIC RADIO (PLACEHOLDER)',
 			'settings.station.models.placeholderRadioNodeName' => 'MY RADIO',
@@ -6608,9 +6737,9 @@ extension on TranslationsQro {
 			'settings.station.antennaTypes.other' => 'OTHER',
 			'settings.station.keyType' => 'KEY TYPE',
 			'settings.station.keyTypeRequired' => 'CHOOSE A KEY TYPE',
-			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
 			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
 			'settings.station.keyTypes.bug' => 'BUG (MECHANICAL SEMI-AUTOMATIC)',
 			'settings.station.keyTypes.fullyAutomatic' => 'FULLY-AUTOMATIC KEYER',
@@ -6624,6 +6753,74 @@ extension on TranslationsQro {
 			'settings.station.newAntenna' => 'NEW ANTENNA',
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
+			'settings.station.newMidiController' => 'MIDI CONTROLLER',
+			'settings.station.midi.name' => 'NAME',
+			'settings.station.midi.device' => 'DEVICE',
+			'settings.station.midi.deviceNone' => 'CHOOSE A DEVICE',
+			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} (NOT CONNECTED)',
+			'settings.station.midi.statusConnected' => 'CONNECTED',
+			'settings.station.midi.statusWaiting' => 'NOT CONNECTED — PLUG IT IN OR TURN IT ON',
+			'settings.station.midi.statusNoDevice' => 'CHOOSE THE DEVICE THIS CONTROLLER IS',
+			'settings.station.midi.statusUnavailable' => 'MIDI ISN’T AVAILABLE ON THIS DEVICE',
+			'settings.station.midi.statusFailed' => ({required Object message}) => 'COULDN’T OPEN IT: ${message}',
+			'settings.station.midi.findBluetooth' => 'FIND BLUETOOTH DEVICES',
+			'settings.station.midi.findingBluetooth' => 'SEARCHING FOR BLUETOOTH DEVICES…',
+			'settings.station.midi.lastMessage' => 'LAST MESSAGE',
+			'settings.station.midi.lastNone' => 'MOVE A CONTROL TO SEE WHAT IT SENDS',
+			'settings.station.midi.notMapped' => 'NOT MAPPED',
+			'settings.station.midi.shortcut' => ({required Object command}) => 'SHORTCUT ${command}',
+			'settings.station.midi.sectionRadioA' => 'RADIO A',
+			'settings.station.midi.sectionRadioB' => 'RADIO B',
+			'settings.station.midi.radioBNeedsSo2r' => 'RADIO B’S CONTROLS ACT ONLY WHILE SO2R IS ON.',
+			'settings.station.midi.sectionKeying' => 'MESSAGES',
+			'settings.station.midi.keyingNeedsExperiment' => 'KEYER SPEED, PTT AND MESSAGES ACT ONLY WHILE THE KEYING EXPERIMENT IS ON.',
+			'settings.station.midi.learn' => 'LEARN',
+			'settings.station.midi.learning' => 'MOVE A CONTROL…',
+			'settings.station.midi.clear' => 'CLEAR',
+			'settings.station.midi.unmapped' => '—',
+			'settings.station.midi.needsButton' => 'NEEDS A BUTTON OR PAD — TRY ANOTHER',
+			'settings.station.midi.needsEncoder' => 'NEEDS A KNOB SENDING CC — TRY ANOTHER',
+			'settings.station.midi.needsFader' => 'NEEDS A KNOB OR SLIDER — TRY ANOTHER',
+			'settings.station.midi.coding' => 'CODING',
+			'settings.station.midi.codings.relative' => 'RELATIVE (AUTO)',
+			'settings.station.midi.codings.twos' => 'RELATIVE (TWO’S COMPLEMENT)',
+			'settings.station.midi.codings.offset64' => 'RELATIVE (OFFSET 64)',
+			'settings.station.midi.codings.sign' => 'RELATIVE (SIGN BIT)',
+			'settings.station.midi.codings.absolute' => 'ABSOLUTE KNOB',
+			'settings.station.midi.step' => 'STEP',
+			'settings.station.midi.stepCw' => 'CW STEP',
+			'settings.station.midi.pttHold' => 'HOLD',
+			'settings.station.midi.pttToggle' => 'TOGGLE',
+			'settings.station.midi.pttMode' => 'PTT MODE',
+			'settings.station.midi.settingsFor' => ({required Object target}) => '${target} SETTINGS',
+			'settings.station.midi.control.cc' => ({required Object number, required Object channel}) => 'CC ${number} · CH ${channel}',
+			'settings.station.midi.control.note' => ({required Object number, required Object channel}) => 'NOTE ${number} · CH ${channel}',
+			'settings.station.midi.control.pb' => ({required Object channel}) => 'PITCH BEND · CH ${channel}',
+			'settings.station.midi.targets.vfoCoarse' => 'VFO COARSE',
+			'settings.station.midi.targets.vfoFine' => 'VFO FINE',
+			'settings.station.midi.targets.ptt' => 'PTT',
+			'settings.station.midi.targets.power' => 'POWER',
+			'settings.station.midi.targets.wpm' => 'KEYER SPEED',
+			'settings.station.midi.targets.bandUp' => 'BAND UP',
+			'settings.station.midi.targets.bandDown' => 'BAND DOWN',
+			'settings.station.midi.targets.modeNext' => 'NEXT MODE',
+			'settings.station.midi.targets.passbandLow' => 'PASSBAND LOW EDGE',
+			'settings.station.midi.targets.passbandHigh' => 'PASSBAND HIGH EDGE',
+			'settings.station.midi.targets.afGain' => 'AF GAIN',
+			'settings.station.midi.targets.rfGain' => 'RF GAIN',
+			'settings.station.midi.targets.mute' => 'MUTE',
+			'settings.station.midi.targets.message' => ({required Object n}) => 'MESSAGE ${n}',
+			'settings.station.midi.targets.stop' => 'STOP TRANSMITTING',
+			'settings.station.midi.ignored.noRadio' => 'NO RADIO',
+			'settings.station.midi.ignored.so2rOff' => 'SO2R IS OFF',
+			'settings.station.midi.ignored.dataMode' => 'NOT TUNED IN A DIGITAL MODE',
+			'settings.station.midi.ignored.keyingOff' => 'THE KEYING EXPERIMENT IS OFF',
+			'settings.station.midi.ignored.noPtt' => 'THIS RADIO HAS NO PTT THE APP CAN KEY',
+			'settings.station.midi.ignored.notPhone' => 'PTT KEYS ONLY IN PHONE MODES',
+			'settings.station.midi.ignored.keyedElsewhere' => 'ALREADY KEYED FROM ELSEWHERE — LEFT ALONE',
+			'settings.station.midi.ignored.unsupported' => 'THE RADIO DOESN’T REPORT IT',
+			'settings.station.midi.ignored.noMovement' => 'NO MOVEMENT',
+			'settings.station.midi.ignored.muteNeedsAf' => 'THIS RADIO MUTES BY ITS AF GAIN — MOVE THE AF GAIN CONTROL ONCE FIRST',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT KEYER IN ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'KEY ON ${device}',
 			'settings.station.trackStationInfo' => 'TRACK STATION INFO FOR EACH QSO',
@@ -6927,6 +7124,7 @@ extension on TranslationsQro {
 			'keyboardShortcuts.resetAll' => 'RESET ALL',
 			'keyboardShortcuts.resetAllTitle' => 'RESET EVERY SHORTCUT?',
 			'keyboardShortcuts.resetAllBody' => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.',
+			'keyboardShortcuts.resetAllKeepsMidi' => 'COMMANDS KEEP THE MIDI CONTROLS BOUND TO THEM.',
 			'keyboardShortcuts.reset' => 'RESET',
 			'keyboardShortcuts.noKey' => 'NO KEY',
 			'keyboardShortcuts.changed' => 'CHANGED',
@@ -6968,6 +7166,14 @@ extension on TranslationsQro {
 			'keyboardShortcuts.editor.addShortcut' => 'ADD SHORTCUT',
 			'keyboardShortcuts.editor.listening' => 'PRESS THE KEYS FOR THE SHORTCUT…',
 			'keyboardShortcuts.editor.listeningHint' => 'ESC STOPS LISTENING',
+			'keyboardShortcuts.editor.addMidi' => 'ADD MIDI CONTROL',
+			'keyboardShortcuts.editor.listeningMidi' => 'PRESS A BUTTON ON YOUR MIDI CONTROLLER…',
+			'keyboardShortcuts.editor.listeningMidiHint' => 'PRESS ADD MIDI CONTROL AGAIN TO STOP',
+			'keyboardShortcuts.editor.midiNoController' => 'NO MIDI CONTROLLER IS CONNECTED. ADD ONE IN STATION CONFIGURATION.',
+			'keyboardShortcuts.editor.midiMappedInController' => ({required Object controller}) => 'THAT CONTROL IS MAPPED IN ${controller}’S OWN SETTINGS, WHICH WIN OVER A SHORTCUT.',
+			'keyboardShortcuts.editor.midiAlready' => 'THAT CONTROL IS ALREADY HERE.',
+			'keyboardShortcuts.editor.midiMoves' => ({required Object command}) => 'IT PRESSED ${command}; SAVING MOVES IT HERE.',
+			'keyboardShortcuts.editor.midiCap' => ({required Object control}) => 'MIDI ${control}',
 			'keyboardShortcuts.editor.add' => 'ADD',
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.',
@@ -7045,6 +7251,8 @@ extension on TranslationsQro {
 			'dataFiles.downloading' => 'DOWNLOADING…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
 			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.',
@@ -7123,8 +7331,6 @@ extension on TranslationsQro {
 			'notices.preferencesResetTitle' => 'SETTINGS RESET',
 			'notices.preferencesReset' => 'THE SETTINGS FILE COULD NOT BE READ AND THERE WAS NO BACKUP TO FALL BACK ON, SO HALO STARTED WITH ITS DEFAULTS. THE UNREADABLE FILE IS KEPT IN THE APP\'S DATA FOLDER, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} WAS NOT CONNECTED AUTOMATICALLY',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeld' => ({required Object name}) => 'HALO STOPPED RESPONDING THE LAST TIME IT STARTED CONNECTING TO ${name}, SO IT LEFT IT ALONE THIS TIME RATHER THAN RISK DOING IT AGAIN. CHECK THAT THE RADIO IS SWITCHED ON AND ITS CABLE IS PLUGGED IN, THEN PRESS CONNECT ON IT IN SETTINGS.',
 			'syncAccount.anonymous' => ({required Object id}) => 'ANONYMOUS ACCOUNT (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (PENDING CONFIRMATION)',

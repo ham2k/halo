@@ -82,7 +82,8 @@ class KenwoodSession
         AntennaTunerSession,
         PassbandSession,
         RadioAntennaSession,
-        RawCommandSession {
+        RawCommandSession,
+        ReceiveLevelSession {
   @override
   final EquipmentSink _sink;
   final bool isK4;
@@ -259,6 +260,7 @@ class KenwoodSession
     this.passbandDialect,
     this.antennaDialect,
     this.modeDialect,
+    this.setsReceiveLevels = false,
     Map<String, dynamic> config = const {},
   }) : _modeOffset = declaredModeOffset,
        // ignore: prefer_initializing_formals
@@ -395,6 +397,25 @@ class KenwoodSession
 
   /// See [KenwoodDriver.passbandDialectKey]. Null reads and sets nothing.
   final KenwoodPassbandDialect? passbandDialect;
+
+  /// See [KenwoodDriver.receiveLevelsKey].
+  final bool setsReceiveLevels;
+
+  @override
+  ReceiveLevels get receiveLevels => (af: setsReceiveLevels, rf: setsReceiveLevels, mute: false);
+
+  @override
+  void setAfGain(double level) {
+    if (setsReceiveLevels) _send(buildKenwoodSetAfGainCommand(receiveLevelOn(level, 255)));
+  }
+
+  @override
+  void setRfGain(double level) {
+    if (setsReceiveLevels) _send(buildKenwoodSetRfGainCommand(receiveLevelOn(level, 255)));
+  }
+
+  @override
+  void setMute(bool muted) {}
 
   /// The filter as the radio last answered, in the mode now in use: width
   /// (`BW`, or `FW` in CW on the TS-590SG), AF centre (`IS`) and the TS-590SG's

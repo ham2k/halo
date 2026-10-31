@@ -54,6 +54,9 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Whether "Other Equipment" offers the SO2R switchers — behind `EXP SO2R`.
   final bool showSo2rSwitch;
 
+  /// Whether "Other Equipment" offers a MIDI controller — behind `EXP MIDI`.
+  final bool showMidi;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const AddEquipmentDialog({
@@ -65,6 +68,7 @@ class AddEquipmentDialog extends StatefulWidget {
     this.showSdr = false,
     this.showRotator = false,
     this.showSo2rSwitch = false,
+    this.showMidi = false,
     required this.supportedVariants,
   });
 
@@ -306,6 +310,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       ...switches,
       ...rotators,
       ...so2rSwitches,
+      if (widget.showMidi) _AddRow(title: st.newMidiController, icon: MdiIcons.midi, choice: const AddChoice.model(midiControllerModel)),
       if (widget.showSdr)
         for (final model in sdrModels)
           if (widget.supportedVariants(model) case final variants when variants.isNotEmpty) _AddRow.forModel(model, variants),

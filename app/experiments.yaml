@@ -151,3 +151,11 @@ experiments:
     name: SO2R
     description: Control a second radio, with a set of logging fields for each.
     private: true
+  # MIDI controllers (docs/design/cat.md § MIDI controllers): a knob box, DJ
+  # controller or footswitch added in Station Configuration drives Radio A,
+  # and Radio B under SO2R, through the same paths the logging panel uses.
+  # Private while the target list and the mapping pane are being shaped.
+  - key: midi
+    name: MIDI Controllers
+    description: Tune, key and adjust the radios from a MIDI controller.
+    private: true

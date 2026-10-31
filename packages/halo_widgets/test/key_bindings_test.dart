@@ -450,4 +450,86 @@ void main() {
       expect(focusInFreeText(), isTrue);
     });
   });
+
+  group('a command pressed by something that is not a key', () {
+    const down = CommandKeyDownEvent('logView.find', physicalKey: PhysicalKeyboardKey(0x00ff0001), logicalKey: LogicalKeyboardKey(0x0e00000001));
+
+    test('matches its own command and no other, whatever their chords', () {
+      // Its key is on no keyboard: matched by chord it would match nothing,
+      // and every handler would ignore the press.
+      final bindings = KeyBindings.resolve(overrides: {'logView.find': []});
+      expect(bindings.match('logView.find', down), isNotNull);
+      expect(bindings.match('app.commandDialog', down), isNull);
+      expect(LegacyKeyBindings().match('logView.find', down), isNotNull);
+    });
+
+    test('never yields to a focused field', () {
+      // A field taking it as a character would swallow a MIDI F1 whenever
+      // the call field has focus, which is always.
+      final bindings = KeyBindings.resolve();
+      expect(bindings.claim('logView.find', down), isNotNull);
+    });
+
+    test('runs bound command text', () {
+      const typed = CommandKeyDownEvent('text:20M', physicalKey: PhysicalKeyboardKey(0x00ff0002), logicalKey: LogicalKeyboardKey(0x0e00000002));
+      expect(KeyBindings.resolve().textCommandFor(typed)?.text, '20M');
+    });
+
+    testWidgets('a press reaches keyboard handlers, and its release follows', (tester) async {
+      final seen = <String>[];
+      bool handler(KeyEvent event) {
+        if (keyBindings.value.match('radio.ptt', event) != null) seen.add(event is KeyDownEvent ? 'down' : 'up');
+        return event is CommandKeyEvent;
+      }
+
+      HardwareKeyboard.instance.addHandler(handler);
+      addTearDown(() => HardwareKeyboard.instance.removeHandler(handler));
+      expect(KeyCommandPresser.instance.press('pedal', 'radio.ptt'), isTrue);
+      expect(HardwareKeyboard.instance.physicalKeysPressed, isNotEmpty);
+      KeyCommandPresser.instance.release('pedal');
+      // A held PTT unkeys on the release: without it, a footswitch let go
+      // would leave the radio on the air.
+      expect(seen, ['down', 'up']);
+      expect(HardwareKeyboard.instance.physicalKeysPressed, isEmpty);
+    });
+  });
+
+  group('MIDI controls bound to commands', () {
+    test('one control presses one command', () {
+      final overrides = const KeyBindingOverrides().withMidi('logView.find', ['note:1:60']).withMidi('logging.wipe', ['note:1:60']);
+      expect(overrides.midiCommandFor('note:1:60'), 'logging.wipe');
+      expect(overrides.midi.containsKey('logView.find'), isFalse);
+    });
+
+    test('survive storage and the keyboard changes made beside them', () {
+      final stored = KeyBindingOverrides.fromJson(const KeyBindingOverrides().withMidi('logView.find', ['cc:2:64']).toJson());
+      // Rebinding a key rebuilds the overrides; a MIDI binding dropped there
+      // would vanish the first time the operator touched any shortcut.
+      final edited = stored.withCommand('logView.find', [chord('cmd+G')]).withText('20M', [chord('F9')]);
+      expect(edited.midiCommandFor('cc:2:64'), 'logView.find');
+    });
+
+    test('what replacing the keys keeps: every control but those on command text that is gone', () {
+      // A control left on text no row lists would press it with nothing on
+      // screen to say why.
+      final overrides = const KeyBindingOverrides()
+          .withText('20M', [])
+          .withText('40M', [])
+          .withMidi('logView.find', ['cc:2:64'])
+          .withMidi('text:20M', ['note:1:61'])
+          .withMidi('text:40M', ['note:1:62']);
+      expect(overrides.midiKeptWith({'40M': const []}), {
+        'logView.find': ['cc:2:64'],
+        'text:40M': ['note:1:62'],
+      });
+      expect(overrides.midiKeptWith(const {}), {
+        'logView.find': ['cc:2:64'],
+      });
+    });
+
+    test('removing command text takes its MIDI controls with it', () {
+      final overrides = const KeyBindingOverrides().withText('20M', []).withMidi('text:20M', ['note:1:61']);
+      expect(overrides.withoutText('20M').midiCommandFor('note:1:61'), isNull);
+    });
+  });
 }

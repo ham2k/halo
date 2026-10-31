@@ -47,7 +47,14 @@ class KeyBindingsService extends ChangeNotifier {
 
   String? _lastNative;
 
+  KeyBindingOverrides _midiOverrides = const KeyBindingOverrides();
+
+  /// The command a MIDI control presses (KeyBindingOverrides.midi) — none
+  /// with the experiment off, as no rebound key acts then either.
+  String? midiCommandFor(String control) => _midiOverrides.midiCommandFor(control);
+
   void _apply() {
+    _midiOverrides = enabled ? KeyBindingOverrides(midi: overrides.midi) : const KeyBindingOverrides();
     final next = enabled ? overrides.resolve() : LegacyKeyBindings();
     keyBindings.value = next;
     _syncNative(next);

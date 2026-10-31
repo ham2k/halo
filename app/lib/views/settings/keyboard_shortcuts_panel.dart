@@ -22,7 +22,11 @@ import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
 import '../../services/key_bindings_file.dart';
 import '../../services/key_bindings_service.dart';
+import '../../services/midi/midi_codec.dart';
+import '../../services/midi/midi_service.dart';
 import '../command_engine.dart' show commandTextParts;
+import '../midi_controller_pane.dart' show midiControlLabel, midiTargetLabel;
+import '../../services/midi/midi_targets.dart' show midiTargetById;
 import 'settings_category.dart';
 
 /// What [id] does, in the operator's language — a command id, or bound
@@ -50,6 +54,12 @@ String keyCommandTitle(Translations t, String id) {
   };
 }
 
+/// A MIDI control bound to a command, as its cap reads: `MIDI Note 60 · ch 1`.
+String midiCapLabel(BuildContext context, String control) => switch (MidiControl.parse(control)) {
+  final parsed? => context.t.keyboardShortcuts.editor.midiCap(control: midiControlLabel(context, parsed)),
+  null => control,
+};
+
 String _contextLabel(Translations t, KeyCommandContext context) => switch (context) {
   KeyCommandContext.app => t.keyboardShortcuts.contextApp,
   KeyCommandContext.logView => t.keyboardShortcuts.contextLogView,
@@ -76,20 +86,30 @@ List<({List<String> chords, List<String> labels, String Function(Translations t)
 ];
 
 /// Opens the editor for [id]'s keys, titled [title], and stores what it
-/// answers — taking a chord off any other command it is moved from.
-Future<void> editKeyCommand(BuildContext context, KeyBindingsService service, String id, String title) async {
+/// answers — taking a chord or a MIDI control off any other command it is
+/// moved from.
+Future<void> editKeyCommand(BuildContext context, HaLoServices services, String id, String title) async {
+  final service = services.keyBindingsService;
   final overrides = service.overrides;
   final bindings = overrides.resolve();
   final result = await showHaloDialog<_EditResult>(
     context: context,
-    builder: (_) => _ShortcutEditor(id: id, title: title, chords: bindings.chordsFor(id), bindings: bindings),
+    builder: (_) => _ShortcutEditor(
+      id: id,
+      title: title,
+      chords: bindings.chordsFor(id),
+      bindings: bindings,
+      overrides: overrides,
+      // MIDI controls are offered only with MIDI controllers on at all.
+      midi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */ ? services.midi : null,
+    ),
   );
   if (result == null) return;
   if (result.remove) {
     await service.setOverrides(overrides.withoutText(id.substring(textCommandPrefix.length)));
     return;
   }
-  var next = _withChords(overrides, id, result.chords);
+  var next = _withChords(overrides, id, result.chords).withMidi(id, result.midi);
   for (final chord in result.take) {
     final current = next.resolve();
     for (final other in current.othersOn(chord, id: id)) {
@@ -125,7 +145,7 @@ class KeyerMessageKeys extends StatelessWidget {
       if (!service.enabled) return caps;
       return InkWell(
         borderRadius: BorderRadius.circular(4),
-        onTap: () => editKeyCommand(context, service, id, keyCommandTitle(context.t, id)),
+        onTap: () => editKeyCommand(context, services, id, keyCommandTitle(context.t, id)),
         child: Padding(padding: const EdgeInsets.all(Space.xs), child: caps),
       );
     },
@@ -172,7 +192,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         chords.any((c) => c.label().toLowerCase().contains(query) || '$c'.toLowerCase().contains(query));
   }
 
-  Future<void> _edit(String id, String title) => editKeyCommand(context, _service, id, title);
+  Future<void> _edit(String id, String title) => editKeyCommand(context, widget.services, id, title);
 
   Future<void> _addCommand() async {
     final text = await showHaloDialog<String>(
@@ -185,16 +205,18 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
 
   Future<void> _resetAll() async {
     final t = context.t.keyboardShortcuts;
+    final midi = _service.overrides.midiKeptWith(const {});
     final confirmed = await showHaloDialog<bool>(
       context: context,
       builder: (context) => HaloDialog(
         title: Text(t.resetAllTitle),
-        content: Text(t.resetAllBody),
+        content: Text(midi.isEmpty ? t.resetAllBody : '${t.resetAllBody} ${t.resetAllKeepsMidi}'),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
         actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.reset))],
       ),
     );
-    if (confirmed == true) await _service.setOverrides(const KeyBindingOverrides());
+    // The MIDI controls stay, as an import's Replace keeps them.
+    if (confirmed == true) await _service.setOverrides(KeyBindingOverrides(midi: midi));
   }
 
   Future<void> _export() async {
@@ -350,7 +372,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                 for (final conflict in conflicts) Text(conflict, style: TextStyle(color: theme.colorScheme.error)),
               ],
             ),
-            trailing: _KeyCaps(chords: chords),
+            trailing: _KeyCaps(chords: chords, labels: [for (final c in overrides.midi[id] ?? const <String>[]) midiCapLabel(context, c)]),
             onTap: () => _edit(id, title),
             mouseCursor: SystemMouseCursors.click,
           );
@@ -441,7 +463,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                       label: t.resetAll,
                       namesChild: false,
                       child: IconButton(
-                        onPressed: overrides.isEmpty ? null : _resetAll,
+                        onPressed: overrides.commands.isEmpty && overrides.text.isEmpty ? null : _resetAll,
                         icon: Icon(MdiIcons.restore, semanticLabel: t.resetAll),
                       ),
                     ),
@@ -558,7 +580,7 @@ class _KeyCap extends StatelessWidget {
 
 /// The command's keys and the chords to take from other commands — or, for
 /// command text, [remove] to take the command off the list.
-typedef _EditResult = ({List<KeyChord> chords, Set<KeyChord> take, bool remove});
+typedef _EditResult = ({List<KeyChord> chords, Set<KeyChord> take, List<String> midi, bool remove});
 
 /// One command's keys: record a new one, remove one, put the defaults back.
 /// A chord another command already has is flagged, with the offer to take it
@@ -572,7 +594,13 @@ class _ShortcutEditor extends StatefulWidget {
   /// chord would collide with.
   final KeyBindings bindings;
 
-  const _ShortcutEditor({required this.id, required this.title, required this.chords, required this.bindings});
+  /// What is stored, for the MIDI controls bound to this command and others.
+  final KeyBindingOverrides overrides;
+
+  /// Null where MIDI controllers are off: no MIDI rows, no Add MIDI Control.
+  final MidiService? midi;
+
+  const _ShortcutEditor({required this.id, required this.title, required this.chords, required this.bindings, required this.overrides, this.midi});
 
   @override
   State<_ShortcutEditor> createState() => _ShortcutEditorState();
@@ -581,8 +609,10 @@ class _ShortcutEditor extends StatefulWidget {
 class _ShortcutEditorState extends State<_ShortcutEditor> {
   late final List<KeyChord> _chords = [...widget.chords];
   final Set<KeyChord> _take = {};
+  late final List<String> _midi = [...?widget.overrides.midi[widget.id]];
   final _listenFocus = FocusNode();
   bool _listening = false;
+  bool _listeningMidi = false;
 
   /// Why the last chord pressed was not added, or what to know
   /// about one that was.
@@ -592,8 +622,52 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
   @override
   void dispose() {
     keyChordRecording.value = false;
+    if (_listeningMidi) widget.midi?.learnShortcut(null);
     _listenFocus.dispose();
     super.dispose();
+  }
+
+  void _listenMidi(bool on) {
+    final midi = widget.midi;
+    if (midi == null) return;
+    final t = context.t.keyboardShortcuts.editor;
+    if (on && !midi.anyConnected) {
+      setState(() {
+        _message = t.midiNoController;
+        _messageIsError = true;
+      });
+      return;
+    }
+    setState(() {
+      _listeningMidi = on;
+      _message = null;
+    });
+    midi.learnShortcut(on ? _offerMidi : null);
+  }
+
+  /// Adds [control] unless a controller maps it or it is here already.
+  void _offerMidi(MidiControl control) {
+    if (!mounted) return;
+    final t = context.t.keyboardShortcuts.editor;
+    final key = '$control';
+    String? message;
+    var error = true;
+    if (widget.midi?.controllerMapping(control) case (:final node, :final targetId)) {
+      final target = midiTargetById(targetId);
+      final where = target == null ? node.name : '${node.name} · ${midiTargetLabel(context, target)}${target.radio == null ? '' : ' ${target.radio}'}';
+      message = t.midiMappedInController(controller: where);
+    } else if (_midi.contains(key)) {
+      message = t.midiAlready;
+    } else {
+      _midi.add(key);
+      error = false;
+      if (widget.overrides.midiCommandFor(key) case final other? when other != widget.id) message = t.midiMoves(command: keyCommandTitle(context.t, other));
+    }
+    setState(() {
+      _listeningMidi = false;
+      _message = message;
+      _messageIsError = error;
+    });
   }
 
   void _listen(bool on) {
@@ -694,6 +768,14 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
                       title: Text(t.takeIt(keys: chord.label(), command: keyCommandTitle(context.t, other))),
                     ),
                 ],
+                for (final control in _midi)
+                  ListTile(
+                    title: Align(alignment: AlignmentDirectional.centerStart, child: _KeyCap.text(midiCapLabel(context, control))),
+                    trailing: IconButton(
+                      icon: Icon(MdiIcons.close, semanticLabel: t.remove),
+                      onPressed: () => setState(() => _midi.remove(control)),
+                    ),
+                  ),
                 const SizedBox(height: Space.sm),
                 // The add equipment dialog's band: a control sitting on the
                 // dialog's width, apart from the rows it adds to.
@@ -701,7 +783,7 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
                   color: Color.lerp(theme.colorScheme.surface, haloDialogBandColorAt(context), 0.5)!,
                   child: Padding(
                     padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.md)),
-                    child: _listening
+                    child: _listening || _listeningMidi
                         ? Container(
                             padding: const EdgeInsets.all(Space.md),
                             decoration: BoxDecoration(
@@ -711,14 +793,22 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
                             ),
                             child: Column(
                               children: [
-                                Text(t.listening, style: theme.textTheme.titleSmall),
-                                Text(t.listeningHint, style: theme.textTheme.bodySmall),
+                                Text(_listeningMidi ? t.listeningMidi : t.listening, style: theme.textTheme.titleSmall),
+                                if (_listeningMidi)
+                                  TextButton(onPressed: () => _listenMidi(false), child: Text(context.t.common.cancel))
+                                else
+                                  Text(t.listeningHint, style: theme.textTheme.bodySmall),
                               ],
                             ),
                           )
-                        : Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: OutlinedButton.icon(onPressed: () => _listen(true), icon: const Icon(MdiIcons.keyboard), label: Text(t.addShortcut)),
+                        : Wrap(
+                            spacing: Space.md,
+                            runSpacing: Space.sm,
+                            children: [
+                              OutlinedButton.icon(onPressed: () => _listen(true), icon: const Icon(MdiIcons.keyboard), label: Text(t.addShortcut)),
+                              if (widget.midi != null)
+                                OutlinedButton.icon(onPressed: () => _listenMidi(true), icon: const Icon(MdiIcons.midi), label: Text(t.addMidi)),
+                            ],
                           ),
                   ),
                 ),
@@ -748,13 +838,17 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
               child: Text(t.resetDefault),
             ),
       destructive: widget.id.startsWith(textCommandPrefix)
-          ? TextButton(onPressed: () => Navigator.of(context).pop<_EditResult>((chords: const [], take: const {}, remove: true)), child: Text(t.removeCommand))
+          ? TextButton(
+              onPressed: () => Navigator.of(context).pop<_EditResult>((chords: const [], take: const {}, midi: const [], remove: true)),
+              child: Text(t.removeCommand),
+            )
           : null,
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [
         FilledButton(
-          onPressed: () =>
-              Navigator.of(context).pop<_EditResult>((chords: List.unmodifiable(_chords), take: {..._take.where(_chords.contains)}, remove: false)),
+          onPressed: () => Navigator.of(
+            context,
+          ).pop<_EditResult>((chords: List.unmodifiable(_chords), take: {..._take.where(_chords.contains)}, midi: List.unmodifiable(_midi), remove: false)),
           child: Text(context.t.common.save),
         ),
       ],
@@ -839,7 +933,11 @@ class _ImportDialogState extends State<_ImportDialog> {
 
   KeyBindingOverrides get _result {
     final known = _translated.overrides;
-    return _replace ? known : widget.current.mergedWith(known);
+    // A file carries no MIDI controls — they belong to a controller, not a
+    // keyboard — so replacing keeps the ones this device has.
+    return _replace
+        ? KeyBindingOverrides(commands: known.commands, text: known.text, midi: widget.current.midiKeptWith(known.text))
+        : widget.current.mergedWith(known);
   }
 
   String _modifierName(Translations t, KeyModifier m) => switch (m) {

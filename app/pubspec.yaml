@@ -133,6 +133,11 @@ dependencies:
   # in-memory channel instead of a real socket.
   stream_channel: ^2.1.4
   universal_ble: ^2.1.1
+  # MIDI controllers (docs/design/cat.md § MIDI controllers): CoreMIDI,
+  # android.media.midi, ALSA, WinMM and Web MIDI behind one API. Not its BLE
+  # companion package, which starts and stops universal_ble scans itself —
+  # see ble_scan_coordinator.dart for why nothing but the coordinator may.
+  flutter_midi_command: ^1.4.0
 
 dev_dependencies:
   flutter_test:

@@ -203,7 +203,7 @@ const rigctldKeyerSpeedMaxConfigKey = 'keyerSpeedMax';
 /// with fixed arguments refused for any of these is refused every time.
 const _retiringLevelErrors = {-1, -4, -11};
 
-class RigctldSession implements ReadBackSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession {
+class RigctldSession implements ReadBackSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession, ReceiveLevelSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink, [this._config = const {}]);
@@ -576,6 +576,21 @@ class RigctldSession implements ReadBackSession, PttSession, CwKeyerSession, Voi
   /// rejected the value outright, same as any other rejected set.
   @override
   void setPower(num watts) => _send('L$_vfo RFPOWER ${(watts / _assumedMaxWatts).clamp(0, 1).toStringAsFixed(3)}');
+
+  /// Hamlib's own 0…1 levels and its `MUTE` function. A backend whose rig
+  /// lacks one answers `RPRT -11`, which, like a refused power, changes
+  /// nothing.
+  @override
+  ReceiveLevels get receiveLevels => (af: true, rf: true, mute: true);
+
+  @override
+  void setAfGain(double level) => _send('L$_vfo AF ${level.clamp(0, 1).toStringAsFixed(3)}');
+
+  @override
+  void setRfGain(double level) => _send('L$_vfo RF ${level.clamp(0, 1).toStringAsFixed(3)}');
+
+  @override
+  void setMute(bool muted) => _send('U$_vfo MUTE ${muted ? 1 : 0}');
 
   /// Whether the app keyed the radio, so [teardown] can unkey it.
   bool _keyedByUs = false;

@@ -2064,6 +2064,9 @@ class Translations$keyboardShortcuts$en {
 	/// en: 'Every command goes back to its default keys, and the keys bound to typed commands are removed.'
 	String get resetAllBody => 'Every command goes back to its default keys, and the keys bound to typed commands are removed.';
 
+	/// en: 'Commands keep the MIDI controls bound to them.'
+	String get resetAllKeepsMidi => 'Commands keep the MIDI controls bound to them.';
+
 	/// en: 'Reset'
 	String get reset => 'Reset';
 
@@ -6422,6 +6425,11 @@ class Translations$settings$station$en {
 	/// en: 'WinKeyer (K1EL or compatible)'
 	String get newKeyer => 'WinKeyer (K1EL or compatible)';
 
+	/// en: 'MIDI Controller'
+	String get newMidiController => 'MIDI Controller';
+
+	late final Translations$settings$station$midi$en midi = Translations$settings$station$midi$en.internal(_root);
+
 	/// en: 'CAT Keyer in $radio'
 	String keyViaRadio({required Object radio}) => 'CAT Keyer in ${radio}';
 
@@ -7285,6 +7293,30 @@ class Translations$keyboardShortcuts$editor$en {
 
 	/// en: 'Esc stops listening'
 	String get listeningHint => 'Esc stops listening';
+
+	/// en: 'Add MIDI Control'
+	String get addMidi => 'Add MIDI Control';
+
+	/// en: 'Press a button on your MIDI controller…'
+	String get listeningMidi => 'Press a button on your MIDI controller…';
+
+	/// en: 'Press Add MIDI Control again to stop'
+	String get listeningMidiHint => 'Press Add MIDI Control again to stop';
+
+	/// en: 'No MIDI controller is connected. Add one in Station Configuration.'
+	String get midiNoController => 'No MIDI controller is connected. Add one in Station Configuration.';
+
+	/// en: 'That control is mapped in ${controller}’s own settings, which win over a shortcut.'
+	String midiMappedInController({required Object controller}) => 'That control is mapped in ${controller}’s own settings, which win over a shortcut.';
+
+	/// en: 'That control is already here.'
+	String get midiAlready => 'That control is already here.';
+
+	/// en: 'It pressed ${command}; saving moves it here.'
+	String midiMoves({required Object command}) => 'It pressed ${command}; saving moves it here.';
+
+	/// en: 'MIDI ${control}'
+	String midiCap({required Object control}) => 'MIDI ${control}';
 
 	/// en: 'Add'
 	String get add => 'Add';
@@ -9748,6 +9780,9 @@ class Translations$settings$station$models$en {
 	/// en: 'CW Key'
 	String get key => 'CW Key';
 
+	/// en: 'MIDI Controller'
+	String get midiController => 'MIDI Controller';
+
 	/// en: 'WinKeyer'
 	String get winkeyer => 'WinKeyer';
 
@@ -9882,6 +9917,123 @@ class Translations$settings$station$keyTypes$en {
 
 	/// en: 'Other'
 	String get other => 'Other';
+}
+
+// Path: settings.station.midi
+class Translations$settings$station$midi$en {
+	Translations$settings$station$midi$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Name'
+	String get name => 'Name';
+
+	/// en: 'Device'
+	String get device => 'Device';
+
+	/// en: 'Choose a device'
+	String get deviceNone => 'Choose a device';
+
+	/// en: '${name} (not connected)'
+	String deviceMissing({required Object name}) => '${name} (not connected)';
+
+	/// en: 'Connected'
+	String get statusConnected => 'Connected';
+
+	/// en: 'Not connected — plug it in or turn it on'
+	String get statusWaiting => 'Not connected — plug it in or turn it on';
+
+	/// en: 'Choose the device this controller is'
+	String get statusNoDevice => 'Choose the device this controller is';
+
+	/// en: 'MIDI isn’t available on this device'
+	String get statusUnavailable => 'MIDI isn’t available on this device';
+
+	/// en: 'Couldn’t open it: ${message}'
+	String statusFailed({required Object message}) => 'Couldn’t open it: ${message}';
+
+	/// en: 'Find Bluetooth Devices'
+	String get findBluetooth => 'Find Bluetooth Devices';
+
+	/// en: 'Searching for Bluetooth devices…'
+	String get findingBluetooth => 'Searching for Bluetooth devices…';
+
+	/// en: 'Last message'
+	String get lastMessage => 'Last message';
+
+	/// en: 'Move a control to see what it sends'
+	String get lastNone => 'Move a control to see what it sends';
+
+	/// en: 'not mapped'
+	String get notMapped => 'not mapped';
+
+	/// en: 'shortcut ${command}'
+	String shortcut({required Object command}) => 'shortcut ${command}';
+
+	/// en: 'Radio A'
+	String get sectionRadioA => 'Radio A';
+
+	/// en: 'Radio B'
+	String get sectionRadioB => 'Radio B';
+
+	/// en: 'Radio B’s controls act only while SO2R is on.'
+	String get radioBNeedsSo2r => 'Radio B’s controls act only while SO2R is on.';
+
+	/// en: 'Messages'
+	String get sectionKeying => 'Messages';
+
+	/// en: 'Keyer speed, PTT and messages act only while the Keying experiment is on.'
+	String get keyingNeedsExperiment => 'Keyer speed, PTT and messages act only while the Keying experiment is on.';
+
+	/// en: 'Learn'
+	String get learn => 'Learn';
+
+	/// en: 'Move a control…'
+	String get learning => 'Move a control…';
+
+	/// en: 'Clear'
+	String get clear => 'Clear';
+
+	/// en: '—'
+	String get unmapped => '—';
+
+	/// en: 'Needs a button or pad — try another'
+	String get needsButton => 'Needs a button or pad — try another';
+
+	/// en: 'Needs a knob sending CC — try another'
+	String get needsEncoder => 'Needs a knob sending CC — try another';
+
+	/// en: 'Needs a knob or slider — try another'
+	String get needsFader => 'Needs a knob or slider — try another';
+
+	/// en: 'Coding'
+	String get coding => 'Coding';
+
+	late final Translations$settings$station$midi$codings$en codings = Translations$settings$station$midi$codings$en.internal(_root);
+
+	/// en: 'Step'
+	String get step => 'Step';
+
+	/// en: 'CW step'
+	String get stepCw => 'CW step';
+
+	/// en: 'Hold'
+	String get pttHold => 'Hold';
+
+	/// en: 'Toggle'
+	String get pttToggle => 'Toggle';
+
+	/// en: 'PTT mode'
+	String get pttMode => 'PTT mode';
+
+	/// en: '${target} settings'
+	String settingsFor({required Object target}) => '${target} settings';
+
+	late final Translations$settings$station$midi$control$en control = Translations$settings$station$midi$control$en.internal(_root);
+	late final Translations$settings$station$midi$targets$en targets = Translations$settings$station$midi$targets$en.internal(_root);
+	late final Translations$settings$station$midi$ignored$en ignored = Translations$settings$station$midi$ignored$en.internal(_root);
 }
 
 // Path: operation.layout.panels.weatherConditions
@@ -10020,6 +10172,141 @@ class Translations$settings$radio$pttKey$descriptions$en {
 
 	/// en: 'In Phone modes, the radio transmits while the PTT key is held down, for up to a minute.'
 	String get hold => 'In Phone modes, the radio transmits while the PTT key is held down, for up to a minute.';
+}
+
+// Path: settings.station.midi.codings
+class Translations$settings$station$midi$codings$en {
+	Translations$settings$station$midi$codings$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Relative (auto)'
+	String get relative => 'Relative (auto)';
+
+	/// en: 'Relative (two’s complement)'
+	String get twos => 'Relative (two’s complement)';
+
+	/// en: 'Relative (offset 64)'
+	String get offset64 => 'Relative (offset 64)';
+
+	/// en: 'Relative (sign bit)'
+	String get sign => 'Relative (sign bit)';
+
+	/// en: 'Absolute knob'
+	String get absolute => 'Absolute knob';
+}
+
+// Path: settings.station.midi.control
+class Translations$settings$station$midi$control$en {
+	Translations$settings$station$midi$control$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'CC ${number} · ch ${channel}'
+	String cc({required Object number, required Object channel}) => 'CC ${number} · ch ${channel}';
+
+	/// en: 'Note ${number} · ch ${channel}'
+	String note({required Object number, required Object channel}) => 'Note ${number} · ch ${channel}';
+
+	/// en: 'Pitch bend · ch ${channel}'
+	String pb({required Object channel}) => 'Pitch bend · ch ${channel}';
+}
+
+// Path: settings.station.midi.targets
+class Translations$settings$station$midi$targets$en {
+	Translations$settings$station$midi$targets$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'VFO Coarse'
+	String get vfoCoarse => 'VFO Coarse';
+
+	/// en: 'VFO Fine'
+	String get vfoFine => 'VFO Fine';
+
+	/// en: 'PTT'
+	String get ptt => 'PTT';
+
+	/// en: 'Power'
+	String get power => 'Power';
+
+	/// en: 'Keyer Speed'
+	String get wpm => 'Keyer Speed';
+
+	/// en: 'Band Up'
+	String get bandUp => 'Band Up';
+
+	/// en: 'Band Down'
+	String get bandDown => 'Band Down';
+
+	/// en: 'Next Mode'
+	String get modeNext => 'Next Mode';
+
+	/// en: 'Passband Low Edge'
+	String get passbandLow => 'Passband Low Edge';
+
+	/// en: 'Passband High Edge'
+	String get passbandHigh => 'Passband High Edge';
+
+	/// en: 'AF Gain'
+	String get afGain => 'AF Gain';
+
+	/// en: 'RF Gain'
+	String get rfGain => 'RF Gain';
+
+	/// en: 'Mute'
+	String get mute => 'Mute';
+
+	/// en: 'Message ${n}'
+	String message({required Object n}) => 'Message ${n}';
+
+	/// en: 'Stop Transmitting'
+	String get stop => 'Stop Transmitting';
+}
+
+// Path: settings.station.midi.ignored
+class Translations$settings$station$midi$ignored$en {
+	Translations$settings$station$midi$ignored$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'no radio'
+	String get noRadio => 'no radio';
+
+	/// en: 'SO2R is off'
+	String get so2rOff => 'SO2R is off';
+
+	/// en: 'not tuned in a Digital mode'
+	String get dataMode => 'not tuned in a Digital mode';
+
+	/// en: 'the Keying experiment is off'
+	String get keyingOff => 'the Keying experiment is off';
+
+	/// en: 'this radio has no PTT the app can key'
+	String get noPtt => 'this radio has no PTT the app can key';
+
+	/// en: 'PTT keys only in Phone modes'
+	String get notPhone => 'PTT keys only in Phone modes';
+
+	/// en: 'already keyed from elsewhere — left alone'
+	String get keyedElsewhere => 'already keyed from elsewhere — left alone';
+
+	/// en: 'the radio doesn’t report it'
+	String get unsupported => 'the radio doesn’t report it';
+
+	/// en: 'no movement'
+	String get noMovement => 'no movement';
+
+	/// en: 'this radio mutes by its AF gain — move the AF Gain control once first'
+	String get muteNeedsAf => 'this radio mutes by its AF gain — move the AF Gain control once first';
 }
 
 /// The flat map containing all translations for locale <en>.
@@ -11935,6 +12222,7 @@ extension on Translations {
 			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
+			'settings.station.models.midiController' => 'MIDI Controller',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.placeholderRadio' => 'Generic Radio (Placeholder)',
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
@@ -12083,9 +12371,9 @@ extension on Translations {
 			'settings.station.antennaTypes.other' => 'Other',
 			'settings.station.keyType' => 'Key type',
 			'settings.station.keyTypeRequired' => 'Choose a key type',
-			'settings.station.keyTypes.straight' => 'Straight Key',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.straight' => 'Straight Key',
 			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
 			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
 			'settings.station.keyTypes.fullyAutomatic' => 'Fully-automatic keyer',
@@ -12099,6 +12387,74 @@ extension on Translations {
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
+			'settings.station.newMidiController' => 'MIDI Controller',
+			'settings.station.midi.name' => 'Name',
+			'settings.station.midi.device' => 'Device',
+			'settings.station.midi.deviceNone' => 'Choose a device',
+			'settings.station.midi.deviceMissing' => ({required Object name}) => '${name} (not connected)',
+			'settings.station.midi.statusConnected' => 'Connected',
+			'settings.station.midi.statusWaiting' => 'Not connected — plug it in or turn it on',
+			'settings.station.midi.statusNoDevice' => 'Choose the device this controller is',
+			'settings.station.midi.statusUnavailable' => 'MIDI isn’t available on this device',
+			'settings.station.midi.statusFailed' => ({required Object message}) => 'Couldn’t open it: ${message}',
+			'settings.station.midi.findBluetooth' => 'Find Bluetooth Devices',
+			'settings.station.midi.findingBluetooth' => 'Searching for Bluetooth devices…',
+			'settings.station.midi.lastMessage' => 'Last message',
+			'settings.station.midi.lastNone' => 'Move a control to see what it sends',
+			'settings.station.midi.notMapped' => 'not mapped',
+			'settings.station.midi.shortcut' => ({required Object command}) => 'shortcut ${command}',
+			'settings.station.midi.sectionRadioA' => 'Radio A',
+			'settings.station.midi.sectionRadioB' => 'Radio B',
+			'settings.station.midi.radioBNeedsSo2r' => 'Radio B’s controls act only while SO2R is on.',
+			'settings.station.midi.sectionKeying' => 'Messages',
+			'settings.station.midi.keyingNeedsExperiment' => 'Keyer speed, PTT and messages act only while the Keying experiment is on.',
+			'settings.station.midi.learn' => 'Learn',
+			'settings.station.midi.learning' => 'Move a control…',
+			'settings.station.midi.clear' => 'Clear',
+			'settings.station.midi.unmapped' => '—',
+			'settings.station.midi.needsButton' => 'Needs a button or pad — try another',
+			'settings.station.midi.needsEncoder' => 'Needs a knob sending CC — try another',
+			'settings.station.midi.needsFader' => 'Needs a knob or slider — try another',
+			'settings.station.midi.coding' => 'Coding',
+			'settings.station.midi.codings.relative' => 'Relative (auto)',
+			'settings.station.midi.codings.twos' => 'Relative (two’s complement)',
+			'settings.station.midi.codings.offset64' => 'Relative (offset 64)',
+			'settings.station.midi.codings.sign' => 'Relative (sign bit)',
+			'settings.station.midi.codings.absolute' => 'Absolute knob',
+			'settings.station.midi.step' => 'Step',
+			'settings.station.midi.stepCw' => 'CW step',
+			'settings.station.midi.pttHold' => 'Hold',
+			'settings.station.midi.pttToggle' => 'Toggle',
+			'settings.station.midi.pttMode' => 'PTT mode',
+			'settings.station.midi.settingsFor' => ({required Object target}) => '${target} settings',
+			'settings.station.midi.control.cc' => ({required Object number, required Object channel}) => 'CC ${number} · ch ${channel}',
+			'settings.station.midi.control.note' => ({required Object number, required Object channel}) => 'Note ${number} · ch ${channel}',
+			'settings.station.midi.control.pb' => ({required Object channel}) => 'Pitch bend · ch ${channel}',
+			'settings.station.midi.targets.vfoCoarse' => 'VFO Coarse',
+			'settings.station.midi.targets.vfoFine' => 'VFO Fine',
+			'settings.station.midi.targets.ptt' => 'PTT',
+			'settings.station.midi.targets.power' => 'Power',
+			'settings.station.midi.targets.wpm' => 'Keyer Speed',
+			'settings.station.midi.targets.bandUp' => 'Band Up',
+			'settings.station.midi.targets.bandDown' => 'Band Down',
+			'settings.station.midi.targets.modeNext' => 'Next Mode',
+			'settings.station.midi.targets.passbandLow' => 'Passband Low Edge',
+			'settings.station.midi.targets.passbandHigh' => 'Passband High Edge',
+			'settings.station.midi.targets.afGain' => 'AF Gain',
+			'settings.station.midi.targets.rfGain' => 'RF Gain',
+			'settings.station.midi.targets.mute' => 'Mute',
+			'settings.station.midi.targets.message' => ({required Object n}) => 'Message ${n}',
+			'settings.station.midi.targets.stop' => 'Stop Transmitting',
+			'settings.station.midi.ignored.noRadio' => 'no radio',
+			'settings.station.midi.ignored.so2rOff' => 'SO2R is off',
+			'settings.station.midi.ignored.dataMode' => 'not tuned in a Digital mode',
+			'settings.station.midi.ignored.keyingOff' => 'the Keying experiment is off',
+			'settings.station.midi.ignored.noPtt' => 'this radio has no PTT the app can key',
+			'settings.station.midi.ignored.notPhone' => 'PTT keys only in Phone modes',
+			'settings.station.midi.ignored.keyedElsewhere' => 'already keyed from elsewhere — left alone',
+			'settings.station.midi.ignored.unsupported' => 'the radio doesn’t report it',
+			'settings.station.midi.ignored.noMovement' => 'no movement',
+			'settings.station.midi.ignored.muteNeedsAf' => 'this radio mutes by its AF gain — move the AF Gain control once first',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
@@ -12402,6 +12758,7 @@ extension on Translations {
 			'keyboardShortcuts.resetAll' => 'Reset All',
 			'keyboardShortcuts.resetAllTitle' => 'Reset every shortcut?',
 			'keyboardShortcuts.resetAllBody' => 'Every command goes back to its default keys, and the keys bound to typed commands are removed.',
+			'keyboardShortcuts.resetAllKeepsMidi' => 'Commands keep the MIDI controls bound to them.',
 			'keyboardShortcuts.reset' => 'Reset',
 			'keyboardShortcuts.noKey' => 'No key',
 			'keyboardShortcuts.changed' => 'Changed',
@@ -12443,6 +12800,14 @@ extension on Translations {
 			'keyboardShortcuts.editor.addShortcut' => 'Add Shortcut',
 			'keyboardShortcuts.editor.listening' => 'Press the keys for the shortcut…',
 			'keyboardShortcuts.editor.listeningHint' => 'Esc stops listening',
+			'keyboardShortcuts.editor.addMidi' => 'Add MIDI Control',
+			'keyboardShortcuts.editor.listeningMidi' => 'Press a button on your MIDI controller…',
+			'keyboardShortcuts.editor.listeningMidiHint' => 'Press Add MIDI Control again to stop',
+			'keyboardShortcuts.editor.midiNoController' => 'No MIDI controller is connected. Add one in Station Configuration.',
+			'keyboardShortcuts.editor.midiMappedInController' => ({required Object controller}) => 'That control is mapped in ${controller}’s own settings, which win over a shortcut.',
+			'keyboardShortcuts.editor.midiAlready' => 'That control is already here.',
+			'keyboardShortcuts.editor.midiMoves' => ({required Object command}) => 'It pressed ${command}; saving moves it here.',
+			'keyboardShortcuts.editor.midiCap' => ({required Object control}) => 'MIDI ${control}',
 			'keyboardShortcuts.editor.add' => 'Add',
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} belongs to the logging fields or a dialog, and can’t be changed.',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.',
@@ -12520,6 +12885,8 @@ extension on Translations {
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
@@ -12598,8 +12965,6 @@ extension on Translations {
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',

@@ -49,6 +49,7 @@ import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
+import 'midi/midi_backend.dart' show MidiUnavailable;
 import 'app_storage.dart' show PreferencesFileUnreadable;
 import 'unclean_quit.dart' show UncleanDatabaseQuit;
 import 'website_panel_error.dart' show WebsitePanelError;
@@ -604,6 +605,15 @@ class ErrorPolicy {
           'write actually closed the window',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is PreferencesFileUnreadable,
+    ),
+    ErrorRule(
+      id: 'midi-unavailable',
+      reason:
+          'the platform has no MIDI for a MIDI controller to use — a browser without Web MIDI, '
+          'Safari among them. Nothing is broken and nothing would mend it, and the controller '
+          'pane says so on its status line, where the operator who set one up looks',
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, details) => error is MidiUnavailable,
     ),
   ];
 

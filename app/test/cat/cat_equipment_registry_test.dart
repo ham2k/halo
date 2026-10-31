@@ -316,6 +316,7 @@ void main() {
       'so2rduino-serial',
       'antenna-none',
       'key-none',
+      'midi-controller-none',
       'rtl-sdr-rtltcp',
       'nesdr-rtltcp',
       'sdrplay-rsptcp',

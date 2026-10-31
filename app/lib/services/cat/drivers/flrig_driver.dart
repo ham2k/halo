@@ -140,7 +140,7 @@ enum _Ask { frequency, mode, modes, setMode, power, transmitting, meterPower, me
 /// the bare form loses every typed answer without a trace.
 final _scalar = RegExp(r'<value>(?:<(i4|int|double|string|boolean)>([^<]*)</\1>|([^<]*))</value>');
 
-class FlrigSession implements ReadBackSession, PttSession, RawCommandSession {
+class FlrigSession implements ReadBackSession, PttSession, RawCommandSession, ReceiveLevelSession {
   final EquipmentSink _sink;
 
   FlrigSession(this._sink, [this._config = const {}]);
@@ -438,6 +438,20 @@ class FlrigSession implements ReadBackSession, PttSession, RawCommandSession {
 
   @override
   void setPower(num watts) => _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
+
+  /// flrig's volume and RF gain, each 0–100 whatever the rig behind it
+  /// counts in; it has no mute of its own.
+  @override
+  ReceiveLevels get receiveLevels => (af: true, rf: true, mute: false);
+
+  @override
+  void setAfGain(double level) => _call(_Ask.ignored, 'rig.set_volume', '<param><value><i4>${receiveLevelOn(level, 100)}</i4></value></param>');
+
+  @override
+  void setRfGain(double level) => _call(_Ask.ignored, 'rig.set_rfgain', '<param><value><i4>${receiveLevelOn(level, 100)}</i4></value></param>');
+
+  @override
+  void setMute(bool muted) {}
 
   /// Whether the app keyed the radio, so [teardown] can unkey it.
   bool _keyedByUs = false;

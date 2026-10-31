@@ -129,6 +129,27 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     }
 
     if (n == null) return false;
+    return _keyMessage(n);
+  }
+
+  /// Message [n] from a function key that is not the keyboard's — a MIDI
+  /// controller's (CatKeying.messageKeyRequests). Only while this view is in
+  /// front, as the keyboard's F-keys are: the message renders against ITS
+  /// draft.
+  void _onMessageKeyRequest() {
+    final request = widget.services.cat.messageKeyRequests.value;
+    if (request == null || testerOverlayCovering.value) return;
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    if (!widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return;
+    _keyMessage(request.message);
+  }
+
+  /// What a message key [n] does, wherever it was pressed; whether it claimed
+  /// the key.
+  bool _keyMessage(int n) {
+    final services = widget.services;
+    final cat = services.cat;
+    final keyer = cat.operatorKeyer;
     // Nothing keys in a Digital mode, where the keyer's pill is disabled too:
     // the key stays free, as one past the radio's last memory does.
     if (_keyingSuperMode == 'Digital') return false;

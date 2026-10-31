@@ -89,6 +89,11 @@ String buildSetPowerCommand(num watts) => 'PC${watts.round().clamp(5, 100).toStr
 
 String buildReadPowerCommand() => 'PC;';
 
+/// `AG0nnn;` and `RG0nnn;`: the main receiver's AF and RF gain, 000–255 —
+/// the same across the ASCII line from the FT-450 to the FTX-1.
+String buildSetAfGainCommand(int value) => 'AG0${value.clamp(0, 255).toString().padLeft(3, '0')};';
+String buildSetRfGainCommand(int value) => 'RG0${value.clamp(0, 255).toString().padLeft(3, '0')};';
+
 /// `PC100;` → 100. Null unless it's exactly three digits.
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 

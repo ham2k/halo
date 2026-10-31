@@ -1468,6 +1468,7 @@ class CatService extends ChangeNotifier
       keyer.chain.dispose();
     }
     pttKeys.dispose();
+    messageKeyRequests.dispose();
     _ptt.dispose();
     _meterReadings.dispose();
     _runtimes.clear();

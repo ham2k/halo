@@ -33,6 +33,7 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' s
 import 'package:ham2k_logger/services/cat/transports/udp_transport_io.dart' show UdpReplyPortTaken;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/midi/midi_backend.dart' show MidiUnavailable;
 import 'package:halo_core/halo_core.dart'
     show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, N1mmCallHistoryUnavailable, QsonFieldType, QsonTypeViolation, SyncPullStuck;
 import 'package:ham2k_logger/services/extensions/extension_chasing.dart' show ChasingHookFailure;
@@ -300,6 +301,22 @@ void main() {
       // alone would let a wrapper of ours ride along.
       expect(dispositionFor(StateError('extension host disposed')), ErrorDisposition.notify);
       expect(dispositionFor(StateError('extension runtime is dead')), ErrorDisposition.notify);
+    });
+  });
+
+  group('MIDI', () {
+    // A browser without Web MIDI: the controller pane says so, and nothing
+    // the operator or a developer could do would mend it.
+    test('a platform with none is kept to the console', () {
+      final decision = ErrorPolicy.decide(MidiUnavailable(UnsupportedError('Web MIDI API is unavailable in this browser.')));
+      expect(decision.disposition, ErrorDisposition.logOnly);
+      expect(decision.rule?.id, 'midi-unavailable');
+    });
+
+    // Scoped by the wrapper the backend puts round the plugin's own word:
+    // any other UnsupportedError is a bug, and stays loud.
+    test('a bare UnsupportedError stays loud', () {
+      expect(ErrorPolicy.decide(UnsupportedError('nope')).disposition, ErrorDisposition.notify);
     });
   });
 

@@ -153,6 +153,13 @@ int? decodeBcdFrequency(List<int> bytes) {
 /// Same sub-id across the line this driver targets (IC-705/7300/9700/7610).
 const civLevelRfPower = 0x0A;
 
+/// The AF and RF gain sub-commands of [CivCommand.readSetLevel], each
+/// 0-255 — the same across the line this driver targets.
+const civLevelAfGain = 0x01, civLevelRfGain = 0x02;
+
+List<int> buildSetLevelFrame({required int to, int from = civDefaultControllerAddress, required int level, required int value}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [level, ...encodeCivLevel(value)]);
+
 /// The keyer speed sub-command of [CivCommand.readSetLevel]: 0-255 standing
 /// for 6-48 WPM, the range every current Icom keyer shares.
 const civLevelKeyerSpeed = 0x0C;

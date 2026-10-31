@@ -20,6 +20,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'add_equipment_dialog.dart';
+import 'midi_controller_pane.dart';
 import 'equipment_glyphs.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
@@ -143,6 +144,14 @@ class StationPanel extends StatelessWidget {
     if (model == null) return;
     final variants = _supportedVariants(model);
     if (variants.isEmpty) return;
+    // Added at once and opened in its own pane: its fields are a device to
+    // pick and controls to learn, neither of which a form before the node
+    // exists can offer.
+    if (model.category == kCategoryMidi) {
+      final node = await _cat.addNode(typeKey: variants.first.key, name: _cat.suggestedNameFor(variants.first.key), config: const {});
+      if (context.mounted) await _editMidiController(context, node);
+      return;
+    }
     final values = await _editValues(
       context,
       model: model,
@@ -186,6 +195,7 @@ class StationPanel extends StatelessWidget {
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
         showRotator: services.settings.experimentEnabled('rotator') /* stored key, see experiments.yaml */,
         showSo2rSwitch: services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */,
+        showMidi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -226,6 +236,7 @@ class StationPanel extends StatelessWidget {
   Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
     final type = _cat.typeFor(node);
     if (type == null) return;
+    if (type.category == kCategoryMidi) return _editMidiController(context, node);
 
     final values = await _editValues(context, model: type.model, type: type, name: node.name, config: node.config, node: node);
     // Null also means the editor removed the node, or was cancelled — either
@@ -590,6 +601,12 @@ class StationPanel extends StatelessWidget {
       },
     );
   }
+
+  /// A MIDI controller's editor — see midi_controller_pane.dart for why it
+  /// is not the equipment form. Remove closes the pane before confirming, as
+  /// the form's own does.
+  Future<void> _editMidiController(BuildContext context, EquipmentNode node) =>
+      showMidiControllerPane(context, services: services, nodeUuid: node.uuid, onRemove: () => unawaited(_removeEquipment(context, node)));
 
   Future<void> _removeEquipment(BuildContext context, EquipmentNode node) async {
     final st = context.t.settings.station;

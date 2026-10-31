@@ -315,7 +315,8 @@ class IcomCivSession
         AntennaTunerSession,
         PassbandSession,
         RadioAntennaSession,
-        RawCommandSession {
+        RawCommandSession,
+        ReceiveLevelSession {
   @override
   final EquipmentSink _sink;
 
@@ -1018,6 +1019,22 @@ class IcomCivSession
 
   @override
   void setPower(num watts) => _send(buildSetPowerLevelFrame(to: radioAddress, from: controllerAddress, level: civLevelForWatts(watts, _ratedWatts)));
+
+  /// `0x14 01` and `0x14 02`, each 0–255. CI-V has no mute common to the
+  /// line, so a mute is the AF gain's (MidiController).
+  @override
+  ReceiveLevels get receiveLevels => (af: true, rf: true, mute: false);
+
+  @override
+  void setAfGain(double level) =>
+      _send(buildSetLevelFrame(to: radioAddress, from: controllerAddress, level: civLevelAfGain, value: receiveLevelOn(level, 255)));
+
+  @override
+  void setRfGain(double level) =>
+      _send(buildSetLevelFrame(to: radioAddress, from: controllerAddress, level: civLevelRfGain, value: receiveLevelOn(level, 255)));
+
+  @override
+  void setMute(bool muted) {}
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);

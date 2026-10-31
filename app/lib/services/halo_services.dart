@@ -41,6 +41,8 @@ import '../config/secrets.dart';
 import 'extensions/catalog_service.dart';
 import 'extension_wiring.dart';
 import 'panel_radio_service.dart';
+import 'midi/midi_service.dart';
+import 'midi/midi_station.dart';
 import 'deep_link_service.dart';
 import 'export_service.dart';
 import 'connectivity_service.dart';
@@ -447,6 +449,15 @@ class HaLoServices with _TimeTravel {
     pttEnabled: () => settings.pttKey,
   );
 
+  /// MIDI controllers (docs/design/cat.md § MIDI controllers). Started at
+  /// boot, idle until `EXP MIDI` is on and a MIDI controller node exists.
+  late final MidiService midi = MidiService(
+    cat: cat,
+    settings: settings,
+    station: CatMidiStation(cat: cat, radio: radio, settings: settings),
+    shortcutFor: keyBindingsService.midiCommandFor,
+  );
+
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
   /// are reachable only by denying an OS permission or losing a GPS fix, so a
   /// widget test of what those states put on screen has no other way in.
@@ -753,7 +764,7 @@ class HaLoServices with _TimeTravel {
         openCwKeyer: (context) => showCwMessagesDialog(context, this),
         openPhoneKeyer: (context) => showVoiceMessagesDialog(context, this),
         openPttKey: (context) async {
-          if (keyBindingsService.enabled) await editKeyCommand(context, keyBindingsService, pttCommandId, keyCommandTitle(context.t, pttCommandId));
+          if (keyBindingsService.enabled) await editKeyCommand(context, this, pttCommandId, keyCommandTitle(context.t, pttCommandId));
         },
         // A peer's radio counts: it is listed with the station's own, and a
         // phone driving one uses every CAT and keyer setting there is.

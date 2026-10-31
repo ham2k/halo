@@ -340,7 +340,16 @@ const yaesuAntennaReadEvery = 5;
 const yaesuSsbPassbandCentreHz = 1500;
 
 class Ft891Session
-    implements ReadBackSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
+    implements
+        ReadBackSession,
+        CwKeyerSession,
+        VoiceKeyerSession,
+        PttSession,
+        AntennaTunerSession,
+        PassbandSession,
+        RadioAntennaSession,
+        RawCommandSession,
+        ReceiveLevelSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -1001,6 +1010,19 @@ class Ft891Session
     _pendingPower = null;
     _sink.reportDiagnostic('the radio never answered ID; power is neither read nor set');
   }
+
+  /// No mute in the line's CAT: a mute is the AF gain's (MidiController).
+  @override
+  ReceiveLevels get receiveLevels => (af: true, rf: true, mute: false);
+
+  @override
+  void setAfGain(double level) => _send(buildSetAfGainCommand(receiveLevelOn(level, 255)));
+
+  @override
+  void setRfGain(double level) => _send(buildSetRfGainCommand(receiveLevelOn(level, 255)));
+
+  @override
+  void setMute(bool muted) {}
 
   @override
   void setPower(num watts) {

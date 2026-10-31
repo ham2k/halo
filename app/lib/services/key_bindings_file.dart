@@ -64,7 +64,13 @@ class KeyBindingsFile {
 
   String toYaml() => '# Ham2K Logger keyboard shortcuts\n${yaml_writer.toYaml(toJson())}';
 
-  Map<String, dynamic> toJson() => {keyBindingsFileMarker: keyBindingsFileVersion, 'platform': ?platform, ...overrides.toJson()};
+  /// Without the MIDI bindings: they belong to a controller, not a keyboard
+  /// (docs/design/keyboard-shortcuts.md § MIDI).
+  Map<String, dynamic> toJson() => {
+    keyBindingsFileMarker: keyBindingsFileVersion,
+    'platform': ?platform,
+    ...KeyBindingOverrides(commands: overrides.commands, text: overrides.text).toJson(),
+  };
 
   /// The commands the file binds that this version does not know.
   List<String> get unknownCommands => [
