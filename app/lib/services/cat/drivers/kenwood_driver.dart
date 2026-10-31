@@ -825,6 +825,11 @@ class KenwoodSession
         _lab599Identified(command.params);
       case 'ER':
         if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
+      case 'TX' || 'RX' when remote && command.params.isEmpty:
+        // AI4 pushes these transitions for paddle and external PTT activity;
+        // no IF snapshot or TQ reply is required to announce the change.
+        final transmitting = command.command == 'TX';
+        if (_noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
       case 'TQ':
         if (voiceDialect != KenwoodVoiceDialect.kx && !remote) return;
         final transmitting = parseElecraftTransmitQueryParams(command.params);

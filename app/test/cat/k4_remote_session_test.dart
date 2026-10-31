@@ -519,7 +519,7 @@ void main() {
       async.elapse(const Duration(minutes: 1));
       expect(sink.sent, hasLength(baseline));
       for (final tx in [true, false, true, false]) {
-        owner.handleData(Uint8List.fromList(ascii.encode(_info(tx: tx))));
+        owner.handleData(Uint8List.fromList(ascii.encode(tx ? 'TX;' : 'RX;')));
         baseline = sink.sent.length;
         async.elapse(const Duration(seconds: 20));
         expect(sink.sent, hasLength(baseline), reason: 'TX transition $tx must not arm the telemetry poller');
@@ -533,6 +533,27 @@ void main() {
       expect(sink.sent, hasLength(baseline), reason: 'remote disconnect must not downgrade AI4 with AI0');
       expect(async.pendingTimers, isEmpty);
     });
+  });
+
+  test('remote TX/RX notifications are framed, deduplicated with query replies and ignored on local CAT', () {
+    final remoteSink = _Sink(), localSink = _Sink();
+    final remote = KenwoodSession(remoteSink, isK4: true, remote: true);
+    final local = KenwoodSession(localSink, isK4: true);
+    addTearDown(remote.teardown);
+    addTearDown(local.teardown);
+    for (final session in [remote, local]) {
+      void receive(String text) => session.handleData(Uint8List.fromList(ascii.encode(text)));
+      receive('RX;T');
+      if (session == remote) expect(remoteSink.transmitting, [false], reason: 'a partial notification cannot change TX state');
+      receive('X;TX;TQ1;${_info(tx: true)}');
+      receive('TX0;RX1;TX\$;RXbad;');
+      if (session == remote) expect(remoteSink.transmitting, [false, true], reason: 'only parameterless TX/RX are remote notifications');
+      receive('R');
+      receive('X;RX;TQ0;${_info()}');
+    }
+    expect(remoteSink.transmitting, [false, true, false]);
+    expect(localSink.transmitting, [true, false], reason: 'local CAT still reads TX state only from IF');
+    expect(remoteSink.sent, isEmpty, reason: 'receiving a TX notification must never send a key command');
   });
 
   test('only valid PONG responses report remote CAT liveness', () {
@@ -699,6 +720,31 @@ void main() {
       await f.cat.disconnect(target);
       expect(_commandsWithoutHeartbeat(secure), ['RX;', 'TQ;']);
       expect(f.cat.pttHeldOn(target), isFalse);
+    });
+  }
+
+  for (final logSub in [false, true]) {
+    test('external keying updates the CAT indicator when logging on ${logSub ? 'Sub' : 'Main'}', () async {
+      final f = await _connectedRemote();
+      final sub = await f.cat.addNode(typeKey: 'k4-remote-test', config: {'host': 'synthetic.invalid', 'remotePort': 9204, 'receiver': 'sub'});
+      await f.cat.connect(sub.uuid);
+      await f.cat.setRadio1(LocalRadio(logSub ? sub.uuid : f.uuid));
+      final secure = f.transport.secureConnections.single;
+      secure.receive(_cat(r'FA00014250000;FB00007150000;MD2;MD$2;DV0;SB1;TQ0;'));
+      await pumpEventQueue();
+      secure.sent.clear();
+      for (final tx in [true, false, true, false]) {
+        // A paddle or external PTT sends transitions without an IF snapshot
+        // or a key held by HaLo to stand in for the missing telemetry.
+        secure.receive(_cat(tx ? 'TX;' : 'RX;'));
+        await pumpEventQueue();
+        expect(f.cat.radio1IsTransmitting, tx, reason: 'the QSO CAT indicator reads the logging radio\'s TX state');
+        for (final uuid in [f.uuid, sub.uuid]) {
+          expect(f.cat.stateFor(uuid).telemetry.transmitting, tx);
+          expect(f.cat.pttHeldOn(uuid), isFalse, reason: 'an external key must not acquire HaLo\'s PTT');
+        }
+      }
+      expect(_commandsWithoutHeartbeat(secure), isEmpty, reason: 'notifications require neither TX polling nor key commands');
     });
   }
 
