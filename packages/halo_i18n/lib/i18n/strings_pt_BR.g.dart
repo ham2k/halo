@@ -4135,7 +4135,6 @@ class _Translations$settings$radio$voiceMessages$pt_BR extends Translations$sett
 	@override String get stopRecording => 'Parar gravação';
 	@override String get playing => 'Reproduzindo…';
 	@override String get recording => 'Gravando…';
-	@override String playingMemory({required Object label}) => 'Reproduzindo ${label}';
 	@override String recordingMemory({required Object label}) => 'Gravando ${label}';
 	@override String get doubtful => 'O rádio reproduziu? Ele informou que estava ocioso logo em seguida.';
 	@override String get recordOnRadio => 'Você precisa gravar as memórias no próprio rádio.';
@@ -5943,7 +5942,6 @@ extension on TranslationsPtBr {
 			'settings.radio.voiceMessages.stopRecording' => 'Parar gravação',
 			'settings.radio.voiceMessages.playing' => 'Reproduzindo…',
 			'settings.radio.voiceMessages.recording' => 'Gravando…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduzindo ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Gravando ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'O rádio reproduziu? Ele informou que estava ocioso logo em seguida.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Você precisa gravar as memórias no próprio rádio.',
@@ -6056,9 +6054,9 @@ extension on TranslationsPtBr {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidade',
 			'settings.privacy.shareAppData.title' => 'Compartilhar dados de uso do app',
@@ -6570,9 +6568,9 @@ extension on TranslationsPtBr {
 			'settings.station.newAntenna' => 'Nova antena',
 			'settings.station.newKey' => 'Novo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL ou compatível)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador em ${device}',
 			'settings.station.trackStationInfo' => 'Registrar dados da estação em cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir nas exportações ADIF',
@@ -7084,9 +7082,9 @@ extension on TranslationsPtBr {
 			'switchAccounts.linkWithSiblingDescription' => 'Você tem outro app Ham2K instalado. Vincule com a conta usada nele.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprove a solicitação no ${app} e depois volte aqui.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Abrir ${app} novamente',
+			'switchAccounts.siblingNoGrant' => 'Não funcionou? Abra-o novamente ou volte e vincule de outra forma.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Não funcionou? Abra-o novamente ou volte e vincule de outra forma.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Não foi possível abrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'O link expirou e um novo está pronto — abra ${app} novamente.',
 			'switchAccounts.tryAgain' => 'Tentar novamente',

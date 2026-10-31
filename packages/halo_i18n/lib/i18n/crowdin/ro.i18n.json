@@ -1712,7 +1712,6 @@
         "stopRecording": "Oprește înregistrarea",
         "playing": "Se redă…",
         "recording": "Se înregistrează…",
-        "playingMemory": "Se redă $label",
         "recordingMemory": "Se înregistrează $label",
         "doubtful": "A redat-o stația radio? A raportat imediat că este inactivă.",
         "recordOnRadio": "Memoriile trebuie înregistrate direct pe stația radio.",

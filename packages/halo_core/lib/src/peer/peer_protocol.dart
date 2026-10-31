@@ -974,15 +974,21 @@ class PeerVoiceActivityPayload {
   final bool recording;
   final bool doubtful;
 
-  const PeerVoiceActivityPayload({required this.memory, this.recording = false, this.doubtful = false});
+  /// How long a message made as it plays runs, in milliseconds — absent for
+  /// one whose length the status's durations already carry. A peer without
+  /// it shows such a message's bar as indeterminate.
+  final int? lengthMs;
 
-  Map<String, dynamic> toJson() => {'n': memory, if (recording) 'rec': true, if (doubtful) 'doubt': true};
+  const PeerVoiceActivityPayload({required this.memory, this.recording = false, this.doubtful = false, this.lengthMs});
+
+  Map<String, dynamic> toJson() => {'n': memory, if (recording) 'rec': true, if (doubtful) 'doubt': true, if (lengthMs != null) 'ms': lengthMs};
 
   static PeerVoiceActivityPayload? from(Object? raw) {
     if (raw is! Map) return null;
     final memory = (raw['n'] as num?)?.toInt();
     if (memory == null || memory <= 0) return null;
-    return PeerVoiceActivityPayload(memory: memory, recording: raw['rec'] == true, doubtful: raw['doubt'] == true);
+    final ms = (raw['ms'] as num?)?.toInt();
+    return PeerVoiceActivityPayload(memory: memory, recording: raw['rec'] == true, doubtful: raw['doubt'] == true, lengthMs: ms != null && ms > 0 ? ms : null);
   }
 }
 

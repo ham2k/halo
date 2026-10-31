@@ -1712,7 +1712,6 @@
         "stopRecording": "녹음 정지",
         "playing": "재생 중…",
         "recording": "녹음 중…",
-        "playingMemory": "$label 재생 중",
         "recordingMemory": "$label 녹음 중",
         "doubtful": "무전기가 재생했나요? 무전기가 곧바로 대기 상태라고 보고했습니다.",
         "recordOnRadio": "메모리는 무전기에서 직접 녹음해야 합니다.",

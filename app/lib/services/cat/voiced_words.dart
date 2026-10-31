@@ -4,25 +4,30 @@
 // Voiced words on this computer (docs/design/cat.md § Voiced words): each
 // operator's word set — the recordings of their letters, digits and phrases —
 // and a phone message's template made into one recording just before it
-// plays. Radio1's alone, as the computer's voice keyer is.
+// plays. Kept on radio1's keying; Radio B's keyer says its messages through
+// the same maker (CatService wires it), so both radios say the one set of
+// words.
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_audio/halo_audio.dart' show AudioPlayback;
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
 import 'cat_keying.dart';
 import 'computer_voice_keyer.dart';
+import 'driver.dart' show VoiceScript;
 import 'voice_words.dart';
 
 final _voicedWords = Expando<VoicedWords>();
 
 extension VoicedWordsKeying on CatKeying {
-  /// Radio1's word sets and the templates said from them; null where the
-  /// computer's voice keyer cannot run.
+  /// The operator's word sets and the templates said from them, on radio1's
+  /// keying; null where the computer's voice keyer cannot run, and on Radio
+  /// B's keying, whose maker is this one's.
   VoicedWords? get voicedWords {
     final audio = voiceAudio;
-    if (audio == null || !ownsVoiceSource) return null;
+    if (audio == null || radio != 'A') return null;
     final existing = _voicedWords[this];
     if (existing != null) return existing;
     final words = VoicedWords(
@@ -149,7 +154,7 @@ class VoicedWords extends ChangeNotifier {
   /// [ComputerVoiceKeyer.prepare]. Refused before anything is keyed when
   /// there is no contact to render against, the template fails, or it says
   /// what the operator's words cannot.
-  Future<String> voice(int n, String template) async {
+  Future<MadeVoiceMessage> voice(int n, String template) async {
     try {
       return await _voice(n, template);
     } on VoicedMessageRefused catch (refusal) {
@@ -164,7 +169,7 @@ class VoicedWords extends ChangeNotifier {
     }
   }
 
-  Future<String> _voice(int n, String template) async {
+  Future<MadeVoiceMessage> _voice(int n, String template) async {
     final render = _render;
     if (render == null) throw const VoicedMessageRefused(ComputerVoiceProblem.noOperation);
     final rendered = await render(_expand(template), n);
@@ -173,7 +178,7 @@ class VoicedWords extends ChangeNotifier {
 
   /// [text] said in [call]'s words, as one recording — refused, naming what
   /// is missing, when those words cannot say all of it.
-  String _say(String call, String text) {
+  MadeVoiceMessage _say(String call, String text) {
     final plan = _plan(call, text);
     final missing = [
       for (final word in plan.unrecorded) word.spoken,
@@ -183,18 +188,33 @@ class VoicedWords extends ChangeNotifier {
     ];
     if (missing.isNotEmpty) throw VoicedMessageRefused(ComputerVoiceProblem.wordsMissing, missing.toSet().join(', '));
     if (plan.pieces.isEmpty) throw const VoicedMessageRefused(ComputerVoiceProblem.nothingSaid);
-    return _write(
+    final starts = <int>[];
+    final path = _write(
       call,
       plan,
       (piece) => switch (piece) {
         WordPiece(:final word, :final take) => wordFile(call, word, take)!,
         RecordingPiece(:final message) => messageFile(message),
       },
+      starts: starts,
     );
+    final script = voicedScript(text, plan, starts, _messageName);
+    return MadeVoiceMessage(path, script: script == null ? null : VoiceScript(script.text, script.marks));
   }
 
-  String _write(String call, VoicedPlan plan, String Function(VoicedPiece piece) fileOf) {
-    final samples = joinVoicedPlan(plan, (piece) => audio.decode(fileOf(piece), rate: voiceWordRate, channels: 1), speed: settings.voicePacing(call).speed);
+  /// A recorded message inside another, as the keyer line names it.
+  String _messageName(int n) {
+    final label = settings.activeVoiceMessageSet.label(n).trim();
+    return label.isNotEmpty ? label : t.settings.radio.voiceMessages.key(n: n);
+  }
+
+  String _write(String call, VoicedPlan plan, String Function(VoicedPiece piece) fileOf, {List<int>? starts}) {
+    final samples = joinVoicedPlan(
+      plan,
+      (piece) => audio.decode(fileOf(piece), rate: voiceWordRate, channels: 1),
+      speed: settings.voicePacing(call).speed,
+      starts: starts,
+    );
     final path = '${root()}/words/.voiced-${_voiced++ % 4}.wav';
     audio.write(path, encodeVoiceWav(samples));
     return path;
@@ -203,7 +223,7 @@ class VoicedWords extends ChangeNotifier {
   /// [text] in [call]'s words, on the computer's own output — the operator
   /// trying their words out. Throws [VoicedMessageRefused] as a message
   /// would be refused.
-  AudioPlayback listenToText(String call, String text) => _listenTo(() => _say(call, text));
+  AudioPlayback listenToText(String call, String text) => _listenTo(() => _say(call, text).path);
 
   /// Message [n]'s [template] as it would be said for the draft now, on the
   /// computer's own output. Throws [VoicedMessageRefused] as the message
@@ -212,7 +232,7 @@ class VoicedWords extends ChangeNotifier {
     final render = _render;
     if (render == null) throw const VoicedMessageRefused(ComputerVoiceProblem.noOperation);
     final rendered = await render(_expand(template), n);
-    return _listenTo(() => _say(rendered.operatorCall, rendered.text));
+    return _listenTo(() => _say(rendered.operatorCall, rendered.text).path);
   }
 
   /// Plays what [make] writes. A file or device that fails is reported and

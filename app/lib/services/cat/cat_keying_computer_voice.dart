@@ -14,16 +14,16 @@ part of 'cat_keying.dart';
 /// What makes each keying's templated messages (voiced_words.dart) —
 /// beside it rather than a field of it, since cat_keying.dart is at its size
 /// budget.
-final _voiceMakers = Expando<Future<String> Function(int n, String template)>();
+final _voiceMakers = Expando<Future<MadeVoiceMessage> Function(int n, String template)>();
 
 extension ComputerVoiceKeying on CatKeying {
   /// Makes message [n] from its [template] at play time — set by the
   /// keying's voiced words (voiced_words.dart).
-  set voiceMaker(Future<String> Function(int n, String template) make) => _voiceMakers[this] = make;
+  set voiceMaker(Future<MadeVoiceMessage> Function(int n, String template) make) => _voiceMakers[this] = make;
 
   /// Message [n] made from its template at play time, when it has one and
   /// voiced words are on — see [ComputerVoiceKeyer.prepare].
-  Future<String>? _prepareVoice(int n) {
+  Future<MadeVoiceMessage>? _prepareVoice(int n) {
     if (!settings.experimentEnabled('words') /* stored key, see experiments.yaml */ ) return null;
     final template = settings.activeVoiceMessageSet.template(n);
     final make = _voiceMakers[this];
@@ -49,6 +49,20 @@ extension ComputerVoiceKeying on CatKeying {
       voiceMessagesFromComputer &&
       settings.experimentEnabled('words') /* stored key, see experiments.yaml */ &&
       settings.activeVoiceMessageSet.template(n).trim().isNotEmpty;
+
+  /// Message [n]'s label as shown, here and to a peer: where it has none
+  /// and is said from the operator's words, its template, since the words
+  /// are what it says. The label itself is still [voiceMessageLabel], which
+  /// the label editor reads and writes.
+  String voiceMessageShownLabel(int n) => playsVoiceOverPeer ? peer.voiceMessageLabel(n) : _shownVoiceLabel(station.localKeyingRadio, n);
+
+  String _shownVoiceLabel(String? uuid, int n) {
+    final label = _localVoiceLabel(uuid, n);
+    if (label.trim().isNotEmpty || !_playsFromComputer(uuid) || !settings.experimentEnabled('words') /* stored key, see experiments.yaml */ ) {
+      return label;
+    }
+    return settings.activeVoiceMessageSet.template(n).trim();
+  }
 
   /// Sets message [n]'s template in the set in use; empty makes it its recording again.
   Future<void> setVoiceMessageTemplate(int n, String template) async {
@@ -78,15 +92,17 @@ extension ComputerVoiceKeying on CatKeying {
   }
 
   /// Whether [uuid] plays a set of recordings rather than its own memories:
-  /// the operator picked the computer, and this device can play one. One
-  /// pick for every radio, as the CW set is — the recordings are the
-  /// operator's voice, not a rig's — and so true with no radio at all: the
-  /// sets are named and recorded before the rig is on the desk.
+  /// the operator picked the computer for this keyer's radio, and this
+  /// device can play one. The sets are one for every radio, as the CW sets
+  /// are — the recordings are the operator's voice, not a rig's — and so
+  /// this is true with no radio at all: the sets are named and recorded
+  /// before the rig is on the desk.
   ///
-  /// Only ever radio1: SO2R's Radio B, or a radio this device only offers,
-  /// plays its own memories whatever is picked. A keyer of this one's for it
-  /// would claim its sound device, or a Flex's DAX source, and offer peers
-  /// this desk's recordings as its memories.
+  /// Only this keyer's own radio — radio1 for radio1's keying, Radio B for
+  /// Radio B's, each under its own pick and through its own rig's sound
+  /// device. A radio this device only offers plays its own memories: a
+  /// keyer of this one's for it would claim its sound device, or a Flex's
+  /// DAX source, and offer peers this desk's recordings as its memories.
   bool _playsFromComputer(String? uuid) {
     if (voiceAudio == null) return false;
     if (uuid != null && uuid != station.localKeyingRadio) return false;
@@ -107,12 +123,13 @@ extension ComputerVoiceKeying on CatKeying {
 
   String _setFile(String setId, int n) => '$voiceMessagesDir/$setId/$n.wav';
 
-  /// Where phone messages come from, and the keyers that follow from it —
-  /// which stops a message playing from the source being left.
+  /// Where this radio's phone messages come from, and the keyers that
+  /// follow from it — which stops a message playing from the source being
+  /// left.
   Future<void> selectVoiceKeyingSource(VoiceKeyingSource source) async {
-    if (source == settings.voiceKeyingSource) return;
+    if (source == voiceSource) return;
     stopVoice();
-    await settings.setVoiceKeyingSource(source);
+    await settings.setVoiceKeyingSource(source, radio: radio);
     _computerVoiceChanged();
   }
 
@@ -200,6 +217,7 @@ extension ComputerVoiceKeying on CatKeying {
         fileFor: _voiceFile,
         report: (activity) => noteVoiceActivity(uuid, activity),
         prepare: _prepareVoice,
+        following: _takeQueuedVoice,
       );
     }
     for (final uuid in _computerKeyers.keys.where((uuid) => !wanted.contains(uuid)).toList()) {
@@ -233,7 +251,9 @@ extension ComputerVoiceKeying on CatKeying {
   /// over.
   ComputerVoiceKeyer? get _deskRecorder {
     final uuid = station.localKeyingRadio;
-    if (playsVoiceOverPeer || !_playsFromComputer(uuid)) return null;
+    // Radio1's keying alone: the desk has one microphone, and a set is
+    // recorded with no radio from set A's pane.
+    if (radio != 'A' || playsVoiceOverPeer || !_playsFromComputer(uuid)) return null;
     if (uuid != null && _computerKeyers.containsKey(uuid)) return null;
     return _recorder ??= ComputerVoiceKeyer(
       ptt: null,

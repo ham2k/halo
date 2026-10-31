@@ -149,11 +149,20 @@ void main() {
 
   setUp(() {
     FlexDaxSwitch.forgetOwed();
+    FlexRadioSession.forgetSessions();
     sink = _FakeSink();
     session = FlexRadioSession(sink);
   });
 
   bool sentAny(String fragment) => sink.sent.any((line) => line.contains(fragment));
+
+  /// A session on one slice of the radio at `flex.test`, past its handshake:
+  /// two of them are SO2R's two radios on one Flex.
+  FlexRadioSession onRadio(_FakeSink by, int slice) {
+    final rig = FlexRadioSession(by, slice: slice, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
+    rig.feed('${_handshakeLines.join('\n')}\n');
+    return rig;
+  }
 
   group('handshake', () {
     test('defers the slice subscription until the handle (H) line, not the version (V) line', () {
@@ -1069,6 +1078,55 @@ void main() {
       session.feed('S40000001|interlock timeout=180\n');
       expect(sink.txReports, isEmpty);
     });
+
+    // The interlock speaks for the whole radio. Under SO2R on two slices of
+    // one Flex, reading it as each slice's own lights both radios TX when
+    // one transmits.
+    test("a slice is off the air while the other radio's slice holds the transmit flag", () {
+      fakeAsync((async) {
+        final sinkB = _FakeSink();
+        final a = onRadio(sink, 0), b = onRadio(sinkB, 1);
+        for (final rig in [a, b]) {
+          rig.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=0\n');
+          rig.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 tx=1\n');
+          rig.feed('S40000001|interlock state=TRANSMITTING\n');
+        }
+        expect(sink.txReports, [false], reason: 'the radio is on the air for Radio B');
+        expect(sinkB.txReports, [true]);
+        a.feed('S5AC2F980|slice 0 tx=1\n');
+        expect(sink.txReports, [false, true], reason: 'the flag moving here under RF puts this slice on the air');
+        a.feed('S40000001|interlock state=READY\n');
+        expect(sink.txReports, [false, true, false]);
+        a.teardown();
+        b.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Still counted once closed, Radio B's slice reads as another radio's
+    // for good: a split onto it later shows this radio receiving under RF.
+    test("a closed session's slice is no longer another radio's", () {
+      fakeAsync((async) {
+        final a = onRadio(sink, 0);
+        onRadio(_FakeSink(), 1).teardown();
+        a.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=0\n');
+        a.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=14.079000 tx=1\n');
+        a.feed('S40000001|interlock state=TRANSMITTING\n');
+        expect(sink.txReports, [true]);
+        a.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Split on the radio puts the flag on a slice no session reads. The
+    // transmitter is still this radio's: read as off the air, an antenna
+    // switch moves under RF.
+    test('with the transmit flag on a slice no session reads, the slice is on the air', () {
+      session.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=0\n');
+      session.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=14.079000 tx=1\n');
+      session.feed('S40000001|interlock state=TRANSMITTING\n');
+      expect(sink.txReports, [true]);
+    });
   });
 
   group('PTT', () {
@@ -1087,6 +1145,64 @@ void main() {
         expect(commands(), ['xmit 1', 'xmit 0']);
         expect(sink.txReports, isEmpty, reason: 'keyed is what the interlock says, never what was asked');
         session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // `xmit` keys whichever slice holds the transmit flag: keyed from a
+    // slice without it, Radio B's message goes out on Radio A's frequency.
+    test("keying a slice while the other radio's slice holds the transmit flag takes it first", () {
+      fakeAsync((async) {
+        final sliceA = onRadio(_FakeSink(), 0);
+        final sliceB = onRadio(sink, 1);
+        sliceB.startUpdates();
+        sliceB.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=1\n');
+        sliceB.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 tx=0\n');
+        sink.sent.clear();
+        sliceB.setPtt(true);
+        sliceB.setPtt(false);
+        expect(commands(), ['slice set 1 tx=1', 'xmit 1', 'xmit 0']);
+        sliceB.feed('S5AC2F980|slice 1 tx=1\n');
+        sink.sent.clear();
+        sliceB.setPtt(true);
+        sliceB.setPtt(false);
+        expect(commands(), ['xmit 1', 'xmit 0'], reason: 'a slice that holds the flag keys as it is');
+        sliceA.teardown();
+        sliceB.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Split on the radio: the flag on the TX slice is the operator's, and
+    // moved, the call goes out on the DX's own frequency.
+    test('keying with the transmit flag on a slice no session reads leaves it there', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=0\n');
+        session.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=14.079000 tx=1\n');
+        sink.sent.clear();
+        session.setPtt(true);
+        session.setPtt(false);
+        session.sendCw('cq');
+        expect(commands().take(3), ['xmit 1', 'xmit 0', 'cwx send "CQ"']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test("a CW message while the other radio's slice holds the transmit flag takes it first", () {
+      fakeAsync((async) {
+        final sliceA = onRadio(_FakeSink(), 0);
+        final sliceB = onRadio(sink, 1);
+        sliceB.startUpdates();
+        sliceB.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.074000 tx=1\n');
+        sliceB.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 tx=0\n');
+        sink.sent.clear();
+        sliceB.sendCw('cq');
+        expect(commands().take(2), ['slice set 1 tx=1', 'cwx send "CQ"']);
+        sliceA.teardown();
+        sliceB.teardown();
         async.flushTimers();
       });
     });
@@ -1274,6 +1390,129 @@ void main() {
         next.teardown();
         after.teardown();
         async.flushTimers();
+      });
+    });
+
+    // Two slices of one radio, as SO2R's two radios, are two sessions on one
+    // transmitter. The slice that never keyed reading the other's DAX as one
+    // left by a closed session turns it off before the radio has keyed, and
+    // the message goes out as mic hiss.
+    group('two slices of one radio', () {
+      List<String> sentBy(_FakeSink by) => [for (final line in by.sent) line.substring(line.indexOf('|') + 1).trim()];
+      FlexRadioSession open(_FakeSink by, int slice) {
+        final rig = FlexRadioSession(by, slice: slice, meterHost: 'flex.test', openMeterSocket: (host, onData, onError) async => null);
+        rig.feed('${_handshakeLines.join('\n')}\n');
+        rig.feed('S40000001|transmit dax=0\n');
+        return rig;
+      }
+
+      void feedBoth(List<FlexRadioSession> rigs, String line) {
+        for (final rig in rigs) {
+          rig.feed('$line\n');
+        }
+      }
+
+      test("the slice that did not key leaves the other's DAX alone", () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final a = open(sink, 0), b = open(sinkB, 1);
+          sink.sent.clear();
+          sinkB.sent.clear();
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=READY');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          expect(sentBy(sinkB), isEmpty);
+          a.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          expect(sentBy(sinkB), isEmpty);
+          expect(sentBy(sink).where((c) => c.startsWith('transmit set')), [
+            'transmit set dax=1',
+            'transmit set dax=0',
+          ], reason: 'the slice that turned it on puts it back');
+          a.teardown();
+          b.teardown();
+          async.flushTimers();
+        });
+      });
+
+      test("the other slice keying before the restore takes it over, so DAX stays on for its message", () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final a = open(sink, 0), b = open(sinkB, 1);
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          a.setPttWithComputerAudio(false);
+          sink.sent.clear();
+          sinkB.sent.clear();
+          b.setPttWithComputerAudio(true);
+          expect(sentBy(sinkB), contains('transmit set dax=1'), reason: "A's restore may already be on its way");
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          async.elapse(const Duration(seconds: 3));
+          expect(sentBy(sink), isNot(contains('transmit set dax=0')), reason: "B's message holds the key; A's restore is no longer A's");
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          b.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          expect(sentBy(sinkB), contains('transmit set dax=0'));
+          expect(sentBy(sink), isNot(contains('transmit set dax=0')));
+          a.teardown();
+          b.teardown();
+          async.flushTimers();
+        });
+      });
+
+      // The restore that the other slice took over is never seen to take by
+      // the slice that sent it. Its tries kept, an SO2R run trading messages
+      // between the slices runs out of them on its fourth message, and DAX
+      // is left on, the operator's mic dead.
+      test('restores taken over between the slices never run out of tries', () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final rigs = [open(sink, 0), open(sinkB, 1)], sinks = [sink, sinkB];
+          for (var i = 0; i < 7; i++) {
+            final rig = rigs[i % 2], by = sinks[i % 2];
+            rig.setPttWithComputerAudio(true);
+            feedBoth(rigs, 'S40000001|transmit dax=0');
+            feedBoth(rigs, 'S40000001|transmit dax=1');
+            feedBoth(rigs, 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+            rig.setPttWithComputerAudio(false);
+            by.sent.clear();
+            feedBoth(rigs, 'S0|interlock tx_client_handle=0x00000000 state=READY');
+            expect(sentBy(by), contains('transmit set dax=0'), reason: 'message ${i + 1}');
+          }
+          for (final rig in rigs) {
+            rig.teardown();
+          }
+          async.flushTimers();
+        });
+      });
+
+      // The two slices' commands go out on two connections, in no order
+      // between them: A's restore can land after B's `dax=1`.
+      test("the other slice's restore landing under this slice's message is undone", () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final a = open(sink, 0), b = open(sinkB, 1);
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          a.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          expect(sentBy(sink), contains('transmit set dax=0'));
+          b.setPttWithComputerAudio(true);
+          sinkB.sent.clear();
+          feedBoth([a, b], 'S40000001|transmit dax=0');
+          expect(sentBy(sinkB), ['transmit set dax=1']);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          b.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          expect(sentBy(sinkB), contains('transmit set dax=0'), reason: 'still owed back off after the message');
+          a.teardown();
+          b.teardown();
+          async.flushTimers();
+        });
       });
     });
 

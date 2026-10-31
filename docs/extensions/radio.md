@@ -147,6 +147,10 @@ rather than keying the logging radio behind the operator's back. API 7.
   app's own latch, so Escape releases it as it does the operator's own.
   `on: false` releases whatever key the app holds and is never refused; a
   radio that does not take the key answers `on: true` with `disconnected`.
+  While the station's other radio is still on the air, `on: true` is
+  accepted and the key goes down once that radio is off it, or not at all
+  after two seconds; `ptt` reads false until then, and `on: false` takes the
+  waiting key back.
 - `host.stopRadioTransmit({ id, selection? })` stops every CW message, voice
   memory, PTT and tune the app is keying, as Escape does, whatever radio the
   identity names: a stop is the one call here that is never refused.

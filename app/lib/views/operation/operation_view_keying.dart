@@ -143,8 +143,9 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       // A key past the radio's last memory keys nothing, and stays free.
       if (keyer.canPlayVoice && n > keyer.voiceMemoryCount) return false;
       if (!keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) return keyer.radio == 'B';
-      _endChainsForKey(keyer);
-      keyer.playVoiceMemory(n);
+      // Behind what the radio is playing, as CW queues on the key.
+      keyer.cancelKeyerRepeat();
+      keyer.queueVoiceMemory(n);
       return true;
     }
     final template = services.settings.cwMessage(n);

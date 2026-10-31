@@ -76,6 +76,9 @@ class _FedOutput extends FakeOutput implements SilenceFedOutput {
   bool failingDecode = false;
 
   @override
+  Duration heardAfter = Duration.zero;
+
+  @override
   void startSilence(String next) {
     if (failingDecode) throw HaloAudioException('decode: no');
     readied.add(next);
@@ -93,13 +96,16 @@ class _FakeNetworkPtt extends _FakeComputerAudioPtt implements NetworkTransmitAu
   bool linkUp = true;
   final opened = <FakeOutput>[];
 
+  /// What each output opened says the operator hears its audio after.
+  Duration heardAfter = Duration.zero;
+
   /// Silence started and keys, in order.
   final events = <String>[];
 
   @override
   AudioOutput? openTransmitAudio(PcmDecoder decode) {
     if (!linkUp) return null;
-    final output = _FedOutput(events);
+    final output = _FedOutput(events)..heardAfter = heardAfter;
     opened.add(output);
     return output;
   }
@@ -456,6 +462,129 @@ void main() {
     });
   });
 
+  group('messages queued behind each other', () {
+    late List<int> queued;
+
+    void startQueued() => keyer = ComputerVoiceKeyer(
+      ptt: radio,
+      audio: audio,
+      config: () => config,
+      fileFor: (n) => '/v/$n.wav',
+      report: reports.add,
+      following: () => queued.isEmpty ? null : queued.removeAt(0),
+    );
+
+    setUp(() {
+      queued = [];
+      audio.lengths['/v/2.wav'] = const Duration(seconds: 2);
+    });
+
+    test('play under one key, the tail the space between them and no lead before the next', () {
+      // Unkeyed between them, the radio drops PTT for every message and the
+      // other SO2R radio can take the air in the gap.
+      fakeAsync((async) {
+        startQueued();
+        queued.add(2);
+        keyer.playVoiceMemory(1);
+        async.elapse(lead);
+        audio.plays.last.end();
+        async.flushMicrotasks();
+        async.elapse(tail - const Duration(milliseconds: 1));
+        expect(audio.plays, hasLength(1));
+        async.elapse(const Duration(milliseconds: 1));
+        expect(audio.plays.last.path, '/v/2.wav', reason: 'the next starts as the tail ends, with no lead');
+        expect(radio.sent, [true]);
+        expect(keyer.keyed, isTrue);
+        expect(reports.last, const VoiceActivity(memory: 2, take: 1));
+
+        audio.plays.last.end();
+        async.flushMicrotasks();
+        async.elapse(tail);
+        expect(radio.sent, [true, false]);
+        expect(reports.last, isNull);
+      });
+    });
+
+    test('the same memory again is a new take, so its bar starts afresh', () {
+      fakeAsync((async) {
+        startQueued();
+        queued.add(1);
+        playThrough(async);
+        expect(reports.whereType<VoiceActivity>().map((r) => (r.memory, r.take)), [(1, 0), (1, 1)]);
+      });
+    });
+
+    test('one that cannot play unkeys the radio rather than holding it for nothing', () {
+      fakeAsync((async) {
+        startQueued();
+        queued.add(3);
+        playThrough(async);
+        expect(radio.sent, [true, false]);
+        expect(reports.last, const VoiceActivity(memory: 3, doubtful: true));
+        expect(keyer.problem, ComputerVoiceProblem.notRecorded);
+      });
+    });
+
+    test('one slow to be made lets the key go, and keys again for itself once made', () {
+      // Held, a message that never gets made leaves the carrier on; stopped,
+      // one made late, or refused late, vanishes without a word.
+      fakeAsync((async) {
+        final making = Completer<MadeVoiceMessage>();
+        audio.lengths['/v/made.wav'] = message;
+        keyer = ComputerVoiceKeyer(
+          ptt: radio,
+          audio: audio,
+          config: () => config,
+          fileFor: (n) => '/v/$n.wav',
+          report: reports.add,
+          prepare: (n) => n == 2 ? making.future : null,
+          following: () => queued.isEmpty ? null : queued.removeAt(0),
+        );
+        queued.add(2);
+        playThrough(async);
+        expect(radio.sent, [true]);
+        async.elapse(computerVoicePlayMargin);
+        expect(radio.sent, [true, false]);
+        expect(reports.last, const VoiceActivity(memory: 2, take: 1), reason: 'still on its way');
+        making.complete(const MadeVoiceMessage('/v/made.wav'));
+        async.flushMicrotasks();
+        expect(radio.sent, [true, false, true]);
+        async.elapse(lead);
+        expect(audio.plays.last.path, '/v/made.wav', reason: 'keyed afresh, so after the lead');
+      });
+    });
+
+    test('one that throws as it starts unkeys the radio and says so', () {
+      // Out of the key's own catch, a throw here leaves the carrier on with
+      // no ceiling and the line showing the message before it.
+      fakeAsync((async) {
+        keyer = ComputerVoiceKeyer(
+          ptt: radio,
+          audio: audio,
+          config: () => config,
+          fileFor: (n) => n == 2 ? throw StateError('broken') : '/v/$n.wav',
+          report: reports.add,
+          following: () => queued.isEmpty ? null : queued.removeAt(0),
+        );
+        queued.add(2);
+        playThrough(async);
+        expect(radio.sent, [true, false]);
+        expect(reports.last, const VoiceActivity(memory: 2, doubtful: true));
+      });
+    });
+
+    test('a fresh play starts the takes again', () {
+      fakeAsync((async) {
+        startQueued();
+        queued.add(1);
+        playThrough(async);
+        keyer.stopVoice();
+        keyer.playVoiceMemory(1);
+        expect(reports.last, const VoiceActivity(memory: 1));
+      });
+    });
+  });
+
   group('the radio dropping the key itself', () {
     test('after it confirmed transmitting, the message stops with it', () {
       fakeAsync((async) {
@@ -479,6 +608,45 @@ void main() {
         async.elapse(lead);
         expect(audio.plays, hasLength(1));
         expect(audio.plays.single.stopped, isFalse);
+      });
+    });
+
+    // A message played over the one before it unkeys and keys again before
+    // the radio has answered either: its keying of the first, then its
+    // receiving after that unkey, both arrive once the second is keyed. Read
+    // as the radio dropping the second key, the second message stops.
+    test("the radio's answer to the last unkey, arriving after the next key, does not stop the next message", () {
+      fakeAsync((async) {
+        audio.lengths['/v/2.wav'] = message;
+        start();
+        keyer.playVoiceMemory(1);
+        keyer.playVoiceMemory(2);
+        expect(radio.sent, [true, false, true]);
+        keyer.onTransmitting(true);
+        keyer.onTransmitting(false);
+        async.elapse(lead);
+        expect(audio.plays.single.path, '/v/2.wav');
+        expect(audio.plays.single.stopped, isFalse);
+        keyer.onTransmitting(true);
+        keyer.onTransmitting(false);
+        expect(audio.plays.single.stopped, isTrue, reason: 'the radio dropping this key still stops it');
+      });
+    });
+
+    // A key the radio refused is never answered: its unkey has no
+    // "receiving" coming, and one kept waiting for swallows the next
+    // message's real drop of the key.
+    test("an unkey the radio never answered does not swallow the next message's drop", () {
+      fakeAsync((async) {
+        start();
+        keyer.playVoiceMemory(1);
+        keyer.stopVoice();
+        async.elapse(computerVoiceUnkeyAnswer);
+        keyer.playVoiceMemory(1);
+        async.elapse(lead);
+        keyer.onTransmitting(true);
+        keyer.onTransmitting(false);
+        expect(audio.plays.single.stopped, isTrue);
       });
     });
   });
@@ -529,6 +697,30 @@ void main() {
     setUp(() => flex = _FakeNetworkPtt());
 
     void startOn() => keyer = ComputerVoiceKeyer(ptt: flex, audio: audio, config: () => config, fileFor: (n) => '/v/$n.wav', report: reports.add);
+
+    // The words shown with only the lead behind the key run ahead of the
+    // operator's monitor by the radio's buffering and the monitor's way back.
+    test("a message made from words is timed by when it is heard, the output's delay included", () {
+      fakeAsync((async) {
+        config.remove(voiceOutputConfigKey);
+        audio.lengths['/v/made.wav'] = message;
+        flex.heardAfter = const Duration(milliseconds: 200);
+        keyer = ComputerVoiceKeyer(
+          ptt: flex,
+          audio: audio,
+          config: () => config,
+          fileFor: (n) => '/v/$n.wav',
+          report: reports.add,
+          prepare: (n) => Future.value(const MadeVoiceMessage('/v/made.wav', script: VoiceScript('K', [(atMs: 0, said: 1)]))),
+        );
+        keyer.playVoiceMemory(2);
+        async.flushMicrotasks();
+        final heard = lead + const Duration(milliseconds: 200);
+        expect(reports.last!.lengthMs, (heard + message).inMilliseconds);
+        expect(reports.last!.script!.marks.single.atMs, heard.inMilliseconds);
+        keyer.stopVoice();
+      });
+    });
 
     // A Flex needs no sound device: one picked anyway would be a GUI
     // client's virtual device, which need not reach the transmitter.
@@ -916,13 +1108,13 @@ void main() {
   // being made, a message that cannot be made keyed anyway, and one made
   // after the operator stopped it — or pressed another — keyed late.
   group('a message made as it plays', () {
-    late Completer<String> making;
+    late Completer<MadeVoiceMessage> making;
     setUp(() => audio.lengths['/v/made.wav'] = message);
 
     /// Inside each test's fake time, the completer with it: one made outside
     /// completes on the real microtask queue, which fake time never runs.
     void startMaking() {
-      making = Completer<String>();
+      making = Completer<MadeVoiceMessage>();
       keyer = ComputerVoiceKeyer(
         ptt: radio,
         audio: audio,
@@ -939,11 +1131,50 @@ void main() {
         keyer.playVoiceMemory(2);
         expect(radio.sent, isEmpty);
         expect(reports, [const VoiceActivity(memory: 2)], reason: 'shown going out while it is made, so the key does not look dead');
-        making.complete('/v/made.wav');
+        making.complete(const MadeVoiceMessage('/v/made.wav'));
         async.flushMicrotasks();
         expect(radio.sent, [true]);
+        // No duration is measured for a made message: the activity is the
+        // only place the bar can learn how long it runs, and it runs from
+        // the key, through the lead, to the end of the audio.
+        expect(reports.last, VoiceActivity(memory: 2, lengthMs: (lead + message).inMilliseconds));
         async.elapse(lead);
         expect(audio.plays.single.path, '/v/made.wav');
+      });
+    });
+
+    // Timed from the file's first sample, the words would be shown said a
+    // lead ahead of the audio: the activity is timed from the key.
+    test('its words go with it, timed from the key as its length is', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        making.complete(const MadeVoiceMessage('/v/made.wav', script: VoiceScript('K8', [(atMs: 0, said: 1), (atMs: 400, said: 2)])));
+        async.flushMicrotasks();
+        final script = reports.last!.script!;
+        expect(script.text, 'K8');
+        expect(script.marks, [(atMs: lead.inMilliseconds, said: 1), (atMs: lead.inMilliseconds + 400, said: 2)]);
+        expect(script.saidAt(lead.inMilliseconds - 1), 0, reason: 'nothing is said before the audio starts');
+        keyer.stopVoice();
+      });
+    });
+
+    // Shown doubtful without them, the keyer line re-paces on a length it
+    // no longer has: the bar turns indeterminate and the words turn back
+    // into the template as the play breaks off.
+    test('breaking off partway, it ends doubtful with its length and words', () {
+      fakeAsync((async) {
+        startMaking();
+        keyer.playVoiceMemory(2);
+        making.complete(const MadeVoiceMessage('/v/made.wav', script: VoiceScript('K8', [(atMs: 0, said: 1)])));
+        async.flushMicrotasks();
+        final playing = reports.last!;
+        async.elapse(lead);
+        audio.plays.single.breakOff();
+        async.flushMicrotasks();
+        expect(reports.last, playing.asDoubtful());
+        expect(reports.last!.script, same(playing.script));
+        async.elapse(voiceDoubtLinger);
       });
     });
 
@@ -983,7 +1214,7 @@ void main() {
         startMaking();
         keyer.playVoiceMemory(2);
         keyer.stopVoice();
-        making.complete('/v/made.wav');
+        making.complete(const MadeVoiceMessage('/v/made.wav'));
         async.flushMicrotasks();
         async.elapse(lead);
         expect(radio.sent, isEmpty);
@@ -997,7 +1228,7 @@ void main() {
         startMaking();
         keyer.playVoiceMemory(2);
         keyer.playVoiceMemory(1);
-        making.complete('/v/made.wav');
+        making.complete(const MadeVoiceMessage('/v/made.wav'));
         async.flushMicrotasks();
         async.elapse(lead);
         expect(radio.sent, [true]);

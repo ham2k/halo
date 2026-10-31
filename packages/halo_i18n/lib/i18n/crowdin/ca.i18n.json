@@ -1712,7 +1712,6 @@
         "stopRecording": "Atura la gravació",
         "playing": "Reproduint…",
         "recording": "Gravant…",
-        "playingMemory": "Reproduint $label",
         "recordingMemory": "Gravant $label",
         "doubtful": "L'ha reproduït la ràdio? Ha informat que estava inactiva immediatament.",
         "recordOnRadio": "Has de gravar les memòries a la mateixa ràdio.",

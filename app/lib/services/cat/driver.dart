@@ -411,18 +411,63 @@ class VoiceActivity {
   /// question mark for [voiceDoubtLinger], then gone.
   final bool doubtful;
 
-  const VoiceActivity({required this.memory, this.recording = false, this.doubtful = false});
+  /// How long the message runs, in milliseconds, where nothing measured it
+  /// before it started — one made from the operator's words as it plays.
+  /// Null for the rest, whose length is the memory's measured duration.
+  final int? lengthMs;
 
-  VoiceActivity asDoubtful() => VoiceActivity(memory: memory, recording: recording, doubtful: true);
+  /// What a message made from the operator's words says as it goes, timed
+  /// from this report as [lengthMs] is.
+  final VoiceScript? script;
+
+  /// Which of the messages played back to back under one key this is, from
+  /// 0: the same memory queued behind itself is a new play, with a bar of
+  /// its own.
+  final int take;
+
+  const VoiceActivity({required this.memory, this.recording = false, this.doubtful = false, this.lengthMs, this.script, this.take = 0});
+
+  VoiceActivity asDoubtful() => VoiceActivity(memory: memory, recording: recording, doubtful: true, lengthMs: lengthMs, script: script, take: take);
 
   @override
-  bool operator ==(Object other) => other is VoiceActivity && other.memory == memory && other.recording == recording && other.doubtful == doubtful;
+  bool operator ==(Object other) =>
+      other is VoiceActivity &&
+      other.memory == memory &&
+      other.recording == recording &&
+      other.doubtful == doubtful &&
+      other.lengthMs == lengthMs &&
+      identical(other.script, script) &&
+      other.take == take;
 
   @override
-  int get hashCode => Object.hash(memory, recording, doubtful);
+  int get hashCode => Object.hash(memory, recording, doubtful, lengthMs, identityHashCode(script), take);
 
   @override
   String toString() => 'VoiceActivity(${recording ? 'recording' : 'playing'} $memory${doubtful ? '?' : ''})';
+}
+
+/// What a message made from the operator's words says: [text] as the
+/// keyer line shows it, and for each word or letter the moment it starts,
+/// in milliseconds, with how much of [text] has been said once it has.
+class VoiceScript {
+  final String text;
+  final List<({int atMs, int said})> marks;
+
+  const VoiceScript(this.text, this.marks);
+
+  /// How much of [text] is said [elapsedMs] in, through the word being said.
+  int saidAt(num elapsedMs) {
+    var said = 0;
+    for (final mark in marks) {
+      if (mark.atMs > elapsedMs) break;
+      said = mark.said;
+    }
+    return said;
+  }
+
+  /// The same words, starting [delay] later: the keyer's lead before the
+  /// first sample.
+  VoiceScript delayedBy(Duration delay) => VoiceScript(text, [for (final mark in marks) (atMs: mark.atMs + delay.inMilliseconds, said: mark.said)]);
 }
 
 /// The config key a catalogue entry pins a radio's voice memory count
@@ -606,6 +651,11 @@ abstract interface class SilenceFedOutput implements AudioOutput {
   /// plays, the feed stops for as long as that takes, and the radio
   /// transmits noise. Throws `HaloAudioException` when it will not open.
   void startSilence(String next);
+
+  /// How long after a sample goes the operator hears it — through the
+  /// radio's buffer, and back in its monitor. The keyer line times a
+  /// message's words by it.
+  Duration get heardAfter;
 }
 
 /// An audio file as interleaved float samples at [rate] Hz and [channels]

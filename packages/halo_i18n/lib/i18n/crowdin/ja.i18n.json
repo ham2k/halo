@@ -1712,7 +1712,6 @@
         "stopRecording": "録音を停止",
         "playing": "再生中…",
         "recording": "録音中…",
-        "playingMemory": "${label}を再生中",
         "recordingMemory": "${label}を録音中",
         "doubtful": "無線機は再生しましたか？すぐにアイドル状態と報告しました。",
         "recordOnRadio": "メモリーは無線機本体で録音する必要があります。",

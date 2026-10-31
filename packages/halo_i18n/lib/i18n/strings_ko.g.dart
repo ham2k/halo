@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$ko extends Translations$setting
 	@override String get stopRecording => '녹음 정지';
 	@override String get playing => '재생 중…';
 	@override String get recording => '녹음 중…';
-	@override String playingMemory({required Object label}) => '${label} 재생 중';
 	@override String recordingMemory({required Object label}) => '${label} 녹음 중';
 	@override String get doubtful => '무전기가 재생했나요? 무전기가 곧바로 대기 상태라고 보고했습니다.';
 	@override String get recordOnRadio => '메모리는 무전기에서 직접 녹음해야 합니다.';
@@ -5942,7 +5941,6 @@ extension on TranslationsKo {
 			'settings.radio.voiceMessages.stopRecording' => '녹음 정지',
 			'settings.radio.voiceMessages.playing' => '재생 중…',
 			'settings.radio.voiceMessages.recording' => '녹음 중…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '${label} 재생 중',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label} 녹음 중',
 			'settings.radio.voiceMessages.doubtful' => '무전기가 재생했나요? 무전기가 곧바로 대기 상태라고 보고했습니다.',
 			'settings.radio.voiceMessages.recordOnRadio' => '메모리는 무전기에서 직접 녹음해야 합니다.',
@@ -6055,9 +6053,9 @@ extension on TranslationsKo {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '개인정보',
 			'settings.privacy.shareAppData.title' => '앱 사용 데이터 공유',
@@ -6569,9 +6567,9 @@ extension on TranslationsKo {
 			'settings.station.newAntenna' => '새 안테나',
 			'settings.station.newKey' => '새 키',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL 또는 호환)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}의 CAT 키어',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}의 CAT 키어',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}의 키',
 			'settings.station.trackStationInfo' => 'QSO마다 무선국 정보 기록',
 			'settings.station.includeStationInfoInAdif' => 'ADIF 내보내기에 포함',
@@ -7083,9 +7081,9 @@ extension on TranslationsKo {
 			'switchAccounts.linkWithSiblingDescription' => '다른 Ham2K 앱이 설치되어 있습니다. 그 앱에서 사용 중인 계정과 연결하세요.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '${app}에서 요청을 승인한 후 여기로 돌아오세요.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} 다시 열기',
+			'switchAccounts.siblingNoGrant' => '작동하지 않았나요? 다시 열거나, 돌아가서 다른 방법으로 연결하세요.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => '작동하지 않았나요? 다시 열거나, 돌아가서 다른 방법으로 연결하세요.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}을(를) 열 수 없습니다.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '링크가 만료되어 새 링크가 준비되었습니다. ${app}을(를) 다시 여세요.',
 			'switchAccounts.tryAgain' => '다시 시도',

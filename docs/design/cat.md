@@ -1101,7 +1101,9 @@ to the radio); `designatedFor` and `setDesignated` take an explicit `radio:`, an
 Configuration shows Radio B's pair under the Main VFO's while SO2R is on. A contact logged on Radio
 B records Radio B's rig, antenna, key and power. Its voice memories are its own too: the labels and
 measured lengths are stored per radio (`voiceMessageLabel(n, radio:)`), since the audio is in each
-rig.
+rig — and so is its Phone Keying pick (`voiceKeyingSourceFor`), on a line of its own under the pair:
+its rig's memories, or the computer's recordings through its rig's own sound device (§ The
+computer's voice keyer).
 
 **Each radio has a keyer of its own.** Radio1's and Radio B's: each its own key in use, voice
 memories, PTT, repeat chain, message going out and messages waiting (`CatKeying`, one per radio;
@@ -1117,31 +1119,51 @@ its message, countdown and what waits. The keyer control is one for both sets, i
 and is the operator's set's radio's: its buttons, Run or S&P, keyboard mode, and the CW and Phone
 Keyer dialogs it opens. The CW messages, their sets and labels, and the repeat are the radios'
 both; the keyer speed is each key's own, and the voice memories, their names and lengths
-each rig's — the audio is in the radio (a future app-played audio keyer could share them). A panel
+each rig's — the audio is in the radio — while the computer's recordings are one set for both,
+each radio playing them through its own rig's sound device under its own pick. A panel
 keys the radio it names, radio1 or Radio B. Set B with no Radio B keys nothing at all rather than
 falling back to radio A, and says so in the status bar. `isTransmitting` says which radio is on
 the air — its rig's own report, its held PTT, or its keyer keying — and that set's pill, rule and
 Radio control turn red.
 
 **One radio on the air at a time, taking turns** (`KeyingStation.clearToSend`, `_So2r._pump`).
-What a keyer sends — a message, a memory, a sequence — first asks for its turn:
+What a keyer sends — a message, a memory, a sequence — first asks for its turn. On the air is
+the rig's word as much as the app's: its keyer keying, its PTT key held, or its rig reporting it
+transmits — a mic, a footswitch, an external keyer, or a message the app stopped and the rig has
+not yet unkeyed from. What the app did not key is waited out, never cut off. A turn is given as the
+rig's report comes in, so how soon depends on how often the rig says: a Flex pushes its interlock,
+and a polled rig is asked at its meter cadence (`telemetryInterval`), as fast as its link affords.
 
 - **A repeat's send waits** while the other radio is on the air, whatever its delay, and goes the
   moment it is quiet; two repeating radios so take turns, neither keying over the other. A
   memory asked for and not yet heard starting (`CatKeying.voiceStarting`) is on the air too.
 - **An operator's message stops the other radio's** — its message and any sequence it is part
-  of (`CatKeying.interrupt`) — and goes at once, unless the station's setting *Messages queued
+  of (`CatKeying.interrupt`) — and goes once that rig says it is receiving: keyed at once, the two
+  overlap, and on two slices of one Flex the stopped slice's unkey lands after the new key and
+  drops it. What the operator keyed on the other radio and is still waiting there goes too. That
+  holds unless the station's setting *Messages queued
   instead of interrupting* (`SettingsService.so2rQueueMessages`, off by default, in Station
   Configuration under Radio B) is on: then it waits its turn like a repeat. A message that reaches
   its keyer after its keypress — rendered, or a thanks waiting on its contact's log — is dropped
   when the other radio was keyed in between (`keyMark`, `keyedOverSince`): going at once it would
   have been stopped, and going now it would stop the newer one. Queued, it waits its turn.
+- **A radio's queue is one turn.** A voice memory keyed while its radio plays joins that
+  radio's queue (§ Voice keying), so the radio plays out everything queued there before the
+  other radio's turn — A's F1, then B's F4 waiting, then A's F2 pressed during F1 plays F1, F2,
+  F4. A memory keyed behind one still waiting for the other radio joins that one in its place
+  (`WaitingSend.then`), shown faded after it on the line: B's F4 and F3, pressed while A plays,
+  wait together and go out as one turn, under one key. Not queued, B's F4 stops A's queue with
+  what A is playing.
 - **The other radio's CQ resumes after it.** A repeat interrupted, held off, or counting down
   when the operator keyed the other radio sends message 1 again the moment that radio is quiet,
   rather than at the end of another wait (`KeyerRepeat.sendNow`). Keying the repeating radio
   itself ends its repeat, as it does with one radio. The app's PTT key going down on one radio
   is the operator keying it, queued messages or not: it takes the other radio off the air
-  through that radio's own keyer, and the other's repeat resumes after it too.
+  through that radio's own keyer, keys once that rig is receiving, and the other's repeat resumes
+  after it too. Pressed again before then, let go in Hold mode, or with anything else keyed
+  first, the key is taken back; still waiting after two seconds (`so2rPttWait`), it is given up,
+  since nothing shows the wait and a key going down long after its press puts an open mic on the
+  air with nobody at it.
 
 What waits shows in its radio's keyer line under an indeterminate bar (`CatKeying.waiting`), in place of a
 repeat's countdown: how long the other radio has left is not something this one can know. The
@@ -1886,7 +1908,7 @@ generic Yaesu entry names none.
 | Ham Radio Deluxe | `get button-select TX`, where `get buttons` lists a TX button; slowed after two unanswered | none: HRD's meters are per-radio sliders in unstated units |
 | DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
 | N3FJP | none: the API has no PTT read | none |
-| FlexRadio | `interlock state=`, PUSHED — costs nothing | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
+| FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
 | Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | none — see below — but on the TX-500 line: power out from `SM0;`, volts from `VL;` |
@@ -1965,6 +1987,15 @@ F1-F8, ⌥1-⌥8 and ⌥K (keyboard mode) are left unclaimed, keyboard mode alre
 logs), and the keyer control's chip stays in the strip, reading
 "Keyer" by the key icon, disabled, so the row keeps its shape. A tap, the keyboard and `KEYER` all leave it shut, and one open when the
 draft's mode turns Digital closes.
+
+**A memory keyed while one plays queues behind it** (`CatKeying.queueVoiceMemory`), as a CW
+message queues behind itself on the key: F1 then F4 plays both, in order, and a memory queued never
+repeats — it ends memory 1's repeat, as any other memory does. A radio's own memories each key and
+unkey; the computer's voice keyer plays the queue under one key (§ The computer's voice keyer). The
+keyer line shows what waits after the memory playing, faded and outside its bar, as a CW message's
+queue is (`CatKeying.voiceQueue`), and a tap on one drops it alone. The
+Phone Keyer dialog's Play and an extension's play still replace what is playing: those are someone
+listening, not the operator working a contact.
 
 **The messages are audio in the radio, so the app stores only a label.** `voiceMessageLabel1..8`
 (Radio settings, like the CW ones) is the whole of it — nothing to render, nothing to sanitize, and
@@ -2102,9 +2133,11 @@ most of what it says; every other dialect is still from the manuals and hamlib:
 only, under the same `keyer` experiment). Where phone messages come from is **Phone Keying**
 (`VoiceKeyingSource`, `voiceKeying` in the Radio settings group): None, the radio's own memories
 (offered where the radio has some), or audio on this computer (offered where this device can play
-it), picked on the Station panel's Phone Keying line and atop the Phone Keyer pane. It is radio1's:
-under SO2R, Radio B plays its own memories whatever is picked (`CatKeying.ownsVoiceSource`), and
-None says so ("Phone keying is off") rather than blaming the radio. The recordings are kept in
+it), picked on the Station panel's Phone Keying line and atop the Phone Keyer pane. The pick is
+each radio's own (`voiceKeyingSourceFor`, read through `CatKeying.radio`): under SO2R Radio B has a
+Phone Keying line of its own under its antenna and key, and set B's pane shows its pick — None on
+one radio never silences the other — and None says so ("Phone keying is off") rather than blaming
+the radio. The recordings are kept in
 **sets** the way CW messages are. With the computer picked, the Phone Keyer pane's **Message Set**
 picker, the last row above the messages, lists **Sound files on this computer** — the default set,
 always there, neither renamed nor deleted, its name from the translations — then the operator's
@@ -2122,18 +2155,21 @@ written as it ends, so a Cancel could not undo it, and deleting a set — which 
 recordings — asks first. The sound devices and the two delays stay on the radio's equipment node,
 because they describe this shack's wiring — which sound card feeds which radio — and equipment is
 device-local, never synced; they are edited in their own dialog, behind the button beside Phone
-Keying's pick.
+Keying's pick — each radio's own under SO2R, named for the radio and labelling its output "Send
+audio for Radio B to", and the same device may be picked for both, since the radios take turns on
+the air (§ Radio B, for SO2R).
 
 **A `VoiceKeyer` like the radio's own.** `VoiceKeyerSession` is the radio's memories;
 `ComputerVoiceKeyer` is the other implementation of the same interface, built by
-`CatKeying.voiceKeyerFor` while the computer is Phone Keying's pick, for radio1 when its session is a `PttSession` — the
-only way it can key. Radio1 only: SO2R's Radio B, or a radio this device only offers a peer, plays its own
-memories, since a keyer for it would take its sound device or DAX source and play this desk's
-recordings into it. A radio whose session cannot key plays nothing while the computer is picked: never its
-own memories in their place, and the pane says why. Recording keys nothing, so with no radio1 to key — none
-picked, or one not connected over a session that can — a `ComputerVoiceKeyer` with no `PttSession`
-records the messages (`CatKeying._recorder`), from the system default input until a radio's entry picks
-one, and plays nothing. The radio's own keyer takes over as it connects, ending a recording running
+`CatKeying.voiceKeyerFor` while the computer is that radio's pick, for the keying's own radio — radio1, or
+Radio B for Radio B's keying — when its session is a `PttSession`, the only way it can key. Each keyer
+on its own rig's node: its output device, its input and its delays. A radio this device only offers a
+peer plays its own memories, since a keyer for it would take its sound device or DAX source and play
+this desk's recordings into it. A radio whose session cannot key plays nothing while the computer is
+picked: never its own memories in their place, and the pane says why. Recording keys nothing, so with
+no radio1 to key — none picked, or one not connected over a session that can — a `ComputerVoiceKeyer`
+with no `PttSession` records the messages (`CatKeying._recorder`, radio1's keying alone: the desk has
+one microphone), from the system default input until a radio's entry picks one, and plays nothing. The radio's own keyer takes over as it connects, ending a recording running
 there, which is kept. A keyer dropped mid-message — its radio going — ends a repeat of that message
 rather than starting its wait. While the computer is picked the radio's own list of
 memories (a FlexRadio's DVK names) is not read at all, or a label typed for a recording would rename
@@ -2285,8 +2321,15 @@ the **key-up delay** (250 ms unless changed: a radio, and an amplifier behind it
 transmit before the first syllable can go out), and the radio is unkeyed after the **unkey delay**
 past the end (150 ms: the end is reported when miniaudio has handed the device the last of the
 file, and the device's own buffer is still sounding — which is why the device is never closed at
-the end of a file). Any stop — Escape, another message, a disconnect, picking another set — stops the audio
-and unkeys; a recording keeps to the set it started in. `'` stops it too and then keys for the operator's own voice,
+the end of a file). **A message queued behind it plays under the same key**
+(`ComputerVoiceKeyer.following`): the unkey delay is the space between the two, the next has no
+key-up delay, and the radio unkeys after the last — with PTT dropped between them, the other SO2R
+radio could take the air in the gap. A queued message the keyer cannot play, or that throws as it
+starts, unkeys at once, and one still being made holds the key no longer than
+`computerVoicePlayMargin`, then keys again for itself, with its lead, once made — its refusal, if
+it is refused, still shown; each is its own play to
+the bar (`VoiceActivity.take`), the same memory twice included. Any stop — Escape, a disconnect,
+picking another set — stops the audio and unkeys; a recording keeps to the set it started in. `'` stops it too and then keys for the operator's own voice,
 as it does over a radio's memory (§ PTT): the radio drops and comes back in one press. A radio that said
 it was transmitting and then says it is not has dropped the key itself (its time-out timer) and the
 message stops with it, the rule `CatPtt` follows (§ PTT). A play whose end never comes is stopped at
@@ -2384,7 +2427,8 @@ private `words` experiment, `EXP WORDS`, on top of `keyer`). It is how a phone m
 other station's call and the report — what no recording made in advance can hold. A message's
 template is kept in its set beside its label (`VoiceMessageSet.templates`), and a message with one
 is said from it; empty, the message is its recording, as before. Only the computer's voice keyer
-says one: a radio's memories, Radio B's and a peer's radio play what they hold.
+says one — on either radio, from the one word set, Radio B's keying saying it through radio1's
+maker: a radio's own memories and a peer's radio play what they hold.
 
 **Each word is three takes.** The operator reads it three times run together, the way it is said in
 a call ("Kilo kilo kilo"), and the recording is kept as an opening, a middle and a closing take
@@ -2458,6 +2502,16 @@ nothing must not look like one that worked. A stop, or another message, while on
 it when it is ready. The made files take turns among four names, so the one being written is never
 one a stopping play still holds open on Windows. The message editor shows what a template says for
 the draft as it is, and which of its words are not recorded yet.
+
+**Shown as it is said.** The plan records where each piece is written in the rendered text
+(`VoicedPlan.spans`), and the join where each starts in the audio. The made message carries both as a
+`VoiceScript`, and its activity carries the script and the message's length from the key, the lead
+included: nothing measured either before the play. A network output's `heardAfter` — how long after a
+packet goes the operator hears it in the monitor, 200 ms for a Flex's DAX, by ear — moves both later,
+so the words and the bar keep pace with what is heard rather than with what is sent. The keyer line shows the words in place of the
+label, the ones said set apart as a CW message's sent characters are, through the letter or phrase
+being said, and paces its bar by that length. A message with no label is labelled by its template
+everywhere a label shows, the label editor excepted. A peer gets the length, not the words.
 
 ## PTT
 

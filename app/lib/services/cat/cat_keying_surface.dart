@@ -19,6 +19,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   bool stopNodeTunes();
   String get operatorRadio;
   void setRunning(String radio, bool running);
+  bool get _disposed;
 
   /// Each radio's keying (cat_keying.dart) — which session keys, what it is
   /// keying, the speed, the memories, its repeat chain (keyer_repeat.dart).
@@ -30,12 +31,13 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       settings: _settings,
       chain: KeyerRepeat(vfo: () => _radio?.vfoA),
       peer: _peerKeying,
-    )..ownsVoiceSource = true,
+    ),
     'B': CatKeying(
       station: _RadioBKeyingStation(this as CatService),
       settings: _settings,
       chain: KeyerRepeat(vfo: () => _radio?.vfo('vfoB')),
       peer: PeerKeying(),
+      radio: 'B',
     ),
   };
 
@@ -48,6 +50,35 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   /// The keyer whose radio is [uuid]: Radio B's for Radio B, radio1's for
   /// any other.
   CatKeying _keyerForNode(String? uuid) => _keyerOf(uuid != null && uuid == radio2 ? 'B' : 'A');
+
+  /// The computer's voice keyer, where this device can run one
+  /// (docs/design/cat.md § The computer's voice keyer): each radio's keying
+  /// plays the sets through its own rig's sound device, under its own pick.
+  /// Radio1's keeps the desk's recorder and the word sets, and Radio B's says
+  /// a templated message through the same maker.
+  void _wireComputerVoice(VoiceAudio voiceAudio, Future<String> Function() voiceMessagesDirectory) {
+    for (final keyer in _keyers.values) {
+      keyer
+        ..voiceAudio = voiceAudio
+        ..voiceMessagesDirectory = voiceMessagesDirectory
+        ..onComputerVoiceChanged = () {
+          if (!_disposed) notifyListeners();
+        };
+      // Every change that makes or unmakes one — a session opened, the
+      // directory found, a set picked — is one this service announces.
+      addListener(keyer.syncComputerKeyers);
+    }
+    // Made now rather than when first asked for: it is what makes a
+    // templated message, and a key can ask for one before any surface has.
+    final words = _keying.voicedWords;
+    if (words != null) _keyerOf('B').voiceMaker = words.voice;
+  }
+
+  void _disposeComputerKeyers() {
+    for (final keyer in _keyers.values) {
+      keyer.disposeComputerKeyers();
+    }
+  }
 
   late final _radioKeyers = {
     for (final radio in ['A', 'B']) radio: RadioKeyer._(this as CatService, radio),
@@ -117,14 +148,13 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   Future<void> setVoiceMessageLabel(int n, String label) => operatorKeyer.setVoiceMessageLabel(n, label);
   ({String model, String text})? get voiceRecordingHelp => operatorKeyer.voiceRecordingHelp;
 
-  // The computer's voice keyer is radio1's keyer's (docs/design/cat.md § The
-  // computer's voice keyer): its sound devices are on this desk, and Radio B
-  // keeps to its own memories.
+  // The computer's voice keyer as radio1's keying has it (docs/design/cat.md
+  // § The computer's voice keyer); Radio B's is reached through its
+  // [RadioKeyer].
   bool get voiceMessagesFromComputer => _keying.voiceMessagesFromComputer;
   AudioPlayback? listenToVoiceMessage(int n) => _keying.listenToVoiceMessage(n);
   void revealVoiceMessage(int n) => _keying.revealVoiceMessage(n);
   bool get computerVoiceSwitchesAudio => _keying.computerVoiceSwitchesAudio;
-  bool get voiceKeyingRadioTakesAudio => _keying.voiceKeyingRadioTakesAudio;
   bool get computerVoicePlaysToRadio => _keying.computerVoicePlaysToRadio;
   ComputerVoiceProblem? get computerVoiceProblem => _keying.computerVoiceProblem;
 
@@ -132,14 +162,8 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   /// this device cannot run one.
   VoiceAudio? get computerVoiceAudio => _keying.computerVoiceAudio;
 
-  /// The node the voice messages play on — the local keying radio — whose
-  /// config holds the computer's voice keyer settings.
-  EquipmentNode? get voiceKeyingNode => switch (localKeyingRadio) {
-    final String uuid => nodeFor(uuid),
-    null => null,
-  };
-
-  /// Where phone messages come from (CatKeying.selectVoiceKeyingSource).
+  /// Where radio1's phone messages come from (CatKeying.selectVoiceKeyingSource);
+  /// Radio B's pick is its [RadioKeyer]'s.
   Future<void> selectVoiceKeyingSource(VoiceKeyingSource source) => _keying.selectVoiceKeyingSource(source);
 
   /// The sets of recorded voice messages, and the one in use.
@@ -147,16 +171,6 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   Future<VoiceMessageSet?> addVoiceMessageSet(String name) => _keying.addVoiceMessageSet(name);
   Future<void> renameVoiceMessageSet(String id, String name) => _keying.renameVoiceMessageSet(id, name);
   Future<void> deleteVoiceMessageSet(String id) => _keying.deleteVoiceMessageSet(id);
-
-  /// Merges [changes] into [voiceKeyingNode]'s config; a null value removes
-  /// its key.
-  Future<void> updateVoiceKeyingConfig(Map<String, dynamic> changes) async {
-    final node = voiceKeyingNode;
-    if (node == null) return;
-    final config = {...node.config};
-    changes.forEach((key, value) => value == null ? config.remove(key) : config[key] = value);
-    await updateNode(node.copyWith(config: config));
-  }
 
   ValueNotifier<VoiceActivity?> get voiceActivity => operatorKeyer.voiceActivity;
   void playVoiceMemory(int n, {bool repeat = true}) => operatorKeyer.playVoiceMemory(n, repeat: repeat);
@@ -179,11 +193,22 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   late final _ptt = CatPtt()..held.addListener(notifyListeners);
   late final pttKeys = PttKeyboard(
     held: _ptt.held,
-    release: () => _ptt.owner == null && _ptt.release(),
+    release: () => _cancelPttWait() | (_ptt.owner == null && _ptt.release()),
     escape: stopKeying,
     toggle: togglePtt,
     hold: () => _settings.pttKeyMode == PttKeyMode.hold,
+    waiting: () => pttWaiting,
   );
+
+  /// Whether a PTT press waits to key until the other radio is off the air
+  /// (SO2R's turns, cat_so2r.dart).
+  bool get pttWaiting => false;
+
+  /// Whether that press waits to key [uuid].
+  bool pttWaitingOn(String? uuid) => false;
+
+  /// Takes back a PTT press still waiting; false when none was.
+  bool _cancelPttWait() => false;
   PttSession? _pttSession(String? uuid) => switch (uuid == null ? null : connectedSession(uuid)) {
     final PttSession session => session,
     _ => null,
@@ -345,25 +370,57 @@ class RadioKeyer {
 
   bool get canPlayVoice => _k.canPlayVoice;
   bool get radio1HasVoiceMemories => _k.radio1HasVoiceMemories;
+
+  /// Whether this radio's entry holds voice memories of its own, whichever
+  /// source is picked — what decides whether it is offered as one.
+  bool get offersVoiceMemories => _k.radio1OffersVoiceMemories;
+
+  /// Where this radio's phone messages come from — its own pick, which its
+  /// Phone Keying line sets.
+  VoiceKeyingSource get voiceKeyingSource => _k.voiceSource;
+  Future<void> selectVoiceKeyingSource(VoiceKeyingSource source) => _k.selectVoiceKeyingSource(source);
+
+  /// The node this radio's voice messages play on — its rig — whose config
+  /// holds the computer's voice keyer settings: its sound devices and the
+  /// delays around a message. Null with no rig in the role.
+  EquipmentNode? get voiceKeyingNode => switch (_uuid) {
+    final String uuid => _cat.nodeFor(uuid),
+    null => null,
+  };
+
+  /// Merges [changes] into [voiceKeyingNode]'s config; a null value removes
+  /// its key.
+  Future<void> updateVoiceKeyingConfig(Map<String, dynamic> changes) async {
+    final node = voiceKeyingNode;
+    if (node == null) return;
+    final config = {...node.config};
+    changes.forEach((key, value) => value == null ? config.remove(key) : config[key] = value);
+    await _cat.updateNode(node.copyWith(config: config));
+  }
+
+  bool get voiceKeyingRadioTakesAudio => _k.voiceKeyingRadioTakesAudio;
   int get voiceMemoryCount => _k.voiceMemoryCount;
   bool get canRecordVoice => _k.canRecordVoice;
   bool get voiceMessagesAreLocal => _k.voiceMessagesAreLocal;
   bool get voiceMessagesNamedOnRadio => _k.voiceMessagesNamedOnRadio;
   String voiceMessageLabel(int n) => _k.voiceMessageLabel(n);
+  String voiceMessageShownLabel(int n) => _k.voiceMessageShownLabel(n);
   int voiceMessageDuration(int n) => _k.voiceMessageDuration(n);
   Future<void> setVoiceMessageLabel(int n, String label) => _k.setVoiceMessageLabel(n, label);
   ({String model, String text})? get voiceRecordingHelp => _k.voiceRecordingHelp;
   ValueNotifier<VoiceActivity?> get voiceActivity => _k.voiceActivity;
 
-  /// The computer's voice keyer, as this radio has it — radio1's alone
-  /// (CatService's computer-voice members).
+  /// The computer's voice keyer, as this radio has it: a keyer of its own on
+  /// its own rig's sound device, playing the one set in use.
   bool get voiceMessagesFromComputer => _k.voiceMessagesFromComputer;
   bool voiceMessageUnplayable(int n) => _k.voiceMessageUnplayable(n);
   ComputerVoiceProblem? get computerVoiceProblem => _k.computerVoiceProblem;
   String? get computerVoiceProblemDetail => _k.computerVoiceProblemDetail;
   bool get phoneKeyingOff => _k.phoneKeyingOff;
 
-  /// Voiced words (voiced_words.dart) — radio1's alone.
+  /// Voiced words (voiced_words.dart). The word sets are the desk's, kept on
+  /// radio A's keying — [voicedWords] is null on B's — and a message said
+  /// from them plays on either radio.
   bool voiceMessageVoiced(int n) => _k.voiceMessageVoiced(n);
   VoicedWords? get voicedWords => _k.voicedWords;
   String voiceMessageTemplate(int n) => _k.settings.activeVoiceMessageSet.template(n);
@@ -374,6 +431,11 @@ class RadioKeyer {
   /// A memory asked for and not yet heard starting — on the air for the app.
   ValueListenable<bool> get voiceStarting => _k.voiceStarting;
   void playVoiceMemory(int n, {bool repeat = true}) => _k.playVoiceMemory(n, repeat: repeat);
+  void queueVoiceMemory(int n) => _k.queueVoiceMemory(n);
+
+  /// What waits behind the memory playing, in order.
+  ValueListenable<List<int>> get voiceQueue => _k.voiceQueue;
+  void dropQueuedVoice(int index) => _k.dropQueuedVoice(index);
   void recordVoiceMemory(int n) => _k.recordVoiceMemory(n);
   void stopVoice() => _k.stopVoice();
   void playVoiceSequence(List<int> memories) => _k.playVoiceSequence(memories);

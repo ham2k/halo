@@ -1712,7 +1712,6 @@
         "stopRecording": "停止录制",
         "playing": "播放中…",
         "recording": "录制中…",
-        "playingMemory": "正在播放 $label",
         "recordingMemory": "正在录制 $label",
         "doubtful": "电台播放了吗？它立刻就报告为空闲。",
         "recordOnRadio": "存储必须在电台本身上录制。",

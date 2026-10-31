@@ -66,30 +66,33 @@ Widget cwKeyPicker(BuildContext context, HaLoServices services, {required List<E
 Widget cwKeyingOptionsButton(BuildContext context) =>
     IconButton(icon: Icon(MdiIcons.tune, semanticLabel: context.t.settings.station.cwKeyingOptions), onPressed: null);
 
-/// Where radio1's phone messages come from — none, its own memories where
-/// it has some, or recordings on this computer where this device can play
-/// them — and, beside it while the computer plays them, the button to its
-/// sound devices and delays. A source that is not on offer here reads as
-/// None, not as a choice the menu cannot show. A peer's radio plays what its
-/// own station picked, so the pick is shown and not offered.
-({Widget picker, List<Widget> controls}) phoneKeyingParts(BuildContext context, HaLoServices services, {bool filled = false}) {
+/// Where [radio]'s (`A` or `B`) phone messages come from — none, its own
+/// memories where it has some, or recordings on this computer where this
+/// device can play them — and, beside it while the computer plays them, the
+/// button to its sound devices and delays. A source that is not on offer
+/// here reads as None, not as a choice the menu cannot show. A peer's radio
+/// plays what its own station picked, so the pick is shown and not offered.
+/// Under SO2R each radio's pick is its own, and the label says whose.
+({Widget picker, List<Widget> controls}) phoneKeyingParts(BuildContext context, HaLoServices services, {String radio = 'A', bool filled = false}) {
   final st = context.t.settings.station;
   final cat = services.cat;
-  final radio = cat.voiceKeyingNode;
-  final local = cat.voiceMessagesAreLocal;
-  final offersRadio = local && cat.radio1OffersVoiceMemories;
+  final keyer = cat.keyer(radio);
+  final node = keyer.voiceKeyingNode;
+  final local = keyer.voiceMessagesAreLocal;
+  final offersRadio = local && keyer.offersVoiceMemories;
   final offersComputer = local && cat.computerVoiceAudio != null;
-  final shown = switch (services.settings.voiceKeyingSource) {
+  final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
+  final shown = switch (keyer.voiceKeyingSource) {
     _ when !local => VoiceKeyingSource.radio,
     VoiceKeyingSource.radio when offersRadio => VoiceKeyingSource.radio,
     VoiceKeyingSource.computer when offersComputer => VoiceKeyingSource.computer,
     _ => VoiceKeyingSource.none,
   };
-  final radioName = !local ? peerDeviceLabel(cat.followedPeerRadio) : (radio == null ? null : cat.displayNameFor(radio));
-  final decoration = poloFieldDecoration(context, st.phoneKeying);
+  final radioName = !local ? peerDeviceLabel(cat.followedPeerRadio) : (node == null ? null : cat.displayNameFor(node));
+  final decoration = poloFieldDecoration(context, so2r ? st.so2rRadioName(radio: radio, name: st.phoneKeying) : st.phoneKeying);
   return (
     picker: DropdownButtonFormField<VoiceKeyingSource>(
-      key: ValueKey('phoneKeying:$shown:$local'),
+      key: ValueKey('phoneKeying:$radio:$shown:$local'),
       isExpanded: true,
       initialValue: shown,
       icon: dropdownTrailingIcon,
@@ -104,13 +107,13 @@ Widget cwKeyingOptionsButton(BuildContext context) =>
           ),
         if (offersComputer) DropdownMenuItem(value: VoiceKeyingSource.computer, child: Text(st.phoneKeyingComputer)),
       ],
-      onChanged: !local ? null : (source) => source == null ? null : unawaited(cat.selectVoiceKeyingSource(source)),
+      onChanged: !local ? null : (source) => source == null ? null : unawaited(keyer.selectVoiceKeyingSource(source)),
     ),
     controls: [
       if (shown == VoiceKeyingSource.computer)
         IconButton(
           icon: Icon(MdiIcons.tune, semanticLabel: st.computerVoiceSettings),
-          onPressed: radio == null ? null : () => showComputerVoiceSettingsDialog(context, services),
+          onPressed: node == null ? null : () => showComputerVoiceSettingsDialog(context, services, radio: radio),
         ),
     ],
   );

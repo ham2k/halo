@@ -199,6 +199,37 @@ void main() {
     await tester.pump(const Duration(seconds: 31));
   });
 
+  // The trap: the pick atop set B's pane being radio1's — or no pick at all,
+  // leaving Radio B on its own memories whatever the operator wants of it.
+  testWidgets("set B's pane carries Radio B's own Phone Keying pick", (tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    Future<String> rig(String name) async {
+      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+      await tester.runAsync(() => cat.connect(node.uuid));
+      addTearDown(() => cat.disconnect(node.uuid));
+      return node.uuid;
+    }
+
+    final left = await rig('Left Rig'), right = await rig('Right Rig');
+    await cat.setRadio1(LocalRadio(left));
+    await cat.setRadio2(right);
+    cat.noteOperatorRadio('B');
+
+    await open(tester);
+    expect(find.text('B: Phone Keying'), findsOneWidget);
+    expect(find.text('Memories in Right Rig'), findsOneWidget);
+
+    await tester.tap(find.text('Memories in Right Rig'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('None').last);
+    await tester.pumpAndSettle();
+    expect(cat.keyer('B').voiceKeyingSource, VoiceKeyingSource.none);
+    expect(cat.keyer('A').voiceKeyingSource, VoiceKeyingSource.radio, reason: "radio1's pick is untouched");
+    expect(find.text('Phone keying is off'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 31));
+  });
+
   testWidgets('a play the operator stops is not a measurement', (tester) async {
     await connectPlaceholder(tester);
     await open(tester);

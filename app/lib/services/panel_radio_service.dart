@@ -139,7 +139,7 @@ class PanelRadioService {
       'ptt': cat.pttHeldOn(uuid),
       'voiceMemories': [
         if (keyer.canPlayVoice)
-          for (var n = 1; n <= keyer.voiceMemoryCount; n++) {'number': n, 'label': keyer.voiceMessageLabel(n)},
+          for (var n = 1; n <= keyer.voiceMemoryCount; n++) {'number': n, 'label': keyer.voiceMessageShownLabel(n)},
       ],
     };
   }
@@ -511,10 +511,12 @@ class PanelRadioService {
     if (args['on'] != true) return _refused((state: target.state, reason: 'invalid'));
     final id = target.state['id'] as String;
     if (!pttEnabled() || !_keyerOf(target).canPtt) return _refused((state: target.state, reason: 'unsupported'));
-    if (!cat.pttHeldOn(id)) {
+    // A press waiting for SO2R's other radio to come off the air keys once
+    // it has; pressed again, it would be taken back.
+    if (!cat.pttHeldOn(id) && !cat.pttWaitingOn(id)) {
       cat.togglePtt(id);
       // A radio that refused the key leaves nothing held.
-      if (!cat.pttHeldOn(id)) return _refused((state: read(args['selection'] as String?), reason: 'disconnected'));
+      if (!cat.pttHeldOn(id) && !cat.pttWaitingOn(id)) return _refused((state: read(args['selection'] as String?), reason: 'disconnected'));
     }
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }

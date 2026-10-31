@@ -179,6 +179,22 @@ void main() {
     expect(cat.keyer('A').voiceMessageVoiced(1), isTrue);
   });
 
+  // A message said from words with no label of its own is otherwise shown
+  // as its key, "M1", which says nothing about what it says. The trap is
+  // the label editor: reading the template as the stored label would save
+  // it as one, and the label would stop following the template.
+  test('a message said with words and no label is shown by its template', () async {
+    final cat = services.cat;
+    await connectRig();
+    await cat.keyer('A').setVoiceMessageTemplate(1, ' CQ POTA {{ op.call }} ');
+    expect(cat.keyer('A').voiceMessageShownLabel(1), '', reason: 'without voiced words the template says nothing');
+    await services.settings.setExperimentEnabled('words', true);
+    expect(cat.keyer('A').voiceMessageShownLabel(1), 'CQ POTA {{ op.call }}');
+    expect(cat.keyer('A').voiceMessageLabel(1), '', reason: 'the stored label is still none');
+    await cat.setVoiceMessageLabel(1, 'POTA CQ');
+    expect(cat.keyer('A').voiceMessageShownLabel(1), 'POTA CQ', reason: "the operator's label wins");
+  });
+
   test('without the setting, the radio plays its own memories as before', () async {
     final cat = services.cat;
     await connectRig(fromComputer: false);
@@ -341,34 +357,228 @@ void main() {
     expect(cat.radio1OffersVoiceMemories, isTrue, reason: 'the radio is still offered as a source');
   });
 
-  // The pick is about radio1 and this desk's sound devices: Radio B keeps to
-  // its own memories, and "None" for radio1 must not silence it.
-  test("under SO2R, Phone Keying is radio1's: Radio B plays its own memories whatever is picked", () async {
-    await services.settings.setExperimentEnabled('so2r', true);
+  // Played one at a time, F4 pressed over F1 would cut F1 off, or drop the
+  // key between them.
+  test('a message keyed while one plays follows it under the same key', () async {
     final cat = services.cat;
-    Future<String> rig(String name) async {
-      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
-      await cat.connect(node.uuid);
-      addTearDown(() => cat.disconnect(node.uuid));
-      return node.uuid;
+    audio.lengths['/v/s1/4.wav'] = const Duration(seconds: 1);
+    await connectRig();
+    final keyer = cat.keyer('A');
+    final seen = <VoiceActivity?>[];
+    keyer.voiceActivity.addListener(() => seen.add(keyer.voiceActivity.value));
+
+    keyer.queueVoiceMemory(1);
+    await pumpEventQueue();
+    keyer.queueVoiceMemory(4);
+    await pumpEventQueue();
+    expect(audio.plays.single.stopped, isFalse, reason: 'the first plays on');
+
+    audio.plays.last.end();
+    await pumpEventQueue();
+    expect(audio.plays.last.path, '/v/s1/4.wav');
+    audio.plays.last.end();
+    await pumpEventQueue();
+    expect(seen, [const VoiceActivity(memory: 1), const VoiceActivity(memory: 4, take: 1), null], reason: 'never idle between them');
+    expect(cat.radio1IsTransmitting, isFalse);
+  });
+
+  group('under SO2R', () {
+    late String left, right;
+
+    setUp(() async {
+      await services.settings.setExperimentEnabled('so2r', true);
+      final cat = services.cat;
+      Future<String> rig(String name) async {
+        final node = await cat.addNode(
+          typeKey: 'placeholder-radio',
+          name: name,
+          config: {...placeholderRadioModel.variants.single.defaultConfig, voiceLeadConfigKey: 0, voiceTailConfigKey: 0},
+        );
+        await cat.connect(node.uuid);
+        addTearDown(() => cat.disconnect(node.uuid));
+        return node.uuid;
+      }
+
+      left = await rig('Left Rig');
+      right = await rig('Right Rig');
+      await cat.setRadio1(LocalRadio(left));
+      await cat.setRadio2(right);
+      // Radio B wired to a sound card of its own: a computer keyer built for
+      // it opens that device, which is how one shows here.
+      await cat.updateNode(cat.nodeFor(right)!.copyWith(config: {...cat.nodeFor(right)!.config, voiceOutputConfigKey: voiceDeviceToConfig(codec)}));
+      await cat.selectVoiceMessageSet(cq.id);
+    });
+
+    // The trap: one pick for both radios. "None" for radio1 must not silence
+    // Radio B, and the computer picked for radio1 must not take Radio B's
+    // own memories away — nor claim its sound device.
+    test("each radio's Phone Keying pick is its own", () async {
+      final cat = services.cat;
+      await cat.selectVoiceKeyingSource(VoiceKeyingSource.none);
+      expect(cat.keyer('A').canPlayVoice, isFalse);
+      expect(cat.keyer('B').canPlayVoice, isTrue);
+      expect(cat.keyer('B').phoneKeyingOff, isFalse);
+
+      await cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await pumpEventQueue();
+      expect(cat.keyer('B').voiceMessagesFromComputer, isFalse, reason: "radio1's pick is radio1's");
+      expect(cat.keyer('B').canPlayVoice, isTrue);
+      expect(audio.opened, isEmpty, reason: "no computer keyer for Radio B, holding its sound device");
+    });
+
+    // Radio B picked the computer: a keyer of its own plays the set in use
+    // through ITS rig's device and keys ITS rig, while radio1 goes on with
+    // its own memories.
+    test("Radio B plays the recordings through its own rig's sound device, keyed over its own CAT", () async {
+      final cat = services.cat;
+      await cat.keyer('B').selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await pumpEventQueue();
+      expect(cat.keyer('B').voiceMessagesFromComputer, isTrue);
+      expect(cat.keyer('A').voiceMessagesFromComputer, isFalse, reason: "Radio B's pick is Radio B's");
+      expect(audio.opened.single.deviceId, codec.id, reason: "Radio B's own output, from its node");
+
+      cat.keyer('B').playVoiceMemory(1, repeat: false);
+      await pumpEventQueue();
+      expect(audio.plays.single.path, '/v/s1/1.wav');
+      expect(cat.keyer('B').voiceActivity.value, const VoiceActivity(memory: 1));
+      expect(cat.isTransmitting('B'), isTrue);
+      expect(cat.isTransmitting('A'), isFalse);
+
+      audio.plays.single.end();
+      await pumpEventQueue();
+      expect(cat.keyer('B').voiceActivity.value, isNull);
+      expect(cat.isTransmitting('B'), isFalse, reason: 'unkeyed once the message ends');
+    });
+
+    // Both radios on the one sound card: nothing more is needed, since the
+    // radios already take turns on the air — a message on one stops the
+    // other's.
+    test('both radios may play through one device, taking turns on the air', () async {
+      final cat = services.cat;
+      await cat.updateNode(cat.nodeFor(left)!.copyWith(config: {...cat.nodeFor(left)!.config, voiceOutputConfigKey: voiceDeviceToConfig(codec)}));
+      await cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await cat.keyer('B').selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await pumpEventQueue();
+      expect(audio.opened.map((output) => output.deviceId), [codec.id, codec.id], reason: 'a keyer per radio, each on the one device');
+
+      cat.keyer('A').playVoiceMemory(1, repeat: false);
+      await pumpEventQueue();
+      cat.keyer('B').playVoiceMemory(1, repeat: false);
+      await pumpEventQueue();
+      expect(audio.plays, hasLength(2));
+      expect(audio.plays.first.stopped, isTrue, reason: "radio A's message stops for Radio B's");
+      expect(cat.keyer('A').voiceActivity.value, isNull);
+      expect(cat.keyer('B').voiceActivity.value, const VoiceActivity(memory: 1));
+      cat.keyer('B').stopVoice();
+    });
+
+    Future<void> bothOnTheComputer() async {
+      final cat = services.cat;
+      audio.lengths['/v/s1/2.wav'] = const Duration(seconds: 1);
+      audio.lengths['/v/s1/4.wav'] = const Duration(seconds: 1);
+      await cat.updateNode(cat.nodeFor(left)!.copyWith(config: {...cat.nodeFor(left)!.config, voiceOutputConfigKey: voiceDeviceToConfig(codec)}));
+      await cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await cat.keyer('B').selectVoiceKeyingSource(VoiceKeyingSource.computer);
+      await pumpEventQueue();
     }
 
-    final left = await rig('Left Rig'), right = await rig('Right Rig');
-    await cat.setRadio1(LocalRadio(left));
-    await cat.setRadio2(right);
-    // Radio B wired to a sound card of its own: a computer keyer built for
-    // it opens that device, which is how one would show here.
-    await cat.updateNode(cat.nodeFor(right)!.copyWith(config: {...cat.nodeFor(right)!.config, voiceOutputConfigKey: voiceDeviceToConfig(codec)}));
-    await cat.selectVoiceKeyingSource(VoiceKeyingSource.none);
-    expect(cat.keyer('A').canPlayVoice, isFalse);
-    expect(cat.keyer('B').canPlayVoice, isTrue);
-    expect(cat.keyer('B').phoneKeyingOff, isFalse);
+    // The trap: B's message, waiting since before F2 was pressed, takes the
+    // air in the gap between A's two — or the older hold goes first.
+    test('with messages queued, a radio plays out its own queue before the other radio\'s turn', () async {
+      final cat = services.cat;
+      await bothOnTheComputer();
+      await services.settings.setSo2rQueueMessages(true);
+      final (a, b) = (cat.keyer('A'), cat.keyer('B'));
 
-    await cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
-    await pumpEventQueue();
-    expect(cat.keyer('B').voiceMessagesFromComputer, isFalse, reason: "the computer's recordings play on radio1");
-    expect(cat.keyer('B').canPlayVoice, isTrue);
-    expect(audio.opened, isEmpty, reason: "no computer keyer for Radio B, holding its sound device");
+      a.queueVoiceMemory(1);
+      await pumpEventQueue();
+      b.queueVoiceMemory(4);
+      await pumpEventQueue();
+      expect(b.waiting.value, hasLength(1));
+      a.queueVoiceMemory(2);
+      await pumpEventQueue();
+
+      audio.plays.last.end();
+      await pumpEventQueue();
+      expect(audio.plays.map((p) => p.path), ['/v/s1/1.wav', '/v/s1/2.wav']);
+      expect(cat.isTransmitting('A'), isTrue);
+      expect(cat.isTransmitting('B'), isFalse);
+
+      audio.plays.last.end();
+      await pumpEventQueue();
+      expect(audio.plays.map((p) => p.path), ['/v/s1/1.wav', '/v/s1/2.wav', '/v/s1/4.wav']);
+      expect(cat.isTransmitting('A'), isFalse);
+      expect(b.voiceActivity.value, const VoiceActivity(memory: 4));
+      b.stopVoice();
+    });
+
+    // The trap: held one by one, the second goes out as a message of its
+    // own — PTT dropped between them, and the other radio's turn able to
+    // come in the gap.
+    test('with messages queued, memories held for the other radio wait and play as one turn', () async {
+      final cat = services.cat;
+      await bothOnTheComputer();
+      await services.settings.setSo2rQueueMessages(true);
+      final (a, b) = (cat.keyer('A'), cat.keyer('B'));
+
+      a.queueVoiceMemory(1);
+      await pumpEventQueue();
+      b.queueVoiceMemory(4);
+      b.queueVoiceMemory(2);
+      await pumpEventQueue();
+      expect(b.waiting.value.single.memory, 4);
+      expect(b.waiting.value.single.then, [2]);
+
+      audio.plays.last.end();
+      await pumpEventQueue();
+      expect(audio.plays.map((p) => p.path), ['/v/s1/1.wav', '/v/s1/4.wav']);
+      expect(b.voiceQueue.value, [2]);
+      audio.plays.last.end();
+      await pumpEventQueue();
+      expect(audio.plays.last.path, '/v/s1/2.wav');
+      expect(b.voiceActivity.value, const VoiceActivity(memory: 2, take: 1), reason: 'under the key the first one keyed');
+      b.stopVoice();
+    });
+
+    test('with messages queued, Escape keeps a queued memory 1 waiting, and it does not repeat', () async {
+      // Re-held as a sequence of one, the queued CQ comes back as a
+      // repeating one — which a queued memory never is.
+      final cat = services.cat;
+      await bothOnTheComputer();
+      await services.settings.setSo2rQueueMessages(true);
+      await services.settings.setVoiceRepeat(true);
+      await services.settings.setVoiceRepeatCooldown(3);
+      final a = cat.keyer('A');
+
+      a.queueVoiceMemory(2);
+      await pumpEventQueue();
+      a.queueVoiceMemory(1);
+      await pumpEventQueue();
+      expect(cat.stopKeying(), isTrue);
+      await pumpEventQueue();
+      expect(audio.plays.map((p) => p.path), ['/v/s1/2.wav', '/v/s1/1.wav']);
+      expect(a.keyerRepeating, isFalse);
+      a.stopVoice();
+    });
+
+    test('with messages not queued, the other radio stops a radio and its queue with it', () async {
+      final cat = services.cat;
+      await bothOnTheComputer();
+      final (a, b) = (cat.keyer('A'), cat.keyer('B'));
+
+      a.queueVoiceMemory(1);
+      await pumpEventQueue();
+      a.queueVoiceMemory(2);
+      b.queueVoiceMemory(4);
+      await pumpEventQueue();
+      expect(audio.plays.first.stopped, isTrue);
+      expect(audio.plays.last.path, '/v/s1/4.wav');
+
+      audio.plays.last.end();
+      await pumpEventQueue();
+      expect(audio.plays.map((p) => p.path), ['/v/s1/1.wav', '/v/s1/4.wav'], reason: "A's queued message went with the one B stopped");
+      expect(a.voiceActivity.value, isNull);
+    });
   });
 
   // The recordings are this operator's, for the radio they key: a keyer for

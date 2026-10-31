@@ -7,6 +7,11 @@
 
 part of 'cat_service.dart';
 
+/// How long a PTT press waits for the other radio to come off the air before
+/// it is given up. Nothing shows the wait, and a key that went down long
+/// after the press would put an open mic on the air with nobody at it.
+const so2rPttWait = Duration(seconds: 2);
+
 mixin _So2r on _KeyingSurface {
   Map<String, _NodeRuntime> get _runtimes;
   Future<void> _save();
@@ -14,7 +19,6 @@ mixin _So2r on _KeyingSurface {
   void _retune(String uuid, String vfoKey);
   void _setEnterSendsOf(bool running);
   bool _nodeTransmitting(String? uuid);
-  bool get _disposed;
 
   /// Brings Radio B up the way a reconnect brings up radio1.
   Future<void> _connectRadio2();
@@ -35,11 +39,18 @@ mixin _So2r on _KeyingSurface {
       for (final radio in ['A', 'B']) ...[_keyerOf(radio).cwProgress, _keyerOf(radio).voiceActivity, _keyerOf(radio).voiceStarting],
       _ptt.held,
     ])..addListener(_pump);
+    // A rig's own TX report changes with the service's state. Pumped after
+    // the report is taken in, not inside the notify that carries it: the
+    // rest of the report — the PTT key's and the keyers' — is still on its
+    // way.
+    addListener(_pumpSoon);
   }
 
   void _stopSo2r() {
     _settings.removeListener(_onSo2rSetting);
     _onAirChanges.removeListener(_pump);
+    removeListener(_pumpSoon);
+    _setPttWaiting(null);
     runningB.dispose();
   }
 
@@ -163,10 +174,14 @@ mixin _So2r on _KeyingSurface {
 
   static String _otherRadio(String radio) => radio == 'A' ? 'B' : 'A';
 
-  /// Whether the app has [radio] on the air: its keyer keying, or the app's
-  /// PTT key held on it. What a turn waits on — the things the app hears
-  /// end.
-  bool _keyedOnAir(String radio) => _keyerOf(radio).onAir || pttHeldOn(_radioUuid(radio));
+  /// Whether [radio] is on the air: its keyer keying, the app's PTT key held
+  /// on it, or its rig saying it transmits — a mic, a footswitch, an
+  /// external keyer, or a message the app has stopped and the rig has not
+  /// yet unkeyed from. What a turn waits on: one radio on the air at a time
+  /// is the rig's word, not the app's, and keyed while the other rig still
+  /// transmits, the two overlap — on two slices of one Flex, the stopped
+  /// slice's unkey lands after the new key and drops it.
+  bool _keyedOnAir(String radio) => _keyerOf(radio).onAir || pttHeldOn(_radioUuid(radio)) || _nodeTransmitting(_radioUuid(radio));
 
   /// The radios whose repeat sends message 1 again the moment the other
   /// radio is quiet, rather than at the end of its wait: the operator keyed
@@ -198,18 +213,27 @@ mixin _So2r on _KeyingSurface {
   /// at a time: a repeat's send waits for the other radio to be quiet,
   /// whatever its delay, and so does an operator's while
   /// [SettingsService.so2rQueueMessages] is on — otherwise it stops what the
-  /// other radio is sending. Either way an operator's message on one radio
-  /// sends the other's repeating CQ again as soon as it is done.
+  /// app is sending on the other radio, and goes once that rig says it is
+  /// receiving. What the app did not key there is waited for, never cut
+  /// off. Either way an operator's message on one radio sends the other's
+  /// repeating CQ again as soon as it is done.
   bool _clearToSend(String radio, {required bool repeat, bool queuedCw = false}) {
     if (!_twoKeyers) return true;
     if (queuedCw && !repeat && _canAppendSharedCw(radio)) return true;
     final other = _otherRadio(radio);
-    if (!repeat) {
+    // A send flushed from [waiting] ([_pump]) was counted at its keypress:
+    // counted again, it reads as keyed after a later message on the other
+    // radio, which [keyedOverSince] then drops.
+    if (!repeat && !_pumping) {
       _keyedAt[radio] = ++_keySequence;
       // The operator keying this radio is a new start for it: a resume
       // still pending here belonged to a chain that message replaces.
       _resume.remove(radio);
       if (_keyerOf(other).chain.running) _resume.add(other);
+      // The operator moved on from the PTT key they pressed, and from what
+      // they keyed on the other radio that is still waiting for its turn.
+      _setPttWaiting(null);
+      if (!_settings.so2rQueueMessages) _keyerOf(other).dropWaitingMessages();
     }
     if (!_keyedOnAir(other)) return true;
     if (repeat || _settings.so2rQueueMessages) return false;
@@ -219,6 +243,43 @@ mixin _So2r on _KeyingSurface {
       _keyerOf(other).interrupt();
       if (pttHeldOn(_radioUuid(other))) _ptt.release();
     });
+    return !_keyedOnAir(other);
+  }
+
+  /// [_pump], once the change that called for it has been taken in whole.
+  void _pumpSoon() {
+    if (_pumpScheduled) return;
+    _pumpScheduled = true;
+    scheduleMicrotask(() {
+      _pumpScheduled = false;
+      _pump();
+    });
+  }
+
+  bool _pumpScheduled = false;
+
+  /// The radio whose PTT key the operator pressed while the other radio was
+  /// still on the air, keyed once it is not — unless the operator keys
+  /// anything else, lets go of a Hold key, or [so2rPttWait] runs out first.
+  String? _pttWaiting;
+  Timer? _pttWaitLimit;
+
+  void _setPttWaiting(String? radio) {
+    _pttWaitLimit?.cancel();
+    _pttWaitLimit = radio == null ? null : Timer(so2rPttWait, () => _pttWaiting = null);
+    _pttWaiting = radio;
+  }
+
+  @override
+  bool get pttWaiting => _pttWaiting != null;
+
+  @override
+  bool pttWaitingOn(String? uuid) => _pttWaiting != null && uuid != null && _radioUuid(_pttWaiting!) == uuid;
+
+  @override
+  bool _cancelPttWait() {
+    if (_pttWaiting == null) return false;
+    _setPttWaiting(null);
     return true;
   }
 
@@ -239,14 +300,24 @@ mixin _So2r on _KeyingSurface {
   /// sequence it is playing ends there rather than going on to its next
   /// memory over the operator — and which the other radio's repeat resumes
   /// after, as for a message.
+  /// A press while the key still waits takes it back.
   @override
   void togglePtt(String radio) {
     if (!_twoKeyers || pttHeldOn(radio)) return super.togglePtt(radio);
-    final other = _otherRadio(radio == radio2 ? 'B' : 'A');
+    final mine = radio == radio2 ? 'B' : 'A', other = _otherRadio(mine);
+    final waited = _pttWaiting;
+    _setPttWaiting(null);
+    if (waited == mine) return;
     if (_keyerOf(other).chain.running) _resume.add(other);
     _holdingTurns(() {
       _keyerOf(other).interrupt();
-      super.togglePtt(radio);
+      if (pttHeldOn(_radioUuid(other))) _ptt.release();
+      if (!_settings.so2rQueueMessages) _keyerOf(other).dropWaitingMessages();
+      if (_keyedOnAir(other)) {
+        _setPttWaiting(mine);
+      } else {
+        super.togglePtt(radio);
+      }
     });
   }
 
@@ -262,6 +333,12 @@ mixin _So2r on _KeyingSurface {
     if (radios.any(_keyedOnAir)) return;
     _pumping = true;
     try {
+      // The operator's own key, the latest thing they asked for.
+      if (_pttWaiting case final radio?) {
+        _setPttWaiting(null);
+        if (_radioUuid(radio) case final uuid?) super.togglePtt(uuid);
+        return;
+      }
       final held = [
         for (final radio in radios)
           if (_keyerOf(radio).waiting.value.isNotEmpty) radio,
@@ -301,8 +378,8 @@ mixin _So2r on _KeyingSurface {
     if (!_twoKeyers) return super.stopKeying();
     // Held: the PTT key coming up is a radio falling quiet, and what waits
     // would take the air before the stop below reaches it.
-    var alsoStopped = false;
-    _holdingTurns(() => alsoStopped = _ptt.release() | stopNodeTunes());
+    var alsoStopped = _cancelPttWait();
+    _holdingTurns(() => alsoStopped = _ptt.release() | stopNodeTunes() | alsoStopped);
     final (a, b) = (_keyerOf('A'), _keyerOf('B'));
     if (!a.busy && !b.busy && !alsoStopped) return false;
     _so2rEscapeStopped = true;

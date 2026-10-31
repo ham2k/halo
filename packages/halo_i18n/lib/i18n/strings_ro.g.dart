@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$ro extends Translations$setting
 	@override String get stopRecording => 'Oprește înregistrarea';
 	@override String get playing => 'Se redă…';
 	@override String get recording => 'Se înregistrează…';
-	@override String playingMemory({required Object label}) => 'Se redă ${label}';
 	@override String recordingMemory({required Object label}) => 'Se înregistrează ${label}';
 	@override String get doubtful => 'A redat-o stația radio? A raportat imediat că este inactivă.';
 	@override String get recordOnRadio => 'Memoriile trebuie înregistrate direct pe stația radio.';
@@ -5942,7 +5941,6 @@ extension on TranslationsRo {
 			'settings.radio.voiceMessages.stopRecording' => 'Oprește înregistrarea',
 			'settings.radio.voiceMessages.playing' => 'Se redă…',
 			'settings.radio.voiceMessages.recording' => 'Se înregistrează…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Se redă ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Se înregistrează ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'A redat-o stația radio? A raportat imediat că este inactivă.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Memoriile trebuie înregistrate direct pe stația radio.',
@@ -6055,9 +6053,9 @@ extension on TranslationsRo {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Confidențialitate',
 			'settings.privacy.shareAppData.title' => 'Partajează datele de utilizare a aplicației',
@@ -6569,9 +6567,9 @@ extension on TranslationsRo {
 			'settings.station.newAntenna' => 'Antenă nouă',
 			'settings.station.newKey' => 'Manipulator nou',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL sau compatibil)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT în ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT în ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulator pe ${device}',
 			'settings.station.trackStationInfo' => 'Înregistrează informațiile stației la fiecare QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include în exporturile ADIF',
@@ -7083,9 +7081,9 @@ extension on TranslationsRo {
 			'switchAccounts.linkWithSiblingDescription' => 'Aveți instalată o altă aplicație Ham2K. Conectați-vă cu contul folosit acolo.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprobați cererea în ${app}, apoi reveniți aici.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Deschide din nou ${app}',
+			'switchAccounts.siblingNoGrant' => 'Nu a funcționat? Deschideți-o din nou sau reveniți și conectați-vă în alt mod.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Nu a funcționat? Deschideți-o din nou sau reveniți și conectați-vă în alt mod.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nu a putut fi deschisă.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Linkul a expirat și unul nou este pregătit — deschideți din nou ${app}.',
 			'switchAccounts.tryAgain' => 'Încercați din nou',

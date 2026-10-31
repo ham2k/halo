@@ -9078,6 +9078,9 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'M$n'
 	String key({required Object n}) => 'M${n}';
 
+	/// en: 'Message $n'
+	String message({required Object n}) => 'Message ${n}';
+
 	/// en: 'Voice memory $n'
 	String messageTitle({required Object n}) => 'Voice memory ${n}';
 
@@ -9144,9 +9147,6 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Recording…'
 	String get recording => 'Recording…';
 
-	/// en: 'Playing $label'
-	String playingMemory({required Object label}) => 'Playing ${label}';
-
 	/// en: 'Recording $label'
 	String recordingMemory({required Object label}) => 'Recording ${label}';
 
@@ -9182,6 +9182,9 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'Send audio to'
 	String get output => 'Send audio to';
+
+	/// en: 'Send audio for Radio $radio to'
+	String outputFor({required Object radio}) => 'Send audio for Radio ${radio} to';
 
 	/// en: 'Record from'
 	String get input => 'Record from';
@@ -11386,6 +11389,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
 			'settings.radio.voiceMessages.notSupported' => 'Current radio does not support Phone messages',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.voiceMessages.message' => ({required Object n}) => 'Message ${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory ${n}',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
@@ -11408,7 +11412,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
 			'settings.radio.voiceMessages.playing' => 'Playing…',
 			'settings.radio.voiceMessages.recording' => 'Recording…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'You have to record the memories on the radio itself.',
@@ -11421,6 +11424,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.newSetName' => 'Name',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Delete ${name} and its recordings? This cannot be undone.',
 			'settings.radio.voiceMessages.output' => 'Send audio to',
+			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'Send audio for Radio ${radio} to',
 			'settings.radio.voiceMessages.input' => 'Record from',
 			'settings.radio.voiceMessages.outputRadio' => 'Send to radio over network',
 			'settings.radio.voiceMessages.inputDefault' => 'System default',
@@ -11520,9 +11524,9 @@ extension on Translations {
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
-			'settings.map.styleOpts.positron' => 'Positron',
 			_ => null,
 		} ?? switch (path) {
+			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
@@ -12034,9 +12038,9 @@ extension on Translations {
 			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
 			'settings.station.newAntenna' => 'New Antenna',
-			'settings.station.newKey' => 'New Key',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
@@ -12548,9 +12552,9 @@ extension on Translations {
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
-			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',
 			'confirmDevice.unnamedDevice' => 'an unnamed device',

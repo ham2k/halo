@@ -66,7 +66,7 @@ class _TestKeyer extends Fake implements RadioKeyer {
   @override
   int get voiceMemoryCount => 2;
   @override
-  String voiceMessageLabel(int n) => 'Message $n';
+  String voiceMessageShownLabel(int n) => 'Message $n';
   @override
   bool get canPtt => cat.hasPtt;
 
@@ -193,11 +193,25 @@ class TestCat extends Fake implements CatService {
   @override
   bool pttHeldOn(String? uuid) => pttOn != null && pttOn == uuid;
 
+  /// A press that waits for SO2R's other radio, which the panel answers as
+  /// accepted: the key goes down once that radio is off the air.
+  String? pttWaitsOn;
+  bool pttWaits = false;
+
+  @override
+  bool pttWaitingOn(String? uuid) => uuid != null && pttWaitsOn == uuid;
+
   /// The radio each keyer read was asked of, and each send went to.
   final askedOf = <String>[], keyedFor = <String>[];
 
   @override
   void togglePtt(String radio) {
+    // _So2r.togglePtt: a press waits while the other radio is on the air, and a second takes it back.
+    if (pttWaits) {
+      pttWaitsOn = pttWaitsOn == radio ? null : radio;
+      keyed.add('ptt:$radio:waiting');
+      return;
+    }
     // CatPtt.toggle: the radio it holds drops; any other radio is keyed, dropping the one held.
     pttOn = pttOn == radio || pttRefused ? null : radio;
     pttHeld.value = pttOn != null;
@@ -680,6 +694,17 @@ void main() {
       expect(cat.keyed, isEmpty);
       // Releasing is never what the opt-in guards.
       expect(bridge().setPtt({'id': 'a', 'on': false})['accepted'], true);
+    });
+
+    // Answered as refused, the extension is told no and the key goes down
+    // anyway once the other radio is quiet; asked again, a toggle would
+    // take the waiting key back.
+    test("a key waiting for SO2R's other radio is accepted, and asked for again stays waiting", () {
+      cat.pttWaits = true;
+      expect(bridge().setPtt({'id': 'a', 'on': true})['accepted'], true);
+      expect(bridge().setPtt({'id': 'a', 'on': true})['accepted'], true);
+      expect(cat.pttWaitsOn, 'a');
+      expect(cat.keyed, ['ptt:a:waiting']);
     });
 
     test('a radio that does not take the key is reported, not answered as keyed', () {

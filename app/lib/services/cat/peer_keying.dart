@@ -196,10 +196,11 @@ PeerVoiceActivityPayload? voiceActivityToWire(VoiceActivity? activity) {
     // question mark the owner's strip does, and it is the owner's polls that
     // will withdraw it.
     doubtful: activity.doubtful,
+    lengthMs: activity.lengthMs,
   );
 }
 
 VoiceActivity? voiceActivityFromWire(PeerVoiceActivityPayload? activity) {
   if (activity == null) return null;
-  return VoiceActivity(memory: activity.memory, recording: activity.recording, doubtful: activity.doubtful);
+  return VoiceActivity(memory: activity.memory, recording: activity.recording, doubtful: activity.doubtful, lengthMs: activity.lengthMs);
 }

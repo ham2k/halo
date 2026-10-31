@@ -1712,7 +1712,6 @@
         "stopRecording": "Stopp opptak",
         "playing": "Spiller av…",
         "recording": "Tar opp…",
-        "playingMemory": "Spiller av $label",
         "recordingMemory": "Tar opp $label",
         "doubtful": "Spilte radioen den av? Den meldte at den var ledig med en gang.",
         "recordOnRadio": "Du må ta opp minnene på selve radioen.",

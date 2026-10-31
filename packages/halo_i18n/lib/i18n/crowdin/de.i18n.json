@@ -1712,7 +1712,6 @@
         "stopRecording": "Aufnahme beenden",
         "playing": "Spielt ab…",
         "recording": "Nimmt auf…",
-        "playingMemory": "$label wird abgespielt",
         "recordingMemory": "$label wird aufgenommen",
         "doubtful": "Hat das Funkgerät es abgespielt? Es meldete sofort Leerlauf.",
         "recordOnRadio": "Die Speicher müssen direkt am Funkgerät aufgenommen werden.",

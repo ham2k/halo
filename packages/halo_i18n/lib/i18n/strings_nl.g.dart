@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String get stopRecording => 'Opname stoppen';
 	@override String get playing => 'Afspelen…';
 	@override String get recording => 'Opnemen…';
-	@override String playingMemory({required Object label}) => '${label} afspelen';
 	@override String recordingMemory({required Object label}) => '${label} opnemen';
 	@override String get doubtful => 'Heeft de radio het afgespeeld? Hij meldde meteen dat hij inactief was.';
 	@override String get recordOnRadio => 'Je moet de geheugens op de radio zelf opnemen.';
@@ -5942,7 +5941,6 @@ extension on TranslationsNl {
 			'settings.radio.voiceMessages.stopRecording' => 'Opname stoppen',
 			'settings.radio.voiceMessages.playing' => 'Afspelen…',
 			'settings.radio.voiceMessages.recording' => 'Opnemen…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '${label} afspelen',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label} opnemen',
 			'settings.radio.voiceMessages.doubtful' => 'Heeft de radio het afgespeeld? Hij meldde meteen dat hij inactief was.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Je moet de geheugens op de radio zelf opnemen.',
@@ -6055,9 +6053,9 @@ extension on TranslationsNl {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Deel app-gebruiksgegevens',
@@ -6569,9 +6567,9 @@ extension on TranslationsNl {
 			'settings.station.newAntenna' => 'Nieuwe antenne',
 			'settings.station.newKey' => 'Nieuwe seinsleutel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL of compatibel)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Seinsleutel op ${device}',
 			'settings.station.trackStationInfo' => 'Stationsinfo per QSO bijhouden',
 			'settings.station.includeStationInfoInAdif' => 'Opnemen in ADIF-exports',
@@ -7083,9 +7081,9 @@ extension on TranslationsNl {
 			'switchAccounts.linkWithSiblingDescription' => 'Je hebt een andere Ham2K-app geïnstalleerd. Koppel met het account dat daar in gebruik is.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Keur het verzoek goed in ${app} en kom dan hier terug.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} opnieuw openen',
+			'switchAccounts.siblingNoGrant' => 'Werkte het niet? Open het opnieuw, of ga terug en koppel op een andere manier.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Werkte het niet? Open het opnieuw, of ga terug en koppel op een andere manier.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kon ${app} niet openen.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'De link was verlopen en er staat een nieuwe klaar — open ${app} opnieuw.',
 			'switchAccounts.tryAgain' => 'Opnieuw proberen',

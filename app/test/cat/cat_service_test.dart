@@ -2471,9 +2471,9 @@ void main() {
       log.clear();
 
       cat.keyer('B').playVoiceMemory(2);
-      expect(log, contains('stopVoice'));
-      expect(log.last, 'playVoice:2', reason: "radio A's memory stops before radio B's plays");
+      expect(log, ['stopVoice'], reason: "radio A's memory stops first");
       a.sink.reportVoiceActivity(null);
+      expect(log.last, 'playVoice:2', reason: "and radio B's plays once radio A says it has stopped");
       expect(cat.keyer('A').keyerRepeating, isTrue);
       b.sink.reportVoiceActivity(const VoiceActivity(memory: 2));
       log.clear();
@@ -2558,6 +2558,126 @@ void main() {
       cat.keyer('A').stopCw();
       b.finishCw();
       expect(a.sent, isEmpty, reason: 'a stop is a stop, held pieces included');
+    });
+
+    // One radio on the air at a time is the rig's word: keyed the moment the
+    // app stops the other radio's message, this one overlaps that rig's
+    // unkey — on two slices of one Flex, the stopped slice's unkey lands
+    // after this key and drops it.
+    test("a message keyed on A that stops B's goes once B's rig says it is receiving", () async {
+      final (a, b) = await twoRadios();
+      cat.keyer('B').sendCw('CQ');
+      b.sink.reportTransmitting(true);
+      log.clear();
+
+      cat.keyer('A').sendCw('TU');
+      expect(log, contains('stopCw'));
+      expect(a.sent, isEmpty, reason: "B's rig has not unkeyed yet");
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(a.sent, ['TU']);
+    });
+
+    // A mic, a footswitch or an external keyer on the other radio is the
+    // operator's, and only its rig says it is on the air.
+    test("what the app did not key on B is waited out, never cut off", () async {
+      final (a, b) = await twoRadios();
+      b.sink.reportTransmitting(true);
+      log.clear();
+
+      cat.keyer('A').sendCw('TU');
+      expect(a.sent, isEmpty);
+      expect(log, isEmpty, reason: 'nothing of the app on B to stop');
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(a.sent, ['TU']);
+    });
+
+    test("PTT on A waits for B's rig to unkey from the message it stops", () async {
+      final (a, b) = await twoRadios();
+      cat.keyer('B').sendCw('CQ');
+      b.sink.reportTransmitting(true);
+
+      cat.togglePtt(cat.localRadio1!);
+      expect(cat.pttHeldOn(cat.localRadio1), isFalse, reason: "B's rig has not unkeyed yet");
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(cat.pttHeldOn(cat.localRadio1), isTrue);
+      cat.togglePtt(cat.localRadio1!);
+    });
+
+    // Left armed, a PTT key or a message the operator has moved on from
+    // takes the air later, by surprise.
+    // Keyed while the app's PTT key is still down on B, A waits for a rig the
+    // app never unkeys: B stays on the air and A never goes.
+    test("PTT on A drops the operator's key on B, then keys once B's rig is receiving", () async {
+      final (_, b) = await twoRadios();
+      cat.togglePtt(cat.radio2!);
+      b.sink.reportTransmitting(true);
+
+      cat.togglePtt(cat.localRadio1!);
+      expect(cat.pttHeldOn(cat.radio2), isFalse);
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(cat.pttHeldOn(cat.localRadio1), isTrue);
+      cat.togglePtt(cat.localRadio1!);
+    });
+
+    // Nothing shows a waiting key: one that went down long after the press
+    // puts an open mic on the air with nobody at it.
+    test('a PTT key waiting for B is given up after so2rPttWait', () async {
+      final (_, b) = await twoRadios();
+      b.sink.reportTransmitting(true);
+      cat.togglePtt(cat.localRadio1!);
+      expect(cat.pttWaitingOn(cat.localRadio1), isTrue);
+      // B keeps answering, as a rig on the air does: gone silent, it would
+      // read as stale (in 40 ms here), and stale as not transmitting.
+      final until = realNowMillis() + so2rPttWait.inMilliseconds + 50;
+      while (realNowMillis() < until) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        b.reportFromItsOwnTimer(const VfoReading(freqKHz: 7123));
+      }
+      expect(cat.pttHeldOn(cat.localRadio1), isFalse, reason: 'sanity: B is still on the air');
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(cat.pttHeldOn(cat.localRadio1), isFalse);
+    });
+
+    // Counted again as it goes, a message held for the other radio reads as
+    // keyed after whatever the operator keyed there since, which
+    // keyedOverSince then drops as keyed over.
+    test('a message held for the other radio does not count as a keypress again when it goes', () async {
+      final (a, b) = await twoRadios();
+      b.sink.reportTransmitting(true);
+      cat.keyer('A').sendCw('TU');
+      final mark = cat.keyMark;
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(a.sent, ['TU'], reason: 'sanity');
+      expect(cat.keyMark, mark);
+    });
+
+    test('a PTT key waiting for B to unkey is taken back by a second press', () async {
+      final (_, b) = await twoRadios();
+      b.sink.reportTransmitting(true);
+      cat.togglePtt(cat.localRadio1!);
+      cat.togglePtt(cat.localRadio1!);
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(cat.pttHeldOn(cat.localRadio1), isFalse);
+    });
+
+    test("a message waiting for B to unkey is dropped by the operator keying over it on B", () async {
+      final (a, b) = await twoRadios();
+      b.sink.reportTransmitting(true);
+      cat.togglePtt(cat.localRadio1!);
+      cat.keyer('A').sendCw('TU');
+      cat.keyer('B').sendCw('QRZ');
+      b.finishCw();
+      b.sink.reportTransmitting(false);
+      await pumpEventQueue();
+      expect(cat.pttHeldOn(cat.localRadio1), isFalse, reason: 'the PTT key went with it');
+      expect(a.sent, isEmpty);
     });
 
     // The trap: Escape releasing the PTT key ahead of its stop, so the other

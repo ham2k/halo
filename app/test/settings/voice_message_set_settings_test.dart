@@ -33,4 +33,17 @@ void main() {
     expect(settings.voiceKeyingSource, VoiceKeyingSource.none);
     expect(settings.voiceMessageSetId, VoiceMessageSet.defaultId);
   });
+
+  // The trap: one pick for both radios. SO2R's Radio B has a sound card of
+  // its own, or none — None on one radio must not silence the other, and the
+  // computer picked for one must not take the other's own memories away.
+  test("each radio's Phone Keying pick is its own, Radio B's starting on its memories", () async {
+    final settings = (await makeHaLoServices()).settings;
+    await settings.setVoiceKeyingSource(VoiceKeyingSource.computer);
+    expect(settings.voiceKeyingSourceFor('B'), VoiceKeyingSource.radio);
+
+    await settings.setVoiceKeyingSource(VoiceKeyingSource.none, radio: 'B');
+    expect(settings.voiceKeyingSourceFor('B'), VoiceKeyingSource.none);
+    expect(settings.voiceKeyingSource, VoiceKeyingSource.computer, reason: "radio1's pick stands");
+  });
 }

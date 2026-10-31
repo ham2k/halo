@@ -97,6 +97,20 @@ void main() {
       expect(status.voiceDurationsMs, [4200, 0]);
     });
 
+    // A message made from words has no length in the durations, which are
+    // measured before a play: without its own on the activity, the
+    // controller's bar cannot pace it.
+    test('a message made as it plays crosses with its length', () {
+      final status = roundTrip(
+        PeerMessage.keyStatus(
+          const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 2, lengthMs: 3100), voiceDurationsMs: [0, 0]),
+        ),
+      ).keyStatusOrNull!;
+      expect(status.voice!.lengthMs, 3100);
+      final plain = roundTrip(PeerMessage.keyStatus(const PeerKeyStatusPayload(radioId: 'rig-1', voice: PeerVoiceActivityPayload(memory: 2)))).keyStatusOrNull!;
+      expect(plain.voice!.lengthMs, isNull, reason: 'a measured memory carries none, and a bar paces its duration');
+    });
+
     test('an empty status is a real answer: nothing is keying', () {
       final status = roundTrip(PeerMessage.keyStatus(const PeerKeyStatusPayload(radioId: 'rig-1'))).keyStatusOrNull!;
 

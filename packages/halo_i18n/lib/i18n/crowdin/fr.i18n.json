@@ -1712,7 +1712,6 @@
         "stopRecording": "Arrêter l'enregistrement",
         "playing": "Lecture…",
         "recording": "Enregistrement…",
-        "playingMemory": "Lecture de $label",
         "recordingMemory": "Enregistrement de $label",
         "doubtful": "La radio l'a-t-elle joué ? Elle s'est déclarée inactive aussitôt.",
         "recordOnRadio": "Les mémoires doivent être enregistrées sur la radio elle-même.",

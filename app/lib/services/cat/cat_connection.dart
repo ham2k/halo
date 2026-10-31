@@ -229,7 +229,7 @@ extension _Connection on CatService {
         }
         _setState(uuid, state.copyWith(telemetry: state.telemetry.withTransmitting(transmitting)));
         _ptt.onTransmitting(runtime.session, transmitting);
-        _keying.noteTransmitting(uuid, transmitting);
+        _keyerForNode(uuid).noteTransmitting(uuid, transmitting);
         _meterReadings.notify();
       },
       onMeter: (meter, value) {

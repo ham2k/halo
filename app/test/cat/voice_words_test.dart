@@ -163,6 +163,42 @@ void main() {
     }
   });
 
+  // The keyer line sets apart what has been said as a message plays. A span
+  // off by one bolds a letter before it is heard; one for a phrase that
+  // covers only its first word shows "CQ" said while "POTA" is.
+  group('where each piece is written', () {
+    (int, int) span(String text, String written) => (text.indexOf(written), text.indexOf(written) + written.length);
+
+    test('a letter is its character, punctuation and spacing left out', () {
+      const text = ' k8ab,  59 ';
+      final plan = planVoicedText(text, recorded: all);
+      expect(plan.spans, [(1, 2), (2, 3), (3, 4), (4, 5), (8, 9), (9, 10)]);
+    });
+
+    test('a phrase is all its words; a stroke its slash; a slashed phrase its slash and suffix', () {
+      final phrases = [const VoicePhrase(id: 'cqpota', text: 'CQ POTA')];
+      const text = 'cq pota N9CW/P VE3/K8AB';
+      final plan = planVoicedText(text, phrases: phrases, recorded: all);
+      expect(plan.describe(), startsWith('CQ POTA(i) November(i) Nine Charlie Whiskey /P(f)'));
+      expect(plan.spans.first, span(text, 'cq pota'));
+      expect(plan.spans[5], span(text, '/P'), reason: 'said as "portable", it is the whole suffix');
+      expect(plan.spans[9], (text.indexOf('/K'), text.indexOf('/K') + 1), reason: 'said as "stroke", it is the slash alone');
+    });
+
+    test("the script shows a recorded message by its name, and says through each piece's end as it starts", () {
+      final text = ' ${voicedMessageMark(2)}   K8 ';
+      final plan = planVoicedText(text, recorded: all);
+      final script = voicedScript(text, plan, [0, 48000, 60000], (n) => 'CQ M$n')!;
+      expect(script.text, 'CQ M2 K8');
+      expect(script.marks, [(atMs: 0, said: 5), (atMs: 1000, said: 7), (atMs: 1250, said: 8)]);
+    });
+
+    test('a plan that does not say where its pieces are has no script', () {
+      final plan = VoicedPlan([const WordPiece(VoiceWord('kilo', 'Kilo'), WordTake.middle, Duration.zero)]);
+      expect(voicedScript('K', plan, [0], (n) => ''), isNull);
+    });
+  });
+
   group('cutWordTail', () {
     test('cuts the decay 20 dB under the peak, and keeps a final consonant above that line', () {
       // A vowel, the "t" of Eight 15 dB under it, then the long decay of a

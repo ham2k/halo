@@ -35,11 +35,14 @@ class FlexDaxSwitch {
   bool? _dax;
 
   /// DAX this app turned on for a message and has not yet seen the radio
-  /// report off again — owed back off. Kept by the radio's address for the
-  /// whole launch, not by the session: a link that drops mid-message hands
-  /// the restore to the next session, rather than leaving DAX on, and with it
-  /// the operator's mic dead, for good.
-  static final _owedByHost = <String, bool>{};
+  /// report off again — owed back off, by the switch that turned it on, or
+  /// by nobody once that session has closed. Kept by the radio's address for
+  /// the whole launch, not by the session: a link that drops mid-message
+  /// hands the restore to the next session, rather than leaving DAX on, and
+  /// with it the operator's mic dead, for good. Owned while that session
+  /// lives: two slices of one radio are two sessions on one transmitter, and
+  /// one settling the other's DAX turns it off under the other's message.
+  static final _owedByHost = <String, FlexDaxSwitch?>{};
   bool _owedHere = false;
 
   /// Forgets every DAX owed: the tests' way to start each from a radio the
@@ -47,9 +50,14 @@ class FlexDaxSwitch {
   @visibleForTesting
   static void forgetOwed() => _owedByHost.clear();
 
+  /// Whether DAX is owed back off by this switch: it turned DAX on, or the
+  /// session that did has closed.
   bool get _owed {
     final at = host();
-    return at == null ? _owedHere : (_owedByHost[at] ?? false);
+    if (at == null) return _owedHere;
+    if (!_owedByHost.containsKey(at)) return false;
+    final owner = _owedByHost[at];
+    return owner == null || identical(owner, this);
   }
 
   set _owed(bool owed) {
@@ -57,10 +65,24 @@ class FlexDaxSwitch {
     if (at == null) {
       _owedHere = owed;
     } else if (owed) {
-      _owedByHost[at] = true;
+      _owedByHost[at] = this;
     } else {
       _owedByHost.remove(at);
     }
+  }
+
+  /// Whether DAX is owed by another session on this radio that is still open.
+  bool get _owedElsewhere {
+    final at = host();
+    if (at == null) return false;
+    final owner = _owedByHost[at];
+    return owner != null && !identical(owner, this);
+  }
+
+  /// Whether the DAX owed is a closed session's, for this one to settle.
+  bool get _inherited {
+    final at = host();
+    return at == null ? !_keyedThisSession : _owedByHost.containsKey(at) && _owedByHost[at] == null;
   }
 
   /// Whether the restore waits on the radio saying it is back to receive
@@ -90,6 +112,10 @@ class FlexDaxSwitch {
   /// The `transmit` status's `dax=`.
   void daxReported(bool dax) {
     _dax = dax;
+    // Off under a message this switch keyed: a restore sent before the key,
+    // this session's or the other slice's on its own connection, landed
+    // after this message's `dax=1`, and the message goes out as mic hiss.
+    if (!dax && _owed && !_restoreSent && keyedByUs()) return send('transmit set dax=1');
     _settle();
   }
 
@@ -110,10 +136,18 @@ class FlexDaxSwitch {
     // then goes out as mic hiss. DAX stays owed back after this one.
     _armed = false;
     _restoreSent = false;
+    // A new message's restore is a new one: the tries left from the last are
+    // not this one's, and kept, an SO2R run that hands the debt back and
+    // forth between two slices runs out of them and leaves DAX on.
+    _tries = 0;
     _fallback?.cancel();
     _keyedSinceKey = false;
     _keyedThisSession = true;
-    if (_dax != true) {
+    // Owed by the other slice's session, DAX is the app's and not the
+    // operator's: this message takes the debt over, and turns DAX on again
+    // in case that session's restore is already on its way.
+    final taken = _owedElsewhere;
+    if (_dax != true || taken) {
       _owed = true;
       send('transmit set dax=1');
     }
@@ -144,6 +178,8 @@ class FlexDaxSwitch {
     if (_owed) {
       _armed = false;
       send('transmit set dax=0');
+      final at = host();
+      if (at != null) _owedByHost[at] = null;
     }
   }
 
@@ -156,7 +192,7 @@ class FlexDaxSwitch {
     // Off counts once a restore went out, or for a DAX owed from an earlier
     // session: a report of off before the radio has taken this message's
     // `dax=1` says nothing about the restore.
-    if (_dax == false && (_restoreSent || !_keyedThisSession)) {
+    if (_dax == false && (_restoreSent || _inherited)) {
       _owed = false;
       _restoreSent = false;
       _tries = 0;
@@ -168,7 +204,7 @@ class FlexDaxSwitch {
     } else if (_restoreSent && _dax == true) {
       // The radio answered the restore and kept DAX on.
       _restore();
-    } else if (!_keyedThisSession && _dax == true) {
+    } else if (_inherited && _dax == true) {
       _restore();
     }
   }
@@ -176,6 +212,8 @@ class FlexDaxSwitch {
   void _restore() {
     _armed = false;
     _fallback?.cancel();
+    // Taken over by the other slice's message since this was armed.
+    if (!_owed) return;
     if (_tries >= _maxTries) {
       // Reported once, and not tried again: the operator has to turn it off.
       _owed = false;

@@ -46,6 +46,8 @@ import '../services/cat/drivers/cw_send_queue.dart';
 import '../services/settings_service.dart';
 import 'operation/extension_panel.dart' show PanelRenderContext, operationHookArgs;
 
+part 'keyer_voice_line.dart';
+
 /// The room under a line of text for its bar ([Space.xxs] tall): the bar
 /// and a pixel between it and the text.
 const _barBelowText = Space.xxs + 1;
@@ -886,7 +888,7 @@ bool _voiceRecorded(RadioKeyer keyer, int n) =>
 
 /// Memory [n]'s label; [key] for one recorded with none; nothing for neither.
 String _voiceLabel(RadioKeyer keyer, int n, String key) {
-  final label = keyer.voiceMessageLabel(n).trim();
+  final label = keyer.voiceMessageShownLabel(n).trim();
   if (label.isNotEmpty) return label;
   return _voiceRecorded(keyer, n) ? key : '';
 }
@@ -947,160 +949,13 @@ class _VoiceButtons extends StatelessWidget {
                   next: next,
                   repeats: n == 1 && settings.voiceRepeatDelay > Duration.zero,
                   onTap: () {
-                    if (keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) keyer.playVoiceMemory(n);
+                    if (keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) keyer.queueVoiceMemory(n);
                   },
                 ),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-/// The memory playing or recording, in the message's place: tapping it
-/// stops it (Esc's other form). No bar — no radio here reports how far
-/// along a memory is, and a bar pacing nothing would be a guess dressed as
-/// a measurement.
-/// The memory going out, under a bar. A MEASURED memory paces its own bar
-/// (CatService times every play — settings_service.dart's
-/// `voiceMessageDuration`); an unmeasured one shows an indeterminate bar
-/// instead, which says "still going" without claiming to know how far
-/// along. A memory measures itself the first time it is played, so the
-/// second play is the one that gets the real bar.
-class _VoiceActivityView extends StatefulWidget {
-  final VoiceActivity activity;
-  final RadioKeyer keyer;
-  final HaLoServices services;
-
-  const _VoiceActivityView({required this.activity, required this.keyer, required this.services});
-
-  @override
-  State<_VoiceActivityView> createState() => _VoiceActivityViewState();
-}
-
-/// [TickerProviderStateMixin], not the Single one: one activity replaces
-/// another in the same State — a second memory played while the line is up —
-/// and each length gets a controller of its own.
-class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProviderStateMixin {
-  /// Null while the memory's length is unknown, which is what draws the
-  /// indeterminate bar.
-  AnimationController? _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _pace();
-  }
-
-  @override
-  void didUpdateWidget(_VoiceActivityView old) {
-    super.didUpdateWidget(old);
-    // A re-report of the SAME memory keeps the bar where it is; another
-    // memory, or a play becoming a recording, starts one afresh.
-    if (old.activity.memory != widget.activity.memory || old.activity.recording != widget.activity.recording) {
-      _pace();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  /// Built HERE rather than in build: a controller is a side effect with a
-  /// ticker attached, and building one per rebuild is what exhausts a
-  /// ticker provider.
-  void _pace() {
-    _controller?.dispose();
-    _controller = null;
-    // A recording has no length to pace: it lasts as long as the operator
-    // holds it, which is what the indeterminate bar says.
-    if (widget.activity.recording) return;
-    final millis = widget.keyer.voiceMessageDuration(widget.activity.memory);
-    if (millis <= 0) return;
-    _controller = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: millis),
-    )..forward();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final activity = widget.activity;
-    final keyer = widget.keyer;
-    final m = context.t.settings.radio.voiceMessages;
-    final theme = Theme.of(context);
-    final style = theme.textTheme.bodyMedium ?? const TextStyle();
-    final label = voiceMessageLabelFor(keyer, activity.memory, m.key(n: activity.memory));
-    // Doubt is not shown here. It is a real state — the radio answered
-    // "idle" before ever answering "going" — but a question mark on the
-    // strip asks the operator something they cannot answer while the memory
-    // is going out; the Phone Keyer dialog is where it is explained.
-    final text = activity.recording ? m.recordingMemory(label: label) : m.playingMemory(label: label);
-    final color = style.color ?? theme.colorScheme.onSurface;
-    final controller = _controller;
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play, size: 16, color: activity.recording ? theme.colorScheme.error : style.color),
-        const SizedBox(width: Space.xs),
-        Flexible(
-          child: Text(
-            text,
-            style: style.copyWith(fontWeight: FontWeight.bold),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            softWrap: false,
-          ),
-        ),
-        // Armed, not merely configured: this says THIS memory goes again.
-        if (keyer.keyerRepeating && !activity.recording) ...[
-          const SizedBox(width: Space.xs),
-          Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
-        ],
-      ],
-    );
-    return Semantics(
-      label: text,
-      liveRegion: true,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: keyer.stopVoice,
-          // The bar is as wide as the text above it and no wider, the same
-          // way the CW message's is — the stack takes its width from the row.
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: _barBelowText),
-                child: row,
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: Space.xxs,
-                child: controller == null
-                    ? LinearProgressIndicator(minHeight: Space.xxs, backgroundColor: color.withValues(alpha: 0.25), color: color)
-                    : AnimatedBuilder(
-                        animation: controller,
-                        builder: (context, _) => Stack(
-                          children: [
-                            Container(color: color.withValues(alpha: 0.25)),
-                            FractionallySizedBox(
-                              widthFactor: controller.value,
-                              child: Container(color: color),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1481,6 +1336,18 @@ class _WaitingView extends StatelessWidget {
                 ),
               ),
               if (send.repeat) ...[const SizedBox(width: Space.xs), Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55))],
+              // The memories held to follow it in the same turn, faded as a
+              // queue behind a memory playing is.
+              for (final n in send.then)
+                Flexible(
+                  child: Text(
+                    ' · ${voiceMessageLabelFor(keyer, n, context.t.settings.radio.voiceMessages.key(n: n))}',
+                    style: style.copyWith(color: color.withValues(alpha: 0.4)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
+                  ),
+                ),
             ],
           ),
         ),

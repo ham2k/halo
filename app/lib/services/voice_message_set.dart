@@ -36,6 +36,10 @@ class VoiceMessageSet {
   static const activeKey = 'voiceMessageSet';
   static const sourceKey = 'voiceKeying';
 
+  /// [sourceKey] for [radio], `A` or `B` — Radio B's pick beside radio1's,
+  /// as its labels are (SettingsService.voiceMessageLabelKey).
+  static String sourceKeyFor(String radio) => radio == 'B' ? '${sourceKey}B' : sourceKey;
+
   /// The set every install has — "Sound files on this computer" — listed
   /// before the operator's. Neither
   /// renamed nor deleted: it is where sound files go before anyone has made
@@ -129,14 +133,20 @@ extension VoiceMessageSetSettings on SettingsService {
     ];
   }
 
-  /// The radio's own memories until the operator picks otherwise: they are
-  /// what a radio that has them played before this app could play anything.
-  VoiceKeyingSource get voiceKeyingSource {
-    final stored = _voiceSettings.group[VoiceMessageSet.sourceKey];
+  /// Where radio1's phone messages come from — [voiceKeyingSourceFor] `A`.
+  VoiceKeyingSource get voiceKeyingSource => voiceKeyingSourceFor('A');
+
+  /// Where [radio]'s (`A` or `B`) phone messages come from. The radio's own
+  /// memories until the operator picks otherwise: they are what a radio that
+  /// has them played before this app could play anything. Per radio, like
+  /// [voiceMessageLabel]: each rig has a sound card of its own, or none.
+  VoiceKeyingSource voiceKeyingSourceFor(String radio) {
+    final stored = _voiceSettings.group[VoiceMessageSet.sourceKeyFor(radio)];
     return VoiceKeyingSource.values.where((source) => source.name == stored).firstOrNull ?? VoiceKeyingSource.radio;
   }
 
-  Future<void> setVoiceKeyingSource(VoiceKeyingSource source) => updateSettingsGroup(SettingsService.radioGroup, {VoiceMessageSet.sourceKey: source.name});
+  Future<void> setVoiceKeyingSource(VoiceKeyingSource source, {String radio = 'A'}) =>
+      updateSettingsGroup(SettingsService.radioGroup, {VoiceMessageSet.sourceKeyFor(radio): source.name});
 
   /// The default set for a stored id whose set is gone, or none stored.
   String get voiceMessageSetId {

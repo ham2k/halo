@@ -4128,6 +4128,7 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get title => 'PHONE KEYER MESSAGES';
 	@override String get notSupported => 'CURRENT RADIO DOES NOT SUPPORT PHONE MESSAGES';
 	@override String key({required Object n}) => 'M${n}';
+	@override String message({required Object n}) => 'MESSAGE ${n}';
 	@override String messageTitle({required Object n}) => 'VOICE MEMORY ${n}';
 	@override String get labelField => 'LABEL';
 	@override String labelKey({required Object n}) => 'VOICE MEMORY ${n} LABEL';
@@ -4150,7 +4151,6 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get stopRecording => 'STOP RECORDING';
 	@override String get playing => 'PLAYING…';
 	@override String get recording => 'RECORDING…';
-	@override String playingMemory({required Object label}) => 'PLAYING ${label}';
 	@override String recordingMemory({required Object label}) => 'RECORDING ${label}';
 	@override String get doubtful => 'DID THE RADIO PLAY IT? IT SAID IT WAS IDLE RIGHT AWAY.';
 	@override String get recordOnRadio => 'YOU HAVE TO RECORD THE MEMORIES ON THE RADIO ITSELF.';
@@ -4163,6 +4163,7 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get newSetName => 'NAME';
 	@override String deleteSetConfirm({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.';
 	@override String get output => 'SEND AUDIO TO';
+	@override String outputFor({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO';
 	@override String get input => 'RECORD FROM';
 	@override String get outputRadio => 'SEND TO RADIO OVER NETWORK';
 	@override String get inputDefault => 'SYSTEM DEFAULT';
@@ -5937,6 +5938,7 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.title' => 'PHONE KEYER MESSAGES',
 			'settings.radio.voiceMessages.notSupported' => 'CURRENT RADIO DOES NOT SUPPORT PHONE MESSAGES',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.voiceMessages.message' => ({required Object n}) => 'MESSAGE ${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'VOICE MEMORY ${n}',
 			'settings.radio.voiceMessages.labelField' => 'LABEL',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'VOICE MEMORY ${n} LABEL',
@@ -5959,7 +5961,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.stopRecording' => 'STOP RECORDING',
 			'settings.radio.voiceMessages.playing' => 'PLAYING…',
 			'settings.radio.voiceMessages.recording' => 'RECORDING…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'PLAYING ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'RECORDING ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'DID THE RADIO PLAY IT? IT SAID IT WAS IDLE RIGHT AWAY.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'YOU HAVE TO RECORD THE MEMORIES ON THE RADIO ITSELF.',
@@ -5972,6 +5973,7 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.newSetName' => 'NAME',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.',
 			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
+			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO',
 			'settings.radio.voiceMessages.input' => 'RECORD FROM',
 			'settings.radio.voiceMessages.outputRadio' => 'SEND TO RADIO OVER NETWORK',
 			'settings.radio.voiceMessages.inputDefault' => 'SYSTEM DEFAULT',
@@ -6071,9 +6073,9 @@ extension on TranslationsQro {
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
-			'settings.map.styleOpts.positron' => 'POSITRON',
 			_ => null,
 		} ?? switch (path) {
+			'settings.map.styleOpts.positron' => 'POSITRON',
 			'settings.map.styleOpts.voyager' => 'VOYAGER',
 			'settings.map.styleOpts.darkMatter' => 'DARK MATTER',
 			'settings.privacy.title' => 'PRIVACY',
@@ -6585,9 +6587,9 @@ extension on TranslationsQro {
 			'settings.station.otherBrands' => 'OTHER BRANDS',
 			'settings.station.otherEquipment' => 'OTHER EQUIPMENT (ANTENNAS, KEYS, ETC)',
 			'settings.station.newAntenna' => 'NEW ANTENNA',
-			'settings.station.newKey' => 'NEW KEY',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT KEYER IN ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'KEY ON ${device}',
@@ -7099,9 +7101,9 @@ extension on TranslationsQro {
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
-			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',
 			'confirmDevice.unnamedDevice' => 'AN UNNAMED DEVICE',

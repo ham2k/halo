@@ -1712,7 +1712,6 @@
         "stopRecording": "Ferma registrazione",
         "playing": "Riproduzione…",
         "recording": "Registrazione…",
-        "playingMemory": "Riproduzione di $label",
         "recordingMemory": "Registrazione di $label",
         "doubtful": "La radio l'ha riprodotto? Ha segnalato subito di essere inattiva.",
         "recordOnRadio": "Le memorie vanno registrate sulla radio stessa.",

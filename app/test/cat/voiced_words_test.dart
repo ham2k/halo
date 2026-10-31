@@ -78,7 +78,7 @@ void main() {
 
     test("is the draft rendered and said in this operator's words, as one file", () async {
       recordWords('N0DEV', ['Kilo', 'Eight', 'Alpha', 'Bravo', 'Five', 'Nine']);
-      final path = await words.voice(3, '{{ qso.call }} 59');
+      final path = (await words.voice(3, '{{ qso.call }} 59')).path;
       expect(audio.written.keys, [path]);
       expect(path, startsWith('$_root/words/'));
       expect(refused, isEmpty);

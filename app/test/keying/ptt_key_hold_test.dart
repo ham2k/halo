@@ -43,6 +43,39 @@ void main() {
     return (ptt: ptt, held: held, releases: releases);
   }
 
+  // Under SO2R a press waits while the other radio comes off the air. Read
+  // as keying nothing, its release is ignored: the key goes down once the
+  // other radio is quiet, with the operator's finger already off it, and
+  // stays down.
+  testWidgets('held, a press that waits to key is taken back by its release', (tester) async {
+    final held = ValueNotifier(false);
+    var waiting = false;
+    final releases = <String>[];
+    final ptt = PttKeyboard(
+      held: held,
+      release: () {
+        releases.add('release');
+        final was = waiting;
+        waiting = false;
+        return was;
+      },
+      escape: () => false,
+      toggle: (_) => waiting = true,
+      hold: () => true,
+      waiting: () => waiting,
+    );
+    addTearDown(() {
+      ptt.dispose();
+      held.dispose();
+    });
+    ptt.addTarget(() => 'radio1');
+    await down(tester);
+    expect(waiting, isTrue, reason: 'sanity');
+    await up(tester);
+    expect(releases, ['release']);
+    expect(waiting, isFalse);
+  });
+
   testWidgets('held, the key transmits from its press to its release, through its repeats', (tester) async {
     final (:ptt, :held, :releases) = keyboard(tester);
     await down(tester);

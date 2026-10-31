@@ -103,7 +103,7 @@ abstract class KeyingStation {
 }
 
 class CatKeying {
-  CatKeying({required this.station, required this.settings, required this.chain, required this.peer}) {
+  CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A'}) {
     voiceActivity.addListener(_onVoiceActivityForSequence);
     // A message-1 mark lasts while its message does. Left standing, the
     // next message on a shared transmitter — a peer's, or a third
@@ -131,6 +131,10 @@ class CatKeying {
   /// The picked peer radio's keying (peer_keying.dart) — what the far
   /// station will do, and what it says it is doing.
   final PeerKeying peer;
+
+  /// Which of the station's radios this keys for, `A` or `B` — whose Phone
+  /// Keying pick is this keyer's (SettingsService.voiceKeyingSourceFor).
+  final String radio;
 
   /// Fires when what an offered radio is keying changes, so the peer bridge
   /// can report it — for the STATION's keying, whether or not anything here
@@ -476,9 +480,30 @@ class CatKeying {
   /// Orders the holds of both of a station's keyers: the oldest goes first.
   static int _holdSequence = 0;
 
-  void _hold({String? text, int? memory, required bool repeat, bool messageOne = false, required void Function() send}) {
-    waiting.value = [...waiting.value, WaitingSend._(++_holdSequence, text: text, memory: memory, repeat: repeat, messageOne: messageOne, send: send)];
+  /// [sequence] keeps the place of a hold this one replaces.
+  void _hold({
+    String? text,
+    int? memory,
+    List<int> then = const [],
+    required bool repeat,
+    bool messageOne = false,
+    required void Function() send,
+    int? sequence,
+  }) {
+    final held = WaitingSend._(sequence ?? ++_holdSequence, text: text, memory: memory, then: then, repeat: repeat, messageOne: messageOne, send: send);
+    waiting.value = [...waiting.value, held];
   }
+
+  /// [memories] held whole: one message, whose memories follow each other
+  /// with nothing of the other radio's between them.
+  void _holdVoiceSequence(List<int> memories, {required bool repeat, int? sequence}) => _hold(
+    memory: memories.first,
+    then: memories.sublist(1),
+    repeat: false,
+    messageOne: memories.contains(1),
+    send: () => playVoiceSequence(memories, repeat: repeat),
+    sequence: sequence,
+  );
 
   void _dropWaiting(bool Function(WaitingSend send) test) {
     if (waiting.value.any(test)) waiting.value = [...waiting.value.where((send) => !test(send))];
@@ -487,6 +512,10 @@ class CatKeying {
   void clearWaiting() {
     if (waiting.value.isNotEmpty) waiting.value = const [];
   }
+
+  /// Drops the operator's messages waiting here, a repeat's own send kept:
+  /// keyed over from the other radio, with messages not queued.
+  void dropWaitingMessages() => _dropWaiting((send) => !send.repeat);
 
   /// Sends what [waiting] holds, the other radio having fallen quiet. CW
   /// queues behind itself on the key; a memory plays one at a time, so the
@@ -525,7 +554,8 @@ class CatKeying {
     for (final text in queued) {
       _hold(text: text, repeat: false, send: () => sendCw(text));
     }
-    if (memories.isNotEmpty) _hold(memory: memories.first, repeat: false, messageOne: memories.contains(1), send: () => playVoiceSequence(memories));
+    // Queued, a memory 1 never repeats: held as a sequence of one, it would.
+    if (memories.isNotEmpty) _holdVoiceSequence(memories, repeat: false);
   }
 
   /// Drops one message waiting behind the one the key in use is keying — see
@@ -619,13 +649,10 @@ class CatKeying {
     }
   }
 
-  /// Whether the Phone Keying pick (`VoiceKeyingSource`) is this keyer's —
-  /// radio1's. Radio B plays its own memories whatever is picked: the pick
-  /// is about radio1 and this desk's sound devices.
-  bool ownsVoiceSource = false;
-
-  /// The Phone Keying pick as it applies to this keyer.
-  VoiceKeyingSource get voiceSource => ownsVoiceSource ? settings.voiceKeyingSource : VoiceKeyingSource.radio;
+  /// This radio's Phone Keying pick (`VoiceKeyingSource`). Each radio's is
+  /// its own: each rig has a sound card of its own, or none, and None on
+  /// one must not silence the other.
+  VoiceKeyingSource get voiceSource => settings.voiceKeyingSourceFor(radio);
 
   /// The sound system the computer's voice keyer plays through, and the
   /// directory its recordings live in — both null where it cannot run (the
@@ -1044,6 +1071,14 @@ class CatKeying {
   final List<int> _voiceSequence = [];
   bool _sequenceStarted = false;
 
+  /// [_voiceSequence] as the keyer line shows it, behind the memory playing.
+  final voiceQueue = ValueNotifier<List<int>>(const []);
+
+  void _voiceQueueChanged() {
+    if (_voiceSequence.isEmpty && voiceQueue.value.isEmpty) return;
+    voiceQueue.value = List.unmodifiable(_voiceSequence);
+  }
+
   /// Whether the sequence running holds memory 1 anywhere — played, playing
   /// or still waiting — until its last memory ends. Set only for two or
   /// more memories: a lone one is a plain play, marked by [_voiceMessageOne],
@@ -1057,21 +1092,79 @@ class CatKeying {
   static const voiceSequenceStartGrace = Duration(seconds: 3);
   Timer? _sequenceStartTimer;
 
+  /// Plays memory [n] after what this radio is already playing, as CW
+  /// queues behind itself on the key — the operator's message keys. With
+  /// nothing playing it plays as [playVoiceMemory] would, a CQ's repeat
+  /// included; queued, it never repeats, and it ends a repeat as any other
+  /// memory does. The radio stays this one's until the queue is done: the
+  /// other SO2R radio's turn comes after it. The computer's keyer plays the
+  /// queue under one key ([ComputerVoiceKeyer.following]); a radio's own
+  /// memories each key and unkey.
+  void queueVoiceMemory(int n) {
+    final playing = voiceActivity.value;
+    final going = voiceStarting.value || (playing != null && !playing.recording);
+    if (!going && _voiceSequence.isEmpty) {
+      // Behind a memory held for the other radio, it joins that one, in its
+      // place: one turn, as behind a memory playing.
+      final held = waiting.value.lastOrNull;
+      if (held?.memory case final first? when !held!.repeat && canPlayVoice) {
+        chain.cancel();
+        waiting.value = waiting.value.sublist(0, waiting.value.length - 1);
+        return _holdVoiceSequence([first, ...held.then, n], repeat: false, sequence: held.sequence);
+      }
+      return playVoiceMemory(n);
+    }
+    if (!canPlayVoice) return;
+    chain.cancel();
+    _voiceSequence.add(n);
+    _voiceQueueChanged();
+    if (_voiceSequence.length == 1) {
+      if (playing != null) {
+        _sequenceStarted = true;
+      } else {
+        _awaitSequenceStart();
+      }
+    }
+    // What a callsign entered stops goes by the newest message, as for CW
+    // ([stopMessageOne]).
+    _voiceSequenceHasOne = n == 1;
+    if (n != 1) _voiceMessageOne = false;
+  }
+
+  /// The next memory queued here, for a keyer that plays it under the key it
+  /// holds rather than ending first.
+  int? _takeQueuedVoice() {
+    if (_voiceSequence.isEmpty) return null;
+    final n = _voiceSequence.removeAt(0);
+    _voiceQueueChanged();
+    _voiceMessageOne = n == 1;
+    return n;
+  }
+
+  /// Drops the memory queued at [index] behind the one playing, the rest
+  /// left to play — a tap on it, as on a CW message waiting on the key.
+  void dropQueuedVoice(int index) {
+    if (index < 0 || index >= _voiceSequence.length) return;
+    _voiceSequence.removeAt(index);
+    _voiceQueueChanged();
+    if (!_voiceSequence.contains(1)) _voiceSequenceHasOne = false;
+  }
+
   /// Plays [memories] one after another. Only a single memory repeats, as
-  /// [playVoiceMemory] would: a CQ, never an exchange.
-  void playVoiceSequence(List<int> memories) {
+  /// [playVoiceMemory] would: a CQ, never an exchange — and not even that
+  /// without [repeat].
+  void playVoiceSequence(List<int> memories, {bool repeat = true}) {
     cancelVoiceSequence();
     if (memories.isEmpty) return;
-    // Held whole: the sequence is one message, whose memories follow each
-    // other with nothing of the other radio's between them.
     if (memories.length > 1 && canPlayVoice && !station.clearToSend(repeat: false)) {
-      _hold(memory: memories.first, repeat: false, messageOne: memories.contains(1), send: () => playVoiceSequence(memories));
+      _holdVoiceSequence(memories, repeat: repeat);
       return;
     }
     _voiceSequenceHasOne = memories.length > 1 && memories.contains(1);
     _voiceSequence.addAll(memories.skip(1));
+    _voiceQueueChanged();
     _awaitSequenceStart();
-    playVoiceMemory(memories.first, repeat: memories.length == 1);
+    playVoiceMemory(memories.first, repeat: repeat && memories.length == 1);
   }
 
   /// A memory asked to play here and not yet heard starting — keying is busy
@@ -1097,6 +1190,7 @@ class CatKeying {
 
   void cancelVoiceSequence() {
     _voiceSequence.clear();
+    _voiceQueueChanged();
     _voiceSequenceHasOne = false;
     _sequenceStarted = false;
     _sequenceStartTimer?.cancel();
@@ -1126,6 +1220,7 @@ class CatKeying {
     }
     if (!_sequenceStarted) return;
     final next = _voiceSequence.removeAt(0);
+    _voiceQueueChanged();
     _awaitSequenceStart();
     playVoiceMemory(next, repeat: false);
   }
@@ -1362,6 +1457,7 @@ class CatKeying {
     cancelVoiceSequence();
     _voiceStartTimer?.cancel();
     voiceStarting.dispose();
+    voiceQueue.dispose();
     waiting.dispose();
     _keyingRevision.dispose();
     cwProgress.dispose();
@@ -1376,12 +1472,15 @@ class CatKeying {
 /// A send SO2R holds for the other radio ([CatKeying.waiting]): a CW
 /// message's text or a memory's number, and whether a repeat chain sent it.
 class WaitingSend {
-  WaitingSend._(this.sequence, {this.text, this.memory, required this.repeat, required this.messageOne, required this.send});
+  WaitingSend._(this.sequence, {this.text, this.memory, this.then = const [], required this.repeat, required this.messageOne, required this.send});
 
   /// When it was held, across both keyers — the oldest goes first.
   final int sequence;
   final String? text;
   final int? memory;
+
+  /// The memories that follow [memory] in the same turn, under its key.
+  final List<int> then;
   final bool repeat;
 
   /// Whether it is message 1 — what a callsign entered over it stops

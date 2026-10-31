@@ -448,7 +448,10 @@ class FlexRadioSession
   /// the API's own rule, since a space ends the command's argument.
   late final _cwQueue = CwSendQueue(
     maxChunkLength: _cwxChunkLength,
-    send: (chunk) => _sendCommand('cwx send "${chunk.replaceAll(' ', '\x7F')}"'),
+    send: (chunk) {
+      _takeTx();
+      _sendCommand('cwx send "${chunk.replaceAll(' ', '\x7F')}"');
+    },
     speedWpm: () => _keyerSpeed,
     onProgress: _sink.reportCwProgress,
   );
@@ -636,6 +639,7 @@ class FlexRadioSession
   void _handleHandshakeLine(String line) {
     if (_handshakeDone || !_handshakePattern.hasMatch(line)) return;
     _handshakeDone = true;
+    if (meterHost case final at?) (_sessionsByHost[at] ??= {}).add(this);
     if (_wantUpdates) _subscribe();
   }
 
@@ -742,16 +746,59 @@ class FlexRadioSession
     // nothing about transmitting rather than saying "receiving".
     if (state == null) return;
     final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
-    final changed = _transmitting != transmitting;
     _transmitting = transmitting;
     _daxSwitch.interlock(transmitting: transmitting);
-    if (!changed) return;
-    _sink.reportTransmitting(transmitting);
+    _reportOnAir();
   }
 
-  /// What the interlock last said, so a restatement is not re-reported —
-  /// SmartSDR refreshes the whole object on every subscribe.
+  /// What the interlock last said. It speaks for the whole radio, which has
+  /// one transmitter whatever slice it is on.
   bool? _transmitting;
+
+  /// What [_reportOnAir] last said, so a restatement is not re-reported —
+  /// SmartSDR refreshes the whole object on every subscribe.
+  bool? _reportedOnAir;
+
+  /// This slice is on the air while the radio is, unless the transmit flag
+  /// is on the slice of another of the app's radios: two slices of one radio,
+  /// as SO2R's two radios, are not both transmitting when one is. The flag on
+  /// a slice no session reads is a split set up on the radio, and the
+  /// transmitter is this radio's — what reads this is the rule that no relay
+  /// moves under RF.
+  void _reportOnAir() {
+    final interlock = _transmitting;
+    if (interlock == null) return;
+    final onAir = interlock && !_txOnAnotherRadio;
+    if (onAir == _reportedOnAir) return;
+    _reportedOnAir = onAir;
+    _sink.reportTransmitting(onAir);
+  }
+
+  /// Moves the radio's transmit flag to this slice from another of the app's
+  /// radios. `xmit`, `cwx send` and a DVK playback all go out on whichever
+  /// slice holds it, so without this Radio B's message goes out on Radio A's
+  /// frequency. A flag on a slice no session reads is the operator's split,
+  /// and stays where it is.
+  void _takeTx() {
+    if (_txOnAnotherRadio) _sendCommand('slice set $slice tx=1');
+  }
+
+  /// The open sessions on each radio, by its address, from the handshake to
+  /// the teardown.
+  static final _sessionsByHost = <String, Set<FlexRadioSession>>{};
+
+  /// Forgets every open session: the tests' way to start each from a radio
+  /// no other test's session is still on.
+  @visibleForTesting
+  static void forgetSessions() => _sessionsByHost.clear();
+
+  /// Whether the transmit flag is on a slice another session on this radio
+  /// reads from.
+  bool get _txOnAnotherRadio {
+    if (_slices[slice]?.tx != false) return false;
+    final others = _sessionsByHost[meterHost] ?? const <FlexRadioSession>{};
+    return _slices.entries.any((e) => e.value.tx == true && others.any((other) => !identical(other, this) && other.slice == e.key));
+  }
 
   /// `cwx wpm=25 break_in_delay=…`, on the CWX subscription — the speed
   /// `cw wpm` sets and the front panel's knob turns. `sent=` and the erase
@@ -799,6 +846,7 @@ class FlexRadioSession
         freqKHz: freqKHz ?? previous?.freqKHz,
         mode: mode ?? previous?.mode,
         clientHandle: fields['client_handle'] ?? previous?.clientHandle,
+        tx: fields['tx'] != null ? fields['tx'] == '1' : previous?.tx,
         pan: fields['pan'] ?? previous?.pan,
         filterLo: int.tryParse(fields['filter_lo'] ?? '') ?? previous?.filterLo,
         filterHi: int.tryParse(fields['filter_hi'] ?? '') ?? previous?.filterHi,
@@ -811,6 +859,7 @@ class FlexRadioSession
     _publishChannels();
 
     if (index != slice) return;
+    _reportOnAir();
     _spectrum.slicePan(_slices[index]?.pan?.toLowerCase());
     _bindTrackedClient();
     _checkTrackedSlice();
@@ -1032,6 +1081,7 @@ class FlexRadioSession
     // Set before a key and cleared only after an unkey: either one that
     // throws leaves [teardown] an unkey to send.
     _keyedByUs |= on;
+    if (on) _takeTx();
     _sendCommand('xmit ${on ? 1 : 0}');
     _keyedByUs = on;
   }
@@ -1265,6 +1315,8 @@ class FlexRadioSession
   /// the tracker follows the new one, nothing would stop the old one.
   void _startVoice(String command, VoiceActivity activity, Duration ceiling) {
     stopVoice();
+    // After the stop, so the flag does not move under a playback on the air.
+    if (!activity.recording) _takeTx();
     _activityCeiling = ceiling;
     _dvkStarts[_sendCommand(command)] = (memory: activity.memory, start: ++_voiceStarts);
     _voice.start(activity);
@@ -1336,6 +1388,9 @@ class FlexRadioSession
 
   @override
   void teardown() {
+    // First: a send below that throws on a dead socket would otherwise leave
+    // this session's slice counted as another radio's for the whole launch.
+    _sessionsByHost[meterHost]?.remove(this);
     if (_keyedByUs) {
       // First, and sent even though the connection is closing: nothing else
       // will unkey this radio.
@@ -1376,6 +1431,9 @@ class _SliceStatus {
   final String? mode;
   final String? clientHandle;
 
+  /// Whether this slice holds the radio's transmit flag (`tx=1`).
+  final bool? tx;
+
   /// The panadapter showing this slice, as `0x40000000`.
   final String? pan;
 
@@ -1392,6 +1450,7 @@ class _SliceStatus {
     this.freqKHz,
     this.mode,
     this.clientHandle,
+    this.tx,
     this.pan,
     this.filterLo,
     this.filterHi,

@@ -373,20 +373,7 @@ class CatService extends ChangeNotifier
     _startSo2r();
     _ptt.held.addListener(_restartSilentDrops);
     // The computer's voice keyer, where this device can run one.
-    if (voiceAudio != null && voiceAudio.isSupported && voiceMessagesDirectory != null) {
-      _keying
-        ..voiceAudio = voiceAudio
-        ..voiceMessagesDirectory = voiceMessagesDirectory
-        ..onComputerVoiceChanged = () {
-          if (!_disposed) notifyListeners();
-        };
-      // Every change that makes or unmakes one — a session opened, the
-      // directory found, a set picked — is one this service announces.
-      addListener(_keying.syncComputerKeyers);
-      // Made now rather than when first asked for: it is what makes a
-      // templated message, and a key can ask for one before any surface has.
-      _keying.voicedWords;
-    }
+    if (voiceAudio != null && voiceAudio.isSupported && voiceMessagesDirectory != null) _wireComputerVoice(voiceAudio, voiceMessagesDirectory);
   }
 
   @override
@@ -881,7 +868,7 @@ class CatService extends ChangeNotifier
     // is what already knows the difference, and a gate that fails closed on
     // an answer known to be out of date, with nothing on screen to say why,
     // is worse than one that reopens.
-    final keyed = _ptt.heldOn(connectedSession(uuid)) || _keying.computerKeyed(uuid);
+    final keyed = _ptt.heldOn(connectedSession(uuid)) || _keyerForNode(uuid).computerKeyed(uuid);
     if (state.stale) return keyed;
     return state.telemetry.isTransmitting || keyed;
   }
@@ -1465,7 +1452,7 @@ class CatService extends ChangeNotifier
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     // Before the notifiers they report into are disposed.
-    _keying.disposeComputerKeyers();
+    _disposeComputerKeyers();
     for (final keyer in _keyers.values) {
       keyer.chain.cancel();
       keyer.dispose();

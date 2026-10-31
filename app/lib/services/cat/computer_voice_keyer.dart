@@ -19,6 +19,15 @@ import 'package:halo_audio/halo_audio.dart';
 import '../error_reporting_service.dart';
 import 'driver.dart';
 
+/// A message made for one play ([ComputerVoiceKeyer.prepare]): the file,
+/// and what it says as it goes.
+class MadeVoiceMessage {
+  final String path;
+  final VoiceScript? script;
+
+  const MadeVoiceMessage(this.path, {this.script});
+}
+
 /// Where the audio goes and comes from, each `{id, name}` — the id first, the
 /// name when the id has changed (matchAudioDevice) — or, for the output,
 /// [voiceOutputRadio].
@@ -54,6 +63,12 @@ const computerVoicePlayMargin = Duration(seconds: 2);
 /// it. Held open, a message starts without opening a device; closed after
 /// this, a station left alone does not hold the device for good.
 const computerVoiceIdleRelease = Duration(minutes: 5);
+
+/// How long after an unkey a "not transmitting" is the radio's answer to it.
+/// A radio that refused the key never answers its unkey: without a limit,
+/// the next message's real drop of the key is taken for that answer, and
+/// the message plays on into a transmitter that is off.
+const computerVoiceUnkeyAnswer = Duration(seconds: 1);
 
 /// A recording shorter than this is a Record pressed and stopped by mistake,
 /// and replaces nothing.
@@ -457,7 +472,15 @@ enum _Phase { idle, preparing, leadIn, playing, tail, recording }
 class ComputerVoiceKeyer implements VoiceKeyer {
   /// Opens the radio's sound device at once, so the first message does not
   /// wait for it either — unless there is no radio, when it only records.
-  ComputerVoiceKeyer({required this.ptt, required this.audio, required this.config, required this.fileFor, required this.report, this.prepare}) {
+  ComputerVoiceKeyer({
+    required this.ptt,
+    required this.audio,
+    required this.config,
+    required this.fileFor,
+    required this.report,
+    this.prepare,
+    this.following,
+  }) {
     if (ptt == null) return;
     if (_toRadio) {
       _openRadio();
@@ -500,15 +523,22 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   final String Function(int n) fileFor;
 
   /// Memory [n] made at play time rather than recorded — a template voiced
-  /// from the operator's words (voice_words.dart): the file to play once it
+  /// from the operator's words (voice_words.dart): the message to play once it
   /// is made, failing with [VoicedMessageRefused] when it cannot be. Null
   /// for a memory that is its own recording. Made before anything is keyed,
   /// so a message that cannot be made puts no carrier on the air.
-  final Future<String>? Function(int n)? prepare;
+  final Future<MadeVoiceMessage>? Function(int n)? prepare;
 
   /// What the keyer is doing, the way a radio's session reports its own
   /// memories (EquipmentSink.reportVoiceActivity).
   final void Function(VoiceActivity? activity) report;
+
+  /// The memory queued to play next, taken as a message's tail ends; null
+  /// when nothing is, and the radio unkeys.
+  final int? Function()? following;
+
+  /// [VoiceActivity.take] for the message playing.
+  int _take = 0;
 
   _Phase _phase = _Phase.idle;
   int? _memory;
@@ -537,6 +567,15 @@ class ComputerVoiceKeyer implements VoiceKeyer {
 
   /// Whether the radio has said it is transmitting since this keyer keyed it.
   bool _confirmed = false;
+
+  /// An unkey went out and the radio has not yet said it is receiving. Its
+  /// answer can arrive after the next key — a message played over the one
+  /// before it — and read then, it is the radio dropping that key.
+  bool _unkeyUnanswered = false;
+  Timer? _unkeyAnswerWait;
+
+  /// What the play last reported, for a failure to show in its place.
+  VoiceActivity? _reported;
 
   /// The last thing that went wrong, until the next thing asked of the keyer.
   ComputerVoiceProblem? get problem => _problem;
@@ -573,22 +612,34 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     _quiet();
     _release?.cancel();
     if (ptt == null) return _refuse(n, ComputerVoiceProblem.cannotKey);
+    _take = 0;
+    _start(n);
+  }
+
+  /// Memory [n] made, if it is made, then played — under the key already
+  /// held when it follows another message.
+  void _start(int n) {
     final made = prepare?.call(n);
     if (made == null) return _play(n, fileFor(n));
     final turn = _turn;
     _memory = n;
     _phase = _Phase.preparing;
-    report(VoiceActivity(memory: n));
+    report(VoiceActivity(memory: n, take: _take));
+    // Keyed, the carrier is on the air while the message is made: one slow
+    // to come lets it go, and keys again for itself, with its lead — its
+    // play or its refusal still the operator's to see.
+    if (_keyed) _ceiling = Timer(computerVoicePlayMargin, _unkey);
     unawaited(
       made.then(
-        (path) {
+        (message) {
           if (turn != _turn) return;
           _phase = _Phase.idle;
           try {
-            _play(n, path);
+            _play(n, message.path, made: message);
           } catch (e, st) {
             // What the key's own catch reports for a recording, out of its reach here.
             ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
+            _refuse(n, ComputerVoiceProblem.deviceFailed);
           }
         },
         onError: (Object e, StackTrace st) {
@@ -607,7 +658,14 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     );
   }
 
-  void _play(int n, String path) {
+  /// [made]: the message was made for this play, so no surface knows its
+  /// length or its words yet, and the activity carries them — from the key,
+  /// through the lead and the output's [SilenceFedOutput.heardAfter], so the
+  /// bar and the words go with what the operator hears.
+  ///
+  /// Already keyed, it follows another message: no lead, and no key.
+  void _play(int n, String path, {MadeVoiceMessage? made}) {
+    final underKey = _keyed;
     final length = audio.lengthOf(path);
     if (length == null && audio.exists(path)) return _refuse(n, ComputerVoiceProblem.unplayable);
     if (length == null || length == Duration.zero) return _refuse(n, ComputerVoiceProblem.notRecorded);
@@ -634,7 +692,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
         if (output == null) return _refuse(n, ComputerVoiceProblem.deviceFailed);
       }
     }
-    final lead = _millis(c[voiceLeadConfigKey], defaultVoiceLead);
+    final lead = underKey ? Duration.zero : _millis(c[voiceLeadConfigKey], defaultVoiceLead);
     final tail = _millis(c[voiceTailConfigKey], defaultVoiceTail);
 
     if (output case final SilenceFedOutput fed) {
@@ -648,9 +706,17 @@ class ComputerVoiceKeyer implements VoiceKeyer {
 
     _memory = n;
     _phase = _Phase.leadIn;
-    report(VoiceActivity(memory: n));
+    final heard = lead + (output is SilenceFedOutput ? output.heardAfter : Duration.zero);
+    report(
+      _reported = VoiceActivity(
+        memory: n,
+        lengthMs: made == null ? null : (heard + length).inMilliseconds,
+        script: made?.script?.delayedBy(heard),
+        take: _take,
+      ),
+    );
     try {
-      _key();
+      if (!underKey) _key();
     } catch (_) {
       // The driver marked itself keyed before the command went, so its
       // teardown still unkeys; another command now would only throw again.
@@ -661,6 +727,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
       _scheduleRelease();
       rethrow;
     }
+    _ceiling?.cancel();
     _ceiling = Timer(lead + length + tail + computerVoicePlayMargin, stopVoice);
     _timer = Timer(lead, () {
       try {
@@ -675,9 +742,9 @@ class ComputerVoiceKeyer implements VoiceKeyer {
               return _fail(ComputerVoiceProblem.unplayable);
             }
             // The device keeps sounding what it holds of the end, then
-            // silence, while the unkey waits.
+            // silence, while the unkey — or the next message — waits.
             _phase = _Phase.tail;
-            _timer = Timer(tail, _finish);
+            _timer = Timer(tail, _next);
           }),
         );
       } on HaloAudioException catch (e, st) {
@@ -692,11 +759,12 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   /// than keying the radio for it again each cooldown.
   void _fail(ComputerVoiceProblem problem) {
     final n = _memory;
+    final shown = _reported;
     _quiet();
     _problem = problem;
     if (n == null) return report(null);
     _memory = n;
-    report(VoiceActivity(memory: n, doubtful: true));
+    report(shown?.memory == n ? shown!.asDoubtful() : VoiceActivity(memory: n, doubtful: true));
     _timer = Timer(voiceDoubtLinger, () {
       _memory = null;
       report(null);
@@ -780,7 +848,13 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   /// time-out timer, a mic switch — and the message goes with it, unkeyed
   /// anyway since a CAT key is latched. Before that, it is the poll that was
   /// already on the wire as the key went out (cat_ptt.dart says the same).
+  /// The first "not transmitting" within [computerVoiceUnkeyAnswer] of an
+  /// unkey is the radio's answer to it, even after the next key.
   void onTransmitting(bool transmitting) {
+    if (!transmitting && _unkeyUnanswered) {
+      _unkeyUnanswered = false;
+      return;
+    }
     if (!_keyed) return;
     if (transmitting) {
       _confirmed = true;
@@ -794,6 +868,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   void dispose() {
     _keyed = false;
     stopVoice();
+    _unkeyAnswerWait?.cancel();
     _closeOutput();
   }
 
@@ -875,6 +950,10 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   /// Memory [n] said no before anything happened: shown as doubtful, the way
   /// a radio's refused memory is, then cleared.
   void _refuse(int n, ComputerVoiceProblem problem, {bool recording = false}) {
+    // Keyed for it when it follows another message.
+    _unkey();
+    _ceiling?.cancel();
+    _ceiling = null;
     _problem = problem;
     _memory = n;
     _scheduleRelease();
@@ -885,15 +964,34 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     });
   }
 
+  /// A message's tail has run: the one queued behind it ([following]) plays
+  /// under the same key, the tail the space between them, or the radio
+  /// unkeys.
+  void _next() {
+    final n = following?.call();
+    if (n == null) return _finish();
+    _quiet(keepKey: true);
+    _take++;
+    try {
+      _start(n);
+    } catch (e, st) {
+      // Out of the key's own catch, and under the key: the carrier must not
+      // stay up for a message that never started.
+      ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
+      _refuse(n, ComputerVoiceProblem.deviceFailed);
+    }
+  }
+
   void _finish() {
     _quiet();
     report(null);
   }
 
-  /// Everything stopped, and the radio unkeyed if this keyer keyed it; the
-  /// recording, if one was running, kept as the memory's when it heard
-  /// something. The device stays open for the next message.
-  void _quiet() {
+  /// Everything stopped, and the radio unkeyed if this keyer keyed it,
+  /// unless [keepKey] holds it for a message that follows; the recording, if
+  /// one was running, kept as the memory's when it heard something. The
+  /// device stays open for the next message.
+  void _quiet({bool keepKey = false}) {
     _turn++;
     _timer?.cancel();
     _ceiling?.cancel();
@@ -929,6 +1027,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
       }
       done?.call(kept);
     }
+    if (keepKey) return;
     _scheduleRelease();
     _unkey();
   }
@@ -996,6 +1095,9 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     if (!_keyed) return;
     _keyed = false;
     _confirmed = false;
+    _unkeyUnanswered = true;
+    _unkeyAnswerWait?.cancel();
+    _unkeyAnswerWait = Timer(computerVoiceUnkeyAnswer, () => _unkeyUnanswered = false);
     _setPtt(false);
   }
 

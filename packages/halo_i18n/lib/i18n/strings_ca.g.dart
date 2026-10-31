@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$ca extends Translations$setting
 	@override String get stopRecording => 'Atura la gravació';
 	@override String get playing => 'Reproduint…';
 	@override String get recording => 'Gravant…';
-	@override String playingMemory({required Object label}) => 'Reproduint ${label}';
 	@override String recordingMemory({required Object label}) => 'Gravant ${label}';
 	@override String get doubtful => 'L\'ha reproduït la ràdio? Ha informat que estava inactiva immediatament.';
 	@override String get recordOnRadio => 'Has de gravar les memòries a la mateixa ràdio.';
@@ -5942,7 +5941,6 @@ extension on TranslationsCa {
 			'settings.radio.voiceMessages.stopRecording' => 'Atura la gravació',
 			'settings.radio.voiceMessages.playing' => 'Reproduint…',
 			'settings.radio.voiceMessages.recording' => 'Gravant…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduint ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Gravant ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'L\'ha reproduït la ràdio? Ha informat que estava inactiva immediatament.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Has de gravar les memòries a la mateixa ràdio.',
@@ -6055,9 +6053,9 @@ extension on TranslationsCa {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacitat',
 			'settings.privacy.shareAppData.title' => 'Comparteix dades d\'ús de l\'aplicació',
@@ -6569,9 +6567,9 @@ extension on TranslationsCa {
 			'settings.station.newAntenna' => 'Antena nova',
 			'settings.station.newKey' => 'Manipulador nou',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT a ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT a ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador a ${device}',
 			'settings.station.trackStationInfo' => 'Registra la informació de l\'estació per a cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Inclou-la a les exportacions ADIF',
@@ -7083,9 +7081,9 @@ extension on TranslationsCa {
 			'switchAccounts.linkWithSiblingDescription' => 'Tens una altra aplicació de Ham2K instal·lada. Vincula amb el compte que s\'hi fa servir.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprova la sol·licitud a ${app} i després torna aquí.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Torna a obrir ${app}',
+			'switchAccounts.siblingNoGrant' => 'No ha funcionat? Torna-la a obrir, o torna enrere i vincula d\'una altra manera.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'No ha funcionat? Torna-la a obrir, o torna enrere i vincula d\'una altra manera.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'No s\'ha pogut obrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'L\'enllaç ha caducat i n\'hi ha un de nou a punt — torna a obrir ${app}.',
 			'switchAccounts.tryAgain' => 'Torna-ho a provar',

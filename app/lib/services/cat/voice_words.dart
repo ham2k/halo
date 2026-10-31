@@ -224,7 +224,11 @@ class VoicedPlan {
   /// Words the message needs and the word set has not recorded, in order, once each.
   final List<VoiceWord> unrecorded;
 
-  const VoicedPlan(this.pieces, {this.unspeakable = const [], this.unrecorded = const []});
+  /// Where each piece is written in the planned text, start to end, beside
+  /// [pieces] — empty for a plan made from no text.
+  final List<(int, int)> spans;
+
+  const VoicedPlan(this.pieces, {this.unspeakable = const [], this.unrecorded = const [], this.spans = const []});
 
   bool get speakable => unspeakable.isEmpty && unrecorded.isEmpty && pieces.isNotEmpty;
 
@@ -272,18 +276,24 @@ VoicedPlan planVoicedText(
     if (p.words.length == 1 && p.words.single.startsWith('/')) slashed.putIfAbsent(p.words.single, () => p.word);
   }
   final parts = <List<List<Object>>>[]; // part -> groups -> VoiceWord | int (a message) | String (unspeakable)
+  final partSpans = <List<(int, int)>>[]; // part -> where each of its items is written
   // split() leaves the marks out: each segment after the first follows one.
-  final messages = [for (final mark in _messageMark.allMatches(text)) int.parse(mark[1]!)];
+  final marks = _messageMark.allMatches(text).toList();
   for (final (i, segment) in text.split(_messageMark).indexed) {
+    final offset = i == 0 ? 0 : marks[i - 1].end;
     if (i > 0) {
       parts.add([
-        [messages[i - 1]],
+        [int.parse(marks[i - 1][1]!)],
       ]);
+      partSpans.add([(marks[i - 1].start, marks[i - 1].end)]);
     }
-    final tokens = [
-      for (final token in _tokens(segment))
-        if (_stripped(token).isNotEmpty) token,
+    // Each token's word as written, punctuation off, where it is in [text].
+    final written = [
+      for (final match in RegExp(r'\S+').allMatches(segment))
+        if (_stripped(match[0]!.toUpperCase()) case final word when word.isNotEmpty)
+          (token: match[0]!.toUpperCase(), start: offset + match.start + match[0]!.toUpperCase().indexOf(word), word: word),
     ];
+    final tokens = [for (final w in written) w.token];
     for (var w = 0; w < tokens.length;) {
       ({VoiceWord word, List<String> words, int order})? match;
       var matchExact = -1;
@@ -296,15 +306,20 @@ VoicedPlan planVoicedText(
         parts.add([
           [match.word],
         ]);
+        final last = written[w + match.words.length - 1];
+        partSpans.add([(written[w].start, last.start + last.word.length)]);
         w += match.words.length;
         continue;
       }
-      parts.add(_partOf(_stripped(tokens[w]), slashed));
+      final part = _partOf(_stripped(tokens[w]), slashed);
+      parts.add(part);
+      partSpans.add(_itemSpans(written[w].word, written[w].start, [for (final group in part) ...group], slashed));
       w++;
     }
   }
 
   final pieces = <VoicedPiece>[];
+  final spans = <(int, int)>[];
   final unspeakable = <String>[];
   final unrecorded = <VoiceWord>[];
   for (final (p, groups) in parts.indexed) {
@@ -335,8 +350,10 @@ VoicedPlan planVoicedText(
           case final VoiceWord word:
             if (!recorded(word) && !unrecorded.contains(word)) unrecorded.add(word);
             pieces.add(WordPiece(word, take, gap, startsPart: startsPart));
+            spans.add(partSpans[p][index]);
           case final int message:
             pieces.add(RecordingPiece(message, gap, startsPart: startsPart));
+            spans.add(partSpans[p][index]);
           case final String char:
             if (!unspeakable.contains(char)) unspeakable.add(char);
         }
@@ -344,7 +361,67 @@ VoicedPlan planVoicedText(
       }
     }
   }
-  return VoicedPlan(pieces, unspeakable: unspeakable, unrecorded: unrecorded);
+  return VoicedPlan(pieces, unspeakable: unspeakable, unrecorded: unrecorded, spans: spans);
+}
+
+/// Where each of [items] — [_partOf]'s for [word], written at [start] — is
+/// in the text: a letter its character, "stroke" its slash, a slashed
+/// phrase its slash and what follows.
+List<(int, int)> _itemSpans(String word, int start, List<Object> items, Map<String, VoiceWord> slashed) {
+  final out = <(int, int)>[];
+  var at = 0;
+  for (final item in items) {
+    if (item == strokeWord || (item is VoiceWord && slashed.containsValue(item))) {
+      final slash = word.indexOf('/', at);
+      final from = slash < 0 ? at : slash;
+      final next = item == strokeWord ? from + 1 : word.indexOf('/', from + 1);
+      final to = next < 0 ? word.length : next;
+      out.add((start + from, start + to));
+      at = to;
+    } else {
+      while (at < word.length && word[at] == '/') {
+        at++;
+      }
+      out.add((start + at, start + math.min(at + 1, word.length)));
+      at++;
+    }
+  }
+  return out;
+}
+
+/// What [plan], made from [text], shows as it plays: [text] with its
+/// spacing evened and each recorded message's mark as [messageName] calls
+/// it, and for each piece the moment it starts — from [starts], in samples
+/// ([joinVoicedPlan]) — with how much of that text has been said once it
+/// has. Null when the plan does not say where its pieces are written.
+({String text, List<({int atMs, int said})> marks})? voicedScript(String text, VoicedPlan plan, List<int> starts, String Function(int n) messageName) {
+  if (plan.spans.length != plan.pieces.length || starts.length != plan.pieces.length) return null;
+  // The spans are where pieces are in the text upper-cased. On the web that
+  // is JavaScript's upper case, where "ß" is "SS": a character whose upper
+  // case is longer puts every span after it past where it is written.
+  if (text.toUpperCase().length != text.length) return null;
+  final shown = StringBuffer();
+  final endAt = List<int>.filled(text.length, 0);
+  var space = false;
+  for (var i = 0; i < text.length;) {
+    final mark = _messageMark.matchAsPrefix(text, i);
+    final unit = mark?[0] ?? text[i];
+    if (mark == null && unit.trim().isEmpty) {
+      space = true;
+      endAt[i++] = shown.length;
+      continue;
+    }
+    if (space && shown.isNotEmpty) shown.write(' ');
+    space = false;
+    shown.write(mark == null ? unit : messageName(int.parse(mark[1]!)));
+    for (var k = 0; k < unit.length; k++) {
+      endAt[i++] = shown.length;
+    }
+  }
+  return (
+    text: shown.toString(),
+    marks: [for (final (k, span) in plan.spans.indexed) (atMs: starts[k] * 1000 ~/ voiceWordRate, said: span.$2 > 0 ? endAt[span.$2 - 1] : 0)],
+  );
 }
 
 /// Whether [phrase] is said by [tokens] from [from]: -1 when it is not,
@@ -481,7 +558,9 @@ Float32List changeTempo(Float32List s, double speed) {
 /// [plan] as one recording, each piece's samples from [load] — a word's take
 /// with its tail cut and at [speed], a message's recording as it is — laid
 /// down at its gap, a negative one overlapping the piece before.
-Float32List joinVoicedPlan(VoicedPlan plan, Float32List Function(VoicedPiece piece) load, {double speed = 1}) {
+///
+/// [starts], given, gets the sample each piece starts at.
+Float32List joinVoicedPlan(VoicedPlan plan, Float32List Function(VoicedPiece piece) load, {double speed = 1, List<int>? starts}) {
   final pieces = [
     for (final piece in plan.pieces)
       (
@@ -497,6 +576,7 @@ Float32List joinVoicedPlan(VoicedPlan plan, Float32List Function(VoicedPiece pie
   var at = 0;
   for (final piece in pieces) {
     at = math.max(0, at + piece.gap);
+    starts?.add(at);
     for (var i = 0; i < piece.samples.length; i++) {
       out[at + i] += piece.samples[i];
     }

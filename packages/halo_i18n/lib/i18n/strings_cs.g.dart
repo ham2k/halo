@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$cs extends Translations$setting
 	@override String get stopRecording => 'Zastavit nahrávání';
 	@override String get playing => 'Přehrávání…';
 	@override String get recording => 'Nahrávání…';
-	@override String playingMemory({required Object label}) => 'Přehrává se ${label}';
 	@override String recordingMemory({required Object label}) => 'Nahrává se ${label}';
 	@override String get doubtful => 'Přehrálo to rádio? Hned hlásilo, že je nečinné.';
 	@override String get recordOnRadio => 'Paměti musíte nahrát přímo na rádiu.';
@@ -5942,7 +5941,6 @@ extension on TranslationsCs {
 			'settings.radio.voiceMessages.stopRecording' => 'Zastavit nahrávání',
 			'settings.radio.voiceMessages.playing' => 'Přehrávání…',
 			'settings.radio.voiceMessages.recording' => 'Nahrávání…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Přehrává se ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Nahrává se ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Přehrálo to rádio? Hned hlásilo, že je nečinné.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Paměti musíte nahrát přímo na rádiu.',
@@ -6055,9 +6053,9 @@ extension on TranslationsCs {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Soukromí',
 			'settings.privacy.shareAppData.title' => 'Sdílet údaje o používání aplikace',
@@ -6569,9 +6567,9 @@ extension on TranslationsCs {
 			'settings.station.newAntenna' => 'Nová anténa',
 			'settings.station.newKey' => 'Nový klíč',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL nebo kompatibilní)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT klíčovač v ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT klíčovač v ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Klíč na ${device}',
 			'settings.station.trackStationInfo' => 'Zaznamenávat informace o stanici u každého QSO',
 			'settings.station.includeStationInfoInAdif' => 'Zahrnout do exportů ADIF',
@@ -7083,9 +7081,9 @@ extension on TranslationsCs {
 			'switchAccounts.linkWithSiblingDescription' => 'Máte nainstalovanou jinou aplikaci Ham2K. Propojte se s účtem, který se používá tam.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Schvalte žádost v ${app} a pak se vraťte sem.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Znovu otevřít ${app}',
+			'switchAccounts.siblingNoGrant' => 'Nefungovalo to? Otevřete ji znovu, nebo se vraťte a propojte jiným způsobem.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Nefungovalo to? Otevřete ji znovu, nebo se vraťte a propojte jiným způsobem.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nelze otevřít.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Odkaz vypršel a je připraven nový — znovu otevřete ${app}.',
 			'switchAccounts.tryAgain' => 'Zkusit znovu',

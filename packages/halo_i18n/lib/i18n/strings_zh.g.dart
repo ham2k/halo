@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	@override String get stopRecording => '停止录制';
 	@override String get playing => '播放中…';
 	@override String get recording => '录制中…';
-	@override String playingMemory({required Object label}) => '正在播放 ${label}';
 	@override String recordingMemory({required Object label}) => '正在录制 ${label}';
 	@override String get doubtful => '电台播放了吗？它立刻就报告为空闲。';
 	@override String get recordOnRadio => '存储必须在电台本身上录制。';
@@ -5942,7 +5941,6 @@ extension on TranslationsZh {
 			'settings.radio.voiceMessages.stopRecording' => '停止录制',
 			'settings.radio.voiceMessages.playing' => '播放中…',
 			'settings.radio.voiceMessages.recording' => '录制中…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '正在播放 ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '正在录制 ${label}',
 			'settings.radio.voiceMessages.doubtful' => '电台播放了吗？它立刻就报告为空闲。',
 			'settings.radio.voiceMessages.recordOnRadio' => '存储必须在电台本身上录制。',
@@ -6055,9 +6053,9 @@ extension on TranslationsZh {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '隐私',
 			'settings.privacy.shareAppData.title' => '分享应用使用数据',
@@ -6569,9 +6567,9 @@ extension on TranslationsZh {
 			'settings.station.newAntenna' => '新天线',
 			'settings.station.newKey' => '新电键',
 			'settings.station.newKeyer' => 'WinKeyer（K1EL 或兼容）',
+			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 键控器',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 键控器',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} 上的电键',
 			'settings.station.trackStationInfo' => '为每个 QSO 记录电台信息',
 			'settings.station.includeStationInfoInAdif' => '包含在 ADIF 导出中',
@@ -7083,9 +7081,9 @@ extension on TranslationsZh {
 			'switchAccounts.linkWithSiblingDescription' => '您安装了另一个 Ham2K 应用。与该应用使用的账户链接。',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '请在 ${app} 中批准请求，然后返回这里。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '再次打开 ${app}',
+			'switchAccounts.siblingNoGrant' => '没有成功？请再次打开它，或返回并用其他方式链接。',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => '没有成功？请再次打开它，或返回并用其他方式链接。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '无法打开 ${app}。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '链接已过期，新的链接已准备好——请再次打开 ${app}。',
 			'switchAccounts.tryAgain' => '重试',

@@ -160,23 +160,22 @@ class _VoiceMessagesPane extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Where the messages come from, as the Station panel picks it —
-                        // radio1's: Radio B plays its own memories.
-                        if (radio == 'A')
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: Space.md),
-                            child: Builder(
-                              builder: (context) {
-                                final parts = phoneKeyingParts(context, services, filled: true);
-                                return Row(
-                                  children: [
-                                    Expanded(child: parts.picker),
-                                    for (final control in parts.controls) ...[const SizedBox(width: Space.sm), control],
-                                  ],
-                                );
-                              },
-                            ),
+                        // Where this radio's messages come from, as the
+                        // Station panel picks it.
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: Space.md),
+                          child: Builder(
+                            builder: (context) {
+                              final parts = phoneKeyingParts(context, services, radio: radio, filled: true);
+                              return Row(
+                                children: [
+                                  Expanded(child: parts.picker),
+                                  for (final control in parts.controls) ...[const SizedBox(width: Space.sm), control],
+                                ],
+                              );
+                            },
                           ),
+                        ),
                         // A radio with no voice memories at all, connected or not.
                         if (!keyer.radio1HasVoiceMemories)
                           KeyerUnsupportedNotice(text: keyer.phoneKeyingOff ? context.t.settings.station.phoneKeyingOff : m.notSupported),
@@ -269,8 +268,8 @@ class _VoiceMessagesPane extends StatelessWidget {
                                 leading: Icon(cwMessageNumberIcons[n - 1]),
                                 // The label, or the message's own title dimmed where it has
                                 // none; the keys that send it on the right.
-                                title: keyer.voiceMessageLabel(n).trim().isNotEmpty
-                                    ? Text(keyer.voiceMessageLabel(n).trim())
+                                title: keyer.voiceMessageShownLabel(n).trim().isNotEmpty
+                                    ? Text(keyer.voiceMessageShownLabel(n).trim())
                                     : Text(
                                         m.messageTitle(n: n),
                                         style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
@@ -351,11 +350,10 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   late final _label = TextEditingController(text: _opened);
   late final _template = TextEditingController(text: widget.services.cat.keyer(widget.radio).voiceMessageTemplate(widget.n));
 
-  /// Whether this message can be said from the operator's words: radio1's
-  /// recordings on this computer, with voiced words on.
+  /// Whether this message can be said from the operator's words: this
+  /// radio's recordings on this computer, with voiced words on.
   bool get _voiceable =>
-      widget.radio == 'A' &&
-      widget.services.cat.keyer('A').voiceMessagesFromComputer &&
+      widget.services.cat.keyer(widget.radio).voiceMessagesFromComputer &&
       widget.services.settings.experimentEnabled('words') /* stored key, see experiments.yaml */;
 
   /// What the template says for the draft as it is, and what it needs that
@@ -827,29 +825,39 @@ String computerVoiceProblemText(BuildContext context, ComputerVoiceProblem probl
   };
 }
 
-/// The computer's voice keyer settings for the keying radio, from the
-/// Station panel's Phone Keying pick. Done, not Save: like the fields in it,
-/// nothing here is a draft.
-Future<void> showComputerVoiceSettingsDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
+/// The computer's voice keyer settings for [radio]'s (`A` or `B`) rig, from
+/// its Phone Keying pick. Done, not Save: like the fields in it, nothing
+/// here is a draft. Under SO2R each radio has a dialog of its own, named for
+/// it, and the same device may be picked in both.
+Future<void> showComputerVoiceSettingsDialog(BuildContext context, HaLoServices services, {String radio = 'A'}) => showHaloDialog<void>(
   context: context,
-  builder: (context) => HaloDialog(
-    title: Text(context.t.settings.station.computerVoiceSettings),
-    content: ListenableBuilder(
-      listenable: services.cat,
-      builder: (context, _) => _ComputerVoiceFields(cat: services.cat, audio: services.cat.computerVoiceAudio!),
-    ),
-    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-  ),
+  builder: (context) {
+    final st = context.t.settings.station;
+    final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
+    return HaloDialog(
+      title: Text(so2r ? st.so2rRadioName(radio: radio, name: st.computerVoiceSettings) : st.computerVoiceSettings),
+      content: ListenableBuilder(
+        listenable: services.cat,
+        builder: (context, _) => _ComputerVoiceFields(keyer: services.cat.keyer(radio), audio: services.cat.computerVoiceAudio!, so2r: so2r),
+      ),
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+    );
+  },
 );
 
-/// The computer's voice keyer settings, on the keying radio's node: the
+/// The computer's voice keyer settings, on [keyer]'s radio's node: the
 /// sound devices, and the delays around the audio. Per radio, unlike the set
-/// in use: the sound card is the rig's. They apply as they change.
+/// in use: the sound card is the rig's, and so is how long it takes to
+/// switch. They apply as they change.
 class _ComputerVoiceFields extends StatefulWidget {
-  final CatService cat;
+  final RadioKeyer keyer;
   final VoiceAudio audio;
 
-  const _ComputerVoiceFields({required this.cat, required this.audio});
+  /// Whether to say which radio's output this is: with two radios, two
+  /// dialogs each saying "Send audio to" would not say to which.
+  final bool so2r;
+
+  const _ComputerVoiceFields({required this.keyer, required this.audio, required this.so2r});
 
   @override
   State<_ComputerVoiceFields> createState() => _ComputerVoiceFieldsState();
@@ -876,12 +884,12 @@ class _ComputerVoiceFieldsState extends State<_ComputerVoiceFields> {
     }
   }
 
-  void _set(Map<String, dynamic> changes) => unawaited(widget.cat.updateVoiceKeyingConfig(changes));
+  void _set(Map<String, dynamic> changes) => unawaited(widget.keyer.updateVoiceKeyingConfig(changes));
 
   @override
   Widget build(BuildContext context) {
     final m = context.t.settings.radio.voiceMessages;
-    final config = widget.cat.voiceKeyingNode?.config ?? const {};
+    final config = widget.keyer.voiceKeyingNode?.config ?? const {};
     final decoration = poloFieldDecoration(context, '');
     Widget dropdown<T>({required String label, required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T> onChanged}) =>
         DropdownButtonFormField<T>(
@@ -899,7 +907,7 @@ class _ComputerVoiceFieldsState extends State<_ComputerVoiceFields> {
       mainAxisSize: MainAxisSize.min,
       children: [
         _deviceField(
-          label: m.output,
+          label: widget.so2r ? m.outputFor(radio: widget.keyer.radio) : m.output,
           devices: _outputs,
           stored: voiceDeviceFromConfig(config[voiceOutputConfigKey]),
           // No default for the output: the system's default device is
@@ -907,7 +915,7 @@ class _ComputerVoiceFieldsState extends State<_ComputerVoiceFields> {
           defaultLabel: null,
           // First, and what nothing picked means, on a radio that takes its
           // audio over the network: no sound device between them.
-          radioLabel: widget.cat.voiceKeyingRadioTakesAudio ? m.outputRadio : null,
+          radioLabel: widget.keyer.voiceKeyingRadioTakesAudio ? m.outputRadio : null,
           radioPicked: config[voiceOutputConfigKey] == null || voiceOutputIsRadio(config[voiceOutputConfigKey]),
           build: dropdown,
           onChanged: (device) => _set({voiceOutputConfigKey: device == null ? null : voiceDeviceToConfig(device)}),
@@ -1022,12 +1030,13 @@ String peerDeviceLabel(PeerRadioSelection? selection) {
   return selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName;
 }
 
-/// The label for memory [n] — as set, or the key ("M3") when none is.
+/// The label for memory [n] — as set, its template when it is said from
+/// the operator's words, or the key ("M3") when neither is.
 ///
 /// Through the radio's keyer rather than the settings, because the memories
 /// can be a PEER radio's: the label then belongs to the device the audio is
 /// in (docs/design/cat.md § Keying a peer's radio).
 String voiceMessageLabelFor(RadioKeyer keyer, int n, String key) {
-  final label = keyer.voiceMessageLabel(n).trim();
+  final label = keyer.voiceMessageShownLabel(n).trim();
   return label.isEmpty ? key : label;
 }

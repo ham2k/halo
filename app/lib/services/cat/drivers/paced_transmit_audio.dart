@@ -36,6 +36,7 @@ abstract class PacedTransmitAudio implements SilenceFedOutput {
     required this.framesPerPacket,
     this.ahead = _defaultAhead,
     this.feedsSilence = true,
+    this.heardAfter = Duration.zero,
     int Function()? clockMicros,
   }) : _clock = clockMicros ?? _stopwatchClock();
 
@@ -53,6 +54,9 @@ abstract class PacedTransmitAudio implements SilenceFedOutput {
   /// every packet keys (a K4), which [startSilence] and the tail after a
   /// message would put on the air before the key and after the unkey.
   final bool feedsSilence;
+
+  @override
+  final Duration heardAfter;
 
   /// Monotonic microseconds — the real clock, never the app's: packets are
   /// paced against real time whatever DEVTT says.

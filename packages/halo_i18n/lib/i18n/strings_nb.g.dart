@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$nb extends Translations$setting
 	@override String get stopRecording => 'Stopp opptak';
 	@override String get playing => 'Spiller av…';
 	@override String get recording => 'Tar opp…';
-	@override String playingMemory({required Object label}) => 'Spiller av ${label}';
 	@override String recordingMemory({required Object label}) => 'Tar opp ${label}';
 	@override String get doubtful => 'Spilte radioen den av? Den meldte at den var ledig med en gang.';
 	@override String get recordOnRadio => 'Du må ta opp minnene på selve radioen.';
@@ -5942,7 +5941,6 @@ extension on TranslationsNb {
 			'settings.radio.voiceMessages.stopRecording' => 'Stopp opptak',
 			'settings.radio.voiceMessages.playing' => 'Spiller av…',
 			'settings.radio.voiceMessages.recording' => 'Tar opp…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Spiller av ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Tar opp ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Spilte radioen den av? Den meldte at den var ledig med en gang.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Du må ta opp minnene på selve radioen.',
@@ -6055,9 +6053,9 @@ extension on TranslationsNb {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Personvern',
 			'settings.privacy.shareAppData.title' => 'Del data om bruken din',
@@ -6569,9 +6567,9 @@ extension on TranslationsNb {
 			'settings.station.newAntenna' => 'Ny antenne',
 			'settings.station.newKey' => 'Ny nøkkel',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL eller kompatibel)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Nøkkel på ${device}',
 			'settings.station.trackStationInfo' => 'Registrer stasjonsinfo for hver QSO',
 			'settings.station.includeStationInfoInAdif' => 'Ta med i ADIF-eksport',
@@ -7083,9 +7081,9 @@ extension on TranslationsNb {
 			'switchAccounts.linkWithSiblingDescription' => 'Du har en annen Ham2K-app installert. Koble til kontoen som brukes der.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Godkjenn forespørselen i ${app}, og kom så tilbake hit.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Åpne ${app} igjen',
+			'switchAccounts.siblingNoGrant' => 'Virket det ikke? Åpne den igjen, eller gå tilbake og koble til på en annen måte.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Virket det ikke? Åpne den igjen, eller gå tilbake og koble til på en annen måte.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kunne ikke åpne ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Lenken utløp, og en ny er klar — åpne ${app} igjen.',
 			'switchAccounts.tryAgain' => 'Prøv igjen',

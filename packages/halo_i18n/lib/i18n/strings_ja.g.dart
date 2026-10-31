@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String get stopRecording => '録音を停止';
 	@override String get playing => '再生中…';
 	@override String get recording => '録音中…';
-	@override String playingMemory({required Object label}) => '${label}を再生中';
 	@override String recordingMemory({required Object label}) => '${label}を録音中';
 	@override String get doubtful => '無線機は再生しましたか？すぐにアイドル状態と報告しました。';
 	@override String get recordOnRadio => 'メモリーは無線機本体で録音する必要があります。';
@@ -5942,7 +5941,6 @@ extension on TranslationsJa {
 			'settings.radio.voiceMessages.stopRecording' => '録音を停止',
 			'settings.radio.voiceMessages.playing' => '再生中…',
 			'settings.radio.voiceMessages.recording' => '録音中…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '${label}を再生中',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label}を録音中',
 			'settings.radio.voiceMessages.doubtful' => '無線機は再生しましたか？すぐにアイドル状態と報告しました。',
 			'settings.radio.voiceMessages.recordOnRadio' => 'メモリーは無線機本体で録音する必要があります。',
@@ -6055,9 +6053,9 @@ extension on TranslationsJa {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'プライバシー',
 			'settings.privacy.shareAppData.title' => 'アプリ使用データを共有',
@@ -6569,9 +6567,9 @@ extension on TranslationsJa {
 			'settings.station.newAntenna' => '新しいアンテナ',
 			'settings.station.newKey' => '新しいキー',
 			'settings.station.newKeyer' => 'WinKeyer（K1ELまたは互換機）',
+			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}のキー',
 			'settings.station.trackStationInfo' => 'QSOごとにステーション情報を記録',
 			'settings.station.includeStationInfoInAdif' => 'ADIFエクスポートに含める',
@@ -7083,9 +7081,9 @@ extension on TranslationsJa {
 			'switchAccounts.linkWithSiblingDescription' => '別のHam2Kアプリがインストールされています。そこで使用中のアカウントとリンクします。',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => '${app}でリクエストを承認してから、ここに戻ってください。',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app}をもう一度開く',
+			'switchAccounts.siblingNoGrant' => 'うまくいきませんでしたか？もう一度開くか、戻って別の方法でリンクしてください。',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'うまくいきませんでしたか？もう一度開くか、戻って別の方法でリンクしてください。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}を開けませんでした。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'リンクの期限が切れたため、新しいリンクを用意しました。${app}をもう一度開いてください。',
 			'switchAccounts.tryAgain' => '再試行',

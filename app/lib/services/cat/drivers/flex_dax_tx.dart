@@ -29,6 +29,12 @@ const flexDaxChannels = 2;
 const flexDaxPort = 4991;
 const _framesPerPacket = 128;
 
+/// How far the operator's monitor trails the packets, by ear on a FLEX-6600
+/// (4.2.20) heard through SmartSDR's monitor: the radio's DAX buffer and the
+/// monitor's way back. Nothing the radio reports says when its audio is on
+/// the air, and the words shown ahead of it read as said before they are.
+const flexDaxHeardAfter = Duration(milliseconds: 200);
+
 /// How long the radio has to answer `stream create` before the output is
 /// given up: unanswered, the keyer would key a radio that never gets its
 /// audio.
@@ -36,7 +42,7 @@ const flexDaxGrantTimeout = Duration(seconds: 2);
 
 class FlexDaxOutput extends PacedTransmitAudio {
   FlexDaxOutput({required this.send, required this.sendPacket, required super.decode, this.diagnose, super.clockMicros})
-    : super(rate: flexDaxRate, channels: flexDaxChannels, framesPerPacket: _framesPerPacket) {
+    : super(rate: flexDaxRate, channels: flexDaxChannels, framesPerPacket: _framesPerPacket, heardAfter: flexDaxHeardAfter) {
     _create();
   }
 

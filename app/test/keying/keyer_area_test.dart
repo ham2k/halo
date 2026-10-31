@@ -313,7 +313,10 @@ void main() {
       services.cat.playVoiceMemory(3, repeat: false);
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
-      expect(find.text('Playing M3'), findsOneWidget);
+      // The label alone — the icon and the bar say it plays — and a memory
+      // with no label is "Message 3", never a bare "M3" under a bar.
+      expect(inLine(find.text('Message 3')), findsOneWidget);
+      expect(find.textContaining('Playing'), findsNothing);
       expect(inLine(find.byIcon(MdiIcons.microphone)), findsOneWidget);
       // The placeholder's pretend playback ends on its own.
       await tester.pump(const Duration(seconds: 6));
@@ -335,8 +338,64 @@ void main() {
       // Doubt is real and still stops a refused play; it is not something to
       // ASK the operator about while audio may be going out, since they
       // cannot answer it from here. The Phone Keyer dialog is where it is said.
-      expect(find.text('Playing CQ POTA'), findsOneWidget);
-      expect(find.text('Playing CQ POTA?'), findsNothing);
+      expect(inLine(find.text('CQ POTA')), findsOneWidget);
+      expect(find.text('CQ POTA?'), findsNothing);
+      services.cat.voiceActivity.value = null;
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // A message made from the operator's words has no measured duration:
+    // without the length its activity carries, its bar is the indeterminate
+    // one on every play, where a CW message's is paced from the start.
+    testWidgets('a message made as it plays paces its bar by the length it was made with', (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      services.cat.voiceActivity.value = const VoiceActivity(memory: 2);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(inLine(find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'while it is made, nothing knows how long it runs');
+      services.cat.voiceActivity.value = const VoiceActivity(memory: 2, lengthMs: 4000);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(inLine(find.byType(LinearProgressIndicator)), findsNothing);
+      final bar = tester.widget<FractionallySizedBox>(inLine(find.byType(FractionallySizedBox)));
+      expect(bar.widthFactor, closeTo(0.5, 0.01), reason: 'paced from when its length was known');
+      services.cat.voiceActivity.value = null;
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // A message made from words shows what it says, set apart as it is said
+    // like a CW message's sent characters; shown by its label, the operator
+    // cannot tell how far through a call it is.
+    testWidgets('a message made from words shows its words, the ones said set apart', (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'Their call');
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      // Up while it is made, as a message made from words is.
+      services.cat.voiceActivity.value = const VoiceActivity(memory: 2);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      services.cat.voiceActivity.value = const VoiceActivity(
+        memory: 2,
+        lengthMs: 2000,
+        script: VoiceScript('K8AB 59', [(atMs: 0, said: 1), (atMs: 500, said: 2), (atMs: 1000, said: 4), (atMs: 1500, said: 7)]),
+      );
+      await tester.pump();
+      String said() {
+        final words = find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText() == 'K8AB 59');
+        final bold = StringBuffer();
+        tester.widget<RichText>(inLine(words)).text.visitChildren((span) {
+          if (span is TextSpan && span.text != null && span.style?.fontWeight == FontWeight.bold) bold.write(span.text);
+          return true;
+        });
+        return bold.toString();
+      }
+
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(inLine(find.text('Their call')), findsNothing, reason: 'its words, not its label');
+      expect(said(), 'K8');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(said(), 'K8AB');
       services.cat.voiceActivity.value = null;
       await tester.pump(const Duration(seconds: 62));
     });
@@ -360,6 +419,7 @@ void main() {
       await cat.setRadio2(right);
       await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
       await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
+      await services.settings.setVoiceMessageLabel(4, 'TU RIGHT', radio: 'B');
       Widget line(String radio) => KeyerArea(key: ValueKey(radio), cat: cat, radio: radio, services: services, phone: true);
       await tester.pumpWidget(
         TranslationProvider(
@@ -374,10 +434,13 @@ void main() {
       cat.keyer('B').playVoiceMemory(3);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      expect(inRadio('A', find.text('Playing CQ LEFT')), findsOneWidget);
+      expect(inRadio('A', find.text('CQ LEFT')), findsOneWidget);
       expect(inRadio('A', find.textContaining('RIGHT')), findsNothing);
       expect(inRadio('B', find.text('QRZ RIGHT')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
       expect(inRadio('B', find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'under a bar that cannot say how long');
+      cat.keyer('B').queueVoiceMemory(4);
+      await tester.pump();
+      expect(inRadio('B', find.text(' · TU RIGHT')), findsOneWidget, reason: 'a second memory waiting there, behind the first');
       cat.keyer('A').stopVoice();
       cat.keyer('B').stopVoice();
       await tester.pump(const Duration(seconds: 62));
@@ -594,11 +657,42 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300)); // the line slides in
       expect(services.cat.voiceActivity.value?.memory, 2);
-      expect(inLine(find.text('Playing CQ POTA')), findsOneWidget);
+      expect(inLine(find.text('CQ POTA')), findsOneWidget);
       // Tapping it stops it (Esc's other form).
-      await tester.tap(inLine(find.text('Playing CQ POTA')));
+      await tester.tap(inLine(find.text('CQ POTA')));
       await tester.pump();
       expect(services.cat.voiceActivity.value, isNull);
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // Unshown, a memory pressed over another looks lost until it starts;
+    // and with no way to drop one, a wrong press can only be Escaped with
+    // everything else.
+    testWidgets('a memory pressed while one plays waits behind it on the line, and a tap drops it', (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+      await services.settings.setVoiceMessageLabel(4, 'Thanks');
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+
+      await tester.tap(button('CQ POTA'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300)); // the line slides in
+      await tester.tap(button('M3'));
+      await tester.tap(button('Thanks'));
+      await tester.pump();
+      expect(services.cat.voiceActivity.value?.memory, 2, reason: 'queued, not played over the one going out');
+      expect(inLine(find.text(' · Message 3')), findsOneWidget);
+      expect(inLine(find.text(' · Thanks')), findsOneWidget);
+
+      await tester.tap(inLine(find.text(' · Message 3')));
+      await tester.pump();
+      expect(inLine(find.text(' · Message 3')), findsNothing);
+      expect(inLine(find.text(' · Thanks')), findsOneWidget, reason: 'only the one tapped goes');
+      expect(services.cat.voiceActivity.value?.memory, 2, reason: 'the memory playing plays on');
+
+      services.cat.stopVoice();
+      await tester.pump();
+      expect(inLine(find.text(' · Thanks')), findsNothing, reason: 'a stop takes the queue with it');
       await tester.pump(const Duration(seconds: 62));
     });
 

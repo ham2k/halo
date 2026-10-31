@@ -178,6 +178,33 @@ void main() {
     expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNotNull);
   });
 
+  // The trap: one Phone Keying line for two radios — Radio B left on its own
+  // memories with no way to pick otherwise, or a pick made for it moving
+  // radio1's.
+  testWidgets('under SO2R, Radio B has a Phone Keying line of its own, under its antenna and key', (tester) async {
+    final audio = FakeVoiceAudio();
+    services = (await makeHaLoServices(
+      cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
+    )).services;
+    await services.settings.setExperimentEnabled('keyer', true);
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    final left = await cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final right = await cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await cat.setRadio1(LocalRadio(left.uuid));
+    await cat.setRadio2(right.uuid);
+    await cat.keyer('B').selectVoiceKeyingSource(VoiceKeyingSource.computer);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+
+    expect(find.text('A: Phone Keying'), findsOneWidget);
+    expect(find.text('B: Phone Keying'), findsOneWidget);
+    expect(find.text('Memories in Left Rig'), findsOneWidget, reason: "radio1's pick: its own memories");
+    expect(find.text('Audio in this computer'), findsOneWidget, reason: "Radio B's pick: the computer");
+    expect(find.bySemanticsLabel('Computer Audio'), findsOneWidget, reason: "the way to Radio B's sound devices, and only Radio B's");
+    expect(find.widgetWithText(TextButton, 'Phone Messages'), findsNWidgets(2));
+  });
+
   group('CW keyer row', () {
     testWidgets('is not there at all without the keyer experiment', (tester) async {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));

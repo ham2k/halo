@@ -4134,7 +4134,6 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String get stopRecording => 'Kaydı durdur';
 	@override String get playing => 'Oynatılıyor…';
 	@override String get recording => 'Kaydediliyor…';
-	@override String playingMemory({required Object label}) => '${label} oynatılıyor';
 	@override String recordingMemory({required Object label}) => '${label} kaydediliyor';
 	@override String get doubtful => 'Radyo bunu oynattı mı? Hemen boşta olduğunu bildirdi.';
 	@override String get recordOnRadio => 'Hafızaları radyonun kendisinde kaydetmeniz gerekir.';
@@ -5942,7 +5941,6 @@ extension on TranslationsTr {
 			'settings.radio.voiceMessages.stopRecording' => 'Kaydı durdur',
 			'settings.radio.voiceMessages.playing' => 'Oynatılıyor…',
 			'settings.radio.voiceMessages.recording' => 'Kaydediliyor…',
-			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => '${label} oynatılıyor',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => '${label} kaydediliyor',
 			'settings.radio.voiceMessages.doubtful' => 'Radyo bunu oynattı mı? Hemen boşta olduğunu bildirdi.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Hafızaları radyonun kendisinde kaydetmeniz gerekir.',
@@ -6055,9 +6053,9 @@ extension on TranslationsTr {
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
+			'settings.map.styleOpts.voyager' => 'Voyager',
 			_ => null,
 		} ?? switch (path) {
-			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Gizlilik',
 			'settings.privacy.shareAppData.title' => 'Uygulama kullanım verilerini paylaş',
@@ -6569,9 +6567,9 @@ extension on TranslationsTr {
 			'settings.station.newAntenna' => 'Yeni Anten',
 			'settings.station.newKey' => 'Yeni Anahtar',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL veya uyumlu)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} üzerindeki anahtar',
 			'settings.station.trackStationInfo' => 'Her QSO için İstasyon Bilgisini Kaydet',
 			'settings.station.includeStationInfoInAdif' => 'ADIF dışa aktarımlarına dahil et',
@@ -7083,9 +7081,9 @@ extension on TranslationsTr {
 			'switchAccounts.linkWithSiblingDescription' => 'Yüklü başka bir Ham2K uygulamanız var. Orada kullanılan hesapla bağlayın.',
 			'switchAccounts.siblingPrompt' => ({required Object app}) => 'İsteği ${app} içinde onaylayın, ardından buraya geri dönün.',
 			'switchAccounts.openSiblingAgain' => ({required Object app}) => '${app} uygulamasını yeniden aç',
+			'switchAccounts.siblingNoGrant' => 'Olmadı mı? Yeniden açın ya da geri dönüp başka bir yolla bağlayın.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.siblingNoGrant' => 'Olmadı mı? Yeniden açın ya da geri dönüp başka bir yolla bağlayın.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} açılamadı.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Bağlantının süresi doldu ve yenisi hazır — ${app} uygulamasını yeniden açın.',
 			'switchAccounts.tryAgain' => 'Tekrar dene',

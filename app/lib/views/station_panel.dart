@@ -858,6 +858,9 @@ class StationPanel extends StatelessWidget {
         // there for the messages, not the pick. Recordings on this computer
         // need no radio: they are recorded before the rig is on the desk.
         final offersPhone = keyerExperiment && (!_cat.voiceMessagesAreLocal || _cat.radio1OffersVoiceMemories || _cat.computerVoiceAudio != null);
+        // Radio B's own line, under its antenna and key: its rig's memories,
+        // or the computer's recordings through its rig's sound device.
+        final offersPhoneB = keyerExperiment && (_cat.keyer('B').offersVoiceMemories || _cat.computerVoiceAudio != null);
         // A peer's radio is picked from the same list as this device's own:
         // it drives the same one `vfoA`, so offering a second control for it
         // would be offering two answers to one question (HALO-416).
@@ -967,12 +970,17 @@ class StationPanel extends StatelessWidget {
                                 )
                               : null,
                         ),
-                      if (offersPhone) _phoneKeyingLine(context),
+                      if (offersPhone) _phoneKeyingLine(context, radio: 'A'),
                     ],
                   ),
                 ),
               if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
                 _radio2Picks(context, antennas: antennas, keys: keys, inset: rowInset),
+              if (so2r && _cat.radio2 != null && offersPhoneB)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(rowInset.left, 0, rowInset.right, Space.md),
+                  child: _phoneKeyingLine(context, radio: 'B'),
+                ),
               if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: rowInset),
 
               // The same break between categories as before CAT Control Preferences.
@@ -1269,19 +1277,20 @@ class StationPanel extends StatelessWidget {
   /// too narrow to read.
   static const _keyingLineNarrow = 520.0;
 
-  /// Where radio1's phone messages come from, and the way to its messages
-  /// ([phoneKeyingParts]).
-  Widget _phoneKeyingLine(BuildContext context) {
+  /// Where [radio]'s (`A` or `B`) phone messages come from, and the way to
+  /// its messages ([phoneKeyingParts]).
+  Widget _phoneKeyingLine(BuildContext context, {required String radio}) {
     final st = context.t.settings.station;
-    final parts = phoneKeyingParts(context, services);
+    final keyer = _cat.keyer(radio);
+    final parts = phoneKeyingParts(context, services, radio: radio);
     return _keyingLine(
       picker: parts.picker,
       controls: parts.controls,
       messages: MessagesButton(
         label: st.voiceMessagesButton,
-        enabled: _cat.radio1HasVoiceMemories,
-        disabledReason: _cat.phoneKeyingOff ? st.phoneKeyingOff : st.notSupportedByThisRadio,
-        onPressed: () => showVoiceMessagesDialog(context, services),
+        enabled: keyer.radio1HasVoiceMemories,
+        disabledReason: keyer.phoneKeyingOff ? st.phoneKeyingOff : st.notSupportedByThisRadio,
+        onPressed: () => showVoiceMessagesDialog(context, services, radio: radio),
       ),
     );
   }

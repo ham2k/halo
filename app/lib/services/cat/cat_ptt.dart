@@ -167,7 +167,7 @@ typedef PttKeyTarget = String? Function();
 /// a client running FT8 transmits half of every minute, and would otherwise
 /// take every apostrophe typed into a note. Only keying asks the surfaces.
 class PttKeyboard {
-  PttKeyboard({required this.held, required this.release, required this.escape, required this.toggle, required this.hold});
+  PttKeyboard({required this.held, required this.release, required this.escape, required this.toggle, required this.hold, this.waiting = _notWaiting});
 
   /// Whether a key is held, on any radio.
   final ValueListenable<bool> held;
@@ -184,6 +184,14 @@ class PttKeyboard {
 
   /// Whether the key transmits only while held down, rather than toggling.
   final bool Function() hold;
+
+  /// Whether a press keyed nothing yet and waits to, for SO2R's other radio
+  /// to come off the air. A Hold that waits is still a hold: its release
+  /// takes the wait back, where one read as keying nothing would leave the
+  /// key to go down later and stay down.
+  final bool Function() waiting;
+
+  static bool _notWaiting() => false;
 
   final _targets = <PttKeyTarget>[];
   bool _registered = false;
@@ -256,7 +264,7 @@ class PttKeyboard {
     final radio = _targets.map((target) => target()).nonNulls.firstOrNull;
     if (radio == null) return false;
     toggle(radio);
-    _holding = holds && held.value;
+    _holding = holds && (held.value || waiting());
     _down = event.physicalKey;
     return true;
   }

@@ -29,7 +29,7 @@ extension PeerKeyBridge on CatKeying {
       voice: voiceActivityToWire(voiceActivityFor(radioId)),
       // Only as many as that radio has: a label for a ninth memory is a
       // label for a button nobody will be shown.
-      voiceLabels: [for (var n = 1; n <= memories; n++) _localVoiceLabel(radioId, n)],
+      voiceLabels: [for (var n = 1; n <= memories; n++) _shownVoiceLabel(radioId, n)],
       voiceDurationsMs: [for (var n = 1; n <= memories; n++) _localVoiceDuration(radioId, n)],
     );
   }

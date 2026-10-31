@@ -1712,7 +1712,6 @@
         "stopRecording": "Parar gravação",
         "playing": "A reproduzir…",
         "recording": "A gravar…",
-        "playingMemory": "A reproduzir $label",
         "recordingMemory": "A gravar $label",
         "doubtful": "O rádio reproduziu-a? Reportou logo que estava inativo.",
         "recordOnRadio": "Tem de gravar as memórias no próprio rádio.",
