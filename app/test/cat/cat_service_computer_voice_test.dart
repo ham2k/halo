@@ -174,6 +174,7 @@ void main() {
     final cat = services.cat;
     await connectRig();
     await services.settings.setExperimentEnabled('words', true);
+    await cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
     await cat.keyer('A').setVoiceMessageTemplate(1, '{{ qso.call }}');
     expect(cat.voiceMessageDuration(1), 0);
     expect(cat.keyer('A').voiceMessageVoiced(1), isTrue);
@@ -189,10 +190,38 @@ void main() {
     await cat.keyer('A').setVoiceMessageTemplate(1, ' CQ POTA {{ op.call }} ');
     expect(cat.keyer('A').voiceMessageShownLabel(1), '', reason: 'without voiced words the template says nothing');
     await services.settings.setExperimentEnabled('words', true);
+    await cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
     expect(cat.keyer('A').voiceMessageShownLabel(1), 'CQ POTA {{ op.call }}');
     expect(cat.keyer('A').voiceMessageLabel(1), '', reason: 'the stored label is still none');
     await cat.setVoiceMessageLabel(1, 'POTA CQ');
     expect(cat.keyer('A').voiceMessageShownLabel(1), 'POTA CQ', reason: "the operator's label wins");
+  });
+
+  // The trap: audio alone still saying the words a message was given while
+  // words were picked — the operator chose their recordings, and hears
+  // something else.
+  test('under audio alone, a message with a template plays its recording and shows its own label', () async {
+    final cat = services.cat;
+    await connectRig();
+    await services.settings.setExperimentEnabled('words', true);
+    await cat.keyer('A').setVoiceMessageTemplate(1, 'CQ POTA {{ op.call }}');
+    expect(cat.keyer('A').saysWords, isFalse);
+    expect(cat.keyer('A').voiceMessageVoiced(1), isFalse);
+    expect(cat.keyer('A').voiceMessageShownLabel(1), '');
+    expect(cat.voiceMessageDuration(1), greaterThan(0), reason: 'its recording is what plays');
+    cat.playVoiceMemory(1, repeat: false);
+    await pumpEventQueue();
+    expect(audio.plays.single.path, '/v/s1/1.wav');
+    cat.stopVoice();
+  });
+
+  test('audio and words picked without its experiment plays the audio alone', () async {
+    final cat = services.cat;
+    await connectRig();
+    await cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
+    await cat.keyer('A').setVoiceMessageTemplate(1, 'CQ POTA {{ op.call }}');
+    expect(cat.voiceMessagesFromComputer, isTrue);
+    expect(cat.keyer('A').voiceMessageVoiced(1), isFalse);
   });
 
   test('without the setting, the radio plays its own memories as before', () async {

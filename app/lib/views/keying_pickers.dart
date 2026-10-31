@@ -81,11 +81,14 @@ Widget cwKeyingOptionsButton(BuildContext context) =>
   final local = keyer.voiceMessagesAreLocal;
   final offersRadio = local && keyer.offersVoiceMemories;
   final offersComputer = local && cat.computerVoiceAudio != null;
+  final offersWords = offersComputer && services.settings.experimentEnabled('words') /* stored key, see experiments.yaml */;
   final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
   final shown = switch (keyer.voiceKeyingSource) {
     _ when !local => VoiceKeyingSource.radio,
     VoiceKeyingSource.radio when offersRadio => VoiceKeyingSource.radio,
-    VoiceKeyingSource.computer when offersComputer => VoiceKeyingSource.computer,
+    VoiceKeyingSource.words when offersWords => VoiceKeyingSource.words,
+    // Without the experiment, words picked play as the audio they come with.
+    VoiceKeyingSource.computer || VoiceKeyingSource.words when offersComputer => VoiceKeyingSource.computer,
     _ => VoiceKeyingSource.none,
   };
   final radioName = !local ? peerDeviceLabel(cat.followedPeerRadio) : (node == null ? null : cat.displayNameFor(node));
@@ -106,11 +109,12 @@ Widget cwKeyingOptionsButton(BuildContext context) =>
             child: Text(st.phoneKeyingRadio(radio: radioName), overflow: TextOverflow.ellipsis),
           ),
         if (offersComputer) DropdownMenuItem(value: VoiceKeyingSource.computer, child: Text(st.phoneKeyingComputer)),
+        if (offersWords) DropdownMenuItem(value: VoiceKeyingSource.words, child: Text(st.phoneKeyingComputerWords)),
       ],
       onChanged: !local ? null : (source) => source == null ? null : unawaited(keyer.selectVoiceKeyingSource(source)),
     ),
     controls: [
-      if (shown == VoiceKeyingSource.computer)
+      if (shown.fromComputer)
         IconButton(
           icon: Icon(MdiIcons.tune, semanticLabel: st.computerVoiceSettings),
           onPressed: node == null ? null : () => showComputerVoiceSettingsDialog(context, services, radio: radio),

@@ -1583,7 +1583,8 @@ confirming a change nothing heard.
 
 The Station dialog's **keying lines are laid out from CAPABILITY, never from the link**: CW Keying
 with its speed, options and CW Messages button, and Phone Keying with its source
-(`VoiceKeyingSource`: none, the radio's memories, or recordings on this computer) and Phone Messages
+(`VoiceKeyingSource`: none, the radio's memories, recordings on this computer, or those and words)
+and Phone Messages
 button. Each messages button is disabled only where its own side cannot send at all
 (`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories` for voice — the session-free counterpart,
 off `EquipmentDriver.voiceMemoryCountWith`), a peer's radio answering both of those from its OFFER,
@@ -2195,8 +2196,9 @@ most of what it says; every other dialect is still from the manuals and hamlib:
 **The messages can be recordings on this computer instead** (computer_voice_keyer.dart, desktop
 only, under the same `keyer` experiment). Where phone messages come from is **Phone Keying**
 (`VoiceKeyingSource`, `voiceKeying` in the Radio settings group): None, the radio's own memories
-(offered where the radio has some), or audio on this computer (offered where this device can play
-it), picked on the Station panel's Phone Keying line and atop the Phone Keyer pane. The pick is
+(offered where the radio has some), audio on this computer (offered where this device can play
+it), or audio and words on this computer (the same, under `EXP WORDS` — see § Voiced words),
+picked on the Station panel's Phone Keying line and atop the Phone Keyer pane. The pick is
 each radio's own (`voiceKeyingSourceFor`, read through `CatKeying.radio`): under SO2R Radio B has a
 Phone Keying line of its own under its antenna and key, and set B's pane shows its pick — None on
 one radio never silences the other — and None says so ("Phone keying is off") rather than blaming
@@ -2489,7 +2491,12 @@ recordings of each letter, digit and phrase** (voice_words.dart, voiced_words.da
 private `words` experiment, `EXP WORDS`, on top of `keyer`). It is how a phone message says the
 other station's call and the report — what no recording made in advance can hold. A message's
 template is kept in its set beside its label (`VoiceMessageSet.templates`), and a message with one
-is said from it; empty, the message is its recording, as before. Only the computer's voice keyer
+is said from it; empty, the message is its recording, as before. **Words are their own Phone Keying
+pick**, "Audio and words in this computer" (`VoiceKeyingSource.words`, `CatKeying.saysWords`),
+offered only with the experiment: under "Audio in this computer" a template is kept and never said,
+its field and the Word Recordings row do not show, and the message plays its recording — the
+operator picked their recordings, and hears them. Picked without the experiment, words read as audio
+alone, so the recordings keep playing when it goes off. Only the computer's voice keyer
 says one — on either radio, from the one word set, Radio B's keying saying it through radio1's
 maker: a radio's own memories and a peer's radio play what they hold.
 
@@ -2523,7 +2530,8 @@ since they are there whether or not the operator says them), plus phrases the op
 recording. The takes are `<voice messages>/words/<CALL>/<key>-{i,m,f}.wav` (a once phrase's one
 recording `<key>.wav`), the call with anything
 but letters and digits made `_`; the phrases are in the Radio group by call (`voicePhrases`). The
-**Word Recordings** pane, from a row under the Phone Keyer pane's messages, records, lists and
+**Word Recordings** pane, from the first row of the Phone Keyer pane's messages while the radio says
+words — they are what its messages are made of — records, lists and
 plays them; Listen plays a word's
 three takes as they will be said.
 

@@ -92,9 +92,18 @@ const voicePacingKey = 'voicePacing';
 /// upper case, a slash (a portable call) made something a path can hold.
 String voiceWordSetCall(String call) => call.trim().toUpperCase().replaceAll(RegExp('[^A-Z0-9]'), '_');
 
-/// Where phone messages come from: nowhere, the radio's own memories, or the
-/// set in use on this computer. One pick for every radio, as the set is.
-enum VoiceKeyingSource { none, radio, computer }
+/// Where phone messages come from: nowhere, the radio's own memories, the
+/// set in use on this computer — or that set with messages said from the
+/// operator's words too (EXP words). Picked per radio.
+enum VoiceKeyingSource {
+  none,
+  radio,
+  computer,
+  words;
+
+  /// Whether the set in use on this computer plays.
+  bool get fromComputer => this == computer || this == words;
+}
 
 /// The Radio group as the getters below last decoded it, with the stored
 /// text it came from, per settings. Every message button asks for the

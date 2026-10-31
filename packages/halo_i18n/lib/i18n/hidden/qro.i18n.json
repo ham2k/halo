@@ -2349,6 +2349,7 @@
       "phoneKeyingNone": "NONE",
       "phoneKeyingRadio": "MEMORIES IN ${radio}",
       "phoneKeyingComputer": "AUDIO IN THIS COMPUTER",
+      "phoneKeyingComputerWords": "AUDIO AND WORDS IN THIS COMPUTER",
       "phoneKeyingOff": "PHONE KEYING IS OFF",
       "computerVoiceSettings": "COMPUTER AUDIO",
       "cwKeyingOptions": "CW KEYING OPTIONS",

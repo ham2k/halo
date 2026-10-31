@@ -6265,6 +6265,9 @@ class Translations$settings$station$en {
 	/// en: 'Audio in this computer'
 	String get phoneKeyingComputer => 'Audio in this computer';
 
+	/// en: 'Audio and words in this computer'
+	String get phoneKeyingComputerWords => 'Audio and words in this computer';
+
 	/// en: 'Phone keying is off'
 	String get phoneKeyingOff => 'Phone keying is off';
 
@@ -12319,6 +12322,7 @@ extension on Translations {
 			'settings.station.phoneKeyingNone' => 'None',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
+			'settings.station.phoneKeyingComputerWords' => 'Audio and words in this computer',
 			'settings.station.phoneKeyingOff' => 'Phone keying is off',
 			'settings.station.computerVoiceSettings' => 'Computer Audio',
 			'settings.station.cwKeyingOptions' => 'CW Keying Options',
@@ -12370,9 +12374,9 @@ extension on Translations {
 			'settings.station.antennaTypes.longWire' => 'Long Wire / EFHW',
 			'settings.station.antennaTypes.other' => 'Other',
 			'settings.station.keyType' => 'Key type',
-			'settings.station.keyTypeRequired' => 'Choose a key type',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypeRequired' => 'Choose a key type',
 			'settings.station.keyTypes.straight' => 'Straight Key',
 			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
 			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
@@ -12884,9 +12888,9 @@ extension on Translations {
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
-			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',

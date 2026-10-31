@@ -22,9 +22,9 @@ extension ComputerVoiceKeying on CatKeying {
   set voiceMaker(Future<MadeVoiceMessage> Function(int n, String template) make) => _voiceMakers[this] = make;
 
   /// Message [n] made from its template at play time, when it has one and
-  /// voiced words are on — see [ComputerVoiceKeyer.prepare].
+  /// this radio says words ([saysWords]) — see [ComputerVoiceKeyer.prepare].
   Future<MadeVoiceMessage>? _prepareVoice(int n) {
-    if (!settings.experimentEnabled('words') /* stored key, see experiments.yaml */ ) return null;
+    if (!saysWords) return null;
     final template = settings.activeVoiceMessageSet.template(n);
     final make = _voiceMakers[this];
     if (template.trim().isEmpty || make == null) return null;
@@ -45,10 +45,12 @@ extension ComputerVoiceKeying on CatKeying {
 
   /// Whether message [n] is said from a template rather than recorded — a
   /// message ready to play with no recording of its own.
-  bool voiceMessageVoiced(int n) =>
-      voiceMessagesFromComputer &&
-      settings.experimentEnabled('words') /* stored key, see experiments.yaml */ &&
-      settings.activeVoiceMessageSet.template(n).trim().isNotEmpty;
+  bool voiceMessageVoiced(int n) => voiceMessagesFromComputer && saysWords && settings.activeVoiceMessageSet.template(n).trim().isNotEmpty;
+
+  /// Whether this radio's messages may be said from the operator's words:
+  /// Phone Keying's audio and words, with its experiment on. Under audio
+  /// alone a message's template is kept, and never said.
+  bool get saysWords => voiceSource == VoiceKeyingSource.words && settings.experimentEnabled('words') /* stored key, see experiments.yaml */;
 
   /// Message [n]'s label as shown, here and to a peer: where it has none
   /// and is said from the operator's words, its template, since the words
@@ -58,7 +60,7 @@ extension ComputerVoiceKeying on CatKeying {
 
   String _shownVoiceLabel(String? uuid, int n) {
     final label = _localVoiceLabel(uuid, n);
-    if (label.trim().isNotEmpty || !_playsFromComputer(uuid) || !settings.experimentEnabled('words') /* stored key, see experiments.yaml */ ) {
+    if (label.trim().isNotEmpty || !_playsFromComputer(uuid) || !saysWords) {
       return label;
     }
     return settings.activeVoiceMessageSet.template(n).trim();
@@ -106,7 +108,7 @@ extension ComputerVoiceKeying on CatKeying {
   bool _playsFromComputer(String? uuid) {
     if (voiceAudio == null) return false;
     if (uuid != null && uuid != station.localKeyingRadio) return false;
-    if (voiceSource != VoiceKeyingSource.computer) return false;
+    if (!voiceSource.fromComputer) return false;
     // Until the directory is known nothing plays: the operator picked the
     // computer, and the radio's own memories are not what they chose.
     _askDirectory();

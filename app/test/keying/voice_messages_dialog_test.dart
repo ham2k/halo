@@ -17,6 +17,7 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/cw_messages_dialog.dart' show cwMessageNumberIcons;
 import 'package:ham2k_logger/views/voice_messages_dialog.dart';
 
 import '../support/fake_voice_audio.dart';
@@ -105,7 +106,7 @@ void main() {
   /// The list names the memories; everything one DOES to a memory lives in
   /// its own dialog, which is where these tests go.
   Future<void> openMemory(WidgetTester tester, int n) async {
-    await tester.tap(find.byType(ListTile).at(n - 1));
+    await tester.tap(find.ancestor(of: find.byIcon(cwMessageNumberIcons[n - 1]), matching: find.byType(ListTile)));
     await tester.pumpAndSettle();
   }
 
@@ -279,10 +280,34 @@ void main() {
     });
 
     /// The computer as Phone Keying's source, which is what offers the sets.
-    Future<void> fromComputer(WidgetTester tester) async {
-      await tester.runAsync(() => services.cat.selectVoiceKeyingSource(VoiceKeyingSource.computer));
+    Future<void> fromComputer(WidgetTester tester, {bool words = false}) async {
+      await tester.runAsync(() => services.cat.selectVoiceKeyingSource(words ? VoiceKeyingSource.words : VoiceKeyingSource.computer));
       await tester.runAsync(pumpEventQueue);
     }
+
+    // Saying words, the word recordings are what every message is made of,
+    // and the first thing to record; under audio alone nothing uses them,
+    // and a template field there would be words that are never said.
+    testWidgets('saying words, Word Recordings comes first; under audio alone neither it nor the template field shows', (tester) async {
+      await services.settings.setExperimentEnabled('words', true);
+      await fromComputer(tester);
+      await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
+      await open(tester);
+      expect(find.text('Word Recordings'), findsNothing);
+      await openMemory(tester, 2);
+      expect(find.widgetWithText(TextField, 'Say with my words'), findsNothing);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      await fromComputer(tester, words: true);
+      await open(tester);
+      final tiles = find.descendant(of: find.byType(SingleChildScrollView).last, matching: find.byType(ListTile));
+      expect(find.descendant(of: tiles.first, matching: find.text('Word Recordings')), findsOneWidget);
+      await openMemory(tester, 2);
+      expect(find.widgetWithText(TextField, 'Say with my words'), findsOneWidget);
+    });
 
     IconButton setButton(WidgetTester tester, String name) =>
         tester.widget<IconButton>(find.ancestor(of: find.bySemanticsLabel(name), matching: find.byType(IconButton)));
@@ -356,7 +381,7 @@ void main() {
     // it must not leave them in its place.
     testWidgets('with words entered there is no Record, and recording in their place clears them', (tester) async {
       await services.settings.setExperimentEnabled('words', true);
-      await fromComputer(tester);
+      await fromComputer(tester, words: true);
       await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
       await tester.runAsync(() => services.cat.keyer('A').setVoiceMessageTemplate(2, '{{ qso.call }} 59'));
       await tester.runAsync(pumpEventQueue);

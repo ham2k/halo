@@ -178,6 +178,31 @@ void main() {
     expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNotNull);
   });
 
+  // Words picked without their experiment are the audio they come with:
+  // read as None, the operator's recordings stop playing the moment the
+  // experiment goes off.
+  testWidgets('Phone Keying offers audio and words only with its experiment', (tester) async {
+    final audio = FakeVoiceAudio();
+    services = (await makeHaLoServices(
+      cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
+    )).services;
+    await services.settings.setExperimentEnabled('keyer', true);
+    await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Audio in this computer'), findsOneWidget);
+    await tester.tap(find.text('Audio in this computer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Audio and words in this computer'), findsNothing);
+    await tester.tapAt(Offset.zero);
+    await tester.pumpAndSettle();
+
+    await services.settings.setExperimentEnabled('words', true);
+    await tester.pumpWidget(wrap(StationPanel(key: UniqueKey(), services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Audio and words in this computer'), findsOneWidget);
+  });
+
   // The trap: one Phone Keying line for two radios — Radio B left on its own
   // memories with no way to pick otherwise, or a pick made for it moving
   // radio1's.

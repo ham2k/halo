@@ -263,6 +263,17 @@ class _VoiceMessagesPane extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // The recordings messages are said with, first: saying
+                            // words, they are what every message here is made of.
+                            // One set for every radio, as the computer's recordings are.
+                            if (fromComputer && keyer.saysWords)
+                              ListTile(
+                                leading: const Icon(MdiIcons.alphabetical),
+                                title: Text(context.t.settings.radio.voiceWords.title),
+                                subtitle: Text(m.wordsDescription, style: theme.textTheme.bodySmall),
+                                onTap: () => showVoiceWordsPane(context, services),
+                                mouseCursor: SystemMouseCursors.click,
+                              ),
                             for (var n = 1; n <= count; n++)
                               ListTile(
                                 leading: Icon(cwMessageNumberIcons[n - 1]),
@@ -294,16 +305,6 @@ class _VoiceMessagesPane extends StatelessWidget {
                                   context: context,
                                   builder: (context) => _VoiceMessageDialog(services: services, radio: radio, n: n),
                                 ),
-                                mouseCursor: SystemMouseCursors.click,
-                              ),
-                            // The recordings messages are said with — radio1's,
-                            // as the computer's recordings are.
-                            if (fromComputer && radio == 'A' && settings.experimentEnabled('words') /* stored key, see experiments.yaml */ )
-                              ListTile(
-                                leading: const Icon(MdiIcons.alphabetical),
-                                title: Text(context.t.settings.radio.voiceWords.title),
-                                subtitle: Text(m.wordsDescription, style: theme.textTheme.bodySmall),
-                                onTap: () => showVoiceWordsPane(context, services),
                                 mouseCursor: SystemMouseCursors.click,
                               ),
                           ],
@@ -351,10 +352,8 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   late final _template = TextEditingController(text: widget.services.cat.keyer(widget.radio).voiceMessageTemplate(widget.n));
 
   /// Whether this message can be said from the operator's words: this
-  /// radio's recordings on this computer, with voiced words on.
-  bool get _voiceable =>
-      widget.services.cat.keyer(widget.radio).voiceMessagesFromComputer &&
-      widget.services.settings.experimentEnabled('words') /* stored key, see experiments.yaml */;
+  /// radio's recordings on this computer, said with words too.
+  bool get _voiceable => widget.services.cat.keyer(widget.radio).voiceMessagesFromComputer && widget.services.cat.keyer(widget.radio).saysWords;
 
   /// What the template says for the draft as it is, and what it needs that
   /// is not recorded — or why it says nothing. Null before the first preview.

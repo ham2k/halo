@@ -2837,6 +2837,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get phoneKeyingNone => 'none';
 	@override String phoneKeyingRadio({required Object radio}) => 'memories in ${radio}';
 	@override String get phoneKeyingComputer => 'audio in this computer';
+	@override String get phoneKeyingComputerWords => 'audio and words in this computer';
 	@override String get phoneKeyingOff => 'phone keying is off';
 	@override String get computerVoiceSettings => 'computer audio';
 	@override String get cwKeyingOptions => 'cw keying options';
@@ -6685,6 +6686,7 @@ extension on TranslationsQrp {
 			'settings.station.phoneKeyingNone' => 'none',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'audio in this computer',
+			'settings.station.phoneKeyingComputerWords' => 'audio and words in this computer',
 			'settings.station.phoneKeyingOff' => 'phone keying is off',
 			'settings.station.computerVoiceSettings' => 'computer audio',
 			'settings.station.cwKeyingOptions' => 'cw keying options',
@@ -6736,9 +6738,9 @@ extension on TranslationsQrp {
 			'settings.station.antennaTypes.longWire' => 'long wire / efhw',
 			'settings.station.antennaTypes.other' => 'other',
 			'settings.station.keyType' => 'key type',
-			'settings.station.keyTypeRequired' => 'choose a key type',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypeRequired' => 'choose a key type',
 			'settings.station.keyTypes.straight' => 'straight key',
 			'settings.station.keyTypes.sideswiper' => 'sideswiper',
 			'settings.station.keyTypes.bug' => 'bug (mechanical semi-automatic)',
@@ -7250,9 +7252,9 @@ extension on TranslationsQrp {
 			'spotting.notRefreshedOffline' => 'no connection — spots were not refreshed',
 			'dataFiles.downloading' => 'downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'couldn\'t download ${name}',
-			'dataFiles.downloadFailedWebHint' => 'this could be a network issue, or this link\'s host may not support direct downloads from a web browser. try the desktop or mobile app, or a different hosting location.',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.downloadFailedWebHint' => 'this could be a network issue, or this link\'s host may not support direct downloads from a web browser. try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',

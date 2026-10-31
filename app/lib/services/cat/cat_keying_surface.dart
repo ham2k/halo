@@ -430,6 +430,9 @@ class RadioKeyer {
   /// radio A's keying — [voicedWords] is null on B's — and a message said
   /// from them plays on either radio.
   bool voiceMessageVoiced(int n) => _k.voiceMessageVoiced(n);
+
+  /// See [ComputerVoiceKeying.saysWords].
+  bool get saysWords => _k.saysWords;
   VoicedWords? get voicedWords => _k.voicedWords;
   String voiceMessageTemplate(int n) => _k.settings.activeVoiceMessageSet.template(n);
   Future<void> setVoiceMessageTemplate(int n, String template) => _k.setVoiceMessageTemplate(n, template);

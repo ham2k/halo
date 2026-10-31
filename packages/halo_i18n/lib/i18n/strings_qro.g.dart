@@ -2837,6 +2837,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get phoneKeyingNone => 'NONE';
 	@override String phoneKeyingRadio({required Object radio}) => 'MEMORIES IN ${radio}';
 	@override String get phoneKeyingComputer => 'AUDIO IN THIS COMPUTER';
+	@override String get phoneKeyingComputerWords => 'AUDIO AND WORDS IN THIS COMPUTER';
 	@override String get phoneKeyingOff => 'PHONE KEYING IS OFF';
 	@override String get computerVoiceSettings => 'COMPUTER AUDIO';
 	@override String get cwKeyingOptions => 'CW KEYING OPTIONS';
@@ -6685,6 +6686,7 @@ extension on TranslationsQro {
 			'settings.station.phoneKeyingNone' => 'NONE',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
+			'settings.station.phoneKeyingComputerWords' => 'AUDIO AND WORDS IN THIS COMPUTER',
 			'settings.station.phoneKeyingOff' => 'PHONE KEYING IS OFF',
 			'settings.station.computerVoiceSettings' => 'COMPUTER AUDIO',
 			'settings.station.cwKeyingOptions' => 'CW KEYING OPTIONS',
@@ -6736,9 +6738,9 @@ extension on TranslationsQro {
 			'settings.station.antennaTypes.longWire' => 'LONG WIRE / EFHW',
 			'settings.station.antennaTypes.other' => 'OTHER',
 			'settings.station.keyType' => 'KEY TYPE',
-			'settings.station.keyTypeRequired' => 'CHOOSE A KEY TYPE',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypeRequired' => 'CHOOSE A KEY TYPE',
 			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
 			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
 			'settings.station.keyTypes.bug' => 'BUG (MECHANICAL SEMI-AUTOMATIC)',
@@ -7250,9 +7252,9 @@ extension on TranslationsQro {
 			'spotting.notRefreshedOffline' => 'NO CONNECTION — SPOTS WERE NOT REFRESHED',
 			'dataFiles.downloading' => 'DOWNLOADING…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
-			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.',

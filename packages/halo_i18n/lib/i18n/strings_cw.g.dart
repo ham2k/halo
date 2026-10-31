@@ -2837,6 +2837,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get phoneKeyingNone => '—· ——— —· ·';
 	@override String phoneKeyingRadio({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}';
 	@override String get phoneKeyingComputer => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
+	@override String get phoneKeyingComputerWords => '·— ··— —·· ·· ——— / ·— —· —·· / ·—— ——— ·—· —·· ··· / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·';
 	@override String get phoneKeyingOff => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—·';
 	@override String get computerVoiceSettings => '—·—· ——— —— ·——· ··— — · ·—· / ·— ··— —·· ·· ———';
 	@override String get cwKeyingOptions => '—·—· ·—— / —·— · —·—— ·· —· ——· / ——— ·——· — ·· ——— —· ···';
@@ -6685,6 +6686,7 @@ extension on TranslationsCw {
 			'settings.station.phoneKeyingNone' => '—· ——— —· ·',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}',
 			'settings.station.phoneKeyingComputer' => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
+			'settings.station.phoneKeyingComputerWords' => '·— ··— —·· ·· ——— / ·— —· —·· / ·—— ——— ·—· —·· ··· / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
 			'settings.station.phoneKeyingOff' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—·',
 			'settings.station.computerVoiceSettings' => '—·—· ——— —— ·——· ··— — · ·—· / ·— ··— —·· ·· ———',
 			'settings.station.cwKeyingOptions' => '—·—· ·—— / —·— · —·—— ·· —· ——· / ——— ·——· — ·· ——— —· ···',
@@ -6736,9 +6738,9 @@ extension on TranslationsCw {
 			'settings.station.antennaTypes.longWire' => '·—·· ——— —· ——· / ·—— ·· ·—· · / —··—· / · ··—· ···· ·——',
 			'settings.station.antennaTypes.other' => '——— — ···· · ·—·',
 			'settings.station.keyType' => '—·— · —·—— / — —·—— ·——· ·',
-			'settings.station.keyTypeRequired' => '—·—· ···· ——— ——— ··· · / ·— / —·— · —·—— / — —·—— ·——· ·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypeRequired' => '—·—· ···· ——— ——— ··· · / ·— / —·— · —·—— / — —·—— ·——· ·',
 			'settings.station.keyTypes.straight' => '··· — ·—· ·— ·· ——· ···· — / —·— · —·——',
 			'settings.station.keyTypes.sideswiper' => '··· ·· —·· · ··· ·—— ·· ·——· · ·—·',
 			'settings.station.keyTypes.bug' => '—··· ··— ——· / —·——· —— · —·—· ···· ·— —· ·· —·—· ·— ·—·· / ··· · —— ·· —····— ·— ··— — ——— —— ·— — ·· —·—· —·——·—',
@@ -7250,9 +7252,9 @@ extension on TranslationsCw {
 			'spotting.notRefreshedOffline' => '—· ——— / —·—· ——— —· —· · —·—· — ·· ——— —· / — / ··· ·——· ——— — ··· / ·—— · ·—· · / —· ——— — / ·—· · ··—· ·—· · ··· ···· · —··',
 			'dataFiles.downloading' => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
-			'dataFiles.downloadFailedWebHint' => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.downloadFailedWebHint' => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',
 			'dataFiles.downloadTimedOut' => '— ···· · / ··· · ·—· ···— · ·—· / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·—· · ··· ·——· ——— —· —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} / ·— —· ··· ·—— · ·—· · —·· / ·—— ·· — ···· / ·— —· / · ·—· ·—· ——— ·—· / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} / —·—· ——— ··— ·—·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / — ···· ·· ··· / ··—· ·· ·—·· · / —·——· ···· — — ·——· / ${status} —·——·— ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ·· — ··· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ··· — ·· ·—·· ·—·· / ·—· ·· ——· ···· — ·—·—·—',
