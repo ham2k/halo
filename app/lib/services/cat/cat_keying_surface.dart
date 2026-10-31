@@ -239,8 +239,10 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   }
 
   /// Keys [session], [radio]'s, after ending this operator's own keying —
-  /// which a key already on it has done.
+  /// which a key already on it has done. A session that would key somewhere
+  /// else ([TransmitGatedSession]) is not keyed, and nothing is ended for it.
   bool _keyPtt(String radio, PttSession session, {Duration timeout = pttTimeout, Object? owner}) {
+    if (cannotTransmitOn(session) != null) return false;
     if (!_ptt.heldOn(session)) {
       final keyer = _keyerForNode(radio);
       keyer.stopAll();
@@ -359,6 +361,13 @@ class RadioKeyer {
   String? get _uuid => radio == 'B' ? _cat.radio2 : _cat.localRadio1;
 
   bool get canKeyCw => _k.canKeyCw;
+
+  /// Why this radio says a key would go out somewhere else — its Flex slice
+  /// not open on the radio ([TransmitGatedSession]) — or null.
+  String? get cannotTransmit => switch (_uuid) {
+    final uuid? => cannotTransmitOn(_cat.connectedSession(uuid)),
+    null => null,
+  };
   bool get designatedKeyIsKeyer => _k.designatedKeyIsKeyer;
   EquipmentNode? get designatedKeyerNode => _k.designatedKeyerNode;
   int? get keyerSpeed => _k.keyerSpeed;
@@ -480,7 +489,7 @@ class RadioKeyer {
   /// Whether this radio is on the air — see [CatService.isTransmitting].
   bool get transmitting => _cat.isTransmitting(radio);
 
-  bool get canPtt => _cat._pttSession(_uuid) != null;
+  bool get canPtt => _cat._pttSession(_uuid) != null && cannotTransmit == null;
 
   /// Bumped as keyboard mode starts on this radio — see
   /// [CatKeying.keyboardModeRequests].

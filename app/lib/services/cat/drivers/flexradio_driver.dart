@@ -219,7 +219,8 @@ class FlexRadioSession
         RadioAntennaSession,
         So2rRadioAudioSession,
         RawCommandSession,
-        ReceiveLevelSession {
+        ReceiveLevelSession,
+        TransmitGatedSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -376,6 +377,7 @@ class FlexRadioSession
   late final _cwQueue = CwSendQueue(
     maxChunkLength: _cwxChunkLength,
     send: (chunk) {
+      if (cannotTransmit != null) return;
       _takeTx();
       _sendCommand('cwx send "${chunk.replaceAll(' ', '\x7F')}"');
     },
@@ -688,7 +690,8 @@ class FlexRadioSession
 
   /// This slice is on the air while the radio is, unless the transmit flag
   /// is on the slice of another of the app's radios: two slices of one radio,
-  /// as SO2R's two radios, are not both transmitting when one is. The flag on
+  /// as SO2R's two radios, are not both transmitting when one is — nor is a
+  /// slice the radio does not have, which keys nothing ([cannotTransmit]). The flag on
   /// a slice no session reads is a split set up on the radio, and the
   /// transmitter is this radio's — what reads this is the rule that no relay
   /// moves under RF.
@@ -722,7 +725,7 @@ class FlexRadioSession
   /// Whether the transmit flag is on a slice another session on this radio
   /// reads from.
   bool get _txOnAnotherRadio {
-    if (_slices[slice]?.tx != false) return false;
+    if (_slices[slice]?.tx == true) return false;
     final others = _sessionsByHost[meterHost] ?? const <FlexRadioSession>{};
     return _slices.entries.any((e) => e.value.tx == true && others.any((other) => !identical(other, this) && other.slice == e.key));
   }
@@ -892,8 +895,18 @@ class FlexRadioSession
     // Mentioned, but the radio never said whether it runs: no verdict to
     // give, so whatever was last reported stands.
     if (_slices.containsKey(slice) && inUse == null) return;
-    _sink.reportProblem(inUse == true ? null : t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)));
+    _sliceMissing = inUse != true;
+    _sink.reportProblem(cannotTransmit);
   }
+
+  /// The radio has described its slices, and [slice] is not among those
+  /// open — [_checkTrackedSlice]'s verdict.
+  bool _sliceMissing = false;
+
+  /// Null before any verdict: the slice is presumed open until the radio
+  /// has described its slices without it.
+  @override
+  String? get cannotTransmit => _sliceMissing ? t.settings.station.flexSliceMissing(letter: FlexRadioDriver.sliceLabel(slice)) : null;
 
   void _publishChannels() {
     _sink.reportChannels([
@@ -1022,6 +1035,7 @@ class FlexRadioSession
   /// ([_handleInterlockLine]).
   @override
   void setPtt(bool on) {
+    if (on && cannotTransmit != null) return;
     // Set before a key and cleared only after an unkey: either one that
     // throws leaves [teardown] an unkey to send.
     _keyedByUs |= on;
@@ -1074,6 +1088,10 @@ class FlexRadioSession
   /// on already (flex_dax_switch.dart).
   @override
   void setPttWithComputerAudio(bool on, {void Function()? refused}) {
+    if (on && cannotTransmit != null) {
+      refused?.call();
+      return;
+    }
     if (on) {
       _daxSwitch.beforeKey();
       setPtt(true);
@@ -1243,11 +1261,12 @@ class FlexRadioSession
   }
 
   /// An EMPTY slot is refused here rather than sent: the API reference says
-  /// a play of one answers `0` and can leave the radio keyed.
+  /// a play of one answers `0` and can leave the radio keyed. So is any slot
+  /// while [cannotTransmit]: the play would go out on another slice.
   @override
   void playVoiceMemory(int n) {
     final slot = _dvkSlots[n];
-    if (slot != null && slot.durationMs == 0) {
+    if ((slot != null && slot.durationMs == 0) || cannotTransmit != null) {
       stopVoice();
       _activityCeiling = voiceMemoryCeiling;
       _voice.start(VoiceActivity(memory: n));

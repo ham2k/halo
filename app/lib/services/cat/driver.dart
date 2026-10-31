@@ -663,6 +663,23 @@ abstract class PttSession implements EquipmentSession {
   void setPtt(bool on);
 }
 
+/// A session that can tell what it keys would go out somewhere else: a
+/// FlexRadio slice that is not open on the radio, whose `xmit` keys the
+/// slice holding the transmit flag, on that slice's frequency. Keying treats
+/// it as a radio that cannot key, and the session refuses a key regardless.
+abstract interface class TransmitGatedSession {
+  /// Why nothing keyed here would go out where this session is, in the
+  /// operator's words — or null while it would.
+  String? get cannotTransmit;
+}
+
+/// [TransmitGatedSession.cannotTransmit] for [session], null for one that
+/// cannot tell.
+String? cannotTransmitOn(EquipmentSession? session) => switch (session) {
+  final TransmitGatedSession gated => gated.cannotTransmit,
+  _ => null,
+};
+
 /// A transceiver whose CAT can key it with its transmit audio taken from
 /// the computer rather than its microphone — what the computer's voice keyer
 /// keys with, so a radio set up for the operator's mic sends the recording
@@ -679,7 +696,8 @@ abstract class ComputerAudioPttSession implements PttSession {
   /// down while keyed puts it back too, after its unkey.
   ///
   /// [refused] is called when the switch did not take and the session
-  /// unkeyed for it: the radio was sending its mic, and the message stops. A
+  /// unkeyed for it: the radio was sending its mic, and the message stops.
+  /// A [TransmitGatedSession] that cannot transmit calls it without keying. A
   /// session that carries the audio itself loses its output instead
   /// ([NetworkTransmitAudioSession]).
   void setPttWithComputerAudio(bool on, {void Function()? refused});

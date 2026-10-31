@@ -10,11 +10,12 @@
 // but runs the real send queue and reports a speed like a real rig), so what
 // the line shows is what the queue reports, not a hand-built stand-in.
 
+import 'package:flutter/gestures.dart' show kSecondaryButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_widgets/halo_widgets.dart' show EsmFacts, MdiIcons;
+import 'package:halo_widgets/halo_widgets.dart' show EsmFacts, HaloDialog, MdiIcons;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
@@ -761,6 +762,35 @@ void main() {
       expect(cat.keyer('A').voiceActivity.value, isNull);
       cat.keyer('B').stopVoice();
       await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The trap: a press held long enough to edit that sends the message as
+    // well — a CQ on the air for a typo — or an edit that lands in a draft
+    // nothing saves.
+    testWidgets('a long press on a message edits it, in the set in use, and sends nothing', (tester) async {
+      await connectPlaceholder(tester);
+      await messages({1: ('CQ CQ DE N0DEV K', 'CQ'), 2: ('5NN', '5NN')});
+      sent.clear();
+      await tester.pumpWidget(host());
+      await tester.longPress(button('5NN'));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(HaloDialog, 'Message 2'), findsOneWidget);
+      await tester.enterText(find.widgetWithText(TextField, 'M2'), '{{ qso.call }} 5NN TU');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(services.settings.cwMessage(2), '{{ qso.call }} 5NN TU');
+      expect(services.settings.cwMessage(1), 'CQ CQ DE N0DEV K', reason: 'the others as they were');
+      expect(sent, isEmpty);
+    });
+
+    testWidgets("a right click on a voice memory opens that memory's dialog, and plays nothing", (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+      await tester.pumpWidget(host(phone: true));
+      await tester.tap(button('CQ POTA'), buttons: kSecondaryButton);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(HaloDialog, 'Voice memory 2'), findsOneWidget);
+      expect(services.cat.keyer('A').voiceActivity.value, isNull);
     });
   });
 

@@ -693,6 +693,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
                     next: next,
                     repeats: n == 1 && settings.cwRepeatDelay > Duration.zero,
                     onTap: () => widget.onSendMessage!(n),
+                    onEdit: () => showCwMessageDialog(context, services, n),
                   ),
               ],
             ),
@@ -716,7 +717,20 @@ class _MessageButton extends StatelessWidget {
   final bool repeats;
   final VoidCallback onTap;
 
-  const _MessageButton({required this.n, required this.label, required this.enabled, required this.next, required this.repeats, required this.onTap});
+  /// Opens the message's own dialog — a long press, or a right click —
+  /// whether or not it can be sent right now: a message is fixed before the
+  /// radio that sends it is back.
+  final VoidCallback onEdit;
+
+  const _MessageButton({
+    required this.n,
+    required this.label,
+    required this.enabled,
+    required this.next,
+    required this.repeats,
+    required this.onTap,
+    required this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -740,6 +754,8 @@ class _MessageButton extends StatelessWidget {
         child: InkWell(
           borderRadius: borderRadius,
           onTap: enabled ? onTap : null,
+          onLongPress: onEdit,
+          onSecondaryTap: onEdit,
           mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
@@ -904,6 +920,7 @@ class _VoiceButtons extends StatelessWidget {
                   onTap: () {
                     if (keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) keyer.queueVoiceMemory(n);
                   },
+                  onEdit: () => showVoiceMessageDialog(context, services, n, radio: keyer.radio),
                 ),
             ],
           ),
@@ -1241,10 +1258,14 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
 /// Whether [keyer] can do what [can] asks — saying so when SO2R's Radio B's
 /// cannot: a key from set B never falls back to radio A, and its refusal is
 /// not the silence of a station with no keyer at all, so a key handler
-/// claims the key exactly when [RadioKeyer.radio] is `B`.
+/// claims the key exactly when [RadioKeyer.radio] is `B`. Either radio says
+/// why when its radio would key somewhere else ([RadioKeyer.cannotTransmit]):
+/// a radio connected and answering that keys nothing looks broken otherwise.
 bool keyerOrSay(BuildContext context, HaLoServices services, RadioKeyer keyer, bool Function() can) {
   if (can()) return true;
-  if (keyer.radio == 'B') {
+  if (keyer.cannotTransmit case final reason?) {
+    services.statusBar.showNotice(key: 'cannot-transmit', icon: 'alert-circle-outline', text: reason, persist: false);
+  } else if (keyer.radio == 'B') {
     services.statusBar.showNotice(
       key: 'so2r-cannot-key',
       icon: 'alert-circle-outline',

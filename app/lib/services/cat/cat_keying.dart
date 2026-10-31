@@ -189,6 +189,12 @@ class CatKeying {
     return uuid;
   }
 
+  /// Why a key on [uuid] would go out somewhere else ([TransmitGatedSession]),
+  /// or null. Asked where a key STARTS — a send, a play, what a peer is
+  /// offered — and never in the lookups a stop, a recording or a progress
+  /// goes through: a message going out when the slice went must still stop.
+  String? cannotTransmitFor(String? uuid) => uuid == null ? null : cannotTransmitOn(station.connectedSession(uuid));
+
   CwKeyerSession? get _cwKeyer {
     final uuid = _cwKeyerUuid;
     if (uuid == null) return null;
@@ -199,12 +205,12 @@ class CatKeying {
   /// able to key. What a radio offered to a peer advertises: this device keys
   /// with what it has, and a relay of a request onto some third device's rig
   /// is not something to offer.
-  bool get keysCwLocally => _cwKeyer != null;
+  bool get keysCwLocally => _cwKeyer != null && cannotTransmitFor(_cwKeyerUuid) == null;
 
   /// Whether the designated key is connected and can key CW — or, when
   /// `radio1` is a peer's radio that keys and nothing here was designated
   /// for it, whether that station will key on this operator's behalf.
-  bool get canKeyCw => _cwKeyer != null || keysOverPeer;
+  bool get canKeyCw => keysCwLocally || keysOverPeer;
 
   /// Whether the designated key COULD key — a keyer, or a radio whose
   /// driver keys — whether or not it is connected right now. What decides
@@ -329,7 +335,7 @@ class CatKeying {
   /// Whether the key in use took [text].
   bool sendCwLocally(String text) {
     final session = _cwKeyer;
-    if (session == null) return false;
+    if (session == null || cannotTransmitFor(_cwKeyerUuid) != null) return false;
     // The radio that transmits it: the key in use itself when that is a
     // radio's own keyer, radio1 when it is a keyer that keys radio1.
     station.yieldTransmitter(station.connectedSession(_cwKeyerUuid!) is TransceiverSession ? _cwKeyerUuid : station.localKeyingRadio);
@@ -709,7 +715,7 @@ class CatKeying {
 
   /// Whether radio1 is connected and can play its voice memories — a peer's
   /// radio through the link, exactly as a local one through its session.
-  bool get canPlayVoice => _voiceKeyer != null || playsVoiceOverPeer;
+  bool get canPlayVoice => (_voiceKeyer != null && cannotTransmitFor(station.localKeyingRadio) == null) || playsVoiceOverPeer;
 
   /// Whether radio1 COULD play voice memories — its entry holds some —
   /// whether or not it is connected right now. The voice counterpart of
@@ -966,7 +972,7 @@ class CatKeying {
   /// on the shared transmitter and takes the chain with it.
   void playVoiceLocally(String uuid, int n) {
     final session = voiceKeyerFor(uuid);
-    if (session == null) return;
+    if (session == null || cannotTransmitFor(uuid) != null) return;
     // A peer's memory 1 is not this operator's CQ, the same rule the CW
     // request states at [handleRequest].
     if (_sameTransmitter(uuid, station.localKeyingRadio)) _voiceMessageOne = false;

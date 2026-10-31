@@ -205,6 +205,17 @@ the radio forever over a setting; leaving it unsaid is worse, because a connecte
 frequency never arrives is indistinguishable from a dead radio. So it is its own field, rendered
 with an error's weight and none of its behaviour.
 
+**A radio that would key somewhere else keys nothing** (`TransmitGatedSession.cannotTransmit`).
+A Flex slice the radio is not running has no transmit flag to take, and `xmit`, `cwx send` and a
+DVK play all go out on the slice that holds it, at that slice's frequency: under SO2R on one Flex,
+Radio B's message would go out on Radio A's. Once the slice is reported missing, keying treats the
+radio as one that cannot key (CW, voice memories, the computer's voice, the PTT key), the keypress
+says the problem's words (`keyerOrSay`), and the session refuses a key regardless. The check is made
+where a key starts — a send, a play, what a peer is offered (`CatKeying.cannotTransmitFor`) — and
+never in the keyer lookups: a stop, a recording (which keys nothing) and a send's progress still
+reach the session, so a message going out when the slice closed is stopped all the same. Before
+the radio has described its slices nothing is refused: the slice is presumed there.
+
 ## Cancellation, and the races it prevents
 
 `EquipmentTransport.connect` takes a `CatCancelToken` **in its first signature**, deliberately.
@@ -1750,6 +1761,9 @@ it). Its chip reads the speed ("25 WPM", key icon) or "Voice" (microphone), or w
 while something is. Its panel holds what starts a message: Enter Sends Messages, a button per
 message up to the last one with anything in it — one with nothing to send disabled, "M1".."M8" for
 one with no label — then keyboard mode, the repeat switch and the way to the message dialog.
+A long press or a right click on a message's button opens that message's own dialog
+(`showCwMessageDialog`, `showVoiceMessageDialog`) and sends nothing, disabled button or not; a CW
+edit saves into the set in use on that dialog's Save.
 `KEYER` (or `MACROS`) in the call field opens it without sending anything.
 
 **What is going out is shown** in the logging panel's FYI area ([logging-fields.md](logging-fields.md)
@@ -1972,7 +1986,7 @@ generic Yaesu entry names none.
 | Ham Radio Deluxe | `get button-select TX`, where `get buttons` lists a TX button; slowed after two unanswered | none: HRD's meters are per-radio sliders in unstated units |
 | DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
 | N3FJP | none: the API has no PTT read | none |
-| FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
+| FlexRadio | `interlock state=`, PUSHED — costs nothing; it speaks for the whole radio, so a slice whose transmit flag (`tx=1`) is on another of the app's radios' slices — or a slice the radio does not have — reads it as receiving, and one keying takes the flag from there first; a flag on a slice no session reads is a split, left where it is | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
 | Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | none — see below — but on the TX-500 line: power out from `SM0;`, volts from `VL;` |

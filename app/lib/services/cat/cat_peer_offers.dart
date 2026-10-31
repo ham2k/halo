@@ -42,7 +42,7 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
           // handler must not be keyed from elsewhere, because nothing
           // here could stop it.
           keysCw: _keyingEnabled && _keying.keysCwLocally,
-          voiceMemories: _keyingEnabled ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
+          voiceMemories: _keyingEnabled && _keying.cannotTransmitFor(node.uuid) == null ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
           recordsVoice: _keyingEnabled && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
         ),
   ];

@@ -63,6 +63,23 @@ Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {
   builder: (_) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
 );
 
+/// Message [n] of the set in use, on its own — what a long press or a
+/// right click on its keyer button opens. Saved into that set on the
+/// dialog's Save, as the list's row would be on the list's.
+Future<void> showCwMessageDialog(BuildContext context, HaLoServices services, int n) async {
+  final settings = services.settings;
+  final set = settings.activeCwMessageSet;
+  final edited = await showHaloDialog<({String message, String label})>(
+    context: context,
+    builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
+  );
+  if (edited == null) return;
+  // The sets as they are now, not as the dialog opened on.
+  await settings.setCwMessageSets([
+    for (final entry in settings.cwMessageSets) entry.name == set.name ? entry.withMessage(n, edited.message).withLabel(n, edited.label) : entry,
+  ], active: settings.activeCwMessageSet.name);
+}
+
 class _CwMessagesDialog extends StatefulWidget {
   final HaLoServices services;
   final String radio;

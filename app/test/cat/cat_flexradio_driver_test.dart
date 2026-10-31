@@ -1173,6 +1173,43 @@ void main() {
       });
     });
 
+    // The trap: Radio B's slice not open on the radio. Nothing holds a flag
+    // to take, so `xmit` keys the slice that does — Radio A's, on Radio A's
+    // frequency — and that slice's session rightly reads on the air, lighting
+    // both sets TX.
+    test("a slice the radio does not have keys nothing, says why, and is off the air under the other radio's key", () {
+      fakeAsync((async) {
+        final sliceA = onRadio(_FakeSink(), 0);
+        final sliceB = onRadio(sink, 1);
+        sliceB.startUpdates();
+        sliceB.feed('S5AC2F980|slice 0 in_use=1 RF_frequency=14.336000 tx=1\n');
+        expect(sliceB.cannotTransmit, isNull, reason: 'no verdict while the refresh is still arriving');
+
+        async.elapse(const Duration(seconds: 4));
+        expect(sliceB.cannotTransmit, contains('B'));
+        expect(sink.problems.last, sliceB.cannotTransmit, reason: 'the same words in the radio row');
+        sink.sent.clear();
+        var refused = 0;
+        sliceB.setPtt(true);
+        sliceB.setPttWithComputerAudio(true, refused: () => refused++);
+        sliceB.sendCw('cq');
+        sliceB.playVoiceMemory(1);
+        async.elapse(const Duration(seconds: 1));
+        expect(commands(), ['dvk playback_stop'], reason: "nothing keyed: a refused memory's stop alone");
+        expect(refused, 1, reason: 'a computer message stops rather than playing to a radio that is not keyed');
+        expect(sink.voices.last, isNull, reason: 'a memory refused is no memory playing');
+
+        sliceB.feed('S40000001|interlock state=TRANSMITTING\n');
+        expect(sink.txReports, [false], reason: "the radio is on the air for Radio A's slice");
+
+        sliceB.feed('S5AC2F980|slice 1 in_use=1 RF_frequency=7.175000 tx=0\n');
+        expect(sliceB.cannotTransmit, isNull, reason: 'the slice opened is keyable again');
+        sliceA.teardown();
+        sliceB.teardown();
+        async.flushTimers();
+      });
+    });
+
     // Split on the radio: the flag on the TX slice is the operator's, and
     // moved, the call goes out on the DX's own frequency.
     test('keying with the transmit flag on a slice no session reads leaves it there', () {

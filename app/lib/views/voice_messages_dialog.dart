@@ -328,6 +328,13 @@ class _VoiceMessagesPane extends StatelessWidget {
   }
 }
 
+/// Memory [n] of [radio] (`A` or `B`), on its own — what a long press or a
+/// right click on its keyer button opens.
+Future<void> showVoiceMessageDialog(BuildContext context, HaLoServices services, int n, {required String radio}) => showHaloDialog<void>(
+  context: context,
+  builder: (context) => _VoiceMessageDialog(services: services, radio: radio, n: n),
+);
+
 /// One memory: its label, how long it plays for, and the way to record it.
 /// The label is an edit, saved on Save; measuring and recording are things
 /// the RADIO does, so they happen as they are pressed and a Cancel does not

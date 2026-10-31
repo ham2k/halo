@@ -19,7 +19,7 @@ extension PeerKeyBridge on CatKeying {
   /// following would be a relay by another name (see the header of cat_keying.dart).
   PeerKeyStatusPayload statusForOfferedRadio(String radioId) {
     final range = localKeyerSpeedRange;
-    final memories = voiceKeyerFor(radioId)?.voiceMemoryCount ?? 0;
+    final memories = cannotTransmitFor(radioId) == null ? (voiceKeyerFor(radioId)?.voiceMemoryCount ?? 0) : 0;
     return PeerKeyStatusPayload(
       radioId: radioId,
       keyerSpeedWpm: localKeyerSpeed,
