@@ -1928,6 +1928,13 @@ export interface CommandAction {
   /// lets the caller post more than one at once (e.g. a fresh key per call)
   /// instead of always replacing the same status item.
   devStatus?: { key?: string; icon?: string; title?: string; text?: string }
+  /// Developer-only: posts a message to the FYI area under the call info
+  /// (DEVFYIALERT, DEVFYIWARN, DEVFYIINFO — docs/design/logging-fields.md
+  /// § The FYI area). `category` is `alert`, `warning` or `info`;
+  /// `priority` is `high`, `normal` (the default) or `low`; `key` lets
+  /// several stand at once, as `devStatus`'s does. The message is the
+  /// station's, shown in each set's area.
+  devFyi?: { key?: string; category: string; priority?: string; icon?: string; text: string }
   /// Developer-only: posts a progress bar (DEVPROGRESS); omit `percent` for
   /// an indeterminate bar.
   devProgress?: { icon?: string; title?: string; percent?: number }

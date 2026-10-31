@@ -108,16 +108,69 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     for (final radio in ['A', 'B']) radio: ValueNotifier<EsmFacts?>(null),
   };
 
-  /// [radio]'s set's keyer line — its own radio's keyer: its messages going
+  /// [radio]'s set's FYI area — its own radio's messages and the station's,
+  /// with its radio's keyer line while [keyer] is on: its messages going
   /// out, its repeat, and what waits for the other radio.
-  KeyerArea _keyerArea(String radio, {required bool editingHere}) => KeyerArea(
-    cat: widget.services.cat,
-    radio: radio,
+  FyiArea _fyiArea(String radio, {required bool editingHere, required bool keyer}) => FyiArea(
     services: widget.services,
+    radio: radio,
+    keyer: keyer,
     phone: widget.keyingSuperMode == 'Phone',
     digital: widget.keyingSuperMode == 'Digital',
     suppressed: editingHere && _selectedQso != null,
   );
+
+  /// What [radio]'s set says its contact lacks of the radio state, said in
+  /// that radio's FYI area (logging-fields.md § The FYI area): the band and
+  /// the mode, each a high-priority pill — a contact with neither band nor
+  /// frequency is refused at the log, and one with no mode by every award
+  /// programme. No tap puts one away; a tap opens that radio's Radio
+  /// control, where the pick that answers it is. Each under one key per
+  /// radio, taken down the moment the set reports it answered, and not
+  /// when the panel goes: the radio's state is the station's, not this
+  /// operation's, and the next panel reports it afresh on its first frame. A
+  /// clear from dispose would also land while the tree is locked, on an area
+  /// a panel taking over the slot has already mounted.
+  void _postMissingRadio(String radio, MissingRadioState missing) {
+    final fyi = widget.services.fyi;
+    if (missing.band) {
+      fyi.post(
+        FyiMessage(
+          key: 'band:$radio',
+          category: FyiCategory.alert,
+          priority: FyiPriority.high,
+          dismissible: false,
+          onTap: () => _openRadioControl(radio),
+          icon: MdiIcons.radio,
+          text: t.loggingControls.missingBand,
+          radio: radio,
+        ),
+      );
+    } else {
+      fyi.clear('band:$radio');
+    }
+    if (missing.mode) {
+      fyi.post(
+        FyiMessage(
+          key: 'mode:$radio',
+          category: FyiCategory.alert,
+          priority: FyiPriority.high,
+          dismissible: false,
+          onTap: () => _openRadioControl(radio),
+          icon: MdiIcons.waveform,
+          text: t.loggingControls.missingMode,
+          radio: radio,
+        ),
+      );
+    } else {
+      fyi.clear('mode:$radio');
+    }
+  }
+
+  /// Opens [radio]'s Radio control. Set A's strip holds both — set B's is
+  /// its `radioB` pill, as [So2rLink.openRadio] has it — so set A's
+  /// controller opens either, with or without a second set.
+  void _openRadioControl(String radio) => _loggingController.openControl(radio == 'A' ? 'radio' : 'radioB');
 
   void _disposeSo2r() {
     for (final facts in _esmFacts.values) {

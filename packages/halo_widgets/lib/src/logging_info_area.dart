@@ -4,8 +4,8 @@
 // The logging panel's information area — the strip between the secondary
 // controls and the main fields that tells the operator about the station
 // being worked, or the operation when no station is (issue #40). Pure
-// presentation: the panel decides WHAT it shows (which call, which message,
-// what is missing) and hands it over; nothing here reads a controller.
+// presentation: the panel decides WHAT it shows (which call, which message)
+// and hands it over; nothing here reads a controller.
 
 import 'package:flutter/material.dart';
 
@@ -28,7 +28,6 @@ class LoggingInfoArea extends StatelessWidget {
   const LoggingInfoArea({
     super.key,
     required this.theme,
-    required this.warnings,
     required this.message,
     required this.callInfo,
     required this.locationLine,
@@ -44,19 +43,6 @@ class LoggingInfoArea extends StatelessWidget {
 
   /// The panel's accent theme — the area sits on its tertiaryContainer fill.
   final ThemeData theme;
-
-  /// What the contact in hand is missing from the radio state every QSO
-  /// needs — "No Band", "No Mode". Ride ABOVE everything else the area can
-  /// show, including a command's message: a band that was never set is wrong
-  /// before there is anything to work, and the operator has to see it then,
-  /// not on the submit the log-time refusal finally blocks. Above the message
-  /// in particular because that message OUTLIVES the condition that wrote it
-  /// — the refusal is cleared by a call-field keystroke, not by the band pick
-  /// that answers it — so a warning underneath it would go quiet exactly
-  /// while the operator was fixing the problem, and stay quiet about anything
-  /// still missing. Not folded into the call-info pills for the opposite
-  /// reason: those belong to the station in the field, and this one doesn't.
-  final List<String> warnings;
 
   /// A command's describe preview, error or confirmation, as markdown.
   final String? message;
@@ -105,30 +91,8 @@ class LoggingInfoArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final onTap = message == null && callInfo != null ? onCallInfoTap : onOperationInfoTap;
-    if (onTap == null) return _body();
-    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: _body());
-  }
-
-  Widget _body() {
-    if (warnings.isEmpty) return _content();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Wraps rather than a plain Row: two pills in a locale that spells
-        // them long ("Sin Banda" + "Sin Modo") reach the width this area has
-        // left after the edit button's reserve at the tightest supported
-        // geometry, and a non-flex Row child would overflow rather than move
-        // to a second line.
-        Wrap(
-          spacing: Space.xs,
-          runSpacing: Space.xxs,
-          children: [for (final warning in warnings) noticePill(theme, warning, level: NoticeLevel.alert)],
-        ),
-        const SizedBox(height: Space.xxs),
-        _content(),
-      ],
-    );
+    if (onTap == null) return _content();
+    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: _content());
   }
 
   Widget _content() {

@@ -56,6 +56,7 @@ import 'geoshape_service.dart';
 import 'outline_grid_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'cat/swr_watch.dart';
 import 'app_storage.dart' show appDataDirectory;
 import 'cat/computer_voice_keyer.dart' show HaloVoiceAudio;
 import 'cat/cat_traffic_log.dart';
@@ -92,6 +93,7 @@ import 'key_bindings_service.dart';
 import 'settings_service.dart';
 import 'spot_board_service.dart';
 import 'spots_service.dart';
+import 'fyi_service.dart';
 import 'status_bar_service.dart';
 import 'web_popup.dart';
 import '../settings/core_settings_groups.dart';
@@ -430,6 +432,13 @@ class HaLoServices with _TimeTravel {
 
   /// DEVLOGCAT itself — see [CatTrafficRecording].
   late final CatTrafficRecording catTraffic = CatTrafficRecording(catTrafficLog, settings: settings, cat: () => cat, statusBar: statusBar);
+
+  /// The FYI area's messages (docs/design/logging-fields.md § The FYI area).
+  late final FyiService fyi = FyiService();
+
+  /// Each local radio's SWR, as the FYI area reports it. Started by the
+  /// boot: nothing else touches it.
+  late final SwrWatch swrWatch = SwrWatch(cat: cat, fyi: fyi);
   late final PanelRadioService panelRadio = PanelRadioService(
     cat,
     radio,
@@ -1592,6 +1601,24 @@ class HaLoServices with _TimeTravel {
         final p = params ?? const {};
         final devStatusKey = p['key'] as String? ?? 'devStatus';
         statusBar.setMessage(key: 'command:devStatus:$devStatusKey', icon: p['icon'] as String?, title: p['title'] as String?, text: p['text'] as String?);
+        return null;
+      case 'devFyi':
+        // DEVFYIALERT / DEVFYIWARN / DEVFYIINFO: a message in the FYI area,
+        // the station's so both sets show it. A fresh key per call (the
+        // extension's) is what lets the posts stack and the dismissal
+        // cooldown never bite — each is a new message, never a re-post.
+        final p = params ?? const {};
+        final category = FyiCategory.values.asNameMap()[p['category'] as String?] ?? FyiCategory.info;
+        final priority = FyiPriority.values.asNameMap()[p['priority'] as String?] ?? FyiPriority.normal;
+        fyi.post(
+          FyiMessage(
+            key: 'command:devFyi:${p['key'] as String? ?? realNowUtc().microsecondsSinceEpoch}',
+            category: category,
+            priority: priority,
+            icon: resolveIconName(p['icon'] as String?),
+            text: p['text'] as String? ?? '',
+          ),
+        );
         return null;
       case 'devProgress':
         final p = params ?? const {};

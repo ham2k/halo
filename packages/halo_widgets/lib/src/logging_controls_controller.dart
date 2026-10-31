@@ -19,6 +19,7 @@ class LoggingControlsController {
   void Function()? _focusCall;
   void Function()? _focusSecondaryControls;
   void Function()? _focusLastPrimaryField;
+  void Function(String key)? _openControl;
 
   /// Wired by [LoggingControls] on mount/unmount — not meant for callers.
   void attach({
@@ -30,6 +31,7 @@ class LoggingControlsController {
     required void Function() focusCall,
     required void Function() focusSecondaryControls,
     required void Function() focusLastPrimaryField,
+    required void Function(String key) openControl,
   }) {
     _setField = setField;
     _submit = submit;
@@ -39,6 +41,7 @@ class LoggingControlsController {
     _focusCall = focusCall;
     _focusSecondaryControls = focusSecondaryControls;
     _focusLastPrimaryField = focusLastPrimaryField;
+    _openControl = openControl;
   }
 
   /// Wired by [LoggingControls] on unmount — not meant for callers.
@@ -51,6 +54,7 @@ class LoggingControlsController {
     _focusCall = null;
     _focusSecondaryControls = null;
     _focusLastPrimaryField = null;
+    _openControl = null;
   }
 
   /// Whether a LoggingControls is currently attached.
@@ -97,4 +101,10 @@ class LoggingControlsController {
   /// row: the operator is picking up an edit, not starting a fresh QSO, so
   /// the field they left keeps making more sense than always landing on Call.
   void focusLastPrimaryField() => _focusLastPrimaryField?.call();
+
+  /// Opens the secondary control under [key] — `radio`, or `radioB` for set
+  /// B's Radio control in set A's strip under SO2R — as a tap on its pill
+  /// does, the keyboard landing in the field it opens into. For a host
+  /// answering a tap of its own with the control: the FYI area's No Band.
+  void openControl(String key) => _openControl?.call(key);
 }

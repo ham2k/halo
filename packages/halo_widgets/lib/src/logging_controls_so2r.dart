@@ -164,9 +164,13 @@ List<Qso> so2rQsos(So2rSet? so2r, List<Qso> qsos) => so2r == null
 /// bad, and still apart for an operator who cannot tell red from green. [ink]
 /// is the hue as text on the panel, for the set without the keyboard.
 ({Color fill, Color onFill, Color ink}) _colorsFor(So2rSet so2r, ThemeData theme) {
-  final colors = theme.colorScheme;
-  // On the air, whichever set has the keyboard: red is what says so.
-  if (so2r.transmitting) return (fill: colors.error, onFill: colors.onError, ink: colors.error);
+  // On the air, whichever set has the keyboard: red is what says so — the
+  // app's alert red, which stays red in dark mode where the scheme's error
+  // is a pale pink.
+  if (so2r.transmitting) {
+    final alert = HaLoColors.fromTheme(theme);
+    return (fill: alert.alert, onFill: alert.onAlert, ink: alert.alert);
+  }
   return _radioColors(so2r.radio, theme.brightness);
 }
 

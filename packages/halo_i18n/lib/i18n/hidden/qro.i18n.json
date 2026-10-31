@@ -1330,6 +1330,10 @@
     "provincesWorked": "PROVINCES",
     "duplicates": "DUPLICATES"
   },
+  "fyi": {
+    "swrAlert": "HIGH SWR $swr",
+    "swrWarning": "SWR $swr"
+  },
   "callInfo": {
     "qrz": "QRZ",
     "showImage": "SHOW IMAGE",

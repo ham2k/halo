@@ -44,11 +44,12 @@ class LoggingInfoFrame extends StatefulWidget {
   /// 1 Hz tick). Only a change here cross-fades — see [_LoggingInfoFrameState].
   final String signature;
 
-  /// Whatever the host wants under the content, inside the area's own room —
-  /// the app's keyer line. Outside the cross-fade: a change of content is
-  /// not a change of what the host shows, and a footer remounted with every
-  /// call-field keystroke would lose its state each time. It pads itself
-  /// inside its own slide, so nothing is spent while it is not showing.
+  /// Whatever the host wants under the content, at the bottom of the area's
+  /// own room — the app's FYI area. Outside the cross-fade: a change of
+  /// content is not a change of what the host shows, and a footer remounted
+  /// with every call-field keystroke would lose its state each time. It pads
+  /// itself inside its own slide, so nothing is spent while it is not
+  /// showing.
   final Widget? footer;
 
   /// The panel's second action button, pinned to the bottom of the area —
@@ -112,6 +113,12 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
+                      // The footer at the bottom of the room the area
+                      // reserves, the slack between it and the content: it
+                      // rises out of the fields' edge into that slack, not
+                      // down from under the content. With the entry row
+                      // above, it stays under the content, nearer the row.
+                      mainAxisAlignment: widget.entryRowAbove ? MainAxisAlignment.start : MainAxisAlignment.spaceBetween,
                       children: [
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 120),

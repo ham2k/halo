@@ -871,6 +871,8 @@ Future<void> dispatchCommandActions(
       await runAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
     } else if (map['devStatus'] is Map) {
       await runAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+    } else if (map['devFyi'] is Map) {
+      await runAction('devFyi', (map['devFyi'] as Map).cast<String, dynamic>());
     } else if (map['devProgress'] is Map) {
       await runAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
     } else if (map['devHammer'] is Map) {

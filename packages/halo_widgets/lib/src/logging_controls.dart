@@ -1036,13 +1036,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Push the current call-info and QSO draft up to the host (Info tab /
     // modal, extension panels) after this build settles, so neither ever
     // setStates a parent mid-build.
-    if (widget.lookups.onCallInfoChanged != null || widget.session.onQsoChanged != null || widget.session.onPeerDraftChanged != null) {
+    final publishing = widget.lookups.onCallInfoChanged != null || widget.session.onQsoChanged != null || widget.session.onPeerDraftChanged != null;
+    if (publishing || widget.lookups.onMissingRadioState != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _notifyCallInfo();
-        _notifyQsoDraft();
+        if (publishing) {
+          _notifyCallInfo();
+          _notifyQsoDraft();
+        }
+        // Every set's, keyboard or not: each radio's band is its own.
+        _notifyMissingRadio();
       });
-    } else {
+    }
+    if (!publishing) {
       // Not publishing — under SO2R, the set the keyboard is not in. What it
       // published before is forgotten, so its draft is published afresh when
       // the keyboard comes back: the host holds the other set's by then.
@@ -1320,6 +1326,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// What [_notifyCallInfo] last pushed.
   String? _lastCallInfoSig;
+
+  /// What [_notifyMissingRadio] last pushed.
+  MissingRadioState? _lastMissingRadio;
 
   /// What [_notifyQsoDraft] last pushed, and to whom — see there for why
   /// these are read-only.

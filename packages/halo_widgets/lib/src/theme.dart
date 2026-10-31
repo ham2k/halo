@@ -127,6 +127,15 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// shows through below the last one.
   final Color listBackground;
 
+  /// The red that says danger — an alert's icon, the FYI area's pill, the
+  /// Radio control's dot while the rig transmits — and what reads on it as a
+  /// fill. Light mode's is `colorScheme.error` itself. Dark mode's is NOT:
+  /// Material's dark error (#F79797) is a pale pink that reads as decoration
+  /// where a warning is meant, so this stays a saturated red there, dark
+  /// enough to carry white text and bright enough to be seen as red.
+  final Color alert;
+  final Color onAlert;
+
   final Map<String, Color> bands;
 
   const HaLoColors({
@@ -140,6 +149,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     required this.onSurfaceAccent,
     required this.spotMultiplier,
     required this.listBackground,
+    required this.alert,
+    required this.onAlert,
     required this.bands,
   });
 
@@ -156,6 +167,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onSurfaceAccent: Color(0xFF006783), // = colorScheme.primary; already reads fine here
     spotMultiplier: Color(0xFFC2500F), // 10m's hue, darkened to 4.6:1 on the light surface
     listBackground: Color(0xFFF7F8FA), // a hair cooler and darker than surface (#FBFCFE)
+    alert: Color(0xFFFF1A1A), // = colorScheme.error
+    onAlert: Color(0xFFFFFFFF),
     bands: _bandColors,
   );
 
@@ -170,6 +183,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onSurfaceAccent: Color(0xFF00A8D6), // same hue/saturation as primary, lightened
     spotMultiplier: Color(0xFFFF8A4C), // 10m's hue, lightened to 7.3:1 on the dark surface
     listBackground: Color(0xFF1E2224), // the same one-step-off-surface relationship, inverted
+    alert: Color(0xFFE53935), // a saturated red where colorScheme.error is a pale pink; 4.1:1 on the dark surface
+    onAlert: Color(0xFFFFFFFF),
     bands: _bandColors,
   );
 
@@ -204,6 +219,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     Color? onSurfaceAccent,
     Color? spotMultiplier,
     Color? listBackground,
+    Color? alert,
+    Color? onAlert,
     Map<String, Color>? bands,
   }) {
     return HaLoColors(
@@ -217,6 +234,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       onSurfaceAccent: onSurfaceAccent ?? this.onSurfaceAccent,
       spotMultiplier: spotMultiplier ?? this.spotMultiplier,
       listBackground: listBackground ?? this.listBackground,
+      alert: alert ?? this.alert,
+      onAlert: onAlert ?? this.onAlert,
       bands: bands ?? this.bands,
     );
   }
@@ -242,6 +261,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
       other.onSurfaceAccent == onSurfaceAccent &&
       other.spotMultiplier == spotMultiplier &&
       other.listBackground == listBackground &&
+      other.alert == alert &&
+      other.onAlert == onAlert &&
       mapEquals(other.bands, bands);
 
   @override
@@ -256,6 +277,8 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onSurfaceAccent,
     spotMultiplier,
     listBackground,
+    alert,
+    onAlert,
     Object.hashAllUnordered(bands.entries.map((band) => Object.hash(band.key, band.value))),
   );
 
@@ -265,10 +288,10 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
   /// 2.67:1 illegibility [onSurfaceAccent] exists to prevent. Unreachable in
   /// the app today — every theme comes from [buildHaLoTheme] — but live in
   /// tests, which mostly pump a bare `MaterialApp`.
-  static HaLoColors of(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.extension<HaLoColors>() ?? (theme.brightness == Brightness.dark ? dark : light);
-  }
+  static HaLoColors of(BuildContext context) => fromTheme(Theme.of(context));
+
+  /// [of] for a theme already in hand.
+  static HaLoColors fromTheme(ThemeData theme) => theme.extension<HaLoColors>() ?? (theme.brightness == Brightness.dark ? dark : light);
 }
 
 /// [context] is unused but kept so every call site doesn't need editing

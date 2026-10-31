@@ -3,18 +3,19 @@
 //
 // The keyer's two surfaces (docs/design/cat.md § CW keying).
 //
-// The keyer line (KeyerArea), at the bottom of a set's info area under the
-// stats or the call info: while that set's radio keys for the app, the
-// keyer's icon, the message going out with the characters already sent set
-// apart and a bar under it pacing through the message's estimated duration,
-// then whatever waits behind it. Estimated — the radio reports nothing about
-// its progress — so this shows the same arithmetic the send queue paces by,
-// and is right to the extent that is. In a Phone mode — the draft contact's
-// — it is the memory playing (or recording) in the message's place
-// (docs/design/cat.md § Voice keying). The line slides down while anything
-// goes out — a message, a memory, a repeat's wait, what waits for the other
-// SO2R radio, keyboard mode — and away a second after nothing does; a stop
-// takes it away at once.
+// The keyer line, the keyer's item in a set's FYI area
+// (docs/design/logging-fields.md § The FYI area — [FyiArea] hosts it as that
+// radio's operational item): while that set's radio keys for the app, the
+// message going out with the characters already sent set apart and a bar
+// under it pacing through the message's estimated duration, then whatever
+// waits behind it. Estimated — the radio reports nothing about its progress
+// — so this shows the same arithmetic the send queue paces by, and is right
+// to the extent that is. In a Phone mode — the draft contact's — it is the
+// memory playing (or recording) in the message's place (docs/design/cat.md
+// § Voice keying). [KeyerLineModel] decides WHEN the item is there: while
+// anything goes out — a message, a memory, a repeat's wait, what waits for
+// the other SO2R radio, keyboard mode — and a second after nothing does; a
+// stop takes it away at once. [KeyerLineItem] draws it.
 //
 // The keyer control (keyerHostControl, KeyerControls), one of the logging
 // panel's secondary controls: its chip reads the speed or "Voice", and its
@@ -49,68 +50,52 @@ import 'operation/extension_panel.dart' show PanelRenderContext, operationHookAr
 part 'keyer_voice_line.dart';
 
 /// The room under a line of text for its bar ([Space.xxs] tall): the bar
-/// and a pixel between it and the text.
-const _barBelowText = Space.xxs + 1;
+/// and a pixel between it and the text. The FYI area's other items pad
+/// themselves by the same amount, so their text sits level with a message
+/// keying beside them.
+const lineBarBelowText = Space.xxs + 1;
 
-/// The slide in and out.
-const _revealDuration = Duration(milliseconds: 250);
-
-class KeyerArea extends StatefulWidget {
-  final CatService cat;
-
-  /// For the voice memories' labels and the repeat's message.
-  final HaLoServices services;
-
-  /// The SO2R radio whose info area this is: the line shows that radio's
-  /// keyer ([CatService.keyer]) — `A` alone outside SO2R.
-  final String radio;
-
-  /// Whether the line is the voice keyer's: the draft contact's mode is
-  /// Phone. Decided by the operation view, which routes F1-F8 by the same
-  /// answer — decided ONCE, so the keys and the line never disagree about
-  /// which keyer this is. The draft's mode, not the radio's: the messages
-  /// are for the contact being logged, and a rig sitting in USB while the
-  /// operator logs CW keys CW.
-  final bool phone;
-
-  /// Whether the draft contact's mode is Digital, where nothing keys — read
-  /// only to end keyboard mode when the draft turns Digital.
-  final bool digital;
-
-  /// True while the logging panel is editing a logged QSO: the area slides
-  /// out and stays out until editing ends, then comes back if something is
-  /// still keying. Messages are for the contact in progress, not for one
-  /// being corrected.
-  final bool suppressed;
-
-  const KeyerArea({super.key, required this.cat, required this.services, this.radio = 'A', this.phone = false, this.digital = false, this.suppressed = false});
-
-  @override
-  State<KeyerArea> createState() => _KeyerAreaState();
-}
-
-class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
-  // Created in initState, never lazily: a `late` controller first touched
-  // by dispose() would look TickerMode up on a context that is already gone.
-  late final AnimationController _reveal;
-
-  /// Whether the line is (or is sliding) in — from something going out until
-  /// it has lingered and slid away.
-  bool _visible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _reveal = AnimationController(vsync: this, duration: _revealDuration);
-    _listen(widget.cat, widget.radio);
+/// Whether the keyer line is there, and what it holds while it lingers —
+/// one per radio, owned by that set's [FyiArea], which reveals the area
+/// while this is [active] and draws [KeyerLineItem] in it.
+class KeyerLineModel extends ChangeNotifier {
+  KeyerLineModel({required this.cat, required this.radio, required TickerProvider vsync}) {
+    _linger = AnimationController(vsync: vsync, duration: _lingerFor)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _close();
+      });
+    _listen();
     _onProgress();
   }
 
-  /// This line's radio's keyer.
-  RadioKeyer get _k => widget.cat.keyer(widget.radio);
+  final CatService cat;
 
-  void _listen(CatService cat, String radio) {
-    final k = cat.keyer(radio);
+  /// The SO2R radio whose line this is: it shows that radio's keyer
+  /// ([CatService.keyer]) — `A` alone outside SO2R.
+  final String radio;
+
+  /// This line's radio's keyer.
+  RadioKeyer get keyer => cat.keyer(radio);
+
+  /// Whether the item is (or is lingering) there — from something going out
+  /// until it has lingered a second past the last of it.
+  bool get active => _active;
+  bool _active = false;
+
+  /// True while the logging panel is editing a logged QSO: the item goes
+  /// and stays away until editing ends, then comes back if something is
+  /// still keying. Messages are for the contact in progress, not for one
+  /// being corrected.
+  bool get suppressed => _suppressed;
+  bool _suppressed = false;
+  set suppressed(bool value) {
+    if (_suppressed == value) return;
+    _suppressed = value;
+    _onProgress();
+  }
+
+  void _listen() {
+    final k = keyer;
     for (final listenable in [k.cwProgress, k.voiceActivity, k.keyerRepeatActive, k.waiting, k.cwTyping]) {
       listenable.addListener(_onProgress);
     }
@@ -118,8 +103,8 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
     cat.addListener(_onCatChanged);
   }
 
-  void _unlisten(CatService cat, String radio) {
-    final k = cat.keyer(radio);
+  void _unlisten() {
+    final k = keyer;
     for (final listenable in [k.cwProgress, k.voiceActivity, k.keyerRepeatActive, k.waiting, k.cwTyping]) {
       listenable.removeListener(_onProgress);
     }
@@ -127,39 +112,24 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
     cat.removeListener(_onCatChanged);
   }
 
-  void _show() {
-    if (widget.suppressed) return;
-    if (!_visible) setState(() => _visible = true);
-    _reveal.forward();
-  }
-
-  @override
-  void didUpdateWidget(KeyerArea old) {
-    super.didUpdateWidget(old);
-    if (old.cat != widget.cat || old.radio != widget.radio) {
-      _unlisten(old.cat, old.radio);
-      _listen(widget.cat, widget.radio);
-    }
-    // Keyboard mode is the CW keyer's; the draft going to Phone or Digital
-    // ends it the way Enter would.
-    if ((widget.phone && !old.phone) || (widget.digital && !old.digital)) _k.cwTyping.value?.finish();
-    _onProgress();
-  }
-
   @override
   void dispose() {
-    _unlisten(widget.cat, widget.radio);
+    _unlisten();
     // What was typed still goes out — the line going away is not an Escape.
-    _k.cwTyping.value?.finish();
+    finishTyping();
     _linger.dispose();
-    _reveal.dispose();
     super.dispose();
   }
+
+  /// Ends keyboard mode the way Enter would, letting what was typed go out.
+  /// The draft going to Phone or Digital calls it: keyboard mode is the CW
+  /// keyer's.
+  void finishTyping() => keyer.cwTyping.value?.finish();
 
   /// The key going away ends keyboard mode: `sendCw` is a no-op without
   /// one, and the field would go on bolding words as sent that went nowhere.
   void _onCatChanged() {
-    if (!_k.canKeyCw) _k.cwTyping.value?.cancel();
+    if (!keyer.canKeyCw) keyer.cwTyping.value?.cancel();
   }
 
   /// How long the line stays once nothing is going out: a radio reports a
@@ -167,48 +137,54 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
   /// last word reads as the message cut short.
   static const _lingerFor = Duration(seconds: 1);
 
-  /// Runs while the line lingers, and slides it away when it runs out. An
-  /// animation rather than a timer, like the slide: it keeps to the frames
-  /// the line is drawn by, and says it ran out in the frame it does.
-  late final AnimationController _linger = AnimationController(vsync: this, duration: _lingerFor)
-    ..addStatusListener((status) {
-      if (status == AnimationStatus.completed) _close();
-    });
+  /// Runs while the line lingers, and takes it away when it runs out. An
+  /// animation rather than a timer: it keeps to the frames the line is
+  /// drawn by, and says it ran out in the frame it does.
+  late final AnimationController _linger;
 
-  void _stopLinger() => _linger.stop();
+  /// Whether the item is showing what LAST went out, after it ended.
+  bool get lingering => _linger.isAnimating;
 
   /// What the line last showed, for it to go on showing while it lingers.
   CwSendProgress? _heldProgress;
   VoiceActivity? _heldVoice;
 
-  /// Shows the line while something is going out — a message, a voice
+  /// The message going out — while lingering, the one that last did.
+  CwSendProgress? get progress => keyer.cwProgress.value ?? (lingering ? _heldProgress : null);
+
+  /// The memory playing or recording — while lingering, the one that last was.
+  VoiceActivity? get voice => keyer.voiceActivity.value ?? (lingering ? _heldVoice : null);
+
+  /// Shows the item while something is going out — a message, a voice
   /// memory, the wait in a repeat or for the other SO2R radio, or keyboard
-  /// mode — and slides it away
-  /// [_lingerFor] after nothing is. The controls that start one are the
-  /// keyer control's, in the strip of secondary controls ([KeyerControls]).
+  /// mode — and takes it away [_lingerFor] after nothing is. The controls
+  /// that start one are the keyer control's, in the strip of secondary
+  /// controls ([KeyerControls]).
   void _onProgress() {
-    if (!mounted) return;
-    final k = _k;
-    if (widget.suppressed) {
-      _stopLinger();
+    final k = keyer;
+    if (_suppressed) {
+      _linger.stop();
       _close();
       return;
     }
     final active =
         k.cwProgress.value != null || k.voiceActivity.value != null || k.keyerRepeatActive.value || k.waiting.value.isNotEmpty || k.cwTyping.value != null;
     if (active) {
-      _stopLinger();
+      _linger.stop();
       // Something new going out is no longer what was stopped.
       final progress = k.cwProgress.value;
       if (_stopped && (k.voiceActivity.value != null || (progress != null && progress.id != _stoppedId))) _stopped = false;
       if (!_stopped) _heldProgress = progress;
       _heldVoice = k.voiceActivity.value;
-      _show();
+      if (!_active) {
+        _active = true;
+        notifyListeners();
+      }
     } else if (_stopped) {
       _stopped = false;
-      _stopLinger();
+      _linger.stop();
       _close();
-    } else if (_visible && !_linger.isAnimating) {
+    } else if (_active && !_linger.isAnimating) {
       _linger.forward(from: 0);
     }
   }
@@ -223,105 +199,82 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
   void _onStopped() {
     _heldProgress = null;
     _stopped = true;
-    _stoppedId = _k.cwProgress.value?.id;
+    _stoppedId = keyer.cwProgress.value?.id;
     _onProgress();
   }
 
-  /// Slides the line away. A message still keying keeps going; its next
-  /// report brings the line back.
+  /// Takes the item away. A message still keying keeps going; its next
+  /// report brings it back.
   void _close() {
-    if (!mounted || !_visible) return;
+    if (!_active) return;
     // What was typed still goes out.
-    _k.cwTyping.value?.finish();
-    _reveal.reverse().whenComplete(() {
-      if (mounted && _reveal.isDismissed) {
-        setState(() {
-          _visible = false;
-          _heldProgress = null;
-          _heldVoice = null;
-        });
-      }
-    });
+    finishTyping();
+    _active = false;
+    _heldProgress = null;
+    _heldVoice = null;
+    notifyListeners();
   }
+}
+
+/// The keyer line's content, from its [model]: the message keying under its
+/// bar, the memory playing, what waits for the other SO2R radio, or the
+/// repeat's countdown. Its icon is the FYI area's to draw, as every item's
+/// is. Tapping the message stops it; tapping the countdown ends the repeat.
+class KeyerLineItem extends StatelessWidget {
+  final KeyerLineModel model;
+
+  /// For the voice memories' labels and the repeat's message.
+  final HaLoServices services;
+
+  const KeyerLineItem({super.key, required this.model, required this.services});
 
   @override
   Widget build(BuildContext context) {
-    if (!_visible) return const SizedBox.shrink();
-    // Grows from the top edge down, and the content rides in with it — so
-    // the line reads as sliding down out of the content above it, and back
-    // up into it, rather than fading in place.
-    return SizeTransition(
-      sizeFactor: _reveal,
-      // The start edge on both axes — what axisAlignment -1 meant before
-      // SizeTransition took a full alignment.
-      alignment: AlignmentDirectional.topStart,
-      child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(_reveal),
-        child: Padding(
-          // Inside the slide, so a hidden line costs nothing.
-          padding: const EdgeInsets.only(top: Space.xxs),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // The keyer's icon, where the info area's other lines carry
-              // theirs (infoIconRows): the key for CW, the microphone for
-              // voice.
-              Icon(widget.phone ? MdiIcons.microphone : MdiIcons.key, size: 16, color: Theme.of(context).colorScheme.tertiary),
-              const SizedBox(width: Space.sm),
-              Flexible(
-                // Keyboard mode puts its field BESIDE the message rather than
-                // in its place: the operator typing ahead of the keyer needs
-                // to see where it has got to. The message stays the first
-                // child in both modes, so the mode coming or going leaves its
-                // progress view where it is — a view that moved would be a
-                // new one, whose bar starts over and reads as the message
-                // going out again.
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: ListenableBuilder(
-                        listenable: Listenable.merge([_k.cwProgress, _k.voiceActivity, _k.keyerRepeat, _k.keyerRepeatActive, _k.waiting]),
-                        builder: (context, _) {
-                          // While lingering, what was last going out.
-                          final progress = _k.cwProgress.value ?? (_linger.isAnimating ? _heldProgress : null);
-                          final voice = _k.voiceActivity.value ?? (_linger.isAnimating ? _heldVoice : null);
-                          // What waits for the other SO2R radio to fall quiet.
-                          final held = _k.waiting.value;
-                          return Stack(
-                            alignment: AlignmentDirectional.centerStart,
-                            children: [
-                              // Keyed on the message's id, so a new one restarts the
-                              // animation from its own beginning — while a re-report of
-                              // the SAME message (the queue behind it changed) keeps the
-                              // animation where it is.
-                              if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, keyer: _k),
-                              if (voice != null && progress == null) _VoiceActivityView(activity: voice, keyer: _k, services: widget.services),
-                              // A send waiting its turn: this radio's own wait is
-                              // over, and the other radio is still on the air.
-                              if (progress == null && voice == null && held.isNotEmpty) _WaitingView(send: held.first, keyer: _k),
-                              // The wait between a repeat and the next send. Only
-                              // while nothing is keying: the moment the message
-                              // goes again its own bar takes the slot back.
-                              if (progress == null && voice == null && held.isEmpty)
-                                ValueListenableBuilder<KeyerRepeatWait?>(
-                                  valueListenable: _k.keyerRepeat,
-                                  builder: (context, wait, _) => wait == null
-                                      ? const SizedBox.shrink()
-                                      : _CwRepeatView(key: ValueKey(wait), wait: wait, keyer: _k, services: widget.services),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
+    final k = model.keyer;
+    // Keyboard mode puts its field BESIDE the message rather than in its
+    // place: the operator typing ahead of the keyer needs to see where it
+    // has got to. The message stays the first child in both modes, so the
+    // mode coming or going leaves its progress view where it is — a view
+    // that moved would be a new one, whose bar starts over and reads as the
+    // message going out again.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: ListenableBuilder(
+            listenable: Listenable.merge([k.cwProgress, k.voiceActivity, k.keyerRepeat, k.keyerRepeatActive, k.waiting, model]),
+            builder: (context, _) {
+              final progress = model.progress;
+              final voice = model.voice;
+              // What waits for the other SO2R radio to fall quiet.
+              final held = k.waiting.value;
+              return Stack(
+                alignment: AlignmentDirectional.centerStart,
+                children: [
+                  // Keyed on the message's id, so a new one restarts the
+                  // animation from its own beginning — while a re-report of
+                  // the SAME message (the queue behind it changed) keeps the
+                  // animation where it is.
+                  if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, keyer: k),
+                  if (voice != null && progress == null) _VoiceActivityView(activity: voice, keyer: k, services: services),
+                  // A send waiting its turn: this radio's own wait is
+                  // over, and the other radio is still on the air.
+                  if (progress == null && voice == null && held.isNotEmpty) _WaitingView(send: held.first, keyer: k),
+                  // The wait between a repeat and the next send. Only
+                  // while nothing is keying: the moment the message
+                  // goes again its own bar takes the slot back.
+                  if (progress == null && voice == null && held.isEmpty)
+                    ValueListenableBuilder<KeyerRepeatWait?>(
+                      valueListenable: k.keyerRepeat,
+                      builder: (context, wait, _) =>
+                          wait == null ? const SizedBox.shrink() : _CwRepeatView(key: ValueKey(wait), wait: wait, keyer: k, services: services),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -332,7 +285,7 @@ class _KeyerAreaState extends State<KeyerArea> with TickerProviderStateMixin {
 /// field in their place while it is on), keyboard mode, the repeat and the
 /// messages' settings. One strip for both SO2R radios, so it is the keyer of
 /// the set the operator is in ([CatService.operatorKeyer]). What is going
-/// out shows in each radio's [KeyerArea], in its info area.
+/// out shows in each radio's FYI area, as its keyer line ([KeyerLineItem]).
 ///
 /// [superMode] is the draft contact's (`superModeForMode`): Phone makes it
 /// the voice keyer's, and in a Digital mode the chip stays in the row,
@@ -1093,7 +1046,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
             final current = Stack(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: _barBelowText),
+                  padding: const EdgeInsets.only(bottom: lineBarBelowText),
                   child: Text.rich(
                     TextSpan(
                       children: [
@@ -1146,7 +1099,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                 // message goes again, which is only ever message 1.
                 if (widget.keyer.keyerRepeating)
                   Padding(
-                    padding: const EdgeInsets.only(left: Space.xs, bottom: _barBelowText),
+                    padding: const EdgeInsets.only(left: Space.xs, bottom: lineBarBelowText),
                     child: Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
                   ),
                 if (progress.pending.isNotEmpty)
@@ -1154,7 +1107,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: _barBelowText),
+                        padding: const EdgeInsets.only(bottom: lineBarBelowText),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -1240,7 +1193,7 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
                   child: Stack(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.only(bottom: _barBelowText),
+                        padding: const EdgeInsets.only(bottom: lineBarBelowText),
                         child: Text(
                           _label(context),
                           style: style.copyWith(color: color.withValues(alpha: 0.55)),
@@ -1274,7 +1227,7 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
               // message itself is faded: nothing is on the air, and the icon
               // is the one thing on the line still saying what happens next.
               Padding(
-                padding: const EdgeInsets.only(left: Space.xs, bottom: _barBelowText),
+                padding: const EdgeInsets.only(left: Space.xs, bottom: lineBarBelowText),
                 child: Icon(MdiIcons.repeat, size: 14, color: color),
               ),
             ],
@@ -1322,7 +1275,7 @@ class _WaitingView extends StatelessWidget {
     return Stack(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: _barBelowText),
+          padding: const EdgeInsets.only(bottom: lineBarBelowText),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

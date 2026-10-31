@@ -26,6 +26,7 @@ mixin _ExtensionCommandGate on _ExtensionHookApi {
     'reloadDataFiles',
     'devNotice',
     'devStatus',
+    'devFyi',
     'devProgress',
     'devHammer',
     'devSplash',

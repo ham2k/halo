@@ -58,6 +58,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$qsoEditForm$en qsoEditForm = Translations$qsoEditForm$en.internal(_root);
 	late final Translations$qsoList$en qsoList = Translations$qsoList$en.internal(_root);
 	late final Translations$loggingPanel$en loggingPanel = Translations$loggingPanel$en.internal(_root);
+	late final Translations$fyi$en fyi = Translations$fyi$en.internal(_root);
 	late final Translations$callInfo$en callInfo = Translations$callInfo$en.internal(_root);
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
@@ -1636,6 +1637,21 @@ class Translations$loggingPanel$en {
 
 	/// en: 'Duplicates'
 	String get duplicates => 'Duplicates';
+}
+
+// Path: fyi
+class Translations$fyi$en {
+	Translations$fyi$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'High SWR $swr'
+	String swrAlert({required Object swr}) => 'High SWR ${swr}';
+
+	/// en: 'SWR $swr'
+	String swrWarning({required Object swr}) => 'SWR ${swr}';
 }
 
 // Path: callInfo
@@ -11147,6 +11163,8 @@ extension on Translations {
 			'loggingPanel.statesWorked' => 'States',
 			'loggingPanel.provincesWorked' => 'Provinces',
 			'loggingPanel.duplicates' => 'Duplicates',
+			'fyi.swrAlert' => ({required Object swr}) => 'High SWR ${swr}',
+			'fyi.swrWarning' => ({required Object swr}) => 'SWR ${swr}',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
 			'callInfo.imageUnavailable' => 'Photo unavailable',
@@ -11552,10 +11570,10 @@ extension on Translations {
 			'settings.map.showGrayline.title' => 'Show Grayline',
 			'settings.map.showGrayline.description' => 'Shades the night side of the Earth, with twilight as a gradient',
 			'settings.map.styleOpts.automatic' => 'Automatic',
-			'settings.map.styleOpts.liberty' => 'Liberty',
-			'settings.map.styleOpts.bright' => 'Bright',
 			_ => null,
 		} ?? switch (path) {
+			'settings.map.styleOpts.liberty' => 'Liberty',
+			'settings.map.styleOpts.bright' => 'Bright',
 			'settings.map.styleOpts.positron' => 'Positron',
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
@@ -12066,10 +12084,10 @@ extension on Translations {
 			'settings.station.keyType' => 'Key type',
 			'settings.station.keyTypeRequired' => 'Choose a key type',
 			'settings.station.keyTypes.straight' => 'Straight Key',
-			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
-			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
+			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
 			'settings.station.keyTypes.fullyAutomatic' => 'Fully-automatic keyer',
 			'settings.station.keyTypes.singlePaddle' => 'Single Paddle',
 			'settings.station.keyTypes.dualPaddle' => 'Dual Paddle',
@@ -12580,10 +12598,10 @@ extension on Translations {
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
-			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
-			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			_ => null,
 		} ?? switch (path) {
+			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
+			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',

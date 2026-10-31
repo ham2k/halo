@@ -56,6 +56,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$qsoEditForm$qro qsoEditForm = _Translations$qsoEditForm$qro._(_root);
 	@override late final _Translations$qsoList$qro qsoList = _Translations$qsoList$qro._(_root);
 	@override late final _Translations$loggingPanel$qro loggingPanel = _Translations$loggingPanel$qro._(_root);
+	@override late final _Translations$fyi$qro fyi = _Translations$fyi$qro._(_root);
 	@override late final _Translations$callInfo$qro callInfo = _Translations$callInfo$qro._(_root);
 	@override late final _Translations$settings$qro settings = _Translations$settings$qro._(_root);
 	@override late final _Translations$commands$qro commands = _Translations$commands$qro._(_root);
@@ -723,6 +724,17 @@ class _Translations$loggingPanel$qro extends Translations$loggingPanel$en {
 	@override String get statesWorked => 'STATES';
 	@override String get provincesWorked => 'PROVINCES';
 	@override String get duplicates => 'DUPLICATES';
+}
+
+// Path: fyi
+class _Translations$fyi$qro extends Translations$fyi$en {
+	_Translations$fyi$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String swrAlert({required Object swr}) => 'HIGH SWR ${swr}';
+	@override String swrWarning({required Object swr}) => 'SWR ${swr}';
 }
 
 // Path: callInfo
@@ -5676,6 +5688,8 @@ extension on TranslationsQro {
 			'loggingPanel.statesWorked' => 'STATES',
 			'loggingPanel.provincesWorked' => 'PROVINCES',
 			'loggingPanel.duplicates' => 'DUPLICATES',
+			'fyi.swrAlert' => ({required Object swr}) => 'HIGH SWR ${swr}',
+			'fyi.swrWarning' => ({required Object swr}) => 'SWR ${swr}',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'SHOW IMAGE',
 			'callInfo.imageUnavailable' => 'PHOTO UNAVAILABLE',
@@ -6081,10 +6095,10 @@ extension on TranslationsQro {
 			'settings.map.showGrayline.title' => 'SHOW GRAYLINE',
 			'settings.map.showGrayline.description' => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT',
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
-			'settings.map.styleOpts.liberty' => 'LIBERTY',
-			'settings.map.styleOpts.bright' => 'BRIGHT',
 			_ => null,
 		} ?? switch (path) {
+			'settings.map.styleOpts.liberty' => 'LIBERTY',
+			'settings.map.styleOpts.bright' => 'BRIGHT',
 			'settings.map.styleOpts.positron' => 'POSITRON',
 			'settings.map.styleOpts.voyager' => 'VOYAGER',
 			'settings.map.styleOpts.darkMatter' => 'DARK MATTER',
@@ -6595,10 +6609,10 @@ extension on TranslationsQro {
 			'settings.station.keyType' => 'KEY TYPE',
 			'settings.station.keyTypeRequired' => 'CHOOSE A KEY TYPE',
 			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
-			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
-			'settings.station.keyTypes.bug' => 'BUG (MECHANICAL SEMI-AUTOMATIC)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
+			'settings.station.keyTypes.bug' => 'BUG (MECHANICAL SEMI-AUTOMATIC)',
 			'settings.station.keyTypes.fullyAutomatic' => 'FULLY-AUTOMATIC KEYER',
 			'settings.station.keyTypes.singlePaddle' => 'SINGLE PADDLE',
 			'settings.station.keyTypes.dualPaddle' => 'DUAL PADDLE',
@@ -7109,10 +7123,10 @@ extension on TranslationsQro {
 			'notices.preferencesResetTitle' => 'SETTINGS RESET',
 			'notices.preferencesReset' => 'THE SETTINGS FILE COULD NOT BE READ AND THERE WAS NO BACKUP TO FALL BACK ON, SO HALO STARTED WITH ITS DEFAULTS. THE UNREADABLE FILE IS KEPT IN THE APP\'S DATA FOLDER, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} WAS NOT CONNECTED AUTOMATICALLY',
-			'notices.autoConnectHeld' => ({required Object name}) => 'HALO STOPPED RESPONDING THE LAST TIME IT STARTED CONNECTING TO ${name}, SO IT LEFT IT ALONE THIS TIME RATHER THAN RISK DOING IT AGAIN. CHECK THAT THE RADIO IS SWITCHED ON AND ITS CABLE IS PLUGGED IN, THEN PRESS CONNECT ON IT IN SETTINGS.',
-			'syncAccount.anonymous' => ({required Object id}) => 'ANONYMOUS ACCOUNT (#${id})',
 			_ => null,
 		} ?? switch (path) {
+			'notices.autoConnectHeld' => ({required Object name}) => 'HALO STOPPED RESPONDING THE LAST TIME IT STARTED CONNECTING TO ${name}, SO IT LEFT IT ALONE THIS TIME RATHER THAN RISK DOING IT AGAIN. CHECK THAT THE RADIO IS SWITCHED ON AND ITS CABLE IS PLUGGED IN, THEN PRESS CONNECT ON IT IN SETTINGS.',
+			'syncAccount.anonymous' => ({required Object id}) => 'ANONYMOUS ACCOUNT (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (PENDING CONFIRMATION)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (PENDING CONFIRMATION - #${id})',
 			'deepLink.needsAnOperation' => 'START AN OPERATION FIRST, THEN SEND THAT CONTACT AGAIN',

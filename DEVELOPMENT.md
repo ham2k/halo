@@ -373,6 +373,7 @@ registers:
 | `DEVNOTICE` | Post a sample notice to the status bar. |
 | `DEVSTATUS` | Post a sample status message (stacks, to demo the "+N" footer). |
 | `DEVPROGRESS` | Show a progress bar. `DEVPROGRESS 10` = 10%; bare = indeterminate. |
+| `DEVFYIALERT`, `DEVFYIWARN`, `DEVFYIINFO` | Post an alert, a warning or an info message to the FYI area under the call info, with the text given or a sample one. Posts stack; `DEVFYIALERT!` posts at high priority (the pill). |
 | `DEVSPLASH` | Re-show the startup release-notes overlay (bypasses the once-per-version gate). |
 | `DEVONBOARD` | Re-show the first-run onboarding overlay (bypasses its gate; completing it really writes settings). |
 | `RELOAD` | Force data-file re-sync, ignoring the 30-day staleness check. `RELOAD POTA` / `RELOAD SOTA` by category; `RELOAD ALL` / `RELOADALL` / `RELOAD!` for everything. |

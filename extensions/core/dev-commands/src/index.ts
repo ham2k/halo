@@ -10,7 +10,9 @@
 // a focused text field. DEVSPLASH re-shows the startup release-notes overlay on
 // demand, bypassing its normal "once per version" gate. DEVSENTRY pushes a
 // synthetic error through the error-reporting pipeline to verify the
-// Sentry wiring. DEVLOGCAT records radio traffic for a field report. DEVPOPUP reopens the app in a standalone, phone-sized popup
+// Sentry wiring. DEVFYIALERT, DEVFYIWARN and DEVFYIINFO post a message of
+// that category to the FYI area under the call info, to exercise how the
+// area shares its line. DEVLOGCAT records radio traffic for a field report. DEVPOPUP reopens the app in a standalone, phone-sized popup
 // window (web only). RELOAD forces a data-file re-sync (bypassing the normal 30-day
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
@@ -264,6 +266,42 @@ const DevSentryCommand = {
   },
 
   catalog: devCatalog("DEVSENTRY", "Send a test error report", { params: "[message]", keywords: ["ERROR REPORT", "SENTRY"] }),
+}
+
+// DEVFYIALERT / DEVFYIWARN / DEVFYIINFO [text]: post a message of that
+// category to the FYI area (docs/design/logging-fields.md § The FYI area),
+// with the text given or a sample one; a `!` on the command (DEVFYIALERT!)
+// posts it at high priority — the alert drawn as a pill. A fresh key per
+// call so posts stack, the DEVSTATUS pattern — the sharing rules are what
+// there is to look at. `mixedCase` for the DEVSENTRY reason: the text keeps
+// its spaces and case.
+const DEV_FYI_MATCH = /^DEVFYI(ALERT|WARN|INFO)(!)?(?:\s+(.+))?$/i
+
+const DEV_FYI_KINDS = {
+  ALERT: { command: "DEVFYIALERT", category: "alert", noun: "alert", icon: "alert-octagon", text: "Sample **alert** from DEVFYIALERT" },
+  WARN: { command: "DEVFYIWARN", category: "warning", noun: "warning", icon: "alert", text: "Sample *warning* from DEVFYIWARN" },
+  INFO: { command: "DEVFYIINFO", category: "info", noun: "info message", icon: "information-outline", text: "Sample info from DEVFYIINFO" },
+} as const
+
+function devFyiCommand(kind: keyof typeof DEV_FYI_KINDS) {
+  const { command, category, noun, icon, text: sample } = DEV_FYI_KINDS[kind]
+  return {
+    async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+      const match = DEV_FYI_MATCH.exec(input.trim())
+      if (!match || match[1].toUpperCase() !== kind) return null
+      const high = match[2] === "!"
+      const text = match[3]?.trim() || sample
+      const key = `devFyi-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+      return {
+        mixedCase: true,
+        describe: high ? `Post a high-priority FYI ${noun}?` : `Post an FYI ${noun}?`,
+        confirm: `Posted an FYI ${noun}`,
+        commands: [{ devFyi: { key, category, icon, text, ...(high ? { priority: "high" } : {}) } }],
+      }
+    },
+
+    catalog: devCatalog(command, `Post a sample ${noun} to the FYI area (${command}! at high priority)`, { params: "[text]", keywords: ["FYI"] }),
+  }
 }
 
 // DEVBENCH [n]: log a synthetic CQ WW contest into a throwaway Test Operation
@@ -657,6 +695,9 @@ defineExtension({
     registerHook("command", { key: "dev-commands-devtester", hook: DevTesterCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devpopup", hook: DevPopupCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devsentry", hook: DevSentryCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devfyialert", hook: devFyiCommand("ALERT"), priority: 100 })
+    registerHook("command", { key: "dev-commands-devfyiwarn", hook: devFyiCommand("WARN"), priority: 100 })
+    registerHook("command", { key: "dev-commands-devfyiinfo", hook: devFyiCommand("INFO"), priority: 100 })
     registerHook("command", { key: "dev-commands-reload", hook: ReloadCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-seed", hook: SeedCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-exp", hook: ExpCommand, priority: 100 })

@@ -1751,12 +1751,13 @@ message up to the last one with anything in it — one with nothing to send disa
 one with no label — then keyboard mode, the repeat switch and the way to the message dialog.
 `KEYER` (or `MACROS`) in the call field opens it without sending anything.
 
-**What is going out is shown** at the bottom of the logging panel's info area, under the stats or
-the call info (`KeyerArea`, through `ControlStripSettings.infoAreaFooter` — outside the area's
+**What is going out is shown** in the logging panel's FYI area ([logging-fields.md](logging-fields.md)
+§ The FYI area), at the bottom of the info area under the stats or the call info, as that radio's
+operational item (`KeyerLineModel`, `KeyerLineItem`, hosted by `FyiArea` — outside the area's
 cross-fade, so a keystroke in the call field does not remount it): the keyer's icon, the message
 with its sent characters set apart, a bar pacing through it, and what waits behind it. The line
-shows while something is going out — a message, a voice memory, the wait in a repeat, keyboard
-mode's field — and slides away once nothing is. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
+is there while something is going out — a message, a voice memory, the wait in a repeat, keyboard
+mode's field — and a second after nothing is, and the area slides away with it. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
 `CatService.cwProgress`) with a per-character timeline from the same PARIS arithmetic the pacing
 uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
 to the extent the pacing is, and a paddle-stop at the rig is invisible to it.

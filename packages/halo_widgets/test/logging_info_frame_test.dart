@@ -12,7 +12,7 @@ import 'package:halo_widgets/src/spacing.dart';
 const _footerKey = ValueKey('footer');
 const _buttonKey = ValueKey('button');
 
-Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withFooter = false}) => MaterialApp(
+Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode = false, bool withFooter = false, bool entryRowAbove = false}) => MaterialApp(
   home: Scaffold(
     body: LoggingInfoFrame(
       buttonDiameter: diameter,
@@ -20,6 +20,7 @@ Widget _host({String signature = 'stats', double diameter = 44, bool leftieMode 
       signature: signature,
       footer: withFooter ? const _Footer(key: _footerKey) : null,
       actionButton: SizedBox(key: _buttonKey, width: diameter, height: diameter),
+      entryRowAbove: entryRowAbove,
       child: const Text('content'),
     ),
   ),
@@ -74,6 +75,22 @@ void main() {
     await tester.pumpWidget(_host(diameter: 60, withFooter: true, leftieMode: true));
     expect(tester.getTopLeft(find.byKey(_buttonKey)).dx, frame.left);
     expect(tester.getTopLeft(find.byKey(_footerKey)).dx, frame.left + 60 + Space.md);
+  });
+
+  testWidgets('the footer sits at the bottom of the room the area reserves, the slack above it', (tester) async {
+    // The trap: the footer packed under the content with the slack below
+    // it — then it grows DOWN into the slack when it appears, and reads as
+    // dropping out of the content rather than rising from the fields' edge.
+    await tester.pumpWidget(_host(diameter: 60, withFooter: true));
+    // The room is the button's diameter from the content's top — the frame
+    // itself the test host stretches to the screen.
+    final top = tester.getTopLeft(find.text('content')).dy;
+    expect(tester.getBottomLeft(find.byKey(_footerKey)).dy, top + 60, reason: 'against the fields\' edge');
+    expect(tester.getTopLeft(find.byKey(_footerKey)).dy, greaterThan(tester.getBottomLeft(find.text('content')).dy), reason: 'the slack between');
+
+    // The entry row above: the footer stays under the content, nearer the row.
+    await tester.pumpWidget(_host(diameter: 60, withFooter: true, entryRowAbove: true));
+    expect(tester.getTopLeft(find.byKey(_footerKey)).dy, tester.getBottomLeft(find.text('content')).dy);
   });
 
   // The keyer line is the footer: inside the cross-fade it would be torn down

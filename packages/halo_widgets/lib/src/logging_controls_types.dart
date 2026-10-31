@@ -573,6 +573,10 @@ class RadioHookup {
 /// Where the panel learns about a callsign and what it shows about one: the
 /// lookup and its background queue, scoring and worked-before, the info
 /// area's lines and labels, and the host's detail panel.
+/// What the contact in hand lacks of the radio state every QSO needs: a band
+/// (or a frequency to derive one from), a mode.
+typedef MissingRadioState = ({bool band, bool mode});
+
 class LookupHooks {
   const LookupHooks({
     this.lookup,
@@ -591,6 +595,7 @@ class LookupHooks {
     this.onFindCall,
     this.onOperationInfoTap,
     this.onOpenLink,
+    this.onMissingRadioState,
   });
 
   /// Optional lookup enrichment; fired debounced, off the keystroke path.
@@ -682,6 +687,16 @@ class LookupHooks {
   /// way — the app decides how links open.
   final InlineMarkdownOpenLink? onOpenLink;
 
+  /// Fires once the panel is up and whenever what the contact in hand lacks
+  /// of the radio state changes — the same band-OR-frequency condition the
+  /// log-time refusal reads, so the two never disagree about what is
+  /// missing. The host says so in its FYI area, for this set's radio. Nothing
+  /// is missing on an event row (a NOTE is not a contact and needs no band)
+  /// or while the fields are locked, where nothing can log; a report is
+  /// made per change, never per build, so the host posts once per
+  /// condition, not once per frame.
+  final void Function(MissingRadioState missing)? onMissingRadioState;
+
   /// The lookups with some of it replaced — what a caller holding one of these
   /// writes to vary a field instead of restating the rest. A null argument
   /// keeps what is here, so nothing can be cleared through it. Offered for
@@ -706,6 +721,7 @@ class LookupHooks {
     void Function(String call)? onFindCall,
     VoidCallback? onOperationInfoTap,
     InlineMarkdownOpenLink? onOpenLink,
+    void Function(MissingRadioState missing)? onMissingRadioState,
   }) => LookupHooks(
     lookup: lookup ?? this.lookup,
     settleLookup: settleLookup ?? this.settleLookup,
@@ -723,6 +739,7 @@ class LookupHooks {
     onFindCall: onFindCall ?? this.onFindCall,
     onOperationInfoTap: onOperationInfoTap ?? this.onOperationInfoTap,
     onOpenLink: onOpenLink ?? this.onOpenLink,
+    onMissingRadioState: onMissingRadioState ?? this.onMissingRadioState,
   );
 }
 
@@ -817,10 +834,11 @@ class ControlStripSettings {
   final void Function(List<String> order, Set<String> hidden)? onControlsSettingsChanged;
 
   /// Laid at the bottom of the info area, under whatever it shows and kept
-  /// across its changes ([LoggingInfoFrame.footer]) — the app's keyer line
-  /// (docs/design/cat.md § CW keying), which halo_widgets has no CAT types to
-  /// build itself. The widget owns its own size and animation, and takes no
-  /// room at all while it has nothing to show.
+  /// across its changes ([LoggingInfoFrame.footer]) — the app's FYI area
+  /// (docs/design/logging-fields.md § The FYI area), with the keyer line in
+  /// it, which halo_widgets has no services to build itself. The widget owns
+  /// its own size and animation, and takes no room at all while it has
+  /// nothing to show.
   final Widget? infoAreaFooter;
 
   /// Where Spotting sits in the DEFAULT order: after every activity

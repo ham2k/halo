@@ -568,6 +568,7 @@ The app follows a selective user feedback policy:
 - **Multi-second operations** (e.g. data file sync/refresh, patch checks) report progress and status via `StatusBarService` items in the footer — when the operator asked for them. An unattended pass (the boot sync, a reconnect resync) refreshes quietly, except a file's first download, which narrates itself even then: until it lands, its feature is missing. Completion messages auto-dismiss after a few seconds (`completedDismissDelay`); only failures persist as notices.
 - **An operation the operator is standing in front of** reports its outcome on the surface that did the work, not in the footer: an export raises a dialog over the export pane naming the files and where they went. The footer is for something finishing while attention is elsewhere; a result the operator is waiting on, in a pane they opened to get it, must not be missable in a far corner of the window.
 - **Logging screen / UI feedback** (e.g. activity reference validation errors or call field command outputs) use `StatusBarService` messages so toasts never obscure or interfere with the logging UI.
+- **News about the station as it is right now** — the radio's SWR, the keyer's message going out, a storm nearby — shows in the FYI area between the call info and the fields ([logging-fields.md § The FYI area](logging-fields.md#the-fyi-area)), not in the footer: it is read in the same glance as the fields, and it is gone when the condition is.
 
 ## Dialogs
 

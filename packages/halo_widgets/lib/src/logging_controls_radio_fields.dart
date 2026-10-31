@@ -387,7 +387,9 @@ SecondaryControlSpec radioControlSpec(
 }) => SecondaryControlSpec(
   key: 'radio',
   icon: model.transmitting ? MdiIcons.circle : model.chipIcon,
-  iconColor: model.transmitting ? theme.colorScheme.error : model.statusColor(theme, selected: selected),
+  // The app's alert red, not `colorScheme.error`: dark mode's error is a
+  // pale pink, and the dot that says ON THE AIR has to read as red.
+  iconColor: model.transmitting ? HaLoColors.fromTheme(theme).alert : model.statusColor(theme, selected: selected),
   // `band` is null both when nothing is tuned at all and when the
   // frequency in the field falls outside every ham band; `outOfBand`
   // catches the case a band name can't — a frequency inside a ham band

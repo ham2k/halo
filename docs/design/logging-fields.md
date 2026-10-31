@@ -93,7 +93,102 @@ away from the fields: up into the QSO list when the panel sits below the log,
 down into it when the panel sits above it (the Chasing view). The panel is
 anchored at the fields' edge and the list gives up the height, so a pill
 arriving or leaving mid-typing never shifts a field under the operator's
-hands (`logging_controls_info_growth_test.dart`).
+hands (`logging_controls_info_growth_test.dart`). At the bottom of the
+area, under whatever it shows and outside its cross-fade, sits the FYI
+area (next section).
+
+## The FYI area
+
+One line between the information area's content and the entry row, exactly
+as wide as the main fields, where the app's components leave a glance's
+worth of news for the operator — the keyer's message going out, an SWR the
+antenna should not be giving, a thunderstorm nearby (`FyiService`,
+`FyiArea`, hosted through `ControlStripSettings.infoAreaFooter`). It takes
+no room while there is nothing to say, rises out of the fields' edge with
+the first message and sinks back after the last, and the fields never move
+while it does: like the rest of the area, it grows away from them. It sits
+at the bottom of the room the area reserves beside its action button, so
+under a line of stats it rises into the slack below them and fills it
+exactly, moving nothing. Up, it has **one height** whatever it shows — the
+text and a pixel above and below it, the keyer's bar running just under
+that in the gap before the fields — and every message's text sits on the
+same baseline, the pill's, so a message replacing another never moves the
+fields or the content above.
+
+**A message** is an icon in a colour, one line of inline markdown in an
+optional colour of its own, and perhaps an action for the tap that puts it
+away. Each is posted under a key, which the poster rewrites or clears; a
+message may also carry an expiry, after which it takes itself down. Each
+belongs to **one radio's set or to both**: an SWR is radio A's or radio
+B's and shows in that set's area alone, a storm is the station's and shows
+in each. Outside SO2R there is one set, radio A's. Messages come in four
+**categories**, which decide where on the line they go: the high-priority
+**alerts** first, then the **operational** messages — things under way,
+the keyer line first of all — then the other alerts, then the
+**warnings**, and the **info** messages last.
+
+Every message shows its icon and its text, left to right in that order —
+within a group by **priority**, high, normal, low, and then the order the
+keys were first posted, so a message rewritten under its key holds its
+place — and the room goes to them in the same order: the first takes what
+its text needs, the next what is left, and the last is ellipsized to what
+remains, or runs off the end of the line when nothing does. Nothing folds
+to its icon and nothing sits against the trailing edge; a lone info message
+reads from the left as an alert would. A high-priority alert is drawn as a
+filled pill, the alert colour behind its text, so it is told apart from a
+reading at a glance; priority changes nothing else.
+
+**Resizes animate.** A message arriving grows into its room from nothing
+and one leaving shrinks out of it, the rest of the line following, over
+200 ms (`fyi_area_test.dart`). The first message comes up with the line's
+slide at its full width, and the last sinks away with it as it was.
+
+**Taps.** A tap on a message cut short — ellipsized for want of room —
+opens it: it takes the whole line, the other messages and the keyer line
+shrinking out of its way, for five seconds or until the next tap, and then
+they come back. A tap on a message shown in full, opened or never cut, runs
+its action, if it has one, and dismisses it. A message posted with
+`dismissible: false` — `No Band` and `No Mode`, conditions only the radio
+state answers — is never dismissed: the tap runs its action, or folds it
+back. A dismissal is the operator's, and is remembered for **three minutes**: a re-post under the same key inside
+that window is dropped, unless it comes back more severe — a warning turned
+alert shows, a warning restated does not (`fyi_service_test.dart`). The
+poster clearing its own message is not a dismissal — the same key posts
+again at once — nor the end of one: a dismissal outlasts the poster taking
+the message down and putting it back inside its three minutes.
+
+**The keyer line is the special case.** It is not posted: the area hosts
+it as its radio's operational item whenever that radio's keyer has
+something going out ([cat.md](cat.md) § CW keying), drawn by the keyer's
+own views with its own taps — the message stops, the countdown ends the
+repeat — and never dismissed by the area. It alone hides while a logged QSO
+is edited (messages are for the contact in progress); an alert about the
+antenna stays.
+
+**The first posters.** The logging controls report what the contact in
+hand lacks of the radio state every QSO needs (`onMissingRadioState`), and
+the panel posts it for that set's radio: `No Band` and `No Mode`, each a
+high-priority alert — a pill — under one key per radio, taken down the
+moment the set reports it answered (see "And said out loud"
+under the band requirement, below). CAT posts each local radio's SWR
+(`SwrWatch`), on the average it keeps per transmission rather than the
+meter's instant reading — the one under way, else the last one — a warning
+from 1.6 and an alert from 2.0 (`swrWarnsFrom`, `swrAlertsFrom`), under one
+key per radio so the two levels never show side by side, taken down once a
+transmission reads under the warning. Extensions will post through a
+`host.fyi` of their own, in a later API level.
+`DEVFYIALERT`, `DEVFYIWARN` and `DEVFYIINFO`, each with an optional text,
+post a station-wide message of that category from the call field, to see
+the line fill with real messages; a `!` on the command posts it at high
+priority.
+
+Default colours by category: alerts in the app's alert red
+(`HaLoColors.alert` — the theme's error red in light mode, and in dark mode
+a saturated red in place of Material's pale pink error, which the Radio
+control's on-the-air dot shares), warnings in an amber apart from the
+theme's tertiary, operational items in the tertiary (the keyer's colour),
+info in a muted `onSurface`. A message may name its own icon and text
+colours instead.
 
 ## How wide each main field is
 
@@ -528,33 +623,40 @@ The log-time refusal above remains the backstop for the operator who closes
 the control without answering. Note the two interact: while the control is
 open, Enter closes it rather than logging, per the ladder below.
 
-**And said out loud for as long as it's true.** A red `No Band` pill stands at
-the top of the information area whenever the contact in hand would be logged
-with neither, and a `No Mode` pill whenever it would carry no mode. Unlike the
-auto-open, which fires once per install, and the refusal, which speaks only
-after a station has been worked, the pills are on screen the whole time the
-condition holds — before a callsign is typed, beside the call-info line once
-one is, and over a grid-with-no-call. They read the same band-OR-frequency
-condition the refusal does, so the two can never disagree about what is
-missing.
+**And said out loud for as long as it's true.** A red `No Band` pill stands
+in the set's FYI area (§ The FYI area) whenever the contact in hand would be
+logged with neither, and a `No Mode` pill whenever it would carry no mode —
+the controls report the condition (`LookupHooks.onMissingRadioState`), the
+panel posts it for that set's radio, so under SO2R each radio is nagged
+about its own band alone. Unlike the auto-open, which fires once per
+install, and the refusal, which speaks only after a station has been worked,
+the alert is on screen the whole time the condition holds — before a
+callsign is typed, beside the call-info line once one is, and over a
+grid-with-no-call. No tap puts it away (it is not `dismissible`): the band
+pick does, and a tap on the pill opens the Radio control that pick is in.
+It reads the same band-OR-frequency condition the refusal does, so the two
+can never disagree about what is missing.
 
-They sit **above** a command's message, refusal included, rather than being
-replaced by it. That message outlives the condition that wrote it — only a
-call-field keystroke clears it, not the band pick that answers it — so a
-warning underneath would go quiet exactly while the operator was doing what
-the refusal asked, and would stay quiet about anything still missing.
+It outlives a command's message, refusal included. That message is the
+information area's and only a call-field keystroke clears it, not the band
+pick that answers it; the alert follows the radio, so it goes down the
+moment the operator does what the refusal asked, and stays up about anything
+still missing.
 
-Two states show no pill. An event row (a NOTE or TODO) is not a contact and
-needs no band. And whenever the fields are locked — a staged delete, an
-already-deleted contact, or an operation that cannot be written to — the
-information area is replaced by that warning outright, and this never runs.
-Nothing in either state can log a contact, so nothing is lost by staying
-quiet there.
+Two states report nothing missing. An event row (a NOTE or TODO) is not a
+contact and needs no band. And whenever the fields are locked — a staged
+delete, an already-deleted contact, or an operation that cannot be written
+to — the information area is replaced by that warning outright. Nothing in
+either state can log a contact, so nothing is lost by staying quiet there.
 
-Tapping the pill does what tapping anywhere else on the area does. Which
-detail opens is decided by what the area shows, not by where the finger
-lands, and a pill that stood above the content and ignored the press would
-read as a dead patch on an area that otherwise answers one.
+A tap on the pill opens the set's Radio control
+(`LoggingControlsController.openControl`),
+where the band and mode picks are, and leaves the pill standing until one
+of them answers it: a dismissed pill would stay down for three minutes
+while the condition it names still stands, with only the log-time refusal
+left to say so. A pill that ignored the press would read as a dead
+patch on an area where every other message answers one
+(`logging_panel_missing_radio_test.dart`).
 
 The mode pill is the narrower of the two: nothing the operator can do in the
 panel empties the mode, since it starts on the hardcoded `SSB` above and every
@@ -1281,9 +1383,10 @@ picking it from the log loads it into that set — set A for one logged
 without SO2R.
 
 **Each set keys its own radio**, and the two take turns on the air — see
-[cat.md](cat.md) § Radio B, for SO2R. Each set's info area has its radio's
-keyer line: the message going out, its repeat's countdown, and what waits for
-the other radio under an indeterminate bar. The keyer control, one for both
+[cat.md](cat.md) § Radio B, for SO2R. Each set's FYI area (§ The FYI area)
+has its radio's keyer line: the message going out, its repeat's countdown,
+and what waits for the other radio under an indeterminate bar — and its
+radio's SWR, when there is something to say about it. The keyer control, one for both
 sets in the shared strip, is the radio of the set the operator is in: its
 Run or S&P, buttons and ESM highlight. Each set publishes its ESM facts, and
 the control reads the operator's set's, on that radio's Run or S&P.

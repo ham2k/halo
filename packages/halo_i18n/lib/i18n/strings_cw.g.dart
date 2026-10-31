@@ -56,6 +56,7 @@ class TranslationsCw extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$qsoEditForm$cw qsoEditForm = _Translations$qsoEditForm$cw._(_root);
 	@override late final _Translations$qsoList$cw qsoList = _Translations$qsoList$cw._(_root);
 	@override late final _Translations$loggingPanel$cw loggingPanel = _Translations$loggingPanel$cw._(_root);
+	@override late final _Translations$fyi$cw fyi = _Translations$fyi$cw._(_root);
 	@override late final _Translations$callInfo$cw callInfo = _Translations$callInfo$cw._(_root);
 	@override late final _Translations$settings$cw settings = _Translations$settings$cw._(_root);
 	@override late final _Translations$commands$cw commands = _Translations$commands$cw._(_root);
@@ -723,6 +724,17 @@ class _Translations$loggingPanel$cw extends Translations$loggingPanel$en {
 	@override String get statesWorked => '··· — ·— — · ···';
 	@override String get provincesWorked => '·——· ·—· ——— ···— ·· —· —·—· · ···';
 	@override String get duplicates => '—·· ··— ·——· ·—·· ·· —·—· ·— — · ···';
+}
+
+// Path: fyi
+class _Translations$fyi$cw extends Translations$fyi$en {
+	_Translations$fyi$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String swrAlert({required Object swr}) => '···· ·· ——· ···· / ··· ·—— ·—· / ${swr}';
+	@override String swrWarning({required Object swr}) => '··· ·—— ·—· / ${swr}';
 }
 
 // Path: callInfo
@@ -5676,6 +5688,8 @@ extension on TranslationsCw {
 			'loggingPanel.statesWorked' => '··· — ·— — · ···',
 			'loggingPanel.provincesWorked' => '·——· ·—· ——— ···— ·· —· —·—· · ···',
 			'loggingPanel.duplicates' => '—·· ··— ·——· ·—·· ·· —·—· ·— — · ···',
+			'fyi.swrAlert' => ({required Object swr}) => '···· ·· ——· ···· / ··· ·—— ·—· / ${swr}',
+			'fyi.swrWarning' => ({required Object swr}) => '··· ·—— ·—· / ${swr}',
 			'callInfo.qrz' => '——·— ·—· ——··',
 			'callInfo.showImage' => '··· ···· ——— ·—— / ·· —— ·— ——· ·',
 			'callInfo.imageUnavailable' => '·——· ···· ——— — ——— / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
@@ -6081,10 +6095,10 @@ extension on TranslationsCw {
 			'settings.map.showGrayline.title' => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·',
 			'settings.map.showGrayline.description' => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —',
 			'settings.map.styleOpts.automatic' => '·— ··— — ——— —— ·— — ·· —·—·',
-			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
-			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
 			_ => null,
 		} ?? switch (path) {
+			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
+			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
 			'settings.map.styleOpts.positron' => '·——· ——— ··· ·· — ·—· ——— —·',
 			'settings.map.styleOpts.voyager' => '···— ——— —·—— ·— ——· · ·—·',
 			'settings.map.styleOpts.darkMatter' => '—·· ·— ·—· —·— / —— ·— — — · ·—·',
@@ -6595,10 +6609,10 @@ extension on TranslationsCw {
 			'settings.station.keyType' => '—·— · —·—— / — —·—— ·——· ·',
 			'settings.station.keyTypeRequired' => '—·—· ···· ——— ——— ··· · / ·— / —·— · —·—— / — —·—— ·——· ·',
 			'settings.station.keyTypes.straight' => '··· — ·—· ·— ·· ——· ···· — / —·— · —·——',
-			'settings.station.keyTypes.sideswiper' => '··· ·· —·· · ··· ·—— ·· ·——· · ·—·',
-			'settings.station.keyTypes.bug' => '—··· ··— ——· / —·——· —— · —·—· ···· ·— —· ·· —·—· ·— ·—·· / ··· · —— ·· —····— ·— ··— — ——— —— ·— — ·· —·—· —·——·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypes.sideswiper' => '··· ·· —·· · ··· ·—— ·· ·——· · ·—·',
+			'settings.station.keyTypes.bug' => '—··· ··— ——· / —·——· —— · —·—· ···· ·— —· ·· —·—· ·— ·—·· / ··· · —— ·· —····— ·— ··— — ——— —— ·— — ·· —·—· —·——·—',
 			'settings.station.keyTypes.fullyAutomatic' => '··—· ··— ·—·· ·—·· —·—— —····— ·— ··— — ——— —— ·— — ·· —·—· / —·— · —·—— · ·—·',
 			'settings.station.keyTypes.singlePaddle' => '··· ·· —· ——· ·—·· · / ·——· ·— —·· —·· ·—·· ·',
 			'settings.station.keyTypes.dualPaddle' => '—·· ··— ·— ·—·· / ·——· ·— —·· —·· ·—·· ·',
@@ -7109,10 +7123,10 @@ extension on TranslationsCw {
 			'notices.preferencesResetTitle' => '··· · — — ·· —· ——· ··· / ·—· · ··· · —',
 			'notices.preferencesReset' => '— ···· · / ··· · — — ·· —· ——· ··· / ··—· ·· ·—·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· / ·— —· —·· / — ···· · ·—· · / ·—— ·— ··· / —· ——— / —··· ·— —·—· —·— ··— ·——· / — ——— / ··—· ·— ·—·· ·—·· / —··· ·— —·—· —·— / ——— —· ——··—— / ··· ——— / ···· ·— ·—·· ——— / ··· — ·— ·—· — · —·· / ·—— ·· — ···· / ·· — ··· / —·· · ··—· ·— ··— ·—·· — ··· ·—·—·— / — ···· · / ··— —· ·—· · ·— —·· ·— —··· ·—·· · / ··—· ·· ·—·· · / ·· ··· / —·— · ·——· — / ·· —· / — ···· · / ·— ·——· ·——· ·————· ··· / —·· ·— — ·— / ··—· ——— ·—·· —·· · ·—· ——··—— / —· ·— —— · —·· / ··· ···· ·— ·—· · —·· ··——·— ·——· ·—· · ··—· · ·—· · —· —·—· · ··· ·—·—·— —·—· ——— ·—· ·—· ··— ·——· — —····— … ·—·—·— ·——— ··· ——— —· ·—·—·—',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
-			'notices.autoConnectHeld' => ({required Object name}) => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / ··· — ·— ·—· — · —·· / —·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${name} ——··—— / ··· ——— / ·· — / ·—·· · ··—· — / ·· — / ·— ·—·· ——— —· · / — ···· ·· ··· / — ·· —— · / ·—· ·— — ···· · ·—· / — ···· ·— —· / ·—· ·· ··· —·— / —·· ——— ·· —· ——· / ·· — / ·— ——· ·— ·· —· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / ··· ·—— ·· — —·—· ···· · —·· / ——— —· / ·— —· —·· / ·· — ··· / —·—· ·— —··· ·—·· · / ·· ··· / ·——· ·—·· ··— ——· ——· · —·· / ·· —· ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / ——— —· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
-			'syncAccount.anonymous' => ({required Object id}) => '·— —· ——— —· —·—— —— ——— ··— ··· / ·— —·—· —·—· ——— ··— —· — / —·——· # ${id} —·——·—',
 			_ => null,
 		} ?? switch (path) {
+			'notices.autoConnectHeld' => ({required Object name}) => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / ··· — ·— ·—· — · —·· / —·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${name} ——··—— / ··· ——— / ·· — / ·—·· · ··—· — / ·· — / ·— ·—·· ——— —· · / — ···· ·· ··· / — ·· —— · / ·—· ·— — ···· · ·—· / — ···· ·— —· / ·—· ·· ··· —·— / —·· ——— ·· —· ——· / ·· — / ·— ——· ·— ·· —· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / ··· ·—— ·· — —·—· ···· · —·· / ——— —· / ·— —· —·· / ·· — ··· / —·—· ·— —··· ·—·· · / ·· ··· / ·——· ·—·· ··— ——· ——· · —·· / ·· —· ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / ——— —· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
+			'syncAccount.anonymous' => ({required Object id}) => '·— —· ——— —· —·—— —— ——— ··— ··· / ·— —·—· —·—· ——— ··— —· — / —·——· # ${id} —·——·—',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· —·——·—',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / —····— / # ${id} —·——·—',
 			'deepLink.needsAnOperation' => '··· — ·— ·—· — / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ·· ·—· ··· — ——··—— / — ···· · —· / ··· · —· —·· / — ···· ·— — / —·—· ——— —· — ·— —·—· — / ·— ——· ·— ·· —·',

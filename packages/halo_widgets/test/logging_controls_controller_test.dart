@@ -25,6 +25,7 @@ void main() {
     expect(() => controller.focusCall(), returnsNormally);
     expect(() => controller.focusSecondaryControls(), returnsNormally);
     expect(() => controller.focusLastPrimaryField(), returnsNormally);
+    expect(() => controller.openControl('radio'), returnsNormally);
 
     String? field;
     String? value;
@@ -34,6 +35,7 @@ void main() {
     var focusedCall = false;
     var focusedPills = false;
     var focusedLastField = false;
+    String? opened;
     controller.attach(
       setField: (f, v) {
         field = f;
@@ -46,6 +48,7 @@ void main() {
       focusCall: () => focusedCall = true,
       focusSecondaryControls: () => focusedPills = true,
       focusLastPrimaryField: () => focusedLastField = true,
+      openControl: (key) => opened = key,
     );
 
     expect(controller.isAttached, isTrue);
@@ -69,6 +72,10 @@ void main() {
     expect(focusedPills, isTrue);
     controller.focusLastPrimaryField();
     expect(focusedLastField, isTrue);
+    // A host's own tap answered with a control — the FYI area's No Band
+    // pill opening the Radio control.
+    controller.openControl('radio');
+    expect(opened, 'radio');
 
     controller.detach();
     expect(controller.isAttached, isFalse);

@@ -149,7 +149,6 @@ extension _CallInfo on _LoggingControlsState {
     final message = _command.message;
     return LoggingInfoArea(
       theme: theme,
-      warnings: _missingRadioWarnings,
       message: message,
       callInfo: callInfo,
       locationLine: guess == null ? null : widget.lookups.callLocationLine?.call(guess),
@@ -190,8 +189,9 @@ extension _CallInfo on _LoggingControlsState {
   }
 
   /// What the contact in hand is missing from the radio state that every QSO
-  /// needs: a band (or a frequency to derive one from) and a mode. Empty —
-  /// the normal state — paints nothing.
+  /// needs: a band (or a frequency to derive one from) and a mode — what
+  /// [LookupHooks.onMissingRadioState] reports. Nothing missing is the normal
+  /// state.
   ///
   /// Never while editing an event row. A NOTE is not a contact and needs no
   /// band, and the `event` band sentinel it carries does not survive into
@@ -200,19 +200,26 @@ extension _CallInfo on _LoggingControlsState {
   /// `_seedFromRadioService` then fills it from the VFO and the question never
   /// arises; on the untuned one these warnings exist for, this guard is all
   /// that stops an annotation being nagged about a field it will never have.
-  List<String> get _missingRadioWarnings {
-    if (_editingEvent) return const [];
-    return [
-      // The same condition [_log] refuses a submit on, so the two can never
-      // name different things as missing. They are not the same test, though:
-      // this one is additionally suppressed on an event row and wherever
-      // `fieldsLocked` swaps the whole area for its own warning. Neither is
-      // reachable with something loggable in hand today — an event's `NOTE`
-      // is not a callsign, and a locked form cannot log — so nothing is lost
-      // by staying quiet there.
-      if (_radio.freq == null && _radio.band == null) t.loggingControls.missingBand,
-      if (_radio.mode.trim().isEmpty) t.loggingControls.missingMode,
-    ];
+  /// Nor while the fields are locked: nothing can log there, so nothing is
+  /// lost by staying quiet.
+  MissingRadioState get _missingRadioState {
+    if (_editingEvent || _fieldsLocked) return (band: false, mode: false);
+    // The same condition [_log] refuses a submit on, so the two can never
+    // name different things as missing.
+    return (band: _radio.freq == null && _radio.band == null, mode: _radio.mode.trim().isEmpty);
+  }
+
+  /// Pushes [_missingRadioState] up to the host when it changes (deduped —
+  /// see [LookupHooks.onMissingRadioState] for why per change matters).
+  /// Called post-build like [_notifyCallInfo], so it never setStates a
+  /// parent mid-build.
+  void _notifyMissingRadio() {
+    final report = widget.lookups.onMissingRadioState;
+    if (report == null) return;
+    final missing = _missingRadioState;
+    if (missing == _lastMissingRadio) return;
+    _lastMissingRadio = missing;
+    report(missing);
   }
 
   /// What the info area is showing, as the signature [LoggingInfoFrame] keys

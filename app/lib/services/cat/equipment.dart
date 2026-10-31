@@ -200,8 +200,15 @@ enum RadioMeter {
 /// the point where the ANTENNA is telling you something: a match this far
 /// off is a wet feedline, a wrong band, or an ATU that never found a
 /// solution, and all three are worth knowing before the next call rather
-/// than after the session.
+/// than after the session. Where the Radio panel's meter turns red.
 const swrAlertThreshold = 1.8;
+
+/// Where the FYI area's SWR message starts, and where it turns from a
+/// warning into an alert (`SwrWatch`), on a transmission's average rather
+/// than the meter's instant reading — so a single reading spiking as the
+/// rig keys does not raise it.
+const swrWarnsFrom = 1.6;
+const swrAlertsFrom = 2.0;
 
 /// How long a meter reading stands after the radio stops confirming it.
 ///

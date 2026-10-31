@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "Improved translations: every language is complete again and uses PoLo's vocabulary (tell us what reads wrong)"
     - "New: spot commands can name one spot source (`QRV pota: hunters first`, `SPOT discord: hey`)"
+    - "New FYI area under the call info: the No Band warning, the radio's SWR and the keyer line in one place (tell us how it reads)"
 
 "186":
   changes:

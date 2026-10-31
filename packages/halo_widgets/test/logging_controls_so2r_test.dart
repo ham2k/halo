@@ -188,10 +188,12 @@ void main() {
               .first,
         )
         .color!;
-    final error = Theme.of(t.element(find.byKey(const ValueKey('set-A')))).colorScheme.error;
+    // The app's alert red, not the scheme's error: dark mode's error is a
+    // pale pink, and the pill that says ON THE AIR has to read as red.
+    final red = HaLoColors.of(t.element(find.byKey(const ValueKey('set-A')))).alert;
     expect(link.active, 'A');
-    expect(pillColor('B'), error);
-    expect(pillColor('A'), isNot(error));
+    expect(pillColor('B'), red);
+    expect(pillColor('A'), isNot(red));
   });
 
   // The trap: both call fields autofocused, the last to mount (B) wins, and

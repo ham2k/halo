@@ -150,7 +150,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.only(bottom: _barBelowText),
+                padding: const EdgeInsets.only(bottom: lineBarBelowText),
                 child: row,
               ),
               Positioned(
@@ -191,7 +191,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: _barBelowText),
+                      padding: const EdgeInsets.only(bottom: lineBarBelowText),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

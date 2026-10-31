@@ -98,14 +98,11 @@ List<String> scorePillLabels(List<String> keys, Map<String, List<String>> source
       labelOf(key),
 ];
 
-/// One scoring pill. Top-level so the logging panel can paint the same pill
-/// outside a call-info line — its missing-band/mode warning is not a scoring
-/// verdict, but the operator reads a red pill in that area as one thing.
-///
-/// Alerts are the error color; notices a positive green; the worked-before
-/// count app-polo's neutral grey (matching its red/green/grey pill
-/// convention) — the logging panel's own tertiaryContainer fill rules out
-/// relying on the neutral scheme containers for contrast.
+/// One scoring pill. Alerts are the error color; notices a positive green;
+/// the worked-before count app-polo's neutral grey (matching its
+/// red/green/grey pill convention) — the logging panel's own
+/// tertiaryContainer fill rules out relying on the neutral scheme containers
+/// for contrast.
 Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
   final background = switch (level) {
     NoticeLevel.alert => theme.colorScheme.error,

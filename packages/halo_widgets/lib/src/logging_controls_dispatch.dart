@@ -106,6 +106,8 @@ extension _ActionDispatch on _LoggingControlsState {
         await widget.commands.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {
         await widget.commands.onCommandAction?.call('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+      } else if (map['devFyi'] is Map) {
+        await widget.commands.onCommandAction?.call('devFyi', (map['devFyi'] as Map).cast<String, dynamic>());
       } else if (map['devProgress'] is Map) {
         await widget.commands.onCommandAction?.call('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
       } else if (map['devHammer'] is Map) {

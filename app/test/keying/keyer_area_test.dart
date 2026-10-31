@@ -1,9 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The keyer's two surfaces: the line in the info area (KeyerArea), which
-// shows what is going out while something is, and the keyer control's panel
-// (KeyerControls), which holds what starts a message.
+// The keyer's two surfaces: the keyer line, the FYI area's operational item
+// (FyiArea hosting KeyerLineItem), which shows what is going out while
+// something is, and the keyer control's panel (KeyerControls), which holds
+// what starts a message.
 //
 // Against a real CatService with the placeholder radio (which keys nothing,
 // but runs the real send queue and reports a speed like a real rig), so what
@@ -22,6 +23,7 @@ import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/cw_messages_dialog.dart' show cwMessageNumberIcons;
+import 'package:ham2k_logger/views/fyi_area.dart';
 import 'package:ham2k_logger/views/keyer_area.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -124,7 +126,7 @@ void main() {
       home: Scaffold(
         body: Column(
           children: [
-            KeyerArea(cat: services.cat, services: services, suppressed: suppressed, phone: phone, digital: digital),
+            FyiArea(services: services, keyer: true, suppressed: suppressed, phone: phone, digital: digital),
             if (panel)
               KeyerControls(
                 services: services,
@@ -140,7 +142,7 @@ void main() {
     ),
   );
 
-  Finder inLine(Finder finder) => find.descendant(of: find.byType(KeyerArea), matching: finder);
+  Finder inLine(Finder finder) => find.descendant(of: find.byType(FyiArea), matching: finder);
   Finder inPanel(Finder finder) => find.descendant(of: find.byType(KeyerControls), matching: finder);
   Finder button(String label) => inPanel(find.widgetWithText(InkWell, label));
   bool enabled(WidgetTester tester, Finder finder) => tester.widget<InkWell>(finder).onTap != null;
@@ -154,7 +156,7 @@ void main() {
     return (spans[0].text!, spans[1].text!);
   }
 
-  double lineHeight(WidgetTester tester) => tester.getSize(find.byType(KeyerArea)).height;
+  double lineHeight(WidgetTester tester) => tester.getSize(find.byType(FyiArea)).height;
 
   /// Pumps until nothing is keying any more.
   Future<void> pumpUntilIdle(WidgetTester tester) async {
@@ -420,7 +422,7 @@ void main() {
       await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
       await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
       await services.settings.setVoiceMessageLabel(4, 'TU RIGHT', radio: 'B');
-      Widget line(String radio) => KeyerArea(key: ValueKey(radio), cat: cat, radio: radio, services: services, phone: true);
+      Widget line(String radio) => FyiArea(key: ValueKey(radio), services: services, radio: radio, keyer: true, phone: true);
       await tester.pumpWidget(
         TranslationProvider(
           child: MaterialApp(
@@ -776,7 +778,7 @@ void main() {
             child: Column(
               children: [
                 TextField(focusNode: callFocus, autofocus: true),
-                KeyerArea(cat: services.cat, services: services),
+                FyiArea(services: services, keyer: true),
                 KeyerControls(services: services, phone: false, onSendMessage: (n, radio) => sent.add(n)),
               ],
             ),

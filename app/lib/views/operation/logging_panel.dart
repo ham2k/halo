@@ -16,6 +16,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
 import '../../services/cat/cat_service.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/fyi_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
@@ -30,6 +31,7 @@ import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
 import '../../tools/worked_before_label.dart';
 import '../station_config_dialog.dart';
+import '../fyi_area.dart';
 import '../keyer_area.dart';
 import 'extension_panel.dart' show PanelRenderContext;
 import 'log_find_bar.dart';
@@ -299,8 +301,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
-  /// The CW keying surfaces (keyer area, Escape-stops-a-message). Kept in
-  /// sync by _onSettingsChanged.
+  /// The CW keying surfaces (the keyer line, Escape-stops-a-message), kept in sync by _onSettingsChanged.
   late bool _keyerEnabled = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
 
   /// Enter Sends Messages, on top of the keyer. Kept in sync by
@@ -818,7 +819,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     final s = widget.services.settings;
     final keyer = s.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
     if (keyer != _keyerEnabled) {
-      // Switched off mid-message: the keyer area and its Escape go away with
+      // Switched off mid-message: the keyer line and its Escape go away with
       // the flag, so nothing would be left to stop what is on the air.
       if (!keyer) {
         for (final radio in ['A', 'B']) {
@@ -1055,9 +1056,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
               enabledBands: _enabledBands,
               enabledModes: _enabledModes,
               radioService: widget.services.radio,
-              // Same object, as a Listenable — so the Radio control follows a
-              // connected rig (CAT) instead of only reading the VFO when it
-              // seeds; under SO2R, its vfoA alone. See RadioHookup.radioUpdates.
+              // Same object, as a Listenable — so the Radio control follows a connected rig (CAT)
+              // instead of only reading the VFO when it seeds; under SO2R, its vfoA alone. See RadioHookup.radioUpdates.
               radioUpdates: so2r == null ? widget.services.radio : _vfoUpdates['A'],
               hasConfiguredRadio: _hasConfiguredRadio,
               radioConnected: _radioConnected,
@@ -1085,9 +1085,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         settleLookup: widget.services.extensions.resolveCallInfo,
         enqueueLookup: widget.services.lookupQueue.enqueue,
         settleSaved: widget.services.lookupQueue.settle,
-        // force: false — unlike the explicit "Lookup all QSOs" action,
-        // a SEED batch shouldn't force-refresh a QSO that (somehow)
-        // already carries real online lookup data.
+        // force: false — unlike the explicit "Lookup all QSOs" action, a SEED
+        // batch shouldn't force-refresh a QSO that (somehow) already carries real online lookup data.
         enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
         operationStatsLines: (qsos) => operationStatsLines(context, qsos),
         callLocationLine: (guess) => _callLocationLine(context, guess),
@@ -1124,6 +1123,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         // callsign", so K1AB's history doesn't list K1ABC's contacts too.
         onFindCall: (call) => _openFind(query: '$call.', focus: false),
         onOperationInfoTap: widget.onOperationInfoTap,
+        onMissingRadioState: (missing) => _postMissingRadio(radio, missing),
       ),
       activities: ActivityHooks(
         activityControls: widget.loggingControls,
@@ -1149,7 +1149,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         },
       ),
       strip: ControlStripSettings(
-        infoAreaFooter: _keyerEnabled ? _keyerArea(radio, editingHere: editingHere) : null,
+        infoAreaFooter: _fyiArea(radio, editingHere: editingHere, keyer: _keyerEnabled),
         controlOrder: _controlOrder,
         hiddenControlKeys: _hiddenControls,
         spottingAfterReferences: widget.scope == LoggingScope.chase,
