@@ -163,6 +163,8 @@ Links out of the directory are relative repo paths
   a page naming a level the SDK does not have;
 - a settings section in the pages that is not the packer's, or one of the
   packer's the pages leave out;
+- an option a tools command lists in its synopsis (`[--flag …]` in its usage
+  text) that no page the package ships names, in a code span or an example;
 - a page the SDK build neither ships nor names as left out;
 - a relative link to nothing, an anchor naming no heading, a link form the
   shipping rewrite cannot follow;
@@ -174,13 +176,14 @@ Links out of the directory are relative repo paths
 It cannot tell a true sentence from a false one. That is the reviewer's job,
 and the SDK source (`extensions/sdk/src`) is the reference to check against:
 `index.ts` for the host object, `types.ts` for the interfaces and the
-manifest, `hookCategories.ts`, `panelScene.ts`, and `tools/h2kext.mjs` for
-what the packer refuses.
+manifest, `hookCategories.ts`, `panelScene.ts`, `tools/h2kext.mjs` for what
+the packer refuses, and each `tools/h2kext-*.mjs` usage text for what its
+command takes.
 
 ## When the surface changes
 
 A change to any of these lands with its sentence in the same commit, and the
-guard holds the first five:
+guard holds the first six:
 
 - a method on the `host` object → `host.md`, with its budget and its grant;
 - a hook category, or a method on a hook interface → its page, in the
@@ -190,6 +193,9 @@ guard holds the first five:
 - a scene field, control or value → `scenes.md`;
 - an API level → a row in `packaging.md` saying what it adds, and the
   "(extension API n)" marker on each feature it gates;
+- an option on a tools command → the synopsis in its usage text, and the
+  page of its step: `getting-started.md` for `h2kext-init` and `h2kext-dev`,
+  `packaging.md` for `h2kext-pack`, `publishing.md` for `h2kext-publish`;
 - a budget or limit → the number where the call is documented and in
   `concepts.md`'s table;
 - a packer rule → `manifest.md`'s *What is checked, and where*;

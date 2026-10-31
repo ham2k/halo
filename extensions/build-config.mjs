@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { buildOptionsFor as extensionBuildOptions } from "./tools/h2kext-build.mjs"
-import { validateAdifFieldsScope, validateRelevance, validateSettingsPlacement } from "./tools/h2kext.mjs"
+import { indexEntryFor as indexEntry, validateAdifFieldsScope, validateRelevance, validateSettingsPlacement } from "./tools/h2kext.mjs"
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, "../app/assets/extensions")
@@ -267,47 +267,10 @@ export function buildOptionsFor(bundle, { hostSharedVersions, outfile }) {
 }
 
 /// One extension's entry in index.json — the metadata the Dart host reads
-/// without evaluating any JS. The dev server serves the same shape for the
-/// extensions it offers, so the app's loader needs no second format.
-export function indexEntryFor({ key, manifest: m }) {
-  return {
-    key,
-    file: `${key}.js`,
-    version: m.version,
-    // A built-in declares none and is at the app's own level; a dev-served
-    // catalog extension declares the level it was built for.
-    ...(m.api ? { api: m.api } : {}),
-    domains: m.domains ?? [],
-    ...(m.webSockets?.length ? { webSockets: m.webSockets } : {}),
-    ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
-    ...(m.requiresLocation ? { requiresLocation: true } : {}),
-    ...(m.requiresRadioRead ? { requiresRadioRead: true } : {}),
-    ...(m.requiresRadioWrite ? { requiresRadioWrite: true } : {}),
-    ...(m.requiresRadioRaw ? { requiresRadioRaw: true } : {}),
-    ...(m.requiresClusterRead ? { requiresClusterRead: true } : {}),
-    ...(m.requiresClusterSpot ? { requiresClusterSpot: true } : {}),
-    ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
-    ...(m.requiresSettingsWrite ? { requiresSettingsWrite: true } : {}),
-    ...(m.experiments?.length ? { experiments: m.experiments } : {}),
-    ...(m.relevance ? { relevance: m.relevance } : {}),
-    // Read by the host to place the extension's settings panels; without it
-    // a dev-served extension's panel would be placed as though it declared
-    // nothing, which is not how it will install.
-    ...(m.settings ? { settings: m.settings } : {}),
-    core: !m.category,
-    ...(m.category
-      ? {
-          name: m.name ?? key,
-          ...(m.shortName ? { shortName: m.shortName } : {}),
-          category: m.category,
-          enabledByDefault: m.enabledByDefault ?? true,
-          ...(m.icon ? { icon: m.icon } : {}),
-          ...(m.description ? { description: m.description } : {}),
-          ...(m.accentColor ? { accentColor: m.accentColor } : {}),
-          ...(m.keywords ? { keywords: m.keywords } : {}),
-          ...(m.hooks ? { hooks: m.hooks } : {}),
-          ...(m.translations ? { translations: m.translations } : {}),
-        }
-      : {}),
-  }
+/// without evaluating any JS. The shape lives in the tools (`indexEntryFor`
+/// in tools/h2kext.mjs) so the repository's dev server, the app's own build
+/// and `h2kext-dev` for a project outside the repository all emit the one the
+/// app's loader reads, and the app needs no second format.
+export function indexEntryFor({ key, manifest }) {
+  return indexEntry(key, manifest)
 }

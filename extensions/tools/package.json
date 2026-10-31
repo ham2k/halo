@@ -1,6 +1,6 @@
 {
   "name": "@ham2k/extension-tools",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "description": "Build and package extensions for the Ham2K Logger",
   "keywords": [
     "ham2k",
@@ -25,12 +25,14 @@
   },
   "bin": {
     "h2kext-init": "./h2kext-init.mjs",
+    "h2kext-dev": "./h2kext-dev.mjs",
     "h2kext-pack": "./h2kext-pack.mjs",
     "h2kext-publish": "./h2kext-publish.mjs"
   },
   "files": [
     "h2kext.mjs",
     "h2kext-build.mjs",
+    "h2kext-dev.mjs",
     "h2kext-init.mjs",
     "h2kext-pack.mjs",
     "h2kext-publish.mjs",

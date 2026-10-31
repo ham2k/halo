@@ -12,6 +12,8 @@
 //   - every API level up to the current one has its row in packaging.md,
 //     and no page names a level the SDK does not have;
 //   - the settings sections the pages list are the packer's;
+//   - every option the tools' commands take is named on a page the package
+//     ships, read from each command's own synopsis;
 //   - every page is shipped in the package or named as one that stays out;
 //   - every relative link resolves and every anchor names a heading, by the
 //     slug rules the catalog renders with;
@@ -283,6 +285,44 @@ test("every relative link resolves and every anchor names a heading", () => {
     })
   }
   assert.deepEqual(problems, [])
+})
+
+// ---------------------------------------------------------------------------
+// The tools' command lines
+
+/// The long options each `h2kext-*` command takes, read from the synopsis in
+/// its usage text (`[--flag …]`), the one place a command lists everything it
+/// accepts. The commands come from the package's `bin`, so a new command is
+/// held to this the moment it exists.
+function toolOptions(): Record<string, string[]> {
+  const pkg = JSON.parse(readFileSync(join(here, "tools/package.json"), "utf8"))
+  const options: Record<string, string[]> = {}
+  for (const [command, file] of Object.entries(pkg.bin as Record<string, string>)) {
+    const source = readFileSync(join(here, "tools", file), "utf8")
+    const flags = [...new Set([...source.matchAll(/\[(--[a-z][a-z0-9-]*)/g)].map((m) => m[1]))].sort()
+    assert.ok(flags.length > 0, `${file} has no synopsis listing its options as [--flag …]`)
+    options[command] = flags
+  }
+  return options
+}
+
+/// The lines inside fenced code blocks, where an example names an option.
+function insideFences(markdown: string): string[] {
+  const outside = outsideFences(markdown)
+  return markdown.split("\n").filter((line, index) => outside[index] === "" && line !== "")
+}
+
+test("every option of the tools' commands is on a page the package ships", () => {
+  const shipped = Object.entries(pages).filter(([name]) => !MAY_NAME_REPO_PATHS.includes(name))
+  const problems: string[] = []
+  for (const [command, flags] of Object.entries(toolOptions())) {
+    for (const flag of flags) {
+      const inFence = new RegExp(`(?<![\\w-])${flag}(?![\\w-])`)
+      const named = shipped.some(([, text]) => namesInCode(text, flag) || insideFences(text).some((line) => inFence.test(line)))
+      if (!named) problems.push(`${command} ${flag}`)
+    }
+  }
+  assert.deepEqual(problems, [], "no page an author reads names these options")
 })
 
 // ---------------------------------------------------------------------------

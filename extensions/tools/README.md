@@ -66,6 +66,26 @@ list: the app does not show an undeclared panel. If activation needs more than
 the stand-in provides, or waits on a timer or the host, the build succeeds and
 prints a warning that this check did not run.
 
+## Developing
+
+```sh
+npx h2kext-dev
+```
+
+Builds the extension in memory, serves it to the app and rebuilds as you save.
+In the app, **Settings → Developer → Extension Dev Server**, enter one of the
+addresses it prints, connect: the app swaps that one extension in place on
+every rebuild, without an install, and what the extension logs comes back to
+this terminal. A save that does not build is reported here and the app keeps
+the last version that did. The scaffold writes it as `npm run dev`.
+
+It binds `0.0.0.0` so a phone on the LAN can reach it; `--host 127.0.0.1`
+keeps it to this machine, `--port` moves it off 8787. `--entry` and `--inline`
+take the same values `buildExtension` does; pass whatever your `build.mjs`
+passes, or the dev build and the shipping build differ. The manifest is held to
+what the packer accepts, so a manifest that would fail `h2kext-pack` is a
+build error here rather than a bundle the app installs without the checks.
+
 ## Packaging
 
 ```sh

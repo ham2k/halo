@@ -130,6 +130,7 @@ const projectPackage = {
   type: "module",
   scripts: {
     build: "node build.mjs",
+    dev: "h2kext-dev",
     pack: "h2kext-pack build",
     typecheck: "tsc --noEmit",
     format: "prettier --write .",

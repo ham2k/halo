@@ -32,7 +32,8 @@ build/             generated: index.js + manifest.json
 ```
 
 `npx -p @ham2k/extension-tools h2kext-init <callsign>-<name>` writes all of
-it, with `build`, `pack`, `typecheck` and `format` scripts in `package.json`.
+it, with `build`, `dev`, `pack`, `typecheck` and `format` scripts in
+`package.json`.
 
 ## The smallest whole extension
 
@@ -70,11 +71,17 @@ goes in the manifest's `hooks`.
 ```sh
 npm run typecheck                                   # tsc --noEmit
 npm run build                                       # → build/index.js
+npm run dev                                         # serve to the app, rebuild on save, print its log
 npm run pack                                        # → <key>-<version>.h2kext
 ```
 
-Then install the file in the app: **Settings → Extensions & Features →
-Install from file…**. Installing the same key again updates in place.
+While working, run `npm run dev` and point the app's **Settings → Developer →
+Extension Dev Server** at the address it prints: every save that builds swaps
+the extension in the running app, a save that does not build is reported with
+its file and line, and `host.log` lines come back to the terminal. Before
+publishing, install the packed file in the app (**Settings → Extensions &
+Features → Install from file…**), which runs the packer's checks the dev
+server skips. Installing the same key again updates in place.
 
 The packer is also the checker. It reports every problem at once and
 refuses anything that would install cleanly and then misbehave where you
@@ -213,6 +220,6 @@ spots board. `dist/index.d.ts` has the rest.
   carry the versions the build suggested.
 - Nothing you wrote stores a password outside the `account` hook, relies on
   `host.secret()`, or builds a `Liquid` of its own.
-- You have installed the `.h2kext` in the app with Developer Mode on and
-  exercised every hook you registered, or you have told the person why you
-  could not.
+- You have exercised every hook you registered against the running app,
+  through the dev server or an installed `.h2kext` with Developer Mode on, or
+  you have told the person why you could not.

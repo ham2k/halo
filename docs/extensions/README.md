@@ -99,7 +99,7 @@ anything.
 
 | Page | What it covers |
 | --- | --- |
-| [Getting started](getting-started.md) | Setup, the project layout, build, pack, install, iterate |
+| [Getting started](getting-started.md) | Setup, the project layout, build, pack, install, the dev server |
 | [How extensions run](concepts.md) | Sandbox, bundles, activation, hooks, host calls, storage, budgets, API levels |
 | [The manifest](manifest.md) | Every manifest field; grants; relevance; settings placement; the packer's rules |
 | [The host API](host.md) | Every `host.*` call, the hook context, the in-runtime `hooks.*` calls, the budgets |

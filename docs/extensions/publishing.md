@@ -50,6 +50,7 @@ published w7abc-notes 1.2.3 → stable (pending review)
 | `--notes "…"` | Release notes, markdown |
 | `--screenshots <dir>` | The folder holding the extension's screenshots; default `./screenshots` when it exists |
 | `--screenshots-only` | Update the screenshots without publishing a version |
+| `--catalog <url>` | The catalog to publish to; default `https://catalog.ham2k.net` |
 | `--force-name` | Ham2K's own packaging; waives the key convention, nothing else |
 
 ## Channels

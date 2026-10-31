@@ -27,13 +27,9 @@
 
 import { context } from "esbuild"
 import { createServer } from "node:http"
-import { networkInterfaces } from "node:os"
 
 import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest } from "./build-config.mjs"
-
-/// Bumped when the protocol below changes shape, so an app built against an
-/// older one says so instead of failing obscurely.
-const PROTOCOL = 1
+import { broadcast as broadcastTo, handlePreflight, json, lanAddresses, PROTOCOL, readBody, SERVER_NAME, stamp } from "./tools/h2kext-dev.mjs"
 
 const args = process.argv.slice(2)
 function argValue(name, fallback) {
@@ -93,20 +89,7 @@ const firstBuilds = new Map(
 )
 let watching = false
 
-function broadcast(event) {
-  const payload = `data: ${JSON.stringify(event)}\n\n`
-  for (const client of clients) {
-    try {
-      client.write(payload)
-    } catch {
-      clients.delete(client)
-    }
-  }
-}
-
-function stamp() {
-  return new Date().toTimeString().slice(0, 8)
-}
+const broadcast = (event) => broadcastTo(clients, event)
 
 const knownExperiments = await loadKnownExperiments()
 
@@ -230,25 +213,11 @@ if (kernelContext) contexts.push(kernelContext)
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host ?? "localhost"}`)
-  // Any origin: the app is not a browser page, and this server is a
-  // development tool bound to a LAN by choice.
-  res.setHeader("Access-Control-Allow-Origin", "*")
-  if (req.method === "OPTIONS") {
-    // `content-type: application/json` is not CORS-safelisted, so a web build
-    // preflights POST /logs. Without this the preflight fell through to the
-    // 404 below and log forwarding died silently — `_flushLogs` swallows it.
-    res.writeHead(204, {
-      "access-control-allow-methods": "GET, POST, OPTIONS",
-      "access-control-allow-headers": "content-type",
-      "access-control-max-age": "86400",
-    })
-    res.end()
-    return
-  }
+  if (handlePreflight(req, res)) return
 
   if (url.pathname === "/ping") {
     return json(res, {
-      server: "halo-ext-dev",
+      server: SERVER_NAME,
       protocol: PROTOCOL,
       extensions: served.map((b) => b.key),
     })
@@ -318,31 +287,6 @@ const server = createServer(async (req, res) => {
   res.end("not found")
 })
 
-function json(res, body) {
-  res.writeHead(200, { "content-type": "application/json; charset=utf-8" })
-  res.end(JSON.stringify(body))
-}
-
-/// Reads a request body, capped and error-terminated. A client that aborts
-/// mid-POST would otherwise leave this promise pending forever and the request
-/// handler with it.
-function readBody(req, limit = 1 << 20) {
-  return new Promise((resolve) => {
-    let data = ""
-    req.on("data", (chunk) => {
-      data += chunk
-      if (data.length > limit) {
-        data = data.slice(0, limit)
-        req.destroy()
-        resolve(data)
-      }
-    })
-    req.on("end", () => resolve(data))
-    req.on("error", () => resolve(""))
-    req.on("aborted", () => resolve(""))
-  })
-}
-
 server.listen(port, bindHost, () => {
   const failed = served.filter((b) => !sources.has(b.key))
   console.log(`\nHaLo extension dev server — ${sources.size} extension${sources.size === 1 ? "" : "s"} ready`)
@@ -352,19 +296,6 @@ server.listen(port, bindHost, () => {
   console.log("\nWatching for changes. A kernel change is reported but not served —")
   console.log("it needs `npm run build` and an app restart.\n")
 })
-
-function lanAddresses() {
-  const found = []
-  for (const addresses of Object.values(networkInterfaces())) {
-    for (const address of addresses ?? []) {
-      if (address.family === "IPv4" && !address.internal) found.push(address.address)
-    }
-  }
-  // localhost last: correct for a desktop build on this machine, useless for
-  // the phone case this server exists for, so it should not be the first thing
-  // read off the screen.
-  return [...found, "localhost"]
-}
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {

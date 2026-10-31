@@ -26,8 +26,13 @@ AGENTS.md            points the agent writing your code at the reference in node
 package.json         added to, never replaced
 ```
 
+`--dir <path>` writes into another directory instead of the current one, and
+`--name "W7ABC Notes"` sets the display name instead of deriving it from the
+key.
+
 `package.json` gains the scripts the rest of this page uses: `build`,
-`pack`, `typecheck`, `format` and `format:check`. Starting by hand instead:
+`dev`, `pack`, `typecheck`, `format` and `format:check`. Starting by hand
+instead:
 
 ```sh
 npm install @ham2k/extension-sdk
@@ -153,23 +158,57 @@ com.ham2k.logger:///install_extension?url=https://example.org/w7abc-notes.h2kext
 
 ## Iterate
 
-The loop while you work is edit, build, pack, install from file. Installing
-a bundle whose key is already installed **updates it in place**: its
-settings, credentials and panel configuration survive, so you are not
-re-entering them on every round, and the consent screen is shown again every
-time. (The key-value store is session memory and does not survive; see
-[How extensions run](concepts.md#identity-and-storage).)
+```sh
+npm run dev                      # h2kext-dev
+npm run dev -- --port 9000       # options go after the --
+```
 
-`host.log("…")` writes to the app's debug output, prefixed with your key. A
-desktop build started from a terminal prints it there. Turn on **Settings →
-Developer → Developer Mode** while you work: the app then surfaces warnings
-it would otherwise keep to itself, such as the timer budget being broken, as
-notices that name your extension.
+The dev server builds your extension in memory, rebuilds it as you save, and
+hands each build to a running app, which swaps that one extension in place
+with no install. In the app, **Settings → Developer → Extension Dev Server**,
+enter one of the addresses the server prints, connect. The address carries
+the port: `10.0.0.5:8787`, not `10.0.0.5`.
+
+| Flag | |
+| --- | --- |
+| `--port <n>` | The port to listen on; default `8787` |
+| `--host <address>` | The address to bind; default `0.0.0.0`, every interface, so a phone on the same network can reach it. `127.0.0.1` keeps it to this machine |
+| `--entry <file>` | The entry point; default `src/index.ts` |
+| `--inline <pkg,…>` | Shared libraries to bundle rather than take from the app, comma-separated |
+| `--dir <path>` | The extension directory; default the current one |
+
+`--entry` and `--inline` take what your `build.mjs` passes to `buildExtension`.
+Pass the same values, or the build you watch is not the build you ship.
+
+- Each save that builds reaches the app as a reload: the extension's hooks
+  are unregistered, the new bundle is evaluated, its `onActivation` runs. The
+  key-value store survives a reload.
+- A save that does not build is reported in the terminal with its file and
+  line, and the app keeps running the last version that did.
+- `host.log("…")` lines come back to the terminal, prefixed with `│`, so you
+  read your own log without hunting for a device console.
+- A manifest change travels with the reload, so a newly declared `domains`
+  entry applies without restarting anything. A manifest the packer would
+  refuse is reported as a build error instead of being handed to the app.
+- Anything the server does not serve keeps running from the app's own
+  assets, so the rest of your installed extensions are unaffected.
+
+Turn on **Settings → Developer → Developer Mode** while you work: the app
+then surfaces warnings it would otherwise keep to itself, such as the timer
+budget being broken, as notices that name your extension.
+
+Install from a file (above) before you publish. The dev server skips the
+packer's checks on the bundle, and installing the `.h2kext` is the one path
+that runs everything the operator's install will. Installing a bundle whose
+key is already installed **updates it in place**: its settings, credentials
+and panel configuration survive, and the consent screen is shown again every
+time.
 
 There is no unit-test harness in the published SDK. Keep the logic of a hook
 in plain functions you can test with the runner you already use, and keep
 the hook object itself thin: it unpacks `args`, calls your function, and
-returns the shape the page documents.
+returns the shape the page documents. The dev server is where you watch a
+hook run against the real app.
 
 ## Make it yours
 

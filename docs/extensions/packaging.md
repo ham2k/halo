@@ -181,7 +181,8 @@ with the versions the build suggests before you ship.
 - Install the file in your own app (**Settings → Extensions & Features →
   Install from file…**) with **Settings → Developer → Developer Mode** on, so
   budget warnings reach you as notices, and exercise every hook you
-  registered.
+  registered. The dev server is for the loop while you write; the installed
+  file is the one path that runs everything the operator's install will.
 - Check `api` against the table above, and `sharedDependencies` against the
   versions the build suggested.
 

@@ -76,7 +76,11 @@ when the two disagree. A new category goes in both.
 Editing an extension normally means `npm run build`, restarting the app,
 and finding your way back to what you were looking at. The dev server
 rebuilds as you save and hands the new bundle to a **running** app, which
-swaps that one extension in place; everything else keeps running.
+swaps that one extension in place; everything else keeps running. It is the
+repository's own server for the core extensions; an extension outside the
+repository gets the same loop from `h2kext-dev` in the tools
+([Getting started](getting-started.md#iterate)), which speaks the same
+protocol to the same client in the app.
 
 ```sh
 cd extensions
