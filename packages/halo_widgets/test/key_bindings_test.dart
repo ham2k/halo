@@ -230,6 +230,21 @@ void main() {
       expect(await pressing(tester, LogicalKeyboardKey.f3, (e) => legacy.matches('keyer.message3', e), modifiers: [LogicalKeyboardKey.shiftLeft]), isTrue);
     });
 
+    testWidgets("take SO2R stereo's backslash by the character, typed with ⌥ or AltGr as most layouts type it", (tester) async {
+      final legacy = LegacyKeyBindings();
+      bool backslash(KeyEvent e) => legacy.matches(so2rStereoCommandId, e);
+      expect(await pressing(tester, LogicalKeyboardKey.backslash, backslash, character: r'\'), isTrue);
+      // A German Mac's ⌥⇧7, and AltGr's Ctrl+Alt on Windows.
+      expect(
+        await pressing(tester, LogicalKeyboardKey.digit7, backslash, modifiers: [LogicalKeyboardKey.altLeft, LogicalKeyboardKey.shiftLeft], character: r'\'),
+        isTrue,
+      );
+      expect(
+        await pressing(tester, LogicalKeyboardKey.digit7, backslash, modifiers: [LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.altLeft], character: r'\'),
+        isTrue,
+      );
+    });
+
     testWidgets('run no bound command text', (tester) async {
       final legacy = LegacyKeyBindings();
       expect(await pressing(tester, LogicalKeyboardKey.keyJ, (e) => legacy.textCommandFor(e) != null, modifiers: [LogicalKeyboardKey.metaLeft]), isFalse);

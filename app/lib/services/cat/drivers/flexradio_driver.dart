@@ -27,6 +27,8 @@ import '../spectrum.dart';
 import '../transports/udp_broadcast.dart';
 import 'cw_send_queue.dart';
 import 'line_framer.dart';
+import 'flex_so2r_audio.dart';
+import '../so2r_audio.dart';
 import 'flex_meter_codec.dart';
 import 'voice_activity_tracker.dart';
 import 'flex_spectrum.dart';
@@ -112,6 +114,13 @@ class FlexRadioDriver extends EquipmentDriver {
   /// the session's own count says so ([FlexRadioSession.voiceMemoryCount]).
   @override
   int voiceMemoryCountWith(Map<String, dynamic> config) => maxVoiceMemories;
+
+  /// Its address and slice: two slices of one radio are switched by the radio.
+  @override
+  ({String radio, int receiver})? so2rAudioReceiverWith(Map<String, dynamic> config) => switch (config['host']) {
+    final String host => (radio: host, receiver: sliceFromConfig(config)),
+    _ => null,
+  };
 
   @override
   Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, voiceCeilingConfigKey};
@@ -292,6 +301,7 @@ class FlexRadioSession
         AntennaTunerSession,
         PassbandSession,
         RadioAntennaSession,
+        So2rRadioAudioSession,
         RawCommandSession {
   final EquipmentSink _sink;
 
@@ -854,11 +864,14 @@ class FlexRadioSession
         txant: fields['txant'] ?? previous?.txant,
         rxPorts: fields['ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.rxPorts,
         txPorts: fields['tx_ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.txPorts,
+        audioPan: int.tryParse(fields['audio_pan'] ?? '') ?? previous?.audioPan,
+        audioMute: fields['audio_mute'] != null ? fields['audio_mute'] == '1' : previous?.audioMute,
       );
     }
     _publishChannels();
 
     if (index != slice) return;
+    _so2rAudio.apply(_sliceAudio);
     _reportOnAir();
     _spectrum.slicePan(_slices[index]?.pan?.toLowerCase());
     _bindTrackedClient();
@@ -1085,6 +1098,13 @@ class FlexRadioSession
     _sendCommand('xmit ${on ? 1 : 0}');
     _keyedByUs = on;
   }
+
+  late final _so2rAudio = FlexSo2rAudio(slice: slice, host: () => meterHost, send: _sendCommand);
+
+  FlexSliceAudio get _sliceAudio => (pan: _slices[slice]?.audioPan, mute: _slices[slice]?.audioMute);
+
+  @override
+  void setSo2rEar(So2rEar? ear) => _so2rAudio.set(ear, _sliceAudio);
 
   late final _daxSwitch = FlexDaxSwitch(
     host: () => meterHost,
@@ -1398,6 +1418,7 @@ class FlexRadioSession
       _sendCommand('xmit 0');
     }
     _daxSwitch.teardown();
+    _so2rAudio.teardown(_sliceAudio);
     // A memory transmits, and nothing else will stop it once this client
     // is gone.
     stopVoice();
@@ -1444,6 +1465,10 @@ class _SliceStatus {
   final String? rxant, txant;
   final List<String>? rxPorts, txPorts;
 
+  /// `audio_pan` (0 left, 100 right) and `audio_mute`: what SO2R switches.
+  final int? audioPan;
+  final bool? audioMute;
+
   const _SliceStatus({
     required this.label,
     required this.inUse,
@@ -1458,5 +1483,7 @@ class _SliceStatus {
     this.txant,
     this.rxPorts,
     this.txPorts,
+    this.audioPan,
+    this.audioMute,
   });
 }

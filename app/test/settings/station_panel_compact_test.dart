@@ -205,6 +205,41 @@ void main() {
     expect(find.widgetWithText(TextButton, 'Phone Messages'), findsNWidgets(2));
   });
 
+  testWidgets('under SO2R, the switcher is picked beside the button to its settings, which hold stereo and listening', (tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    final left = await cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final right = await cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    final box = await cat.addNode(typeKey: 'otrsp-serial', name: 'SO2R Box');
+    await cat.setRadio1(LocalRadio(left.uuid));
+    await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('SO2R Switcher'), findsNothing, reason: 'two radios to switch between, or none');
+
+    await cat.setRadio2(right.uuid);
+    await tester.pumpAndSettle();
+    expect(find.text('SO2R Switcher'), findsOneWidget);
+    final settingsButton = find.widgetWithIcon(IconButton, MdiIcons.tune).last;
+    expect(tester.widget<IconButton>(settingsButton).onPressed, isNull, reason: 'with None picked there is nothing to set');
+
+    // Held disconnected: a picked switcher is kept connected, and a serial
+    // port this test has none of would leave its retries pending.
+    await tester.runAsync(() => cat.disconnect(box.uuid));
+    await cat.setSo2rSwitch(box.uuid);
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('SO2R Switcher settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Listen to the other radio while transmitting'), findsOneWidget);
+    await tester.tap(find.text('Stereo: Radio A left, Radio B right'));
+    await tester.pumpAndSettle();
+    expect(services.settings.so2rStereo, isTrue);
+    expect(find.widgetWithText(SwitchListTile, 'Stereo: Radio A left, Radio B right'), findsOneWidget);
+    // Not on the page itself any more: the settings are the dialog's.
+    await tester.tap(find.widgetWithText(TextButton, 'Done').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Listen to the other radio while transmitting'), findsNothing);
+  });
+
   group('CW keyer row', () {
     testWidgets('is not there at all without the keyer experiment', (tester) async {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));

@@ -14,6 +14,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'logging_controls_radio.dart';
+import 'mdi_icons.g.dart';
 import 'secondary_control_row.dart';
 import 'semantic_id.dart';
 import 'spacing.dart';
@@ -21,7 +22,7 @@ import 'theme.dart';
 
 /// Which of the two sets a `LoggingControls` is, and the link to the other.
 class So2rSet {
-  const So2rSet({required this.radio, required this.link, this.running = false, this.onToggleRunning, this.transmitting = false});
+  const So2rSet({required this.radio, required this.link, this.running = false, this.onToggleRunning, this.transmitting = false, this.heard});
 
   /// `A` or `B` — the letter the set's pill shows. Set A follows `vfoA`, set
   /// B `vfoB`, through whatever VFO store the host wires each one to.
@@ -39,6 +40,10 @@ class So2rSet {
   /// Whether this set's radio is on the air — its pill and rule turn the
   /// theme's error red while it is.
   final bool transmitting;
+
+  /// Whether the operator hears this set's radio, through an SO2R switcher —
+  /// headphones on its pill. Null with no switcher.
+  final bool? heard;
 
   /// Set A draws the shared strip; set B draws none.
   bool get ownsStrip => radio == 'A';
@@ -188,6 +193,9 @@ List<(String, TextStyle)> _pillLines(So2rSet so2r, ThemeData theme, String? band
 double _pillWidth(BuildContext context, So2rSet so2r, ThemeData theme, String? band) =>
     _pillLines(so2r, theme, band).map((line) => textWidth(context, line.$1, line.$2)).reduce((a, b) => a > b ? a : b) + Space.sm * 2;
 
+/// The headphones on the pill of a radio the operator hears.
+const _heardIconSize = 14.0;
+
 /// The rule along an SO2R set's top edge, in the pill's colour.
 const _ruleHeight = 4.0;
 
@@ -227,22 +235,39 @@ List<Widget> so2rFramed(BuildContext context, So2rSet? so2r, ThemeData theme, St
       child: InkWell(
         customBorder: shape,
         onTap: () => so2r.link.openRadio(so2r.radio),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: Space.xs),
-          child: Column(
-            mainAxisAlignment: entryRowAbove ? MainAxisAlignment.start : MainAxisAlignment.end,
-            children: [
-              letter,
-              bandLine,
-              semanticId(
-                'so2r.mode.${so2r.radio}',
-                InkWell(
-                  onTap: so2r.onToggleRunning,
-                  child: SizedBox(width: double.infinity, child: mode),
-                ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // At the far end from the lines, over the pill rather than in its
+            // column: the pill is as tall as its set, which can leave no room
+            // for a fourth line, and the letter stays put as the headphones
+            // move between the pills.
+            if (so2r.heard ?? false)
+              PositionedDirectional(
+                top: entryRowAbove ? null : Space.xs,
+                bottom: entryRowAbove ? Space.xs : null,
+                start: 0,
+                end: 0,
+                child: semanticId('so2r.heard.${so2r.radio}', Icon(MdiIcons.headphones, size: _heardIconSize, color: letter.style?.color)),
               ),
-            ],
-          ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: Space.xs),
+              child: Column(
+                mainAxisAlignment: entryRowAbove ? MainAxisAlignment.start : MainAxisAlignment.end,
+                children: [
+                  letter,
+                  bandLine,
+                  semanticId(
+                    'so2r.mode.${so2r.radio}',
+                    InkWell(
+                      onTap: so2r.onToggleRunning,
+                      child: SizedBox(width: double.infinity, child: mode),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     ),

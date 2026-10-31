@@ -6149,6 +6149,21 @@ class Translations$settings$station$en {
 	/// en: 'Messages queued instead of interrupting'
 	String get so2rQueueMessages => 'Messages queued instead of interrupting';
 
+	/// en: 'SO2R Switcher'
+	String get so2rSwitch => 'SO2R Switcher';
+
+	/// en: 'Built into ${radio}'
+	String so2rSwitchBuiltIn({required Object radio}) => 'Built into ${radio}';
+
+	/// en: 'SO2R Switcher settings'
+	String get so2rSwitchSettings => 'SO2R Switcher settings';
+
+	/// en: 'Stereo: Radio A left, Radio B right'
+	String get so2rStereo => 'Stereo: Radio A left, Radio B right';
+
+	/// en: 'Listen to the other radio while transmitting'
+	String get so2rListenWhileTransmitting => 'Listen to the other radio while transmitting';
+
 	/// en: 'No Radio B selected'
 	String get noRadioBSelected => 'No Radio B selected';
 
@@ -7197,6 +7212,9 @@ class Translations$keyboardShortcuts$command$en {
 
 	/// en: 'Push to talk'
 	String get ptt => 'Push to talk';
+
+	/// en: 'SO2R: hear both radios, or only the focused one'
+	String get so2rStereo => 'SO2R: hear both radios, or only the focused one';
 
 	/// en: 'Clear the contact being logged'
 	String get wipe => 'Clear the contact being logged';
@@ -9738,6 +9756,18 @@ class Translations$settings$station$models$en {
 	/// en: 'Hamlib rotctld'
 	String get rotctld => 'Hamlib rotctld';
 
+	/// en: 'SO2R Switcher (OTRSP)'
+	String get otrsp => 'SO2R Switcher (OTRSP)';
+
+	/// en: 'DX Engineering RigSelect Pro'
+	String get rigSelectPro => 'DX Engineering RigSelect Pro';
+
+	/// en: 'YCCC SO2R Box'
+	String get ycccSo2r => 'YCCC SO2R Box';
+
+	/// en: 'SO2Rduino'
+	String get so2rduino => 'SO2Rduino';
+
 	/// en: 'RTL-SDR'
 	String get rtlSdr => 'RTL-SDR';
 
@@ -11895,6 +11925,10 @@ extension on Translations {
 			'settings.station.models.gs232a' => 'Yaesu GS-232A Rotator Interface',
 			'settings.station.models.pstRotator' => 'PstRotator (UDP Control)',
 			'settings.station.models.rotctld' => 'Hamlib rotctld',
+			'settings.station.models.otrsp' => 'SO2R Switcher (OTRSP)',
+			'settings.station.models.rigSelectPro' => 'DX Engineering RigSelect Pro',
+			'settings.station.models.ycccSo2r' => 'YCCC SO2R Box',
+			'settings.station.models.so2rduino' => 'SO2Rduino',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
@@ -11950,6 +11984,11 @@ extension on Translations {
 			'settings.station.currentTransceivers' => 'Current Transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Messages queued instead of interrupting',
+			'settings.station.so2rSwitch' => 'SO2R Switcher',
+			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'Built into ${radio}',
+			'settings.station.so2rSwitchSettings' => 'SO2R Switcher settings',
+			'settings.station.so2rStereo' => 'Stereo: Radio A left, Radio B right',
+			'settings.station.so2rListenWhileTransmitting' => 'Listen to the other radio while transmitting',
 			'settings.station.noRadioBSelected' => 'No Radio B selected',
 			'settings.station.radioMode' => 'Radio Mode',
 			'settings.station.keyerNotSupported' => 'Not supported by current radio',
@@ -12029,6 +12068,8 @@ extension on Translations {
 			'settings.station.keyTypes.straight' => 'Straight Key',
 			'settings.station.keyTypes.sideswiper' => 'Sideswiper',
 			'settings.station.keyTypes.bug' => 'Bug (mechanical semi-automatic)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyTypes.fullyAutomatic' => 'Fully-automatic keyer',
 			'settings.station.keyTypes.singlePaddle' => 'Single Paddle',
 			'settings.station.keyTypes.dualPaddle' => 'Dual Paddle',
@@ -12038,8 +12079,6 @@ extension on Translations {
 			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
 			'settings.station.newAntenna' => 'New Antenna',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
@@ -12373,6 +12412,7 @@ extension on Translations {
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
+			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
 			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
@@ -12542,6 +12582,8 @@ extension on Translations {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',
@@ -12552,8 +12594,6 @@ extension on Translations {
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',

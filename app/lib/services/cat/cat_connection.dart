@@ -353,6 +353,9 @@ extension _Connection on CatService {
         if (runtime.connection != connection || stateFor(uuid).spectrumProblem == message) return;
         _setState(uuid, stateFor(uuid).copyWith(spectrumProblem: message, clearSpectrumProblem: message == null));
       },
+      onSo2rAudio: (audio) {
+        if (runtime.connection == connection) _noteSo2rAudioReport(uuid, audio);
+      },
       onRotator: (position) {
         if (runtime.connection != connection) return;
         // Every answer is life, changed or not: a rotator that is not

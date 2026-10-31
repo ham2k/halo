@@ -2243,6 +2243,10 @@
         "gs232a": "yaesu gs-232a rotator interface",
         "pstRotator": "pstrotator (udp control)",
         "rotctld": "hamlib rotctld",
+        "otrsp": "so2r switcher (otrsp)",
+        "rigSelectPro": "dx engineering rigselect pro",
+        "ycccSo2r": "yccc so2r box",
+        "so2rduino": "so2rduino",
         "rtlSdr": "rtl-sdr",
         "nesdr": "nooelec nesdr",
         "sdrplay": "sdrplay rsp"
@@ -2301,6 +2305,11 @@
       "currentTransceivers": "current transceivers",
       "so2rRadioName": "${radio}: ${name}",
       "so2rQueueMessages": "messages queued instead of interrupting",
+      "so2rSwitch": "so2r switcher",
+      "so2rSwitchBuiltIn(radio)": "built into ${radio}",
+      "so2rSwitchSettings": "so2r switcher settings",
+      "so2rStereo": "stereo: radio a left, radio b right",
+      "so2rListenWhileTransmitting": "listen to the other radio while transmitting",
       "noRadioBSelected": "no radio b selected",
       "radioMode": "radio mode",
       "keyerNotSupported": "not supported by current radio",
@@ -2778,6 +2787,7 @@
       "keyerMessage": "send message ${n}",
       "keyboardMode": "keyboard mode on or off",
       "ptt": "push to talk",
+      "so2rStereo": "so2r: hear both radios, or only the focused one",
       "wipe": "clear the contact being logged"
     },
     "fixed": {

@@ -20,6 +20,7 @@ import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'drivers/meter_calibration.dart';
+import 'so2r_audio.dart';
 import 'telemetry_poller.dart';
 import 'transport.dart' show TransmitAudioConnection;
 import 'transports/config_field_helpers.dart';
@@ -268,6 +269,28 @@ abstract class RotatorSession implements EquipmentSession {
 abstract class RotatorSink {
   /// Where the antenna points now, each time the controller says.
   void reportRotator(RotatorPosition position);
+}
+
+/// An SO2R switcher: the box that routes two radios to one operator's
+/// headphones (docs/design/cat.md § The SO2R switcher). Audio only, for now.
+abstract class So2rSwitchSession implements EquipmentSession {
+  /// Puts [audio] in the operator's headphones.
+  void setSo2rAudio(So2rAudio audio);
+}
+
+/// Where a [So2rSwitchSession] says what the box is set to — its own word,
+/// which a front-panel switch can make other than what the app asked for. A
+/// sink of its own, as [RotatorSink] is.
+abstract class So2rSwitchSink {
+  void reportSo2rAudio(So2rAudio audio);
+}
+
+/// A transceiver that switches its own audio for SO2R: each SO2R radio a
+/// slice of one FlexRadio, the radio itself the switcher.
+abstract class So2rRadioAudioSession implements EquipmentSession {
+  /// Sets this radio's audio to [ear], or, for null, back to what the
+  /// operator had it at before the first switch.
+  void setSo2rEar(So2rEar? ear);
 }
 
 /// Where a session with an antenna tuner reports it. A sink of its own, as
@@ -822,6 +845,14 @@ abstract class EquipmentDriver {
   /// and a panel that offered memories the session does not have would open
   /// an editor onto nothing.
   int voiceMemoryCountWith(Map<String, dynamic> config) => 0;
+
+  /// The physical radio, and the receiver on it, a node configured like
+  /// [config] switches SO2R audio on, for a driver whose sessions are
+  /// [So2rRadioAudioSession]s — null for every other. Two SO2R radios on one
+  /// radio and different receivers here are a radio that can be its own
+  /// switcher (docs/design/cat.md § The SO2R switcher). The receiver as the
+  /// session will read it, not as stored: two spellings of one slice are one.
+  ({String radio, int receiver})? so2rAudioReceiverWith(Map<String, dynamic> config) => null;
 
   /// [config] is the node's stored configuration — the same map the type's
   /// `configElements` collected. Most drivers ignore it; a CI-V driver needs

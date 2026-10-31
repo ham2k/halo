@@ -55,6 +55,11 @@ const kCategorySdr = 'sdr';
 /// remembered heading is a claim about a mast nobody has asked in a while.
 const kCategoryRotator = 'rotator';
 
+/// An SO2R switcher — a box speaking OTRSP that routes SO2R's two radios to
+/// the operator's headphones (docs/design/cat.md § The SO2R switcher). Never
+/// an antenna switch: it switches what the operator hears, not coax.
+const kCategorySo2rSwitch = 'so2rSwitch';
+
 /// The config key naming the radio an SDR shows the spectrum for: a node's
 /// uuid, or [sdrRadioMain] (also what an absent value means).
 const sdrRadioConfigKey = 'sdrRadio';

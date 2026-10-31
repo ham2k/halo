@@ -2785,6 +2785,11 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get currentTransceivers => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio} ———··· / ${name}';
 	@override String get so2rQueueMessages => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·';
+	@override String get so2rSwitch => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·';
+	@override String so2rSwitchBuiltIn({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}';
+	@override String get so2rSwitchSettings => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···';
+	@override String get so2rStereo => '··· — · ·—· · ——— ———··· / ·—· ·— —·· ·· ——— / ·— / ·—·· · ··—· — ——··—— / ·—· ·— —·· ·· ——— / —··· / ·—· ·· ——· ···· —';
+	@override String get so2rListenWhileTransmitting => '·—·· ·· ··· — · —· / — ——— / — ···· · / ——— — ···· · ·—· / ·—· ·— —·· ·· ——— / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——·';
 	@override String get noRadioBSelected => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··';
 	@override String get radioMode => '·—· ·— —·· ·· ——— / —— ——— —·· ·';
 	@override String get keyerNotSupported => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———';
@@ -3202,6 +3207,7 @@ class _Translations$keyboardShortcuts$command$cw extends Translations$keyboardSh
 	@override String keyerMessage({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}';
 	@override String get keyboardMode => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·';
 	@override String get ptt => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—';
+	@override String get so2rStereo => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·';
 	@override String get wipe => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··';
 }
 
@@ -4408,6 +4414,10 @@ class _Translations$settings$station$models$cw extends Translations$settings$sta
 	@override String get gs232a => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·';
 	@override String get pstRotator => '·——· ··· — ·—· ——— — ·— — ——— ·—· / —·——· ··— —·· ·——· / —·—· ——— —· — ·—· ——— ·—·· —·——·—';
 	@override String get rotctld => '···· ·— —— ·—·· ·· —··· / ·—· ——— — —·—· — ·—·· —··';
+	@override String get otrsp => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—';
+	@override String get rigSelectPro => '—·· —··— / · —· ——· ·· —· · · ·—· ·· —· ——· / ·—· ·· ——· ··· · ·—·· · —·—· — / ·——· ·—· ———';
+	@override String get ycccSo2r => '—·—— —·—· —·—· —·—· / ··· ——— ··——— ·—· / —··· ——— —··—';
+	@override String get so2rduino => '··· ——— ··——— ·—· —·· ··— ·· —· ———';
 	@override String get rtlSdr => '·—· — ·—·· —····— ··· —·· ·—·';
 	@override String get nesdr => '—· ——— ——— · ·—·· · —·—· / —· · ··· —·· ·—·';
 	@override String get sdrplay => '··· —·· ·—· ·——· ·—·· ·— —·—— / ·—· ··· ·——·';
@@ -6444,6 +6454,10 @@ extension on TranslationsCw {
 			'settings.station.models.gs232a' => '—·—— ·— · ··· ··— / ——· ··· —····— ··——— ···—— ··——— ·— / ·—· ——— — ·— — ——— ·—· / ·· —· — · ·—· ··—· ·— —·—· ·',
 			'settings.station.models.pstRotator' => '·——· ··· — ·—· ——— — ·— — ——— ·—· / —·——· ··— —·· ·——· / —·—· ——— —· — ·—· ——— ·—·· —·——·—',
 			'settings.station.models.rotctld' => '···· ·— —— ·—·· ·· —··· / ·—· ——— — —·—· — ·—·· —··',
+			'settings.station.models.otrsp' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / —·——· ——— — ·—· ··· ·——· —·——·—',
+			'settings.station.models.rigSelectPro' => '—·· —··— / · —· ——· ·· —· · · ·—· ·· —· ——· / ·—· ·· ——· ··· · ·—·· · —·—· — / ·——· ·—· ———',
+			'settings.station.models.ycccSo2r' => '—·—— —·—· —·—· —·—· / ··· ——— ··——— ·—· / —··· ——— —··—',
+			'settings.station.models.so2rduino' => '··· ——— ··——— ·—· —·· ··— ·· —· ———',
 			'settings.station.models.rtlSdr' => '·—· — ·—·· —····— ··· —·· ·—·',
 			'settings.station.models.nesdr' => '—· ——— ——— · ·—·· · —·—· / —· · ··· —·· ·—·',
 			'settings.station.models.sdrplay' => '··· —·· ·—· ·——· ·—·· ·— —·—— / ·—· ··· ·——·',
@@ -6499,6 +6513,11 @@ extension on TranslationsCw {
 			'settings.station.currentTransceivers' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} ———··· / ${name}',
 			'settings.station.so2rQueueMessages' => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·',
+			'settings.station.so2rSwitch' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—·',
+			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => '—··· ··— ·· ·—·· — / ·· —· — ——— / ${radio}',
+			'settings.station.so2rSwitchSettings' => '··· ——— ··——— ·—· / ··· ·—— ·· — —·—· ···· · ·—· / ··· · — — ·· —· ——· ···',
+			'settings.station.so2rStereo' => '··· — · ·—· · ——— ———··· / ·—· ·— —·· ·· ——— / ·— / ·—·· · ··—· — ——··—— / ·—· ·— —·· ·· ——— / —··· / ·—· ·· ——· ···· —',
+			'settings.station.so2rListenWhileTransmitting' => '·—·· ·· ··· — · —· / — ——— / — ···· · / ——— — ···· · ·—· / ·—· ·— —·· ·· ——— / ·—— ···· ·· ·—·· · / — ·—· ·— —· ··· —— ·· — — ·· —· ——·',
 			'settings.station.noRadioBSelected' => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··',
 			'settings.station.radioMode' => '·—· ·— —·· ·· ——— / —— ——— —·· ·',
 			'settings.station.keyerNotSupported' => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———',
@@ -6578,6 +6597,8 @@ extension on TranslationsCw {
 			'settings.station.keyTypes.straight' => '··· — ·—· ·— ·· ——· ···· — / —·— · —·——',
 			'settings.station.keyTypes.sideswiper' => '··· ·· —·· · ··· ·—— ·· ·——· · ·—·',
 			'settings.station.keyTypes.bug' => '—··· ··— ——· / —·——· —— · —·—· ···· ·— —· ·· —·—· ·— ·—·· / ··· · —— ·· —····— ·— ··— — ——— —— ·— — ·· —·—· —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyTypes.fullyAutomatic' => '··—· ··— ·—·· ·—·· —·—— —····— ·— ··— — ——— —— ·— — ·· —·—· / —·— · —·—— · ·—·',
 			'settings.station.keyTypes.singlePaddle' => '··· ·· —· ——· ·—·· · / ·——· ·— —·· —·· ·—·· ·',
 			'settings.station.keyTypes.dualPaddle' => '—·· ··— ·— ·—·· / ·——· ·— —·· —·· ·—·· ·',
@@ -6587,8 +6608,6 @@ extension on TranslationsCw {
 			'settings.station.otherBrands' => '——— — ···· · ·—· / —··· ·—· ·— —· —·· ···',
 			'settings.station.otherEquipment' => '——— — ···· · ·—· / · ——·— ··— ·· ·——· —— · —· — / —·——· ·— —· — · —· —· ·— ··· ——··—— / —·— · —·—— ··· ——··—— / · — —·—· —·——·—',
 			'settings.station.newAntenna' => '—· · ·—— / ·— —· — · —· —· ·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.newKey' => '—· · ·—— / —·— · —·——',
 			'settings.station.newKeyer' => '·—— ·· —· —·— · —·—— · ·—· / —·——· —·— ·———— · ·—·· / ——— ·—· / —·—· ——— —— ·——· ·— — ·· —··· ·—·· · —·——·—',
 			'settings.station.keyViaRadio' => ({required Object radio}) => '—·—· ·— — / —·— · —·—— · ·—· / ·· —· / ${radio}',
@@ -6922,6 +6941,7 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
 			'keyboardShortcuts.command.keyboardMode' => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·',
 			'keyboardShortcuts.command.ptt' => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—',
+			'keyboardShortcuts.command.so2rStereo' => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·',
 			'keyboardShortcuts.command.wipe' => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··',
 			'keyboardShortcuts.fixed.callsign' => '— —·—— ·——· ·· —· ——· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'keyboardShortcuts.fixed.escape' => '··· — ——— ·——· / ··· · —· —·· ·· —· ——· ——··—— / —··· ·— —·—· —·— / ——— ··— — / ——— —· · / ··· — · ·——· ——··—— / ——— ·—· / —·—· ·—·· ——— ··· ·',
@@ -7091,6 +7111,8 @@ extension on TranslationsCw {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'notices.autoConnectHeld' => ({required Object name}) => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / ··· — ·— ·—· — · —·· / —·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${name} ——··—— / ··· ——— / ·· — / ·—·· · ··—· — / ·· — / ·— ·—·· ——— —· · / — ···· ·· ··· / — ·· —— · / ·—· ·— — ···· · ·—· / — ···· ·— —· / ·—· ·· ··· —·— / —·· ——— ·· —· ——· / ·· — / ·— ——· ·— ·· —· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / ··· ·—— ·· — —·—· ···· · —·· / ——— —· / ·— —· —·· / ·· — ··· / —·—· ·— —··· ·—·· · / ·· ··· / ·——· ·—·· ··— ——· ——· · —·· / ·· —· ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / ——— —· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'syncAccount.anonymous' => ({required Object id}) => '·— —· ——— —· —·—— —— ——— ··— ··· / ·— —·—· —·—· ——— ··— —· — / —·——· # ${id} —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· —·——·—',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / —····— / # ${id} —·——·—',
 			'deepLink.needsAnOperation' => '··· — ·— ·—· — / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ·· ·—· ··· — ——··—— / — ···· · —· / ··· · —· —·· / — ···· ·— — / —·—· ——— —· — ·— —·—· — / ·— ——· ·— ·· —·',
@@ -7101,8 +7123,6 @@ extension on TranslationsCw {
 			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
 			'confirmDevice.code' => '—·—· ——— —·· ·',
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codeNotFound' => '—· ——— / ·—· · ——·— ··— · ··· — / —— ·— — —·—· ···· · ··· / — ···· ·— — / —·—· ——— —·· · ·—·—·— / —·—· ——— —·· · ··· / · —··— ·——· ·· ·—· · / ·— ··—· — · ·—· / ·———— ————— / —— ·· —· ··— — · ··· / — / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ··—· ——— ·—· / ·— / ··—· ·—· · ··· ···· / ——— —· · ·—·—·—',
 			'confirmDevice.linkExpired' => '— ···· ·— — / ·—·· ·· —· —·— / ···· ·— ··· / · —··— ·——· ·· ·—· · —·· ·—·—·— / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / — ——— / ··· ···· ——— ·—— / ·— / —· · ·—— / ——·— ·—· / —·—· ——— —·· · ·—·—·—',
 			'confirmDevice.areYouSure' => ({required Object device}) => '·—·· ·· —· —·— / ${device} / — ——— / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ··——··',

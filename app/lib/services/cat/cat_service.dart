@@ -40,6 +40,7 @@ import 'transports/k4_remote_transport.dart';
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
 import 'discovery.dart';
 import 'driver.dart';
+import 'so2r_audio.dart';
 import 'drivers/meter_calibration.dart';
 import 'drivers/sdr_spectrum.dart' show SdrSink;
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
@@ -58,6 +59,7 @@ import 'voiced_words.dart';
 export 'cat_keying.dart' show WaitingSend;
 export 'keyer_repeat.dart' show KeyerRepeatWait;
 export 'main_vfo.dart';
+export 'so2r_audio.dart' show So2rAudio;
 
 part 'cat_node_sink.dart';
 part 'cat_spectrum.dart';
@@ -73,6 +75,7 @@ part 'cat_tracking.dart';
 part 'cat_peer_offers.dart';
 part 'cat_keying_surface.dart';
 part 'cat_so2r.dart';
+part 'cat_so2r_audio.dart';
 part 'cat_k4.dart';
 part 'cat_credentials.dart';
 
@@ -201,7 +204,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
 }
 
 class CatService extends ChangeNotifier
-    with _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r
+    with _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio
     implements PeerStationRadios, KeyingStation {
   @override
   final SettingsService _settings;
@@ -400,6 +403,7 @@ class CatService extends ChangeNotifier
     return {
       ?_localRadio1,
       ?radio2,
+      ?_so2rSwitchNode,
       ..._k4SiblingIds(_localRadio1),
       ..._k4SiblingIds(radio2),
       for (final keyer in {designatedFor(kCategoryKey), if (radio2 != null) designatedFor(kCategoryKey, radio: radio2)})
@@ -753,6 +757,9 @@ class CatService extends ChangeNotifier
   @override
   Future<void> _connectRadio2() => _reconnectWithRetries(radio2);
 
+  @override
+  Future<void> _connectSo2rSwitch() => _reconnectWithRetries(_so2rSwitchNode);
+
   /// Puts radio1 in [mode] without touching VFO A: its report comes back the
   /// usual way. Recorded as sent only once it went, as `tuneNode` does.
   void setRadio1Mode(String mode) {
@@ -904,6 +911,7 @@ class CatService extends ChangeNotifier
       null => null,
     },
     'radio2': _radio2,
+    'so2rSwitch': _so2rSwitch,
     'designated': _designated,
     'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
   });
@@ -1089,6 +1097,7 @@ class CatService extends ChangeNotifier
       // destructive action. The dropdown is right there.
       if (_localRadio1 == uuid) _radio1 = null;
       if (_radio2 == uuid) _forgetRadio2();
+      if (_so2rSwitch == uuid) _so2rSwitch = null;
       // Same rule for antenna/key designations — across EVERY radio's picks,
       // not just the selected one's, and the removed radio's own set of picks
       // goes with it. A pick that disappears this way is "never decided"

@@ -20,6 +20,13 @@ mixin _So2r on _KeyingSurface {
   void _setEnterSendsOf(bool running);
   bool _nodeTransmitting(String? uuid);
 
+  void _startSo2rAudio();
+  void _stopSo2rAudio();
+
+  /// Brings the picked SO2R switcher up as a reconnect would, and nothing
+  /// else.
+  Future<void> _connectSo2rSwitch();
+
   /// Brings Radio B up the way a reconnect brings up radio1.
   Future<void> _connectRadio2();
 
@@ -44,6 +51,7 @@ mixin _So2r on _KeyingSurface {
     // rest of the report — the PTT key's and the keyers' — is still on its
     // way.
     addListener(_pumpSoon);
+    _startSo2rAudio();
   }
 
   void _stopSo2r() {
@@ -52,6 +60,7 @@ mixin _So2r on _KeyingSurface {
     removeListener(_pumpSoon);
     _setPttWaiting(null);
     runningB.dispose();
+    _stopSo2rAudio();
   }
 
   void _onSo2rSetting() {
@@ -59,9 +68,12 @@ mixin _So2r on _KeyingSurface {
     if (on == _so2rOn) return;
     if (!on) _stopRadioB();
     _withKeyInUseTidied(() => _so2rOn = on);
-    // Radio B is one of the radios kept connected, and nothing else would
-    // bring it up until the next launch or a link drop.
-    if (on) unawaited(_connectRadio2());
+    // Radio B and the SO2R switcher are kept connected, and nothing else
+    // would bring them up until the next launch or a link drop.
+    if (on) {
+      unawaited(_connectRadio2());
+      unawaited(_connectSo2rSwitch());
+    }
     notifyListeners();
   }
 
@@ -91,6 +103,8 @@ mixin _So2r on _KeyingSurface {
     _withKeyInUseTidied(() => _radio2 = uuid);
     await _save();
     notifyListeners();
+    // A Radio B is what the switcher switches to: the pick takes effect now.
+    unawaited(_connectSo2rSwitch());
   }
 
   /// Clears Radio B from inside another change of radio — radio1 taking its

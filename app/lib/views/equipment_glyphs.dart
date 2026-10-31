@@ -22,6 +22,7 @@ IconData iconForCategory(String? category) => switch (category) {
   kCategoryAntennaSwitch => MdiIcons.directionsFork,
   kCategorySdr => MdiIcons.waveform,
   kCategoryRotator => MdiIcons.compassOutline,
+  kCategorySo2rSwitch => MdiIcons.headphones,
   _ => MdiIcons.developerBoard,
 };
 

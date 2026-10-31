@@ -56,6 +56,7 @@ extension _EquipmentStore on CatService {
     }
     final storedRadio2 = stored['radio2'];
     if (storedRadio2 is String && _nodes.containsKey(storedRadio2) && storedRadio2 != _localRadio1) _radio2 = storedRadio2;
+    if (stored['so2rSwitch'] case final String pick when pick == so2rSwitchRadios || _nodes.containsKey(pick)) _so2rSwitch = pick;
     final designated = stored['designated'];
     if (designated is Map) {
       // Two shapes, told apart by the version the blob was written under

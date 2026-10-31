@@ -1241,7 +1241,10 @@ info area and entry row take 90% of the panel width — set A's against
 the leading edge, set B's against the trailing one — framed by a pill that
 runs their full height, with a rule from its top across to the far edge of
 the wipe and log buttons, ending in a round cap. The pill reads, bottom-aligned
-against the entry row, the radio's letter, its band, and Run or S&P. Each
+against the entry row, the radio's letter, its band, and Run or S&P — and,
+above the letter while an SO2R switcher switches, headphones on the pill of
+each radio the operator hears (`So2rSet.heard`; [cat.md](cat.md) § The SO2R
+switcher), the slot kept on the other so the letter never jumps. Each
 radio has its own colour — violet for A, gold for B, neither of them a
 colour the theme or editing already uses — and its pill and rule are filled
 solid, with a wash of it behind the set, while the keyboard is in that set. A tap on the Run / S&P

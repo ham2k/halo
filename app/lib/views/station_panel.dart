@@ -35,6 +35,7 @@ import 'cw_messages_dialog.dart';
 import 'voice_messages_dialog.dart';
 import 'equipment_report.dart';
 import 'keying_pickers.dart';
+import 'so2r_switch_dialog.dart';
 import 'station_rows.dart';
 import 'settings_view.dart' show settingsGroupRows;
 import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stationConfigurationSectionKey;
@@ -184,6 +185,7 @@ class StationPanel extends StatelessWidget {
         showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
         showRotator: services.settings.experimentEnabled('rotator') /* stored key, see experiments.yaml */,
+        showSo2rSwitch: services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -981,6 +983,7 @@ class StationPanel extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(rowInset.left, 0, rowInset.right, Space.md),
                   child: _phoneKeyingLine(context, radio: 'B'),
                 ),
+              if (so2r && _cat.radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: rowInset),
               if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: rowInset),
 
               // The same break between categories as before CAT Control Preferences.
@@ -1000,6 +1003,21 @@ class StationPanel extends StatelessWidget {
                     : FilledButton.icon(icon: const Icon(MdiIcons.plus, size: 18), label: Text(st.add), onPressed: () => _addEquipment(context)),
               ),
               if (compact) ...[
+                // The SO2R switcher, when it is a device of its own.
+                if (_cat.so2rSwitch case final uuid? when uuid != so2rSwitchRadios)
+                  if (_cat.nodeFor(uuid) case final node?)
+                    EquipmentTile(
+                      node: node,
+                      type: _cat.typeFor(node),
+                      state: _cat.stateFor(uuid),
+                      developerMode: services.settings.developerMode,
+                      displayName: _displayName(node),
+                      isMainVfo: false,
+                      onEdit: () => _editEquipment(context, node),
+                      onRemoveUnknown: () => _removeEquipment(context, node),
+                      onConnect: () => _cat.connect(uuid),
+                      onDisconnect: () => _cat.disconnect(uuid),
+                    ),
                 // And the keyer in use, when it is a device of its own: the
                 // row above is where it gets connected, so a radio keying
                 // through its own CAT session must not draw a second row.
@@ -1125,6 +1143,39 @@ class StationPanel extends StatelessWidget {
           ),
           const SizedBox(width: Space.xxl),
           RadioModeField(cat: _cat),
+        ],
+      ),
+    );
+  }
+
+  /// The SO2R switcher — what puts the two radios in the headphones — and
+  /// beside it the button to its settings, once one is picked
+  /// (docs/design/cat.md § The SO2R switcher).
+  Widget _so2rSwitchLine(BuildContext context, {required EdgeInsets inset}) {
+    final st = context.t.settings.station;
+    final radio = _cat.so2rAudioRadio;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: _keyingLine(
+        picker: DesignationDropdown(
+          key: ValueKey('so2rSwitch:${_cat.so2rSwitch}:${radio?.uuid}'),
+          label: st.so2rSwitch,
+          nodes: _cat.so2rSwitchNodes,
+          selected: _cat.so2rSwitch,
+          displayName: _displayName,
+          noneLabel: st.noneSelected,
+          extras: [if (radio != null) (value: so2rSwitchRadios, label: st.so2rSwitchBuiltIn(radio: _displayName(radio)))],
+          onChanged: (pick) => unawaited(_cat.setSo2rSwitch(pick)),
+        ),
+        controls: [
+          IconButton(
+            icon: Icon(MdiIcons.tune, semanticLabel: st.so2rSwitchSettings),
+            // Not for a pick the dropdown cannot show: the radios no longer
+            // slices of one, which reads as None.
+            onPressed: _cat.so2rSwitch == null || (_cat.so2rSwitch == so2rSwitchRadios && radio == null)
+                ? null
+                : () => showSo2rSwitchSettingsDialog(context, services.settings),
+          ),
         ],
       ),
     );

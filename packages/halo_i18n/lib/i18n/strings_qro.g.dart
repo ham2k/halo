@@ -2785,6 +2785,11 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get currentTransceivers => 'CURRENT TRANSCEIVERS';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 	@override String get so2rQueueMessages => 'MESSAGES QUEUED INSTEAD OF INTERRUPTING';
+	@override String get so2rSwitch => 'SO2R SWITCHER';
+	@override String so2rSwitchBuiltIn({required Object radio}) => 'BUILT INTO ${radio}';
+	@override String get so2rSwitchSettings => 'SO2R SWITCHER SETTINGS';
+	@override String get so2rStereo => 'STEREO: RADIO A LEFT, RADIO B RIGHT';
+	@override String get so2rListenWhileTransmitting => 'LISTEN TO THE OTHER RADIO WHILE TRANSMITTING';
 	@override String get noRadioBSelected => 'NO RADIO B SELECTED';
 	@override String get radioMode => 'RADIO MODE';
 	@override String get keyerNotSupported => 'NOT SUPPORTED BY CURRENT RADIO';
@@ -3202,6 +3207,7 @@ class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardS
 	@override String keyerMessage({required Object n}) => 'SEND MESSAGE ${n}';
 	@override String get keyboardMode => 'KEYBOARD MODE ON OR OFF';
 	@override String get ptt => 'PUSH TO TALK';
+	@override String get so2rStereo => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE';
 	@override String get wipe => 'CLEAR THE CONTACT BEING LOGGED';
 }
 
@@ -4408,6 +4414,10 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get gs232a => 'YAESU GS-232A ROTATOR INTERFACE';
 	@override String get pstRotator => 'PSTROTATOR (UDP CONTROL)';
 	@override String get rotctld => 'HAMLIB ROTCTLD';
+	@override String get otrsp => 'SO2R SWITCHER (OTRSP)';
+	@override String get rigSelectPro => 'DX ENGINEERING RIGSELECT PRO';
+	@override String get ycccSo2r => 'YCCC SO2R BOX';
+	@override String get so2rduino => 'SO2RDUINO';
 	@override String get rtlSdr => 'RTL-SDR';
 	@override String get nesdr => 'NOOELEC NESDR';
 	@override String get sdrplay => 'SDRPLAY RSP';
@@ -6444,6 +6454,10 @@ extension on TranslationsQro {
 			'settings.station.models.gs232a' => 'YAESU GS-232A ROTATOR INTERFACE',
 			'settings.station.models.pstRotator' => 'PSTROTATOR (UDP CONTROL)',
 			'settings.station.models.rotctld' => 'HAMLIB ROTCTLD',
+			'settings.station.models.otrsp' => 'SO2R SWITCHER (OTRSP)',
+			'settings.station.models.rigSelectPro' => 'DX ENGINEERING RIGSELECT PRO',
+			'settings.station.models.ycccSo2r' => 'YCCC SO2R BOX',
+			'settings.station.models.so2rduino' => 'SO2RDUINO',
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
@@ -6499,6 +6513,11 @@ extension on TranslationsQro {
 			'settings.station.currentTransceivers' => 'CURRENT TRANSCEIVERS',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'MESSAGES QUEUED INSTEAD OF INTERRUPTING',
+			'settings.station.so2rSwitch' => 'SO2R SWITCHER',
+			'settings.station.so2rSwitchBuiltIn' => ({required Object radio}) => 'BUILT INTO ${radio}',
+			'settings.station.so2rSwitchSettings' => 'SO2R SWITCHER SETTINGS',
+			'settings.station.so2rStereo' => 'STEREO: RADIO A LEFT, RADIO B RIGHT',
+			'settings.station.so2rListenWhileTransmitting' => 'LISTEN TO THE OTHER RADIO WHILE TRANSMITTING',
 			'settings.station.noRadioBSelected' => 'NO RADIO B SELECTED',
 			'settings.station.radioMode' => 'RADIO MODE',
 			'settings.station.keyerNotSupported' => 'NOT SUPPORTED BY CURRENT RADIO',
@@ -6578,6 +6597,8 @@ extension on TranslationsQro {
 			'settings.station.keyTypes.straight' => 'STRAIGHT KEY',
 			'settings.station.keyTypes.sideswiper' => 'SIDESWIPER',
 			'settings.station.keyTypes.bug' => 'BUG (MECHANICAL SEMI-AUTOMATIC)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyTypes.fullyAutomatic' => 'FULLY-AUTOMATIC KEYER',
 			'settings.station.keyTypes.singlePaddle' => 'SINGLE PADDLE',
 			'settings.station.keyTypes.dualPaddle' => 'DUAL PADDLE',
@@ -6587,8 +6608,6 @@ extension on TranslationsQro {
 			'settings.station.otherBrands' => 'OTHER BRANDS',
 			'settings.station.otherEquipment' => 'OTHER EQUIPMENT (ANTENNAS, KEYS, ETC)',
 			'settings.station.newAntenna' => 'NEW ANTENNA',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.newKey' => 'NEW KEY',
 			'settings.station.newKeyer' => 'WINKEYER (K1EL OR COMPATIBLE)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT KEYER IN ${radio}',
@@ -6922,6 +6941,7 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
+			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',
 			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',
 			'keyboardShortcuts.fixed.callsign' => 'TYPING CALLSIGNS',
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
@@ -7091,6 +7111,8 @@ extension on TranslationsQro {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} WAS NOT CONNECTED AUTOMATICALLY',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HALO STOPPED RESPONDING THE LAST TIME IT STARTED CONNECTING TO ${name}, SO IT LEFT IT ALONE THIS TIME RATHER THAN RISK DOING IT AGAIN. CHECK THAT THE RADIO IS SWITCHED ON AND ITS CABLE IS PLUGGED IN, THEN PRESS CONNECT ON IT IN SETTINGS.',
 			'syncAccount.anonymous' => ({required Object id}) => 'ANONYMOUS ACCOUNT (#${id})',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (PENDING CONFIRMATION)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (PENDING CONFIRMATION - #${id})',
 			'deepLink.needsAnOperation' => 'START AN OPERATION FIRST, THEN SEND THAT CONTACT AGAIN',
@@ -7101,8 +7123,6 @@ extension on TranslationsQro {
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'LINK ${device} TO THIS ACCOUNT?',

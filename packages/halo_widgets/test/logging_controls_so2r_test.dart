@@ -27,13 +27,27 @@ void main() {
     addTearDown(radioB.dispose);
   });
 
-  Widget twoSets({List<Qso> qsos = const [], LookupHooks lookups = const LookupHooks(), void Function(String radio)? onToggleRunning, String? transmitting}) {
+  Widget twoSets({
+    List<Qso> qsos = const [],
+    LookupHooks lookups = const LookupHooks(),
+    void Function(String radio)? onToggleRunning,
+    String? transmitting,
+    Set<String>? heard,
+    bool aboveLog = false,
+  }) {
     LoggingControls set(String radio, FakeVfoStore store) => LoggingControls(
       key: ValueKey('set-$radio'),
-      so2r: So2rSet(radio: radio, link: link, running: radio == 'A', onToggleRunning: () => onToggleRunning?.call(radio), transmitting: radio == transmitting),
+      so2r: So2rSet(
+        radio: radio,
+        link: link,
+        running: radio == 'A',
+        onToggleRunning: () => onToggleRunning?.call(radio),
+        transmitting: radio == transmitting,
+        heard: heard?.contains(radio),
+      ),
       log: LogHooks(operation: operation, qsosRepository: baseLog().qsosRepository, qsos: qsos),
       radio: RadioHookup(radioService: store, radioUpdates: store),
-      prefs: LoggingPreferences(keyboardAccessory: keyboardAccessory),
+      prefs: LoggingPreferences(keyboardAccessory: keyboardAccessory, aboveLog: aboveLog),
       lookups: lookups,
     );
     return MaterialApp(
@@ -145,6 +159,25 @@ void main() {
 
   // The trap: the pill shows the set with the keyboard, and the radio on the
   // air is often the OTHER one — a CQ running on A while the operator works B.
+  testWidgets('headphones on the pill of each radio heard, over the pill rather than in its lines', (t) async {
+    Finder pill(String radio) => find.byWidgetPredicate((w) => w is Semantics && w.properties.identifier == 'so2r.pill.$radio');
+    Finder headphones(String radio) => find.descendant(of: pill(radio), matching: find.byIcon(MdiIcons.headphones));
+    // The entry row above the log, so the pill's lines hang from its top:
+    // anything added to their column pushes them.
+    await t.pumpWidget(twoSets(aboveLog: true));
+    await t.pump();
+    final letter = t.getRect(find.descendant(of: pill('B'), matching: find.text('B')));
+    expect(headphones('A'), findsNothing, reason: 'no switcher, no headphones');
+
+    await t.pumpWidget(twoSets(heard: {'B'}, aboveLog: true));
+    await t.pump();
+    expect(headphones('A'), findsNothing);
+    expect(headphones('B'), findsOneWidget);
+    // A fourth line in the pill's column would push its lines, and in a
+    // short set overflow it: the pill is as tall as its set, not its content.
+    expect(t.getRect(find.descendant(of: pill('B'), matching: find.text('B'))), letter);
+  });
+
   testWidgets("the pill of the radio on the air is red, whichever set has the keyboard", (t) async {
     await t.pumpWidget(twoSets(transmitting: 'B'));
     await t.pump();

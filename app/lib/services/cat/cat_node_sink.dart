@@ -6,7 +6,7 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink, RotatorSink, TransmitAudioSink {
+class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink, RotatorSink, TransmitAudioSink, So2rSwitchSink {
   final EquipmentConnection connection;
   final double? Function() linkedVfo;
   final void Function(VfoReading) onReading;
@@ -29,6 +29,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
   final void Function(Passband?) onPassband;
   final void Function(RadioAntennas?) onAntennas;
   final void Function(RotatorPosition) onRotator;
+  final void Function(So2rAudio) onSo2rAudio;
   final void Function(List<int> bytes) onSend;
 
   _NodeSink({
@@ -55,6 +56,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
     required this.onPassband,
     required this.onAntennas,
     required this.onRotator,
+    required this.onSo2rAudio,
   });
 
   @override
@@ -131,4 +133,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
 
   @override
   void reportRotator(RotatorPosition position) => onRotator(position);
+
+  @override
+  void reportSo2rAudio(So2rAudio audio) => onSo2rAudio(audio);
 }

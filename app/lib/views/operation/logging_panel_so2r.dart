@@ -48,9 +48,9 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   void _publishDispatch() => widget.services.setCommandDispatchFor(widget.operation.uuid, _dispatchers[_so2r ? _so2rLink.active : 'A'] ?? _dispatchers['A']);
 
   /// What the sets' pills read beyond the set itself: each radio's Run /
-  /// S&P, and which radio is on the air.
+  /// S&P, which radio is on the air, and which the operator hears.
   late final _so2rTransmitting = _So2rTransmitting(widget.services.cat);
-  late final _so2rPills = Listenable.merge([widget.services.cat.enterSends, widget.services.cat.runningB, _so2rTransmitting]);
+  late final _so2rPills = Listenable.merge([widget.services.cat.enterSends, widget.services.cat.runningB, _so2rTransmitting, widget.services.cat.so2rAudio]);
 
   So2rSet _so2rSet(String radio) {
     final cat = widget.services.cat;
@@ -60,6 +60,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       running: cat.isRunning(radio),
       onToggleRunning: () => cat.setRunning(radio, !cat.isRunning(radio)),
       transmitting: radio == 'B' ? _so2rTransmitting.value.b : _so2rTransmitting.value.a,
+      heard: cat.so2rAudio.value?.hears(radio),
     );
   }
 

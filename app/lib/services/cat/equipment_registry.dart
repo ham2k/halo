@@ -573,6 +573,7 @@ const _defaultModels = [
   gs232aModel,
   pstRotatorModel,
   rotctldModel,
+  ...so2rSwitchModels,
   antennaModel,
   keyModel,
   winkeyerModel,

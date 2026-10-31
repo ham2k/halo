@@ -1157,6 +1157,17 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   bool get so2rQueueMessages => settingValue(radioGroup, 'so2rQueueMessages') == true;
   Future<void> setSo2rQueueMessages(bool queue) => setSettingValue(radioGroup, 'so2rQueueMessages', queue);
 
+  /// SO2R's switcher: both radios at once, A left and B right, rather than
+  /// the radio of the set the operator is in — docs/design/cat.md § The SO2R
+  /// switcher.
+  bool get so2rStereo => settingValue(radioGroup, 'so2rStereo') == true;
+  Future<void> setSo2rStereo(bool stereo) => setSettingValue(radioGroup, 'so2rStereo', stereo);
+
+  /// SO2R's switcher: whether the operator hears the other radio while one
+  /// transmits. On unless turned off.
+  bool get so2rListenWhileTransmitting => settingValue(radioGroup, 'so2rListenWhileTransmitting') != false;
+  Future<void> setSo2rListenWhileTransmitting(bool listen) => setSettingValue(radioGroup, 'so2rListenWhileTransmitting', listen);
+
   /// Smart VFO Snap's feel, as four numbers the operator can turn.
   ///
   /// The option lists live HERE rather than beside the settings fields, and

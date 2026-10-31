@@ -2243,6 +2243,10 @@
         "gs232a": "YAESU GS-232A ROTATOR INTERFACE",
         "pstRotator": "PSTROTATOR (UDP CONTROL)",
         "rotctld": "HAMLIB ROTCTLD",
+        "otrsp": "SO2R SWITCHER (OTRSP)",
+        "rigSelectPro": "DX ENGINEERING RIGSELECT PRO",
+        "ycccSo2r": "YCCC SO2R BOX",
+        "so2rduino": "SO2RDUINO",
         "rtlSdr": "RTL-SDR",
         "nesdr": "NOOELEC NESDR",
         "sdrplay": "SDRPLAY RSP"
@@ -2301,6 +2305,11 @@
       "currentTransceivers": "CURRENT TRANSCEIVERS",
       "so2rRadioName": "${radio}: ${name}",
       "so2rQueueMessages": "MESSAGES QUEUED INSTEAD OF INTERRUPTING",
+      "so2rSwitch": "SO2R SWITCHER",
+      "so2rSwitchBuiltIn(radio)": "BUILT INTO ${radio}",
+      "so2rSwitchSettings": "SO2R SWITCHER SETTINGS",
+      "so2rStereo": "STEREO: RADIO A LEFT, RADIO B RIGHT",
+      "so2rListenWhileTransmitting": "LISTEN TO THE OTHER RADIO WHILE TRANSMITTING",
       "noRadioBSelected": "NO RADIO B SELECTED",
       "radioMode": "RADIO MODE",
       "keyerNotSupported": "NOT SUPPORTED BY CURRENT RADIO",
@@ -2778,6 +2787,7 @@
       "keyerMessage": "SEND MESSAGE ${n}",
       "keyboardMode": "KEYBOARD MODE ON OR OFF",
       "ptt": "PUSH TO TALK",
+      "so2rStereo": "SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE",
       "wipe": "CLEAR THE CONTACT BEING LOGGED"
     },
     "fixed": {

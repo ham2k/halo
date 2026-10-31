@@ -80,6 +80,9 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     if (testerOverlayCovering.value) return false;
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     final services = widget.services;
+    // Not the keyer's: what the operator hears is the SO2R switcher's, and
+    // the key stays free while no switcher is switching.
+    if (keyBindings.value.claim(so2rStereoCommandId, event) != null && services.cat.toggleSo2rStereo()) return true;
     // A keypress by itself stops nothing: what a call typed over a CQ stops
     // is decided by the callsign field (LoggingSession.onCallTyped), which
     // hears every way a call is entered and not only a hardware key.

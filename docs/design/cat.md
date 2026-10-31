@@ -1176,6 +1176,68 @@ waiting there goes with it; a send waiting for its repeat ends when that repeat 
 of a radio's CW or voice drops what of it was waiting. Radio B going — changed, removed, or SO2R
 turned off — lets go of whatever radio A was holding for it.
 
+### The SO2R switcher
+
+Behind `so2r`, with a Radio B: what puts the two radios in the operator's headphones
+(`cat_so2r_audio.dart`). Audio only, for now — the box's transmit focus, band, mode and
+auxiliary outputs are left alone. Picked in Station Configuration under Radio B's lines, like the
+key in use: None, a switcher node (category `so2rSwitch`), or **Built into** the radio when both
+SO2R radios are slices of one (`so2rSwitchRadios`), with its settings — stereo, and listening
+while transmitting — in a dialog beside the pick (`so2r_switch_dialog.dart`). The pick is the station's, stored with the
+equipment as `so2rSwitch`, and gone with its node; a switcher node picked is kept connected, as
+the radios are — brought up when it is picked, when Radio B is, and when SO2R is turned on — and
+picking one connects it alone.
+
+**What the operator hears** is one rule (`wantedSo2rAudio`, `so2r_audio.dart`): the radio of the
+set they are in, in both ears; both radios in stereo — A left, B right — while
+`SettingsService.so2rStereo` is on; and, while exactly one radio is on the air
+(`isTransmitting`) and `so2rListenWhileTransmitting` is on (the default), the other radio —
+calling CQ on one radio is listening on the other. In stereo both are heard already, and only the
+focus moves. A `So2rAudio` carries a focus even in stereo, because OTRSP's `RX1S` and `RX2S` are
+one stereo and the radio named is what a box without stereo plays instead. Backslash toggles
+between both radios and the one in focus (`so2r.stereo`, rebindable in Keyboard Shortcuts), and is
+free while nothing is switching.
+
+**Told on a change, never on a timer.** The service sends only what differs from what that
+session was last told, and again to a session that is new — a reconnect. So a box the operator
+switches by hand is not switched back until what they should hear changes. What the picked box
+says it is set to (`So2rSwitchSink`) is what the SO2R pills show, with headphones on each radio heard
+([logging-fields.md](logging-fields.md) § SO2R); `CatService.so2rAudio` is null, and the pills
+show none, with nothing switching.
+
+**OTRSP** (`otrsp_driver.dart`; K1XM's spec, v0.9) is plain text ended by a bare CR, over the box's
+serial port (9600 prefilled) or TCP, which the spec allows since v0.9 and names no port for. On
+connect, `?NAME` and `?FW` name the box on its row and `ERX1` turns on its RX events, which answer
+at once with the current setting and then on every change, a front-panel switch included. A bare
+`?` every 10 s (`otrspPingInterval`) is answered with `?`: a box says nothing between changes,
+and the silence watchdog would otherwise mark a healthy one Not Responding. **RTS and DTR are held
+low on every OTRSP serial pairing**, an override rather than a default: OTRSP keys PTT on RTS and
+CW on DTR, so a line ticked high is a transmitter keyed for as long as the port is open. The
+catalogue has the generic entry and the boxes that say they speak it — DX Engineering's RigSelect
+Pro, the YCCC SO2R Box and SO2Rduino — each the generic serial pairing under its own name.
+Reverse stereo, set on a box by hand, reads as stereo.
+
+**A FlexRadio is its own switcher** when Radio A and Radio B are two different slices of it —
+the driver names the radio by its address and the slice as the session will read it
+(`so2rAudioReceiverWith`), and two nodes on one slice are not offered, since they would switch that slice against
+itself. Each slice's session switches its own audio (`So2rRadioAudioSession`,
+`flex_so2r_audio.dart`): the slice out of focus is muted (`audio_mute=1`) with its pan left alone,
+the one in focus centred and unmuted, and in stereo A is panned hard left and B hard right. Both
+slices or neither: with one slice's link down the other is given its own audio back, since one
+muted alone is nothing in the headphones.
+
+**Every field of a change is sent, never compared with the slice's status.** A radio that does
+not report its own audio back, or reports it late, would otherwise read as already unmuted and
+the unmute would never go — and a mute the operator set by hand would keep the radio in focus
+silent. Only a change sends: between two, a pan or mute the operator moves on the radio stays
+where they put it. What the operator had each slice at is taken from its status before the first
+switch and put back when the switching stops — the pick changing, Radio B changing, SO2R turned
+off, or the session closing. A session closing switched leaves it owed, by radio and slice, for
+the launch, with what it left the slice at: the next session on that slice puts it back only if
+the slice still reads that way, so a link that dropped mid-mute is restored, and a restore that
+landed is not replayed over what the operator has set since. A relaunch in between does leave
+the slice switched.
+
 ### A paired device's panel, over the peer link
 
 Peer device sync's ephemeral channel carries the VFO between paired devices

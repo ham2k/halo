@@ -51,6 +51,9 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Whether "Other Equipment" offers the rotators — behind `EXP ROTATOR`.
   final bool showRotator;
 
+  /// Whether "Other Equipment" offers the SO2R switchers — behind `EXP SO2R`.
+  final bool showSo2rSwitch;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const AddEquipmentDialog({
@@ -61,6 +64,7 @@ class AddEquipmentDialog extends StatefulWidget {
     required this.showKeyer,
     this.showSdr = false,
     this.showRotator = false,
+    this.showSo2rSwitch = false,
     required this.supportedVariants,
   });
 
@@ -249,6 +253,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     final catalogue = <String, List<_AddRow>>{};
     final switches = <_AddRow>[];
     final rotators = <_AddRow>[];
+    final so2rSwitches = <_AddRow>[];
     for (final model in widget.cat.registry.models) {
       if (model.hiddenFromCatalog) continue;
       final variants = widget.supportedVariants(model);
@@ -262,6 +267,9 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
       } else if (model.category == kCategoryRotator) {
         // Station plumbing, for the switches' reason.
         if (widget.showRotator) rotators.add(row);
+      } else if (model.category == kCategorySo2rSwitch) {
+        // Station plumbing, for the switches' reason.
+        if (widget.showSo2rSwitch) so2rSwitches.add(row);
       } else {
         catalogue.putIfAbsent(_shelfOf(model), () => []).add(row);
       }
@@ -276,6 +284,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     }
     switches.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     rotators.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    so2rSwitches.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
     final other = <_AddRow>[
       if (widget.showAntennaAndKey) ...[
@@ -296,6 +305,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
         ),
       ...switches,
       ...rotators,
+      ...so2rSwitches,
       if (widget.showSdr)
         for (final model in sdrModels)
           if (widget.supportedVariants(model) case final variants when variants.isNotEmpty) _AddRow.forModel(model, variants),

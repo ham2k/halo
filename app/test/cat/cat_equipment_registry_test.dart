@@ -309,6 +309,11 @@ void main() {
       'gs232a-tcp',
       'pstrotator-udp',
       'rotctld-tcp',
+      'otrsp-serial',
+      'otrsp-tcp',
+      'rigselect-pro-serial',
+      'yccc-so2r-serial',
+      'so2rduino-serial',
       'antenna-none',
       'key-none',
       'rtl-sdr-rtltcp',
@@ -873,7 +878,8 @@ void main() {
     // once the radio announces on its own (cat_icom_civ_test.dart).
     // The Winkeyer pushes too: status, echo and pot reports, as they happen.
     // An SDR streams IQ continuously and has no dial of its own to settle.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp'};
+    // An OTRSP box pushes its RX events, a front-panel switch included.
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'otrsp'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

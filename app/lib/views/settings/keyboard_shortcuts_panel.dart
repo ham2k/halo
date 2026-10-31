@@ -44,6 +44,7 @@ String keyCommandTitle(Translations t, String id) {
     'logView.find' => c.find,
     'keyer.keyboardMode' => c.keyboardMode,
     pttCommandId => c.ptt,
+    so2rStereoCommandId => c.so2rStereo,
     'logging.wipe' => c.wipe,
     _ => id,
   };
@@ -317,6 +318,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         final overrides = _service.overrides;
         final bindings = overrides.resolve();
         final keying = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+        final so2r = widget.services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
         // The search bar isn't a row, so it takes the rows' own content inset
         // explicitly, as Application Preferences' does.
         final rowInset = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
@@ -327,7 +329,14 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
           if (!_shown(title, detail, chords)) return null;
           final conflicts = [
             for (final chord in chords)
-              if (bindings.othersOn(chord, id: id) case final others when others.isNotEmpty)
+              // Not with a command the panel does not list: a conflict that
+              // cannot be seen cannot be cleared, and with SO2R off its key
+              // keys nothing.
+              if ([
+                    for (final other in bindings.othersOn(chord, id: id))
+                      if (so2r || other != so2rStereoCommandId) other,
+                  ]
+                  case final others when others.isNotEmpty)
                 t.conflict(keys: chord.label(), commands: others.map((o) => keyCommandTitle(context.t, o)).join(', ')),
           ];
           final changed = overrides.commands.containsKey(id);
@@ -363,7 +372,8 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
 
         List<Widget?> specRows(KeyCommandContext where) => [
           for (final spec in keyCommandSpecs)
-            if (spec.context == where) row(spec.id, keyCommandTitle(context.t, spec.id), detail: _contextLabel(context.t, spec.context)),
+            if (spec.context == where && (so2r || spec.id != so2rStereoCommandId))
+              row(spec.id, keyCommandTitle(context.t, spec.id), detail: _contextLabel(context.t, spec.context)),
         ];
 
         final textRows = [for (final text in overrides.text.keys) row(textCommandId(text), text, code: true)];

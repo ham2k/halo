@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Everything in the catalogue that is not a transceiver: antenna switches,
-// rotators, a plain antenna and key, and the WinKeyer.
+// rotators, SO2R switchers, a plain antenna and key, and the WinKeyer.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -13,6 +13,7 @@ import 'drivers/pstrotator_driver.dart';
 import 'drivers/rotctld_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/key_driver.dart';
+import 'drivers/otrsp_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
@@ -238,3 +239,91 @@ const winkeyerModel = EquipmentModel(
 );
 
 String _winkeyerModelName() => t.settings.station.models.winkeyer;
+
+/// An OTRSP box's serial port: the spec's 9600 as a prefill, and RTS and DTR
+/// held low whatever the operator ticks — OTRSP keys PTT on RTS and CW on
+/// DTR, so a line held high is a transmitter keyed for as long as the port
+/// is open.
+const _otrspSerialDefaults = {'baudRate': otrspBaudRate};
+const _otrspSerialOverrides = {serialRtsHighConfigKey: false, serialDtrHighConfigKey: false};
+
+/// Any SO2R switcher speaking OTRSP (docs/design/cat.md § The SO2R
+/// switcher), over its serial port or over TCP, which the spec allows since
+/// v0.9 and names no port for — a software box such as GhostBox, or a
+/// serial one behind a port server.
+const otrspModel = EquipmentModel(
+  key: 'otrsp',
+  category: kCategorySo2rSwitch,
+  name: _otrspName,
+  variants: [
+    EquipmentVariant(
+      key: 'otrsp-serial',
+      driver: OtrspDriver(),
+      transport: SerialTransport(),
+      defaultConfig: _otrspSerialDefaults,
+      overrides: _otrspSerialOverrides,
+    ),
+    // Its own key for the TCP port, for the GS-232A's reason.
+    EquipmentVariant(
+      key: 'otrsp-tcp',
+      driver: OtrspDriver(),
+      transport: TcpTransport(portConfigKey: 'tcpPort'),
+    ),
+  ],
+);
+
+String _otrspName() => t.settings.station.models.otrsp;
+
+/// The boxes that say they speak OTRSP, by name: each the generic entry's
+/// serial pairing under the name on its front panel.
+const so2rSwitchModels = [
+  otrspModel,
+  EquipmentModel(
+    key: 'rigselect-pro',
+    category: kCategorySo2rSwitch,
+    name: _rigSelectProName,
+    manufacturer: 'DX Engineering',
+    variants: [
+      EquipmentVariant(
+        key: 'rigselect-pro-serial',
+        driver: OtrspDriver(),
+        transport: SerialTransport(),
+        defaultConfig: _otrspSerialDefaults,
+        overrides: _otrspSerialOverrides,
+      ),
+    ],
+  ),
+  EquipmentModel(
+    key: 'yccc-so2r',
+    category: kCategorySo2rSwitch,
+    name: _ycccSo2rName,
+    manufacturer: 'YCCC',
+    variants: [
+      EquipmentVariant(
+        key: 'yccc-so2r-serial',
+        driver: OtrspDriver(),
+        transport: SerialTransport(),
+        defaultConfig: _otrspSerialDefaults,
+        overrides: _otrspSerialOverrides,
+      ),
+    ],
+  ),
+  EquipmentModel(
+    key: 'so2rduino',
+    category: kCategorySo2rSwitch,
+    name: _so2rduinoName,
+    variants: [
+      EquipmentVariant(
+        key: 'so2rduino-serial',
+        driver: OtrspDriver(),
+        transport: SerialTransport(),
+        defaultConfig: _otrspSerialDefaults,
+        overrides: _otrspSerialOverrides,
+      ),
+    ],
+  ),
+];
+
+String _rigSelectProName() => t.settings.station.models.rigSelectPro;
+String _ycccSo2rName() => t.settings.station.models.ycccSo2r;
+String _so2rduinoName() => t.settings.station.models.so2rduino;
