@@ -102,6 +102,37 @@ void main() {
   Future<Map<String, ScoringResume>> pass(Operation operation) async =>
       scoring.candidateResumesFor(operation, await qsos.forOperation(operation.uuid), const [_sota]);
 
+  test('a chasing checkpoint folds only the station and period the view supplies', () async {
+    final chasing = Operation(uuid: '', data: const {'stationCall': 'N0DEV'});
+    await log(chasing, 0);
+    final inPeriod = await log(chasing, 1);
+
+    final first = await scoring.candidateResumesFor(chasing, [inPeriod], const [_sota]);
+    expect(first['sota']?.checkpoints['sota']?.sheet, {'folded': 1}, reason: 'a stand-in operation has no stored operation to reload');
+    final args = extensions.calls.single.args;
+    expect([for (final q in (args['qsos'] as List).cast<Map>()) q['uuid']], [inPeriod.uuid], reason: 'the loose bucket also holds contacts outside this view');
+    expect(args.containsKey('qsoUuids'), isFalse, reason: 'the runtime cannot load contacts through an empty operation ID');
+
+    await scoring.candidateResumesFor(chasing, [inPeriod], const [_sota]);
+    expect(extensions.calls, hasLength(1), reason: 'a spots refresh reuses the filtered checkpoint');
+
+    final next = await log(chasing, 2);
+    final appended = await scoring.candidateResumesFor(chasing, [inPeriod, next], const [_sota]);
+    expect(appended['sota']?.checkpoints['sota']?.sheet, {'folded': 2});
+    expect([for (final q in (extensions.calls.last.args['qsos'] as List).cast<Map>()) q['uuid']], [next.uuid], reason: 'a newly logged contact replays once');
+
+    final narrowed = await scoring.candidateResumesFor(chasing, [next], const [_sota]);
+    expect(narrowed['sota']?.checkpoints['sota']?.sheet, {'folded': 1}, reason: 'switching station or period must discard contacts no longer shown');
+    expect(extensions.calls.last.args.containsKey('resumeFrom'), isFalse, reason: 'a checkpoint cannot un-fold a contact');
+
+    final deleted = Qso(uuid: next.uuid, operationUuid: '', data: next.data, deleted: true);
+    final withDeleted = await scoring.candidateResumesFor(chasing, [inPeriod, deleted], const [_sota]);
+    expect(withDeleted['sota']?.checkpoints['sota']?.sheet, {'folded': 1}, reason: 'Show deleted QSOs must not count removed contacts as worked');
+    expect([for (final q in (extensions.calls.last.args['qsos'] as List).cast<Map>()) q['uuid']], [inPeriod.uuid]);
+
+    expect(await scoring.candidateResumesFor(chasing, const [], const [_sota]), isEmpty, reason: 'an empty period must not keep the old worked stations');
+  });
+
   test('a refresh over an unchanged log folds nothing', () async {
     final operation = await operationWith(3);
 
