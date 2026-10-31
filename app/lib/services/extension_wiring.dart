@@ -31,6 +31,7 @@ void wireExtensions(HaLoServices services) {
   extensions.settings = services.settings;
   extensions.lookups = services.lookups;
   extensions.statusBar = services.statusBar;
+  extensions.fyi = services.fyi;
   extensions.operations = services.operations;
   extensions.qsos = services.qsos;
   extensions.location = services.location;

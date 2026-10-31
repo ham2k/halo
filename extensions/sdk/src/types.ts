@@ -3285,6 +3285,46 @@ export interface StatusBarNoticeParams {
   actions?: NoticeAction[]
 }
 
+/// Where a message goes on the FYI line, the most severe first: alerts, then
+/// what is under way, then warnings, then information. `operational` is for
+/// something going on right now, and shows before every alert but a
+/// high-priority one.
+export type FyiCategory = "alert" | "warning" | "operational" | "info"
+
+/// How a message ranks among its category's. A high-priority alert is drawn
+/// as a filled pill.
+export type FyiPriority = "high" | "normal" | "low"
+
+/// A message for the FYI line under the call info, where the app's own
+/// components leave a glance's worth of news for the operator (`host.fyi`).
+/// The operator may dismiss any of them: a tap on one shown in full runs its
+/// `action` and puts it away, and the same key posted again within three
+/// minutes stays down unless it comes back more severe.
+export interface FyiMessageParams {
+  /// Namespaced to this extension; a later post replaces the message under it.
+  key: string
+  category: FyiCategory
+  /// `normal` when omitted.
+  priority?: FyiPriority
+  /// A Material Design Icons name.
+  icon: string
+  /// `#RRGGBB` or `#AARRGGBB`; the category's colour when omitted.
+  iconColor?: string
+  /// One line of inline markdown — emphasis, code, a link — of at most 256
+  /// characters. The line shows what fits and opens the rest on a tap.
+  text: string
+  /// `#RRGGBB` or `#AARRGGBB`; the default when omitted.
+  textColor?: string
+  /// `A` or `B` for a message about one radio, shown in that radio's set
+  /// alone; omit for one about the station, shown in both.
+  radio?: "A" | "B"
+  /// Taken down on its own this long after the post, 1 to 86,400; omit for
+  /// one that stays until cleared or dismissed.
+  expiresInSeconds?: number
+  /// Run by the tap that puts the message away; its `label` is not shown.
+  action?: NoticeAction
+}
+
 /// What a panel asks to be re-rendered on. The host debounces and only
 /// renders panels that are actually on screen, but the trigger list is what
 /// keeps a panel out of the per-keystroke path entirely: without one, every

@@ -14,6 +14,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/navigation.dart';
+import '../fyi_service.dart';
 import '../link_opener.dart';
 import '../status_bar_service.dart';
 
@@ -21,8 +22,8 @@ import '../status_bar_service.dart';
 /// declarative `account` action. Supplied by the app shell.
 typedef OpenAccount = void Function(String accountKey, {String? subkey});
 
-/// Clears what the extensions in [dying] left in the footer, as their runtime
-/// generation goes down.
+/// Clears what the extensions in [dying] left in the footer and on the FYI
+/// line, as their runtime generation goes down.
 ///
 /// A hook that is about to stop existing cannot finish what it started: an
 /// item it posted at 40% has nobody left to advance or clear it, and the
@@ -39,10 +40,10 @@ typedef OpenAccount = void Function(String accountKey, {String? subkey});
 ///
 /// Only what an extension posted through its own namespace. A data file's
 /// progress is the app's (`dataFile:…`) and outlives any one generation.
-void clearGenerationStatus({required StatusBarService? statusBar, required Iterable<String> dying, required Set<String> returning}) {
-  if (statusBar == null) return;
+void clearGenerationStatus({required StatusBarService? statusBar, required FyiService? fyi, required Iterable<String> dying, required Set<String> returning}) {
   for (final key in dying) {
-    statusBar.clearNamespace(key, notices: !returning.contains(key));
+    statusBar?.clearNamespace(key, notices: !returning.contains(key));
+    fyi?.clearExtension(key);
   }
 }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart' show parseExtensionColor;
 
 import '../../../services/panel_content_budgets.dart';
 import '../panel_environment.dart';
@@ -727,14 +728,14 @@ class SceneNumber {
   double? resolve(Map<String, double> values) => literal ?? values[value]?.clamp(min, max).toDouble();
 }
 
-/// `#RRGGBB`, or `#AARRGGBB` for a color with its own transparency.
+/// `#RRGGBB`, or `#AARRGGBB` for a color with its own transparency
+/// ([parseExtensionColor]).
 Color? _color(Map<dynamic, dynamic> json, String key) {
   final raw = json[key];
   if (raw == null) return null;
-  final match = raw is String ? RegExp(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$').firstMatch(raw) : null;
-  if (match == null) throw FormatException('Invalid scene color: $key');
-  final hex = match[1]!;
-  return Color(int.parse(hex.length == 6 ? 'FF$hex' : hex, radix: 16));
+  final color = raw is String ? parseExtensionColor(raw) : null;
+  if (color == null) throw FormatException('Invalid scene color: $key');
+  return color;
 }
 
 /// How a line or an area is drawn on one part of a `spectrum` control: [color]

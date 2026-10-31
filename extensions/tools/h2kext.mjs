@@ -54,8 +54,9 @@ import yazl from "yazl"
 /// the radio's dial to a scene's live `radio.` values — frequency, passband,
 /// power, PTT, connection, and the words `radio.mode`, `radio.tuner` and
 /// `radio.status` — `when` on layers and controls, and the `radio` panel
-/// trigger.
-export const H2KEXT_API_VERSION = 13
+/// trigger; 14 adds `host.fyi`, messages on the FYI line under the call
+/// info.
+export const H2KEXT_API_VERSION = 14
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -185,6 +186,7 @@ SHARED_MODULES_BY_API[10] = SHARED_MODULES_BY_API[9]
 SHARED_MODULES_BY_API[11] = SHARED_MODULES_BY_API[10]
 SHARED_MODULES_BY_API[12] = SHARED_MODULES_BY_API[11]
 SHARED_MODULES_BY_API[13] = SHARED_MODULES_BY_API[12]
+SHARED_MODULES_BY_API[14] = SHARED_MODULES_BY_API[13]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

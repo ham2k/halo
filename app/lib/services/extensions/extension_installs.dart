@@ -49,6 +49,7 @@ mixin _ExtensionInstalls {
   ExtensionHost? get _host;
   SettingsService? get settings;
   StatusBarService? get statusBar;
+  FyiService? get fyi;
   void _dropHeldFor(Iterable<String> keys);
   CatalogService? get catalog;
   ValueNotifier<int> get runtimeGeneration;
@@ -302,6 +303,7 @@ mixin _ExtensionInstalls {
     await _leaveShippedSwitchedOff(key);
     await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
     statusBar?.clearNamespace(key);
+    fyi?.clearExtension(key);
   }
 
   /// Records [key] switched off when it is a bundle the app pre-loads or a
@@ -470,6 +472,7 @@ mixin _ExtensionInstalls {
     // gone — a progress bar it left behind would sit there for the session.
     _dropHeldFor([key]);
     statusBar?.clearNamespace(key);
+    fyi?.clearExtension(key);
     await host.reloadBundle(
       ExtensionBundle(key: key, source: source, api: info.runtimeApi),
       domains: info.domains,

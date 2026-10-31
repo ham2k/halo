@@ -58,18 +58,24 @@ IconData resolveIconName(String? name, {IconData fallback = MdiIcons.puzzle}) {
   return IconData(codepoint, fontFamily: 'MaterialDesignIcons');
 }
 
-/// Resolves an extension-provided accent color string (a `'#RRGGBB'` hex
-/// value, e.g. `'#068541'`) to a [Color]. Returns null for a missing or
-/// malformed value, so an extension typo just means no accent rather than
-/// a crash.
-final _hexColorPattern = RegExp(r'^#([0-9A-Fa-f]{6})$');
-
-Color? resolveExtensionColor(String? hex) {
-  if (hex == null) return null;
-  final match = _hexColorPattern.firstMatch(hex);
+/// A colour as an extension writes one — `#RRGGBB`, or `#AARRGGBB` for one
+/// with its own transparency — in a scene's layers and a message on the FYI
+/// line alike. Null for anything else, for the caller to refuse as its
+/// surface does; the one parser, so the notation cannot drift between
+/// surfaces.
+Color? parseExtensionColor(String raw) {
+  final match = _extensionColorPattern.firstMatch(raw);
   if (match == null) return null;
-  return Color(0xFF000000 | int.parse(match.group(1)!, radix: 16));
+  final hex = match[1]!;
+  return Color(int.parse(hex.length == 6 ? 'FF$hex' : hex, radix: 16));
 }
+
+final _extensionColorPattern = RegExp(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$');
+
+/// Resolves an extension's accent colour — `#RRGGBB` only; a tile has no
+/// transparency of its own — to a [Color]. Null for a missing or malformed
+/// value, so an extension typo just means no accent rather than a crash.
+Color? resolveExtensionColor(String? hex) => hex == null || hex.length != 7 ? null : parseExtensionColor(hex);
 
 /// The tile colour for an extension whose manifest names no accent — the same
 /// neutral the catalog site falls back to (`web/components/ui.tsx`).

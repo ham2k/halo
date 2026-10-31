@@ -5,7 +5,7 @@
 // (`host.*` in the SDK), answered against the service's own collaborators.
 //
 // What an extension may put on the app's own surfaces — its dialogs, through
-// extension_dialog_gate.dart, and its footer, here — is budgeted the way the
+// extension_dialog_gate.dart, and its footer and its FYI line, here — is budgeted the way the
 // host budgets its calls (halo_extension_host's host_budgets.dart): refused at
 // the call that would exceed it, with the budget named.
 
@@ -47,6 +47,8 @@ class _ExtensionHostCalls {
       'statusBarClear' => _statusBarClear(params),
       'statusBarShowNotice' => _statusBarShowNotice(params),
       'statusBarDismissNotice' => _statusBarDismissNotice(params),
+      'fyiPost' => _fyiPost(params),
+      'fyiClear' => _fyiClear(params),
       _ => throw UnimplementedError('Host call method $method not implemented'),
     };
   }
@@ -618,7 +620,7 @@ class _ExtensionHostCalls {
   /// writes, so one held for the flush never lands over a newer one.
   void writeResultMessage(String ns, {String? icon, String? title, required String text}) {
     final key = resultMessageKey(ns);
-    _statusBarWrite(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
+    _statusBarWrites.write(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
   }
 
   /// What one extension may put in the footer: at most this many keys at
@@ -639,17 +641,14 @@ class _ExtensionHostCalls {
 
   final Map<String, RateWindow> _noticesBy = {};
 
-  /// Each extension's writes held for its next flush, by key — present, empty
-  /// or not, while a flush is scheduled.
-  final Map<String, Map<String, void Function()>> _statusBarHeld = {};
-  final Map<String, Timer> _statusBarFlush = {};
+  final _statusBarWrites = _HeldWrites(statusBarCoalesce);
 
   Future<dynamic> _statusBarSetMessage(Map<String, dynamic> params) async {
     final ns = params['ns'] as String, key = _namespacedKey(params);
     _statusBarBounded(params, textChars: statusBarMaxTextChars);
     _statusBarAdmitKey(ns, key);
     final icon = params['icon'] as String?, title = params['title'] as String?, text = params['text'] as String?;
-    _statusBarWrite(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
+    _statusBarWrites.write(ns, key, () => _service.statusBar?.setMessage(key: key, icon: icon, title: title, text: text));
     return null;
   }
 
@@ -658,14 +657,14 @@ class _ExtensionHostCalls {
     _statusBarBounded(params, textChars: statusBarMaxTextChars);
     _statusBarAdmitKey(ns, key);
     final icon = params['icon'] as String?, title = params['title'] as String?, text = params['text'] as String?, value = (params['value'] as num?)?.toDouble();
-    _statusBarWrite(ns, key, () => _service.statusBar?.setProgress(key: key, icon: icon, title: title, text: text, value: value));
+    _statusBarWrites.write(ns, key, () => _service.statusBar?.setProgress(key: key, icon: icon, title: title, text: text, value: value));
     return null;
   }
 
   Future<dynamic> _statusBarClear(Map<String, dynamic> params) async {
     final key = _namespacedKey(params);
     // A write held for the flush would bring the item back.
-    _statusBarHeld[params['ns'] as String]?.remove(key);
+    _statusBarWrites.forget(params['ns'] as String, key);
     _service.statusBar?.clear(key);
     return null;
   }
@@ -695,11 +694,12 @@ class _ExtensionHostCalls {
 
   /// Every string [params] carries, its actions' included, at most
   /// [statusBarMaxTextChars] long — `text` [textChars]: a notice's markdown,
-  /// and its dialog actions', may run longer than a footer line.
-  void _statusBarBounded(Map<String, dynamic> params, {required int textChars}) {
+  /// and its dialog actions', may run longer than a footer line, and an FYI
+  /// message's must stay shorter than one. [surface] names the refuser.
+  void _statusBarBounded(Map<String, dynamic> params, {required int textChars, String surface = 'statusBar'}) {
     void check(String field, Object? value) {
       final max = field == 'text' ? textChars : statusBarMaxTextChars;
-      if (value is String && value.length > max) throw ExtensionHostException("statusBar refused: '$field' is ${value.length} characters, more than $max");
+      if (value is String && value.length > max) throw ExtensionHostException("$surface refused: '$field' is ${value.length} characters, more than $max");
       if (value is Map) {
         for (final MapEntry(:key, :value) in value.entries) {
           check('$key', value);
@@ -727,7 +727,7 @@ class _ExtensionHostCalls {
         for (final notice in statusBar.activeNotices)
           if (notice.key.startsWith(prefix)) notice.key,
       ],
-      ...?_statusBarHeld[ns]?.keys,
+      ..._statusBarWrites.heldKeys(ns),
     };
   }
 
@@ -739,42 +739,118 @@ class _ExtensionHostCalls {
     }
   }
 
-  /// Lands [write] now, or holds it as the latest under [key] for the flush
-  /// [statusBarCoalesce] after [ns]'s last landing. [write] reads nothing of
-  /// the call that asked for it: a malformed call fails at the call, where
-  /// its params are read, not in a flush timer nobody awaits.
-  void _statusBarWrite(String ns, String key, void Function() write) {
-    final held = _statusBarHeld[ns];
-    if (held != null) {
-      held[key] = write;
-      return;
-    }
-    write();
-    _statusBarHeld[ns] = {};
-    _statusBarFlush[ns] = Timer(statusBarCoalesce, () => _statusBarFlushHeld(ns));
-  }
-
-  /// Lands what [ns] held, and holds the span open after a flush that landed
-  /// anything: a storm lands once a span, not twice at a span's edges.
-  void _statusBarFlushHeld(String ns) {
-    final held = _statusBarHeld.remove(ns);
-    _statusBarFlush.remove(ns);
-    if (held == null || held.isEmpty) return;
-    for (final write in held.values) {
-      write();
-    }
-    _statusBarHeld[ns] = {};
-    _statusBarFlush[ns] = Timer(statusBarCoalesce, () => _statusBarFlushHeld(ns));
-  }
-
   /// Forgets the writes held for [namespaces], whose extensions are being
   /// replaced: landed after the restart's sweep, one would put the old
-  /// generation's progress bar back with nobody to finish it.
-  void dropStatusBarHeld(Iterable<String> namespaces) {
-    for (final ns in namespaces) {
-      _statusBarHeld.remove(ns);
-      _statusBarFlush.remove(ns)?.cancel();
+  /// generation's progress bar or message back with nobody to finish it.
+  void dropHeld(Iterable<String> namespaces) {
+    _statusBarWrites.drop(namespaces);
+    _fyiWrites.drop(namespaces);
+  }
+
+  // --- The FYI line (docs/design/logging-fields.md § The FYI area) ---
+
+  /// What one extension may put on the FYI line: at most [fyiMaxKeys]
+  /// messages at once, `text` one line of at most [fyiMaxTextChars], every
+  /// other string — the action's included — [statusBarMaxTextChars], an
+  /// expiry of at most [fyiMaxExpiry]. The line is shared with the app's own
+  /// posters and has room for a few words each; past these an extension
+  /// would crowd the keyer line and the No Band pill out. Its posts reach the
+  /// line as the footer's writes do, the latest under each key once a
+  /// [fyiCoalesce]: a meter may post every reading, and the line, read under
+  /// the call, changes no faster than once a second for any one extension.
+  /// A clear lands at once — a message never outlives its poster taking it
+  /// down.
+  static const fyiMaxKeys = 4, fyiMaxTextChars = 256, fyiMaxExpiry = Duration(days: 1);
+  static const fyiCoalesce = Duration(seconds: 1);
+
+  /// What ends a line: a newline, a carriage return, or Unicode's line and
+  /// paragraph separators, which a check for `\n` alone lets through.
+  static final _lineBreak = RegExp(r'[\n\r\u2028\u2029]');
+
+  final _fyiWrites = _HeldWrites(fyiCoalesce);
+
+  Future<dynamic> _fyiPost(Map<String, dynamic> params) async {
+    final ns = params['ns'] as String, key = FyiService.extensionKey(ns, params['key'] as String);
+    _statusBarBounded({...params}..remove('action'), textChars: fyiMaxTextChars, surface: 'fyi');
+    if (params['action'] case final Map<dynamic, dynamic> action) {
+      _statusBarBounded(action.cast<String, dynamic>(), textChars: statusBarMaxTextChars, surface: 'fyi');
     }
+    // Read whole before the budget is consulted: a malformed post from an
+    // extension at its cap is refused for what is wrong with it, not for the cap.
+    final message = _fyiMessage(key, params);
+    final held = _fyiKeysOf(ns);
+    if (!held.contains(key) && held.length >= fyiMaxKeys) {
+      throw ExtensionHostException("fyi refused: extension '$ns' already holds $fyiMaxKeys messages on the FYI line");
+    }
+    _fyiWrites.write(ns, key, () => _service.fyi?.post(message));
+    return null;
+  }
+
+  Future<dynamic> _fyiClear(Map<String, dynamic> params) async {
+    final ns = params['ns'] as String, key = FyiService.extensionKey(ns, params['key'] as String);
+    // A post held for the flush would bring the message back.
+    _fyiWrites.forget(ns, key);
+    _service.fyi?.clear(key);
+    return null;
+  }
+
+  /// The keys [ns] holds on the line — its messages and the posts held for
+  /// its next flush — read from the area itself, so one that expired, or
+  /// that the operator dismissed, is counted gone.
+  Set<String> _fyiKeysOf(String ns) {
+    final prefix = FyiService.extensionPrefix(ns), fyi = _service.fyi;
+    return {
+      if (fyi != null)
+        for (final message in fyi.messages)
+          if (message.key.startsWith(prefix)) message.key,
+      ..._fyiWrites.heldKeys(ns),
+    };
+  }
+
+  /// The message a `fyiPost` call describes, every field read here, at the
+  /// call. Dismissible whatever the call says: the operator has the last
+  /// word over an extension's message, and the area's cooldown keeps a
+  /// re-post from nagging.
+  FyiMessage _fyiMessage(String key, Map<String, dynamic> params) {
+    final category = FyiCategory.values.asNameMap()[params['category']];
+    if (category == null) throw ExtensionHostException("fyi refused: 'category' must be alert, warning, operational or info");
+    final priority = params['priority'] == null ? FyiPriority.normal : FyiPriority.values.asNameMap()[params['priority']];
+    if (priority == null) throw ExtensionHostException("fyi refused: 'priority' must be high, normal or low");
+    final text = params['text'] as String;
+    if (text.contains(_lineBreak)) throw ExtensionHostException("fyi refused: 'text' is one line");
+    final radio = params['radio'] as String?;
+    if (radio != null && radio != 'A' && radio != 'B') throw ExtensionHostException("fyi refused: 'radio' must be A or B");
+    final expiresInSeconds = params['expiresInSeconds'] as num?;
+    if (expiresInSeconds != null && (expiresInSeconds < 1 || expiresInSeconds > fyiMaxExpiry.inSeconds)) {
+      throw ExtensionHostException("fyi refused: 'expiresInSeconds' must be 1 to ${fyiMaxExpiry.inSeconds}");
+    }
+    final action = params['action'];
+    final onTap = action == null
+        ? null
+        : declarativeActionHandler((action as Map<dynamic, dynamic>).cast<String, dynamic>(), onOpenAccount: _service.onOpenAccount);
+    if (action != null && onTap == null) throw ExtensionHostException("fyi refused: 'action' is not a link, dialog or account action");
+    return FyiMessage(
+      key: key,
+      category: category,
+      priority: priority,
+      icon: resolveIconName(params['icon'] as String?),
+      iconColor: _fyiColor(params, 'iconColor'),
+      text: text,
+      textColor: _fyiColor(params, 'textColor'),
+      radio: radio,
+      onTap: onTap,
+      expiresIn: expiresInSeconds == null ? null : Duration(seconds: expiresInSeconds.toInt()),
+    );
+  }
+
+  /// A colour in the notation extensions write everywhere ([parseExtensionColor]),
+  /// refused as the call's other fields are.
+  Color? _fyiColor(Map<String, dynamic> params, String field) {
+    final raw = params[field];
+    if (raw == null) return null;
+    final color = raw is String ? parseExtensionColor(raw) : null;
+    if (color == null) throw ExtensionHostException("fyi refused: '$field' is not a #RRGGBB or #AARRGGBB colour");
+    return color;
   }
 
   /// Extension-supplied keys are prefixed with the calling extension's key so
@@ -784,5 +860,59 @@ class _ExtensionHostCalls {
     final ns = params['ns'] as String;
     final key = params['key'] as String;
     return '$ns:$key';
+  }
+}
+
+/// One extension's writes to a surface, coalesced: a write lands at once
+/// when none of that extension's landed within [span], else the latest under
+/// each key lands when the span ends. A write reads nothing of the call that
+/// asked for it: a malformed call fails at the call, where its params are
+/// read, not in a flush timer nobody awaits.
+class _HeldWrites {
+  _HeldWrites(this.span);
+
+  final Duration span;
+
+  /// Each extension's writes held for its next flush, by key — present, empty
+  /// or not, while a flush is scheduled.
+  final Map<String, Map<String, void Function()>> _held = {};
+  final Map<String, Timer> _flush = {};
+
+  /// The keys [ns] has writes held under.
+  Iterable<String> heldKeys(String ns) => _held[ns]?.keys ?? const [];
+
+  void write(String ns, String key, void Function() write) {
+    final held = _held[ns];
+    if (held != null) {
+      held[key] = write;
+      return;
+    }
+    write();
+    _held[ns] = {};
+    _flush[ns] = Timer(span, () => _flushHeld(ns));
+  }
+
+  /// Lands what [ns] held, and holds the span open after a flush that landed
+  /// anything: a storm lands once a span, not twice at a span's edges.
+  void _flushHeld(String ns) {
+    final held = _held.remove(ns);
+    _flush.remove(ns);
+    if (held == null || held.isEmpty) return;
+    for (final write in held.values) {
+      write();
+    }
+    _held[ns] = {};
+    _flush[ns] = Timer(span, () => _flushHeld(ns));
+  }
+
+  /// Forgets the write held under [key], which [ns] has just taken down.
+  void forget(String ns, String key) => _held[ns]?.remove(key);
+
+  /// Forgets everything held for [namespaces], whose extensions are gone.
+  void drop(Iterable<String> namespaces) {
+    for (final ns in namespaces) {
+      _held.remove(ns);
+      _flush.remove(ns)?.cancel();
+    }
   }
 }

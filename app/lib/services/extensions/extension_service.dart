@@ -21,6 +21,7 @@ import 'package:halo_core/halo_core.dart';
 import 'catalog_service.dart';
 import '../connectivity_service.dart';
 import '../error_reporting_service.dart';
+import '../fyi_service.dart';
 import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
@@ -160,6 +161,8 @@ class ExtensionService
   LookupRepository? lookups;
   @override
   StatusBarService? statusBar;
+  @override
+  FyiService? fyi;
 
   /// Back the `getOperation`/`getQsos` host calls (HookContext.getOperation/
   /// getQsos in the SDK). Optional like the other service references — a
@@ -814,6 +817,7 @@ class ExtensionService
         _dropHeldFor({...dying, _ExtensionHostCalls.unattributedNamespace});
         clearGenerationStatus(
           statusBar: statusBar,
+          fyi: fyi,
           dying: dying,
           returning: {
             for (final info in availableExtensions)
@@ -845,12 +849,13 @@ class ExtensionService
   late final _hostCalls = _ExtensionHostCalls(this);
 
   /// Forgets what the bridge holds for [keys], whose extensions are being
-  /// replaced — the footer writes held for a flush, the dialogs waiting their
-  /// turn — before their namespaces are swept: landed or opened afterwards,
-  /// each would be the old generation's, with nobody left to finish it.
+  /// replaced — the footer and FYI writes held for a flush, the dialogs
+  /// waiting their turn — before their namespaces are swept: landed or opened
+  /// afterwards, each would be the old generation's, with nobody left to
+  /// finish it.
   @override
   void _dropHeldFor(Iterable<String> keys) {
-    _hostCalls.dropStatusBarHeld(keys);
+    _hostCalls.dropHeld(keys);
     dialogs.drop(keys);
   }
 

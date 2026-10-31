@@ -24,6 +24,7 @@ import type {
   StatusBarMessageParams,
   StatusBarProgressParams,
   StatusBarNoticeParams,
+  FyiMessageParams,
   VersionInfo,
   PanelRadioState,
   PanelRadioSpectrumSet,
@@ -52,7 +53,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 13
+export const API_VERSION = 14
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -575,6 +576,22 @@ export const host = {
     /// Dismisses the active notice under `key`, if any.
     async dismissNotice(key: string): Promise<void> {
       await hostCallFn()("statusBarDismissNotice", { key, ns: currentExtensionKey })
+    },
+  },
+
+  fyi: {
+    /// A message on the FYI line under the call info, replacing the one under
+    /// the same `key`, which is namespaced to this extension. You hold at most
+    /// four messages there; `text` is one line of at most 256 characters;
+    /// posts reach the line at most once a second, the latest under each key
+    /// winning. The operator may dismiss any of them (AGENTS.md).
+    async post(params: FyiMessageParams): Promise<void> {
+      await hostCallFn()("fyiPost", { ...params, ns: currentExtensionKey })
+    },
+
+    /// Takes down the message under `key`, if any.
+    async clear(key: string): Promise<void> {
+      await hostCallFn()("fyiClear", { key, ns: currentExtensionKey })
     },
   },
 

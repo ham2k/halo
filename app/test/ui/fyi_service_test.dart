@@ -176,4 +176,24 @@ void main() {
       });
     });
   });
+
+  test("an extension's messages go as a whole, as a clear and not a dismissal, and never the app's own", () {
+    fakeAsync((async) {
+      fyi.post(message(FyiService.extensionKey('band', 'kp'), expiresIn: const Duration(minutes: 1)));
+      fyi.post(message(FyiService.extensionKey('band', 'wx')));
+      fyi.post(message(FyiService.extensionKey('bandit', 'one')));
+      fyi.post(message('band:A'));
+      notified = 0;
+      fyi.clearExtension('band');
+      expect(
+        fyi.messages.map((m) => m.key),
+        ['ext:bandit:one', 'band:A'],
+        reason: "a key that merely begins with the name is another extension's, and the app's own pill is no extension's whatever its name",
+      );
+      expect(notified, 1);
+      // The cleared message's expiry has nothing left to take down.
+      async.elapse(const Duration(minutes: 2));
+      expect(fyi.post(message(FyiService.extensionKey('band', 'kp'))), isTrue, reason: 'not a dismissal: the key posted again shows at once');
+    });
+  });
 }

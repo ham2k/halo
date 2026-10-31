@@ -353,8 +353,12 @@ class CliHostCalls {
       case 'statusBarShowNotice':
         if (verbose) stderr.writeln('[status] ${params['title'] ?? ''} ${params['text'] ?? ''}'.trim());
         return null;
+      case 'fyiPost':
+        if (verbose) stderr.writeln('[fyi] ${params['text'] ?? ''}');
+        return null;
       case 'statusBarClear':
       case 'statusBarDismissNotice':
+      case 'fyiClear':
         return null;
       case 'showForm':
         // Null is "the user cancelled" — the one answer that cannot be

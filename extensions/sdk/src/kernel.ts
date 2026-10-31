@@ -481,6 +481,8 @@ const IDENTITY_HOST_METHODS = new Set([
   "statusBarClear",
   "statusBarShowNotice",
   "statusBarDismissNotice",
+  "fyiPost",
+  "fyiClear",
   "webSocketOpen",
   "webSocketSend",
   "webSocketClose",

@@ -137,6 +137,7 @@ await host.setSettings({ … })        // persisted; your group only
 await host.showForm(form)            // ask the operator something
 await host.showMessage({ … })        // tell them something
 host.statusBar.setMessage({ … })     // the footer
+host.fyi.post({ … })                 // the FYI line under the call info
 host.log("…")                        // the app's debug output
 ```
 
@@ -150,9 +151,10 @@ spots board. `dist/index.d.ts` has the rest.
   budget.** 32 host calls awaiting an answer per bundle; 8 `host.fetch` in
   flight (a ninth is refused, so batch a long list); 10 key-value entries of
   at most 4,096 characters each; 16 timers whose callbacks average at most
-  10% of real time; 4 WebSockets, 12 opens a minute; 8 footer keys, 10
-  notices a minute; dialogs 3 open, 3 waiting, 10 a minute, one extension's
-  at a time; 4 radio commands queued. `docs/concepts.md` has the table.
+  10% of real time; 4 WebSockets, 12 opens a minute; 8 footer keys, 4 FYI
+  messages, 10 notices a minute; dialogs 3 open, 3 waiting, 10 a minute, one
+  extension's at a time; 4 radio commands queued. `docs/concepts.md` has the
+  table.
 - **A panel returns content, not widgets**: `markdown` (prefer it), `svg`,
   `html` (no scripts, no network, no navigation, and not on every platform),
   or a `scene`. Markdown is at most 262,144 characters, SVG 1,048,576, HTML

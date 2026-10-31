@@ -156,6 +156,29 @@ class FyiService extends ChangeNotifier {
     if (_messages.remove(key) != null) notifyListeners();
   }
 
+  /// The key an extension's message goes under, `ext:<extension>:<key>`.
+  /// The app's own posters key theirs `<word>:…` — `band:A`, `mode:A`, the
+  /// SWR watch's — never under this prefix, so no extension, whatever its
+  /// name, reaches a message of the app's: without it, one keyed `band`
+  /// would own the No Band pill.
+  static String extensionKey(String extension, String key) => '${extensionPrefix(extension)}$key';
+  static String extensionPrefix(String extension) => 'ext:$extension:';
+
+  /// Every message of [extension]'s taken down as [clear] takes one, as its
+  /// runtime goes (extension_messages.dart).
+  void clearExtension(String extension) {
+    final prefix = extensionPrefix(extension);
+    final keys = [
+      for (final key in _messages.keys)
+        if (key.startsWith(prefix)) key,
+    ];
+    for (final key in keys) {
+      _expiry.remove(key)?.cancel();
+      _messages.remove(key);
+    }
+    if (keys.isNotEmpty) notifyListeners();
+  }
+
   /// The operator putting a message away — see [_dismissed].
   void dismiss(String key) {
     final message = _messages[key];

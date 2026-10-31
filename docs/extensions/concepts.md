@@ -144,6 +144,7 @@ runs and the error names the budget.
 | `host.fetch` in flight | 8 per bundle; a ninth is refused, not queued |
 | Key-value storage | 10 keys per bundle, each key plus value at most 4,096 characters of JSON |
 | Status bar | 8 keys per extension; strings at most 1,024 characters; updates reach the footer at most every 100 ms |
+| FYI line | 4 messages per extension; `text` at most 256 characters, other strings 1,024; posts reach the line at most once a second |
 | Notices | 10 a minute; text at most 16,384 characters |
 | Dialogs (`showForm`, `showMessage` as a dialog) | one extension's at a time; 3 open, 3 waiting, 10 a minute |
 | WebSockets | 4 per extension; 1 MiB per frame; 12 opens a minute per bundle |

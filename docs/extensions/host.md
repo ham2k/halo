@@ -211,6 +211,26 @@ progress reach the footer at most once every **100 ms**, the latest under
 each key winning, so a download may post every chunk; notices are **10 a
 minute**. Past any of these the call throws.
 
+### `host.fyi`
+
+| Call | |
+| --- | --- |
+| `post({ key, category, text, icon, priority?, iconColor?, textColor?, radio?, expiresInSeconds?, action? })` | A message on the FYI line under the call info, replacing the one under `key`. `category` is `alert`, `warning`, `operational` or `info`; `priority` `high`, `normal` (the default) or `low`; `text` one line of inline markdown; `icon` a Material Design Icons name; `iconColor` and `textColor` `#RRGGBB` or `#AARRGGBB`; `radio` `A` or `B` for a message about one radio, shown in that radio's set alone, omitted for one about the station, shown in both; `expiresInSeconds` takes it down on its own, 1 to 86,400; `action` is run by the tap that puts it away, one of the notice actions above, its `label` not shown |
+| `clear(key)` | Takes down the message under `key` |
+
+Extension API 14. The line shows every message's text, the most severe
+first — high-priority alerts, then what is under way, then the other alerts,
+the warnings and the information — and gives them room in that order, so a
+long message late in the line is cut short; a tap opens it in full for a
+moment, and a tap on one shown in full runs its `action` and dismisses it.
+The operator may dismiss any of yours: the same key posted again within
+three minutes stays down, unless it comes back more severe. Keys are
+namespaced to your extension. You hold at most **4 messages** on the line;
+`text` is at most **256 characters**, every other string **1,024**; past
+any of these the call throws. Posts reach the line at most **once a
+second**, the latest under each key winning, so post every reading: the
+line changes no faster than the operator reads it. `clear` lands at once.
+
 ### `host.updateInterpretation(input, interpretation)`
 
 One-way, like `log`. Pushes a later interpretation for the same `input` a
