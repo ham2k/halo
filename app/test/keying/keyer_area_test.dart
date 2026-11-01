@@ -20,8 +20,10 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/keyer_repeat.dart' show KeyerRepeatWait;
 import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/fyi_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/cw_messages_dialog.dart' show cwMessageNumberIcons;
 import 'package:ham2k_logger/views/fyi_area.dart';
@@ -400,6 +402,75 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       expect(said(), 'K8AB');
       services.cat.voiceActivity.value = null;
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The trap: the countdown naming the memory by its key ("M2") or its
+    // label while the operator just heard it go out as its words — the line
+    // reading as a different message from the one that will go again.
+    testWidgets("a repeat's wait names what went out the way it was shown going out, after a return arrow", (tester) async {
+      await connectPlaceholder(tester);
+      await services.settings.setVoiceMessageLabel(2, 'Their call');
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      final cat = services.cat;
+      // Set directly, as the tests above do: the placeholder never makes a
+      // message from words, and the chain's own wait is the engine's test.
+      cat.keyerRepeatActive.value = true;
+      cat.voiceActivity.value = const VoiceActivity(memory: 2, lengthMs: 2000, script: VoiceScript('K8AB 59', []));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      cat.voiceActivity.value = null;
+      cat.keyerRepeat.value = const KeyerRepeatWait(delay: Duration(seconds: 3), text: '', memory: 2);
+      await tester.pump();
+      expect(inLine(find.text('K8AB 59')), findsOneWidget, reason: 'its words, as it went out');
+      expect(inLine(find.text('Their call')), findsNothing);
+      expect(inLine(find.byIcon(MdiIcons.keyboardReturn)), findsOneWidget, reason: 'coming back, not playing');
+      expect(inLine(find.byIcon(MdiIcons.play)), findsNothing);
+
+      // The trap: the line closing for a QSO being edited forgetting the
+      // words, so the wait comes back showing the memory's raw template.
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false, suppressed: true));
+      await tester.pump();
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, panel: false));
+      await tester.pump();
+      expect(inLine(find.text('K8AB 59')), findsOneWidget, reason: 'the chain ran on while the line was away');
+
+      // A memory with no words and no label reads as it plays: "Message 3".
+      cat.keyerRepeat.value = const KeyerRepeatWait(delay: Duration(seconds: 3), text: '', memory: 3);
+      await tester.pump();
+      expect(inLine(find.text('Message 3')), findsOneWidget);
+      expect(inLine(find.text('M3')), findsNothing);
+
+      cat.keyerRepeat.value = null;
+      cat.keyerRepeatActive.value = false;
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The trap: the countdown taking the whole line, as if it were the FYI
+    // area rather than one item in it — the SWR reading beside it pushed off
+    // the far end.
+    testWidgets("a repeat's wait takes the room it needs, and the messages after it follow", (tester) async {
+      await connectPlaceholder(tester);
+      await tester.pumpWidget(host(panel: false));
+      final cat = services.cat;
+      services.fyi.post(FyiMessage(key: 'swr', category: FyiCategory.alert, icon: MdiIcons.antenna, text: 'SWR 2.3'));
+      cat.sendCw('CQ');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final line = tester.getRect(find.byType(FyiArea));
+      expect(tester.getRect(find.text('SWR 2.3')).left, lessThan(line.left + line.width / 2), reason: 'sending, as the wait does');
+      cat.stopCw();
+      await tester.pump(const Duration(seconds: 2));
+      cat.keyerRepeatActive.value = true;
+      // As rendered, not yet as keyed: the line showed it keying uppercased
+      // with what the keyer cannot send dropped, and the wait reads the same.
+      cat.keyerRepeat.value = const KeyerRepeatWait(delay: Duration(seconds: 3), text: 'cq  test!', memory: null);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(inLine(find.text('CQ TEST')), findsOneWidget);
+      expect(tester.getRect(find.text('SWR 2.3')).left, lessThan(line.left + line.width / 2));
+      cat.keyerRepeat.value = null;
+      cat.keyerRepeatActive.value = false;
       await tester.pump(const Duration(seconds: 62));
     });
 

@@ -155,6 +155,12 @@ class KeyerLineModel extends ChangeNotifier {
   /// The memory playing or recording — while lingering, the one that last was.
   VoiceActivity? get voice => keyer.voiceActivity.value ?? (lingering ? _heldVoice : null);
 
+  /// The memory that last played while the line has been up, or while a
+  /// repeat has run — what the repeat's wait names it by, in the words it
+  /// went out with.
+  VoiceActivity? get lastPlayed => _lastPlayed;
+  VoiceActivity? _lastPlayed;
+
   /// Shows the item while something is going out — a message, a voice
   /// memory, the wait in a repeat or for the other SO2R radio, or keyboard
   /// mode — and takes it away [_lingerFor] after nothing is. The controls
@@ -176,6 +182,7 @@ class KeyerLineModel extends ChangeNotifier {
       if (_stopped && (k.voiceActivity.value != null || (progress != null && progress.id != _stoppedId))) _stopped = false;
       if (!_stopped) _heldProgress = progress;
       _heldVoice = k.voiceActivity.value;
+      if (k.voiceActivity.value case final voice? when !voice.recording) _lastPlayed = voice;
       if (!_active) {
         _active = true;
         notifyListeners();
@@ -212,6 +219,10 @@ class KeyerLineModel extends ChangeNotifier {
     _active = false;
     _heldProgress = null;
     _heldVoice = null;
+    // Kept while the chain runs: the line closed for a QSO being edited
+    // comes back mid-wait, and the countdown still names the memory by the
+    // words it went out with.
+    if (!keyer.keyerRepeatActive.value) _lastPlayed = null;
     notifyListeners();
   }
 }
@@ -223,7 +234,7 @@ class KeyerLineModel extends ChangeNotifier {
 class KeyerLineItem extends StatelessWidget {
   final KeyerLineModel model;
 
-  /// For the voice memories' labels and the repeat's message.
+  /// For the voice memories' labels.
   final HaLoServices services;
 
   const KeyerLineItem({super.key, required this.model, required this.services});
@@ -267,7 +278,7 @@ class KeyerLineItem extends StatelessWidget {
                     ValueListenableBuilder<KeyerRepeatWait?>(
                       valueListenable: k.keyerRepeat,
                       builder: (context, wait, _) =>
-                          wait == null ? const SizedBox.shrink() : _CwRepeatView(key: ValueKey(wait), wait: wait, keyer: k, services: services),
+                          wait == null ? const SizedBox.shrink() : _CwRepeatView(key: ValueKey(wait), wait: wait, keyer: k, lastPlayed: model.lastPlayed),
                     ),
                 ],
               );
@@ -1103,7 +1114,10 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
             );
             // Tapping the message keying stops it and everything behind it
             // (Esc's other form); tapping a queued one drops only that one.
+            // As wide as what it shows, and no wider: the FYI area's other
+            // items follow it on the line.
             return Row(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Flexible(
@@ -1148,32 +1162,40 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
   }
 }
 
-/// The countdown to message 1 going again: the message that will be keyed,
-/// the repeat icon beside it, and nothing else — the buttons stand down for
-/// the wait the same way they do for a message on the air — under a bar
-/// that EMPTIES rather than fills — the wait is running out,
-/// not building up, and the two read differently at a glance. Tapping it
-/// ends the repeats, the same way tapping a message keying stops it.
+/// The countdown to message 1 going again, in the shape of the message
+/// going out ([_VoiceActivityView]): a return arrow where the play icon
+/// stands, then what will go again — named as it was shown going out — and
+/// the repeat icon, under a bar that EMPTIES rather than fills: the wait is
+/// running out, not building up, and the two read differently at a glance.
+/// The buttons stand down for the wait the same way they do for a message
+/// on the air. Tapping it ends the repeats, the same way tapping a message
+/// keying stops it.
 class _CwRepeatView extends StatefulWidget {
   final KeyerRepeatWait wait;
   final RadioKeyer keyer;
-  final HaLoServices services;
 
-  const _CwRepeatView({super.key, required this.wait, required this.keyer, required this.services});
+  /// The memory that last played ([KeyerLineModel.lastPlayed]), for a voice
+  /// repeat to read as it went out.
+  final VoiceActivity? lastPlayed;
+
+  const _CwRepeatView({super.key, required this.wait, required this.keyer, this.lastPlayed});
 
   @override
   State<_CwRepeatView> createState() => _CwRepeatViewState();
 }
 
 class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderStateMixin {
-  /// What is waiting to go again: the message for CW, the memory's label for
-  /// voice — resolved here rather than stored on the wait, since a label the
-  /// operator renames mid-chain should read as its new name.
-  String _label(BuildContext context) {
+  /// What is waiting to go again, as the line showed it going out: the
+  /// message for CW; for voice, the words the memory was made from, or its
+  /// label, "Message 3" for one with none. Resolved here rather than stored
+  /// on the wait, since a label the operator renames mid-chain should read
+  /// as its new name.
+  String _text(BuildContext context) {
     final memory = widget.wait.memory;
-    if (memory == null) return widget.wait.text;
-    final m = context.t.settings.radio.voiceMessages;
-    return voiceMessageLabelFor(widget.keyer, memory, m.key(n: memory));
+    // As the queue keys it, and the line showed it keying.
+    if (memory == null) return sanitizeCwText(widget.wait.text);
+    if (widget.lastPlayed case VoiceActivity(memory: final played, :final script?) when played == memory) return script.text;
+    return voiceMessageLabelFor(widget.keyer, memory, context.t.settings.radio.voiceMessages.message(n: memory));
   }
 
   late final AnimationController _controller;
@@ -1199,53 +1221,54 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
       label: context.t.settings.radio.cwMessages.repeatWait,
       liveRegion: true,
       child: ExcludeSemantics(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) => Row(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.keyer.cancelKeyerRepeat,
+          // The bar is as wide as the row above it and no wider, as the
+          // voice message's is — the stack takes its width from the row.
+          child: Stack(
             children: [
-              Flexible(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: widget.keyer.cancelKeyerRepeat,
-                  child: Stack(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: lineBarBelowText),
-                        child: Text(
-                          _label(context),
-                          style: style.copyWith(color: color.withValues(alpha: 0.55)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: false,
-                        ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: lineBarBelowText),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(MdiIcons.keyboardReturn, size: 16, color: color),
+                    const SizedBox(width: Space.xs),
+                    Flexible(
+                      child: Text(
+                        _text(context),
+                        style: style.copyWith(color: color.withValues(alpha: 0.55)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
                       ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: Space.xxs,
-                        child: Stack(
-                          children: [
-                            Container(color: color.withValues(alpha: 0.25)),
-                            FractionallySizedBox(
-                              widthFactor: 1 - _controller.value,
-                              child: Container(color: color.withValues(alpha: 0.55)),
-                            ),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(width: Space.xs),
+                    // At full strength while the message itself is faded:
+                    // nothing is on the air, and the icons are what still
+                    // say what happens next.
+                    Icon(MdiIcons.repeat, size: 14, color: color),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: Space.xxs,
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => Stack(
+                    children: [
+                      Container(color: color.withValues(alpha: 0.25)),
+                      FractionallySizedBox(
+                        widthFactor: 1 - _controller.value,
+                        child: Container(color: color.withValues(alpha: 0.55)),
                       ),
                     ],
                   ),
                 ),
-              ),
-              // Beside the message rather than inside its stack, so the bar
-              // stays as wide as the text it counts down (the same reason
-              // the keying view puts it here). At full strength while the
-              // message itself is faded: nothing is on the air, and the icon
-              // is the one thing on the line still saying what happens next.
-              Padding(
-                padding: const EdgeInsets.only(left: Space.xs, bottom: lineBarBelowText),
-                child: Icon(MdiIcons.repeat, size: 14, color: color),
               ),
             ],
           ),

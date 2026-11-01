@@ -1800,8 +1800,10 @@ cooldown of one to ten seconds (`cwRepeatDelay`, `voiceRepeatDelay`) is the wait
 ENDING and it going again — from the end, not from the keypress, or a chain
 would key over its own message. One engine serves both keyers (`CatService.armKeyerRepeat`): the
 send is supplied by whoever armed it, since rendering a template against the draft is the operation
-view's job while a voice memory needs nothing prepared. The keyer line shows the wait as a bar that
-EMPTIES, for the whole chain — including the render-long gap between a wait
+view's job while a voice memory needs nothing prepared. The keyer line shows the wait in the place
+and shape of the message going out, one item among the FYI area's others: a return arrow where a
+memory's play icon stands, what goes again as the line showed it going out — the message, a
+memory's words or its label — and under them a bar that EMPTIES, for the whole chain — including the render-long gap between a wait
 ending and the next message reaching the radio, which is why `keyerRepeatActive` is a notifier and
 not a getter. A chain ends on Escape or a stop, on a tap of the countdown, on another message, on a
 call entered, on the switch going off, and in any case after five minutes — an unattended CQ that

@@ -23,9 +23,10 @@ import 'package:halo_core/halo_core.dart';
 
 /// A repeat's wait: how long until message 1 goes again, and what went out
 /// last time — the keyer area's countdown runs on the first and labels
-/// itself with the second. [memory] names a VOICE memory instead, whose
-/// label the strip resolves itself, since what is repeating there is audio
-/// in the radio rather than text the app rendered.
+/// itself with the second. [memory] names a VOICE memory instead, which
+/// the strip names itself — by the words it last went out with, or its
+/// label — since what is repeating there is audio rather than text the app
+/// rendered.
 class KeyerRepeatWait {
   final Duration delay;
   final String text;

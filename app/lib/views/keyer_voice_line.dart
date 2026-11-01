@@ -185,6 +185,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
       builder: (context, queued, _) => queued.isEmpty || activity.recording
           ? current
           : Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(child: current),
                 Flexible(
