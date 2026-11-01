@@ -175,7 +175,11 @@ under the band requirement, below). CAT posts each local radio's SWR
 meter's instant reading — the one under way, else the last one — a warning
 from 1.6 and an alert from 2.0 (`swrWarnsFrom`, `swrAlertsFrom`), under one
 key per radio so the two levels never show side by side, taken down once a
-transmission reads under the warning. Extensions post through `host.fyi`
+transmission reads under the warning. A tune — a transmission the radio's
+tuner reports tuning through, or a FlexRadio reports as its TUNE carrier —
+reads the mismatch being fixed, so it raises nothing and takes down what an
+earlier transmission raised; the next ordinary one says whether the fix
+held. Extensions post through `host.fyi`
 (extension API 14, docs/extensions/host.md), bounded on the bridge beside
 the footer's calls (`extension_host_calls.dart`): four messages each, a
 `text` of one line, every one of them dismissible — the operator has the

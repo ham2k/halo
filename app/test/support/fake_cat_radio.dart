@@ -7,9 +7,9 @@
 // A real CatService only ever reaches `connected` through hardware, so a
 // widget test of anything gated on it needs a transport that says yes.
 // Deliberately minimal: no command recording, no gated/refusing variants, and
-// one way for the radio to speak ([FakeRadio.reports], a VFO reading with
-// nothing behind it) — cat_vfo_wiring_test.dart owns the rest, and owns
-// testing the CAT layer. This exists so a caller can write
+// the radio speaks only as a test scripts it ([FakeRadio.reports], a VFO
+// reading with nothing behind it, or straight into [FakeRadio.sinks]) —
+// cat_vfo_wiring_test.dart owns the rest, and owns testing the CAT layer. This exists so a caller can write
 // `services.cat.stateFor(...)` is connected and get on with its own subject.
 
 import 'dart:async';
@@ -102,6 +102,9 @@ EquipmentRegistry _fakeRegistry(FakeRadio owner) {
 class FakeRadio {
   /// One per session the driver was asked for — a connected node's.
   final _sinks = <EquipmentSink>[];
+
+  /// Where each session reports, to speak as the radio beyond [reports].
+  List<EquipmentSink> get sinks => List.unmodifiable(_sinks);
 
   late final EquipmentRegistry _registry = _fakeRegistry(this);
 

@@ -941,6 +941,9 @@ class FlexRadioSession
     // The transmit object carries the keyer speed as `speed=` alongside
     // the CWX subscription's `wpm=`; either is the same knob.
     if (fields['dax'] case final dax?) _daxSwitch.daxReported(dax == '1');
+    if (fields['tune'] case final tune?) {
+      if (_sink case final TuneCarrierSink sink) sink.reportTuneCarrier(tune == '1');
+    }
     final speed = int.tryParse(fields['speed'] ?? '');
     if (speed != null) _reportKeyerSpeed(speed);
     final rfpower = fields['rfpower'];

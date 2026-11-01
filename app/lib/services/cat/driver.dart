@@ -302,6 +302,14 @@ abstract class TunerSink {
   void reportTuner(TunerStatus? status);
 }
 
+/// Where a session reports that the radio's carrier is a tune — a FlexRadio's
+/// TUNE, keyed from any client or the radio itself, with or without its ATU
+/// — a sink of its own, as [TunerSink] is. A tuner's own tune is
+/// [TunerStatus.tuning], not this.
+abstract class TuneCarrierSink {
+  void reportTuneCarrier(bool on);
+}
+
 /// Where a session whose connection carries the radio's transmit audio
 /// ([TransmitAudioConnection]) reaches it — a sink of its own, as
 /// [TunerSink] is.

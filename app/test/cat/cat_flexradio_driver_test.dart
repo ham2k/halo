@@ -45,7 +45,7 @@ const _dvkStatusLines = [
   'S7C1A8533|dvk added id=12 name="Recording 12" duration=1952',
 ];
 
-class _FakeSink implements EquipmentSink, TunerSink, PassbandSink, RadioAntennaSink {
+class _FakeSink implements EquipmentSink, TunerSink, TuneCarrierSink, PassbandSink, RadioAntennaSink {
   final antennas = <RadioAntennas?>[];
   @override
   void reportAntennas(RadioAntennas? report) => antennas.add(report);
@@ -53,6 +53,10 @@ class _FakeSink implements EquipmentSink, TunerSink, PassbandSink, RadioAntennaS
   final tuners = <TunerStatus?>[];
   @override
   void reportTuner(TunerStatus? status) => tuners.add(status);
+
+  final tuneCarriers = <bool>[];
+  @override
+  void reportTuneCarrier(bool on) => tuneCarriers.add(on);
 
   final passbands = <Passband?>[];
   @override
@@ -1022,6 +1026,16 @@ void main() {
         session.teardown();
         async.flushTimers();
       });
+    });
+
+    test('reads TUNE off the transmit object, from whichever client or the radio keyed it', () {
+      session.feed('$_transmitStatusLine\n');
+      session.feed('S5AC2F980|transmit tune=1\n');
+      // A push carries only what changed: a line with no `tune=` says nothing
+      // about it, rather than saying the tune is over.
+      session.feed('S5AC2F980|transmit rfpower=50\n');
+      session.feed('S5AC2F980|transmit tune=0\n');
+      expect(sink.tuneCarriers, [false, true, false]);
     });
 
     test('bypass transmits nothing; in line is a tune, the only way a Flex tuner engages', () {

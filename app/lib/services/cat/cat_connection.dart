@@ -372,7 +372,14 @@ extension _Connection on CatService {
       },
       onTuner: (status) {
         if (runtime.connection != connection || stateFor(uuid).tuner == status) return;
+        runtime.noteTuner(status);
         _setState(uuid, stateFor(uuid).copyWith(tuner: status, clearTuner: status == null));
+        if (status == TunerStatus.tuning) _noteTuneOnAir(uuid, runtime);
+      },
+      onTuneCarrier: (on) {
+        if (runtime.connection != connection) return;
+        runtime.tuneCarrier = on;
+        if (on) _noteTuneOnAir(uuid, runtime);
       },
       onPassband: (passband) {
         if (runtime.connection != connection || stateFor(uuid).passband == passband) return;
@@ -642,6 +649,15 @@ extension _Connection on CatService {
     _scheduleIdleRetry();
   }
 
+  /// A tune reported once its carrier is up — after its first readings, as
+  /// a FlexRadio reports one — makes the transmission under way a tune, and
+  /// what those readings fed is read again as a tune's.
+  void _noteTuneOnAir(String uuid, _NodeRuntime runtime) {
+    if (stateFor(uuid).telemetry.transmitting != true || runtime.tune) return;
+    runtime.tune = true;
+    _meterReadings.notify();
+  }
+
   /// Drops the session and everything that belongs to it, and gives the
   /// driver its chance to stop timers. Everything up to the first `await`
   /// runs synchronously, so a caller that has just checked
@@ -669,6 +685,7 @@ extension _Connection on CatService {
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
     runtime.lastSentPower = null;
+    runtime.forgetTune();
     // Whatever this node was keying is not keying now — and a radio that is
     // gone is playing nothing, which a peer following it has to be told.
     for (final entry in _runtimes.entries) {

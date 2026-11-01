@@ -139,6 +139,28 @@ class _NodeRuntime {
   ({num value, int atMillis})? _swrBeforeKeying;
   ({double? swrAverage, int endedAtMillis})? lastTransmission;
 
+  /// Whether the transmission under way, or else the last one, was a tune:
+  /// the tuner said it was tuning, or the radio that its carrier was a tune
+  /// ([tuneCarrier]), at key-down or while on the air.
+  bool tune = false;
+
+  /// What this session last said of its tune carrier — see [TuneCarrierSink].
+  bool tuneCarrier = false;
+
+  /// When the tuner last turned to tuning, while it still says so. A polled
+  /// rig reads its tuner every few polls, so a `tuning` can outlast the tune
+  /// by seconds: only a fresh one makes the next key-down a tune.
+  int? _tuningSinceMillis;
+
+  void noteTuner(TunerStatus? status) => _tuningSinceMillis = status == TunerStatus.tuning ? realNowMillis() : null;
+
+  /// What the radio said of its tune for the session just closed: the next
+  /// one says it again, or has none.
+  void forgetTune() {
+    tuneCarrier = false;
+    _tuningSinceMillis = null;
+  }
+
   /// An SWR reading. Counted only while RF is out: between words on SSB a
   /// radio reads SWR 1.0 at no power, which would flatter every average.
   void noteSwr(num value, {required num? powerOut, required bool? transmitting}) {
@@ -159,12 +181,18 @@ class _NodeRuntime {
   /// A polled driver reports the first meters of a transmission just BEFORE
   /// the transmission itself — its poller reads on the transition — so a
   /// reading from the second before keying belongs to this one.
+  ///
+  /// A radio that reports a tune before its carrier has reported it by now.
+  /// A tune and an ordinary over are never one transmission, however close:
+  /// break-in would otherwise carry a released TUNE into the CW after it.
   void startTransmission() {
-    final now = realNowMillis(), last = lastTransmission;
-    if (last == null || now - last.endedAtMillis > _breakInMillis) {
+    final now = realNowMillis(), last = lastTransmission, since = _tuningSinceMillis;
+    final tuning = tuneCarrier || (since != null && now - since <= 1000);
+    if (last == null || now - last.endedAtMillis > _breakInMillis || tuning != tune) {
       _swrSum = 0;
       _swrCount = 0;
     }
+    tune = tuning;
     final early = _swrBeforeKeying;
     if (early != null && now - early.atMillis <= 1000) {
       _swrSum += early.value;

@@ -226,6 +226,11 @@ mixin _RadioControls {
   /// which must not travel with the app clock.
   ({double? swrAverage, int endedAtMillis})? lastTransmissionFor(String uuid) => _runtimes[uuid]?.lastTransmission;
 
+  /// Whether the transmission under way, or else the last one, was a tune —
+  /// a carrier into a match the tuner is still finding, or the operator is,
+  /// whose SWR says nothing about the antenna.
+  bool transmissionIsTuneFor(String uuid) => _runtimes[uuid]?.tune ?? false;
+
   /// The SWR average of the transmission under way, or else of the last one.
   double? swrAverageFor(String uuid) =>
       stateFor(uuid).telemetry.transmitting == true ? _runtimes[uuid]?.swrRunning : _runtimes[uuid]?.lastTransmission?.swrAverage;

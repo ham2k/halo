@@ -15,7 +15,7 @@ import 'equipment.dart';
 /// [swrWarnsFrom], an alert from [swrAlertsFrom], read off the average CAT
 /// keeps per transmission ([CatService.swrAverageFor] — the one under way,
 /// else the last one), and taken down once a transmission reads under the
-/// warning. One key per radio, so the two levels never show side by side:
+/// warning, or by a tune. One key per radio, so the two levels never show side by side:
 /// a match that worsens mid-over turns the warning into the alert in place.
 class SwrWatch {
   SwrWatch({required this.cat, required this.fyi});
@@ -42,12 +42,18 @@ class SwrWatch {
         fyi.clear(keyFor(radio));
         continue;
       }
+      final key = keyFor(radio);
+      // A tune reads the mismatch the tuner, or the operator, is there to
+      // fix — and fixing it is what makes an earlier reading stale.
+      if (cat.transmissionIsTuneFor(uuid)) {
+        fyi.clear(key);
+        continue;
+      }
       final swr = cat.swrAverageFor(uuid);
       // A transmission just begun has no reading yet: what the last one
       // said stands until this one says otherwise, or the message would
       // blink out at every key-down and back at the first reading.
       if (swr == null && cat.stateFor(uuid).telemetry.transmitting == true) continue;
-      final key = keyFor(radio);
       if (swr == null || swr < swrWarnsFrom) {
         fyi.clear(key);
         continue;

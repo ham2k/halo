@@ -6,7 +6,18 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink, RotatorSink, TransmitAudioSink, So2rSwitchSink {
+class _NodeSink
+    implements
+        EquipmentSink,
+        SpectrumSink,
+        SdrSink,
+        TunerSink,
+        TuneCarrierSink,
+        PassbandSink,
+        RadioAntennaSink,
+        RotatorSink,
+        TransmitAudioSink,
+        So2rSwitchSink {
   final EquipmentConnection connection;
   final double? Function() linkedVfo;
   final void Function(VfoReading) onReading;
@@ -26,6 +37,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
   final void Function(SpectrumSettings) onSpectrumSettings;
   final void Function(String?) onSpectrumProblem;
   final void Function(TunerStatus?) onTuner;
+  final void Function(bool) onTuneCarrier;
   final void Function(Passband?) onPassband;
   final void Function(RadioAntennas?) onAntennas;
   final void Function(RotatorPosition) onRotator;
@@ -53,6 +65,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
     required this.onSpectrumSettings,
     required this.onSpectrumProblem,
     required this.onTuner,
+    required this.onTuneCarrier,
     required this.onPassband,
     required this.onAntennas,
     required this.onRotator,
@@ -124,6 +137,9 @@ class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, Pass
 
   @override
   void reportTuner(TunerStatus? status) => onTuner(status);
+
+  @override
+  void reportTuneCarrier(bool on) => onTuneCarrier(on);
 
   @override
   void reportPassband(Passband? passband) => onPassband(passband);
