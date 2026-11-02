@@ -628,6 +628,8 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String get spotAutoNoFreq => 'auto re-spot stopped: the radio reports no frequency';
 	@override String get spotBusy => 'another spot is still being sent';
 	@override String get bandOrFreqRequired => 'set a frequency or band before logging';
+	@override String incompleteExchange({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy';
+	@override String incompleteExchangeShift({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy. shift+enter logs it as is';
 	@override String get missingBand => 'no band';
 	@override String get missingMode => 'no mode';
 	@override String saveFailed({required Object error}) => 'could not save: ${error}';
@@ -5733,11 +5735,13 @@ extension on TranslationsQrp {
 			'loggingControls.spotAutoNoFreq' => 'auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'set a frequency or band before logging',
+			'loggingControls.incompleteExchange' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy',
+			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy. shift+enter logs it as is',
 			'loggingControls.missingBand' => 'no band',
-			'loggingControls.missingMode' => 'no mode',
-			'loggingControls.saveFailed' => ({required Object error}) => 'could not save: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.missingMode' => 'no mode',
+			'loggingControls.saveFailed' => ({required Object error}) => 'could not save: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'no qsos yet... let\'s get on the air!',
 			'loggingControls.info.qsoCountOne' => '1 qso',
@@ -6248,10 +6252,10 @@ extension on TranslationsQrp {
 			'settings.help.youtube' => 'ham2k youtube',
 			'settings.help.youtubeDescription' => 'videos and live streams',
 			'settings.help.instagram' => 'ham2k instagram',
-			'settings.help.instagramDescription' => 'because you cannot have too many photos…',
-			'settings.help.bluesky' => 'ham2k bluesky',
 			_ => null,
 		} ?? switch (path) {
+			'settings.help.instagramDescription' => 'because you cannot have too many photos…',
+			'settings.help.bluesky' => 'ham2k bluesky',
 			'settings.help.blueskyDescription' => 'follow us for news and updates',
 			'settings.help.contact' => 'contact us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the forums or chat first!',
@@ -6762,10 +6766,10 @@ extension on TranslationsQrp {
 			'settings.station.icomLanTroubleshooting' => 'the radio has a **single** remote-control session. when the login is ignored, something else is almost always using it.\n\n- **close any other client.** wfview, rs-ba1 or icom\'s remote utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **check the radio\'s network settings.** its lan port must be connected to the same network as this device, its **network control** must be on, and the username and password must be set up as a network user on the radio.\n- **the ports must match** the radio\'s control port and serial port (udp), or the ports forwarded to them. a wrong port is met with silence, the same as a radio that is off.\n- **if it connects but never answers**, the ci-v address here must match the radio\'s ci-v address menu. this entry prefills the address the model ships with.\n- **turn the radio off and on** if it stays stuck.',
 			'settings.station.statusStale' => 'not responding',
 			'settings.station.statusDisconnected' => 'not connected',
-			'settings.station.statusConnecting' => 'connecting…',
-			'settings.station.statusDisconnecting' => 'disconnecting…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.statusConnecting' => 'connecting…',
+			'settings.station.statusDisconnecting' => 'disconnecting…',
 			'settings.station.statusError' => 'connection failed',
 			'settings.station.currentRadioSettings' => 'current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'not supported by this radio',
@@ -7276,10 +7280,10 @@ extension on TranslationsQrp {
 			'expiredBuild.title' => 'this build has expired',
 			'expiredBuild.body' => 'please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'visit ham2k.com',
-			'expiredBuild.dismiss' => 'continue anyway',
-			'staleness.codePushFloorTitle' => 'an important update is waiting',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.dismiss' => 'continue anyway',
+			'staleness.codePushFloorTitle' => 'an important update is waiting',
 			'staleness.codePushFloorBody' => 'this version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'restart the app to apply it.',
 			'staleness.quitAndReopen' => 'quit the app and open it again to apply it.',

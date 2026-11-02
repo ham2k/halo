@@ -331,8 +331,9 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         ctx,
         (uuid, score) => {
           // A logged contact's verdict is cached with the log, where no row
-          // shows the icon a spot's would carry.
-          const { icon: _icon, color: _color, ...kept } = score
+          // shows the icon a spot's would carry, and nothing is held back
+          // from logging that is already logged.
+          const { icon: _icon, color: _color, incomplete: _incomplete, ...kept } = score
           if (uuid) qsoScores[uuid] = kept
         },
         (day, count, sheet) => {
@@ -380,6 +381,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         notices: score.notices ?? [],
         alerts: score.alerts ?? [],
         ...(score.dupe !== undefined && { dupe: score.dupe }),
+        ...(score.incomplete?.length && { incomplete: score.incomplete }),
         ...(checkpointHeld && { checkpointHeld: true }),
       }
     },

@@ -30,7 +30,7 @@ interface ContestScorer<S> {
   scoreQso({ scoresheet, qso, operation, ref?, isNewDay }, ctx): { scoresheet: S, score: QsoScoreVerdict }
   summarizeScore({ scoresheet, operation, ref?, scope }, ctx): Record<string, ScoreTally>
 }
-// QsoScoreVerdict: { value, dupe?, notices?, alerts?, icon?, color? }
+// QsoScoreVerdict: { value, dupe?, notices?, alerts?, icon?, color?, incomplete? }
 // ScoreTally:      { key, for: 'day' | 'operation', total, label?, summary?, longSummary?, icon?, grid? }
 
 registerHook("scoring", {
@@ -64,6 +64,18 @@ registerHook("scoring", {
   with the current time, so a day-bucketed rule judges it as of now. The
   harness replays the contacts logged since the last checkpoint onto a view
   of it and scores the candidate against the result.
+- **`incomplete` holds a contact back until it has what your rules need.**
+  Name the entry-row fields still missing, by key: one of your own
+  controls' keys (`"arrl-ss/theirSerial"`), or the app's `"state"`,
+  `"grid"`, `"sent"` or `"rcvd"`. While any scorer names a field, Enter
+  does not log: the app names the fields, says how to log anyway, and moves
+  to the first one on screen. A `?` in any field, or Shift+Enter, logs the
+  contact as it stands, so the operator always has the last word. Say it
+  only for what is missing, not for what is wrong: a section that is not a
+  section is an `invalidExchange` alert, which is shown and logs. Read from
+  the live `scoreQso` alone; `contestScorer()` leaves it out of the logged
+  contacts' cached verdicts and the spots board's candidates, where no
+  exchange has been copied yet. Extension API 15.
 - **Candidates from the spots board** are scored many at once, each against
   its own view of the folded log, so no candidate becomes another's
   duplicate. A candidate's verdict may name an `icon` (Material Design

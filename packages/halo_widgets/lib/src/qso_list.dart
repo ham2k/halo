@@ -1138,7 +1138,12 @@ class _QsoListState extends State<QsoList> {
                           opacity: qso.theirFieldIsGuessed('exchange') ? 0.8 : 1.0,
                           child: Text(
                             _exchangePair(qso, switchSentRcvd: widget.switchSentRcvd),
-                            style: rowMonoDim,
+                            // A `?` is a part of their exchange logged as not
+                            // copied, past a scorer that asked for it: orange
+                            // like an incomplete call, for the same reason.
+                            style: (qso.theirExchange ?? '').contains('?')
+                                ? rowMonoDim.copyWith(color: theme.colorScheme.tertiary.withValues(alpha: rowMonoDim.color?.a ?? 1.0))
+                                : rowMonoDim,
                             textAlign: TextAlign.right,
                           ),
                         ),

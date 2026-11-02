@@ -1209,6 +1209,8 @@
     "spotAutoNoFreq": "auto re-spot stopped: the radio reports no frequency",
     "spotBusy": "another spot is still being sent",
     "bandOrFreqRequired": "set a frequency or band before logging",
+    "incompleteExchange": "fill in ${fields}, or put a ? where you didn't copy",
+    "incompleteExchangeShift": "fill in ${fields}, or put a ? where you didn't copy. shift+enter logs it as is",
     "missingBand": "no band",
     "missingMode": "no mode",
     "saveFailed": "could not save: ${error}",

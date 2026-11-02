@@ -268,7 +268,7 @@ extension _CallInfo on _LoggingControlsState {
   Map<String, dynamic>? get _gridOnlyGuess {
     if (_callInfoActive || _editingEvent) return null;
     var grid = _exchange.valueForField('grid');
-    if (grid.isEmpty && widget.prefs.showGridField) grid = _gridController.text.trim();
+    if (grid.isEmpty && _showsGridField) grid = _gridController.text.trim();
     if (!_completeGrid.hasMatch(grid)) return null;
     // The fields uppercase as typed; the line reads better as FN20aa.
     return {'grid': normalizeGrid(grid)};

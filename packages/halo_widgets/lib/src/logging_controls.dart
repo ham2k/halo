@@ -1100,6 +1100,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // and never lets it reach an ancestor Shortcuts.
         const SingleActivator(LogicalKeyboardKey.enter): _handleEnter,
         const SingleActivator(LogicalKeyboardKey.numpadEnter): _handleEnter,
+        const SingleActivator(LogicalKeyboardKey.enter, shift: true): _handleEnter,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter, shift: true): _handleEnter,
         const SingleActivator(LogicalKeyboardKey.space): _handleSpace,
       },
       child: FocusTraversalGroup(
@@ -1212,12 +1214,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             children: [
                               LoggingEntryRow(
                                 call: (controller: _callController, focus: _callFocus),
-                                rstFields: widget.prefs.showRSTFields ? _rstPair : const [],
+                                rstFields: _showsRSTFields ? _rstPair : const [],
                                 rstPlaceholder: _rstPlaceholder,
                                 numericKeyboardType: _numbersAndPunctuationOnIOS,
                                 exchange: _exchange,
                                 textControls: _textControls,
-                                state: widget.prefs.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
+                                state: _showsStateField ? (controller: _stateController, focus: _stateFocus) : null,
                                 stateHint: _guessStateHint,
                                 onStateChanged: (_) {
                                   _draft.stateTouched = true;
@@ -1227,7 +1229,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                   _lookup.exchangeEdited();
                                   _lookup.entriesEdited();
                                 },
-                                grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
+                                grid: _showsGridField ? (controller: _gridController, focus: _gridFocus) : null,
                                 gridHint: _guessGridHint,
                                 onGridChanged: (_) {
                                   _draft.markGridTouched();
@@ -1257,7 +1259,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                         onSubmitted: _log,
                                       )
                                     : null,
-                                onSubmitted: () => _log(fromEnter: true),
+                                onSubmitted: () => _log(fromEnter: true, asIs: _shiftHeld),
                                 onExchangeSubmitted: _handleEnter,
                                 onCallTyped: widget.session.onCallTyped,
                                 autofocus: widget.so2r?.ownsStrip ?? true,

@@ -605,6 +605,38 @@ void main() {
     expect(tester.widget<Text>(find.text('K1A?C')).style?.color, theme.colorScheme.tertiary);
   });
 
+  // A `?` in the exchange is how a contact gets past a scorer that wanted it
+  // (docs/design/logging-fields.md § An incomplete exchange), so it is one the
+  // operator comes back to fix, and has to find in the list like a `?` call.
+  testWidgets('an exchange with a ? is painted orange, and a complete one is not', (tester) async {
+    final operation = await operations.create(stationCall: 'KI2D');
+    final uncopied = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1ABC', 'exchange': '? MA'},
+      'band': '20m',
+      'mode': 'CW',
+      'startAtMillis': 1000,
+    });
+    final copied = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW', 'exchange': 'A CT'},
+      'band': '20m',
+      'mode': 'CW',
+      'startAtMillis': 2000,
+    });
+    final theme = buildHaLoTheme(Brightness.light);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: QsoList(qsos: [uncopied, copied], onSelect: (_) {}),
+        ),
+      ),
+    );
+
+    expect(tester.widget<Text>(find.text('? MA')).style?.color, theme.colorScheme.tertiary);
+    expect(tester.widget<Text>(find.text('A CT')).style?.color, isNot(theme.colorScheme.tertiary));
+    expect(tester.widget<Text>(find.text('K1ABC')).style?.color, isNot(theme.colorScheme.tertiary), reason: 'the call was copied');
+  });
+
   testWidgets('newest QSO renders at the bottom, next to the logging panel', (tester) async {
     final operation = await operations.create(stationCall: 'KI2D');
     final first = await qsos.add(operation.uuid, {

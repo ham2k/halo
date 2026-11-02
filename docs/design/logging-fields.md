@@ -815,6 +815,77 @@ It still counts as a contact everywhere else — numbering, the QSO count,
 exports, which write the call as typed — and the QSO list paints its call in
 the theme's orange, so the operator can find and fix it.
 
+## An incomplete exchange
+
+**A scorer can hold a contact back until it has what the rules need.** Its
+live verdict names the entry-row fields still missing (`incomplete`, by
+field key: a contest control's, or `state`, `grid`, `sent`, `rcvd` —
+[extensions/scoring.md](../extensions/scoring.md)), and while any scorer
+names one, Enter does not log. It says which fields, in the information area
+where the band-or-frequency refusal speaks (§ A contact needs a band or a
+frequency), and moves to the first of them on screen. A scorer says what is
+missing this way rather than with a `missingExchange` alert: a pill says it
+only after the contact is in the log, where nobody is still on frequency to
+ask.
+
+**The operator always has the last word**, two ways:
+
+- **A `?` in any field logs the contact as typed** — the same "did not copy
+  this" an incomplete call says (§ An incomplete call), and the one way past
+  on a phone. Only the exchange fields are read for it: a `?` in the call
+  already keeps the scorers from judging it, and a `?` in another call of a
+  stack says nothing about this one.
+- **Shift+Enter, or Shift on the log button, logs it as it stands.** The
+  refusal names it on every platform but a phone's.
+
+Only a fresh verdict refuses. The live score is debounced (§ When the info
+area's pills appear), and some edits schedule none (the reports), so a held
+verdict naming a field may predate the value now in it: Enter scores again
+before refusing on one. With no verdict yet for the call (a slid spot, an
+Enter before the first pass lands) it scores too. A held verdict naming
+nothing is taken as it stands, so an operation whose scorers never hold a
+contact back waits on no score at Enter. A verdict that names fields while
+the callbook lookup is still out waits for it, no longer than the exchange
+complaints do (§ When the info area's pills appear), and is scored again: a
+state or grid the lookup guesses is one a scorer reads, and a slid spot is
+logged before any lookup has answered. A scorer that fails or does not
+answer holds nothing back, and neither does a field the row cannot show:
+with nowhere to type it and no `?` to give it, a phone would have no way on.
+An edit to a contact from an earlier segment is not held either: the row
+and the score are the current segment's, and that contact was never in it.
+
+Where it sits on Enter is part of the contract:
+
+- **After the band-or-frequency refusal**, which speaks first because it is
+  about every contact, not one contest's.
+- **Before Enter Sends Messages logs, and after it asks.** An ESM step that
+  keys their call or the exchange logs nothing, so it runs regardless:
+  asking for the exchange is how the missing fields get filled. A step that
+  thanks and logs is refused before the TU is keyed, since a TU for a
+  contact that stays in the entry row thanks a station still being worked.
+- **Edits too.** An edit is where a contact logged past the gate gets
+  repaired, as with the band-or-frequency refusal.
+- **A spot slid to log** goes through it like Enter. Held back, the panel
+  comes forward with the cursor on the first field named
+  (`LoggingSession.onLogRequestHeld`): the operator slid the row on the spots
+  list, where neither the message nor the field is in sight.
+
+**A field a scorer names is on the row.** The reports, State and Grid are
+the operator's to hide, but once a verdict in this operation names one it is
+shown whatever the settings say, for the rest of the operation: a field
+Enter waits on and the operator cannot see leaves only Shift or a `?` as the
+way on. It stays after the value is in, or it would leave the row while
+being typed into.
+
+**A `?` stays visible after the log.** The QSO list paints an exchange
+holding one in the same orange as an incomplete call, since it is a contact
+the operator comes back to fix.
+
+Only what is *missing* holds a contact back. An exchange that is present
+but wrong — a section that is not a section — stays an `invalidExchange`
+pill and logs: the operator copied something, and the scorer cannot know
+better than they did what was sent.
+
 ## When the info area's pills appear
 
 The candidate is scored as the call is typed, again as each lookup pass

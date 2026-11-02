@@ -1335,6 +1335,13 @@ export interface QsoScoreVerdict {
   /// the logged contacts' verdicts.
   icon?: string
   color?: string
+  /// The entry-row fields this contact still needs before it may be logged,
+  /// by key: one of your own controls' keys (`"arrl-ss/theirSerial"`), or the
+  /// app's `"state"`, `"grid"`, `"sent"` or `"rcvd"`. Read from the live
+  /// `scoreQso` only: Enter refuses to log while any scorer names a field,
+  /// names them, and moves to the first. A `?` in any field, or Shift+Enter,
+  /// logs the contact as it stands. Extension API 15.
+  incomplete?: string[]
   [extra: string]: JSONValue | undefined
 }
 
@@ -1490,6 +1497,8 @@ export interface QsoScoreNotices {
   /// exchange — and the host then leaves the core scorer's own dupe rule
   /// standing, since nobody else has ruled (docs/design/contests.md §5.1).
   dupe?: boolean
+  /// From `scoreQso` only: as `QsoScoreVerdict.incomplete`.
+  incomplete?: string[]
   /// From `scoreQso` only: the checkpoint the request named is held, as
   /// `ScoreQsosResult.checkpointHeld`.
   checkpointHeld?: true

@@ -656,6 +656,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       suggestionSettledSerial: _suggestionSettledSerial,
       onCallEdited: () => setState(() => _closeSlidesSerial++),
       logRequest: _logRequest,
+      onLogRequestHeld: () => dockKey.currentState?.revealModule(ChaseView.loggingPanelId),
       onSelectionChanged: (uuid) => setState(() => _selectedQsoUuid = uuid),
       onCallInfoChanged: (info) => setState(() => _callInfo = info),
       stampQso: (qso) => qsoWithChaseLocation(qso, _location),

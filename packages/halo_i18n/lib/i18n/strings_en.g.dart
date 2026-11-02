@@ -1424,6 +1424,12 @@ class Translations$loggingControls$en {
 	/// en: 'Set a frequency or band before logging'
 	String get bandOrFreqRequired => 'Set a frequency or band before logging';
 
+	/// en: 'Fill in ${fields}, or put a ? where you didn't copy'
+	String incompleteExchange({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy';
+
+	/// en: 'Fill in ${fields}, or put a ? where you didn't copy. Shift+Enter logs it as is'
+	String incompleteExchangeShift({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy. Shift+Enter logs it as is';
+
 	/// en: 'No Band'
 	String get missingBand => 'No Band';
 
@@ -11421,11 +11427,13 @@ extension on Translations {
 			'loggingControls.spotAutoNoFreq' => 'Auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'Another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
+			'loggingControls.incompleteExchange' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy',
+			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy. Shift+Enter logs it as is',
 			'loggingControls.missingBand' => 'No Band',
-			'loggingControls.missingMode' => 'No Mode',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.missingMode' => 'No Mode',
+			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -11936,10 +11944,10 @@ extension on Translations {
 			'settings.help.youtube' => 'Ham2K YouTube',
 			'settings.help.youtubeDescription' => 'Videos and live streams',
 			'settings.help.instagram' => 'Ham2K Instagram',
-			'settings.help.instagramDescription' => 'Because you cannot have too many photos…',
-			'settings.help.bluesky' => 'Ham2K BlueSky',
 			_ => null,
 		} ?? switch (path) {
+			'settings.help.instagramDescription' => 'Because you cannot have too many photos…',
+			'settings.help.bluesky' => 'Ham2K BlueSky',
 			'settings.help.blueskyDescription' => 'Follow us for news and updates',
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
@@ -12450,10 +12458,10 @@ extension on Translations {
 			'settings.station.icomLanTroubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **The ports must match** the radio\'s Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.statusDisconnected' => 'Not connected',
-			'settings.station.statusConnecting' => 'Connecting…',
-			'settings.station.statusDisconnecting' => 'Disconnecting…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.statusConnecting' => 'Connecting…',
+			'settings.station.statusDisconnecting' => 'Disconnecting…',
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
@@ -12964,10 +12972,10 @@ extension on Translations {
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
-			'expiredBuild.dismiss' => 'Continue anyway',
-			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.dismiss' => 'Continue anyway',
+			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
 			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',

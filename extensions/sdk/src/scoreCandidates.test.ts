@@ -250,3 +250,27 @@ test("a verdict's icon and color reach the candidate's answer", async () => {
   const logged = await marking.scoreQsos({ operation, qsos: [qso("K1MUL")] }, { online: false, getQsos: async () => [] })
   assert.deepEqual(Object.values(logged.qsoScores), [{ value: 1, notices: ["newMult"] }])
 })
+
+// The fields a draft still needs hold Enter back in the app, so they must
+// reach the live answer — and only it. On a spot nobody has copied an
+// exchange, and a logged contact is past holding back: passed on there, every
+// spot row and every cached verdict would carry a complaint about nothing.
+test("a verdict's incomplete fields reach the live answer and nowhere else", async () => {
+  const exchange = contestScorer(
+    {
+      startScoresheet: () => ({}),
+      scoreQso: ({ scoresheet }) => ({ scoresheet, score: { value: 1, incomplete: ["test/theirSection"] } }),
+      summarizeScore: () => ({}),
+    },
+    { scope: "always" },
+  )
+  const ctx: HookContext = { online: false, getQsos: async () => [] }
+  const live = await exchange.scoreQso!({ operation, qso: candidate("x", "K1ABC").qso }, ctx)
+  assert.deepEqual(live.incomplete, ["test/theirSection"])
+
+  const spots = await exchange.scoreCandidates!({ operation, candidates: [candidate("x", "K1ABC")] }, ctx)
+  assert.equal(spots.x.incomplete, undefined)
+
+  const logged = await exchange.scoreQsos({ operation, qsos: [qso("K1ABC")] }, ctx)
+  assert.deepEqual(Object.values(logged.qsoScores), [{ value: 1 }])
+})

@@ -221,13 +221,13 @@ extension _EntryFields on _LoggingControlsState {
   /// Paired with each field's controller, since Tab and the arrows have to read
   /// the caret and the value, not just move focus.
   ///
-  /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
-  /// change at runtime, and so does the set of contest controls.
+  /// Rebuilt on every call: [_showsRSTFields], [_showsStateField] and
+  /// [_showsGridField] change at runtime, and so does the set of contest controls.
   List<PrimaryField> get _primaryFields => [
     (key: 'call', label: t.loggingControls.theirCall, focus: _callFocus, controller: _callController, hint: null, skipFocus: false),
     // Display order, not Sent-then-Rcvd: the keyboard walks the row the
     // operator is looking at (see [_rstPair]).
-    if (widget.prefs.showRSTFields)
+    if (_showsRSTFields)
       for (final field in _rstPair)
         (
           key: identical(field.controller, _sentController) ? 'sent' : 'rcvd',
@@ -251,11 +251,18 @@ extension _EntryFields on _LoggingControlsState {
           hint: (control['input'] as Map?)?['placeholder'] as String?,
           skipFocus: control['skipFocus'] == true,
         ),
-    if (widget.prefs.showStateField)
+    if (_showsStateField)
       (key: 'state', label: t.qsoEditForm.theirState, focus: _stateFocus, controller: _stateController, hint: _guessStateHint, skipFocus: false),
-    if (widget.prefs.showGridField)
-      (key: 'grid', label: t.qsoEditForm.theirGrid, focus: _gridFocus, controller: _gridController, hint: _guessGridHint, skipFocus: false),
+    if (_showsGridField) (key: 'grid', label: t.qsoEditForm.theirGrid, focus: _gridFocus, controller: _gridController, hint: _guessGridHint, skipFocus: false),
   ];
+
+  /// The reports, State and Grid are the operator's to hide, until a scorer
+  /// names one as a field the contact still needs: a field Enter waits on and
+  /// the operator cannot see leaves only Shift+Enter or a `?` as the way on
+  /// (docs/design/logging-fields.md § An incomplete exchange).
+  bool get _showsRSTFields => widget.prefs.showRSTFields || _lookup.wasNamed('sent') || _lookup.wasNamed('rcvd');
+  bool get _showsStateField => widget.prefs.showStateField || _lookup.wasNamed('state');
+  bool get _showsGridField => widget.prefs.showGridField || _lookup.wasNamed('grid');
 
   /// The Grid field's hint — see [guessGridDisplay], which the More pane's
   /// own Grid field hints through too so the two can never show different

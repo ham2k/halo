@@ -535,6 +535,27 @@ void main() {
       });
     });
 
+    // `incomplete` is not on the worked-before axis, so nothing yields it: the
+    // fallback's field survives POTA's ruling, and one scorer's satisfaction
+    // does not excuse another's missing field. Merged any other way, Enter
+    // logs a contact a running contest still needs its exchange for.
+    test('the fields any scorer still needs are held, whoever else is satisfied', () async {
+      final result = await score({
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+          'incomplete': ['grid'],
+        },
+        'pota:scoreQso': {
+          'notices': ['newRef'],
+          'alerts': <String>[],
+          'incomplete': ['pota/theirPark'],
+        },
+      });
+      expect(result?['alerts'], isEmpty, reason: 'the fallback still yields its dupe');
+      expect(result?['incomplete'], unorderedEquals(['grid', 'pota/theirPark']));
+    });
+
     // The hole a bare "did it answer?" test leaves. Every contest scorer's
     // validity checks return above its dupe check, so `invalidCategory` is an
     // answer that says nothing about whether this station was worked — and core

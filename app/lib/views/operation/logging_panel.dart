@@ -85,12 +85,9 @@ class LoggingPanel extends StatefulWidget {
   /// All passed straight through to [LoggingControls]'s groups — see their docs.
   final ({int serial, Map<String, dynamic> qso})? logRequest;
   final Future<bool> Function({required bool editing})? confirmLogOverwrite;
+  final VoidCallback? onLogRequestHeld;
   final bool suggestedQsoIsTentative;
   final int suggestionSettledSerial;
-
-  /// The operator typed in (or wiped) the call field — see
-  /// [LoggingSession.onCallEdited]. The spots list closes any open slid row
-  /// on it.
   final VoidCallback? onCallEdited;
 
   /// A QSO (or event row) was just written from the controls — the
@@ -206,6 +203,7 @@ class LoggingPanel extends StatefulWidget {
     this.suggestedQso,
     this.logRequest,
     this.confirmLogOverwrite,
+    this.onLogRequestHeld,
     this.suggestedQsoIsTentative = false,
     this.suggestionSettledSerial = 0,
     this.onCallEdited,
@@ -1036,6 +1034,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         suggestedQso: suggestion.qso,
         logRequest: _logRequests[radio],
         confirmLogOverwrite: widget.confirmLogOverwrite,
+        onLogRequestHeld: widget.onLogRequestHeld,
         suggestedQsoIsTentative: suggestion.tentative,
         suggestionSettledSerial: suggestion.settled,
         onCallEdited: widget.onCallEdited,

@@ -241,6 +241,7 @@ class LoggingSession {
     this.suggestedQso,
     this.logRequest,
     this.confirmLogOverwrite,
+    this.onLogRequestHeld,
     this.suggestedQsoIsTentative = false,
     this.onCallEdited,
     this.onCallTyped,
@@ -294,6 +295,13 @@ class LoggingSession {
   /// The dialog belongs to the caller: this file holds no strings, and where
   /// "go back" NAVIGATES to is a question only the app can answer.
   final Future<bool> Function({required bool editing})? confirmLogOverwrite;
+
+  /// A [logRequest] was not logged: a scorer still needs a field the spot did
+  /// not carry (docs/design/logging-fields.md § An incomplete exchange). The
+  /// entry stays in this panel with the cursor on that field, and the caller
+  /// brings the panel forward — the operator slid the row on another surface,
+  /// where neither the message nor the field is in sight.
+  final VoidCallback? onLogRequestHeld;
 
   /// Whether [suggestedQso] is a tentative offer rather than a choice already
   /// made — a spot row slid open far enough to peek, which the operator may

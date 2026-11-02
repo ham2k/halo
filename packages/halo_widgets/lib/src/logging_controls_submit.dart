@@ -23,8 +23,12 @@ extension _Submit on _LoggingControlsState {
   /// which is the sequence the operator's hands were making anyway: pick, send.
   void _handleEnter() {
     if (_exchange.acceptPendingChoice()) return;
-    _log(fromEnter: true);
+    _log(fromEnter: true, asIs: _shiftHeld);
   }
+
+  /// Shift held on Enter or on the log button logs the entry as it stands,
+  /// whatever a scorer still asks of it (§ An incomplete exchange).
+  bool get _shiftHeld => HardwareKeyboard.instance.isShiftPressed;
 
   /// The exchange fields ESM waits on: the contest's own, not the reports
   /// (which carry defaults) nor the serial we send (which is allocated).
@@ -88,7 +92,7 @@ extension _Submit on _LoggingControlsState {
             ? empty.first.focus
             : exchange.isNotEmpty
             ? exchange.first.focus
-            : widget.prefs.showRSTFields
+            : _showsRSTFields
             ? _rcvdFocus
             : _primaryFields.where((field) => field.key == 'state' || field.key == 'grid').firstOrNull?.focus;
         target?.requestFocus();
@@ -201,7 +205,7 @@ extension _Submit on _LoggingControlsState {
           // isn't a callsign, so `_canLog` alone would leave it
           // disabled — see that getter). `_editingEvent` skips both: an
           // event row has neither a callsign nor a command to accept.
-          onPressed: (!deletedQso && (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent)) ? _log : null,
+          onPressed: (!deletedQso && (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent)) ? () => _log(asIs: _shiftHeld) : null,
           style: FilledButton.styleFrom(
             backgroundColor: accentTheme.colorScheme.tertiary,
             foregroundColor: accentTheme.colorScheme.onTertiary,
@@ -241,13 +245,15 @@ extension _Submit on _LoggingControlsState {
   ///
   /// [fromEnter] marks the keyboard's Enter, the only submit Enter Sends
   /// Messages speaks for.
-  Future<void> _log({bool focusCall = true, bool fromEnter = false}) async {
+  ///
+  /// [asIs] logs past the fields a scorer still asks for ([_refusedIncomplete]).
+  Future<void> _log({bool focusCall = true, bool fromEnter = false, bool asIs = false}) async {
     // The outermost Enter holds it: a repeat inside its awaits must not let
     // go while the first is still logging.
-    if (_logPending) return _logEntry(focusCall: focusCall, fromEnter: fromEnter);
+    if (_logPending) return _logEntry(focusCall: focusCall, fromEnter: fromEnter, asIs: asIs);
     _logPending = true;
     try {
-      await _logEntry(focusCall: focusCall, fromEnter: fromEnter);
+      await _logEntry(focusCall: focusCall, fromEnter: fromEnter, asIs: asIs);
     } finally {
       _logPending = false;
       // What the radio did meanwhile, now: followed, or a QSY of an entry
@@ -257,7 +263,7 @@ extension _Submit on _LoggingControlsState {
     }
   }
 
-  Future<void> _logEntry({required bool focusCall, required bool fromEnter}) async {
+  Future<void> _logEntry({required bool focusCall, required bool fromEnter, required bool asIs}) async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
     // The write policy specifically, NOT `_fieldsLocked`: this method is also
     // how a staged delete is committed and a deleted QSO saved, both of which
@@ -376,11 +382,20 @@ extension _Submit on _LoggingControlsState {
     }
 
     // Enter Sends Messages, after every gate a plain Enter would stop at —
-    // so a thanks is never keyed for a contact the band check then refuses —
-    // and only while composing: an edit is a correction, not an exchange.
-    if (fromEnter && editingQso == null) {
-      if (widget.session.enterSends?.call() case final esm? when _enterSendsMessages(esm)) return;
+    // so a thanks is never keyed for a contact the band check or the
+    // scorers then refuse — and only while composing: an edit is a
+    // correction, not an exchange. A step that keys their call or the
+    // exchange logs nothing, so the scorers' gate is not in its way: asking
+    // for the exchange is how the missing fields get filled.
+    final esm = fromEnter && editingQso == null ? widget.session.enterSends?.call() : null;
+    final esmThen = esm == null ? null : esmStepFor(_esmFacts, running: esm.running)?.then;
+    if (_canLog && (esmThen == null || esmThen == EsmThen.log) && !asIs) {
+      if (await _refusedIncomplete(focusCall: focusCall)) return;
+      // The scorers' answer can be a runtime round trip away; a repeat or an
+      // edit inside it is the same race the command path re-checks for.
+      if (!mounted || _isLogging || _call != call) return;
     }
+    if (esm != null && _enterSendsMessages(esm)) return;
     final logged = _esmLogged;
     _esmLogged = null;
 
@@ -413,6 +428,43 @@ extension _Submit on _LoggingControlsState {
         }
       }
     }
+  }
+
+  /// The scorers' gate: while any of them names a field the contact still
+  /// needs (`incomplete`, docs/design/logging-fields.md § An incomplete
+  /// exchange), Enter says which and moves to the first, and logs nothing.
+  /// A `?` in any field is the operator saying they did not copy it, and
+  /// passes; so does Shift ([asIs] at the caller). Returns whether it refused.
+  ///
+  /// The call's own `?` is not read here: an incomplete call is never
+  /// scored, so no scorer asks anything of it. Reading the whole call field
+  /// would let a `?` in another call of a stack excuse this one.
+  Future<bool> _refusedIncomplete({required bool focusCall}) async {
+    if (_primaryFields.any((field) => field.key != 'call' && field.controller.text.contains('?'))) return false;
+    // The live score judges the CURRENT segment's activities; a contact from
+    // an earlier one is no contact of theirs, and an edit to it is not held
+    // to their exchange.
+    final editing = widget.session.editingQso;
+    if (editing != null && _segmented.segmentIndexAt(editing.startAtMillis) != _segmented.segments.length - 1) return false;
+    final missing = await _lookup.incompleteAtEnter();
+    if (missing.isEmpty || !mounted) return false;
+    // In the row's order, not the scorers': the first named is the first
+    // the operator's eye reaches, and where Enter puts them.
+    final named = [
+      for (final field in _primaryFields)
+        if (missing.contains(field.key)) field,
+    ];
+    // A field that is not on the row cannot be filled from it, nor take the
+    // `?` that passes it — and a phone has no Shift. Holding the contact for
+    // it would leave no way on at all.
+    if (named.isEmpty) return false;
+    final fields = named.map((field) => field.label).join(', ');
+    _command.showError(isMobilePlatform ? t.loggingControls.incompleteExchange(fields: fields) : t.loggingControls.incompleteExchangeShift(fields: fields));
+    // A log asked for from elsewhere ([focusCall] false) is held where the
+    // operator is not looking: the panel comes to them, at the field to fill.
+    if (!focusCall) widget.session.onLogRequestHeld?.call();
+    named.firstOrNull?.focus.requestFocus();
+    return true;
   }
 
   Future<void> _commitStagedDelete(Qso editingQso) async {

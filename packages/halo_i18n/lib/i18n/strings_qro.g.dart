@@ -628,6 +628,8 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String get spotAutoNoFreq => 'AUTO RE-SPOT STOPPED: THE RADIO REPORTS NO FREQUENCY';
 	@override String get spotBusy => 'ANOTHER SPOT IS STILL BEING SENT';
 	@override String get bandOrFreqRequired => 'SET A FREQUENCY OR BAND BEFORE LOGGING';
+	@override String incompleteExchange({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY';
+	@override String incompleteExchangeShift({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS';
 	@override String get missingBand => 'NO BAND';
 	@override String get missingMode => 'NO MODE';
 	@override String saveFailed({required Object error}) => 'COULD NOT SAVE: ${error}';
@@ -5733,11 +5735,13 @@ extension on TranslationsQro {
 			'loggingControls.spotAutoNoFreq' => 'AUTO RE-SPOT STOPPED: THE RADIO REPORTS NO FREQUENCY',
 			'loggingControls.spotBusy' => 'ANOTHER SPOT IS STILL BEING SENT',
 			'loggingControls.bandOrFreqRequired' => 'SET A FREQUENCY OR BAND BEFORE LOGGING',
+			'loggingControls.incompleteExchange' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY',
+			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS',
 			'loggingControls.missingBand' => 'NO BAND',
-			'loggingControls.missingMode' => 'NO MODE',
-			'loggingControls.saveFailed' => ({required Object error}) => 'COULD NOT SAVE: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.missingMode' => 'NO MODE',
+			'loggingControls.saveFailed' => ({required Object error}) => 'COULD NOT SAVE: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'COULD NOT DELETE: ${error}',
 			'loggingControls.info.noQsos' => 'NO QSOS YET... LET\'S GET ON THE AIR!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6248,10 +6252,10 @@ extension on TranslationsQro {
 			'settings.help.youtube' => 'HAM2K YOUTUBE',
 			'settings.help.youtubeDescription' => 'VIDEOS AND LIVE STREAMS',
 			'settings.help.instagram' => 'HAM2K INSTAGRAM',
-			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
-			'settings.help.bluesky' => 'HAM2K BLUESKY',
 			_ => null,
 		} ?? switch (path) {
+			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
+			'settings.help.bluesky' => 'HAM2K BLUESKY',
 			'settings.help.blueskyDescription' => 'FOLLOW US FOR NEWS AND UPDATES',
 			'settings.help.contact' => 'CONTACT US',
 			'settings.help.contactDescription' => 'HELP@HAM2K.COM — BUT TRY THE FORUMS OR CHAT FIRST!',
@@ -6762,10 +6766,10 @@ extension on TranslationsQro {
 			'settings.station.icomLanTroubleshooting' => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW, RS-BA1 OR ICOM\'S REMOTE UTILITY CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** ITS LAN PORT MUST BE CONNECTED TO THE SAME NETWORK AS THIS DEVICE, ITS **NETWORK CONTROL** MUST BE ON, AND THE USERNAME AND PASSWORD MUST BE SET UP AS A NETWORK USER ON THE RADIO.\n- **THE PORTS MUST MATCH** THE RADIO\'S CONTROL PORT AND SERIAL PORT (UDP), OR THE PORTS FORWARDED TO THEM. A WRONG PORT IS MET WITH SILENCE, THE SAME AS A RADIO THAT IS OFF.\n- **IF IT CONNECTS BUT NEVER ANSWERS**, THE CI-V ADDRESS HERE MUST MATCH THE RADIO\'S CI-V ADDRESS MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH.\n- **TURN THE RADIO OFF AND ON** IF IT STAYS STUCK.',
 			'settings.station.statusStale' => 'NOT RESPONDING',
 			'settings.station.statusDisconnected' => 'NOT CONNECTED',
-			'settings.station.statusConnecting' => 'CONNECTING…',
-			'settings.station.statusDisconnecting' => 'DISCONNECTING…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.statusConnecting' => 'CONNECTING…',
+			'settings.station.statusDisconnecting' => 'DISCONNECTING…',
 			'settings.station.statusError' => 'CONNECTION FAILED',
 			'settings.station.currentRadioSettings' => 'CURRENT RADIO SETTINGS',
 			'settings.station.notSupportedByThisRadio' => 'NOT SUPPORTED BY THIS RADIO',
@@ -7276,10 +7280,10 @@ extension on TranslationsQro {
 			'expiredBuild.title' => 'THIS BUILD HAS EXPIRED',
 			'expiredBuild.body' => 'PLEASE VISIT HAM2K.COM AND GET A NEWER VERSION.',
 			'expiredBuild.visit' => 'VISIT HAM2K.COM',
-			'expiredBuild.dismiss' => 'CONTINUE ANYWAY',
-			'staleness.codePushFloorTitle' => 'AN IMPORTANT UPDATE IS WAITING',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.dismiss' => 'CONTINUE ANYWAY',
+			'staleness.codePushFloorTitle' => 'AN IMPORTANT UPDATE IS WAITING',
 			'staleness.codePushFloorBody' => 'THIS VERSION HAS A FIX YOU DON\'T HAVE YET.',
 			'staleness.restartToApply' => 'RESTART THE APP TO APPLY IT.',
 			'staleness.quitAndReopen' => 'QUIT THE APP AND OPEN IT AGAIN TO APPLY IT.',

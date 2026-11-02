@@ -891,6 +891,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 serialNumbers: _peerSharingDrafts ? widget.services.serialClaims : null,
                 logRequest: _logRequest,
                 confirmLogOverwrite: _confirmLogOverwrite,
+                onLogRequestHeld: _revealLoggingPanel,
                 onSelectionChanged: (uuid) => setState(() => _selectedQsoUuid = uuid),
                 onCallInfoChanged: (info) {
                   // Entering a call is logging-panel use, and it is the one

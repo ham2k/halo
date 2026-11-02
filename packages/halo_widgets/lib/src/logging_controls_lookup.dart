@@ -134,6 +134,14 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   List<String> _alertKeys = const [];
   List<String> _noticeKeys = const [];
   Map<String, List<String>> _scoreSources = const {};
+  List<String> _incomplete = const [];
+
+  /// Every field a verdict has named as still needed, for the operation in
+  /// [_namedFor]. Kept past the verdict that named it: the row shows such a
+  /// field whatever the operator's settings hide ([wasNamed]), and one that
+  /// left again once filled in would take the value typed into it along.
+  final Set<String> _named = {};
+  String? _namedFor;
 
   /// When the scored keys may show — see [currentAlertKeys]. Each names the
   /// call it applies to, so a call that moves on leaves its holds behind.
@@ -344,6 +352,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     _alertKeys = const [];
     _noticeKeys = const [];
     _scoreSources = const {};
+    _incomplete = const [];
   }
 
   /// Everything a compose session accumulated: the shown result, the
@@ -406,42 +415,45 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       return;
     }
 
-    _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      // Offline pass first: fast, local-data-only, so the user sees
-      // whatever's cheaply available (e.g. the callsign-annotation
-      // pre-step) almost instantly. Then an online pass fills in
-      // network-sourced data (QRZ/HamDB/etc) as soon as it resolves — no
-      // extra artificial delay beyond its own network latency.
-      // Each pass is settled against the entry as it was asked; a state or
-      // grid typed while one is out is settled into it once it lands.
-      var settlesAsked = _settlesIssued;
-      final offlineResult = await _fetch(lookup, call, online: false);
-      if (isDisposed || activeCall() != call) return; // stale — the active call changed
-      _cache[call] = offlineResult;
-      // Spot-derived refs land here, off the OFFLINE pass, deliberately
-      // without a re-lookup: the online pass below rebuilds its `qso`
-      // argument from scratch, so the POTA/SOTA hooks see the just-added
-      // park/summit on that pass and resolve its grid — a re-lookup here
-      // would instead race the online pass already in flight.
-      _adopt(call, offlineResult, LookupPhase.offline);
-      if (_settlesIssued != settlesAsked) entriesEdited();
+    _lookupDebounce = Timer(const Duration(milliseconds: 300), () => unawaited(_lookupNow(call, lookup)));
+  }
 
-      settlesAsked = _settlesIssued;
-      final onlineResult = await _fetch(lookup, call, online: true);
-      if (isDisposed || activeCall() != call) return; // stale — the active call changed
-      // A failed/timed-out online pass (host down, network error) must not
-      // erase an already-shown, still-valid offline preview — keep it. It is
-      // still the end of the lookup: there is nothing left to wait for.
-      if (onlineResult == null) {
-        _lookupDone(call);
-        notify();
-        scheduleScore();
-        return;
-      }
-      _cache[call] = onlineResult;
-      _adopt(call, onlineResult, LookupPhase.online);
-      if (_settlesIssued != settlesAsked) entriesEdited();
-    });
+  /// The lookup [scheduleLookup] debounces: an offline pass, then an online one.
+  Future<void> _lookupNow(String call, CallLookup lookup) async {
+    // Offline pass first: fast, local-data-only, so the user sees
+    // whatever's cheaply available (e.g. the callsign-annotation
+    // pre-step) almost instantly. Then an online pass fills in
+    // network-sourced data (QRZ/HamDB/etc) as soon as it resolves — no
+    // extra artificial delay beyond its own network latency.
+    // Each pass is settled against the entry as it was asked; a state or
+    // grid typed while one is out is settled into it once it lands.
+    var settlesAsked = _settlesIssued;
+    final offlineResult = await _fetch(lookup, call, online: false);
+    if (isDisposed || activeCall() != call) return; // stale — the active call changed
+    _cache[call] = offlineResult;
+    // Spot-derived refs land here, off the OFFLINE pass, deliberately
+    // without a re-lookup: the online pass below rebuilds its `qso`
+    // argument from scratch, so the POTA/SOTA hooks see the just-added
+    // park/summit on that pass and resolve its grid — a re-lookup here
+    // would instead race the online pass already in flight.
+    _adopt(call, offlineResult, LookupPhase.offline);
+    if (_settlesIssued != settlesAsked) entriesEdited();
+
+    settlesAsked = _settlesIssued;
+    final onlineResult = await _fetch(lookup, call, online: true);
+    if (isDisposed || activeCall() != call) return; // stale — the active call changed
+    // A failed/timed-out online pass (host down, network error) must not
+    // erase an already-shown, still-valid offline preview — keep it. It is
+    // still the end of the lookup: there is nothing left to wait for.
+    if (onlineResult == null) {
+      _lookupDone(call);
+      notify();
+      scheduleScore();
+      return;
+    }
+    _cache[call] = onlineResult;
+    _adopt(call, onlineResult, LookupPhase.online);
+    if (_settlesIssued != settlesAsked) entriesEdited();
   }
 
   /// Takes [result] as the answer for [call]: shown, re-scored (a lookup
@@ -463,6 +475,31 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   void _lookupDone(String call) {
     _lookupDoneFor = call;
     _lookupDoneAt = _scoresIssued;
+    _lookupLanding?.complete();
+    _lookupLanding = null;
+  }
+
+  /// Completed when the next lookup finishes — see [_lookupLanded].
+  Completer<void>? _lookupLanding;
+
+  /// Whether [call]'s lookup has nothing left to bring: none is wired, an edit
+  /// is never looked up, or it has finished.
+  bool _lookupSettledFor(String call) {
+    final cfg = config();
+    return cfg.lookup == null || cfg.editingQso != null || _lookupDoneFor == call;
+  }
+
+  /// Waits for [call]'s lookup to finish — running it now if it is still in
+  /// its debounce — for no longer than the exchange complaints wait on one
+  /// ([kExchangeLookupTimeout]). A lookup that never lands, or lands for a
+  /// call since moved past, ends the wait at the timeout.
+  Future<void> _lookupLanded(String call) async {
+    if (_lookupDebounce?.isActive ?? false) {
+      _lookupDebounce!.cancel();
+      unawaited(_lookupNow(call, config().lookup!));
+    }
+    final landing = _lookupLanding ??= Completer<void>();
+    await landing.future.timeout(kExchangeLookupTimeout, onTimeout: () {});
   }
 
   Future<Map<String, dynamic>?> _fetch(CallLookup lookup, String call, {required bool online}) => lookup(
@@ -555,8 +592,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// the cache. No-op (and clears) below the call-info threshold or with no
   /// `scoreQso` wired.
   void scheduleScore() {
-    final scoreFn = config().scoreQso;
-    if (scoreFn == null) return;
+    if (config().scoreQso == null) return;
     _scoreDebounce?.cancel();
     final call = activeCall();
     // An incomplete call scores nothing by rule, so it is answered here
@@ -568,6 +604,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       _alertKeys = const ['incompleteCall'];
       _noticeKeys = const [];
       _scoreSources = const {};
+      _incomplete = const [];
       notify();
       return;
     }
@@ -590,32 +627,89 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
         notify();
       });
     }
-    _scoreDebounce = Timer(const Duration(milliseconds: 300), () async {
-      // Scored against the CURRENT segment, matching the entry row's own gate
-      // (the panel's `_activeRefTypes`): the pills and the fields have to agree
-      // about which activities are running. The timeline goes along so the log
-      // the candidate is judged against is folded per-segment too — otherwise
-      // a contest that started at a break calls a pre-contest contact a dupe.
-      final cfg = config();
-      final segments = segmented();
-      final issue = ++_scoresIssued;
-      final result = await scoreFn(
-        operation: {...segments.current, 'uuid': cfg.operation.uuid},
-        qso: qsoData(call),
-        excludeUuid: cfg.editingQso?.uuid,
-        segments: segments.isSegmented ? segments.payload : null,
+    _scoreDebounce = Timer(const Duration(milliseconds: 300), () => unawaited(_scoreNow(call)));
+  }
+
+  /// Whether a verdict in this operation has named [key] as a field the
+  /// contact still needs (see [_named]).
+  bool wasNamed(String key) => _namedFor == config().operation.uuid && _named.contains(key);
+
+  /// The fields the scorers still need before the entry may be logged
+  /// (`incomplete` on the live verdict, docs/design/logging-fields.md § An
+  /// incomplete exchange). Only a fresh verdict refuses: one held for this
+  /// call that names fields is scored again first, since the field it named
+  /// may have been filled since — inside the debounce, or in a field whose
+  /// edits schedule no score (the reports). With no verdict for this call yet
+  /// (a slid spot, an Enter before the first pass lands) it scores too. A
+  /// held verdict naming nothing is taken as it stands, so an operation whose
+  /// scorers never hold a contact back waits on no score at Enter.
+  ///
+  /// A verdict that names fields while the callbook is still out waits for
+  /// its answer and is scored again: the state or grid it guesses is one a
+  /// scorer reads, and refusing for it a moment before it lands sends the
+  /// operator to type what the app was about to know.
+  ///
+  /// Empty for anything the live score does not judge — no scorer wired, an
+  /// incomplete call, no callsign — and when the score fails: a failing
+  /// scorer holds nothing back.
+  Future<List<String>> incompleteAtEnter() async {
+    final call = activeCall();
+    if (config().scoreQso == null || !isCallInfoActive() || !looksLikeCallsign(call)) return const [];
+    try {
+      if (_scoreFor != call || _incomplete.isNotEmpty) await _rescoreNow(call);
+      if (!isDisposed && _scoreFor == call && _incomplete.isNotEmpty && !_lookupSettledFor(call)) {
+        await _lookupLanded(call);
+        if (!isDisposed && activeCall() == call) await _rescoreNow(call);
+      }
+    } catch (exception, stack) {
+      // Reported, not thrown: thrown, it ends the Enter, and the contact
+      // is never logged.
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: exception, stack: stack, library: 'halo_widgets', context: ErrorDescription('scoring the entry at Enter')),
       );
-      if (isDisposed || activeCall() != call) return; // stale — the active call moved on
-      if (issue < _verdictIssue) return; // overtaken by a verdict on newer input
-      _verdictIssue = issue;
-      _scoreFor = call;
-      _alertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
-      _noticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();
-      _scoreSources = {
-        for (final MapEntry(:key, :value) in ((result?['sources'] as Map?) ?? const {}).entries)
-          if (key is String && value is List) key: value.whereType<String>().toList(),
-      };
-      notify();
-    });
+      return const [];
+    }
+    return !isDisposed && _scoreFor == activeCall() ? _incomplete : const [];
+  }
+
+  Future<void> _rescoreNow(String call) {
+    _scoreDebounce?.cancel();
+    return _scoreNow(call);
+  }
+
+  Future<void> _scoreNow(String call) async {
+    final scoreFn = config().scoreQso;
+    if (scoreFn == null) return;
+    // Scored against the CURRENT segment, matching the entry row's own gate
+    // (the panel's `_activeRefTypes`): the pills and the fields have to agree
+    // about which activities are running. The timeline goes along so the log
+    // the candidate is judged against is folded per-segment too — otherwise
+    // a contest that started at a break calls a pre-contest contact a dupe.
+    final cfg = config();
+    final segments = segmented();
+    final issue = ++_scoresIssued;
+    final result = await scoreFn(
+      operation: {...segments.current, 'uuid': cfg.operation.uuid},
+      qso: qsoData(call),
+      excludeUuid: cfg.editingQso?.uuid,
+      segments: segments.isSegmented ? segments.payload : null,
+    );
+    if (isDisposed || activeCall() != call) return; // stale — the active call moved on
+    if (issue < _verdictIssue) return; // overtaken by a verdict on newer input
+    _verdictIssue = issue;
+    _scoreFor = call;
+    _alertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
+    _noticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();
+    _scoreSources = {
+      for (final MapEntry(:key, :value) in ((result?['sources'] as Map?) ?? const {}).entries)
+        if (key is String && value is List) key: value.whereType<String>().toList(),
+    };
+    _incomplete = ((result?['incomplete'] as List?) ?? const []).whereType<String>().toList();
+    if (_namedFor != cfg.operation.uuid) {
+      _named.clear();
+      _namedFor = cfg.operation.uuid;
+    }
+    _named.addAll(_incomplete);
+    notify();
   }
 }

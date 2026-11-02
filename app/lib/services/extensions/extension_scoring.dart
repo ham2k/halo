@@ -201,8 +201,9 @@ mixin ExtensionScoring {
   /// `{notices, alerts}` of scoring keys (`duplicate`, `newBand`, `newMode`,
   /// `newDXCC`, `newState`, `newProvince`, plus whatever a contest scorer emits
   /// — the vocabulary is open), merged across every scorer relevant to the
-  /// operation, or null
-  /// when the runtime isn't up. Debounced on the caller's side.
+  /// operation, and `incomplete`, the fields any of them still needs before
+  /// the contact may be logged, when one does — or null when the runtime
+  /// isn't up. Debounced on the caller's side.
   /// [excludeUuid] drops the record being edited so it can't flag itself as
   /// its own duplicate. [operation] must carry `uuid` (the hook reads the log
   /// via it) — pass the same uuid-folded shape command hooks get.
@@ -253,6 +254,9 @@ mixin ExtensionScoring {
     // a dedupe signature by joining these lists.
     final notices = SplayTreeSet<String>();
     final alerts = SplayTreeSet<String>();
+    // Every scorer's, the fallback's included: a field one scorer still needs
+    // holds the contact back whoever else is satisfied.
+    final incomplete = <String>{};
     var any = false;
     // The fallback scorer's own verdict, held back until every other scorer has
     // answered: once one of them has judged this QSO on the worked-before axis,
@@ -291,6 +295,7 @@ mixin ExtensionScoring {
           final ownAlerts = ((result['alerts'] as List?) ?? const []).whereType<String>();
           (scorer.fallback ? fallbackNotices : notices).addAll(ownNotices);
           (scorer.fallback ? fallbackAlerts : alerts).addAll(ownAlerts);
+          incomplete.addAll(((result['incomplete'] as List?) ?? const []).whereType<String>());
           // `dupe: false` with no pills is a ruling too: "worked before, and this
           // one counts" against another scorer's duplicate is a disagreement.
           if (!scorer.fallback && (ownNotices.isNotEmpty || ownAlerts.isNotEmpty || result['dupe'] == false)) {
@@ -313,7 +318,7 @@ mixin ExtensionScoring {
       alerts.addAll(fallbackAlerts);
     }
     final sources = _sourcesIfDisagreeing(byScorer);
-    return {'notices': notices.toList(), 'alerts': alerts.toList(), 'sources': ?sources};
+    return {'notices': notices.toList(), 'alerts': alerts.toList(), 'sources': ?sources, if (incomplete.isNotEmpty) 'incomplete': incomplete.toList()};
   }
 
   /// Which scorers said each key, by short name — only when they DISAGREE:
