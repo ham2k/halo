@@ -11,6 +11,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/rtl_tcp_driver.dart';
 import 'drivers/sdr_spectrum.dart';
+import 'drivers/spyserver_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'transports/tcp_transport.dart';
@@ -56,8 +57,58 @@ const sdrplayModel = EquipmentModel(
 
 String _sdrplayName() => t.settings.station.models.sdrplay;
 
+/// Airspy's receivers reach the network through its own SpyServer, which
+/// also serves an RTL-SDR — so a model of its own covers every other
+/// receiver behind one. One model each, as a model has one variant a
+/// transport.
+const _spyServerDefaults = {'port': spyServerDefaultPort, sdrRadioConfigKey: sdrRadioMain, sdrTuningConfigKey: 'independent'};
+
+const airspyModel = EquipmentModel(
+  key: 'airspy',
+  category: kCategorySdr,
+  name: _airspyName,
+  manufacturer: 'Airspy',
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: 'airspy-spyserver', driver: SpyServerDriver(), transport: TcpTransport(), defaultConfig: _spyServerDefaults, notes: _spyServerNotes),
+  ],
+);
+
+String _airspyName() => t.settings.station.models.airspy;
+
+const airspyHfModel = EquipmentModel(
+  key: 'airspy-hf',
+  category: kCategorySdr,
+  name: _airspyHfName,
+  manufacturer: 'Airspy',
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(
+      key: 'airspyhf-spyserver',
+      driver: SpyServerDriver(),
+      transport: TcpTransport(),
+      defaultConfig: _spyServerDefaults,
+      notes: _spyServerNotes,
+    ),
+  ],
+);
+
+String _airspyHfName() => t.settings.station.models.airspyHf;
+
+const spyServerModel = EquipmentModel(
+  key: 'spyserver',
+  category: kCategorySdr,
+  name: _spyServerName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(key: 'spyserver', driver: SpyServerDriver(), transport: TcpTransport(), defaultConfig: _spyServerDefaults, notes: _spyServerNotes),
+  ],
+);
+
+String _spyServerName() => t.settings.station.models.spyServer;
+
 /// Every SDR model, in the order the Add dialog offers them.
-const sdrModels = [rtlSdrModel, nesdrModel, sdrplayModel];
+const sdrModels = [rtlSdrModel, nesdrModel, sdrplayModel, airspyModel, airspyHfModel, spyServerModel];
 
 List<Map<String, dynamic>> _rtlTcpNotes() => [
   {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.rtlTcpNotes},
@@ -65,4 +116,8 @@ List<Map<String, dynamic>> _rtlTcpNotes() => [
 
 List<Map<String, dynamic>> _rspTcpNotes() => [
   {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.rspTcpNotes},
+];
+
+List<Map<String, dynamic>> _spyServerNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.spyServerNotes},
 ];

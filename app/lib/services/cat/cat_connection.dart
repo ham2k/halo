@@ -173,6 +173,9 @@ extension _Connection on CatService {
       final friendly = friendlyConnectError(reason, e);
       final raw = '$e';
       trafficLog?.note(_logLabel(uuid), connectFailedNote(reason, e));
+      // The newest reason an SDR is not drawing, kept through the next try's
+      // connecting as a drop's is.
+      if (isSdr(uuid)) runtime.sdrDropReason = friendly;
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
       _trackFailure(node, reason, extra: {..._baudExtra(config), 'usb': ?connectFailureUsbId(e)});
       if (e is SerialPortProblem && e.failure == SerialFailure.lines) runtime.linesRefused = true;
@@ -187,9 +190,19 @@ extension _Connection on CatService {
       return _ConnectOutcome.superseded;
     }
 
+    // Why the session gave up on this connection, for the drop that follows.
+    String? droppedBecause;
     final sink = _NodeSink(
       connection: connection,
       linkedVfo: () => _linkedVfoHz(uuid),
+      onDropConnection: (why) {
+        if (runtime.connection != connection) return;
+        droppedBecause = why;
+        trafficLog?.note(_logLabel(uuid), why);
+        // Closed without clearing runtime.connection, so the close is handled
+        // as the server's own drop, and reconnected like one.
+        unawaited(connection.close());
+      },
       onSend: (bytes) => trafficLog?.sent(_logLabel(uuid), bytes),
       onReading: (reading) {
         // A session from a superseded connection must not write state.
@@ -347,6 +360,10 @@ extension _Connection on CatService {
         // NOT _noteAlive: a Flex sweep is computed from a UDP stream that
         // outlives the command socket the silence watch is about.
         runtime.spectrum?.add(frame);
+        if (runtime.sdrDropReason != null) {
+          runtime.sdrDropReason = null;
+          _setState(uuid, stateFor(uuid));
+        }
       },
       onSpectrumSettings: _spectrumSettingsListener(uuid, runtime, connection),
       onSpectrumProblem: (message) {
@@ -446,6 +463,7 @@ extension _Connection on CatService {
         // it down leaves them ticking for the life of the process — once per
         // drop — each one retaining its sink and this dead connection.
         unawaited(_closeSession(runtime));
+        if (isSdr(uuid)) runtime.sdrDropReason = droppedBecause ?? t.settings.station.spectrumSdrServerClosed;
         _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
         _autoReconnectAfterDrop(uuid);
         // An SDR comes back for the display still waiting on it.

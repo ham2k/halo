@@ -320,6 +320,9 @@ void main() {
       'rtl-sdr-rtltcp',
       'nesdr-rtltcp',
       'sdrplay-rsptcp',
+      'airspy-spyserver',
+      'airspyhf-spyserver',
+      'spyserver',
       // Derived from the model's key, one per real transceiver — stored like
       // any other, so renaming a model's key orphans its placeholder nodes.
       'flexradio-placeholder',
@@ -878,9 +881,9 @@ void main() {
     // be read back, so a fresh session assumes the poll and drops the claim
     // once the radio announces on its own (cat_icom_civ_test.dart).
     // The Winkeyer pushes too: status, echo and pot reports, as they happen.
-    // An SDR streams IQ continuously and has no dial of its own to settle.
+    // An SDR streams continuously and has no dial of its own to settle.
     // An OTRSP box pushes its RX events, a front-panel switch included.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'otrsp'};
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'otrsp'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

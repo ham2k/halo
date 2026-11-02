@@ -2715,6 +2715,8 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get spectrumSdrNoRadio => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…';
 	@override String get spectrumSdrNotConnected => 'THE SDR IS NOT CONNECTED';
 	@override String get spectrumSdrNoIf => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS';
+	@override String get spectrumSdrUnreachable => 'THE SDR CANNOT TUNE TO WHERE THE RADIO IS, OR ANOTHER PROGRAM HAS IT TUNED ELSEWHERE';
+	@override String get spectrumSdrServerClosed => 'THE CONNECTION TO THE SDR SERVER ENDED. IT MAY BE BUSY, HAVE NO RECEIVER ATTACHED, OR BE OUT OF REACH';
 	@override String get sdrRadio => 'SHOWS THE SPECTRUM FOR';
 	@override String get sdrRadioDescription => 'A SPECTRUM DISPLAY ON THIS RADIO DRAWS FROM THIS RECEIVER INSTEAD OF THE RADIO\'S OWN SCOPE.';
 	@override String get sdrRadioMain => 'THE MAIN RADIO';
@@ -2738,6 +2740,13 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get rtlTcpNotAServer => 'THIS IS NOT AN RTL_TCP SERVER';
 	@override String get rtlTcpNotes => 'THIS CONNECTS TO AN **RTL_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE DONGLE IS PLUGGED INTO.\n\n- **START IT** WITH `rtl_tcp -a 0.0.0.0` SO OTHER MACHINES CAN REACH IT; ON THE SAME MACHINE, `rtl_tcp` ALONE WILL DO.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** RTL_TCP SERVES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING, AND LETS GO A FEW SECONDS AFTER IT CLOSES.\n- **ON ANDROID**, THE *SDR DRIVER* APP RUNS THE SAME SERVER ON THE PHONE.';
 	@override String get rspTcpNotes => 'THIS CONNECTS TO AN **RSP_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE RSP IS PLUGGED INTO, WITH SDRPLAY\'S API INSTALLED THERE.\n\n- **START IT** WITH `rsp_tcp -a 0.0.0.0`.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** THE SERVER TAKES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING.';
+	@override String get spyServerNoDevice => 'THE SPYSERVER HAS NO RECEIVER ATTACHED';
+	@override String get spyServerNotAServer => 'THIS IS NOT A SPYSERVER, OR NOT A VERSION THIS APP CAN TALK TO';
+	@override String get spyServerGarbled => 'THE SPYSERVER\'S STREAM COULD NOT BE READ';
+	@override String get spyServerNoSpectrum => 'THE SPYSERVER IS NOT SENDING A SPECTRUM';
+	@override String get spyServerGain => 'GAIN STEP';
+	@override String get spyServerGainDescription => 'FROM 0 UP TO THE RECEIVER\'S HIGHEST STEP. LEAVE BLANK TO KEEP THE SERVER\'S OWN GAIN. ONLY THE FIRST PROGRAM CONNECTED TO THE SERVER CAN CHANGE IT.';
+	@override String get spyServerNotes => 'THIS CONNECTS TO **AIRSPY\'S SPYSERVER**, RUNNING ON THE COMPUTER THE RECEIVER IS PLUGGED INTO, OR TO A PUBLIC ONE.\n\n- **PORT** IS 5555 UNLESS THE SERVER\'S `spyserver.config` SAYS OTHERWISE.\n- **THE SERVER COMPUTES THE SPECTRUM** AND SENDS A FEW TENS OF KILOBYTES A SECOND, SO IT WORKS OVER THE INTERNET TOO.\n- **ONLY THE FIRST PROGRAM CONNECTED CAN RETUNE THE RECEIVER.** WHILE ANOTHER ONE IS CONNECTED, THE DISPLAY SHOWS ONLY WHAT THE RECEIVER IS ALREADY TUNED TO.\n- **IF IT CONNECTS AND DROPS AT ONCE,** THE SERVER IS FULL OR HAS NO RECEIVER ATTACHED.';
 	@override String get n3fjpNoRig => 'N3FJP HAS NO RADIO INTERFACE SET UP, SO THIS FOLLOWS WHAT IS TYPED INTO N3FJP, NOT A RADIO';
 	@override String get winkeyerKeyPort => 'KEY OUTPUT';
 	@override String get winkeyerKeyPortDescription => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.';
@@ -4475,6 +4484,9 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get rtlSdr => 'RTL-SDR';
 	@override String get nesdr => 'NOOELEC NESDR';
 	@override String get sdrplay => 'SDRPLAY RSP';
+	@override String get airspy => 'AIRSPY R2 / MINI';
+	@override String get airspyHf => 'AIRSPY HF+';
+	@override String get spyServer => 'SPYSERVER (ANY RECEIVER)';
 }
 
 // Path: settings.station.transports
@@ -6529,6 +6541,8 @@ extension on TranslationsQro {
 			'settings.station.spectrumSdrNoRadio' => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…',
 			'settings.station.spectrumSdrNotConnected' => 'THE SDR IS NOT CONNECTED',
 			'settings.station.spectrumSdrNoIf' => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS',
+			'settings.station.spectrumSdrUnreachable' => 'THE SDR CANNOT TUNE TO WHERE THE RADIO IS, OR ANOTHER PROGRAM HAS IT TUNED ELSEWHERE',
+			'settings.station.spectrumSdrServerClosed' => 'THE CONNECTION TO THE SDR SERVER ENDED. IT MAY BE BUSY, HAVE NO RECEIVER ATTACHED, OR BE OUT OF REACH',
 			'settings.station.sdrRadio' => 'SHOWS THE SPECTRUM FOR',
 			'settings.station.sdrRadioDescription' => 'A SPECTRUM DISPLAY ON THIS RADIO DRAWS FROM THIS RECEIVER INSTEAD OF THE RADIO\'S OWN SCOPE.',
 			'settings.station.sdrRadioMain' => 'THE MAIN RADIO',
@@ -6552,6 +6566,13 @@ extension on TranslationsQro {
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
 			'settings.station.rtlTcpNotes' => 'THIS CONNECTS TO AN **RTL_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE DONGLE IS PLUGGED INTO.\n\n- **START IT** WITH `rtl_tcp -a 0.0.0.0` SO OTHER MACHINES CAN REACH IT; ON THE SAME MACHINE, `rtl_tcp` ALONE WILL DO.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** RTL_TCP SERVES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING, AND LETS GO A FEW SECONDS AFTER IT CLOSES.\n- **ON ANDROID**, THE *SDR DRIVER* APP RUNS THE SAME SERVER ON THE PHONE.',
 			'settings.station.rspTcpNotes' => 'THIS CONNECTS TO AN **RSP_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE RSP IS PLUGGED INTO, WITH SDRPLAY\'S API INSTALLED THERE.\n\n- **START IT** WITH `rsp_tcp -a 0.0.0.0`.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** THE SERVER TAKES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING.',
+			'settings.station.spyServerNoDevice' => 'THE SPYSERVER HAS NO RECEIVER ATTACHED',
+			'settings.station.spyServerNotAServer' => 'THIS IS NOT A SPYSERVER, OR NOT A VERSION THIS APP CAN TALK TO',
+			'settings.station.spyServerGarbled' => 'THE SPYSERVER\'S STREAM COULD NOT BE READ',
+			'settings.station.spyServerNoSpectrum' => 'THE SPYSERVER IS NOT SENDING A SPECTRUM',
+			'settings.station.spyServerGain' => 'GAIN STEP',
+			'settings.station.spyServerGainDescription' => 'FROM 0 UP TO THE RECEIVER\'S HIGHEST STEP. LEAVE BLANK TO KEEP THE SERVER\'S OWN GAIN. ONLY THE FIRST PROGRAM CONNECTED TO THE SERVER CAN CHANGE IT.',
+			'settings.station.spyServerNotes' => 'THIS CONNECTS TO **AIRSPY\'S SPYSERVER**, RUNNING ON THE COMPUTER THE RECEIVER IS PLUGGED INTO, OR TO A PUBLIC ONE.\n\n- **PORT** IS 5555 UNLESS THE SERVER\'S `spyserver.config` SAYS OTHERWISE.\n- **THE SERVER COMPUTES THE SPECTRUM** AND SENDS A FEW TENS OF KILOBYTES A SECOND, SO IT WORKS OVER THE INTERNET TOO.\n- **ONLY THE FIRST PROGRAM CONNECTED CAN RETUNE THE RECEIVER.** WHILE ANOTHER ONE IS CONNECTED, THE DISPLAY SHOWS ONLY WHAT THE RECEIVER IS ALREADY TUNED TO.\n- **IF IT CONNECTS AND DROPS AT ONCE,** THE SERVER IS FULL OR HAS NO RECEIVER ATTACHED.',
 			'settings.station.n3fjpNoRig' => 'N3FJP HAS NO RADIO INTERFACE SET UP, SO THIS FOLLOWS WHAT IS TYPED INTO N3FJP, NOT A RADIO',
 			'settings.station.winkeyerKeyPort' => 'KEY OUTPUT',
 			'settings.station.winkeyerKeyPortDescription' => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.',
@@ -6652,6 +6673,9 @@ extension on TranslationsQro {
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
+			'settings.station.models.airspy' => 'AIRSPY R2 / MINI',
+			'settings.station.models.airspyHf' => 'AIRSPY HF+',
+			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
 			'settings.station.transports.network' => 'NETWORK/WIFI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
@@ -6755,6 +6779,8 @@ extension on TranslationsQro {
 			'settings.station.rigctldTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
 			'settings.station.rigctldTroubleshooting' => 'THIS CONNECTS TO A **RIGCTLD DAEMON YOU RUN YOURSELF**, NOT TO THE RADIO DIRECTLY — HAMLIB\'S BACKEND TALKS TO THE RADIO AND SUPPORTS HUNDREDS OF MODELS.\n\n- **THE DAEMON MUST ALREADY BE RUNNING**, E.G. `rigctld -m 1035 -r /dev/ttyUSB0`. FIND YOUR RADIO\'S MODEL NUMBER WITH `rigctl -l`.\n- **FROM ANOTHER MACHINE**, START IT WITH `-T 0.0.0.0`: BY DEFAULT RIGCTLD ONLY ACCEPTS CONNECTIONS FROM THE MACHINE IT RUNS ON.\n- **PORT** IS 4532 UNLESS YOU STARTED THE DAEMON WITH `-t`.\n- ONCE CONNECTED, A MISSING FREQUENCY USUALLY MEANS THE DAEMON ITSELF CANNOT REACH THE RADIO. TEST IT WITH `rigctl -m 2 f` ON THE DAEMON\'S MACHINE.',
 			'settings.station.flrigTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.flrigTroubleshooting' => 'THIS CONNECTS TO AN **FLRIG PROGRAM YOU RUN YOURSELF**, NOT TO THE RADIO DIRECTLY — FLRIG TALKS TO THE RADIO AND SUPPORTS MOST MAKES AND MODELS.\n\n- **FLRIG MUST ALREADY BE RUNNING**, WITH ITS TRANSCEIVER CONFIGURED AND CONNECTED.\n- **PORT** IS 12345 UNLESS YOU CHANGED IT IN FLRIG\'S CONFIGURATION (CONFIG → SETUP → SERVER).\n- **FROM ANOTHER MACHINE**, MAKE SURE FLRIG\'S SERVER IS REACHABLE. IT LISTENS ON ALL INTERFACES, BUT YOUR FIREWALL MAY NOT AGREE.\n- ONCE CONNECTED, A MISSING FREQUENCY USUALLY MEANS FLRIG ITSELF CANNOT REACH THE RADIO. CHECK THAT FLRIG\'S DISPLAY IS FOLLOWING THE DIAL.',
 			'settings.station.hrdTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
 			'settings.station.hrdTroubleshooting' => 'THIS CONNECTS TO **HAM RADIO DELUXE\'S RIG CONTROL, RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — HRD TALKS TO THE RADIO.\n\n- **RIG CONTROL MUST ALREADY BE RUNNING** AND CONNECTED TO THE RADIO.\n- **ITS IP SERVER MUST BE ENABLED.** RIG CONTROL ONLY TALKS TO OTHER PROGRAMS THROUGH IT.\n- **PORT** IS 7809 UNLESS YOU CHANGED IT IN THE IP SERVER\'S SETTINGS.\n- **FROM ANOTHER MACHINE**, MAKE SURE YOUR FIREWALL LETS THE CONNECTION THROUGH.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED DESCRIPTIONS OF HRD\'S PROTOCOL AND HAS NOT BEEN RUN AGAINST HRD. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
@@ -6767,8 +6793,6 @@ extension on TranslationsQro {
 			'settings.station.icomLanTroubleshooting' => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW, RS-BA1 OR ICOM\'S REMOTE UTILITY CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** ITS LAN PORT MUST BE CONNECTED TO THE SAME NETWORK AS THIS DEVICE, ITS **NETWORK CONTROL** MUST BE ON, AND THE USERNAME AND PASSWORD MUST BE SET UP AS A NETWORK USER ON THE RADIO.\n- **THE PORTS MUST MATCH** THE RADIO\'S CONTROL PORT AND SERIAL PORT (UDP), OR THE PORTS FORWARDED TO THEM. A WRONG PORT IS MET WITH SILENCE, THE SAME AS A RADIO THAT IS OFF.\n- **IF IT CONNECTS BUT NEVER ANSWERS**, THE CI-V ADDRESS HERE MUST MATCH THE RADIO\'S CI-V ADDRESS MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH.\n- **TURN THE RADIO OFF AND ON** IF IT STAYS STUCK.',
 			'settings.station.statusStale' => 'NOT RESPONDING',
 			'settings.station.statusDisconnected' => 'NOT CONNECTED',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusConnecting' => 'CONNECTING…',
 			'settings.station.statusDisconnecting' => 'DISCONNECTING…',
 			'settings.station.statusError' => 'CONNECTION FAILED',
@@ -7269,6 +7293,8 @@ extension on TranslationsQro {
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'NOT SHORTCUTS, SO LEFT OUT: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'KEYS THE APP KEEPS FOR ITSELF, SO LEFT OUT: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'BOUND TO MORE THAN ONE COMMAND AFTER THE IMPORT: ${keys}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.file.importAction' => 'IMPORT',
 			'keyboardShortcuts.file.imported' => 'SHORTCUTS IMPORTED',
 			'keyboardShortcuts.modifier.cmd' => '⌘ COMMAND',
@@ -7281,8 +7307,6 @@ extension on TranslationsQro {
 			'keyboardShortcuts.platform.android' => 'ANDROID',
 			'expiredBuild.title' => 'THIS BUILD HAS EXPIRED',
 			'expiredBuild.body' => 'PLEASE VISIT HAM2K.COM AND GET A NEWER VERSION.',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.visit' => 'VISIT HAM2K.COM',
 			'expiredBuild.dismiss' => 'CONTINUE ANYWAY',
 			'staleness.codePushFloorTitle' => 'AN IMPORTANT UPDATE IS WAITING',

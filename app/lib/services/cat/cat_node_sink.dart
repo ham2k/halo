@@ -20,6 +20,7 @@ class _NodeSink
         So2rSwitchSink {
   final EquipmentConnection connection;
   final double? Function() linkedVfo;
+  final void Function(String why) onDropConnection;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
   final void Function(bool) onTransmitting;
@@ -47,6 +48,7 @@ class _NodeSink
   _NodeSink({
     required this.connection,
     required this.linkedVfo,
+    required this.onDropConnection,
     required this.onSend,
     required this.onReading,
     required this.onPower,
@@ -134,6 +136,9 @@ class _NodeSink
 
   @override
   double? get linkedVfoHz => linkedVfo();
+
+  @override
+  void dropConnection(String why) => onDropConnection(why);
 
   @override
   void reportTuner(TunerStatus? status) => onTuner(status);

@@ -123,6 +123,13 @@ class _NodeRuntime {
   Timer? sdrRelease;
   Timer? sdrRetry;
 
+  /// Why this SDR's last connection ended, in the operator's words: what a
+  /// display shows while it is tried again, until a sweep arrives. A server
+  /// that fails the same way on every try would otherwise read as one that
+  /// is still being waited for. Forgotten once no display wants it, and when
+  /// the operator connects, disconnects or edits it.
+  String? sdrDropReason;
+
   void cancelSdrTimers() {
     sdrRelease?.cancel();
     sdrRelease = null;

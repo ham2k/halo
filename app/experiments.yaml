@@ -112,13 +112,14 @@ experiments:
     private: true
   # SDR receivers as the source of a radio's panadapter and waterfall
   # (docs/design/cat.md § SDR receivers): offered under Other Equipment, and
-  # drawn in place of the radio's own scope. Gated because no SDR has been on
-  # the bench. The stored key stays `fall`: a new key would switch it off for
-  # every tester who has it on.
+  # drawn in place of the radio's own scope. Gated, and private, because no
+  # SDR has been on the bench. The stored key stays `fall`: a new key would
+  # switch it off for every tester who has it on.
   - key: fall
     name: SDR Receivers
     description: Add SDR receivers as equipment, to show a radio's panadapter and waterfall.
     aliases: [sdr]
+    private: true
   # Rotators (docs/design/cat.md § Rotators): a Yaesu GS-232A, or a
   # controller emulating one, offered under Other Equipment and turned from
   # its editor. Gated because no rotator has been on the bench.

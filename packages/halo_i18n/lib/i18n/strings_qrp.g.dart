@@ -2715,6 +2715,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spectrumSdrNoRadio => 'waiting for the linked radio\'s frequency…';
 	@override String get spectrumSdrNotConnected => 'the sdr is not connected';
 	@override String get spectrumSdrNoIf => 'set the radio\'s if frequency in this sdr\'s settings';
+	@override String get spectrumSdrUnreachable => 'the sdr cannot tune to where the radio is, or another program has it tuned elsewhere';
+	@override String get spectrumSdrServerClosed => 'the connection to the sdr server ended. it may be busy, have no receiver attached, or be out of reach';
 	@override String get sdrRadio => 'shows the spectrum for';
 	@override String get sdrRadioDescription => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.';
 	@override String get sdrRadioMain => 'the main radio';
@@ -2738,6 +2740,13 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get rtlTcpNotAServer => 'this is not an rtl_tcp server';
 	@override String get rtlTcpNotes => 'this connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **port** is 1234 unless you started it with `-p`.\n- **one program at a time:** rtl_tcp serves a single client. the app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **on android**, the *sdr driver* app runs the same server on the phone.';
 	@override String get rspTcpNotes => 'this connects to an **rsp_tcp server you run yourself** on the computer the rsp is plugged into, with sdrplay\'s api installed there.\n\n- **start it** with `rsp_tcp -a 0.0.0.0`.\n- **port** is 1234 unless you started it with `-p`.\n- **one program at a time:** the server takes a single client. the app connects only while a spectrum display is showing.';
+	@override String get spyServerNoDevice => 'the spyserver has no receiver attached';
+	@override String get spyServerNotAServer => 'this is not a spyserver, or not a version this app can talk to';
+	@override String get spyServerGarbled => 'the spyserver\'s stream could not be read';
+	@override String get spyServerNoSpectrum => 'the spyserver is not sending a spectrum';
+	@override String get spyServerGain => 'gain step';
+	@override String get spyServerGainDescription => 'from 0 up to the receiver\'s highest step. leave blank to keep the server\'s own gain. only the first program connected to the server can change it.';
+	@override String get spyServerNotes => 'this connects to **airspy\'s spyserver**, running on the computer the receiver is plugged into, or to a public one.\n\n- **port** is 5555 unless the server\'s `spyserver.config` says otherwise.\n- **the server computes the spectrum** and sends a few tens of kilobytes a second, so it works over the internet too.\n- **only the first program connected can retune the receiver.** while another one is connected, the display shows only what the receiver is already tuned to.\n- **if it connects and drops at once,** the server is full or has no receiver attached.';
 	@override String get n3fjpNoRig => 'n3fjp has no radio interface set up, so this follows what is typed into n3fjp, not a radio';
 	@override String get winkeyerKeyPort => 'key output';
 	@override String get winkeyerKeyPortDescription => 'which of the keyer\'s two output jacks your radio is plugged into.';
@@ -4475,6 +4484,9 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get rtlSdr => 'rtl-sdr';
 	@override String get nesdr => 'nooelec nesdr';
 	@override String get sdrplay => 'sdrplay rsp';
+	@override String get airspy => 'airspy r2 / mini';
+	@override String get airspyHf => 'airspy hf+';
+	@override String get spyServer => 'spyserver (any receiver)';
 }
 
 // Path: settings.station.transports
@@ -6529,6 +6541,8 @@ extension on TranslationsQrp {
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
 			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
+			'settings.station.spectrumSdrUnreachable' => 'the sdr cannot tune to where the radio is, or another program has it tuned elsewhere',
+			'settings.station.spectrumSdrServerClosed' => 'the connection to the sdr server ended. it may be busy, have no receiver attached, or be out of reach',
 			'settings.station.sdrRadio' => 'shows the spectrum for',
 			'settings.station.sdrRadioDescription' => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
 			'settings.station.sdrRadioMain' => 'the main radio',
@@ -6552,6 +6566,13 @@ extension on TranslationsQrp {
 			'settings.station.rtlTcpNotAServer' => 'this is not an rtl_tcp server',
 			'settings.station.rtlTcpNotes' => 'this connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **port** is 1234 unless you started it with `-p`.\n- **one program at a time:** rtl_tcp serves a single client. the app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **on android**, the *sdr driver* app runs the same server on the phone.',
 			'settings.station.rspTcpNotes' => 'this connects to an **rsp_tcp server you run yourself** on the computer the rsp is plugged into, with sdrplay\'s api installed there.\n\n- **start it** with `rsp_tcp -a 0.0.0.0`.\n- **port** is 1234 unless you started it with `-p`.\n- **one program at a time:** the server takes a single client. the app connects only while a spectrum display is showing.',
+			'settings.station.spyServerNoDevice' => 'the spyserver has no receiver attached',
+			'settings.station.spyServerNotAServer' => 'this is not a spyserver, or not a version this app can talk to',
+			'settings.station.spyServerGarbled' => 'the spyserver\'s stream could not be read',
+			'settings.station.spyServerNoSpectrum' => 'the spyserver is not sending a spectrum',
+			'settings.station.spyServerGain' => 'gain step',
+			'settings.station.spyServerGainDescription' => 'from 0 up to the receiver\'s highest step. leave blank to keep the server\'s own gain. only the first program connected to the server can change it.',
+			'settings.station.spyServerNotes' => 'this connects to **airspy\'s spyserver**, running on the computer the receiver is plugged into, or to a public one.\n\n- **port** is 5555 unless the server\'s `spyserver.config` says otherwise.\n- **the server computes the spectrum** and sends a few tens of kilobytes a second, so it works over the internet too.\n- **only the first program connected can retune the receiver.** while another one is connected, the display shows only what the receiver is already tuned to.\n- **if it connects and drops at once,** the server is full or has no receiver attached.',
 			'settings.station.n3fjpNoRig' => 'n3fjp has no radio interface set up, so this follows what is typed into n3fjp, not a radio',
 			'settings.station.winkeyerKeyPort' => 'key output',
 			'settings.station.winkeyerKeyPortDescription' => 'which of the keyer\'s two output jacks your radio is plugged into.',
@@ -6652,6 +6673,9 @@ extension on TranslationsQrp {
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
+			'settings.station.models.airspy' => 'airspy r2 / mini',
+			'settings.station.models.airspyHf' => 'airspy hf+',
+			'settings.station.models.spyServer' => 'spyserver (any receiver)',
 			'settings.station.transports.network' => 'network/wifi',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
@@ -6755,6 +6779,8 @@ extension on TranslationsQrp {
 			'settings.station.rigctldTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'this connects to a **rigctld daemon you run yourself**, not to the radio directly — hamlib\'s backend talks to the radio and supports hundreds of models.\n\n- **the daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. find your radio\'s model number with `rigctl -l`.\n- **from another machine**, start it with `-T 0.0.0.0`: by default rigctld only accepts connections from the machine it runs on.\n- **port** is 4532 unless you started the daemon with `-t`.\n- once connected, a missing frequency usually means the daemon itself cannot reach the radio. test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'if the app cannot connect',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.flrigTroubleshooting' => 'this connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **port** is 12345 unless you changed it in flrig\'s configuration (config → setup → server).\n- **from another machine**, make sure flrig\'s server is reachable. it listens on all interfaces, but your firewall may not agree.\n- once connected, a missing frequency usually means flrig itself cannot reach the radio. check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.hrdTroubleshooting' => 'this connects to **ham radio deluxe\'s rig control, running on your computer**, not to the radio directly — hrd talks to the radio.\n\n- **rig control must already be running** and connected to the radio.\n- **its ip server must be enabled.** rig control only talks to other programs through it.\n- **port** is 7809 unless you changed it in the ip server\'s settings.\n- **from another machine**, make sure your firewall lets the connection through.\n\nthis entry was written from published descriptions of hrd\'s protocol and has not been run against hrd. if it half-works, that is worth reporting.',
@@ -6767,8 +6793,6 @@ extension on TranslationsQrp {
 			'settings.station.icomLanTroubleshooting' => 'the radio has a **single** remote-control session. when the login is ignored, something else is almost always using it.\n\n- **close any other client.** wfview, rs-ba1 or icom\'s remote utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **check the radio\'s network settings.** its lan port must be connected to the same network as this device, its **network control** must be on, and the username and password must be set up as a network user on the radio.\n- **the ports must match** the radio\'s control port and serial port (udp), or the ports forwarded to them. a wrong port is met with silence, the same as a radio that is off.\n- **if it connects but never answers**, the ci-v address here must match the radio\'s ci-v address menu. this entry prefills the address the model ships with.\n- **turn the radio off and on** if it stays stuck.',
 			'settings.station.statusStale' => 'not responding',
 			'settings.station.statusDisconnected' => 'not connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusConnecting' => 'connecting…',
 			'settings.station.statusDisconnecting' => 'disconnecting…',
 			'settings.station.statusError' => 'connection failed',
@@ -7269,6 +7293,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'not shortcuts, so left out: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'keys the app keeps for itself, so left out: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'bound to more than one command after the import: ${keys}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.file.importAction' => 'import',
 			'keyboardShortcuts.file.imported' => 'shortcuts imported',
 			'keyboardShortcuts.modifier.cmd' => '⌘ command',
@@ -7281,8 +7307,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.platform.android' => 'android',
 			'expiredBuild.title' => 'this build has expired',
 			'expiredBuild.body' => 'please visit ham2k.com and get a newer version.',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.visit' => 'visit ham2k.com',
 			'expiredBuild.dismiss' => 'continue anyway',
 			'staleness.codePushFloorTitle' => 'an important update is waiting',

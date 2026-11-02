@@ -157,6 +157,8 @@ extension CatServiceSpectrum on CatService {
     } else {
       runtime.sdrRetry?.cancel();
       runtime.sdrRetry = null;
+      // Whatever stopped it then is not what a display opened later meets.
+      runtime.sdrDropReason = null;
       if (status == EquipmentStatus.connected) {
         runtime.sdrRelease ??= Timer(sdrIdleRelease, () {
           runtime.sdrRelease = null;
@@ -205,14 +207,16 @@ extension CatServiceSpectrum on CatService {
 
   /// What stands between a display and SDR [uuid]'s sweeps before its scope
   /// has its say: a wait while it is connected on demand, the reason it could
-  /// not be, or a connection to something that is not an SDR server. Null
-  /// once it is connected to one.
+  /// not be, a connection to something that is not an SDR server, or why the
+  /// last connection ended while the next one has drawn nothing yet. Null
+  /// once it is connected to one and drawing, or its scope says why not.
   String? sdrConnectionProblem(String uuid) {
     final state = stateFor(uuid);
+    final dropped = _runtimes[uuid]?.sdrDropReason;
     return switch (state.status) {
-      EquipmentStatus.connected => state.problem,
+      EquipmentStatus.connected => state.problem ?? (state.spectrumProblem == null ? dropped : null),
       EquipmentStatus.error => state.error ?? t.settings.station.spectrumSdrNotConnected,
-      _ => t.settings.station.spectrumWaiting,
+      _ => dropped ?? t.settings.station.spectrumWaiting,
     };
   }
 

@@ -3805,7 +3805,8 @@ pan and slice, with the radio's FFT. That session mode does not exist yet.
 
 A receive-only SDR — an RTL-SDR or Nooelec NESDR, an SDRplay RSP, an Airspy —
 as equipment of its own category (`kCategorySdr`), listed under Other
-Equipment and offered only while `EXP SDR` is on (stored as `fall`). With it
+Equipment and offered only while `EXP SDR` is on (stored as `fall`; private,
+so not listed in the Experiments screen). With it
 off, a linked SDR already in the station draws nothing and the radio shows its
 own scope; the scene's source reads the experiment live, as `readRadio` does,
 so both follow a toggle together. It exists to be a spectrum source: it has no
@@ -3850,6 +3851,19 @@ failed connect or a drop is retried after a pause while a display waits. The
 operator overrides both ways: their Connect keeps it connected with no
 display, their Disconnect keeps it off. A release is neither.
 
+**Why it dropped is what a display shows while it is retried.** A session
+that cannot go on — a server it cannot use, a stream it can no longer read —
+says why and closes the connection (`SdrSink.dropConnection`), which is then
+retried like the server's own drop; a connection that ends with nothing said
+reads as a server that is full, without a receiver, or out of reach, and a
+connect that fails gives its own reason. `sdrConnectionProblem` keeps the
+latest through the retries until a sweep is drawn, no display wants the SDR,
+or the operator connects, disconnects or edits it: a server that fails the
+same way on every try would otherwise read as one still being waited for,
+flashing a wait between tries.
+Nothing is held: a receiver plugged in or a server restarted is picked up on
+the next try.
+
 One function, `_settleSdr`, makes every one of those decisions, from the state
 as it is when called — on a display arriving or leaving, at the end of every
 connect and disconnect, and from its timers. While a connect, a release or an
@@ -3875,8 +3889,41 @@ answered. SDRplay's rsp_tcp speaks the same protocol. None of this has been
 on the bench: the edge trim, the settle time and rsp_tcp's rates are
 untested assumptions, and `equipment_models_sdr.dart` says so.
 
-Still to come: SpyServer (Airspy and RTL-SDR over the network, with the
-server computing the FFT), and USB on desktop through the vendors' libraries
+**SpyServer** (`spyserver_driver.dart`; the wire protocol, compiled from open
+clients and captures of the official server, is
+[spyserver-protocol.md](spyserver-protocol.md)) serves an Airspy, an Airspy
+HF+ or an RTL-SDR, often over the internet, and computes the spectrum itself.
+The app asks for that — 2048 bins of one byte, a few tens of kilobytes a
+second — rather than IQ, with a narrow IQ alongside because the spectrum
+alone arrives empty. The IQ is the narrowest the receiver offers, except from
+a server older than 2.0.1920, which sends no spectrum below about 20 kS/s of
+IQ: there it is the narrowest at or above that. `SdrSpectrum` takes those
+finished sweeps (`serverSweeps`) through the same tuning and labelling as
+computed ones, with nothing trimmed and the server's frame rate as its only
+speed. The spans are halvings of the receiver's usable bandwidth, not its
+sample rate.
+
+The server never answers a setting; it clamps in silence. So the session
+works out for itself where a window can go (`SdrTuner.tunable`) and the labels
+use that: only the first client connected may retune the receiver, and every
+other one can place its window only inside what the receiver already hears
+and the server's operator allows, moved back inside when another client
+retunes it. A dial no window can reach is said so (`spectrumSdrUnreachable`)
+rather than drawn: an IF tap is never moved off the IF, and an independent
+window clamped away from the dial would show a band the dial is not on.
+
+Every way a session ends — a server with no receiver, or that is not a
+SpyServer this speaks or never answers the hello, a stream out of step with
+no marker to find the next message by, a stream that brings no sweep within
+a ping interval or two — drops the connection with the reason, as above. Its
+window is clamped the way the server clamps it, so a range narrower than the
+window lands it on the top, far from a dial below. The server is silent while
+its streams are off, so it is pinged every few seconds. The span rule, the
+byte-to-dB scale, the receiver following the window, the spectator's bounds
+and the IQ rate old servers need were measured against public servers from
+2.0.1700 to 2.0.1922 ([spyserver-protocol.md](spyserver-protocol.md) §12).
+
+Still to come: USB on desktop through the vendors' libraries
 — libairspy and libairspyhf bundled, SDRplay's API installed by the operator.
 An RTL-SDR has no USB path: librtlsdr is GPL-2.0, and a sandboxed macOS app
 cannot load a copy the operator installed.

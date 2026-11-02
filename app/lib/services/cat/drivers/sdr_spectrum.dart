@@ -1,14 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// An SDR receiver's spectrum, for whatever protocol delivers its IQ —
+// An SDR receiver's spectrum, for whatever protocol delivers it —
 // docs/design/cat.md § SDR receivers.
 //
 // An SDR has no VFO and no scope of its own: it is a tuner and a stream of
-// samples. This file turns those samples into sweeps labelled in the linked
-// radio's frequencies, and decides where to tune so the radio's dial stays in
-// view. A protocol session supplies only the bytes and the two commands
-// ([SdrTuner]).
+// samples, or of sweeps a server computed from them. This file turns those
+// into sweeps labelled in the linked radio's frequencies, and decides where
+// to tune so the radio's dial stays in view. A protocol session supplies only
+// the data and the commands ([SdrTuner]).
 
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -62,11 +62,7 @@ class SdrConfig {
   const SdrConfig({this.tuning = SdrTuning.independent, this.ifHz = 0, this.ifInverted = false, this.offsetHz = 0, this.ppm = 0, this.gainDb});
 
   factory SdrConfig.fromConfig(Map<String, dynamic> config) {
-    num? number(String key) => switch (config[key]) {
-      final num n => n,
-      final String s => num.tryParse(s.trim()),
-      _ => null,
-    };
+    num? number(String key) => sdrConfigNumber(config, key);
     return SdrConfig(
       tuning: config[sdrTuningConfigKey] == SdrTuning.ifTap.name ? SdrTuning.ifTap : SdrTuning.independent,
       ifHz: number(sdrIfHzConfigKey)?.round() ?? 0,
@@ -77,6 +73,13 @@ class SdrConfig {
     );
   }
 }
+
+/// A number field as the editor stores it: a number, or the text typed.
+num? sdrConfigNumber(Map<String, dynamic> config, String key) => switch (config[key]) {
+  final num n => n,
+  final String s => num.tryParse(s.trim()),
+  _ => null,
+};
 
 /// The settings every SDR protocol shares, for its driver's
 /// [EquipmentDriver.configElements]. Everything but the tuning is an
@@ -110,10 +113,23 @@ List<Map<String, dynamic>> sdrConfigElements() {
 abstract class SdrSink {
   /// In Hz; null while the linked radio is not connected or not reporting.
   double? get linkedVfoHz;
+
+  /// The session cannot go on — a server it cannot use, or a stream it can
+  /// no longer read. Closes the connection as though the server had dropped
+  /// it, so it is tried again the way a drop is, and [why], in the
+  /// operator's words, is what a display shows meanwhile. Left open, the
+  /// server would stream on into a session that discards it all, and an
+  /// rtl_tcp server stay locked to it.
+  void dropConnection(String why);
 }
 
 /// What the protocol session does when the spectrum decides to move.
 abstract class SdrTuner {
+  /// The nearest device frequency to [hz] it can be tuned to now, both
+  /// offset included. A server that would clamp a frequency silently says so
+  /// here, or every sweep after it is labelled where it was not taken.
+  int tunable(int hz);
+
   /// The device's frequency, in Hz, offset included.
   void tuneDevice(int hz);
 
@@ -151,12 +167,25 @@ class SdrSpectrum {
   final SpectrumSink? sink;
   final SdrSink? vfo;
 
-  /// The sample rates the device runs at, ascending; each is one span.
+  /// The sample rates the device runs at, ascending; each is one span. With
+  /// [serverSweeps], the full widths of the sweeps the server offers instead.
   final List<int> rates;
 
-  SdrSpectrum({required this.config, required this.tuner, required this.sink, required this.vfo, required this.rates, int? initialRate})
-    : assert(rates.isNotEmpty),
-      _rate = initialRate ?? rates[rates.length ~/ 2];
+  /// The device delivers finished sweeps ([addSweep]) rather than IQ: they
+  /// cover exactly the width asked for, so nothing is trimmed, and they come
+  /// at the server's pace, so there is no speed to choose.
+  final bool serverSweeps;
+
+  SdrSpectrum({
+    required this.config,
+    required this.tuner,
+    required this.sink,
+    required this.vfo,
+    required this.rates,
+    this.serverSweeps = false,
+    int? initialRate,
+  }) : assert(rates.isNotEmpty),
+       _rate = initialRate ?? rates[rates.length ~/ 2];
 
   bool _wanted = false;
   bool get wanted => _wanted;
@@ -174,9 +203,9 @@ class SdrSpectrum {
 
   late SpectrumSettings _settings = SpectrumSettings(
     mode: config.tuning == SdrTuning.ifTap ? SpectrumMode.center : SpectrumMode.fixed,
-    spanHz: sdrVisibleHalfWidth(_rate),
+    spanHz: _halfWidthOf(_rate),
     refLevelDb: 0,
-    speed: SpectrumSpeed.mid,
+    speed: serverSweeps ? null : SpectrumSpeed.mid,
   );
 
   IqSpectrum? _fft;
@@ -185,13 +214,18 @@ class SdrSpectrum {
   int _filled = 0;
   int _skip = 0;
 
+  /// Server sweeps still to discard after a retune: sent before it landed.
+  int _dropSweeps = 0;
+
+  int _halfWidthOf(int rate) => serverSweeps ? rate ~/ 2 : sdrVisibleHalfWidth(rate);
+
   SpectrumCapabilities get capabilities => SpectrumCapabilities(
-    spansHz: [for (final rate in rates) sdrVisibleHalfWidth(rate)],
+    spansHz: [for (final rate in rates) _halfWidthOf(rate)],
     refMinDb: -30,
     refMaxDb: 30,
     refStepDb: 1,
     modes: config.tuning == SdrTuning.ifTap ? const {SpectrumMode.center} : const {SpectrumMode.center, SpectrumMode.fixed},
-    speeds: const {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
+    speeds: serverSweeps ? const {} : const {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
     // An IF tap shows wherever the radio's own mixer puts it.
     canRecenter: config.tuning == SdrTuning.independent,
   );
@@ -203,7 +237,7 @@ class SdrSpectrum {
     _wanted = true;
     tuner.setSampleRate(_rate);
     if (config.tuning == SdrTuning.ifTap) {
-      if (config.ifHz > 0) _tune(config.ifHz, force: true);
+      if (_problem == null) _tune(config.ifHz, force: true);
     } else {
       _centerHz = null;
       _follow();
@@ -224,7 +258,7 @@ class SdrSpectrum {
     if (!_wanted) return false;
     final caps = capabilities;
     if (request.refLevelDb case final ref?) _report(_settings.copyWith(refLevelDb: caps.snapRef(ref)));
-    if (request.speed case final speed?) {
+    if (request.speed case final speed? when caps.speeds.contains(speed)) {
       _report(_settings.copyWith(speed: speed));
       _restartWindow();
     }
@@ -238,7 +272,8 @@ class SdrSpectrum {
         _rate = rate;
         tuner.setSampleRate(rate);
         _restartWindow(settle: true);
-        _report(_withWindow(_settings.copyWith(spanHz: sdrVisibleHalfWidth(rate))));
+        _report(_withWindow(_settings.copyWith(spanHz: _halfWidthOf(rate))));
+        recheck();
       }
     }
     // Only a window the app places, and only when it is not pinned to the
@@ -281,6 +316,38 @@ class SdrSpectrum {
     }
   }
 
+  /// The range the device can be tuned to changed — a wider span, or a
+  /// server whose receiver another client moved — so the window is moved
+  /// back inside it, rather than drawn where the device was not allowed to go.
+  ///
+  /// An IF tap is never moved: a sweep anywhere but the IF is not the dial's
+  /// neighbourhood. It says so instead, and tunes back once it can — sending
+  /// the IF again, since the server put the window elsewhere meanwhile.
+  void recheck() {
+    if (!_wanted) return;
+    if (config.tuning == SdrTuning.ifTap) {
+      _reportWaiting();
+      if (_problem != null) {
+        _centerHz = null;
+      } else if (_centerHz != config.ifHz) {
+        _tune(config.ifHz, force: true);
+      }
+      return;
+    }
+    if (_centerHz case final center?) _tune(center, force: true);
+  }
+
+  /// One sweep in dB, lowest frequency first, centred where the device is
+  /// tuned, as wide as the current rate says.
+  void addSweep(Float32List levels) {
+    if (!_wanted) return;
+    if (_dropSweeps > 0) {
+      _dropSweeps--;
+      return;
+    }
+    _emit(levels);
+  }
+
   int get _hop => _rate ~/ _sweepsPerSecond[_settings.speed ?? SpectrumSpeed.mid]!;
 
   /// About 300 Hz a bin at 2.4 MHz: fine enough for a narrow `span`, and
@@ -296,6 +363,9 @@ class SdrSpectrum {
   void _restartWindow({bool settle = false}) {
     _filled = 0;
     _skip = settle ? (_rate * _settleSeconds).round() : 0;
+    // Two sweeps at a server's usual 15 a second, about as long as the IQ
+    // settle. Not measured on any server here.
+    _dropSweeps = settle && serverSweeps ? 2 : 0;
   }
 
   void _emit(Float32List levels) {
@@ -307,19 +377,24 @@ class SdrSpectrum {
     final center = _centerHz;
     _follow();
     if (center == null || center != _centerHz) return;
+    _reportWaiting();
+    if (_problem != null || levels.length < 3) return;
     // The DC offset every zero-IF receiver has, as a spike at the middle bin
-    // — exactly where the dial marker is drawn in center mode.
-    final mid = levels.length ~/ 2;
-    levels[mid] = (levels[mid - 1] + levels[mid + 1]) / 2;
-    final trim = (levels.length * sdrEdgeTrim).round();
+    // — exactly where the dial marker is drawn in center mode. Not in a
+    // server's sweep, whose middle is wherever its window is: on a receiver
+    // tuned elsewhere it is a signal, and at the dial in center mode.
+    if (!serverSweeps) {
+      final mid = levels.length ~/ 2;
+      levels[mid] = (levels[mid - 1] + levels[mid + 1]) / 2;
+    }
+    final trim = serverSweeps ? 0 : (levels.length * sdrEdgeTrim).round();
     final shown = Float32List.sublistView(levels, trim, levels.length - trim);
-    final half = sdrVisibleHalfWidth(_rate);
+    final half = _halfWidthOf(_rate);
     var labelCenter = center;
     if (config.tuning == SdrTuning.ifTap) {
       // The IF is where the dial is: the sweep is the dial's neighbourhood,
       // mirrored where the radio's mixer mirrors it.
       final dial = vfo?.linkedVfoHz;
-      _reportWaiting();
       if (dial == null) return;
       labelCenter = dial.round();
     }
@@ -354,7 +429,7 @@ class SdrSpectrum {
       _tune(dial, force: true);
       return;
     }
-    final half = sdrVisibleHalfWidth(_rate);
+    final half = _halfWidthOf(_rate);
     final outside = dial < center - half || dial > center + half;
     // A dial that left the window is followed at once; the pacing is for a
     // knob turning inside it.
@@ -365,7 +440,8 @@ class SdrSpectrum {
     }
   }
 
-  void _tune(int hz, {bool force = false}) {
+  void _tune(int wanted, {bool force = false}) {
+    final hz = _tunable(wanted);
     if (hz == _centerHz) return;
     // Real time: this paces commands to a real device.
     final now = realNowMillis();
@@ -379,14 +455,34 @@ class SdrSpectrum {
     _report(_withWindow(_settings));
   }
 
+  /// The nearest RF frequency to [hz] the device can be centred on now.
+  int _tunable(int hz) => tuner.tunable(hz + config.offsetHz) - config.offsetHz;
+
+  /// Why the sweeps cannot be drawn as the dial's neighbourhood. An IF tap
+  /// without an IF would send the device to 0 Hz. A frequency the device
+  /// cannot reach — below its range, or outside what a server's receiver is
+  /// tuned to — puts an IF tap's sweep somewhere else, and an independent
+  /// window where the dial is not. Drawn anyway, the noise reads as a quiet
+  /// band.
+  String? get _problem {
+    switch (config.tuning) {
+      case SdrTuning.ifTap:
+        if (config.ifHz <= 0) return t.settings.station.spectrumSdrNoIf;
+        if (_tunable(config.ifHz) != config.ifHz) return t.settings.station.spectrumSdrUnreachable;
+      case SdrTuning.independent:
+        if (vfo?.linkedVfoHz?.round() case final dial? when (_tunable(dial) - dial).abs() > _halfWidthOf(_rate)) {
+          return t.settings.station.spectrumSdrUnreachable;
+        }
+    }
+    return null;
+  }
+
   /// A receiver tuned against a radio has nothing to show until the radio
   /// says where it is.
   void _reportWaiting() {
     if (!_wanted) return;
-    // Without an IF, tuning would send the device to 0 Hz, and the noise it
-    // hears there drawn as the dial's neighbourhood looks like a quiet band.
-    if (config.tuning == SdrTuning.ifTap && config.ifHz <= 0) {
-      sink?.reportSpectrumProblem(t.settings.station.spectrumSdrNoIf);
+    if (_problem case final problem?) {
+      sink?.reportSpectrumProblem(problem);
       return;
     }
     final waiting = switch (config.tuning) {
@@ -402,7 +498,7 @@ class SdrSpectrum {
   SpectrumSettings _withWindow(SpectrumSettings settings) {
     final center = _centerHz;
     final fixed = config.tuning == SdrTuning.independent && settings.mode == SpectrumMode.fixed && center != null;
-    final half = sdrVisibleHalfWidth(_rate);
+    final half = _halfWidthOf(_rate);
     return SpectrumSettings(
       mode: settings.mode,
       spanHz: settings.spanHz,

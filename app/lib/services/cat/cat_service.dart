@@ -1020,7 +1020,11 @@ class CatService extends ChangeNotifier
     // until the new setup is saved, or that display reconnects it on the old.
     final toSdr = typeFor(node)?.category == kCategorySdr;
     final sdrEdited = (isSdr(node.uuid) || toSdr) && (previous.typeKey != node.typeKey || !mapEquals(previous.config, node.config));
-    final sdr = sdrEdited ? (_runtimeFor(node.uuid)..cancelSdrTimers()) : null;
+    final sdr = sdrEdited
+        ? (_runtimeFor(node.uuid)
+            ..cancelSdrTimers()
+            ..sdrDropReason = null)
+        : null;
     if (sdr != null) sdr.sdrBusy++;
     try {
       if (sdrEdited && stateFor(node.uuid).status != EquipmentStatus.disconnected) {
@@ -1149,7 +1153,8 @@ class CatService extends ChangeNotifier
       ..userDisconnected = false
       ..linesRefused = false
       ..shortSilentDrops = 0
-      ..sdrPinned = isSdr(uuid);
+      ..sdrPinned = isSdr(uuid)
+      ..sdrDropReason = null;
     // And it is the way back from a held auto-connect: the operator asking for
     // this node by hand is both the deliberate act the hold waits for and the
     // evidence it wants, since a port that opens on request is one worth
@@ -1201,6 +1206,7 @@ class CatService extends ChangeNotifier
       runtime.sdrPinned = false;
     }
     runtime.cancelSdrTimers();
+    runtime.sdrDropReason = null;
     runtime.cancel?.cancel();
     runtime.cancel = null;
     // Bump the sequence so an attempt still in flight knows it lost.

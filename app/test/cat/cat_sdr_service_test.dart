@@ -44,6 +44,7 @@ class _Connection implements EquipmentConnection {
 
 class _Transport extends EquipmentTransport {
   int connects = 0;
+  final opened = <_Connection>[];
 
   /// Held until completed, when set: a connect still under way.
   Completer<void>? gate;
@@ -55,7 +56,9 @@ class _Transport extends EquipmentTransport {
     connects++;
     await gate?.future;
     if (refuse) throw const SocketException('Connection refused');
-    return _Connection();
+    final connection = _Connection();
+    opened.add(connection);
+    return connection;
   }
 }
 
@@ -145,14 +148,10 @@ void main() {
   late _Transport transport;
   late _SdrDriver sdrDriver;
 
-  setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    prefs = await SharedPreferences.getInstance();
-    radio = RadioService(prefs, writeDelay: Duration.zero);
-    addTearDown(radio.dispose);
+  CatService build({Duration sdrRetryDelay = const Duration(minutes: 5)}) {
     transport = _Transport();
     sdrDriver = _SdrDriver();
-    cat = CatService(
+    final cat = CatService(
       settings = SettingsService(prefs),
       radio: radio,
       registry: EquipmentRegistry(
@@ -181,9 +180,18 @@ void main() {
       reconnectDelay: Duration.zero,
       idleRetryFirst: const Duration(minutes: 5),
       sdrIdleRelease: _release,
-      sdrRetryDelay: const Duration(minutes: 5),
+      sdrRetryDelay: sdrRetryDelay,
     );
     addTearDown(cat.dispose);
+    return cat;
+  }
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+    radio = RadioService(prefs, writeDelay: Duration.zero);
+    addTearDown(radio.dispose);
+    cat = build();
   });
 
   Future<void> settle() async {
@@ -375,6 +383,77 @@ void main() {
     expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: "a re-type into an SDR is not the operator's Disconnect");
     expect(sdrDriver.sessions, hasLength(1));
     await display.cancel();
+  });
+
+  test('an SDR whose stream can no longer be read loses its connection, and is not counted as switched off', () async {
+    final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
+    final display = cat.spectrumFrames(sdr).listen((_) {});
+    await settle();
+    (sdrDriver.sessions.single.sink as SdrSink).dropConnection('out of step');
+    await settle();
+    expect(cat.stateFor(sdr).status, isNot(EquipmentStatus.connected), reason: 'held open, the server streams on into a session that reads none of it');
+    expect(cat.spectrumNodeFor(left), sdr, reason: "not the operator's Disconnect: the display waits for it to come back");
+    await display.cancel();
+  });
+
+  /// Until [done], on the real clock: a retry is a timer, which may run
+  /// late but not early, so the deadline only stops a hang
+  /// (docs/design/time.md §7).
+  Future<void> until(bool Function() done) async {
+    for (var i = 0; i < 5000 && !done(); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+    expect(done(), isTrue);
+  }
+
+  test('why the last connection ended is shown while it is tried again, until a sweep is drawn', () async {
+    cat = build(sdrRetryDelay: const Duration(milliseconds: 10));
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
+    final display = cat.spectrumFrames(sdr).listen((_) {});
+    await settle();
+    (sdrDriver.sessions.last.sink as SdrSink).dropConnection('No receiver attached');
+    await settle();
+    expect(cat.sdrConnectionProblem(sdr), 'No receiver attached', reason: 'a wait would never end, on a server that fails the same way each time');
+
+    await until(() => cat.stateFor(sdr).status == EquipmentStatus.connected);
+    expect(sdrDriver.sessions, hasLength(2));
+    expect(cat.sdrConnectionProblem(sdr), 'No receiver attached', reason: 'connected is not drawing: forgotten here, it would flash a wait between tries');
+
+    (sdrDriver.sessions.last.sink as SpectrumSink).reportSpectrum(
+      SpectrumFrame(lowHz: 0, highHz: 1, levels: Float32List(4), floorDb: -100, ceilingDb: 0, atMillis: 0),
+    );
+    expect(cat.sdrConnectionProblem(sdr), isNull);
+
+    // A connection that ends with nothing said.
+    await transport.opened.last.close();
+    await settle();
+    expect(cat.sdrConnectionProblem(sdr), t.settings.station.spectrumSdrServerClosed);
+    await display.cancel();
+  });
+
+  test('a failed connect is the reason shown through the next try, and a display that leaves forgets it', () async {
+    cat = build(sdrRetryDelay: const Duration(milliseconds: 10));
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {})).uuid;
+    final display = cat.spectrumFrames(sdr).listen((_) {});
+    await settle();
+    transport.refuse = true;
+    (sdrDriver.sessions.last.sink as SdrSink).dropConnection('No receiver attached');
+    await until(() => cat.stateFor(sdr).status == EquipmentStatus.error);
+    final refused = cat.sdrConnectionProblem(sdr);
+    expect(refused, isNot('No receiver attached'));
+
+    // The next try, held mid-connect.
+    transport
+      ..refuse = false
+      ..gate = Completer<void>();
+    await until(() => cat.stateFor(sdr).status == EquipmentStatus.connecting);
+    expect(cat.sdrConnectionProblem(sdr), refused, reason: 'the older drop is not the newest reason');
+
+    await display.cancel();
+    transport.gate!.complete();
+    await settle();
+    expect(cat.sdrConnectionProblem(sdr), isNot(refused), reason: 'a display opened later meets a fresh wait, not an old failure');
   });
 
   test('a radio is never connected or released by a display', () async {

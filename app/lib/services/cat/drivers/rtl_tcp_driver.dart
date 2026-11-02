@@ -194,6 +194,9 @@ class RtlTcpSession implements SpectrumSession, SdrTuner {
   void teardown() => spectrum.stop();
 
   @override
+  int tunable(int hz) => hz;
+
+  @override
   void tuneDevice(int hz) => sink.send(rtlTcpCommand(RtlTcpCommand.frequency, hz));
 
   @override
