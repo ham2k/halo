@@ -724,6 +724,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  halo_sdr_usb:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_sdr_usb"
+      relative: true
+    source: path
+    version: "0.0.1"
   halo_tls_psk:
     dependency: "direct main"
     description:

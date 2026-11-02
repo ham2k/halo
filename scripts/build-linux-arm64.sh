@@ -314,7 +314,7 @@ ARM_DEV_PKGS=(
   libgtk-3-dev:arm64 libglib2.0-dev:arm64
   libsecret-1-dev:arm64 libjsoncpp-dev:arm64
   libcurl4-openssl-dev:arm64 libsqlite3-dev:arm64
-  libudev-dev:arm64
+  libudev-dev:arm64 libusb-1.0-0-dev:arm64
 )
 if ! sudo apt-get "${APT_WAIT[@]}" install -y -q \
      -o Dpkg::Options::=--force-overwrite "${ARM_DEV_PKGS[@]}"; then
@@ -336,7 +336,7 @@ if ! sudo apt-get "${APT_WAIT[@]}" install -y -q \
   echo
   echo "--- amd64 installed vs arm64 candidate (Multi-Arch: same coupling) ---"
   for lib in libglib2.0-0t64 libgtk-3-0t64 libsecret-1-0 libjsoncpp25 \
-             libcurl4t64 libsqlite3-0 libudev1 libc6; do
+             libcurl4t64 libsqlite3-0 libudev1 libusb-1.0-0 libc6; do
     printf '  %-18s amd64=%-24s arm64=%s\n' "$lib" \
       "$(dpkg-query -W -f='${Version}' "$lib:amd64" 2>/dev/null || echo '<none>')" \
       "$(apt-cache policy "$lib:arm64" 2>/dev/null | awk '/Candidate:/{print $2}')"

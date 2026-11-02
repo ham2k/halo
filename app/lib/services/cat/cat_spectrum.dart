@@ -177,14 +177,21 @@ extension CatServiceSpectrum on CatService {
 
   bool _sdrWanted(_NodeRuntime runtime) => !runtime.userDisconnected && (runtime.sdrPinned || (runtime.spectrum?.hasListener ?? false));
 
-  /// Not through [_autoConnect]: its crash mark guards a synchronous native
-  /// open that can wedge the process, which a network SDR's socket has not,
-  /// and a hold it left would be named by no boot notice.
+  /// A network SDR not through [_autoConnect]: its crash mark guards a
+  /// synchronous native open that can wedge the process, which a socket
+  /// cannot, and a hold it left would be named by no boot notice. One on USB
+  /// is such an open — libusb's, or SDRplay's service — so it is marked like
+  /// a radio's, and a launch that died in it holds it until the operator's
+  /// Connect.
   Future<void> _connectSdr(_NodeRuntime runtime) async {
     runtime.sdrBusy++;
     var outcome = _ConnectOutcome.failed;
     try {
-      outcome = await HangWatchdog.guard(() => _connect(runtime.uuid));
+      final usb = switch (_nodes[runtime.uuid]) {
+        final node? => typeFor(node)?.transportKey == SdrUsbTransport.transportKey,
+        null => false,
+      };
+      outcome = usb ? await _autoConnect(runtime.uuid) : await HangWatchdog.guard(() => _connect(runtime.uuid));
     } finally {
       runtime.sdrBusy--;
       if (outcome == _ConnectOutcome.failed) _retrySdr(runtime);

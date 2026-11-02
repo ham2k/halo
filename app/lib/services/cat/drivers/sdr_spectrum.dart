@@ -15,6 +15,7 @@ import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart' show nowMillis, realNowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_sdr_usb/halo_sdr_usb.dart' show SdrUsbDevice;
 
 import '../driver.dart';
 import '../spectrum.dart';
@@ -121,6 +122,10 @@ abstract class SdrSink {
   /// server would stream on into a session that discards it all, and an
   /// rtl_tcp server stay locked to it.
   void dropConnection(String why);
+
+  /// The receiver itself, for a connection that opened one on this
+  /// computer's USB rather than a stream of bytes; null for any other.
+  SdrUsbDevice? get usbDevice;
 }
 
 /// What the protocol session does when the spectrum decides to move.

@@ -46,7 +46,9 @@ runtime — so **the extensions must be built before the app will run**.
     JAVA_INCLUDE_PATH2 JVM)`. Android Studio's bundled JBR is a full JDK and
     works. CI images carry one already, so this bites local builds only.
   - Linux → the usual Flutter Linux desktop deps (plus a
-    [quirks](docs/quirks.md))
+    [quirks](docs/quirks.md)), and `libusb-1.0-0-dev` for SDR receivers on
+    USB — without it the app still builds, and those receivers say this
+    build cannot use them
 
 ---
 
@@ -520,7 +522,7 @@ Defined in [`mise.toml`](mise.toml):
 | Path | What |
 |---|---|
 | `app/` | The Flutter app. |
-| `packages/` | Local Dart packages. First-party: `halo_core` (pure Dart — models, database, sync engine, peer protocol), `halo_widgets` (the widget catalog and the modules built from it), `halo_i18n` (the slang sources and generated strings — every first-party package may depend on it), `halo_extension_host` (the QuickJS bridge and extension manifests), `halo_quickjs` (the QuickJS-NG FFI plugin), `halo_audio` (the miniaudio FFI plugin: sound devices, playback and recording, desktop only), `halo_cli` (`halo-ext`, hooks outside the app), `halo_build_tools` (editions and version stamping). Vendored, each with a `PATCH.md` saying what it changes and why ([quirks](docs/quirks.md)): `flutter_inappwebview_macos_patched`, `flutter_inappwebview_windows_patched`, `flutter_inappwebview_linux_stub`, `universal_ble_patched`. |
+| `packages/` | Local Dart packages. First-party: `halo_core` (pure Dart — models, database, sync engine, peer protocol), `halo_widgets` (the widget catalog and the modules built from it), `halo_i18n` (the slang sources and generated strings — every first-party package may depend on it), `halo_extension_host` (the QuickJS bridge and extension manifests), `halo_quickjs` (the QuickJS-NG FFI plugin), `halo_audio` (the miniaudio FFI plugin: sound devices, playback and recording, desktop only), `halo_sdr_usb` (the FFI plugin for SDR receivers on USB: libairspy and libairspyhf compiled in, libusb as a library of its own, SDRplay's installed API loaded at runtime; desktop only), `halo_cli` (`halo-ext`, hooks outside the app), `halo_build_tools` (editions and version stamping). Vendored, each with a `PATCH.md` saying what it changes and why ([quirks](docs/quirks.md)): `flutter_inappwebview_macos_patched`, `flutter_inappwebview_windows_patched`, `flutter_inappwebview_linux_stub`, `universal_ble_patched`. |
 | `app_dist/` | The private distribution layer — the store, update and telemetry services the open-source app stubs out. Absent from the public mirror by design. |
 | `workers/` | Cloudflare Workers: the dev-preview proxy. |
 | `extensions/` | The SDK, the tools, and the core TypeScript extensions (every other extension is a catalog bundle, some pre-loaded from `app/assets/preloaded-extensions/` — `scripts/preloaded-extensions.mjs` keeps them current). `build.mjs` bundles the core into `app/assets/extensions/`; `dev-server.mjs` (`npm run dev`) rebuilds on save and reloads one in a running app ([the dev server](docs/extensions/in-repo.md#the-dev-server)); both build from `build-config.mjs`. |

@@ -64,7 +64,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # macOS ships bash 3.2, so no associative arrays: case functions instead.
 # ---------------------------------------------------------------------------
 
-PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs audio tls-psk widgets i18n cli app dist"
+PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs audio sdr-usb tls-psk widgets i18n cli app dist"
 
 app_group_names() {
   local d
@@ -83,6 +83,7 @@ pkg_group_dir() {
     extension-host) echo "packages/halo_extension_host" ;;
     quickjs) echo "packages/halo_quickjs" ;;
     audio) echo "packages/halo_audio" ;;
+    sdr-usb) echo "packages/halo_sdr_usb" ;;
     tls-psk) echo "packages/halo_tls_psk" ;;
     widgets) echo "packages/halo_widgets" ;;
     i18n) echo "packages/halo_i18n" ;;
@@ -412,9 +413,10 @@ check_i18n_fresh() {
 
 ensure_hostlib() {
   # build_host.sh is incremental; a no-op run costs a couple of seconds.
-  echo "▶ halo_quickjs, halo_audio: host native libraries (incremental)"
+  echo "▶ halo_quickjs, halo_audio, halo_sdr_usb: host native libraries (incremental)"
   "$ROOT_DIR/packages/halo_quickjs/tool/build_host.sh"
   "$ROOT_DIR/packages/halo_audio/tool/build_host.sh"
+  "$ROOT_DIR/packages/halo_sdr_usb/tool/build_host.sh"
 }
 
 ensure_secrets() {
@@ -542,7 +544,7 @@ run_subset() {
       # the dependency's asset build on a fresh worktree.
       dist) run_dist=1; need_bundles=1 ;;
       app) run_all_app=1; need_bundles=1; need_hostlib=1; need_i18n=1 ;;
-      quickjs | audio) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      quickjs | audio | sdr-usb) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       tls-psk) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       extension-host) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       core | build-tools) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
@@ -704,6 +706,7 @@ changed_subset() {
       packages/halo_extension_host/*) groups="$groups extension-host" ;;
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_audio/*) groups="$groups audio cat" ;;
+      packages/halo_sdr_usb/*) groups="$groups sdr-usb cat" ;;
       packages/halo_tls_psk/*) groups="$groups tls-psk cat" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
       # A string reaches every widget and every view.
@@ -948,9 +951,10 @@ if [[ "$QUICK" -eq 0 ]]; then
   # `flutter test` runs in the host VM and never performs a platform native
   # build, so there is no plugin library for the tests to load — build one for
   # the host. Incremental: only a source change pays the rebuild.
-  echo "▶ halo_quickjs, halo_audio: build the host native libraries (needed by their tests)"
+  echo "▶ halo_quickjs, halo_audio, halo_sdr_usb: build the host native libraries (needed by their tests)"
   "$ROOT_DIR/packages/halo_quickjs/tool/build_host.sh"
   "$ROOT_DIR/packages/halo_audio/tool/build_host.sh"
+  "$ROOT_DIR/packages/halo_sdr_usb/tool/build_host.sh"
 fi
 
 # secrets.dart is gitignored, so fresh checkouts (like CI) don't have it and
@@ -960,7 +964,7 @@ ensure_secrets
 
 check_i18n_fresh
 
-PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_tls_psk packages/halo_widgets packages/halo_cli app)
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_audio packages/halo_sdr_usb packages/halo_tls_psk packages/halo_widgets packages/halo_cli app)
 # The private distribution layer, present only in the halo-dist checkout — a
 # public checkout has no app_dist/ and must still pass everything above.
 if [[ -d "$ROOT_DIR/app_dist" ]]; then

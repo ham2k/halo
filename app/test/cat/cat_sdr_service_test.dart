@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/sdr_usb_transport.dart' show SdrUsbTransport;
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -40,6 +41,13 @@ class _Connection implements EquipmentConnection {
     if (!_closed.isCompleted) _closed.complete();
     await _data.close();
   }
+}
+
+/// A receiver on this computer's USB, as far as the connect path can tell:
+/// only the transport's key says so.
+class _UsbTransport extends _Transport {
+  @override
+  String get key => SdrUsbTransport.transportKey;
 }
 
 class _Transport extends EquipmentTransport {
@@ -146,10 +154,12 @@ void main() {
   late SettingsService settings;
   late SharedPreferences prefs;
   late _Transport transport;
+  late _UsbTransport usbTransport;
   late _SdrDriver sdrDriver;
 
   CatService build({Duration sdrRetryDelay = const Duration(minutes: 5)}) {
     transport = _Transport();
+    usbTransport = _UsbTransport();
     sdrDriver = _SdrDriver();
     final cat = CatService(
       settings = SettingsService(prefs),
@@ -174,8 +184,14 @@ void main() {
             name: () => 'SDR',
             variants: [EquipmentVariant(key: 'sdr-type', driver: sdrDriver, transport: transport)],
           ),
+          EquipmentModel(
+            key: 'usb-sdr',
+            category: kCategorySdr,
+            name: () => 'USB SDR',
+            variants: [EquipmentVariant(key: 'usb-sdr-type', driver: sdrDriver, transport: usbTransport)],
+          ),
         ],
-        transports: {'fake': transport},
+        transports: {'fake': transport, SdrUsbTransport.transportKey: usbTransport},
       ),
       reconnectDelay: Duration.zero,
       idleRetryFirst: const Duration(minutes: 5),
@@ -361,6 +377,22 @@ void main() {
     await settle();
     expect(autoConnectMarks(prefs), isNot(contains(sdr)), reason: 'held, the SDR would say "auto-connect held" and no notice would name it');
     transport.gate!.complete();
+    await display.cancel();
+  });
+
+  test('a USB SDR connect is marked while it runs, as a radio\'s is', () async {
+    // Its open is a native call into libusb or SDRplay's service that can
+    // wedge the process; unmarked, a display open at launch would open it
+    // again, and wedge again, on every launch.
+    usbTransport.gate = Completer<void>();
+    final sdr = (await cat.addNode(typeKey: 'usb-sdr-type', name: 'USB SDR', config: const {})).uuid;
+    final display = cat.spectrumFrames(sdr).listen((_) {});
+    await settle();
+    expect(autoConnectMarks(prefs), contains(sdr));
+    usbTransport.gate!.complete();
+    await settle();
+    expect(autoConnectMarks(prefs), isNot(contains(sdr)), reason: 'a connect that returns leaves nothing behind');
+    expect(cat.stateFor(sdr).status, EquipmentStatus.connected);
     await display.cancel();
   });
 

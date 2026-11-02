@@ -141,6 +141,12 @@ class _NodeSink
   void dropConnection(String why) => onDropConnection(why);
 
   @override
+  SdrUsbDevice? get usbDevice => switch (connection) {
+    final SdrUsbConnection usb => usb.device,
+    _ => null,
+  };
+
+  @override
   void reportTuner(TunerStatus? status) => onTuner(status);
 
   @override

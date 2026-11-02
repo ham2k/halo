@@ -1,0 +1,29 @@
+name: halo_sdr_usb
+description: "USB SDR receivers through dart:ffi — Airspy R2, Mini and HF+ through their own libraries, SDRplay through its installed API — read into a ring the Ham2K Logger draws spectra from."
+version: 0.0.1
+homepage: https://ham2k.com
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# Desktop only (docs/design/cat.md § SDR receivers).
+flutter:
+  plugin:
+    platforms:
+      linux:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      windows:
+        ffiPlugin: true

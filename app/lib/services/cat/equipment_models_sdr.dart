@@ -11,9 +11,11 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/rtl_tcp_driver.dart';
 import 'drivers/sdr_spectrum.dart';
+import 'drivers/sdr_usb_driver.dart';
 import 'drivers/spyserver_driver.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
+import 'transports/sdr_usb_transport.dart';
 import 'transports/tcp_transport.dart';
 
 /// A new receiver follows whichever radio is Main, on its own antenna.
@@ -52,7 +54,17 @@ const sdrplayModel = EquipmentModel(
   name: _sdrplayName,
   manufacturer: 'SDRplay',
   hiddenFromCatalog: true,
-  variants: [EquipmentVariant(key: 'sdrplay-rsptcp', driver: _rspTcpDriver, transport: TcpTransport(), defaultConfig: _sdrDefaults, notes: _rspTcpNotes)],
+  variants: [
+    EquipmentVariant(key: 'sdrplay-rsptcp', driver: _rspTcpDriver, transport: TcpTransport(), defaultConfig: _sdrDefaults, notes: _rspTcpNotes),
+    EquipmentVariant(
+      key: 'sdrplay-usb',
+      driver: SdrUsbDriver(),
+      transport: SdrUsbTransport(),
+      overrides: {sdrUsbKindConfigKey: 'sdrplay'},
+      defaultConfig: _usbDefaults,
+      notes: _sdrplayUsbNotes,
+    ),
+  ],
 );
 
 String _sdrplayName() => t.settings.station.models.sdrplay;
@@ -71,6 +83,14 @@ const airspyModel = EquipmentModel(
   hiddenFromCatalog: true,
   variants: [
     EquipmentVariant(key: 'airspy-spyserver', driver: SpyServerDriver(), transport: TcpTransport(), defaultConfig: _spyServerDefaults, notes: _spyServerNotes),
+    EquipmentVariant(
+      key: 'airspy-usb',
+      driver: SdrUsbDriver(gainStep: true),
+      transport: SdrUsbTransport(),
+      overrides: {sdrUsbKindConfigKey: 'airspy'},
+      defaultConfig: _usbDefaults,
+      notes: _usbNotes,
+    ),
   ],
 );
 
@@ -89,6 +109,14 @@ const airspyHfModel = EquipmentModel(
       transport: TcpTransport(),
       defaultConfig: _spyServerDefaults,
       notes: _spyServerNotes,
+    ),
+    EquipmentVariant(
+      key: 'airspyhf-usb',
+      driver: SdrUsbDriver(),
+      transport: SdrUsbTransport(),
+      overrides: {sdrUsbKindConfigKey: 'airspyHf'},
+      defaultConfig: _usbDefaults,
+      notes: _usbNotes,
     ),
   ],
 );
@@ -116,6 +144,18 @@ List<Map<String, dynamic>> _rtlTcpNotes() => [
 
 List<Map<String, dynamic>> _rspTcpNotes() => [
   {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.rspTcpNotes},
+];
+
+/// A receiver on USB follows Main on its own antenna, like one on the
+/// network.
+const _usbDefaults = {sdrRadioConfigKey: sdrRadioMain, sdrTuningConfigKey: 'independent'};
+
+List<Map<String, dynamic>> _usbNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.sdrUsbNotes},
+];
+
+List<Map<String, dynamic>> _sdrplayUsbNotes() => [
+  {'type': 'markdown', 'collapsible': true, 'title': t.settings.station.troubleshootingNotes, 'text': t.settings.station.sdrUsbSdrplayNotes},
 ];
 
 List<Map<String, dynamic>> _spyServerNotes() => [

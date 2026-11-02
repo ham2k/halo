@@ -22,6 +22,12 @@
 	     Debug passes regardless. -->
 	<key>com.apple.security.device.serial</key>
 	<true/>
+	<!-- An SDR receiver on USB (docs/design/cat.md § SDR receivers): libusb
+	     opens the device itself rather than through a serial driver. A
+	     sandbox relaxation like device.serial, not AMFI-restricted; must be
+	     in BOTH entitlement files, and verified on a SIGNED Release build. -->
+	<key>com.apple.security.device.usb</key>
+	<true/>
 	<!-- BLE peer transport (HALO-342). A sandbox relaxation like
 	     device.serial above, not AMFI-restricted. Must be present in BOTH
 	     entitlement files — a Release-only miss is the documented trap. -->

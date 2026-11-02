@@ -48,6 +48,7 @@ import 'transports/ble_serial_transport.dart';
 import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
+import 'transports/sdr_usb_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/udp_transport.dart';
@@ -479,6 +480,7 @@ String? transportLabelFor(String transportKey) {
     TcpTransport.transportKey || UdpTransport.transportKey => labels.network,
     K4RemoteTransport.transportKey => labels.secureNetwork,
     SerialTransport.transportKey => labels.usbSerial,
+    SdrUsbTransport.transportKey => labels.usb,
     BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
     BleSerialTransport.transportKey => labels.bleSerial,
     IcomNetworkTransport.transportKey => labels.wifi,
@@ -500,7 +502,7 @@ String? transportLabelFor(String transportKey) {
 /// `resolveIconName` answers an unknown name with a puzzle-piece glyph and
 /// no error at all, so a typo here ships silently.
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
-  SerialTransport.transportKey => 'usb-port',
+  SerialTransport.transportKey || SdrUsbTransport.transportKey => 'usb-port',
   BluetoothSerialTransport.transportKey || BleSerialTransport.transportKey => 'bluetooth',
   TcpTransport.transportKey || UdpTransport.transportKey || IcomNetworkTransport.transportKey || K4RemoteTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
@@ -613,6 +615,7 @@ class EquipmentRegistry {
             BleSerialTransport.transportKey: const BleSerialTransport(),
             IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
+            SdrUsbTransport.transportKey: const SdrUsbTransport(),
           };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.

@@ -2746,6 +2746,17 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spyServerNoSpectrum => 'the spyserver is not sending a spectrum';
 	@override String get spyServerGain => 'gain step';
 	@override String get spyServerGainDescription => 'from 0 up to the receiver\'s highest step. leave blank to keep the server\'s own gain. only the first program connected to the server can change it.';
+	@override String get sdrUsbSerial => 'serial number';
+	@override String get sdrUsbSerialDescription => 'which receiver, when more than one is plugged in. leave blank to use the first one found.';
+	@override String get sdrUsbGain => 'gain step';
+	@override String get sdrUsbGainDescription => 'from 0 to 21. leave blank for the receiver\'s automatic gain.';
+	@override String sdrUsbOpenFailed({required Object why}) => 'the receiver could not be opened: ${why}';
+	@override String get sdrUsbUnavailable => 'this build of the app cannot use receivers on usb';
+	@override String get sdrUsbSdrplayMissing => 'sdrplay\'s api is not installed. install sdrplay\'s software for this computer, then try again';
+	@override String get sdrUsbSdrplayOnMac => 'on a mac, an sdrplay receiver connects through rsp_tcp: add it as sdrplay on the network';
+	@override String get sdrUsbLost => 'the receiver stopped. is it still plugged in?';
+	@override String get sdrUsbNotes => 'this opens the receiver on this computer\'s usb, with no other software running.\n\n- **only one program can use it at a time.** close sdr#, sdr++ or spyserver first.\n- **on windows**, if it is not found, the receiver needs the winusb driver: install it with zadig, or with the driver installer that comes with sdr#.\n- **on linux**, the receiver needs a udev rule to be opened without root, for example in `/etc/udev/rules.d/52-airspy.rules`:\n  `SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="60a1", MODE="0666"` for an airspy r2 or mini, and `ATTR{idVendor}=="03eb", ATTR{idProduct}=="800c"` for an airspy hf+. then unplug it and plug it in again.';
+	@override String get sdrUsbSdrplayNotes => 'this opens an sdrplay receiver through **sdrplay\'s api**, which comes with sdrplay\'s own software for windows and linux: install that first.\n\n- **only one program can use it at a time.** close sdruno, sdrconnect or sdr++ first.\n- **on a mac**, connect the receiver through `rsp_tcp` instead, and add it as sdrplay on the network.\n- an rspduo is used as one receiver, on its first tuner.';
 	@override String get spyServerNotes => 'this connects to **airspy\'s spyserver**, running on the computer the receiver is plugged into, or to a public one.\n\n- **port** is 5555 unless the server\'s `spyserver.config` says otherwise.\n- **the server computes the spectrum** and sends a few tens of kilobytes a second, so it works over the internet too.\n- **only the first program connected can retune the receiver.** while another one is connected, the display shows only what the receiver is already tuned to.\n- **if it connects and drops at once,** the server is full or has no receiver attached.';
 	@override String get n3fjpNoRig => 'n3fjp has no radio interface set up, so this follows what is typed into n3fjp, not a radio';
 	@override String get winkeyerKeyPort => 'key output';
@@ -4503,6 +4514,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 	@override String get bluetoothSerial => 'bluetooth serial';
 	@override String get bleSerial => 'bluetooth le';
 	@override String get placeholder => 'placeholder';
+	@override String get usb => 'usb';
 }
 
 // Path: settings.station.antennaTypes
@@ -6572,6 +6584,17 @@ extension on TranslationsQrp {
 			'settings.station.spyServerNoSpectrum' => 'the spyserver is not sending a spectrum',
 			'settings.station.spyServerGain' => 'gain step',
 			'settings.station.spyServerGainDescription' => 'from 0 up to the receiver\'s highest step. leave blank to keep the server\'s own gain. only the first program connected to the server can change it.',
+			'settings.station.sdrUsbSerial' => 'serial number',
+			'settings.station.sdrUsbSerialDescription' => 'which receiver, when more than one is plugged in. leave blank to use the first one found.',
+			'settings.station.sdrUsbGain' => 'gain step',
+			'settings.station.sdrUsbGainDescription' => 'from 0 to 21. leave blank for the receiver\'s automatic gain.',
+			'settings.station.sdrUsbOpenFailed' => ({required Object why}) => 'the receiver could not be opened: ${why}',
+			'settings.station.sdrUsbUnavailable' => 'this build of the app cannot use receivers on usb',
+			'settings.station.sdrUsbSdrplayMissing' => 'sdrplay\'s api is not installed. install sdrplay\'s software for this computer, then try again',
+			'settings.station.sdrUsbSdrplayOnMac' => 'on a mac, an sdrplay receiver connects through rsp_tcp: add it as sdrplay on the network',
+			'settings.station.sdrUsbLost' => 'the receiver stopped. is it still plugged in?',
+			'settings.station.sdrUsbNotes' => 'this opens the receiver on this computer\'s usb, with no other software running.\n\n- **only one program can use it at a time.** close sdr#, sdr++ or spyserver first.\n- **on windows**, if it is not found, the receiver needs the winusb driver: install it with zadig, or with the driver installer that comes with sdr#.\n- **on linux**, the receiver needs a udev rule to be opened without root, for example in `/etc/udev/rules.d/52-airspy.rules`:\n  `SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="60a1", MODE="0666"` for an airspy r2 or mini, and `ATTR{idVendor}=="03eb", ATTR{idProduct}=="800c"` for an airspy hf+. then unplug it and plug it in again.',
+			'settings.station.sdrUsbSdrplayNotes' => 'this opens an sdrplay receiver through **sdrplay\'s api**, which comes with sdrplay\'s own software for windows and linux: install that first.\n\n- **only one program can use it at a time.** close sdruno, sdrconnect or sdr++ first.\n- **on a mac**, connect the receiver through `rsp_tcp` instead, and add it as sdrplay on the network.\n- an rspduo is used as one receiver, on its first tuner.',
 			'settings.station.spyServerNotes' => 'this connects to **airspy\'s spyserver**, running on the computer the receiver is plugged into, or to a public one.\n\n- **port** is 5555 unless the server\'s `spyserver.config` says otherwise.\n- **the server computes the spectrum** and sends a few tens of kilobytes a second, so it works over the internet too.\n- **only the first program connected can retune the receiver.** while another one is connected, the display shows only what the receiver is already tuned to.\n- **if it connects and drops at once,** the server is full or has no receiver attached.',
 			'settings.station.n3fjpNoRig' => 'n3fjp has no radio interface set up, so this follows what is typed into n3fjp, not a radio',
 			'settings.station.winkeyerKeyPort' => 'key output',
@@ -6683,6 +6706,7 @@ extension on TranslationsQrp {
 			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
 			'settings.station.transports.bleSerial' => 'bluetooth le',
 			'settings.station.transports.placeholder' => 'placeholder',
+			'settings.station.transports.usb' => 'usb',
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
@@ -6767,6 +6791,8 @@ extension on TranslationsQrp {
 			'settings.station.icomCivTroubleshooting' => 'several icom radios, the ic-705 among them, present **two** usb serial ports at once (icom calls them port a and port b), both set to ci-v by default. neither this app nor your os can tell them apart beyond that: the same usb vendor/product id just shows up twice, sometimes marked with a `#2` suffix here. **port a is usually the right one** — normally the first one your os or browser lists, and where this app can tell the two ports apart it marks that one as suggested. if commands go out and the radio never responds, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'if the radio never responds',
 			'settings.station.civAddressTroubleshooting' => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **speed must match** the radio\'s ci-v baud rate (on usb, ci-v usb baud rate). set the radio to the same number shown here, **not auto**. on auto some radios, the ic-7300 among them, connect and then stop responding after a minute or so.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
 			'settings.station.ic7610UsbSpeed' => '- **set ci-v usb baud rate to 115200**, the speed this entry always uses, since the scope needs it — **not auto**. a radio set to any other speed answers with silence.',
@@ -6779,8 +6805,6 @@ extension on TranslationsQrp {
 			'settings.station.rigctldTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'this connects to a **rigctld daemon you run yourself**, not to the radio directly — hamlib\'s backend talks to the radio and supports hundreds of models.\n\n- **the daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. find your radio\'s model number with `rigctl -l`.\n- **from another machine**, start it with `-T 0.0.0.0`: by default rigctld only accepts connections from the machine it runs on.\n- **port** is 4532 unless you started the daemon with `-t`.\n- once connected, a missing frequency usually means the daemon itself cannot reach the radio. test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'if the app cannot connect',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.flrigTroubleshooting' => 'this connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **port** is 12345 unless you changed it in flrig\'s configuration (config → setup → server).\n- **from another machine**, make sure flrig\'s server is reachable. it listens on all interfaces, but your firewall may not agree.\n- once connected, a missing frequency usually means flrig itself cannot reach the radio. check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.hrdTroubleshooting' => 'this connects to **ham radio deluxe\'s rig control, running on your computer**, not to the radio directly — hrd talks to the radio.\n\n- **rig control must already be running** and connected to the radio.\n- **its ip server must be enabled.** rig control only talks to other programs through it.\n- **port** is 7809 unless you changed it in the ip server\'s settings.\n- **from another machine**, make sure your firewall lets the connection through.\n\nthis entry was written from published descriptions of hrd\'s protocol and has not been run against hrd. if it half-works, that is worth reporting.',
@@ -7281,6 +7305,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.file.problemMalformed' => 'part of it doesn’t follow the shortcuts format',
 			'keyboardShortcuts.file.problemTooLarge' => 'it is too large',
 			'keyboardShortcuts.file.importTitle' => 'import shortcuts',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'written on ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'the file doesn’t say which keyboard it was written on.',
 			'keyboardShortcuts.file.translate' => 'what should each of these keys be on this keyboard?',
@@ -7293,8 +7319,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'not shortcuts, so left out: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'keys the app keeps for itself, so left out: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'bound to more than one command after the import: ${keys}',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.file.importAction' => 'import',
 			'keyboardShortcuts.file.imported' => 'shortcuts imported',
 			'keyboardShortcuts.modifier.cmd' => '⌘ command',

@@ -320,8 +320,11 @@ void main() {
       'rtl-sdr-rtltcp',
       'nesdr-rtltcp',
       'sdrplay-rsptcp',
+      'sdrplay-usb',
       'airspy-spyserver',
+      'airspy-usb',
       'airspyhf-spyserver',
+      'airspyhf-usb',
       'spyserver',
       // Derived from the model's key, one per real transceiver — stored like
       // any other, so renaming a model's key orphans its placeholder nodes.
@@ -883,7 +886,7 @@ void main() {
     // The Winkeyer pushes too: status, echo and pot reports, as they happen.
     // An SDR streams continuously and has no dial of its own to settle.
     // An OTRSP box pushes its RX events, a front-panel switch included.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'otrsp'};
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'sdr-usb', 'otrsp'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

@@ -3879,9 +3879,10 @@ edit of the SDR is under way it does nothing, and each settles it again as it
 ends: a display that comes and goes before a connect has said `connecting`
 would otherwise start a second one, which supersedes the first on a server
 that takes one client. Any edit to an SDR's setup reconnects it, since the
-session reads it all at the start. Its connects skip the auto-connect crash
-mark, which guards a native open that can wedge the process — a socket
-cannot. Its IQ is kept out of the CAT
+session reads it all at the start. A network SDR's connects skip the
+auto-connect crash mark, which guards a native open that can wedge the
+process — a socket cannot; one on USB is such an open, so its connects are
+marked like a radio's. Its IQ is kept out of the CAT
 traffic log, which a few megabytes a second would fill in moments.
 
 **The samples are mostly thrown away.** `SdrSpectrum` converts one FFT window
@@ -3931,8 +3932,53 @@ byte-to-dB scale, the receiver following the window, the spectator's bounds
 and the IQ rate old servers need were measured against public servers from
 2.0.1700 to 2.0.1922 ([spyserver-protocol.md](spyserver-protocol.md) §12).
 
-Still to come: USB on desktop through the vendors' libraries
-— libairspy and libairspyhf bundled, SDRplay's API installed by the operator.
+**On this computer's USB** (`sdr_usb_driver.dart`, `sdr_usb_transport.dart`,
+the `halo_sdr_usb` package), desktop only: an Airspy R2 or Mini, an Airspy
+HF+, or an SDRplay RSP, as one more variant of the same model beside its
+network one. The vendor libraries call back on threads of their own with
+blocks of samples; each block goes into a ring in the package's C shim, and
+the session reads the stretch written since its last read twenty times a
+second, handing it to `SdrSpectrum` as a stream, which converts only the
+windows it draws. So the 2.5–10 MS/s of an Airspy never cross into Dart, and
+the spectrum is the same code an rtl_tcp server's is. A reader that falls
+more than half the ring behind takes only the newest half, never samples the
+receiver is overwriting. Everything that reaches the hardware — opening it,
+starting, stopping, a rate change, a retune — runs on a worker isolate of the
+receiver's own, in the order it was asked for: opening one enumerates USB or
+talks to SDRplay's service, and a rate change restarts an Airspy's stream,
+any of which would stall the UI. Reading the ring stays on the UI isolate,
+being a lock and a copy; while a command is on its way, the receiver reads
+as whatever was asked of it, so a restart for a new rate is not taken for a
+receiver gone, and from its close on it reads as gone. The connection carries the open receiver to the
+session (`SdrSink.usbDevice`) and no bytes; a receiver that stops, or sends
+nothing for two seconds, is dropped with the reason, as a network SDR is,
+and opened again while a display waits — so one plugged back in is picked up.
+A rate change or a retune moves the reading past what is already in the ring:
+the spectrum's settle is counted at the new rate, and a stretch sampled at a
+wider one outlasts it. An HF+ hears nothing between its HF and VHF ports, 31
+to 60 MHz, so a dial there reads as out of reach.
+
+libairspy and libairspyhf (BSD-3) are compiled into the package. libusb
+(LGPL-2.1) is a library of its own, so it can be replaced: a framework built
+from the vendored source on macOS (`tool/build_libusb_macos.sh`, committed),
+libusb's own release DLLs on Windows, the system's on Linux, where a build
+machine without its development files builds without USB receivers rather
+than failing. MSVC has no `pthread.h`; the few calls the Airspy libraries
+make are mapped onto Win32 in `src/win32/pthread.h`. The macOS app carries
+`com.apple.security.device.usb`.
+
+SDRplay's API is proprietary and not shipped: the operator installs it with
+SDRplay's software, and the package loads it at runtime — on Windows from
+where SDRplay's installer records it, on Linux by its library name — with
+declarations of our own written to the layout SDRplay publishes for API 3.x,
+refusing any other major version. A signed, sandboxed macOS app may not load
+a library it did not ship, so on a Mac an RSP connects through rsp_tcp, and
+its USB variant says so. An HF+ and an RSP are left on their own AGC; an
+Airspy R2 or Mini takes a linearity gain step.
+
+None of this has met a receiver: it is tested against a fake receiver, and
+the ring against a tone the package's host build writes.
+
 An RTL-SDR has no USB path: librtlsdr is GPL-2.0, and a sandboxed macOS app
 cannot load a copy the operator installed.
 

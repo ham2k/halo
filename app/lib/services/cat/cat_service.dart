@@ -20,6 +20,7 @@ import 'package:halo_audio/halo_audio.dart' show AudioPlayback;
 import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_sdr_usb/halo_sdr_usb.dart' show SdrUsbDevice;
 import '../error_reporting_service.dart';
 import '../hang_watchdog.dart';
 import '../peer/peer_station_radios.dart';
@@ -37,6 +38,7 @@ import 'radio_proof.dart';
 import 'spectrum.dart';
 import 'transports/k4_shared_connection.dart';
 import 'transports/k4_remote_transport.dart';
+import 'transports/sdr_usb_transport.dart' show SdrUsbConnection, SdrUsbTransport;
 import 'drivers/kenwood_driver.dart' show KenwoodDriver;
 import 'discovery.dart';
 import 'driver.dart';
