@@ -77,7 +77,7 @@ void main() {
     // pass vacuously and the rule would go unenforced again.
     expect(emitted, contains('duplicate'));
     expect(emitted, contains('newMult'));
-    expect(emitted, contains('missingExchange'));
+    expect(emitted, contains('invalidExchange'));
     expect(emitted.length, greaterThanOrEqualTo(8), reason: 'the scan found suspiciously few keys');
 
     late BuildContext ctx;
