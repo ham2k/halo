@@ -327,6 +327,21 @@ No bridge crossing: these run inside the runtime. They are how an exporter
 collects every program's ADIF fields, and how the lookup orchestrator folds
 one source's answer into the next.
 
+**Rules:**
+
+- Only the categories meant to be asked by other extensions for data can be
+  called this way: `adifFields`, `lookup`, `lookupService`,
+  `recentContextLookup`, `callNotes` and `export` (`COMPOSABLE_CATEGORIES`).
+  A hook you call runs with its own extension's account and settings, so
+  every other category is refused before a hook runs: `account`, `command`,
+  `form`, `syncTransport`, `ref:<type>` and the rest, your own extension's
+  hooks included. The call rejects with an error naming the category, and
+  your hook fails with it.
+- The `category` parameter is typed `ComposableHookCategory`, so `tsc`
+  catches a refused category at build time. The kernel refuses it whatever
+  SDK the bundle was built with.
+- To reuse your own code, call the function, not the hook.
+
 ## The hook context
 
 Every hook method's second argument. Fields marked `?` are absent on an app

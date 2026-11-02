@@ -43,7 +43,7 @@ import type {
 } from "./types.ts"
 
 import { base64ToBytes, bytesToBase64 } from "./base64.ts"
-import type { HookCategoryName } from "./hookCategories.ts"
+import type { ComposableHookCategory } from "./hookCategories.ts"
 import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTimeout } from "./timers.ts"
 
 /**
@@ -81,7 +81,7 @@ interface KernelApi {
   defineExtension(def: ExtensionDefinition): void
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
   invokeLocal(
-    category: string,
+    category: ComposableHookCategory,
     method: string,
     args: unknown,
     online?: boolean,
@@ -89,7 +89,7 @@ interface KernelApi {
     forRefs?: unknown[] | null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   invokeLocalSequential(
-    category: string,
+    category: ComposableHookCategory,
     method: string,
     initialArgs: unknown,
     fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,
@@ -259,11 +259,13 @@ function openWebSocket(
 }
 
 /// Cross-extension composition inside the runtime (no bridge round-trip).
+/// Only the data categories in COMPOSABLE_CATEGORIES can be invoked; the
+/// kernel rejects any other, whatever SDK a bundle was built with.
 export const hooks = {
   /// EVERY hook in the category — including the CALLER's own. A hook that
   /// delegates within its own category therefore re-enters itself; use
   /// `invokeOne` when you know which extension you want.
-  invokeAll(category: HookCategoryName, method: string, args: unknown, online?: boolean) {
+  invokeAll(category: ComposableHookCategory, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online)
   },
 
@@ -272,7 +274,7 @@ export const hooks = {
   /// Prefer this over filtering `invokeAll`'s results for the key you wanted.
   /// A contest's `generateExport` delegating the ADIF build is exactly the
   /// recursive shape described above, and loops forever through `invokeAll`.
-  invokeOne(category: HookCategoryName, key: string, method: string, args: unknown, online?: boolean) {
+  invokeOne(category: ComposableHookCategory, key: string, method: string, args: unknown, online?: boolean) {
     return kernel().invokeLocal(category, method, args, online, key)
   },
 
@@ -282,7 +284,7 @@ export const hooks = {
   /// `adifFields`, any whose manifest sets `adifFieldsScope: "always"`.
   /// For a fan-out over programs that must leave out the ones a contact has
   /// nothing to do with, as the full ADIF export does.
-  invokeForRefs(category: HookCategoryName, method: string, args: unknown, refs: unknown[], online?: boolean) {
+  invokeForRefs(category: ComposableHookCategory, method: string, args: unknown, refs: unknown[], online?: boolean) {
     return kernel().invokeLocal(category, method, args, online, null, refs)
   },
 
@@ -290,7 +292,7 @@ export const hooks = {
   /// threading each result into the next call's args via `fold` — needed
   /// when later hooks must see earlier hooks' contributions.
   invokeAllSequential(
-    category: HookCategoryName,
+    category: ComposableHookCategory,
     method: string,
     initialArgs: unknown,
     fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,

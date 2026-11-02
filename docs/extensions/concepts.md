@@ -124,10 +124,10 @@ Three rules follow from the bridge:
   its SDK interface (`PanelHook`, `LookupHook`, …) and `tsc` catches it.
 
 The categories are a closed list; [How hooks work](hooks.md) has it.
-Extensions may also call each other's hooks inside the runtime, with no
-bridge crossing, through `hooks.invokeAll`, `hooks.invokeOne` and
+Extensions may also call each other's data hooks inside the runtime, with
+no bridge crossing, through `hooks.invokeAll`, `hooks.invokeOne` and
 `hooks.invokeForRefs`; [The host API](host.md#calling-other-extensions) says
-when.
+when, and which categories.
 
 ## The host
 

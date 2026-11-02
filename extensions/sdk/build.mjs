@@ -37,8 +37,9 @@ await mkdir(dist, { recursive: true })
 /// makes it host-shaped too, and it is imported by path rather than through
 /// the barrel. Nothing in the barrel imports either, so a bundled build would
 /// drop them silently; naming the entry points explicitly is what keeps that
-/// true when someone adds an import.
-const notShipped = new Set(["kernel.ts", "testing.ts"])
+/// true when someone adds an import. `composable.ts` is the kernel's
+/// composition rule, which the two share and nothing else reaches.
+const notShipped = new Set(["kernel.ts", "testing.ts", "composable.ts"])
 
 async function shippedModules() {
   const names = await readdir(src)

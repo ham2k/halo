@@ -7,7 +7,7 @@
 // the REAL kernel by hand-written probe bundles that reach for `__polo`
 // directly: the SDK's own wrappers never make these calls, so a test through
 // them would prove nothing about the host. In-runtime composition
-// (`invokeLocal` running another extension's hook) is outside this file.
+// (`invokeLocal`) is held by halo_extension_host's composition_allowlist_test.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -29,20 +29,18 @@ const victim = r'''
         hook: {
           call: async (args, ctx) => {
             switch (args.probe) {
-              case 'ownForm': {
+              case 'ownForm':
                 api.registerDynamicForm('own', { grab: async (a, c) => ({ account: c.account ?? null }) });
-                try {
-                  return await globalThis.__polo.invokeLocal('form', 'grab', {}, true, 'own');
-                } finally {
-                  api.unregisterDynamicForm('own');
-                }
-              }
+                return null;
+              case 'dropOwnForm':
+                api.unregisterDynamicForm('own');
+                return null;
               case 'holdForm':
                 api.registerDynamicForm('login', { grab: async (a, c) => ({ owner: 'victim', account: c.account ?? null }) });
                 return null;
               case 'dropForm':
                 api.unregisterDynamicForm('login');
-                return await globalThis.__polo.invokeLocal('form', 'grab', {}, true, 'login');
+                return null;
             }
             return { account: ctx.account ?? null };
           },
@@ -76,23 +74,21 @@ const thief = r'''
                 return await polo.hostCall('setSettings', { ns: 'victim', values: { pwned: true } });
               case 'boundSetSettings':
                 return await api.hostCall('setSettings', { ns: 'victim', values: { pwned: true } });
-              case 'forgedForm': {
+              case 'forgedForm':
                 polo.registerDynamicForm('forged', 'victim', { grab: async (a, c) => ({ account: c.account ?? null }) });
-                try {
-                  return await polo.invokeLocal('form', 'grab', {}, true, 'forged');
-                } finally {
-                  polo.unregisterDynamicForm('forged');
-                }
-              }
+                return null;
+              case 'dropForgedForm':
+                polo.unregisterDynamicForm('forged');
+                return null;
               case 'claimForm':
                 polo.registerDynamicForm('login', 'victim', { grab: async () => ({ owner: 'thief' }) });
-                return await polo.invokeLocal('form', 'grab', {}, true, 'login');
+                return null;
               case 'publicUnregister':
                 polo.unregisterDynamicForm('login');
-                return await polo.invokeLocal('form', 'grab', {}, true, 'login');
+                return null;
               case 'boundUnregister':
                 api.unregisterDynamicForm('login');
-                return await polo.invokeLocal('form', 'grab', {}, true, 'login');
+                return null;
               case 'tamper': {
                 try { globalThis.__polo = { hostResponse() {} }; } catch (e) {}
                 try { polo.hostResponse = function () {}; } catch (e) {}
@@ -145,9 +141,14 @@ void main() {
 
   Map<String, dynamic> accountOf(dynamic result) => ((result as Map)['account'] as Map).cast<String, dynamic>();
 
-  /// The one answer a `form` invocation by id gives, as a map.
-  Map<String, dynamic> theOnlyAnswer(dynamic results) {
-    final list = results as List;
+  /// What every record registered under form id [formId] answers, asked the
+  /// way the app asks a form: over the bridge, never from inside the runtime.
+  Future<List<Map<String, dynamic>>> formAnswers(String formId) async =>
+      (await extensions.host!.invokeHookAll('form', method: 'grab', timeout: const Duration(seconds: 10))).where((e) => e['key'] == formId).toList();
+
+  /// The one answer form id [formId] gives, as a map.
+  Future<Map<String, dynamic>> theOnlyAnswer(String formId) async {
+    final list = await formAnswers(formId);
     expect(list, hasLength(1), reason: 'one record per form id');
     final entry = list.single as Map;
     expect(entry['ok'], true, reason: '${entry['error']}');
@@ -158,7 +159,12 @@ void main() {
 
   test('an extension reads its own account: through its hooks, and through a dynamic form it registered itself', () async {
     expect(accountOf(await call('victim', 'account'))['credentials'], victimCredentials);
-    expect(accountOf(theOnlyAnswer(await call('victim', 'ownForm')))['credentials'], victimCredentials);
+    await call('victim', 'ownForm');
+    addTearDown(() async {
+      await call('victim', 'dropOwnForm');
+      expect(await formAnswers('own'), isEmpty, reason: 'a form left registered answers every later grab in this file');
+    });
+    expect(accountOf(await theOnlyAnswer('own'))['credentials'], victimCredentials);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test("an account hook naming another extension's kvKey gets its own, empty account, and the kernel says why", () async {
@@ -191,19 +197,28 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test("a dynamic form registered under another extension's key is handed no account", () async {
-    expect(theOnlyAnswer(await call('thief', 'forgedForm'))['account'], isNull);
+    await call('thief', 'forgedForm');
+    addTearDown(() async {
+      await call('thief', 'dropForgedForm');
+      expect(await formAnswers('forged'), isEmpty, reason: 'a form left registered answers every later grab in this file');
+    });
+    expect((await theOnlyAnswer('forged'))['account'], isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test("a live form id cannot be joined or unregistered by another extension", () async {
     await call('victim', 'holdForm');
     // Claiming the id registers nothing: the victim's record alone answers.
-    expect(theOnlyAnswer(await call('thief', 'claimForm'))['owner'], 'victim');
+    await call('thief', 'claimForm');
+    expect((await theOnlyAnswer('login'))['owner'], 'victim');
     expect(extensions.host!.logLines, anyElement(contains("registerDynamicForm('login') as victim: the id is in use by victim")));
     // Neither the public entry nor the thief's own bound entry removes it.
-    expect(theOnlyAnswer(await call('thief', 'publicUnregister'))['owner'], 'victim');
-    expect(theOnlyAnswer(await call('thief', 'boundUnregister'))['owner'], 'victim');
+    await call('thief', 'publicUnregister');
+    expect((await theOnlyAnswer('login'))['owner'], 'victim');
+    await call('thief', 'boundUnregister');
+    expect((await theOnlyAnswer('login'))['owner'], 'victim');
     // The owner's does.
-    expect(await call('victim', 'dropForm'), isEmpty);
+    await call('victim', 'dropForm');
+    expect(await formAnswers('login'), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the kernel can be neither replaced nor rewritten from a bundle, and JSON stays its own', () async {

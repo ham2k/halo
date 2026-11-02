@@ -28,6 +28,7 @@ import { installAppClock } from "./appClock.ts"
 import type { AppClockHandle } from "./appClock.ts"
 import { createTimerQueue } from "./timerQueue.ts"
 import { deepFreeze, FROZEN_QSOS_API } from "./logCopy.ts"
+import { requireComposable } from "./composable.ts"
 
 /// A host call's stand-in answer, by method name (`getSettings`,
 /// `dbLookupSelectAll`, `fetch`…). Anything unlisted answers null, which
@@ -242,8 +243,14 @@ function installKernel(hostCalls: HostCallStubs, timerRefusals: string[]) {
     log: (message: string) => {
       if (message.includes("a timer was ignored")) timerRefusals.push(message)
     },
-    invokeLocal: async () => [],
-    invokeLocalSequential: async () => [],
+    invokeLocal: async (category: string) => {
+      requireComposable(category)
+      return []
+    },
+    invokeLocalSequential: async (category: string) => {
+      requireComposable(category)
+      return []
+    },
     updateInterpretation: () => {},
     getAccountKvKey: (extensionKey: string) => extensionKey,
     registerDynamicForm: () => {},

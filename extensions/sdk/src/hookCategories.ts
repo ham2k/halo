@@ -44,6 +44,32 @@ export const HOOK_CATEGORIES = [
 
 export type HookCategory = (typeof HOOK_CATEGORIES)[number]
 
+/// The categories one extension may invoke inside the runtime (`hooks.*`, the
+/// kernel's `invokeLocal`): hooks meant to be asked by other extensions for
+/// data. The kernel refuses
+/// every other one, `ref:<type>` and the caller's own hooks included — a
+/// target hook runs with its own context, so composing an `account`,
+/// `command` or `syncTransport` hook would act with another extension's
+/// credentials. The allowed ones answer questions and may still spend the
+/// target's account doing it: any extension can make a QRZ or HamQTH
+/// `lookup` look a call up with the operator's login. That is the service
+/// those hooks exist to give, and nothing here limits it. Keep this the list
+/// of what extensions actually compose; the host invokes every category over
+/// the bridge regardless.
+///
+/// Not named `*HOOK_CATEGORIES`: the hook-names guard matches that array by
+/// its name.
+export const COMPOSABLE_CATEGORIES = [
+  "adifFields",
+  "callNotes",
+  "export",
+  "lookup",
+  "lookupService",
+  "recentContextLookup",
+] as const satisfies readonly HookCategory[]
+
+export type ComposableHookCategory = (typeof COMPOSABLE_CATEGORIES)[number]
+
 /// What a hook may be registered or invoked under: a category above, or a
 /// reference handler — `ref:<type>`, and the `ref:<type>/<code>` form that
 /// claims a legacy reference under someone else's type.

@@ -48,7 +48,8 @@ import type {
 } from "./types.ts"
 import { isValidAccountKvKey, isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
-import type { HookCategoryName } from "./hookCategories.ts"
+import type { ComposableHookCategory, HookCategoryName } from "./hookCategories.ts"
+import { requireComposable } from "./composable.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
 import { createLogCopies, deepFreeze, FROZEN_QSOS_API, type LogChanges } from "./logCopy.ts"
 
@@ -1378,14 +1379,16 @@ const kernel = {
   /// fan-out that must not reach an extension the contact has nothing to do
   /// with. The full ADIF export is one: a program answering every contact
   /// stamps its fields on every log the operator keeps.
+  /// Only COMPOSABLE_CATEGORIES may be invoked; any other category rejects.
   async invokeLocal(
-    category: HookCategoryName,
+    category: ComposableHookCategory,
     method: string,
     args: unknown,
     online = true,
     key: string | null = null,
     forRefs: unknown[] | null = null,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
+    requireComposable(category)
     const routing = forRefs ? extensionsRouting(forRefs) : null
     const records = hooksFor(category, key).filter(
       (r) => typeof r.hook[method] === "function" && (routing === null || routing.has(r.extensionKey) || askedForEveryRef(category, r)),
@@ -1407,12 +1410,13 @@ const kernel = {
   /// hooks' contributions (e.g. the lookup service's priority-ordered
   /// merge), unlike `invokeLocal`'s parallel fan-out.
   async invokeLocalSequential(
-    category: HookCategoryName,
+    category: ComposableHookCategory,
     method: string,
     initialArgs: unknown,
     fold: (args: unknown, hookResult: unknown, hookKey: string) => unknown,
     online = true,
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]> {
+    requireComposable(category)
     const records = hooksFor(category, null).filter((r) => typeof r.hook[method] === "function")
     let args = initialArgs
     const out: { key: string; ok: boolean; value?: unknown; error?: string }[] = []
