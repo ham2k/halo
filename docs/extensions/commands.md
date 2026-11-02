@@ -39,7 +39,7 @@ never arbitrary state:
 
 | Action | Does | Needs |
 | --- | --- | --- |
-| `setVfo`, `setPower` | tunes the radio, sets its power | `setPower`: `requiresRadioWrite` |
+| `setVfo`, `setPower`, `swapRadios` | tunes the radio, sets its power, trades SO2R's Radio A and Radio B (frequency, mode, Run or S&P, each set's entry, and on two slices of one radio their antennas) | `setPower`, `swapRadios`: `requiresRadioWrite` |
 | `updateQso`, `addQso` | changes the draft contact, adds a record to the log (an event row, `band: 'event'`, is how a note lands on the timeline) | |
 | `updateOperation`, `markSegment` | changes the operation, marks a break | |
 | `setCallField`, `findInLog`, `navigate`, `openSettings` | moves the operator somewhere | |

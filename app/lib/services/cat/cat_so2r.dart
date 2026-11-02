@@ -19,6 +19,10 @@ mixin _So2r on _KeyingSurface {
   void _retune(String uuid, String vfoKey);
   void _setEnterSendsOf(bool running);
   bool _nodeTransmitting(String? uuid);
+  void setNodeAntenna(String uuid, {String? rx, String? tx});
+  String? designatedFor(String category, {String? radio});
+  Future<void> setDesignated(String category, String? uuid, {String? radio});
+  EquipmentNode? get so2rAudioRadio;
 
   void _startSo2rAudio();
   void _stopSo2rAudio();
@@ -162,6 +166,42 @@ mixin _So2r on _KeyingSurface {
     if (runningB.value == running) return;
     runningB.value = running;
     unawaited(_settings.setEnterSendsRunningB(running));
+  }
+
+  /// SWAP's part beyond the VFOs, which the logging panel's sets move with
+  /// their entries (docs/design/cat.md § Radio B, for SO2R): each radio
+  /// takes the other's Run or S&P and, when the two are slices of one radio
+  /// ([so2rAudioRadio]), the other's antenna ports and antenna in use.
+  ///
+  /// Two rigs keep their own: a port name means the same wire only on one
+  /// radio — an IC-7610's ANT2 is not a TS-890's — and each rig is still on
+  /// its own wire, which the antenna in use names.
+  void swapRadioSettings() {
+    final a = _localRadio1, b = radio2;
+    if (b == null) return;
+    if (a != null && so2rAudioRadio != null) {
+      final antennasA = stateFor(a).antennas, antennasB = stateFor(b).antennas;
+      _takeAntennas(a, antennasB);
+      _takeAntennas(b, antennasA);
+      final inUseA = designatedFor(kCategoryAntenna), inUseB = designatedFor(kCategoryAntenna, radio: b);
+      if (inUseA != inUseB) {
+        unawaited(setDesignated(kCategoryAntenna, inUseB));
+        unawaited(setDesignated(kCategoryAntenna, inUseA, radio: b));
+      }
+    }
+    final runningA = isRunning('A');
+    setRunning('A', isRunning('B'));
+    setRunning('B', runningA);
+  }
+
+  /// Points [uuid]'s antenna ports where [from] has the other slice's.
+  void _takeAntennas(String uuid, RadioAntennas? from) {
+    final own = stateFor(uuid).antennas;
+    if (from == null || own == null) return;
+    final rx = own.rxPorts.contains(from.rx) ? from.rx : null;
+    final tx = own.txPorts.contains(from.tx) ? from.tx : null;
+    if ((rx == null && tx == null) || (rx == own.rx && tx == own.tx)) return;
+    setNodeAntenna(uuid, rx: rx, tx: tx);
   }
 
   String? _radioUuid(String radio) => radio == 'B' ? radio2 : _localRadio1;

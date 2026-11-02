@@ -886,6 +886,16 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String get voiceMessageNotRendered => 'the extensions are not ready';
 	@override String so2rRadioCannotKey({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that';
 	@override String get so2rNoRadioB => 'nothing sent: pick a radio b in station configuration to key from this set';
+	@override String get swapExperimentOff => 'so2r is off — turn it on with exp so2r';
+	@override String get swapNeedsOperation => 'open an operation to swap radios';
+	@override String get swapNoRadioB => 'nothing swapped: pick a radio b in station configuration';
+	@override String get swapEditing => 'nothing swapped: finish editing the contact first';
+	@override String swapOnAir({required Object radio}) => 'nothing swapped: radio ${radio} is on the air';
+	@override String swapKeyerBusy({required Object radio}) => 'nothing swapped: radio ${radio} has messages going or waiting';
+	@override String get swapLocked => 'nothing swapped: this operation can\'t take changes right now';
+	@override String get swapDone => 'radios a and b swapped';
+	@override String swapNotConnected({required Object radio}) => 'swapped, but radio ${radio} is not connected and did not move';
+	@override String get swapNoneConnected => 'swapped, but neither radio is connected, so neither moved';
 	@override String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
 
@@ -7137,6 +7147,16 @@ extension on TranslationsQrp {
 			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
+			'commands.swapExperimentOff' => 'so2r is off — turn it on with exp so2r',
+			'commands.swapNeedsOperation' => 'open an operation to swap radios',
+			'commands.swapNoRadioB' => 'nothing swapped: pick a radio b in station configuration',
+			'commands.swapEditing' => 'nothing swapped: finish editing the contact first',
+			'commands.swapOnAir' => ({required Object radio}) => 'nothing swapped: radio ${radio} is on the air',
+			'commands.swapKeyerBusy' => ({required Object radio}) => 'nothing swapped: radio ${radio} has messages going or waiting',
+			'commands.swapLocked' => 'nothing swapped: this operation can\'t take changes right now',
+			'commands.swapDone' => 'radios a and b swapped',
+			'commands.swapNotConnected' => ({required Object radio}) => 'swapped, but radio ${radio} is not connected and did not move',
+			'commands.swapNoneConnected' => 'swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'nothing matches “${text}”',
@@ -7258,6 +7278,8 @@ extension on TranslationsQrp {
 			'expiredBuild.visit' => 'visit ham2k.com',
 			'expiredBuild.dismiss' => 'continue anyway',
 			'staleness.codePushFloorTitle' => 'an important update is waiting',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.codePushFloorBody' => 'this version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'restart the app to apply it.',
 			'staleness.quitAndReopen' => 'quit the app and open it again to apply it.',
@@ -7268,8 +7290,6 @@ extension on TranslationsQrp {
 			'spotting.nothingToSpot' => 'nothing to spot — no extension offers spotting here.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'no spot source matches "${source}" — installed: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'self-spot to ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'self-spot to ${sources} with "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'self-spotting to ${sources}…',

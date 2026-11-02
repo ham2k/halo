@@ -847,6 +847,14 @@ class HaLoServices with _TimeTravel {
   /// dismissing itself over a command the operator never typed there.
   bool Function(String message, {bool failed})? commandResponseSink;
 
+  /// Says [outcome] where `runCommandAction` says an action's answer: the
+  /// command bar waiting on it ([commandResponseSink]), else the status bar —
+  /// also for an action a logging panel runs itself.
+  void reportCommandOutcome(CommandActionOutcome outcome) {
+    final sink = commandResponseSink;
+    if (sink == null || !sink(outcome.text, failed: outcome.failed)) statusBar.setMessage(key: 'commandAction', text: outcome.text);
+  }
+
   /// The last command response a ⌘K palette showed, and when that palette
   /// closed — what reopening it soon after puts back (command_dialog.dart).
   /// Kept here because every open is a fresh State.
@@ -1746,6 +1754,10 @@ class HaLoServices with _TimeTravel {
         return null;
       case 'setKeyerSpeed' || 'showKeyer' || 'setEnterSends':
         return keyerCommandAction(this, action, params);
+      case 'swapRadios':
+        // SWAP moves the logging panel's two sets, and reaches here only
+        // with no panel live (`dispatchCommandActions`).
+        return (text: t.commands.swapNeedsOperation, failed: true);
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
         // secret), the operator named it without a value, or the query

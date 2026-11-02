@@ -1802,6 +1802,13 @@ export interface CommandAction {
   /// Pounce — an absent field is left as it is. Dispatched like `setPower`;
   /// the app answers with an error when no connected radio can key.
   setEnterSends?: { on?: boolean; running?: boolean }
+  /// SWAP, under SO2R: Radio A and Radio B trade frequency, band, mode, the
+  /// rigs' own antenna ports, and Run or S&P, and each set of the logging
+  /// panel hands its entry to the other with the frequency it was on. Only
+  /// the logging panel runs it; the app answers with an error when no panel
+  /// is open, with no Radio B, while a set shows a logged contact, or while
+  /// either radio is on the air or has messages going.
+  swapRadios?: Record<string, never>
   updateQso?: Record<string, JSONValue>
   addQso?: Record<string, JSONValue>
   /// `target` picks what gets spotted: `'self'` (default) spots the

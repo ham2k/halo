@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Core radio commands: band, frequency, mode, power and keyer-speed shortcuts typed into the
+// Core radio commands: band, frequency, mode, power, keyer-speed and SO2R shortcuts typed into the
 // call field and triggered on space, ported from app-polo's RadioCommands
 // extension (src/extensions/commands/RadioCommands.js) — this is the
 // reference implementation of the `command` hook category (DESIGN.md §4,
@@ -25,6 +25,7 @@ import { parseKeyerCommand } from "./parseKeyerCommand.ts"
 import { parseEnterSendsCommand } from "./parseEnterSendsCommand.ts"
 import { parseGigBandCommand } from "./parseGigBandCommand.ts"
 import { parseBandCommand } from "./parseBandCommand.ts"
+import { parseSwapCommand } from "./parseSwapCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -33,6 +34,10 @@ import manifest from "../manifest.json" with { type: "json" }
 // would gate the whole file.
 const KEYER_EXPERIMENT = "keyer"
 const keyerEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+
+// SO2R's second radio (app/experiments.yaml): SWAP has nothing to swap without it.
+const SO2R_EXPERIMENT = "so2r"
+const so2rEnabled = (ctx: HookContext) => !!ctx.enabledExperiments?.includes(SO2R_EXPERIMENT)
 
 // Enter Sends Messages, on top of keying (app/experiments.yaml).
 const ESM_EXPERIMENT = "esm"
@@ -311,6 +316,36 @@ const EnterSendsCommand = {
   },
 }
 
+// SWAP: Radio A and Radio B trade frequency, mode and Run or S&P, and each
+// set's entry goes with its frequency. Behind SO2R. No `confirm`: the logging
+// panel says what happened, swapped or refused and why, and a confirmation
+// here would stand beside its refusal.
+const SwapCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!so2rEnabled(ctx)) return null
+    if (!parseSwapCommand(input)) return null
+    const t = tFor(ctx)
+    return {
+      describe: t("swapDescribe"),
+      commands: [{ swapRadios: {} }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    if (!so2rEnabled(ctx)) return []
+    const t = tFor(ctx)
+    return [
+      {
+        command: "SWAP",
+        keywords: ["SO2R", "RADIOS", "FLIP"],
+        describe: t("catalogSwap"),
+        category: t("catalogCategory"),
+        suggest: true,
+      },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
@@ -322,5 +357,6 @@ defineExtension({
     registerHook("command", { key: "radio-commands-wpm", hook: WpmCommand, priority: 100 })
     registerHook("command", { key: "radio-commands-keyer", hook: KeyerCommand, priority: 100 })
     registerHook("command", { key: "radio-commands-enter-sends", hook: EnterSendsCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-swap", hook: SwapCommand, priority: 100 })
   },
 })

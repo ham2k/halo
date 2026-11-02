@@ -1138,7 +1138,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         onCommandMessageChanged: (message) {
           if (_so2rLink.active == radio) widget.onCommandMessageChanged?.call(message);
         },
-        onCommandAction: _onCommandAction,
+        onCommandAction: _withSwap(_onCommandAction),
         // Lets the ⌘K dialog apply a command to this panel — see
         // HaLoServices.currentCommandDispatch. Attached to this
         // operation's own stack entry, so a disposing panel can't detach a

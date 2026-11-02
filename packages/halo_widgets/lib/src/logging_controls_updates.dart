@@ -144,6 +144,8 @@ extension _WidgetUpdates on _LoggingControlsState {
     focusSecondaryControls: _ladder.focusPillAndOpen,
     focusLastPrimaryField: _ladder.focusLastPrimaryField,
     openControl: _onSelectControl,
+    takeEntry: _takeEntry,
+    putEntry: _putEntry,
   );
 
   void _syncController(LoggingControls oldWidget) {

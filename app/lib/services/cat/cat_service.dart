@@ -570,6 +570,7 @@ class CatService extends ChangeNotifier
   /// and two keyers sharing it stop each other's. Radio B's key answers
   /// None while it is radio1's — which a change of radio1 can make it,
   /// restoring that radio's own picks.
+  @override
   String? designatedFor(String category, {String? radio}) {
     final pick = _pickFor(category, radio);
     if (category == kCategoryKey && radio != null && radio == radio2 && pick != null && pick == _pickFor(category, null)) return null;
@@ -614,6 +615,7 @@ class CatService extends ChangeNotifier
   void _designateNow(String category, String? uuid) => (_designated[_designationKey()] ??= {})[category] = uuid;
 
   /// Picks [uuid] as [category] for [radio] — see [designatedFor].
+  @override
   Future<void> setDesignated(String category, String? uuid, {String? radio}) async {
     final key = radio ?? _designationKey();
     final previousUuid = designatedFor(category, radio: radio);

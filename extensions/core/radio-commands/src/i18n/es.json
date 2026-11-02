@@ -29,5 +29,7 @@
   "esmSpConfirm": "Enter envía mensajes: S&P",
   "catalogEsm": "Encender o apagar Enter envía mensajes",
   "catalogRun": "Enter envía mensajes, llamando CQ",
-  "catalogSp": "Enter envía mensajes, buscando estaciones"
+  "catalogSp": "Enter envía mensajes, buscando estaciones",
+  "swapDescribe": "¿Intercambiar la **Radio A** y la **Radio B**?",
+  "catalogSwap": "Intercambiar la Radio A y la Radio B: frecuencia, modo, antena y contacto en curso"
 }

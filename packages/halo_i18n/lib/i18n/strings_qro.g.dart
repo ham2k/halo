@@ -886,6 +886,16 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String get voiceMessageNotRendered => 'THE EXTENSIONS ARE NOT READY';
 	@override String so2rRadioCannotKey({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT';
 	@override String get so2rNoRadioB => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET';
+	@override String get swapExperimentOff => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R';
+	@override String get swapNeedsOperation => 'OPEN AN OPERATION TO SWAP RADIOS';
+	@override String get swapNoRadioB => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION';
+	@override String get swapEditing => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST';
+	@override String swapOnAir({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR';
+	@override String swapKeyerBusy({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING';
+	@override String get swapLocked => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW';
+	@override String get swapDone => 'RADIOS A AND B SWAPPED';
+	@override String swapNotConnected({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE';
+	@override String get swapNoneConnected => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED';
 	@override String settingNotStored({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE';
 }
 
@@ -7137,6 +7147,16 @@ extension on TranslationsQro {
 			'commands.voiceMessageNotRendered' => 'THE EXTENSIONS ARE NOT READY',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT',
 			'commands.so2rNoRadioB' => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET',
+			'commands.swapExperimentOff' => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R',
+			'commands.swapNeedsOperation' => 'OPEN AN OPERATION TO SWAP RADIOS',
+			'commands.swapNoRadioB' => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION',
+			'commands.swapEditing' => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST',
+			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
+			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
+			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
+			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
+			'commands.swapNotConnected' => ({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE',
+			'commands.swapNoneConnected' => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE',
 			'commandDialog.hint' => 'SEARCH CALLSIGNS OR TYPE A COMMAND',
 			'commandDialog.noResults' => ({required Object text}) => 'NOTHING MATCHES “${text}”',
@@ -7258,6 +7278,8 @@ extension on TranslationsQro {
 			'expiredBuild.visit' => 'VISIT HAM2K.COM',
 			'expiredBuild.dismiss' => 'CONTINUE ANYWAY',
 			'staleness.codePushFloorTitle' => 'AN IMPORTANT UPDATE IS WAITING',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.codePushFloorBody' => 'THIS VERSION HAS A FIX YOU DON\'T HAVE YET.',
 			'staleness.restartToApply' => 'RESTART THE APP TO APPLY IT.',
 			'staleness.quitAndReopen' => 'QUIT THE APP AND OPEN IT AGAIN TO APPLY IT.',
@@ -7268,8 +7290,6 @@ extension on TranslationsQro {
 			'spotting.nothingToSpot' => 'NOTHING TO SPOT — NO EXTENSION OFFERS SPOTTING HERE.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'NO SPOT SOURCE MATCHES "${source}" — INSTALLED: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" ISN\'T SPOTTING HERE — ON OFFER: ${sources}.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'SELF-SPOT TO ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'SELF-SPOT TO ${sources} WITH "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'SELF-SPOTTING TO ${sources}…',

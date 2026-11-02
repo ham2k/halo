@@ -1175,6 +1175,39 @@ void main() {
     expect(dispatched.single.value, {'watts': 5});
   });
 
+  testWidgets('swapRadios (the SWAP command) forwards to onCommandAction, which alone holds both sets', (tester) async {
+    // Without its branch, SWAP is typed, the call field clears, and nothing
+    // moves or says why: the host's handler is what swaps and reports.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeSwapCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      if (input.trim().toUpperCase() != 'SWAP') return null;
+      return {
+        'describe': 'Swap **Radio A** and **Radio B**?',
+        'commands': [
+          {'swapRadios': <String, dynamic>{}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeSwapCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SWAP');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched.map((d) => d.key), ['swapRadios']);
+  });
+
   testWidgets('a paramless overlay action (devTester) forwards to onCommandAction', (tester) async {
     // Same silent-no-op trap as the reloadDataFiles test above, for the
     // paramless `{devTester: {}}` shape: without its _dispatchActions

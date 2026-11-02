@@ -167,6 +167,65 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     }
   }
 
+  /// What each set's command actions reach: SWAP moves both sets, which only
+  /// the panel holds; every other action goes to [others].
+  CommandActionHandler _withSwap(CommandActionHandler others) => (action, [params]) async {
+    if (action != 'swapRadios') return others(action, params);
+    _swapRadios();
+  };
+
+  /// SWAP (`radio-commands`; docs/design/logging-fields.md § SO2R): each
+  /// set's entry goes to the other set with the frequency, band and mode it
+  /// is on, and the set it lands in tunes its radio there — so Radio A ends
+  /// where Radio B was and B where A was, each with the contact being worked
+  /// there. The radios' Run or S&P cross with them, and on two slices of one
+  /// radio their antennas too ([CatService.swapRadioSettings]).
+  ///
+  /// Refused, with nothing moved, while either radio is on the air or has a
+  /// message going or waiting — a radio retuned under a message would send
+  /// the rest of it on the other radio's frequency — and while a set shows a
+  /// logged contact, which is a record and not an entry to move. A rig that
+  /// is not connected does not stop it, but is named: its entry and VFO
+  /// moved, and the rig did not.
+  void _swapRadios() {
+    final services = widget.services, cat = services.cat;
+    final refusal = _swapRefusal();
+    if (refusal != null) return services.reportCommandOutcome((text: refusal, failed: true));
+    final a = _loggingController.takeEntry();
+    final b = _loggingControllerB.takeEntry();
+    // Both sets were checked above; one declining anyway gets its entry back
+    // rather than losing it.
+    if (a == null || b == null) {
+      if (a != null) _loggingController.putEntry(a);
+      if (b != null) _loggingControllerB.putEntry(b);
+      return services.reportCommandOutcome((text: t.commands.swapLocked, failed: true));
+    }
+    _loggingController.putEntry(b);
+    _loggingControllerB.putEntry(a);
+    cat.swapRadioSettings();
+    bool idle(String? uuid) => uuid != null && cat.stateFor(uuid).status != EquipmentStatus.connected;
+    final idleRadios = [if (idle(cat.localRadio1)) 'A', if (idle(cat.radio2)) 'B'];
+    services.reportCommandOutcome(switch (idleRadios) {
+      [] => (text: t.commands.swapDone, failed: false),
+      [final radio] => (text: t.commands.swapNotConnected(radio: radio), failed: true),
+      _ => (text: t.commands.swapNoneConnected, failed: true),
+    });
+  }
+
+  String? _swapRefusal() {
+    final cat = widget.services.cat;
+    if (!_so2r) return t.commands.swapExperimentOff;
+    if (cat.radio2 == null || !_loggingControllerB.isAttached) return t.commands.swapNoRadioB;
+    if (_selectedQso != null) return t.commands.swapEditing;
+    if (_loggingController.isFieldsLocked || _loggingControllerB.isFieldsLocked) return t.commands.swapLocked;
+    for (final radio in ['A', 'B']) {
+      final keyer = cat.keyer(radio);
+      if (keyer.transmitting) return t.commands.swapOnAir(radio: radio);
+      if (keyer.busy || keyer.keyerRepeatActive.value) return t.commands.swapKeyerBusy(radio: radio);
+    }
+    return null;
+  }
+
   /// Opens [radio]'s Radio control. Set A's strip holds both — set B's is
   /// its `radioB` pill, as [So2rLink.openRadio] has it — so set A's
   /// controller opens either, with or without a second set.

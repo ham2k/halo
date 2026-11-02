@@ -231,6 +231,39 @@ extension _WipeAndUndo on _LoggingControlsState {
     _lookup.scheduleScore();
   }
 
+  /// [LoggingControlsController.takeEntry]. The Radio control's frequency,
+  /// band and mode go in the record whether or not the draft counts them as
+  /// composed: they are where the entry is, and [_putEntry] tunes there.
+  /// Power does not go: it is the rig's, and stays with the set.
+  LoggingEntry? _takeEntry() {
+    if (widget.session.editingQso != null || _fieldsLocked) return null;
+    // Dropped, not flushed: a frequency still being typed is in the record,
+    // and the set it goes to tunes its own radio there.
+    _radio.cancelPendingPush();
+    final call = _callText.templateCalls.call;
+    final entry = LoggingEntry(
+      data: {..._draft.toData(composing: true), 'freq': _radio.freq, 'band': _radio.band, 'mode': _radio.mode}..remove('power'),
+      guesses: _refs.takeGuessSnapshot(),
+      answered: call.isNotEmpty && _esmAnsweredCall == call,
+    );
+    // As a seed, not an edit — [_wipeOnQsy]'s reason.
+    _draft.populate(() => _wipe(focusCall: false, inPlace: true));
+    return entry;
+  }
+
+  /// [LoggingControlsController.putEntry]: [_restoreDraft], then the VFO
+  /// tuned to the entry as the entry's own write, which is what keeps the
+  /// radio's arrival there from reading as a QSY away from it. The Power
+  /// field goes back to this set's own rig, which the entry carries none of.
+  void _putEntry(LoggingEntry entry) {
+    _restoreDraft(entry.data, guesses: entry.guesses);
+    // After the restore, whose call-field change forgets an answer.
+    _esmAnsweredCall = entry.answered ? _callText.templateCalls.call : null;
+    _publishEsmFacts();
+    _radio.seedPowerFromVfo();
+    _radio.pushVfo();
+  }
+
   /// Restores (undeletes) the deleted QSO being viewed, then ends the
   /// editing session — the caller clears its selection and the list row
   /// loses its strikethrough via the repository watch.

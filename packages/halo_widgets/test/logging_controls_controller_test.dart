@@ -26,6 +26,8 @@ void main() {
     expect(() => controller.focusSecondaryControls(), returnsNormally);
     expect(() => controller.focusLastPrimaryField(), returnsNormally);
     expect(() => controller.openControl('radio'), returnsNormally);
+    expect(controller.takeEntry(), isNull);
+    expect(() => controller.putEntry(const LoggingEntry(data: {}, guesses: (forCall: null, guessed: []))), returnsNormally);
 
     String? field;
     String? value;
@@ -36,6 +38,8 @@ void main() {
     var focusedPills = false;
     var focusedLastField = false;
     String? opened;
+    const entry = LoggingEntry(data: {'freq': 7025.0}, guesses: (forCall: null, guessed: []));
+    LoggingEntry? put;
     controller.attach(
       setField: (f, v) {
         field = f;
@@ -49,6 +53,8 @@ void main() {
       focusSecondaryControls: () => focusedPills = true,
       focusLastPrimaryField: () => focusedLastField = true,
       openControl: (key) => opened = key,
+      takeEntry: () => entry,
+      putEntry: (e) => put = e,
     );
 
     expect(controller.isAttached, isTrue);
@@ -76,6 +82,10 @@ void main() {
     // pill opening the Radio control.
     controller.openControl('radio');
     expect(opened, 'radio');
+    // SWAP's two halves, which the host calls on both sets.
+    expect(controller.takeEntry(), same(entry));
+    controller.putEntry(entry);
+    expect(put, same(entry));
 
     controller.detach();
     expect(controller.isAttached, isFalse);
@@ -87,5 +97,6 @@ void main() {
     expect(focusedCall, isFalse);
     expect(controller.isFieldsLocked, isFalse);
     expect(controller.handleChord(chord), KeyEventResult.ignored);
+    expect(controller.takeEntry(), isNull, reason: 'a detached set holds no entry to take');
   });
 }

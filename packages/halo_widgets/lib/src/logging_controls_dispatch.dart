@@ -167,6 +167,9 @@ extension _ActionDispatch on _LoggingControlsState {
       } else if (map['findInLog'] is Map) {
         // The host's Find bar over its own list — nothing of this widget's.
         await widget.commands.onCommandAction?.call('findInLog', (map['findInLog'] as Map).cast<String, dynamic>());
+      } else if (map['swapRadios'] is Map) {
+        // SO2R's two sets are the host's, and the swap moves both.
+        await widget.commands.onCommandAction?.call('swapRadios', null);
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)

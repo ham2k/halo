@@ -489,6 +489,10 @@ class RadioKeyer {
   /// Whether this radio is on the air — see [CatService.isTransmitting].
   bool get transmitting => _cat.isTransmitting(radio);
 
+  /// Whether a message, chain or repeat is under way on this radio — see
+  /// [CatKeying.busy].
+  bool get busy => _k.busy;
+
   bool get canPtt => _cat._pttSession(_uuid) != null && cannotTransmit == null;
 
   /// Bumped as keyboard mode starts on this radio — see

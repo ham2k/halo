@@ -2833,6 +2833,16 @@
     "voiceMessageNotRendered": "the extensions are not ready",
     "so2rRadioCannotKey": "Nothing sent: Radio $radio can't key that",
     "so2rNoRadioB": "Nothing sent: pick a Radio B in Station Configuration to key from this set",
+    "swapExperimentOff": "SO2R is off — turn it on with EXP SO2R",
+    "swapNeedsOperation": "Open an operation to swap radios",
+    "swapNoRadioB": "Nothing swapped: pick a Radio B in Station Configuration",
+    "swapEditing": "Nothing swapped: finish editing the contact first",
+    "swapOnAir": "Nothing swapped: Radio $radio is on the air",
+    "swapKeyerBusy": "Nothing swapped: Radio $radio has messages going or waiting",
+    "swapLocked": "Nothing swapped: this operation can't take changes right now",
+    "swapDone": "Radios A and B swapped",
+    "swapNotConnected": "Swapped, but Radio $radio is not connected and did not move",
+    "swapNoneConnected": "Swapped, but neither radio is connected, so neither moved",
     "settingNotStored": "“${label}” did not accept that value"
   },
   "commandDialog": {

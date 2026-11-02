@@ -184,7 +184,7 @@ refused at the call where it is missing. Declare the least you need.
 | --- | --- | --- | --- |
 | `requiresLocation` | `host.getLocation()`, the device's own position | | |
 | `requiresRadioRead` | `host.listRadios()`, `host.readRadio()`, a scene's `spectrum` control and `radio` values, a panel's `radio` trigger | | |
-| `requiresRadioWrite` | `host.setRadio()`, `host.setRadioConnection()`, `host.setRadioSpectrum()`, and transmitting: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`, `host.stopRadioTransmit()`; `host.suggestQso()` (API 12) | read | 7 |
+| `requiresRadioWrite` | `host.setRadio()`, `host.setRadioConnection()`, `host.setRadioSpectrum()`, and transmitting: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`, `host.stopRadioTransmit()`; `host.suggestQso()` (API 12); a `command` hook's `setPower` and `swapRadios` actions | read | 7 |
 | `requiresRadioRaw` | `host.sendRadioRaw()`: any command in the radio's own protocol, unchecked; the install screen says so in those words | write | 11 |
 | `requiresClusterRead` | `host.clusterStatus()`, `host.clusterLines()`, `host.clusterSubscribe()` and the `cluster` hook's `onLines` | | 10 |
 | `requiresClusterSpot` | `host.clusterPostSpot()`: spots in the operator's name | cluster read | 10 |

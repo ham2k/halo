@@ -1116,6 +1116,18 @@ rig — and so is its Phone Keying pick (`voiceKeyingSourceFor`), on a line of i
 its rig's memories, or the computer's recordings through its rig's own sound device (§ The
 computer's voice keyer).
 
+**SWAP trades the two radios' places** (`radio-commands`, the `swapRadios` action). The VFOs move
+with the logging panel's entries ([logging-fields.md](logging-fields.md) § SO2R); the rest is
+`swapRadioSettings`: each radio takes the other's Run or S&P and, when the two are slices of one
+radio (`so2rAudioRadio`), the other's antenna ports (`RadioAntennas`, `setNodeAntenna`) and antenna
+in use (`designatedFor(kCategoryAntenna)`), which go together or each radio's next contact credits
+the wire the other is now on. Two different rigs keep both: a port name is the same wire only on
+one radio — an IC-7610's ANT2 is not a TS-890's — and each rig is still on its own wire. Power and
+keys stay: they belong to the rig, not the frequency. Refused while either radio is on the air or
+has a message going, repeating or waiting (`RadioKeyer.busy`), which a retune would carry onto the
+other radio's frequency, and so never under RF. A rig that is not connected does not stop it: its
+entry and VFO move, it does not, and the panel says so — when it connects, its own frequency wins.
+
 **Each radio has a keyer of its own.** Radio1's and Radio B's: each its own key in use, voice
 memories, PTT, repeat chain, message going out and messages waiting (`CatKeying`, one per radio;
 Radio B's asks the station through `_RadioBKeyingStation`). `CatService.keyer(radio)` is that

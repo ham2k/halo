@@ -1983,6 +1983,36 @@ class Translations$commands$en {
 	/// en: 'Nothing sent: pick a Radio B in Station Configuration to key from this set'
 	String get so2rNoRadioB => 'Nothing sent: pick a Radio B in Station Configuration to key from this set';
 
+	/// en: 'SO2R is off — turn it on with EXP SO2R'
+	String get swapExperimentOff => 'SO2R is off — turn it on with EXP SO2R';
+
+	/// en: 'Open an operation to swap radios'
+	String get swapNeedsOperation => 'Open an operation to swap radios';
+
+	/// en: 'Nothing swapped: pick a Radio B in Station Configuration'
+	String get swapNoRadioB => 'Nothing swapped: pick a Radio B in Station Configuration';
+
+	/// en: 'Nothing swapped: finish editing the contact first'
+	String get swapEditing => 'Nothing swapped: finish editing the contact first';
+
+	/// en: 'Nothing swapped: Radio $radio is on the air'
+	String swapOnAir({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air';
+
+	/// en: 'Nothing swapped: Radio $radio has messages going or waiting'
+	String swapKeyerBusy({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting';
+
+	/// en: 'Nothing swapped: this operation can't take changes right now'
+	String get swapLocked => 'Nothing swapped: this operation can\'t take changes right now';
+
+	/// en: 'Radios A and B swapped'
+	String get swapDone => 'Radios A and B swapped';
+
+	/// en: 'Swapped, but Radio $radio is not connected and did not move'
+	String swapNotConnected({required Object radio}) => 'Swapped, but Radio ${radio} is not connected and did not move';
+
+	/// en: 'Swapped, but neither radio is connected, so neither moved'
+	String get swapNoneConnected => 'Swapped, but neither radio is connected, so neither moved';
+
 	/// en: '“${label}” did not accept that value'
 	String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
@@ -12805,6 +12835,16 @@ extension on Translations {
 			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Nothing sent: Radio ${radio} can\'t key that',
 			'commands.so2rNoRadioB' => 'Nothing sent: pick a Radio B in Station Configuration to key from this set',
+			'commands.swapExperimentOff' => 'SO2R is off — turn it on with EXP SO2R',
+			'commands.swapNeedsOperation' => 'Open an operation to swap radios',
+			'commands.swapNoRadioB' => 'Nothing swapped: pick a Radio B in Station Configuration',
+			'commands.swapEditing' => 'Nothing swapped: finish editing the contact first',
+			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
+			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
+			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',
+			'commands.swapDone' => 'Radios A and B swapped',
+			'commands.swapNotConnected' => ({required Object radio}) => 'Swapped, but Radio ${radio} is not connected and did not move',
+			'commands.swapNoneConnected' => 'Swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
@@ -12926,6 +12966,8 @@ extension on Translations {
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
 			'staleness.quitAndReopen' => 'Quit the app and open it again to apply it.',
@@ -12936,8 +12978,6 @@ extension on Translations {
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.noSuchSource' => ({required Object source, required Object sources}) => 'No spot source matches "${source}" — installed: ${sources}.',
 			'spotting.sourceNotOffered' => ({required Object source, required Object sources}) => '"${source}" isn\'t spotting here — on offer: ${sources}.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.selfSpotTo' => ({required Object sources}) => 'Self-spot to ${sources}?',
 			'spotting.selfSpotToWithComment' => ({required Object sources, required Object comment}) => 'Self-spot to ${sources} with "${comment}"?',
 			'spotting.selfSpottingTo' => ({required Object sources}) => 'Self-spotting to ${sources}…',

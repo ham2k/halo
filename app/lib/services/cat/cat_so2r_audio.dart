@@ -51,6 +51,7 @@ mixin _So2rAudio on _So2r {
   /// The radio both SO2R radios are slices of, when they are — what the
   /// pick names "Built into …" — or null. Two different slices: two nodes on
   /// one slice would switch that one slice against itself.
+  @override
   EquipmentNode? get so2rAudioRadio {
     final a = _localRadio1, b = radio2;
     if (a == null || b == null) return null;

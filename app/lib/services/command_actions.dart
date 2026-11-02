@@ -70,10 +70,7 @@ Future<bool> runCommandAction(HaLoServices services, String action, [Map<String,
       outcome = await services.handleCommandAction(action, params);
   }
   if (outcome == null) return false;
-  final sink = services.commandResponseSink;
-  if (sink == null || !sink(outcome.text, failed: outcome.failed)) {
-    services.statusBar.setMessage(key: 'commandAction', text: outcome.text);
-  }
+  services.reportCommandOutcome(outcome);
   return true;
 }
 

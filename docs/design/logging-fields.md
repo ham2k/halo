@@ -1391,6 +1391,17 @@ contact logged under SO2R records its radio (`our.radio`: `A` or `B`), and
 picking it from the log loads it into that set — set A for one logged
 without SO2R.
 
+**SWAP moves each set's entry to the other set** — call, exchange, refs and
+the frequency, band and mode it was on (`LoggingControlsController.takeEntry`
+/ `putEntry`) — and the set it lands in tunes its radio there as the entry's
+own write, so the radio's arrival is no QSY and wipes nothing. An Enter Sends
+Messages answer goes with it, so the next Enter there thanks and logs. Power
+does not move: each set's Power field goes back to its own rig's. The keyboard
+stays in its set, now holding the other radio's entry. The panel says what
+happened — swapped, or refused and why: while a set shows a logged contact (a
+record, not an entry to move) or its fields are locked; the radios' side is
+[cat.md](cat.md) § Radio B, for SO2R.
+
 **Each set keys its own radio**, and the two take turns on the air — see
 [cat.md](cat.md) § Radio B, for SO2R. Each set's FYI area (§ The FYI area)
 has its radio's keyer line: the message going out, its repeat's countdown,

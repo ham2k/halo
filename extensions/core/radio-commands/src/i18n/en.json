@@ -29,5 +29,7 @@
   "esmSpConfirm": "Enter Sends Messages: S&P",
   "catalogEsm": "Enter Sends Messages on or off",
   "catalogRun": "Enter Sends Messages, running",
-  "catalogSp": "Enter Sends Messages, search & pounce"
+  "catalogSp": "Enter Sends Messages, search & pounce",
+  "swapDescribe": "Swap **Radio A** and **Radio B**?",
+  "catalogSwap": "Swap Radio A and Radio B: frequency, mode, antenna and entry"
 }

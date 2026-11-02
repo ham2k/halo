@@ -935,6 +935,9 @@ Future<void> dispatchCommandActions(
       await runAction('showKeyer', null);
     } else if (map['setEnterSends'] is Map) {
       await runAction('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
+    } else if (map['swapRadios'] is Map) {
+      // The logging panel's alone, and none is live: it says so.
+      await runAction('swapRadios', null);
     } else {
       // Nothing above recognized this action's key(s) — most likely a
       // command that's scoped to the logging panel (addQso, updateQso,

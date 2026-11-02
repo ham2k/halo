@@ -8,6 +8,24 @@
 
 import 'package:flutter/widgets.dart';
 
+import 'logging_controls_refs.dart' show GuessProvenance;
+
+/// An entry taken out of a set ([LoggingControlsController.takeEntry]) for
+/// another to take in ([LoggingControlsController.putEntry]): the record,
+/// with the frequency, band and mode it is on, and which of its refs a
+/// lookup proposed. Never a power: that is the rig's, and each set keeps
+/// its own.
+class LoggingEntry {
+  const LoggingEntry({required this.data, required this.guesses, this.answered = false});
+
+  final Map<String, dynamic> data;
+  final GuessProvenance guesses;
+
+  /// Enter Sends Messages has already answered the call: the next Enter
+  /// sends the thanks and logs, in whichever set the entry lands.
+  final bool answered;
+}
+
 /// A handle a [LoggingControls] attaches itself to, exposing a few imperative
 /// actions. Inert (all methods no-op) while nothing is attached.
 class LoggingControlsController {
@@ -20,6 +38,8 @@ class LoggingControlsController {
   void Function()? _focusSecondaryControls;
   void Function()? _focusLastPrimaryField;
   void Function(String key)? _openControl;
+  LoggingEntry? Function()? _takeEntry;
+  void Function(LoggingEntry entry)? _putEntry;
 
   /// Wired by [LoggingControls] on mount/unmount — not meant for callers.
   void attach({
@@ -32,6 +52,8 @@ class LoggingControlsController {
     required void Function() focusSecondaryControls,
     required void Function() focusLastPrimaryField,
     required void Function(String key) openControl,
+    required LoggingEntry? Function() takeEntry,
+    required void Function(LoggingEntry entry) putEntry,
   }) {
     _setField = setField;
     _submit = submit;
@@ -42,6 +64,8 @@ class LoggingControlsController {
     _focusSecondaryControls = focusSecondaryControls;
     _focusLastPrimaryField = focusLastPrimaryField;
     _openControl = openControl;
+    _takeEntry = takeEntry;
+    _putEntry = putEntry;
   }
 
   /// Wired by [LoggingControls] on unmount — not meant for callers.
@@ -55,6 +79,8 @@ class LoggingControlsController {
     _focusSecondaryControls = null;
     _focusLastPrimaryField = null;
     _openControl = null;
+    _takeEntry = null;
+    _putEntry = null;
   }
 
   /// Whether a LoggingControls is currently attached.
@@ -107,4 +133,16 @@ class LoggingControlsController {
   /// does, the keyboard landing in the field it opens into. For a host
   /// answering a tap of its own with the control: the FYI area's No Band.
   void openControl(String key) => _openControl?.call(key);
+
+  /// Takes the entry being composed out of the set, leaving the set as a
+  /// wipe does but with no undo offer: the entry is not gone, it is on its
+  /// way to [putEntry]. Null — and nothing taken — while the set shows a
+  /// logged contact, while its fields are locked ([isFieldsLocked]), or
+  /// while nothing is attached.
+  LoggingEntry? takeEntry() => _takeEntry?.call();
+
+  /// Puts [entry] into the set in place of whatever it holds, and tunes the
+  /// set's VFO to the entry's frequency, band and mode as the entry's own
+  /// move — so the set takes the radio's arrival there as no QSY.
+  void putEntry(LoggingEntry entry) => _putEntry?.call(entry);
 }

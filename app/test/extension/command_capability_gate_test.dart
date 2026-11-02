@@ -62,6 +62,8 @@ String hook() => '''
                 return { describe: '25 wpm', confirm: '25 wpm', commands: [{ setKeyerSpeed: { wpm: 25 } }] };
               case 'POWER':
                 return { describe: '100 W', confirm: '100 W', commands: [{ setPower: { watts: 100 } }] };
+              case 'SWAP':
+                return { describe: 'Swap radios', confirm: 'Swapped', commands: [{ swapRadios: {} }] };
               case 'SENTRY':
                 return { describe: 'Files a report', confirm: 'Filed', commands: [{ devSentry: { message: 'hi' } }] };
               case 'HELLO':
@@ -119,6 +121,8 @@ void main() {
   test('a radio action needs the radio grant, and a developer action the app\'s own authorship', () async {
     await load(bundle('plain', core: false));
     expect((await interpret('POWER', execute: true))?['error'], t.extensionService.commandMayNotControlRadio(name: 'plain probe'));
+    // Retunes both radios at once: as much the radio's as POWER.
+    expect((await interpret('SWAP', execute: true))?['error'], t.extensionService.commandMayNotControlRadio(name: 'plain probe'));
     expect((await interpret('SENTRY', execute: true))?['error'], t.extensionService.commandDeveloperOnly(name: 'plain probe'));
 
     await load(bundle('rig', radioWrite: true, core: false));
@@ -126,6 +130,9 @@ void main() {
       {
         'setPower': {'watts': 100},
       },
+    ]);
+    expect((await interpret('SWAP', execute: true))?['commands'], [
+      {'swapRadios': <String, dynamic>{}},
     ]);
     expect((await interpret('SENTRY', execute: true))?['error'], t.extensionService.commandDeveloperOnly(name: 'rig probe'));
 
