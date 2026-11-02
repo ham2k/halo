@@ -618,6 +618,33 @@ Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = fals
   },
 );
 
+/// [text] in [style], or in [style] condensed — Roboto's 'wdth' axis at 75,
+/// the same step [shrinkToFitText]'s `condensed` takes — when that is what
+/// it takes to stay within [maxLines] at the width this is given. The step
+/// before an ellipsis: condensed glyphs stay fully legible, a cut-off name
+/// does not. A no-op for a font with no 'wdth' axis.
+///
+/// [builder] paints the text, so a caller keeps its own spans, strut and
+/// overflow; [text] is the plain text it is measured by.
+Widget condenseToFit({required String text, required TextStyle? style, int maxLines = 1, required Widget Function(TextStyle? style) builder}) => LayoutBuilder(
+  builder: (context, constraints) {
+    if (text.isEmpty || !constraints.maxWidth.isFinite) return builder(style);
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: DefaultTextStyle.of(context).style.merge(style)),
+      maxLines: maxLines,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    try {
+      painter.layout(maxWidth: constraints.maxWidth);
+      if (!painter.didExceedMaxLines) return builder(style);
+    } finally {
+      painter.dispose();
+    }
+    return builder((style ?? const TextStyle()).copyWith(fontVariations: const [FontVariation('wdth', 75)]));
+  },
+);
+
 /// The minimum size a resizable desktop window may be shrunk to, in PHYSICAL
 /// pixels (already multiplied by [uiScale]) — pass to `WindowChromeService.
 /// reportMinimumSize`. The width is the S-size layout floor ([minWindowSize],

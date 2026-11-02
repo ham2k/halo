@@ -480,6 +480,7 @@ void main() {
 
     // Consent: usage pre-checked; also turn operation data on; Done.
     expect(find.text('Data & Privacy'), findsOneWidget);
+    await tester.ensureVisible(find.widgetWithText(SwitchListTile, 'Share Operation Data'));
     await tester.tap(find.widgetWithText(SwitchListTile, 'Share Operation Data'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Done'));

@@ -291,7 +291,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             t.selectedLocation,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
+                padding: EdgeInsets.symmetric(horizontal: haloDialogSideInset(context)),
                 child: TextField(
                   selectAllOnFocus: false,
                   controller: _gridController,
@@ -371,7 +371,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             t.moreDetails,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
+                padding: EdgeInsets.symmetric(horizontal: haloDialogSideInset(context)),
                 child: Column(
                   children: [
                     TextField(

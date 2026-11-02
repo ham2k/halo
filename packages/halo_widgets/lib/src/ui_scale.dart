@@ -18,7 +18,29 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/widgets.dart';
+
+/// The root scale a phone or tablet starts from, before the Font Scale
+/// setting multiplies on top. The same logical sizes read smaller on a
+/// handheld screen held at arm's length than on a desktop monitor, so mobile
+/// starts a step up rather than asking every operator to pick Larger.
+///
+/// `ShirtSize.xsMax` is set against this: `ShirtSize.of` reads the DIVIDED
+/// width, so raising it past 390/xsMax drops a 390pt iPhone into XS at
+/// Normal. Move both together.
+const double mobileBaseUiScale = 1.10;
+
+/// iOS or Android, including a mobile browser (`defaultTargetPlatform`
+/// reports the host OS on web, which is the phone's). Unlike
+/// `isMobilePlatform`, which excludes web because it gates native-only
+/// behaviour, this is about the screen in the operator's hand.
+bool get isHandheldPlatform => defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
+
+/// [mobileBaseUiScale] on a handheld ([isHandheldPlatform]), 1.0 everywhere
+/// else. Feeds the root [UiScale] only — never a dimension
+/// (docs/design/ui-scaling.md rule 1).
+double get platformBaseUiScale => isHandheldPlatform ? mobileBaseUiScale : 1.0;
 
 class UiScale extends StatelessWidget {
   final double scale;

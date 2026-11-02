@@ -87,6 +87,7 @@ class EventFieldRow extends StatelessWidget {
         focusNode: textFocus,
         enabled: enabled,
         style: mainFieldStyle(context, fontWeight: FontWeight.w400),
+        cursorHeight: mainFieldCursorHeight(context),
         // The done checkbox rides in the field's own prefixIcon slot rather
         // than sitting beside it in the row: a Checkbox can't answer the
         // dry-baseline query `IntrinsicHeight`/`CrossAxisAlignment.baseline`

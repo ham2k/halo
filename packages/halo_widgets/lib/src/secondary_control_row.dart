@@ -282,6 +282,12 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// height) until the first real measurement lands.
   double _chipHeight = 32;
 
+  /// The PAINTED pill's height inside [_chipHeight]. On touch platforms a
+  /// chip pads its box out to the 48pt tap target around a shorter pill, so
+  /// the box and what the operator sees differ — and the settings pill, built
+  /// by hand, has to match the one it sits beside, not the box.
+  double _chipPillHeight = 32;
+
   /// Where the expanded panel's content sits within its (full-width)
   /// background: centered on the pill that opened it, snapping to the
   /// pill's near edge (panel edge to pill edge, not to the row's edge)
@@ -477,14 +483,40 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
     super.dispose();
   }
 
+  /// The height of the first box down [box]'s single-child chain that is
+  /// shorter than [box] and as wide — the chip's pill inside its tap-target
+  /// padding, which only pads vertically — or [box]'s own height where there
+  /// is no padding to see through. The width test keeps the walk off a
+  /// chip's label, which a chip with no icon would otherwise reach.
+  static double _paintedHeight(RenderBox box) {
+    RenderObject node = box;
+    while (node is RenderBox) {
+      if (node.size.width < box.size.width - 0.5) break;
+      if (node.size.height < box.size.height - 0.5) return node.size.height;
+      RenderObject? only;
+      var count = 0;
+      node.visitChildren((child) {
+        only = child;
+        count++;
+      });
+      if (count != 1 || only == null) break;
+      node = only!;
+    }
+    return box.size.height;
+  }
+
   void _measure() {
     if (!mounted) return;
 
     final anyChipBox = widget.controls.isEmpty ? null : _chipKeys[widget.controls.first.key]?.currentContext?.findRenderObject() as RenderBox?;
     if (anyChipBox != null && anyChipBox.attached) {
       final height = anyChipBox.size.height;
-      if (height > 0 && (height - _chipHeight).abs() > 0.5) {
-        setState(() => _chipHeight = height);
+      final pill = _paintedHeight(anyChipBox);
+      if (height > 0 && ((height - _chipHeight).abs() > 0.5 || (pill - _chipPillHeight).abs() > 0.5)) {
+        setState(() {
+          _chipHeight = height;
+          _chipPillHeight = pill;
+        });
       }
     }
 
@@ -588,7 +620,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
             ),
           ),
       ?widget.trailing,
-      if (widget.onOpenSettings != null) _SettingsPill(height: _chipHeight, onTap: widget.onOpenSettings!),
+      if (widget.onOpenSettings != null) _SettingsPill(height: _chipHeight, pillHeight: _chipPillHeight, onTap: widget.onOpenSettings!),
     ];
 
     return Column(
@@ -1038,10 +1070,15 @@ class _EveryFrameState extends State<_EveryFrame> with SingleTickerProviderState
 /// some horizontal space reserved even for an empty label, which fights
 /// against staying narrow; a square Material+InkWell has no such minimum.
 class _SettingsPill extends StatelessWidget {
+  /// The chips' box, tap-target padding included — the whole of it taps.
   final double height;
+
+  /// The chips' painted pill: this one is a square of that size, centred in
+  /// [height] the way theirs is.
+  final double pillHeight;
   final VoidCallback onTap;
 
-  const _SettingsPill({required this.height, required this.onTap});
+  const _SettingsPill({required this.height, required this.pillHeight, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1049,18 +1086,27 @@ class _SettingsPill extends StatelessWidget {
     final poloColors = HaLoColors.of(context);
     final borderRadius = BorderRadius.circular(8);
 
-    return SizedBox(
-      width: height,
-      height: height,
-      child: Material(
-        color: poloColors.tertiaryLight,
-        borderRadius: borderRadius,
-        child: InkWell(
-          borderRadius: borderRadius,
-          mouseCursor: SystemMouseCursors.click,
-          onTap: onTap,
-          child: Center(
-            child: Icon(MdiIcons.cog, size: 16 * MediaQuery.textScalerOf(context).scale(1.0), color: theme.colorScheme.onTertiaryContainer),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: pillHeight,
+        height: height,
+        child: Center(
+          child: SizedBox.square(
+            dimension: pillHeight,
+            child: Material(
+              color: poloColors.tertiaryLight,
+              borderRadius: borderRadius,
+              child: InkWell(
+                borderRadius: borderRadius,
+                mouseCursor: SystemMouseCursors.click,
+                onTap: onTap,
+                child: Center(
+                  child: Icon(MdiIcons.cog, size: 16 * MediaQuery.textScalerOf(context).scale(1.0), color: theme.colorScheme.onTertiaryContainer),
+                ),
+              ),
+            ),
           ),
         ),
       ),

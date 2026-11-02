@@ -24,8 +24,8 @@ class TabChrome extends StatelessWidget {
   /// The selection indicator's thickness, shared by every tab strip in the
   /// app — the two hand-rolled ones through [TabChrome] and the wide split's
   /// stock `TabBar` through its `indicatorWeight`. One value, because the
-  /// strips abut and are all one [LayoutDensity] chrome height.
-  static const double defaultIndicatorWidth = 3;
+  /// strips abut and read as one row of chrome.
+  static const double defaultIndicatorWidth = 5;
 
   final double indicatorWidth;
   final EdgeInsetsGeometry padding;

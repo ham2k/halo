@@ -578,7 +578,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           // the notice and the expanded list a strip of an iPhone that is
           // already spent. Zero with the keyboard up, which is the only state
           // where this term decides whether the footer is drawn at all.
-          footerHeight: StatusBarFooter.collapsedHeightOf(context) + bottomBarPaddingOf(context).bottom,
+          footerHeight: StatusBarFooter.drawnHeightOf(context),
           // Quick Lookup is chrome for the home layer and nothing else, so it
           // is charged exactly while that layer is showing — a view that owns
           // the window replaces it, and charging for it there would take the

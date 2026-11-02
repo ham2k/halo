@@ -29,15 +29,19 @@ const double settingsRowInset = 24;
 /// starts — a pane behind a resize grab strip, or one centring its rows in a
 /// wide window. It adds to the left inset only, so the row still starts where
 /// the operator's eye expects while the row itself still spans.
+///
+/// [inset] replaces [settingsRowInset] for a surface with less room to give —
+/// a list dialog on a narrow window (`haloDialogSideInset`).
 class SettingsList extends StatelessWidget {
   final Widget child;
   final double extraLeft;
+  final double inset;
 
-  const SettingsList({super.key, required this.child, this.extraLeft = 0});
+  const SettingsList({super.key, required this.child, this.extraLeft = 0, this.inset = settingsRowInset});
 
   @override
   Widget build(BuildContext context) => ListTileTheme.merge(
-    contentPadding: EdgeInsets.only(left: settingsRowInset + extraLeft, right: settingsRowInset),
+    contentPadding: EdgeInsets.only(left: inset + extraLeft, right: inset),
     child: child,
   );
 }

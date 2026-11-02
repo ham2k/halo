@@ -625,6 +625,56 @@ void main() {
     final title = tester.widget<Text>(find.text('Heads up'));
     expect(title.style!.color, ink);
   });
+
+  group('the footer on a phone with rounded corners', () {
+    // Measured under the root UiScale, as the footer is: the MediaQuery it
+    // reads is divided by the scale, and the rule must undo that.
+    Future<bool> reachesEdge(WidgetTester tester, {required Size size, required double bottomInset, double scale = 1.1}) async {
+      late bool result;
+      final insets = EdgeInsets.only(top: 62, bottom: bottomInset);
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: MediaQueryData(size: size, padding: insets, viewPadding: insets),
+            child: UiScale(
+              scale: scale,
+              child: Builder(
+                builder: (context) {
+                  result = StatusBarFooter.reachesBottomEdgeOf(context);
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      return result;
+    }
+
+    testWidgets('an iPhone runs the bar to the edge, over its home indicator', (tester) async {
+      expect(await reachesEdge(tester, size: const Size(402, 874), bottomInset: 34), isTrue);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    // The trap: the MediaQuery is divided by the Font Scale, so a tablet read
+    // through it turns into a phone at Larger and loses its home indicator's
+    // strip to a corner guess built for a phone.
+    testWidgets('an iPad stays a tablet at a large Font Scale', (tester) async {
+      expect(await reachesEdge(tester, size: const Size(744, 1133), bottomInset: 20, scale: 1.1 * 1.4), isFalse);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    // The trap: edge-to-edge Android reports the three-button bar as the
+    // bottom inset too — buttons the bar would be painted under, with their
+    // taps going to the system instead of the footer.
+    testWidgets("Android's gesture handle qualifies, its three-button bar does not", (tester) async {
+      expect(await reachesEdge(tester, size: const Size(412, 915), bottomInset: 24), isTrue);
+      expect(await reachesEdge(tester, size: const Size(412, 915), bottomInset: 48), isFalse);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets('a desktop window keeps the safe area whatever its shape', (tester) async {
+      expect(await reachesEdge(tester, size: const Size(402, 874), bottomInset: 34), isFalse);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  });
 }
 
 void _noop(String _) {}

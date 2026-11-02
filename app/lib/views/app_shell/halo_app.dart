@@ -123,7 +123,11 @@ class _HaLoAppState extends State<HaLoApp> {
   /// context is above that wrapper, where the height is still the raw window,
   /// so the division has to be redone here — without it a zoomed-in operator
   /// would step from a density they aren't actually looking at.
-  double get _densityLadderHeight => MediaQuery.sizeOf(context).height / widget.services.settings.fontScale.scaleFactor;
+  double get _densityLadderHeight => MediaQuery.sizeOf(context).height / _uiScale;
+
+  /// The root [UiScale] factor: the Font Scale setting on top of the
+  /// platform's base (larger on mobile — [platformBaseUiScale]).
+  double get _uiScale => widget.services.settings.fontScale.scaleFactor * platformBaseUiScale;
 
   void _stepDensity({required bool denser}) {
     final settings = widget.services.settings;
@@ -338,7 +342,7 @@ class _HaLoAppState extends State<HaLoApp> {
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
           child = TemplateEditorScope(preview: _previewTemplate, child: child);
-          final scale = widget.services.settings.fontScale.scaleFactor;
+          final scale = _uiScale;
 
           // One knob scales the WHOLE interface (UiScale, halo_widgets) — not
           // just text and icons but every layout dimension, uniformly, so
@@ -412,28 +416,30 @@ class _HaLoAppState extends State<HaLoApp> {
                     // (docs/design/ui-scaling.md rule 4). Reading the real
                     // window height here would leave the operator who zoomed
                     // in with a sparse layout that no longer fits.
-                    child: _LayoutDensityFromWindow(
-                      settings: widget.services.settings,
-                      scale: scale,
-                      // Outermost of the startup gates: the tester overlay
-                      // paints above even the onboarding flow — a tester's
-                      // fresh install gets the caution warning before
-                      // anything else.
-                      child: TesterOverlayGate(
-                        services: widget.services,
-                        child: OnboardingGate(
+                    child: _TopSafeAreaTrim(
+                      child: _LayoutDensityFromWindow(
+                        settings: widget.services.settings,
+                        scale: scale,
+                        // Outermost of the startup gates: the tester overlay
+                        // paints above even the onboarding flow — a tester's
+                        // fresh install gets the caution warning before
+                        // anything else.
+                        child: TesterOverlayGate(
                           services: widget.services,
-                          child: ReleaseOverlayGate(
+                          child: OnboardingGate(
                             services: widget.services,
-                            // Innermost of the startup gates. Its offer is
-                            // a dialog on the Navigator below, so the release
-                            // notes (an overlay above it) paint over the
-                            // offer on a launch that has both; the offer
-                            // waits underneath and returns next launch if
-                            // it is dismissed unseen.
-                            child: ExtensionUpgradeGate(
+                            child: ReleaseOverlayGate(
                               services: widget.services,
-                              child: StatusBarOverlay(services: widget.services, child: content),
+                              // Innermost of the startup gates. Its offer is
+                              // a dialog on the Navigator below, so the release
+                              // notes (an overlay above it) paint over the
+                              // offer on a launch that has both; the offer
+                              // waits underneath and returns next launch if
+                              // it is dismissed unseen.
+                              child: ExtensionUpgradeGate(
+                                services: widget.services,
+                                child: StatusBarOverlay(services: widget.services, child: content),
+                              ),
                             ),
                           ),
                         ),
@@ -494,6 +500,7 @@ class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
   /// boundary, so almost every one of those frames is answered from here.
   ThemeData? _derivedTheme;
   ThemeData? _derivedFrom;
+  bool? _derivedNarrow;
 
   @override
   void didChangeDependencies() {
@@ -554,16 +561,57 @@ class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
-    if (_derivedTheme == null || !identical(base, _derivedFrom)) {
+    // Half the side margin a bare dialog keeps on a narrow window, where it is
+    // otherwise a column with a fifth of the screen's width spent beside it.
+    // Top and bottom keep the header clearance.
+    final narrow = !ShirtSize.of(context).isTwoPane;
+    if (_derivedTheme == null || !identical(base, _derivedFrom) || narrow != _derivedNarrow) {
       _derivedFrom = base;
+      _derivedNarrow = narrow;
+      final dialogInset = haloDialogInsetPadding(_toolbarHeight);
       _derivedTheme = base.copyWith(
         appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight),
-        dialogTheme: base.dialogTheme.copyWith(insetPadding: haloDialogInsetPadding(_toolbarHeight)),
+        dialogTheme: base.dialogTheme.copyWith(
+          insetPadding: narrow ? dialogInset.copyWith(left: dialogSideInset / 2, right: dialogSideInset / 2) : dialogInset,
+        ),
       );
     }
     return LayoutDensityScope(
       density: _density,
       child: Theme(data: _derivedTheme!, child: widget.child),
+    );
+  }
+}
+
+/// Takes [_trim] off the top safe area the whole app lays out against.
+///
+/// The status-bar inset iOS and Android report is the clearance for their
+/// tallest status content, and with the header's own padding on top of it the
+/// header sits visibly low. A plain logical amount, inside [UiScale], so it is
+/// trimmed in the same space everything else measures in.
+///
+/// `padding` only, not `viewPadding`: the latter is what the status footer
+/// reads the screen's corner radius from (`StatusBarFooter.cornerInsetOf`),
+/// and that guess must keep seeing the real inset. Not on a display whose
+/// header is raised into the status band ([statusBandHeaderOf]): that inset
+/// is placed exactly, from what iOS reports.
+class _TopSafeAreaTrim extends StatelessWidget {
+  static const double _trim = 8;
+
+  final Widget child;
+
+  const _TopSafeAreaTrim({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = MediaQuery.paddingOf(context);
+    final trim = statusBandHeaderOf(context) != null ? 0.0 : _trim;
+    // Always the MediaQuery, a trim of nothing included: returning the bare
+    // child when the inset is zero would change the tree's shape as a phone
+    // turns to landscape, and remount every startup gate below it.
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(padding: padding.copyWith(top: padding.top > trim ? padding.top - trim : 0)),
+      child: child,
     );
   }
 }

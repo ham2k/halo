@@ -110,7 +110,6 @@ class RadioControlFields extends StatelessWidget {
     // scale (UiScale already handles that one) — the same treatment
     // poloFieldDecoration gives its own padding, so the two stay the same
     // height under OS text scaling as well as under density.
-    final dropdownMetrics = LayoutDensity.metricsOf(context);
     final dropdownTextScale = MediaQuery.textScalerOf(context).scale(1.0);
     return InputDecorationTheme(
       isDense: true,
@@ -120,9 +119,9 @@ class RadioControlFields extends StatelessWidget {
       floatingLabelStyle: TextStyle(fontSize: 14, color: theme.colorScheme.onTertiaryContainer),
       contentPadding: EdgeInsets.fromLTRB(
         Space.xs,
-        dropdownMetrics.fieldPaddingTop * dropdownTextScale,
+        fieldPaddingTopOf(context) * dropdownTextScale,
         Space.xs,
-        dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
+        fieldPaddingBottomOf(context) * dropdownTextScale,
       ),
       // Without this the trailing arrow's 48px min tap target makes the
       // field taller (56px) than the sibling poloFieldDecoration TextFields

@@ -279,8 +279,9 @@ const _logsDayMillis = 1000 * 60 * 60 * 24;
 /// and this class's own `build`) rather than each carrying its own
 /// independent, and therefore driftable, horizontal offset.
 ///
-/// The list itself is FIXED-extent ([LayoutMetrics.qsoRowHeight], the same
-/// row height [QsoList] declares, and the height [DayHeaderRow] is built to)
+/// The list itself is FIXED-extent ([LayoutMetrics.qsoRowHeight], the
+/// density's declared row height and the one [DayHeaderRow] is built to —
+/// not [QsoList.rowHeightFor], which runs tighter)
 /// so a scrollbar drag resolves to a target offset in O(1) —
 /// [RenderSliverFixedExtentList] computes it as `itemExtent * index` instead
 /// of walking every off-screen row to find out how tall it painted. A real

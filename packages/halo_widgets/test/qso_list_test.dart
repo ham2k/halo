@@ -1789,10 +1789,9 @@ void main() {
     final finder = find.byIcon(MdiIcons.pineTree);
     final icon = tester.widget<Icon>(finder);
     final scheme = Theme.of(tester.element(finder)).colorScheme;
-    // The same gray the time column paints in — a reference sits at the
-    // weight of the data beside it, not at the callsign's or an accent's.
-    final timeColor = tester.widget<Text>(find.text('00:00z')).style?.color;
-    expect(icon.color, timeColor);
+    // The row's dim gray, which the data columns beside it paint in — a
+    // reference sits at their weight, not at the callsign's or an accent's.
+    expect(icon.color, Color.lerp(scheme.onSurfaceVariant, scheme.onSurface, 0.5));
     expect(icon.color, isNot(scheme.tertiary));
     expect(icon.color, isNot(scheme.onSurface));
   });
@@ -2757,7 +2756,11 @@ void main() {
         expect(rows, findsAtLeast(2));
         final firstTop = tester.getTopLeft(rows.at(0)).dy;
         final secondTop = tester.getTopLeft(rows.at(1)).dy;
-        expect(secondTop - firstTop, metrics.qsoRowHeight, reason: 'row pitch must equal QsoList.rowHeightOf, which _estimatedTopOf and _pageRows both trust');
+        expect(
+          secondTop - firstTop,
+          QsoList.rowHeightOf(tester.element(find.byType(QsoList))),
+          reason: 'row pitch must equal QsoList.rowHeightOf, which _estimatedTopOf and _pageRows both trust',
+        );
       });
     }
   });
@@ -2871,5 +2874,16 @@ void main() {
       });
       expect(find.byIcon(resolveIconName('sticker')), findsOneWidget, reason: 'data.done says open, whatever a bare done left behind says');
     });
+  });
+
+  // The list's rows run two points under the density's declared row height,
+  // which the day header and the Logs table use as declared. The
+  // densest rung is exempt: its 1pt padding is already all the annotation
+  // row's 2pt rule can come out of.
+  test('a QSO list row is two points under the declared row height, except at the densest rung', () {
+    for (final density in LayoutDensity.values) {
+      final declared = density.metrics.qsoRowHeight;
+      expect(QsoList.rowHeightFor(density.metrics), density == LayoutDensity.densest ? declared : declared - 2, reason: '$density');
+    }
   });
 }

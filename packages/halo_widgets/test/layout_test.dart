@@ -15,8 +15,8 @@ void main() {
   group('ShirtSize.fromWidth', () {
     test('boundary values land on the documented sizes', () {
       expect(ShirtSize.fromWidth(320), ShirtSize.xs);
-      expect(ShirtSize.fromWidth(359.9), ShirtSize.xs);
-      expect(ShirtSize.fromWidth(360), ShirtSize.s);
+      expect(ShirtSize.fromWidth(339.9), ShirtSize.xs);
+      expect(ShirtSize.fromWidth(340), ShirtSize.s);
       expect(ShirtSize.fromWidth(430), ShirtSize.s);
       expect(ShirtSize.fromWidth(659.9), ShirtSize.s);
       expect(ShirtSize.fromWidth(660), ShirtSize.l);

@@ -19,8 +19,8 @@ separate vocabulary — five density rungs, below.
 
 | Size | Logical width | Typical device |
 |---|---|---|
-| **XS** | below 360 | small phones |
-| **S** | 360 – 659 | typical phones (360–430) |
+| **XS** | below 340 | small phones |
+| **S** | 340 – 659 | typical phones (390–430 at the mobile base) |
 | **L** | 660 – 1199 | tablets, foldables' inner displays (iPhone Duo, 669), small desktop windows |
 | **XL** | 1200 and up | large windows, full screens |
 
@@ -48,8 +48,13 @@ font-scale change can flip a view's shirt size while it is on screen.
 XL currently behaves exactly like L everywhere. The value exists so views
 can diverge later (third columns, wider gutters) without another migration.
 
-Resizable windows have a floor: `minWindowSize` (320×480, an XS phone's
-footprint), enforced natively via `WindowChromeService.reportMinimumSize`
+Phones measure in the divided width too, and they start from the mobile base
+(`mobileBaseUiScale`, [ui-scaling.md](ui-scaling.md#the-mobile-base)): a
+390pt iPhone lays out about 355 wide at Normal. `xsMax` is set against that,
+so the two move together.
+
+Resizable windows have a floor: `minWindowSize` (`xsMax`×480, the narrowest
+S layout), enforced natively via `WindowChromeService.reportMinimumSize`
 (macOS today) and multiplied by the UI scale so the floor holds in the
 divided space. Fixed device screens may be smaller than this — layouts must
 still tolerate them; users just can't *drag* a window below it.
@@ -484,12 +489,18 @@ the shortcut moves and nothing visibly happens. Both are enforced in
 a metric nothing honours reads as wired when it is not.
 
 **4. Chrome rows share ONE metric and never shrink below a finger.** The app
-header, every tab strip, the wide split's pane title bar and a dock group's
-header stack and abut, so they move together or read as a mistake. Read them
-through `LayoutDensity.chromeHeightOf`, which holds the value to
+header, the wide split's pane title bar and every other chrome row stack and
+abut, so they move together or read as a mistake. Read them through
+`LayoutDensity.chromeHeightOf`, which holds the value to
 `kMinInteractiveDimension` on the mobile **platforms** — a landscape phone
-lands in `densest`, which is exactly when the tab strip is the primary
-navigation and a thumb still has to hit it.
+lands in `densest`, which is exactly when chrome is the primary navigation and
+a thumb still has to hit it.
+
+The dock's tab strip is the one deliberate exception: `DockTab.stripHeightOf`
+is the chrome height less 8pt on every platform, so the strip reads as part of
+the header above it rather than a second header. On a phone that puts it below
+the tap-target floor. The tabs span the strip's whole width, which keeps them
+easy to hit, and a tab's action keeps its full width and gives up only height.
 
 The floor is gated on `isMobilePlatform` (iOS or Android, not web), not on
 whether the pointer is actually coarse: a touch device running the web build

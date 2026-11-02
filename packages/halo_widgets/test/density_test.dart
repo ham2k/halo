@@ -328,7 +328,7 @@ void main() {
       expect(m.spotTileLineGap, 2);
       expect(m.statusBarCollapsed, 28);
       expect(m.statusBarRow, 36);
-      expect(m.chipStripClosedGap, 14);
+      expect(m.chipStripClosedGap, 5);
       expect(m.chipStripOpenGap, 4);
       expect(m.controlPanelMinHeight, 56);
       expect(m.fieldPaddingTop, 6);

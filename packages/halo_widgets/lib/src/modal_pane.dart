@@ -40,13 +40,18 @@ Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuil
   // so the cap actually bites. The frame already keeps the edge clearance, so
   // a Dialog inside it drops the theme's vertical inset rather than adding the
   // clearance twice. On a phone or tablet the frame's margin is the whole
-  // margin, so the Dialog drops its side inset too.
+  // margin, so the Dialog drops its side inset too. Elsewhere a narrow window
+  // — a phone's browser — keeps half of it.
   builder: (context) => HoldSizeWhileCovered(
     child: HaloDialogFrame(
       child: ConstrainedBox(
         constraints: haloDialogConstraints(context),
         child: DialogTheme(
-          data: DialogTheme.of(context).copyWith(insetPadding: isMobilePlatform ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: dialogSideInset)),
+          data: DialogTheme.of(context).copyWith(
+            insetPadding: isMobilePlatform
+                ? EdgeInsets.zero
+                : EdgeInsets.symmetric(horizontal: ShirtSize.of(context).isTwoPane ? dialogSideInset : dialogSideInset / 2),
+          ),
           child: Builder(builder: builder),
         ),
       ),

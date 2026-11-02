@@ -13,6 +13,7 @@
 // interface from one root wrapper (ui-scaling.md), so nothing here is
 // multiplied by it.
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -123,6 +124,34 @@ typedef MainFieldLayout = ({List<double> widths, double gapScale, double fieldPa
 /// (theme.dart), tinted to read against the panel's tertiaryContainer
 /// background.
 TextStyle mainFieldStyle(BuildContext context, {required FontWeight fontWeight}) => haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
+
+/// The main fields' caret height on iOS and macOS: 4pt under what those draw
+/// by default, which is the line height plus 2 (`RenderEditable`) and stands
+/// well above the mono digits beside it. Null — Flutter's own — elsewhere,
+/// where the default is already 4pt under the line. Branched on
+/// `defaultTargetPlatform`, the same switch `RenderEditable` draws by.
+///
+/// Cached per style and text scaler: every main field asks on every build,
+/// which is every keystroke.
+double? mainFieldCursorHeight(BuildContext context) {
+  if (defaultTargetPlatform != TargetPlatform.iOS && defaultTargetPlatform != TargetPlatform.macOS) return null;
+  final style = Theme.of(context).textTheme.bodyLarge?.merge(mainFieldStyle(context, fontWeight: FontWeight.w500));
+  final scaler = MediaQuery.textScalerOf(context);
+  return _cursorHeights.putIfAbsent((style, scaler), () {
+    final painter = TextPainter(
+      text: TextSpan(text: ' ', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    );
+    try {
+      return painter.preferredLineHeight - 4;
+    } finally {
+      painter.dispose();
+    }
+  });
+}
+
+final _cursorHeights = <(TextStyle?, TextScaler), double>{};
 
 /// A main field's decoration, with the label always pinned to the top-left
 /// corner (not the "large placeholder until focused" default) so the row's

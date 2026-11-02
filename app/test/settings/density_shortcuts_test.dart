@@ -24,10 +24,17 @@ import '../support/halo_test_support.dart';
 /// A 900pt-tall window unless [height] says otherwise — the `normal` band,
 /// i.e. an ordinary desktop window with rungs available in both directions.
 ///
+/// Every test that boots runs as [_desktop], not flutter_test's default
+/// Android: the heights below are desktop window heights, and Android's
+/// mobile base scale would divide them into a different band
+/// (docs/design/ui-scaling.md, the mobile base).
+///
 /// Set explicitly rather than left to the default test surface, which is 800
 /// WIDE by 600 tall: that lands in `dense`, one rung from the bottom, so a
 /// walk down the ladder would end after a single press and the test would be
 /// asserting the ladder's edge instead of its middle.
+final _desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
+
 Future<HaLoServices> _boot(WidgetTester tester, {double height = 900}) async {
   tester.view.physicalSize = Size(1280, height);
   tester.view.devicePixelRatio = 1.0;
@@ -98,7 +105,7 @@ void main() {
     expect(settings.densityPreference, DensityPreference.auto, reason: 'reset hands control back, not to Normal');
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 
   testWidgets('the shifted forms of the zoom keys reach density, not Font Scale', (tester) async {
     final services = await _boot(tester);
@@ -121,7 +128,7 @@ void main() {
     expect(settings.densityPreference, DensityPreference.normal, reason: 'zooming must not move density');
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 
   testWidgets('a density change is named in the status bar, and clears itself', (tester) async {
     final services = await _boot(tester);
@@ -147,7 +154,7 @@ void main() {
     expect(auto.text, 'Automatic — Normal');
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 
   testWidgets('every rung is reachable by keyboard on an ordinary window', (tester) async {
     // The regression this replaces: the ceiling clamped a pick to whatever
@@ -169,7 +176,7 @@ void main() {
     expect(reached, LayoutDensity.values.toSet(), reason: 'every rung must be reachable by keyboard on an ordinary window');
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 
   testWidgets('on a short window the setting keeps advancing, and lands once the window grows', (tester) async {
     // The end of the bug the stepping fix exists for, exercised through the
@@ -193,7 +200,7 @@ void main() {
     expect(settings.densityPreference.resolve(1500), LayoutDensity.sparsest);
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 
   testWidgets('a pick the window is too short for says so instead of looking dead', (tester) async {
     // 500pt of height puts the ladder in `dense` outright, so `sparse` is
@@ -211,5 +218,5 @@ void main() {
     expect(item!.text, contains('too short'), reason: 'the operator must be told the pick was stored but not applied');
 
     await _drain(tester);
-  });
+  }, variant: _desktop);
 }

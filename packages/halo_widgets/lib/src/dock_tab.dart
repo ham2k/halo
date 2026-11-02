@@ -232,13 +232,23 @@ class DockTab extends StatelessWidget {
   /// a strip whose tabs are all ellipsis is a strip that says nothing, and
   /// the pane a settings button belongs to is the one already open below it.
   ///
-  /// On a touch PLATFORM it does not shrink at all. `chromeHeightOf` holds
-  /// the strip's height at the tap-target minimum there for this control's
-  /// sake; taking the same points off its width instead would undo that
-  /// silently, on the one platform with no pointer to aim with. Such a strip
-  /// scrolls sooner, which is the honest answer: the button has to stay
-  /// pressable.
+  /// On a touch PLATFORM it does not shrink at all: the strip
+  /// ([stripHeightOf]) already gives this control less than the tap-target
+  /// minimum in height, and taking points off its width as well would leave
+  /// it short in both, on the one platform with no pointer to aim with. Such
+  /// a strip scrolls sooner, which is the honest answer: the button has to
+  /// stay pressable.
   static double minActionSizeOf(BuildContext context) => isMobilePlatform ? LayoutDensity.chromeHeightOf(context) : _editingActionSize;
+
+  /// The dock's tab strip height: the chrome row less 4pt at top and bottom,
+  /// on every platform. Shorter than the app header above it on purpose — the
+  /// strip reads as part of the header rather than a second header under it.
+  ///
+  /// Below the touch tap-target minimum on a phone, which `chromeHeightOf`
+  /// otherwise holds: the tabs themselves span the strip's whole width, and a
+  /// module's action keeps its full [minActionSizeOf] width — only its height
+  /// gives, to the strip's.
+  static double stripHeightOf(BuildContext context) => LayoutDensity.chromeHeightOf(context) - 8;
 
   /// A tab's contents: the grab handle pinned to its leading edge, the
   /// module's action to its trailing edge, and the label centered between

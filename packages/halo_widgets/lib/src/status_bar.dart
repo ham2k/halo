@@ -180,6 +180,53 @@ class StatusBarFooter extends StatefulWidget {
   /// bottom of the window has to spend it before splitting the remainder.
   static double collapsedHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).statusBarCollapsed;
 
+  /// Whether the bar runs down to the screen's bottom edge instead of stopping
+  /// above the bottom safe area. On a phone with rounded corners — the bottom
+  /// inset is the tell: the home indicator, or Android's gesture bar — that
+  /// strip is otherwise a band of bare chrome under the bar. Tablets keep the
+  /// safe area: their corners are far tighter than the top inset suggests.
+  /// So does a foldable's display, which reports its corners and places the
+  /// bar off the edge itself ([bottomBarPaddingOf]).
+  ///
+  /// Measured in the screen's own points, undoing the Font Scale the
+  /// MediaQuery is divided by: a tablet at a large font scale is still a
+  /// tablet. And only a gesture-sized inset qualifies — Android's three-button
+  /// bar, which edge-to-edge reports as the bottom inset too, is buttons the
+  /// footer must stay above, not a strip it can paint under.
+  static bool reachesBottomEdgeOf(BuildContext context) {
+    if (!isHandheldPlatform || lowerCornerClearanceOf(context) != null) return false;
+    final media = MediaQuery.of(context);
+    final scale = UiScale.of(context);
+    final bottom = media.viewPadding.bottom * scale;
+    return media.size.shortestSide * scale < 600 && bottom > 0 && bottom <= _maxGestureInset;
+  }
+
+  /// The tallest bottom inset that is a gesture area: iOS's home indicator
+  /// strip is 34pt and Android's gesture handle less; the three-button bar is
+  /// 48dp.
+  static const double _maxGestureInset = 40;
+
+  /// What [collapsedHeightOf] costs the bottom of the window once drawn —
+  /// the bar, plus the safe area below it unless it [reachesBottomEdgeOf].
+  static double drawnHeightOf(BuildContext context) => collapsedHeightOf(context) + (reachesBottomEdgeOf(context) ? 0 : bottomBarPaddingOf(context).bottom);
+
+  /// The horizontal inset that keeps the bar's content clear of the screen's
+  /// rounded corners, once it [reachesBottomEdgeOf].
+  ///
+  /// The corner radius is not reported anywhere, so it is guessed from the
+  /// safe inset on the camera's side — the largest of top, left and right,
+  /// whichever way the phone is held — which on these phones tracks the
+  /// corner closely. The inset is where a circle of that radius crosses a
+  /// quarter of the way up the bar, below where its text and icons end — not
+  /// its mid-height, which lets the glyphs' lower half graze the curve.
+  static double cornerInsetOf(BuildContext context) {
+    final padding = MediaQuery.viewPaddingOf(context);
+    final radius = math.max(padding.top, math.max(padding.left, padding.right));
+    final y = collapsedHeightOf(context) / 4;
+    if (y >= radius) return 0;
+    return radius - math.sqrt(radius * radius - (radius - y) * (radius - y));
+  }
+
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
@@ -356,10 +403,28 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     //
     // Held at the bottom bar's safe area rather than the window's: on a
     // foldable's display that sits lower, clear of the corners instead
-    // (see [bottomBarPaddingOf]).
+    // (see [bottomBarPaddingOf]). On a phone with rounded corners the bar runs
+    // to the bottom edge instead (see [StatusBarFooter.reachesBottomEdgeOf])
+    // and trades the side insets for the corners' — but only while there is a
+    // bar: an empty footer still holds the strip, for the same reason as above.
+    final toEdge = hasContent && StatusBarFooter.reachesBottomEdgeOf(context);
+    // The same widgets either way — [BottomBarSafeArea]'s own pair, with the
+    // edges switched — so the switch as the first message arrives does not
+    // remount the band and lose its slide.
+    Widget held({required Widget child}) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(padding: bottomBarPaddingOf(context)),
+      child: SafeArea(
+        top: false,
+        bottom: !toEdge,
+        left: !toEdge,
+        right: !toEdge,
+        minimum: toEdge ? EdgeInsets.symmetric(horizontal: math.max(0, StatusBarFooter.cornerInsetOf(context) - Space.lg)) : EdgeInsets.zero,
+        child: child,
+      ),
+    );
     return Material(
       color: backgroundColor,
-      child: BottomBarSafeArea(
+      child: held(
         child: ClipRect(
           child: AnimatedSize(
             duration: const Duration(milliseconds: 200),

@@ -15,6 +15,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'layout.dart' show ShirtSize;
 import 'settings_list.dart';
 import 'platform_chrome.dart' show shrinkToFitText;
 import 'platform_view_shield.dart';
@@ -80,7 +81,10 @@ class HaloDialogHeader extends StatelessWidget {
         // button's 48pt tap target already fills it — adding vertical padding
         // on top pushes the header to 72. Tighter on the leading/trailing edge
         // when a button lives there, since its tap target supplies that inset.
-        padding: EdgeInsets.only(left: leading == null ? 24 : 12, right: trailing == null ? 24 : 12),
+        padding: EdgeInsets.only(
+          left: leading == null ? haloDialogSideInset(context) : Space.lg,
+          right: trailing == null ? haloDialogSideInset(context) : Space.lg,
+        ),
         child: Row(
           children: [
             if (leading != null) ...[leading!, const SizedBox(width: Space.md)],
@@ -123,6 +127,16 @@ class HaloDialogHeader extends StatelessWidget {
 /// Pinning Cancel to the opposite edge would separate them further still, at
 /// the cost of the grouping Material's convention depends on.
 const double haloDialogCancelGap = Space.xxl;
+
+/// A dialog's side padding — title band, content and footer alike: half on a
+/// narrow window, where the dialog is already most of the screen's width and
+/// the 24pt it spends on each side is the room its content is short of.
+double haloDialogSideInset(BuildContext context) => ShirtSize.of(context).isTwoPane ? Space.xxl : Space.lg;
+
+/// The footer's padding above and below its buttons: half on a narrow window,
+/// for the same reason as [haloDialogSideInset] — the buttons' own tap targets
+/// already give them room.
+double haloDialogFooterInsetV(BuildContext context) => ShirtSize.of(context).isTwoPane ? Space.lg : Space.sm;
 
 /// The single footer layout for every modal surface in the app — plain
 /// dialogs ([HaloDialog]), form dialogs and Modal Panes alike. One
@@ -251,7 +265,7 @@ Widget haloDialogFooterBand(
     child: SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.lg),
+        padding: EdgeInsets.symmetric(horizontal: haloDialogSideInset(context), vertical: haloDialogFooterInsetV(context)),
         child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions, tools: tools),
       ),
     ),
@@ -381,14 +395,14 @@ class HaloDialog extends StatelessWidget {
   /// Material's 16. Naming either here would move the other in every dialog
   /// in the app.
   Widget _wrapContent(BuildContext context, Widget content) =>
-      list ? SettingsList(child: content) : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
+      list ? SettingsList(inset: haloDialogSideInset(context), child: content) : ListTileTheme(data: Theme.of(context).listTileTheme, child: content);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final padding =
-        contentPadding ?? (list ? const EdgeInsets.symmetric(vertical: Space.md) : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl));
+    final side = haloDialogSideInset(context);
+    final padding = contentPadding ?? (list ? const EdgeInsets.symmetric(vertical: Space.md) : EdgeInsets.fromLTRB(side, Space.xl, side, Space.xl));
 
     Widget? body;
     if (content != null) {
@@ -431,7 +445,7 @@ class HaloDialog extends StatelessWidget {
               if (body != null) Flexible(child: body),
               if (actions.isNotEmpty || cancel != null || destructive != null || help != null || secondary != null || tools != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
+                  padding: EdgeInsets.fromLTRB(side, haloDialogFooterInsetV(context), side, haloDialogFooterInsetV(context)),
                   child: haloDialogFooterRow(cancel: cancel, destructive: destructive, help: help, secondary: secondary, actions: actions, tools: tools),
                 ),
             ],

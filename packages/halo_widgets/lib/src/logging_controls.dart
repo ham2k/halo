@@ -1115,7 +1115,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!widget.prefs.aboveLog && _meetsLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
+              if (!widget.prefs.aboveLog && _meetsLog) Container(height: 3, color: accentPoloColors.tertiaryLight),
               Padding(
                 // No top inset at all — SecondaryControlRow's expanded
                 // panel slides out flush against the divider above, and the
@@ -1148,7 +1148,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       labelStyle: TextStyle(color: accentTheme.colorScheme.onTertiaryContainer.withValues(alpha: 0.85)),
                       floatingLabelStyle: TextStyle(color: accentTheme.colorScheme.onTertiaryContainer),
                       enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentTheme.colorScheme.onTertiaryContainer.withValues(alpha: 0.4))),
-                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentTheme.colorScheme.tertiary, width: 3)),
+                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accentTheme.colorScheme.tertiary, width: 4)),
                     ),
                   ),
                   child: Column(
@@ -1184,7 +1184,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             ),
                           ),
                         ),
-                        const SizedBox(height: Space.md),
+                        const SizedBox(height: Space.xs),
                       ],
                       ...so2rFramed(
                         context,
@@ -1291,7 +1291,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // panel's own background (Material above), so the home-indicator
               // strip matches the panel.
               if (_bottomReserve > 0) SizedBox(width: double.infinity, height: _bottomReserve),
-              if (widget.prefs.aboveLog && _meetsLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
+              if (widget.prefs.aboveLog && _meetsLog) Container(height: 3, color: accentPoloColors.tertiaryLight),
             ],
           ),
         ),

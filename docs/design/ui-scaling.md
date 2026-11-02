@@ -79,7 +79,8 @@ font sizes, or icon sizes by the font scale anywhere in widget or theme code.
 that element and reintroduces exactly the proportion drift this design
 eliminates. If you find yourself reaching for `settings.fontScale.scaleFactor`
 in a layout, stop — that's the bug. (The setting is read in exactly one place:
-`halo_app.dart`'s builder, to feed `UiScale`.)
+`halo_app.dart`'s builder, to feed `UiScale`, times the platform base
+below.)
 
 **2. Write everything in plain logical pixels.** A row that should be 44pt tall
 is `height: 44`. It will render at `44 * scale` on screen. That's the whole
@@ -128,6 +129,29 @@ caller has to know what is already in force.
 LEADING space for the native traffic lights; Windows reserves TRAILING space
 for the Flutter-drawn caption buttons. See the next section — this is the one
 place scaling interacts with window chrome.
+
+---
+
+## The mobile base
+
+iOS and Android — including a phone's browser, where `defaultTargetPlatform`
+reports the phone's OS — start from a root scale of `mobileBaseUiScale`
+(1.10) rather than 1.0: the same logical sizes read smaller on a handheld
+screen than on a desktop monitor. The Font Scale setting multiplies on top,
+so Normal on a phone is 1.10 and Larger is 1.10 × 1.2. It is the same single
+root factor, not a second scaling path — rule 1 still holds. A pane's own
+Font Scale (rule 6) names a level on that same ladder, so it takes the base
+too: a pane set to the app's own level matches it.
+
+The base and `ShirtSize.xsMax` (340) are set together. `ShirtSize` reads the
+divided width (rule 4), so past 390/xsMax a 390pt iPhone lays out under
+`xsMax` and drops to XS at Normal. Raising the base means moving that
+breakpoint too, deliberately — and `xsMax` is also the desktop window's
+minimum width (`minWindowSize`).
+
+flutter_test defaults to Android, so a widget test that pumps `HaLoApp`
+runs at the mobile base. A test that computes on-screen sizes from the root
+factor reads `platformBaseUiScale`, not the setting alone.
 
 ---
 
@@ -232,7 +256,7 @@ draw.
 
 | Piece | File |
 |---|---|
-| The scaling widget, and `PixelGrid` | `packages/halo_widgets/lib/src/ui_scale.dart` |
+| The scaling widget, `PixelGrid`, and the mobile base | `packages/halo_widgets/lib/src/ui_scale.dart` |
 | Applied once at the root | `app/lib/views/app_shell/halo_app.dart` (`MaterialApp.builder`) |
 | Font-scale factors | `app/lib/services/settings_service.dart` (`enum FontScale`) |
 | Window-chrome clearance helpers, caption buttons, header gestures | `packages/halo_widgets/lib/src/platform_chrome.dart` |

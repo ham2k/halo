@@ -309,11 +309,10 @@ class _SpotTile extends StatelessWidget {
                 const SizedBox(width: Space.xs),
               ],
               Expanded(
-                child: Text(
-                  _labelOf(spot)!,
+                child: condenseToFit(
+                  text: _labelOf(spot)!,
                   style: (accented(proportional, refAccent) ?? proportional)?.copyWith(fontSize: mono.fontSize),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                  builder: (style) => Text(_labelOf(spot)!, style: style, overflow: TextOverflow.ellipsis, maxLines: 1),
                 ),
               ),
             ],

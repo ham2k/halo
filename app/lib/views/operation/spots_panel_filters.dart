@@ -421,7 +421,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
             t.operation.spots.filters.sorting,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
+                padding: EdgeInsets.symmetric(horizontal: haloDialogSideInset(context), vertical: Space.sm),
                 child: SegmentedButton<String>(
                   // MDI-only UI: skip the framework's Material check on the
                   // selected segment (same as settings_view).
@@ -535,30 +535,37 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
     );
   }
 
-  /// One of the three pickers above the sections. Fixed-width and centred:
-  /// a dropdown stretched to a wide dialog's full width would put its label
-  /// and its value at opposite ends of the card.
+  /// One of the three pickers above the sections. Fixed-width and centred on
+  /// a wide window: a dropdown stretched to a wide dialog's full width would
+  /// put its label and its value at opposite ends of the card.
   Widget _filterDropdown<T>({
     required String label,
     required T? initialSelection,
     required List<DropdownMenuEntry<T>> entries,
     required ValueChanged<T?> onSelected,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: Space.sm),
-    child: DropdownMenu<T>(
-      trailingIcon: dropdownTrailingIcon,
-      selectedTrailingIcon: dropdownSelectedTrailingIcon,
-      initialSelection: initialSelection,
-      width: _dropdownWidth,
-      menuHeight: dropdownMenuMaxHeight(context),
-      // Pick-only; search's rebuild-time scrollToHighlight would snap the
-      // open menu back to the selection whenever spots stream in.
-      enableSearch: false,
-      label: Text(label),
-      dropdownMenuEntries: entries,
-      onSelected: onSelected,
-    ),
-  );
+  }) {
+    // On a narrow window the dropdown spans the row at the dialog's own side
+    // inset, lined up with the rows below it, rather than floating centred at
+    // a width that leaves a gutter either side.
+    final narrow = !ShirtSize.of(context).isTwoPane;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: narrow ? haloDialogSideInset(context) : 0, vertical: Space.sm),
+      child: DropdownMenu<T>(
+        trailingIcon: dropdownTrailingIcon,
+        selectedTrailingIcon: dropdownSelectedTrailingIcon,
+        initialSelection: initialSelection,
+        width: narrow ? null : _dropdownWidth,
+        expandedInsets: narrow ? EdgeInsets.zero : null,
+        menuHeight: dropdownMenuMaxHeight(context),
+        // Pick-only; search's rebuild-time scrollToHighlight would snap the
+        // open menu back to the selection whenever spots stream in.
+        enableSearch: false,
+        label: Text(label),
+        dropdownMenuEntries: entries,
+        onSelected: onSelected,
+      ),
+    );
+  }
 
   /// Whether the Band filter has narrowed to one specific band ('auto' and
   /// 'any' both leave multiple bands possible).

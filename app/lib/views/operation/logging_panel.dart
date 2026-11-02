@@ -783,7 +783,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     // build registers a permanent dependency and asserts once the element is
     // deactivated. Reading the same rung QsoList paints with is what keeps a
     // page jump stepping by the height the rows really have.
-    final rows = (box.size.height / _metrics.qsoRowHeight).floor() - 1;
+    final rows = (box.size.height / QsoList.rowHeightFor(_metrics)).floor() - 1;
     return rows < 1 ? 1 : rows;
   }
 

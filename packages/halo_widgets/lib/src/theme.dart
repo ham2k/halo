@@ -654,7 +654,6 @@ InputDecoration poloFieldDecoration(
   final isDarkTheme = theme.brightness == Brightness.dark;
   final double scale = MediaQuery.textScalerOf(context).scale(1.0);
   final labelStyle = poloFieldLabelStyle(context, labelColor: labelColor);
-  final metrics = LayoutDensity.metricsOf(context);
   return InputDecoration(
     // Exactly one of these two: InputDecoration asserts on both being set.
     // The style comes from the decorator's own AnimatedDefaultTextStyle either
@@ -680,10 +679,19 @@ InputDecoration poloFieldDecoration(
     // font scale (UiScale already handles that one): padding around text the
     // OS enlarged legitimately grows with it, so density scales the base and
     // the OS scales the result.
-    contentPadding: EdgeInsets.fromLTRB(4 * scale, metrics.fieldPaddingTop * scale, 4 * scale, metrics.fieldPaddingBottom * scale),
+    contentPadding: EdgeInsets.fromLTRB(4 * scale, fieldPaddingTopOf(context) * scale, 4 * scale, fieldPaddingBottomOf(context) * scale),
     focusedBorder: haloFocusedInputBorder(isDarkTheme),
   );
 }
+
+/// A text field's vertical content padding: the density's
+/// [LayoutMetrics.fieldPaddingTop] / [LayoutMetrics.fieldPaddingBottom], a
+/// point less at each end on iOS (a mobile browser on an iPhone included),
+/// tuned there by eye. Read through these, never the metrics directly, so a
+/// dropdown sitting beside a text field keeps its height.
+double fieldPaddingTopOf(BuildContext context) => math.max(0, LayoutDensity.metricsOf(context).fieldPaddingTop - _iosFieldPaddingTrim(context));
+double fieldPaddingBottomOf(BuildContext context) => math.max(0, LayoutDensity.metricsOf(context).fieldPaddingBottom - _iosFieldPaddingTrim(context));
+double _iosFieldPaddingTrim(BuildContext context) => Theme.of(context).platform == TargetPlatform.iOS ? 1 : 0;
 
 /// The focused-field underline: a plain, high-contrast "you are here" cue
 /// rather than Material's default focus-color (primary) one, which would
@@ -731,7 +739,7 @@ UnderlineInputBorder haloFocusedInputBorder(bool isDark) => UnderlineInputBorder
 InputBorder haloFocusedBorder(InputBorder base, BuildContext context) =>
     base.copyWith(borderSide: _haloFocusedSide(Theme.of(context).brightness == Brightness.dark));
 
-BorderSide _haloFocusedSide(bool isDark) => BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0);
+BorderSide _haloFocusedSide(bool isDark) => BorderSide(color: isDark ? Colors.white : Colors.black, width: 3.0);
 
 /// The underline a field wears while its value isn't one its own rules
 /// recognize — a contest exchange the rules don't know, a reference that

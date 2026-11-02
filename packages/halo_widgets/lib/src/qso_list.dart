@@ -24,11 +24,13 @@ import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
+import 'platform_chrome.dart' show condenseToFit;
 import 'qso_row_badges.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'spacing.dart';
 import 'theme.dart';
+import 'ui_scale.dart' show isHandheldPlatform, platformBaseUiScale;
 
 part 'qso_list_headers.dart';
 part 'qso_list_metrics.dart';
@@ -65,7 +67,27 @@ const _otherQsosGapRows = 2;
 /// The plain row's own mono font size — also [AnnotationRow]'s time label.
 /// Named so [_QsoListState.didChangeDependencies]'s row-height measurement
 /// can't silently drift from what the row it's sizing actually paints at.
-const _rowMonoFontSize = 14.0;
+///
+/// Half a point smaller on a handheld: [platformBaseUiScale] enlarges the whole
+/// UI there, which suits the logging controls, but the list's packed columns
+/// read better a step under the rest. A plain logical size, not a scaled one
+/// (docs/design/ui-scaling.md rule 1).
+double get _rowMonoFontSize => isHandheldPlatform ? 13.5 : 14.0;
+
+/// The vertical padding of a QSO or annotation row — NOT the day header, whose
+/// own extent is [LayoutMetrics.sectionHeaderHeight].
+///
+/// A point tighter per side than the density's [LayoutMetrics.qsoRowPaddingV],
+/// which the day header and the Logs table use as declared. Not at the
+/// densest rung, where the annotation row's 2px rule already takes the whole
+/// 1px-per-side padding.
+double _rowPaddingV(LayoutMetrics m) => m.qsoRowPaddingV >= 2 ? m.qsoRowPaddingV - 1 : m.qsoRowPaddingV;
+
+/// The fixed extent every row is forced into, divider included: the
+/// density's declared height less whatever [_rowPaddingV] trimmed. Read this,
+/// never `qsoRowHeight` — the scroll arithmetic and the box the rows paint
+/// in must agree.
+double _rowHeight(LayoutMetrics m) => m.qsoRowHeight - 2 * (m.qsoRowPaddingV - _rowPaddingV(m));
 
 /// A hair of headroom in the row's width budget, absorbing the difference
 /// between what `textWidth` measures and what layout then rounds to. One
@@ -164,7 +186,11 @@ class QsoList extends StatefulWidget {
   /// is this tall at every scale. Day headers and annotation rows are taller,
   /// which makes this an approximation for a mixed list — fine for a jump
   /// nobody counts the rows of, and never used for layout.
-  static double rowHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).qsoRowHeight;
+  static double rowHeightOf(BuildContext context) => rowHeightFor(LayoutDensity.metricsOf(context));
+
+  /// [rowHeightOf] for metrics a caller already holds — for code that runs
+  /// outside build, where looking the density up again is not allowed.
+  static double rowHeightFor(LayoutMetrics metrics) => _rowHeight(metrics);
 
   final List<Qso> qsos;
 
@@ -500,7 +526,7 @@ class _QsoListState extends State<QsoList> {
     if (index < 0) return;
 
     final top = _estimatedTopOf(index);
-    final scroll = _scrollTo(top, top + _metrics.qsoRowHeight * _rowHeightScale);
+    final scroll = _scrollTo(top, top + _rowHeight(_metrics) * _rowHeightScale);
     if (scroll != null) {
       _revealInFlight = true;
       scroll.whenComplete(() => _revealInFlight = false);
@@ -540,7 +566,7 @@ class _QsoListState extends State<QsoList> {
         offset += _metrics.sectionHeaderHeight * _rowHeightScale;
         lastDay = day;
       }
-      if (step < steps) offset += _metrics.qsoRowHeight * _rowHeightScale;
+      if (step < steps) offset += _rowHeight(_metrics) * _rowHeightScale;
     }
     return offset;
   }
@@ -606,7 +632,7 @@ class _QsoListState extends State<QsoList> {
     if (list.newestFirst) return position.minScrollExtent;
     if (list.otherQsos.isEmpty) return position.maxScrollExtent;
     final log = list.qsos;
-    final row = _metrics.qsoRowHeight * _rowHeightScale;
+    final row = _rowHeight(_metrics) * _rowHeightScale;
     // An empty log is held by a day header and one line.
     final logEnd = (log.isEmpty ? _metrics.sectionHeaderHeight * _rowHeightScale : _estimatedTopOf(log.length - 1, qsos: log)) + row;
     return (logEnd - position.viewportDimension).clamp(position.minScrollExtent, position.maxScrollExtent);
@@ -652,7 +678,7 @@ class _QsoListState extends State<QsoList> {
         lastDay = day;
       }
       if (offset >= pixels) return (uuid: log[i].uuid, top: offset);
-      offset += _metrics.qsoRowHeight * _rowHeightScale;
+      offset += _rowHeight(_metrics) * _rowHeightScale;
     }
     return null;
   }
@@ -714,7 +740,7 @@ class _QsoListState extends State<QsoList> {
             child: Material(
               color: theme.colorScheme.surface,
               child: Padding(
-                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
+                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: _rowPaddingV(LayoutDensity.metricsOf(context))),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -858,7 +884,7 @@ class _QsoListState extends State<QsoList> {
     // See [_rowHeightScale]'s doc — every row/header below is forced into an
     // exact box (HALO-258), so its extent has to grow with the OS text
     // scale the same way the scroll math using [_metrics] elsewhere does.
-    final rowExtent = _metrics.qsoRowHeight * _rowHeightScale;
+    final rowExtent = _rowHeight(_metrics) * _rowHeightScale;
     final headerExtent = _metrics.sectionHeaderHeight * _rowHeightScale;
 
     // Matched against each local day bucket by the same UTC-day key the
@@ -927,6 +953,10 @@ class _QsoListState extends State<QsoList> {
       // time and RST. Its size is the row's base size (never smaller): the
       // row height is measured against bodyMedium, so this stays inside it.
       final rowNameDim = theme.textTheme.bodyMedium!.copyWith(fontSize: _rowMonoFontSize, color: rowMonoDim.color, decoration: rowMonoDim.decoration);
+      // Time and a bare band: the dim gray at the 80% a looked-up name and
+      // state paint at, so the only full-strength text in a row is what it
+      // is scanned by — the callsign, and the frequency when there is one.
+      final rowMonoFaint = rowMonoDim.copyWith(color: rowMonoDim.color?.withValues(alpha: (rowMonoDim.color?.a ?? 1.0) * 0.8));
 
       // DX/State column — see _dxStateContentFor's doc for the flag-vs-state
       // rule, shared with the list-wide width precompute above. Emoji use a
@@ -963,7 +993,7 @@ class _QsoListState extends State<QsoList> {
       // Right-aligned within the column's fixed width, so the kHz digits of
       // a 7 MHz row sit under those of a 14 MHz row, band-only rows included.
       if (freqKHz == null) {
-        freqField = Text(qso.band ?? _noBandLabel, style: freqStyle, textAlign: TextAlign.right);
+        freqField = Text(qso.band ?? _noBandLabel, style: bandKnown ? rowMonoFaint : freqStyle, textAlign: TextAlign.right);
       } else {
         final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
         freqField = Row(
@@ -1035,7 +1065,7 @@ class _QsoListState extends State<QsoList> {
               onTap: other ? null : () => onSelect(qso),
               mouseCursor: other ? MouseCursor.defer : SystemMouseCursors.click,
               child: Padding(
-                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
+                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: _rowPaddingV(LayoutDensity.metricsOf(context))),
                 child: Row(
                   children: [
                     if (plan.showNumbers) ...[
@@ -1058,7 +1088,7 @@ class _QsoListState extends State<QsoList> {
                       ),
                       const SizedBox(width: _columnGap),
                     ],
-                    Text(timeLabel, style: rowMonoDim),
+                    Text(timeLabel, style: rowMonoFaint),
                     const SizedBox(width: _columnGap),
                     // Fixed width so an empty freq/band still holds the column
                     // open and the columns after it stay aligned (#354).
@@ -1095,20 +1125,34 @@ class _QsoListState extends State<QsoList> {
                       // A guessed name paints at 80% too (see the DX/state note).
                       child: Opacity(
                         opacity: qso.theirFieldIsGuessed('name') ? 0.8 : 1.0,
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              // A noted station leads with its marker.
-                              if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) ...[
-                                flagSpan(emoji, style: rowNameDim, shadows: glyphGlow(theme)),
-                                const TextSpan(text: ' '),
-                              ],
-                              TextSpan(text: qso.theirName ?? ''),
-                            ],
-                          ),
+                        child: condenseToFit(
+                          text: [if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) emoji, qso.theirName ?? ''].join(' '),
                           style: rowNameDim,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          builder: (nameStyle) => Text.rich(
+                            TextSpan(
+                              children: [
+                                // A noted station leads with its marker.
+                                if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) ...[
+                                  flagSpan(emoji, style: rowNameDim, shadows: glyphGlow(theme)),
+                                  const TextSpan(text: ' '),
+                                ],
+                                TextSpan(text: qso.theirName ?? ''),
+                              ],
+                            ),
+                            style: nameStyle,
+                            // The mono columns' line box, not Roboto's shorter one:
+                            // the row centres every column, and centred in its
+                            // own box the name's baseline sits visibly above
+                            // theirs. Built from the style those columns
+                            // actually resolve to — the ambient line height
+                            // included, which a bare Roboto Mono strut misses by
+                            // a fraction of a point. Not baseline alignment on
+                            // the row, which lets a flag emoji's taller ascent
+                            // push the whole row down.
+                            strutStyle: StrutStyle.fromTextStyle(DefaultTextStyle.of(context).style.merge(rowMono), forceStrutHeight: true),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ),
@@ -1460,11 +1504,11 @@ class EventRow extends StatelessWidget {
     final rule = wash(isDark ? 0.5 : 0.35);
     // Matches the ordinary QSO row's own padding exactly (not a hardcoded
     // value) — [QsoList] forces every row into the same fixed
-    // [LayoutMetrics.qsoRowHeight] box (HALO-258, avoids a per-row layout
+    // [_rowHeight] box (HALO-258, avoids a per-row layout
     // walk on `jumpTo`), so a row whose natural height doesn't match that
     // box overflows or leaves a gap. The border comes out of the top
     // padding for the same reason.
-    final padding = PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV);
+    final padding = PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: _rowPaddingV(LayoutDensity.metricsOf(context)));
 
     // The border is part of the row's height, so it comes OUT of the
     // padding — off the top first, and off the bottom for whatever the top
@@ -1587,7 +1631,7 @@ class AnnotationRow extends StatelessWidget {
           // See EventRow's identical note: matches the ordinary row's own
           // padding so this row's natural height fits [QsoList]'s fixed
           // per-row box exactly (HALO-258).
-          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
+          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: _rowPaddingV(LayoutDensity.metricsOf(context))),
           child: Row(
             children: [
               SizedBox(width: leadingWidth),

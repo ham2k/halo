@@ -251,6 +251,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
         selectAllOnFocus: false,
         enabled: widget.enabled,
         style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+        cursorHeight: mainFieldCursorHeight(context),
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
         autocorrect: false,
@@ -461,6 +462,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
                         ? [widget.commandVirtualSpace]
                         : [widget.commandVirtualSpace, const UpperCaseTextFormatter()],
                     style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+                    cursorHeight: mainFieldCursorHeight(context),
                     decoration: mainFieldDecoration(context, t.loggingControls.theirCall, horizontalPadding: fieldLayout.fieldPadding),
                     // `onChanged`, not the controller: it hears only what the
                     // operator entered, never the panel's own writes.

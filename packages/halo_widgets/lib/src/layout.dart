@@ -101,9 +101,10 @@ enum ShirtSize {
   l,
   xl;
 
-  /// Below this → XS: genuinely small phones (the classic 360 Android
-  /// baseline is already S).
-  static const double xsMax = 360.0;
+  /// Below this → XS: genuinely small phones. Set against the DIVIDED
+  /// width a phone sees at Normal, which includes `mobileBaseUiScale`:
+  /// 390/1.10 ≈ 355, so a 390pt iPhone stays S.
+  static const double xsMax = 340.0;
 
   /// Below this → S. At 660 the settings and operation views go two-pane;
   /// a foldable's inner display held portrait (iPhone Duo, 669) and

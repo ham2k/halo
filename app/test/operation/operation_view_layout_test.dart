@@ -16,6 +16,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+// The strip's height is the dock's own; this test is about what sits in it.
+// ignore: implementation_imports
+import 'package:halo_widgets/src/dock_tab.dart' show DockTab;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -1094,8 +1097,8 @@ void main() {
 
     final button = find.widgetWithIcon(IconButton, MdiIcons.tune);
     expect(button, findsOneWidget, reason: 'the QSOs tab is on top in the narrow arrangement');
-    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(button));
-    expect(tester.getSize(button).height, chromeHeight, reason: 'the indicator must not take its width out of the tab\'s own control');
+    final stripHeight = DockTab.stripHeightOf(tester.element(button));
+    expect(tester.getSize(button).height, stripHeight, reason: 'the indicator must not take its width out of the tab\'s own control');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

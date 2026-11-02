@@ -91,15 +91,25 @@ mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _Activities
   Widget? _suggestionTrailing(ThemeData theme, Map<String, dynamic> suggestion, {required RefLink? link, required Map<String, dynamic>? control}) {
     final distance = suggestion['distance'];
     if (distance is! num && link == null) return null;
+    var distanceText = distance is num ? fmtDistance(distance.toDouble(), miles: widget.services.settings.distanceUnits == DistanceUnits.miles) : null;
+    // On a phone the unit goes under the number ("0.6" over "mi"): the column
+    // is width the reference's own name needs more. Broken at the last space,
+    // which is between the number and a one-word unit in every form the
+    // strings give it today.
+    final narrow = !ShirtSize.of(context).isTwoPane;
+    if (narrow) distanceText = distanceText?.replaceFirst(RegExp(r'[\s\u00A0\u202F]+(?=[^\s\u00A0\u202F]+$)'), '\n');
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (distance is num)
+        if (distanceText != null)
           Text(
-            fmtDistance(distance.toDouble(), miles: widget.services.settings.distanceUnits == DistanceUnits.miles),
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            distanceText,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: narrow ? 1.15 : null),
           ),
-        if (link != null) ...[const SizedBox(width: Space.md), _refLinkButton(link, fallbackName: activityRowTitle(control, suggestion))],
+        // A sliver only: the IconButton carries its own padding around the
+        // glyph, which already reads as the gap.
+        if (link != null) ...[const SizedBox(width: Space.xxs), _refLinkButton(link, fallbackName: activityRowTitle(control, suggestion))],
       ],
     );
   }
@@ -688,7 +698,15 @@ mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _Activities
                     ),
                 ],
               ),
-              subtitle: Text(activityRowDetail(suggestion) ?? ''),
+              // Two lines at most: a long reference list (every state a
+              // trail crosses) would otherwise stand each result several
+              // rows tall. Condensed before it is cut.
+              subtitle: condenseToFit(
+                text: activityRowDetail(suggestion) ?? '',
+                style: null,
+                maxLines: 2,
+                builder: (style) => Text(activityRowDetail(suggestion) ?? '', style: style, maxLines: 2, overflow: TextOverflow.ellipsis),
+              ),
               // Same inset as the Current Activities rows, so the
               // web button sits at the same distance from the edge
               // in both lists — clear of the scrollbar, and lined up

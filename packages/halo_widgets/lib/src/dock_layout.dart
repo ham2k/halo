@@ -1172,7 +1172,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         // simply doesn't animate.
         final growing = identical(split, _growingSplit);
         final rawSum = split.weights.reduce((a, b) => a + b);
-        final floorWeight = available <= 0 ? 0.0 : LayoutDensity.chromeHeightOf(context) / available * rawSum;
+        final floorWeight = available <= 0 ? 0.0 : DockTab.stripHeightOf(context) / available * rawSum;
         var weights = growing
             ? [
                 for (var i = 0; i < split.weights.length; i++)
@@ -1527,16 +1527,13 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
           Material(
             color: headerColor,
             child: SizedBox(
-              // The same chrome height as every other strip of chrome — this
-              // IS the dock's tab strip. `chromeHeightOf` holds it to
-              // Material's minimum tap target on touch, which a shorter header
-              // would otherwise squeeze a module's `tabActions` IconButton
-              // below, silently.
+              // The dock's tab strip — see [DockTab.stripHeightOf] for why it
+              // runs shorter than the other chrome rows.
               //
               // Snapped because the header's color meets the pane body at this
               // edge, and the height × the grid is fractional at some scale/DPR
               // combinations (48 × 0.85 × 2.75), which seams the two.
-              height: PixelGrid.of(context).snap(LayoutDensity.chromeHeightOf(context)),
+              height: PixelGrid.of(context).snap(DockTab.stripHeightOf(context)),
               // A Builder, not this method's own `context`: `_buildGroup` is a
               // plain Dart call from `_buildSplit`/`_buildNode`, not a fresh
               // Element — reusing `State.context` here would always resolve

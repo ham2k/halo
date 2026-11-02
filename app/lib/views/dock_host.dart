@@ -1064,7 +1064,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     }
     if (options.fontScaleValue case final scale?) {
       final inner = wrapped;
-      wrapped = SubtreeUiScale(scale: scale.scaleFactor, child: inner);
+      // On the root's ladder, which a phone starts a step up
+      // ([platformBaseUiScale]): without it a pane set to the app's own
+      // level renders smaller than everything around it.
+      wrapped = SubtreeUiScale(scale: scale.scaleFactor * platformBaseUiScale, child: inner);
     }
     if (options.themeBrightness case final brightness?) {
       final inner = wrapped;

@@ -606,8 +606,9 @@ void main() {
         // tint, which is why this is spelled out rather than left to Material.
         expect(side.color, isNot(theme.colorScheme.primary), reason: '$brightness');
         // Material drops an overridden focusedBorder back to a plain
-        // BorderSide's 1.0, so the 2.0 weight has to be restated explicitly.
-        expect(side.width, 2.0, reason: '$brightness');
+        // BorderSide's 1.0, so the house 3.0 weight — a point over Material's
+        // own 2.0 — has to be stated explicitly.
+        expect(side.width, 3.0, reason: '$brightness');
       }
     });
 
@@ -702,7 +703,7 @@ void main() {
         expect(side.color, isNot(theme.colorScheme.primary), reason: '$brightness');
         // Same restoration as haloFocusedInputBorder: overriding focusedBorder
         // at all drops Material's 2.0 back to a plain BorderSide's 1.0.
-        expect(side.width, 2.0, reason: '$brightness');
+        expect(side.width, 3.0, reason: '$brightness');
       }
     });
 
@@ -747,7 +748,7 @@ void main() {
 
       // Rounded, so the border paints as an RRect — a plain rect here would
       // mean the shape was lost on the way to the canvas.
-      expect(find.byType(InputDecorator), paints..rrect(color: Colors.white, strokeWidth: 2.0));
+      expect(find.byType(InputDecorator), paints..rrect(color: Colors.white, strokeWidth: 3.0));
       expect(find.byType(InputDecorator), isNot(paints..rrect(color: theme.colorScheme.primary)));
     });
   });

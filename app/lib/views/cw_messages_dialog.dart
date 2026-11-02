@@ -450,14 +450,14 @@ class _CwMessagesHelpDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpIntro)),
+          Padding(padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xl, haloDialogSideInset(context), Space.md), child: Text(m.helpIntro)),
           for (final (template, meaning) in rows) row(template, meaning),
           // The placeholders put together, headed apart from the list: it
           // is one message, not one more value.
-          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, 0), child: Text(m.helpFullExample)),
+          Padding(padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xl, haloDialogSideInset(context), 0), child: Text(m.helpFullExample)),
           row('{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}', m.helpExample),
           if (esm) ...[
-            Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpEsmIntro)),
+            Padding(padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xl, haloDialogSideInset(context), Space.md), child: Text(m.helpEsmIntro)),
             for (final (template, meaning) in esmRows) row(template, meaning),
             row(
               'TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}',
@@ -557,7 +557,7 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
     // Zero content padding, with the settings row inset published instead
     // (`list`): the Details band reads it, and the fields take the same one
     // themselves.
-    const rowInset = EdgeInsets.symmetric(horizontal: settingsRowInset);
+    final rowInset = EdgeInsets.symmetric(horizontal: haloDialogSideInset(context));
     return HaloDialog(
       title: Text(m.messageTitle(n: widget.n)),
       list: true,

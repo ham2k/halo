@@ -1018,6 +1018,7 @@ class ExchangeField extends StatelessWidget {
             enabled: enabled,
             readOnly: isSerial && input['editable'] == false,
             style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+            cursorHeight: mainFieldCursorHeight(context),
             keyboardType: numeric ? numericKeyboardType : null,
             textCapitalization: TextCapitalization.characters,
             // Codes, not prose — the same four refusals as every other main

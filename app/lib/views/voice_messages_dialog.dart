@@ -683,9 +683,9 @@ class _VoiceTemplateHelpDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.templateHelp)),
+          Padding(padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xl, haloDialogSideInset(context), Space.md), child: Text(m.templateHelp)),
           for (final (template, meaning) in rows) row(template, meaning),
-          Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, 0), child: Text(m.helpFullExample)),
+          Padding(padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xl, haloDialogSideInset(context), 0), child: Text(m.helpFullExample)),
           row('{{ qso.call }} {{ qso.rst }} QSL?', m.helpExample),
         ],
       ),

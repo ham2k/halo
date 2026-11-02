@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -425,6 +426,45 @@ void main() {
     });
   });
 
+  group('Mobile base scale', () {
+    test('mobile starts a step up; desktop stays at the setting alone', () {
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      for (final platform in TargetPlatform.values) {
+        debugDefaultTargetPlatformOverride = platform;
+        final mobile = platform == TargetPlatform.iOS || platform == TargetPlatform.android;
+        expect(platformBaseUiScale, mobile ? greaterThan(1.0) : 1.0, reason: '$platform');
+      }
+    });
+
+    test('a 390pt phone keeps the S layout at Normal', () {
+      // ShirtSize reads the DIVIDED width, so a base past 390/xsMax silently
+      // drops the common iPhone width into XS before the operator touches
+      // the setting.
+      expect(ShirtSize.fromWidth(390 / (mobileBaseUiScale * FontScale.normal.scaleFactor)), ShirtSize.s);
+    });
+
+    // Drives the real HaLoApp: the base must multiply the setting at the
+    // root, not replace it — a mobile operator who picks Larger still gets
+    // Larger relative to the mobile Normal.
+    testWidgets('the root UiScale is the mobile base times the Font Scale setting', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      setReleaseNotesForTesting(const []);
+      setTesterNotesForTesting(const []);
+      final HaLoHarness(:services, :settings) = await makeHaLoServices(prefs: null);
+      await settings.setFontScale(FontScale.larger);
+
+      await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
+      await tester.pumpAndSettle();
+
+      final scale = UiScale.of(tester.element(find.byType(AppBar).first));
+      expect(scale, moreOrLessEquals(mobileBaseUiScale * FontScale.larger.scaleFactor));
+
+      // Drain pending timers to avoid test errors.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
   group('Device pixel grid', () {
     testWidgets('the header height lands on whole device pixels at every font scale', (tester) async {
       // The header's bottom edge is a color boundary against the body, so an
@@ -447,7 +487,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final height = tester.getSize(find.byType(AppBar).first).height;
-      final devicePixels = height * FontScale.smaller.scaleFactor * 2.0;
+      // The ROOT factor, which includes the platform base (flutter_test
+      // defaults to Android) — the setting alone is not what the grid sees.
+      final devicePixels = height * FontScale.smaller.scaleFactor * platformBaseUiScale * 2.0;
       expect(devicePixels, moreOrLessEquals(devicePixels.roundToDouble()), reason: 'header height $height is off the device grid');
       // Snapping moves it by less than a device pixel, not to some other size.
       expect(height, moreOrLessEquals(48.0, epsilon: 1.0));

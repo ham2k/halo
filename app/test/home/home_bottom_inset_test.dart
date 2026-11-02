@@ -47,9 +47,13 @@ void main() {
   /// The home layer's bottom chrome, measured from the footer's top edge: how
   /// tall Quick Lookup is, and how far the Settings glyph sits above the band —
   /// plus the footer's own height, which is what pins the strip on SOMEBODY.
-  Future<({double lookupHeight, double settingsGap, double footerHeight, bool drawn})> measure(WidgetTester tester, {required double inset}) async {
+  Future<({double lookupHeight, double settingsGap, double footerHeight, bool drawn})> measure(
+    WidgetTester tester, {
+    required double inset,
+    Size window = const Size(390, 844),
+  }) async {
     final dpr = tester.view.devicePixelRatio;
-    tester.view.physicalSize = Size(390 * dpr, 844 * dpr);
+    tester.view.physicalSize = window * dpr;
     tester.view.padding = FakeViewPadding(bottom: inset * dpr);
     tester.view.viewPadding = FakeViewPadding(bottom: inset * dpr);
     addTearDown(() {
@@ -94,39 +98,72 @@ void main() {
     return result;
   }
 
-  testWidgets('with the footer drawn, neither Quick Lookup nor the Settings cap holds the home indicator', (tester) async {
+  /// What neither of the home layer's own bottom pieces may do, whoever
+  /// holds the strip: grow by it a second time.
+  void expectNothingAboveHoldsIt(
+    ({double lookupHeight, double settingsGap, double footerHeight, bool drawn}) withIndicator,
+    ({double lookupHeight, double settingsGap, double footerHeight, bool drawn}) without,
+  ) {
+    expect(
+      withIndicator.lookupHeight,
+      moreOrLessEquals(without.lookupHeight, epsilon: 0.5),
+      reason: 'Quick Lookup must not grow by the indicator the footer below it is already holding',
+    );
+    expect(
+      withIndicator.settingsGap,
+      moreOrLessEquals(without.settingsGap, epsilon: 0.5),
+      reason: 'the rail\'s Settings cap must not lift its glyph by that same indicator',
+    );
+    // Not a pair of zeroes agreeing with each other: the icon really is
+    // above the band and the bar really has a height.
+    expect(without.lookupHeight, greaterThan(0));
+    expect(without.settingsGap, greaterThan(0));
+  }
+
+  testWidgets('on a tablet the footer holds the home indicator, and neither Quick Lookup nor the Settings cap does', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      final withIndicator = await measure(tester, inset: indicator);
-      final without = await measure(tester, inset: 0);
+      const tablet = Size(820, 1180);
+      const tabletIndicator = 20.0;
+      final withIndicator = await measure(tester, inset: tabletIndicator, window: tablet);
+      final without = await measure(tester, inset: 0, window: tablet);
 
       // Asserted out here rather than inside `measure`: a failure there would
       // skip the teardown below it and bury the real cause under a pending
       // drift timer.
       expect(withIndicator.drawn && without.drawn, isTrue, reason: 'the footer must be drawn, or none of these reserves is under test');
       // The other half of the invariant, and the half the relative
-      // measurements below cannot see: SOMETHING still holds the indicator.
-      // Drop the footer's own `SafeArea` and every assertion after this one
-      // stays green while its rows sit in the indicator.
+      // measurements cannot see: SOMETHING still holds the indicator. Drop
+      // the footer's own `SafeArea` and every other assertion stays green
+      // while its rows sit in the indicator.
       expect(
         withIndicator.footerHeight - without.footerHeight,
-        moreOrLessEquals(indicator, epsilon: 0.5),
-        reason: 'the footer is the one holding the strip now, so it is the one that grows by it',
+        moreOrLessEquals(tabletIndicator, epsilon: 0.5),
+        reason: 'the footer is the one holding the strip, so it is the one that grows by it',
       );
+      expectNothingAboveHoldsIt(withIndicator, without);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  // The trap: a phone's footer runs over its home indicator instead of
+  // standing above it (StatusBarFooter.reachesBottomEdgeOf), so it no longer
+  // grows by the strip — and a view above that went back to reserving the
+  // strip itself would put a band of its own background over the bar.
+  testWidgets('on a phone the footer runs over the home indicator, and still nothing above it holds it', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final withIndicator = await measure(tester, inset: indicator);
+      final without = await measure(tester, inset: 0);
+
+      expect(withIndicator.drawn && without.drawn, isTrue, reason: 'the footer must be drawn, or none of these reserves is under test');
       expect(
-        withIndicator.lookupHeight,
-        moreOrLessEquals(without.lookupHeight, epsilon: 0.5),
-        reason: 'Quick Lookup must not grow by the indicator the footer below it is already holding',
+        withIndicator.footerHeight,
+        moreOrLessEquals(without.footerHeight, epsilon: 0.5),
+        reason: 'the bar paints over the indicator rather than stacking on it',
       );
-      expect(
-        withIndicator.settingsGap,
-        moreOrLessEquals(without.settingsGap, epsilon: 0.5),
-        reason: 'the rail\'s Settings cap must not lift its glyph by that same indicator',
-      );
-      // Not a pair of zeroes agreeing with each other: the icon really is
-      // above the band and the bar really has a height.
-      expect(without.lookupHeight, greaterThan(0));
-      expect(without.settingsGap, greaterThan(0));
+      expectNothingAboveHoldsIt(withIndicator, without);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

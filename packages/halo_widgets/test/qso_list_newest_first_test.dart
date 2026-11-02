@@ -39,6 +39,12 @@ Widget _host(List<Qso> qsos) => MaterialApp(
 
 double _top(WidgetTester tester, String call) => tester.getTopLeft(find.text(call)).dy;
 
+/// Scrolls down by [rows] rows, measured in the list's own row height so the
+/// rows the tests then read (K30AA) are on screen whatever the platform's
+/// row height is.
+Future<void> _dragRows(WidgetTester tester, int rows) =>
+    tester.drag(find.byType(CustomScrollView), Offset(0, -rows * QsoList.rowHeightOf(tester.element(find.byType(QsoList)))));
+
 void main() {
   testWidgets('newest first puts the newer day above the older, and the newest contact of each day at its top', (tester) async {
     await tester.pumpWidget(_host([_qso('OLD1', _day1), _qso('OLD2', _day1 + 60000), _qso('NEW1', _day2), _qso('NEW2', _day2 + 60000)]));
@@ -70,7 +76,7 @@ void main() {
     final qsos = _log(60);
     await tester.pumpWidget(_host(qsos));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await _dragRows(tester, 31);
     await tester.pumpAndSettle();
     final reading = find.text('K30AA');
     expect(reading, findsOneWidget);
@@ -89,7 +95,7 @@ void main() {
     final qsos = _log(60);
     await tester.pumpWidget(_host(qsos));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await _dragRows(tester, 31);
     await tester.pumpAndSettle();
     final before = _top(tester, 'K30AA');
 
@@ -105,7 +111,7 @@ void main() {
     final qsos = _log(60);
     await tester.pumpWidget(_host(qsos));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -900));
+    await _dragRows(tester, 31);
     await tester.pumpAndSettle();
     final before = _top(tester, 'K30AA');
 
