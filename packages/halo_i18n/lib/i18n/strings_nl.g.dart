@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$nl extends Translations$settings$r
 	@override String get details => 'Details';
 	@override String get empty => '(leeg)';
 	@override String get sets => 'Berichtenset';
-	@override String get newSet => 'Nieuwe set';
-	@override String get renameSet => 'Set hernoemen';
-	@override String get deleteSet => 'Set verwijderen';
-	@override String get newSetName => 'Naam';
 	@override String get setDefault => 'Standaard';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM-berichten';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$nl extends Translations$setting
 	@override String get sets => 'Berichtenset';
 	@override String get soundFilesSet => 'Geluidsbestanden op deze computer';
 	@override String get openFileButton => 'Bestand openen';
-	@override String get newSet => 'Nieuwe set';
-	@override String get renameSet => 'Set hernoemen';
-	@override String get deleteSet => 'Set verwijderen';
-	@override String get newSetName => 'Naam';
 	@override String deleteSetConfirm({required Object name}) => '${name} en de bijbehorende opnames verwijderen? Dit kan niet ongedaan worden gemaakt.';
 	@override String get output => 'Audio naar';
 	@override String get input => 'Opnemen van';
@@ -5868,10 +5860,6 @@ extension on TranslationsNl {
 			'settings.radio.cwMessages.details' => 'Details',
 			'settings.radio.cwMessages.empty' => '(leeg)',
 			'settings.radio.cwMessages.sets' => 'Berichtenset',
-			'settings.radio.cwMessages.newSet' => 'Nieuwe set',
-			'settings.radio.cwMessages.renameSet' => 'Set hernoemen',
-			'settings.radio.cwMessages.deleteSet' => 'Set verwijderen',
-			'settings.radio.cwMessages.newSetName' => 'Naam',
 			'settings.radio.cwMessages.setDefault' => 'Standaard',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM-berichten',
@@ -5945,10 +5933,6 @@ extension on TranslationsNl {
 			'settings.radio.voiceMessages.sets' => 'Berichtenset',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Geluidsbestanden op deze computer',
 			'settings.radio.voiceMessages.openFileButton' => 'Bestand openen',
-			'settings.radio.voiceMessages.newSet' => 'Nieuwe set',
-			'settings.radio.voiceMessages.renameSet' => 'Set hernoemen',
-			'settings.radio.voiceMessages.deleteSet' => 'Set verwijderen',
-			'settings.radio.voiceMessages.newSetName' => 'Naam',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name} en de bijbehorende opnames verwijderen? Dit kan niet ongedaan worden gemaakt.',
 			'settings.radio.voiceMessages.output' => 'Audio naar',
 			'settings.radio.voiceMessages.input' => 'Opnemen van',
@@ -6052,8 +6036,6 @@ extension on TranslationsNl {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Deel app-gebruiksgegevens',
 			'settings.privacy.shareAppData.descriptionOn' => 'Help ons de app te verbeteren door gebruiks-, configuratie-, crash- en prestatiegegevens te delen',
 			'settings.privacy.shareAppData.descriptionOff' => 'Appgebruiksgegevens privé houden.\nHet Ham2K-team kan crashes of andere problemen niet detecteren.',
@@ -6062,6 +6044,8 @@ extension on TranslationsNl {
 			'settings.privacy.shareOpData.descriptionOff' => 'Activatiegegevens privé houden',
 			'settings.privacy.privacyPolicy' => 'Privacybeleid',
 			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Roepnaam van de operator',
 			'settings.sync.title' => 'Cloudsynchronisatie',
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
@@ -6566,8 +6550,6 @@ extension on TranslationsNl {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer in ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Seinsleutel op ${device}',
 			'settings.station.trackStationInfo' => 'Stationsinfo per QSO bijhouden',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Opnemen in ADIF-exports',
 			'settings.station.whatToTrack' => 'Wat bijhouden?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -6576,6 +6558,8 @@ extension on TranslationsNl {
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-seinsleutel',
 			'settings.station.placeholderConnectDelay' => 'Verbindingsvertraging (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Hoe lang de gesimuleerde handshake duurt. Leeg of 0 verbindt meteen.',
 			'settings.station.placeholderDropAfter' => 'Verbreken na (seconden)',
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
@@ -7080,8 +7064,6 @@ extension on TranslationsNl {
 			'switchAccounts.siblingNoGrant' => 'Werkte het niet? Open het opnieuw, of ga terug en koppel op een andere manier.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kon ${app} niet openen.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'De link was verlopen en er staat een nieuwe klaar — open ${app} opnieuw.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Opnieuw proberen',
 			'switchAccounts.linkWithQr' => 'Koppelen met een QR-code',
 			'switchAccounts.linkWithQrDescription' => 'Scan hem vanaf een apparaat dat het account al gebruikt',
@@ -7090,6 +7072,8 @@ extension on TranslationsNl {
 			'switchAccounts.enterEmailPrompt' => 'Voer het e-mailadres in van het account dat dit apparaat moet gebruiken.',
 			'switchAccounts.emailAddress' => 'E-mailadres',
 			'switchAccounts.linkAccount' => 'Account koppelen',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Code naar klembord gekopieerd',
 			'switchAccounts.copyCode' => 'Code kopiëren',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open de Ham2K-app op een apparaat dat al gekoppeld is met ${email} en voer deze code in om het verzoek goed te keuren:',

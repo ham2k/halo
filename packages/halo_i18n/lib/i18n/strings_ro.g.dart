@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$ro extends Translations$settings$r
 	@override String get details => 'Detalii';
 	@override String get empty => '(gol)';
 	@override String get sets => 'Set de mesaje';
-	@override String get newSet => 'Set nou';
-	@override String get renameSet => 'Redenumește setul';
-	@override String get deleteSet => 'Șterge setul';
-	@override String get newSetName => 'Nume';
 	@override String get setDefault => 'Implicit';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Mesaje ESM';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$ro extends Translations$setting
 	@override String get sets => 'Set de mesaje';
 	@override String get soundFilesSet => 'Fișiere audio de pe acest calculator';
 	@override String get openFileButton => 'Deschide fișier';
-	@override String get newSet => 'Set nou';
-	@override String get renameSet => 'Redenumește setul';
-	@override String get deleteSet => 'Șterge setul';
-	@override String get newSetName => 'Nume';
 	@override String deleteSetConfirm({required Object name}) => 'Ștergeți ${name} și înregistrările lui? Acțiunea nu poate fi anulată.';
 	@override String get output => 'Trimite audio către';
 	@override String get input => 'Înregistrează de la';
@@ -5868,10 +5860,6 @@ extension on TranslationsRo {
 			'settings.radio.cwMessages.details' => 'Detalii',
 			'settings.radio.cwMessages.empty' => '(gol)',
 			'settings.radio.cwMessages.sets' => 'Set de mesaje',
-			'settings.radio.cwMessages.newSet' => 'Set nou',
-			'settings.radio.cwMessages.renameSet' => 'Redenumește setul',
-			'settings.radio.cwMessages.deleteSet' => 'Șterge setul',
-			'settings.radio.cwMessages.newSetName' => 'Nume',
 			'settings.radio.cwMessages.setDefault' => 'Implicit',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mesaje ESM',
@@ -5945,10 +5933,6 @@ extension on TranslationsRo {
 			'settings.radio.voiceMessages.sets' => 'Set de mesaje',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Fișiere audio de pe acest calculator',
 			'settings.radio.voiceMessages.openFileButton' => 'Deschide fișier',
-			'settings.radio.voiceMessages.newSet' => 'Set nou',
-			'settings.radio.voiceMessages.renameSet' => 'Redenumește setul',
-			'settings.radio.voiceMessages.deleteSet' => 'Șterge setul',
-			'settings.radio.voiceMessages.newSetName' => 'Nume',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Ștergeți ${name} și înregistrările lui? Acțiunea nu poate fi anulată.',
 			'settings.radio.voiceMessages.output' => 'Trimite audio către',
 			'settings.radio.voiceMessages.input' => 'Înregistrează de la',
@@ -6052,8 +6036,6 @@ extension on TranslationsRo {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Confidențialitate',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Partajează datele de utilizare a aplicației',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ne ajutați să îmbunătățim aplicația partajând date despre utilizare, configurare, blocări și performanță',
 			'settings.privacy.shareAppData.descriptionOff' => 'Datele de utilizare ale aplicației rămân private.\nEchipa Ham2K nu va putea detecta blocări sau alte probleme.',
@@ -6062,6 +6044,8 @@ extension on TranslationsRo {
 			'settings.privacy.shareOpData.descriptionOff' => 'Datele despre operațiuni rămân private',
 			'settings.privacy.privacyPolicy' => 'Politica de confidențialitate',
 			'settings.privacy.termsOfService' => 'Termeni și condiții',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Indicativul operatorului',
 			'settings.sync.title' => 'Sincronizare în cloud',
 			'settings.sync.moreSettings' => 'Mai multe setări de sincronizare',
@@ -6566,8 +6550,6 @@ extension on TranslationsRo {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Keyer CAT în ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulator pe ${device}',
 			'settings.station.trackStationInfo' => 'Înregistrează informațiile stației la fiecare QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Include în exporturile ADIF',
 			'settings.station.whatToTrack' => 'Ce se înregistrează?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -6576,6 +6558,8 @@ extension on TranslationsRo {
 			'settings.station.trackFieldAntenna' => 'Antenă',
 			'settings.station.trackFieldKey' => 'Manipulator CW',
 			'settings.station.placeholderConnectDelay' => 'Întârziere la conectare (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Cât durează handshake-ul simulat. Gol sau 0 se conectează instantaneu.',
 			'settings.station.placeholderDropAfter' => 'Deconectare după (secunde)',
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
@@ -7080,8 +7064,6 @@ extension on TranslationsRo {
 			'switchAccounts.siblingNoGrant' => 'Nu a funcționat? Deschideți-o din nou sau reveniți și conectați-vă în alt mod.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nu a putut fi deschisă.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Linkul a expirat și unul nou este pregătit — deschideți din nou ${app}.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Încercați din nou',
 			'switchAccounts.linkWithQr' => 'Conectare cu un cod QR',
 			'switchAccounts.linkWithQrDescription' => 'Scanați-l de pe un dispozitiv care folosește deja contul',
@@ -7090,6 +7072,8 @@ extension on TranslationsRo {
 			'switchAccounts.enterEmailPrompt' => 'Introduceți adresa de e-mail a contului pe care doriți să-l folosească acest dispozitiv.',
 			'switchAccounts.emailAddress' => 'Adresă de e-mail',
 			'switchAccounts.linkAccount' => 'Conectează contul',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Codul a fost copiat în clipboard',
 			'switchAccounts.copyCode' => 'Copiază codul',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Deschideți aplicația Ham2K pe un dispozitiv deja conectat cu ${email} și introduceți acest cod pentru a aproba cererea:',

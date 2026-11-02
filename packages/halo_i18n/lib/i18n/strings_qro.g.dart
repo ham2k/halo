@@ -4165,10 +4165,6 @@ class _Translations$settings$radio$cwMessages$qro extends Translations$settings$
 	@override String get details => 'DETAILS';
 	@override String get empty => '(EMPTY)';
 	@override String get sets => 'MESSAGE SET';
-	@override String get newSet => 'NEW SET';
-	@override String get renameSet => 'RENAME SET';
-	@override String get deleteSet => 'DELETE SET';
-	@override String get newSetName => 'NAME';
 	@override String get setDefault => 'DEFAULT';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM MESSAGES';
@@ -4265,10 +4261,6 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get sets => 'MESSAGE SET';
 	@override String get soundFilesSet => 'SOUND FILES ON THIS COMPUTER';
 	@override String get openFileButton => 'OPEN FILE';
-	@override String get newSet => 'NEW SET';
-	@override String get renameSet => 'RENAME SET';
-	@override String get deleteSet => 'DELETE SET';
-	@override String get newSetName => 'NAME';
 	@override String deleteSetConfirm({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.';
 	@override String get setsTitle => 'VOICE MESSAGE SETS';
 	@override String get manageSets => 'MANAGE VOICE SETS…';
@@ -6147,10 +6139,6 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.details' => 'DETAILS',
 			'settings.radio.cwMessages.empty' => '(EMPTY)',
 			'settings.radio.cwMessages.sets' => 'MESSAGE SET',
-			'settings.radio.cwMessages.newSet' => 'NEW SET',
-			'settings.radio.cwMessages.renameSet' => 'RENAME SET',
-			'settings.radio.cwMessages.deleteSet' => 'DELETE SET',
-			'settings.radio.cwMessages.newSetName' => 'NAME',
 			'settings.radio.cwMessages.setDefault' => 'DEFAULT',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM MESSAGES',
@@ -6229,10 +6217,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.sets' => 'MESSAGE SET',
 			'settings.radio.voiceMessages.soundFilesSet' => 'SOUND FILES ON THIS COMPUTER',
 			'settings.radio.voiceMessages.openFileButton' => 'OPEN FILE',
-			'settings.radio.voiceMessages.newSet' => 'NEW SET',
-			'settings.radio.voiceMessages.renameSet' => 'RENAME SET',
-			'settings.radio.voiceMessages.deleteSet' => 'DELETE SET',
-			'settings.radio.voiceMessages.newSetName' => 'NAME',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.',
 			'settings.radio.voiceMessages.setsTitle' => 'VOICE MESSAGE SETS',
 			'settings.radio.voiceMessages.manageSets' => 'MANAGE VOICE SETS…',
@@ -6326,8 +6310,6 @@ extension on TranslationsQro {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
 			'settings.radio.zeroBeatRange.title' => 'ZERO-BEAT: AVOIDANCE RANGE',
 			'settings.radio.zeroBeatRange.description' => 'HOW FAR OFF THE SPOTTED FREQUENCY TO LAND, EITHER SIDE. THE OFFSET IS NEVER NEAR ZERO — THAT WOULD BE A ZERO BEAT AGAIN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.title' => 'HELP & RESOURCES',
 			'settings.help.description' => 'COMMUNITY AND SUPPORT',
 			'settings.help.forums' => 'HAM2K FORUMS',
@@ -6336,6 +6318,8 @@ extension on TranslationsQro {
 			'settings.help.chatDescription' => 'THE DISCORD SERVER FOR OUR ONLINE COMMUNITY',
 			'settings.help.youtube' => 'HAM2K YOUTUBE',
 			'settings.help.youtubeDescription' => 'VIDEOS AND LIVE STREAMS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.instagram' => 'HAM2K INSTAGRAM',
 			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
 			'settings.help.bluesky' => 'HAM2K BLUESKY',
@@ -6840,8 +6824,6 @@ extension on TranslationsQro {
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
 			'settings.station.phoneKeyingComputerWords' => 'AUDIO AND WORDS IN THIS COMPUTER',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingOff' => 'PHONE KEYING IS OFF',
 			'settings.station.computerVoiceSettings' => 'COMPUTER AUDIO',
 			'settings.station.cwKeyingOptions' => 'CW KEYING OPTIONS',
@@ -6850,6 +6832,8 @@ extension on TranslationsQro {
 			'settings.station.icomCivTroubleshootingTitle' => 'IF TWO SERIAL PORTS SHOW UP FOR THE SAME RADIO',
 			'settings.station.icomCivTroubleshooting' => 'SEVERAL ICOM RADIOS, THE IC-705 AMONG THEM, PRESENT **TWO** USB SERIAL PORTS AT ONCE (ICOM CALLS THEM PORT A AND PORT B), BOTH SET TO CI-V BY DEFAULT. NEITHER THIS APP NOR YOUR OS CAN TELL THEM APART BEYOND THAT: THE SAME USB VENDOR/PRODUCT ID JUST SHOWS UP TWICE, SOMETIMES MARKED WITH A `#2` SUFFIX HERE. **PORT A IS USUALLY THE RIGHT ONE** — NORMALLY THE FIRST ONE YOUR OS OR BROWSER LISTS, AND WHERE THIS APP CAN TELL THE TWO PORTS APART IT MARKS THAT ONE AS SUGGESTED. IF COMMANDS GO OUT AND THE RADIO NEVER RESPONDS, TRY THE OTHER PORT NEXT.',
 			'settings.station.civAddressTroubleshootingTitle' => 'IF THE RADIO NEVER RESPONDS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n- **SPEED MUST MATCH** THE RADIO\'S CI-V BAUD RATE (ON USB, CI-V USB BAUD RATE). SET THE RADIO TO THE SAME NUMBER SHOWN HERE, **NOT AUTO**. ON AUTO SOME RADIOS, THE IC-7300 AMONG THEM, CONNECT AND THEN STOP RESPONDING AFTER A MINUTE OR SO.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n${speed}\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.icomUsbSpeedFollows' => '- **THERE IS NO SPEED TO SET.** OVER USB THIS RADIO TALKS AT WHATEVER SPEED THE COMPUTER USES, AND THIS ENTRY ALWAYS USES 115200, THE SPEED THE SCOPE NEEDS.',
@@ -7354,8 +7338,6 @@ extension on TranslationsQro {
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
 			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
 			'keyboardShortcuts.fixed.space' => 'NEXT FIELD',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.tab' => 'NEXT OR PREVIOUS FIELD',
 			'keyboardShortcuts.fixed.arrows' => 'MOVE BETWEEN FIELDS, CONTROLS AND THE LOG',
 			'keyboardShortcuts.fixed.walk' => 'PAGE THROUGH THE LOG, OR GO TO ITS ENDS',
@@ -7364,6 +7346,8 @@ extension on TranslationsQro {
 			'keyboardShortcuts.editor.listening' => 'PRESS THE KEYS FOR THE SHORTCUT…',
 			'keyboardShortcuts.editor.listeningHint' => 'ESC STOPS LISTENING',
 			'keyboardShortcuts.editor.addMidi' => 'ADD MIDI CONTROL',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.editor.listeningMidi' => 'PRESS A BUTTON ON YOUR MIDI CONTROLLER…',
 			'keyboardShortcuts.editor.listeningMidiHint' => 'PRESS ADD MIDI CONTROL AGAIN TO STOP',
 			'keyboardShortcuts.editor.midiNoController' => 'NO MIDI CONTROLLER IS CONNECTED. ADD ONE IN STATION CONFIGURATION.',

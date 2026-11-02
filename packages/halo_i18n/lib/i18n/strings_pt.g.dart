@@ -4045,10 +4045,6 @@ class Translations$settings$radio$cwMessages$pt extends Translations$settings$ra
 	@override String get details => 'Detalhes';
 	@override String get empty => '(vazia)';
 	@override String get sets => 'Conjunto de Mensagens';
-	@override String get newSet => 'Novo Conjunto';
-	@override String get renameSet => 'Mudar o Nome do Conjunto';
-	@override String get deleteSet => 'Eliminar Conjunto';
-	@override String get newSetName => 'Nome';
 	@override String get setDefault => 'Predefinido';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Mensagens ESM';
@@ -4140,10 +4136,6 @@ class Translations$settings$radio$voiceMessages$pt extends Translations$settings
 	@override String get sets => 'Conjunto de Mensagens';
 	@override String get soundFilesSet => 'Ficheiros de som neste computador';
 	@override String get openFileButton => 'Abrir Ficheiro';
-	@override String get newSet => 'Novo Conjunto';
-	@override String get renameSet => 'Mudar o Nome do Conjunto';
-	@override String get deleteSet => 'Eliminar Conjunto';
-	@override String get newSetName => 'Nome';
 	@override String deleteSetConfirm({required Object name}) => 'Eliminar ${name} e as suas gravações? Não pode ser desfeito.';
 	@override String get output => 'Enviar áudio para';
 	@override String get input => 'Gravar de';
@@ -5868,10 +5860,6 @@ extension on TranslationsPt {
 			'settings.radio.cwMessages.details' => 'Detalhes',
 			'settings.radio.cwMessages.empty' => '(vazia)',
 			'settings.radio.cwMessages.sets' => 'Conjunto de Mensagens',
-			'settings.radio.cwMessages.newSet' => 'Novo Conjunto',
-			'settings.radio.cwMessages.renameSet' => 'Mudar o Nome do Conjunto',
-			'settings.radio.cwMessages.deleteSet' => 'Eliminar Conjunto',
-			'settings.radio.cwMessages.newSetName' => 'Nome',
 			'settings.radio.cwMessages.setDefault' => 'Predefinido',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mensagens ESM',
@@ -5945,10 +5933,6 @@ extension on TranslationsPt {
 			'settings.radio.voiceMessages.sets' => 'Conjunto de Mensagens',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Ficheiros de som neste computador',
 			'settings.radio.voiceMessages.openFileButton' => 'Abrir Ficheiro',
-			'settings.radio.voiceMessages.newSet' => 'Novo Conjunto',
-			'settings.radio.voiceMessages.renameSet' => 'Mudar o Nome do Conjunto',
-			'settings.radio.voiceMessages.deleteSet' => 'Eliminar Conjunto',
-			'settings.radio.voiceMessages.newSetName' => 'Nome',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Eliminar ${name} e as suas gravações? Não pode ser desfeito.',
 			'settings.radio.voiceMessages.output' => 'Enviar áudio para',
 			'settings.radio.voiceMessages.input' => 'Gravar de',
@@ -6052,8 +6036,6 @@ extension on TranslationsPt {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidade',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Partilhar dados de uso da app',
 			'settings.privacy.shareAppData.descriptionOn' => 'A ajudar-nos a melhorar a app partilhando dados de uso, configuração, falhas e desempenho',
 			'settings.privacy.shareAppData.descriptionOff' => 'A manter privados os dados de uso da app.\nA equipa Ham2K não poderá detetar falhas ou outros problemas.',
@@ -6062,6 +6044,8 @@ extension on TranslationsPt {
 			'settings.privacy.shareOpData.descriptionOff' => 'A manter os dados de operação privados',
 			'settings.privacy.privacyPolicy' => 'Política de Privacidade',
 			'settings.privacy.termsOfService' => 'Termos de Serviço',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Indicativo do Operador',
 			'settings.sync.title' => 'Sincronização na Nuvem',
 			'settings.sync.moreSettings' => 'Mais configurações de sincronização',
@@ -6566,8 +6550,6 @@ extension on TranslationsPt {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT em ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Chave em ${device}',
 			'settings.station.trackStationInfo' => 'Guardar Info da Estação em cada QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Incluir nas exportações ADIF',
 			'settings.station.whatToTrack' => 'O que guardar?',
 			'settings.station.trackFieldRig' => 'Transcetor',
@@ -6576,6 +6558,8 @@ extension on TranslationsPt {
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Chave CW',
 			'settings.station.placeholderConnectDelay' => 'Atraso de ligação (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Quanto tempo demora o handshake simulado. Vazio ou 0 liga instantaneamente.',
 			'settings.station.placeholderDropAfter' => 'Desligar após (segundos)',
 			'settings.station.placeholderDropAfterDescription' => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca desliga.',
@@ -7080,8 +7064,6 @@ extension on TranslationsPt {
 			'switchAccounts.siblingNoGrant' => 'Não funcionou? Abra-a novamente, ou volte atrás e vincule de outra forma.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Não foi possível abrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'A ligação expirou e está pronta uma nova — abra ${app} novamente.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Tentar novamente',
 			'switchAccounts.linkWithQr' => 'Vincular com um código QR',
 			'switchAccounts.linkWithQrDescription' => 'Leia-o a partir de um dispositivo que já usa a conta',
@@ -7090,6 +7072,8 @@ extension on TranslationsPt {
 			'switchAccounts.enterEmailPrompt' => 'Introduza o endereço de email da conta que quer que este dispositivo use.',
 			'switchAccounts.emailAddress' => 'Endereço de email',
 			'switchAccounts.linkAccount' => 'Vincular conta',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Código copiado para a área de transferência',
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abra a app Ham2K num dispositivo já vinculado a ${email} e introduza este código para aprovar o pedido:',

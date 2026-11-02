@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$zh extends Translations$settings$r
 	@override String get details => '详情';
 	@override String get empty => '（空）';
 	@override String get sets => '消息组';
-	@override String get newSet => '新建消息组';
-	@override String get renameSet => '重命名消息组';
-	@override String get deleteSet => '删除消息组';
-	@override String get newSetName => '名称';
 	@override String get setDefault => '默认';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM 消息';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$zh extends Translations$setting
 	@override String get sets => '消息组';
 	@override String get soundFilesSet => '本计算机上的声音文件';
 	@override String get openFileButton => '打开文件';
-	@override String get newSet => '新建消息组';
-	@override String get renameSet => '重命名消息组';
-	@override String get deleteSet => '删除消息组';
-	@override String get newSetName => '名称';
 	@override String deleteSetConfirm({required Object name}) => '删除 ${name} 及其录音？此操作无法撤销。';
 	@override String get output => '音频输出到';
 	@override String get input => '录音来源';
@@ -5868,10 +5860,6 @@ extension on TranslationsZh {
 			'settings.radio.cwMessages.details' => '详情',
 			'settings.radio.cwMessages.empty' => '（空）',
 			'settings.radio.cwMessages.sets' => '消息组',
-			'settings.radio.cwMessages.newSet' => '新建消息组',
-			'settings.radio.cwMessages.renameSet' => '重命名消息组',
-			'settings.radio.cwMessages.deleteSet' => '删除消息组',
-			'settings.radio.cwMessages.newSetName' => '名称',
 			'settings.radio.cwMessages.setDefault' => '默认',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM 消息',
@@ -5945,10 +5933,6 @@ extension on TranslationsZh {
 			'settings.radio.voiceMessages.sets' => '消息组',
 			'settings.radio.voiceMessages.soundFilesSet' => '本计算机上的声音文件',
 			'settings.radio.voiceMessages.openFileButton' => '打开文件',
-			'settings.radio.voiceMessages.newSet' => '新建消息组',
-			'settings.radio.voiceMessages.renameSet' => '重命名消息组',
-			'settings.radio.voiceMessages.deleteSet' => '删除消息组',
-			'settings.radio.voiceMessages.newSetName' => '名称',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '删除 ${name} 及其录音？此操作无法撤销。',
 			'settings.radio.voiceMessages.output' => '音频输出到',
 			'settings.radio.voiceMessages.input' => '录音来源',
@@ -6052,8 +6036,6 @@ extension on TranslationsZh {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '隐私',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => '分享应用使用数据',
 			'settings.privacy.shareAppData.descriptionOn' => '分享使用情况、配置、崩溃和性能数据，帮助我们改进应用',
 			'settings.privacy.shareAppData.descriptionOff' => '保持应用使用数据私密。\nHam2K 团队将无法检测崩溃或其他问题。',
@@ -6062,6 +6044,8 @@ extension on TranslationsZh {
 			'settings.privacy.shareOpData.descriptionOff' => '保持操作数据私密',
 			'settings.privacy.privacyPolicy' => '隐私政策',
 			'settings.privacy.termsOfService' => '服务条款',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => '操作员呼号',
 			'settings.sync.title' => '云同步',
 			'settings.sync.moreSettings' => '更多同步设置',
@@ -6566,8 +6550,6 @@ extension on TranslationsZh {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} 中的 CAT 键控器',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} 上的电键',
 			'settings.station.trackStationInfo' => '为每个 QSO 记录电台信息',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => '包含在 ADIF 导出中',
 			'settings.station.whatToTrack' => '记录哪些内容？',
 			'settings.station.trackFieldRig' => '收发信机',
@@ -6576,6 +6558,8 @@ extension on TranslationsZh {
 			'settings.station.trackFieldAntenna' => '天线',
 			'settings.station.trackFieldKey' => 'CW 电键',
 			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => '模拟握手所需的时间。留空或 0 表示立即连接。',
 			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
@@ -7080,8 +7064,6 @@ extension on TranslationsZh {
 			'switchAccounts.siblingNoGrant' => '没有成功？请再次打开它，或返回并用其他方式链接。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '无法打开 ${app}。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '链接已过期，新的链接已准备好——请再次打开 ${app}。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '重试',
 			'switchAccounts.linkWithQr' => '用二维码链接',
 			'switchAccounts.linkWithQrDescription' => '从已在使用该账户的设备上扫描',
@@ -7090,6 +7072,8 @@ extension on TranslationsZh {
 			'switchAccounts.enterEmailPrompt' => '输入您希望此设备使用的账户的电子邮件地址。',
 			'switchAccounts.emailAddress' => '电子邮件地址',
 			'switchAccounts.linkAccount' => '链接账户',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => '已将代码复制到剪贴板',
 			'switchAccounts.copyCode' => '复制代码',
 			'switchAccounts.codePrompt' => ({required Object email}) => '在已与 ${email} 链接的设备上打开 Ham2K 应用，并输入此代码以批准请求：',

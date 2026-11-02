@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$fr extends Translations$settings$r
 	@override String get details => 'Détails';
 	@override String get empty => '(vide)';
 	@override String get sets => 'Jeu de messages';
-	@override String get newSet => 'Nouveau jeu';
-	@override String get renameSet => 'Renommer le jeu';
-	@override String get deleteSet => 'Supprimer le jeu';
-	@override String get newSetName => 'Nom';
 	@override String get setDefault => 'Par défaut';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Messages ESM';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$fr extends Translations$setting
 	@override String get sets => 'Jeu de messages';
 	@override String get soundFilesSet => 'Fichiers audio sur cet ordinateur';
 	@override String get openFileButton => 'Ouvrir un fichier';
-	@override String get newSet => 'Nouveau jeu';
-	@override String get renameSet => 'Renommer le jeu';
-	@override String get deleteSet => 'Supprimer le jeu';
-	@override String get newSetName => 'Nom';
 	@override String deleteSetConfirm({required Object name}) => 'Supprimer ${name} et ses enregistrements ? Cette action est irréversible.';
 	@override String get output => 'Envoyer l\'audio vers';
 	@override String get input => 'Enregistrer depuis';
@@ -5868,10 +5860,6 @@ extension on TranslationsFr {
 			'settings.radio.cwMessages.details' => 'Détails',
 			'settings.radio.cwMessages.empty' => '(vide)',
 			'settings.radio.cwMessages.sets' => 'Jeu de messages',
-			'settings.radio.cwMessages.newSet' => 'Nouveau jeu',
-			'settings.radio.cwMessages.renameSet' => 'Renommer le jeu',
-			'settings.radio.cwMessages.deleteSet' => 'Supprimer le jeu',
-			'settings.radio.cwMessages.newSetName' => 'Nom',
 			'settings.radio.cwMessages.setDefault' => 'Par défaut',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Messages ESM',
@@ -5945,10 +5933,6 @@ extension on TranslationsFr {
 			'settings.radio.voiceMessages.sets' => 'Jeu de messages',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Fichiers audio sur cet ordinateur',
 			'settings.radio.voiceMessages.openFileButton' => 'Ouvrir un fichier',
-			'settings.radio.voiceMessages.newSet' => 'Nouveau jeu',
-			'settings.radio.voiceMessages.renameSet' => 'Renommer le jeu',
-			'settings.radio.voiceMessages.deleteSet' => 'Supprimer le jeu',
-			'settings.radio.voiceMessages.newSetName' => 'Nom',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Supprimer ${name} et ses enregistrements ? Cette action est irréversible.',
 			'settings.radio.voiceMessages.output' => 'Envoyer l\'audio vers',
 			'settings.radio.voiceMessages.input' => 'Enregistrer depuis',
@@ -6052,8 +6036,6 @@ extension on TranslationsFr {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Confidentialité',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Partager les données d\'utilisation de l\'application',
 			'settings.privacy.shareAppData.descriptionOn' => 'Vous nous aidez à améliorer l\'application en partageant des données d\'utilisation, de configuration, de plantage et de performance',
 			'settings.privacy.shareAppData.descriptionOff' => 'Données d\'utilisation de l\'application gardées privées.\nL\'équipe Ham2K ne pourra pas détecter les plantages ni d\'autres problèmes.',
@@ -6062,6 +6044,8 @@ extension on TranslationsFr {
 			'settings.privacy.shareOpData.descriptionOff' => 'Données d\'opération gardées privées',
 			'settings.privacy.privacyPolicy' => 'Politique de confidentialité',
 			'settings.privacy.termsOfService' => 'Conditions d\'utilisation',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Indicatif de l\'opérateur',
 			'settings.sync.title' => 'Synchronisation cloud',
 			'settings.sync.moreSettings' => 'Plus de paramètres de synchronisation',
@@ -6566,8 +6550,6 @@ extension on TranslationsFr {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulateur CAT dans ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulateur sur ${device}',
 			'settings.station.trackStationInfo' => 'Enregistrer les infos de station pour chaque QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Inclure dans les exports ADIF',
 			'settings.station.whatToTrack' => 'Quoi enregistrer ?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -6576,6 +6558,8 @@ extension on TranslationsFr {
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'Manipulateur CW',
 			'settings.station.placeholderConnectDelay' => 'Délai de connexion (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Durée du handshake simulé. Vide ou 0 connecte instantanément.',
 			'settings.station.placeholderDropAfter' => 'Couper après (secondes)',
 			'settings.station.placeholderDropAfterDescription' => 'Ferme la connexion d\'elle-même, pour tester la reconnexion. Vide ou 0 ne coupe jamais.',
@@ -7080,8 +7064,6 @@ extension on TranslationsFr {
 			'switchAccounts.siblingNoGrant' => 'Ça n\'a pas marché ? Rouvrez-la, ou revenez en arrière et liez autrement.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Impossible d\'ouvrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Le lien a expiré et un nouveau est prêt — rouvrez ${app}.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Réessayer',
 			'switchAccounts.linkWithQr' => 'Lier avec un code QR',
 			'switchAccounts.linkWithQrDescription' => 'Scannez-le depuis un appareil qui utilise déjà le compte',
@@ -7090,6 +7072,8 @@ extension on TranslationsFr {
 			'switchAccounts.enterEmailPrompt' => 'Saisissez l\'adresse e-mail du compte que cet appareil doit utiliser.',
 			'switchAccounts.emailAddress' => 'Adresse e-mail',
 			'switchAccounts.linkAccount' => 'Lier le compte',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Code copié dans le presse-papiers',
 			'switchAccounts.copyCode' => 'Copier le code',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Ouvrez l\'application Ham2K sur un appareil déjà lié à ${email} et saisissez ce code pour approuver la demande :',

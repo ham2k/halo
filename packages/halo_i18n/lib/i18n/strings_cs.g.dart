@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$cs extends Translations$settings$r
 	@override String get details => 'Podrobnosti';
 	@override String get empty => '(prázdné)';
 	@override String get sets => 'Sada zpráv';
-	@override String get newSet => 'Nová sada';
-	@override String get renameSet => 'Přejmenovat sadu';
-	@override String get deleteSet => 'Smazat sadu';
-	@override String get newSetName => 'Název';
 	@override String get setDefault => 'Výchozí';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Zprávy ESM';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$cs extends Translations$setting
 	@override String get sets => 'Sada zpráv';
 	@override String get soundFilesSet => 'Zvukové soubory na tomto počítači';
 	@override String get openFileButton => 'Otevřít soubor';
-	@override String get newSet => 'Nová sada';
-	@override String get renameSet => 'Přejmenovat sadu';
-	@override String get deleteSet => 'Smazat sadu';
-	@override String get newSetName => 'Název';
 	@override String deleteSetConfirm({required Object name}) => 'Smazat ${name} a její nahrávky? Nelze to vrátit zpět.';
 	@override String get output => 'Odesílat zvuk do';
 	@override String get input => 'Nahrávat z';
@@ -5868,10 +5860,6 @@ extension on TranslationsCs {
 			'settings.radio.cwMessages.details' => 'Podrobnosti',
 			'settings.radio.cwMessages.empty' => '(prázdné)',
 			'settings.radio.cwMessages.sets' => 'Sada zpráv',
-			'settings.radio.cwMessages.newSet' => 'Nová sada',
-			'settings.radio.cwMessages.renameSet' => 'Přejmenovat sadu',
-			'settings.radio.cwMessages.deleteSet' => 'Smazat sadu',
-			'settings.radio.cwMessages.newSetName' => 'Název',
 			'settings.radio.cwMessages.setDefault' => 'Výchozí',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Zprávy ESM',
@@ -5945,10 +5933,6 @@ extension on TranslationsCs {
 			'settings.radio.voiceMessages.sets' => 'Sada zpráv',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Zvukové soubory na tomto počítači',
 			'settings.radio.voiceMessages.openFileButton' => 'Otevřít soubor',
-			'settings.radio.voiceMessages.newSet' => 'Nová sada',
-			'settings.radio.voiceMessages.renameSet' => 'Přejmenovat sadu',
-			'settings.radio.voiceMessages.deleteSet' => 'Smazat sadu',
-			'settings.radio.voiceMessages.newSetName' => 'Název',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Smazat ${name} a její nahrávky? Nelze to vrátit zpět.',
 			'settings.radio.voiceMessages.output' => 'Odesílat zvuk do',
 			'settings.radio.voiceMessages.input' => 'Nahrávat z',
@@ -6052,8 +6036,6 @@ extension on TranslationsCs {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Soukromí',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Sdílet údaje o používání aplikace',
 			'settings.privacy.shareAppData.descriptionOn' => 'Pomáháte nám vylepšovat aplikaci sdílením údajů o používání, konfiguraci, pádech a výkonu',
 			'settings.privacy.shareAppData.descriptionOff' => 'Údaje o používání aplikace zůstávají soukromé.\nTým Ham2K nebude moci detekovat pády ani jiné problémy.',
@@ -6062,6 +6044,8 @@ extension on TranslationsCs {
 			'settings.privacy.shareOpData.descriptionOff' => 'Údaje o aktivitách zůstávají soukromé',
 			'settings.privacy.privacyPolicy' => 'Zásady ochrany osobních údajů',
 			'settings.privacy.termsOfService' => 'Podmínky používání služby',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Volací značka operátora',
 			'settings.sync.title' => 'Synchronizace v cloudu',
 			'settings.sync.moreSettings' => 'Další nastavení synchronizace',
@@ -6566,8 +6550,6 @@ extension on TranslationsCs {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT klíčovač v ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Klíč na ${device}',
 			'settings.station.trackStationInfo' => 'Zaznamenávat informace o stanici u každého QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Zahrnout do exportů ADIF',
 			'settings.station.whatToTrack' => 'Co zaznamenávat?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -6576,6 +6558,8 @@ extension on TranslationsCs {
 			'settings.station.trackFieldAntenna' => 'Anténa',
 			'settings.station.trackFieldKey' => 'CW klíč',
 			'settings.station.placeholderConnectDelay' => 'Zpoždění připojení (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Jak dlouho trvá simulovaný handshake. Prázdné nebo 0 připojí okamžitě.',
 			'settings.station.placeholderDropAfter' => 'Odpojit po (sekundách)',
 			'settings.station.placeholderDropAfterDescription' => 'Samo ukončí spojení, aby se otestovalo opětovné připojení. Prázdné nebo 0 nikdy neodpojí.',
@@ -7080,8 +7064,6 @@ extension on TranslationsCs {
 			'switchAccounts.siblingNoGrant' => 'Nefungovalo to? Otevřete ji znovu, nebo se vraťte a propojte jiným způsobem.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} nelze otevřít.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Odkaz vypršel a je připraven nový — znovu otevřete ${app}.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Zkusit znovu',
 			'switchAccounts.linkWithQr' => 'Propojit pomocí QR kódu',
 			'switchAccounts.linkWithQrDescription' => 'Naskenujte ho ze zařízení, které už účet používá',
@@ -7090,6 +7072,8 @@ extension on TranslationsCs {
 			'switchAccounts.enterEmailPrompt' => 'Zadejte e-mailovou adresu účtu, který má toto zařízení používat.',
 			'switchAccounts.emailAddress' => 'E-mailová adresa',
 			'switchAccounts.linkAccount' => 'Propojit účet',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Kód zkopírován do schránky',
 			'switchAccounts.copyCode' => 'Kopírovat kód',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Otevřete aplikaci Ham2K na zařízení, které už je propojeno s ${email}, a zadejte tento kód pro schválení žádosti:',

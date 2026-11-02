@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$ja extends Translations$settings$r
 	@override String get details => '詳細';
 	@override String get empty => '（空）';
 	@override String get sets => 'メッセージセット';
-	@override String get newSet => '新しいセット';
-	@override String get renameSet => 'セット名を変更';
-	@override String get deleteSet => 'セットを削除';
-	@override String get newSetName => '名前';
 	@override String get setDefault => 'デフォルト';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESMメッセージ';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$ja extends Translations$setting
 	@override String get sets => 'メッセージセット';
 	@override String get soundFilesSet => 'このコンピューター上のサウンドファイル';
 	@override String get openFileButton => 'ファイルを開く';
-	@override String get newSet => '新しいセット';
-	@override String get renameSet => 'セット名を変更';
-	@override String get deleteSet => 'セットを削除';
-	@override String get newSetName => '名前';
 	@override String deleteSetConfirm({required Object name}) => '${name}とその録音を削除しますか？元に戻せません。';
 	@override String get output => '音声の出力先';
 	@override String get input => '録音元';
@@ -5868,10 +5860,6 @@ extension on TranslationsJa {
 			'settings.radio.cwMessages.details' => '詳細',
 			'settings.radio.cwMessages.empty' => '（空）',
 			'settings.radio.cwMessages.sets' => 'メッセージセット',
-			'settings.radio.cwMessages.newSet' => '新しいセット',
-			'settings.radio.cwMessages.renameSet' => 'セット名を変更',
-			'settings.radio.cwMessages.deleteSet' => 'セットを削除',
-			'settings.radio.cwMessages.newSetName' => '名前',
 			'settings.radio.cwMessages.setDefault' => 'デフォルト',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESMメッセージ',
@@ -5945,10 +5933,6 @@ extension on TranslationsJa {
 			'settings.radio.voiceMessages.sets' => 'メッセージセット',
 			'settings.radio.voiceMessages.soundFilesSet' => 'このコンピューター上のサウンドファイル',
 			'settings.radio.voiceMessages.openFileButton' => 'ファイルを開く',
-			'settings.radio.voiceMessages.newSet' => '新しいセット',
-			'settings.radio.voiceMessages.renameSet' => 'セット名を変更',
-			'settings.radio.voiceMessages.deleteSet' => 'セットを削除',
-			'settings.radio.voiceMessages.newSetName' => '名前',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name}とその録音を削除しますか？元に戻せません。',
 			'settings.radio.voiceMessages.output' => '音声の出力先',
 			'settings.radio.voiceMessages.input' => '録音元',
@@ -6052,8 +6036,6 @@ extension on TranslationsJa {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'プライバシー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'アプリ使用データを共有',
 			'settings.privacy.shareAppData.descriptionOn' => '使用状況、設定、クラッシュ、パフォーマンスのデータを共有して、アプリの改善に協力しています',
 			'settings.privacy.shareAppData.descriptionOff' => 'アプリの使用データを非公開にしています。\nHam2Kチームはクラッシュやその他の問題を検出できません。',
@@ -6062,6 +6044,8 @@ extension on TranslationsJa {
 			'settings.privacy.shareOpData.descriptionOff' => 'オペレーションデータをプライベートに保っています',
 			'settings.privacy.privacyPolicy' => 'プライバシーポリシー',
 			'settings.privacy.termsOfService' => '利用規約',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'オペレーターのコールサイン',
 			'settings.sync.title' => 'クラウド同期',
 			'settings.sync.moreSettings' => 'その他の同期設定',
@@ -6566,8 +6550,6 @@ extension on TranslationsJa {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}のCATキーヤー',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}のキー',
 			'settings.station.trackStationInfo' => 'QSOごとにステーション情報を記録',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIFエクスポートに含める',
 			'settings.station.whatToTrack' => '記録する項目',
 			'settings.station.trackFieldRig' => 'トランシーバー',
@@ -6576,6 +6558,8 @@ extension on TranslationsJa {
 			'settings.station.trackFieldAntenna' => 'アンテナ',
 			'settings.station.trackFieldKey' => 'CWキー',
 			'settings.station.placeholderConnectDelay' => '接続遅延（ms）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'シミュレートしたハンドシェイクにかかる時間。空欄または0で即座に接続します。',
 			'settings.station.placeholderDropAfter' => '切断までの時間（秒）',
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
@@ -7080,8 +7064,6 @@ extension on TranslationsJa {
 			'switchAccounts.siblingNoGrant' => 'うまくいきませんでしたか？もう一度開くか、戻って別の方法でリンクしてください。',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}を開けませんでした。',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'リンクの期限が切れたため、新しいリンクを用意しました。${app}をもう一度開いてください。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '再試行',
 			'switchAccounts.linkWithQr' => 'QRコードでリンク',
 			'switchAccounts.linkWithQrDescription' => 'そのアカウントを使用中のデバイスからスキャン',
@@ -7090,6 +7072,8 @@ extension on TranslationsJa {
 			'switchAccounts.enterEmailPrompt' => 'このデバイスで使用するアカウントのメールアドレスを入力してください。',
 			'switchAccounts.emailAddress' => 'メールアドレス',
 			'switchAccounts.linkAccount' => 'アカウントをリンク',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'コードをクリップボードにコピーしました',
 			'switchAccounts.copyCode' => 'コードをコピー',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email}ですでにリンクされているデバイスでHam2Kアプリを開き、このコードを入力してリクエストを承認してください：',

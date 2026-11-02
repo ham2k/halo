@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$tr extends Translations$settings$r
 	@override String get details => 'Ayrıntılar';
 	@override String get empty => '(boş)';
 	@override String get sets => 'Mesaj Seti';
-	@override String get newSet => 'Yeni Set';
-	@override String get renameSet => 'Seti Yeniden Adlandır';
-	@override String get deleteSet => 'Seti Sil';
-	@override String get newSetName => 'Ad';
 	@override String get setDefault => 'Varsayılan';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM Mesajları';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$tr extends Translations$setting
 	@override String get sets => 'Mesaj Seti';
 	@override String get soundFilesSet => 'Bu bilgisayardaki ses dosyaları';
 	@override String get openFileButton => 'Dosya Aç';
-	@override String get newSet => 'Yeni Set';
-	@override String get renameSet => 'Seti Yeniden Adlandır';
-	@override String get deleteSet => 'Seti Sil';
-	@override String get newSetName => 'Ad';
 	@override String deleteSetConfirm({required Object name}) => '${name} ve kayıtları silinsin mi? Bu geri alınamaz.';
 	@override String get output => 'Sesi şuraya gönder';
 	@override String get input => 'Şuradan kaydet';
@@ -5868,10 +5860,6 @@ extension on TranslationsTr {
 			'settings.radio.cwMessages.details' => 'Ayrıntılar',
 			'settings.radio.cwMessages.empty' => '(boş)',
 			'settings.radio.cwMessages.sets' => 'Mesaj Seti',
-			'settings.radio.cwMessages.newSet' => 'Yeni Set',
-			'settings.radio.cwMessages.renameSet' => 'Seti Yeniden Adlandır',
-			'settings.radio.cwMessages.deleteSet' => 'Seti Sil',
-			'settings.radio.cwMessages.newSetName' => 'Ad',
 			'settings.radio.cwMessages.setDefault' => 'Varsayılan',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Mesajları',
@@ -5945,10 +5933,6 @@ extension on TranslationsTr {
 			'settings.radio.voiceMessages.sets' => 'Mesaj Seti',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Bu bilgisayardaki ses dosyaları',
 			'settings.radio.voiceMessages.openFileButton' => 'Dosya Aç',
-			'settings.radio.voiceMessages.newSet' => 'Yeni Set',
-			'settings.radio.voiceMessages.renameSet' => 'Seti Yeniden Adlandır',
-			'settings.radio.voiceMessages.deleteSet' => 'Seti Sil',
-			'settings.radio.voiceMessages.newSetName' => 'Ad',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name} ve kayıtları silinsin mi? Bu geri alınamaz.',
 			'settings.radio.voiceMessages.output' => 'Sesi şuraya gönder',
 			'settings.radio.voiceMessages.input' => 'Şuradan kaydet',
@@ -6052,8 +6036,6 @@ extension on TranslationsTr {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Gizlilik',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Uygulama kullanım verilerini paylaş',
 			'settings.privacy.shareAppData.descriptionOn' => 'Kullanım, yapılandırma, çökme ve performans verilerini paylaşarak uygulamayı geliştirmemize yardımcı oluyorsunuz',
 			'settings.privacy.shareAppData.descriptionOff' => 'Uygulama kullanım verileri gizli tutuluyor.\nHam2K ekibi çökmeleri veya diğer sorunları tespit edemeyecek.',
@@ -6062,6 +6044,8 @@ extension on TranslationsTr {
 			'settings.privacy.shareOpData.descriptionOff' => 'Operasyon verileri gizli tutuluyor',
 			'settings.privacy.privacyPolicy' => 'Gizlilik Politikası',
 			'settings.privacy.termsOfService' => 'Hizmet Şartları',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Operatör Çağrı İşareti',
 			'settings.sync.title' => 'Bulut Senkronizasyonu',
 			'settings.sync.moreSettings' => 'Diğer senkronizasyon ayarları',
@@ -6566,8 +6550,6 @@ extension on TranslationsTr {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio} içindeki CAT Keyer',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device} üzerindeki anahtar',
 			'settings.station.trackStationInfo' => 'Her QSO için İstasyon Bilgisini Kaydet',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIF dışa aktarımlarına dahil et',
 			'settings.station.whatToTrack' => 'Neler kaydedilsin?',
 			'settings.station.trackFieldRig' => 'Telsiz',
@@ -6576,6 +6558,8 @@ extension on TranslationsTr {
 			'settings.station.trackFieldAntenna' => 'Anten',
 			'settings.station.trackFieldKey' => 'CW Anahtarı',
 			'settings.station.placeholderConnectDelay' => 'Bağlantı gecikmesi (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Simüle edilen el sıkışmanın ne kadar sürdüğü. Boş veya 0 anında bağlanır.',
 			'settings.station.placeholderDropAfter' => 'Şu süre sonra kes (saniye)',
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
@@ -7080,8 +7064,6 @@ extension on TranslationsTr {
 			'switchAccounts.siblingNoGrant' => 'Olmadı mı? Yeniden açın ya da geri dönüp başka bir yolla bağlayın.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app} açılamadı.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Bağlantının süresi doldu ve yenisi hazır — ${app} uygulamasını yeniden açın.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Tekrar dene',
 			'switchAccounts.linkWithQr' => 'QR koduyla bağla',
 			'switchAccounts.linkWithQrDescription' => 'Hesabı zaten kullanan bir cihazdan tarayın',
@@ -7090,6 +7072,8 @@ extension on TranslationsTr {
 			'switchAccounts.enterEmailPrompt' => 'Bu cihazın kullanmasını istediğiniz hesabın e-posta adresini girin.',
 			'switchAccounts.emailAddress' => 'E-posta adresi',
 			'switchAccounts.linkAccount' => 'Hesabı bağla',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Kod panoya kopyalandı',
 			'switchAccounts.copyCode' => 'Kodu kopyala',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email} ile zaten bağlı bir cihazda Ham2K uygulamasını açın ve isteği onaylamak için bu kodu girin:',

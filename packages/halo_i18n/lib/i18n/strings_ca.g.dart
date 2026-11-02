@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$ca extends Translations$settings$r
 	@override String get details => 'Detalls';
 	@override String get empty => '(buit)';
 	@override String get sets => 'Joc de missatges';
-	@override String get newSet => 'Joc nou';
-	@override String get renameSet => 'Canvia el nom del joc';
-	@override String get deleteSet => 'Esborra el joc';
-	@override String get newSetName => 'Nom';
 	@override String get setDefault => 'Per defecte';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'Missatges ESM';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$ca extends Translations$setting
 	@override String get sets => 'Joc de missatges';
 	@override String get soundFilesSet => 'Fitxers de so d\'aquest ordinador';
 	@override String get openFileButton => 'Obre un fitxer';
-	@override String get newSet => 'Joc nou';
-	@override String get renameSet => 'Canvia el nom del joc';
-	@override String get deleteSet => 'Esborra el joc';
-	@override String get newSetName => 'Nom';
 	@override String deleteSetConfirm({required Object name}) => 'Esborrar ${name} i les seves gravacions? No es pot desfer.';
 	@override String get output => 'Envia l\'àudio a';
 	@override String get input => 'Grava des de';
@@ -5868,10 +5860,6 @@ extension on TranslationsCa {
 			'settings.radio.cwMessages.details' => 'Detalls',
 			'settings.radio.cwMessages.empty' => '(buit)',
 			'settings.radio.cwMessages.sets' => 'Joc de missatges',
-			'settings.radio.cwMessages.newSet' => 'Joc nou',
-			'settings.radio.cwMessages.renameSet' => 'Canvia el nom del joc',
-			'settings.radio.cwMessages.deleteSet' => 'Esborra el joc',
-			'settings.radio.cwMessages.newSetName' => 'Nom',
 			'settings.radio.cwMessages.setDefault' => 'Per defecte',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Missatges ESM',
@@ -5945,10 +5933,6 @@ extension on TranslationsCa {
 			'settings.radio.voiceMessages.sets' => 'Joc de missatges',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Fitxers de so d\'aquest ordinador',
 			'settings.radio.voiceMessages.openFileButton' => 'Obre un fitxer',
-			'settings.radio.voiceMessages.newSet' => 'Joc nou',
-			'settings.radio.voiceMessages.renameSet' => 'Canvia el nom del joc',
-			'settings.radio.voiceMessages.deleteSet' => 'Esborra el joc',
-			'settings.radio.voiceMessages.newSetName' => 'Nom',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Esborrar ${name} i les seves gravacions? No es pot desfer.',
 			'settings.radio.voiceMessages.output' => 'Envia l\'àudio a',
 			'settings.radio.voiceMessages.input' => 'Grava des de',
@@ -6052,8 +6036,6 @@ extension on TranslationsCa {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacitat',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Comparteix dades d\'ús de l\'aplicació',
 			'settings.privacy.shareAppData.descriptionOn' => 'Ens ajudes a millorar l\'aplicació compartint dades d\'ús, configuració, fallades i rendiment',
 			'settings.privacy.shareAppData.descriptionOff' => 'Es mantenen privades les dades d\'ús de l\'aplicació.\nL\'equip de Ham2K no podrà detectar fallades ni altres incidències.',
@@ -6062,6 +6044,8 @@ extension on TranslationsCa {
 			'settings.privacy.shareOpData.descriptionOff' => 'Es mantenen privades les dades d\'operació',
 			'settings.privacy.privacyPolicy' => 'Política de privacitat',
 			'settings.privacy.termsOfService' => 'Condicions de servei',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Indicatiu de l\'operador',
 			'settings.sync.title' => 'Sincronització al núvol',
 			'settings.sync.moreSettings' => 'Més opcions de sincronització',
@@ -6566,8 +6550,6 @@ extension on TranslationsCa {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT a ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador a ${device}',
 			'settings.station.trackStationInfo' => 'Registra la informació de l\'estació per a cada QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Inclou-la a les exportacions ADIF',
 			'settings.station.whatToTrack' => 'Què vols registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
@@ -6576,6 +6558,8 @@ extension on TranslationsCa {
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador CW',
 			'settings.station.placeholderConnectDelay' => 'Retard de connexió (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Quant de temps triga la negociació simulada. En blanc o 0 connecta a l\'instant.',
 			'settings.station.placeholderDropAfter' => 'Desconnecta al cap de (segons)',
 			'settings.station.placeholderDropAfterDescription' => 'Tanca la connexió per si sola, per provar el camí de reconnexió. En blanc o 0 no es desconnecta mai.',
@@ -7080,8 +7064,6 @@ extension on TranslationsCa {
 			'switchAccounts.siblingNoGrant' => 'No ha funcionat? Torna-la a obrir, o torna enrere i vincula d\'una altra manera.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'No s\'ha pogut obrir ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'L\'enllaç ha caducat i n\'hi ha un de nou a punt — torna a obrir ${app}.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Torna-ho a provar',
 			'switchAccounts.linkWithQr' => 'Vincula amb un codi QR',
 			'switchAccounts.linkWithQrDescription' => 'Escaneja\'l des d\'un dispositiu que ja utilitzi el compte',
@@ -7090,6 +7072,8 @@ extension on TranslationsCa {
 			'switchAccounts.enterEmailPrompt' => 'Introdueix l\'adreça de correu electrònic del compte que vols que utilitzi aquest dispositiu.',
 			'switchAccounts.emailAddress' => 'Adreça de correu electrònic',
 			'switchAccounts.linkAccount' => 'Vincula el compte',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'S\'ha copiat el codi al porta-retalls',
 			'switchAccounts.copyCode' => 'Copia el codi',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Obre l\'aplicació de Ham2K en un dispositiu ja vinculat amb ${email} i introdueix aquest codi per aprovar la sol·licitud:',

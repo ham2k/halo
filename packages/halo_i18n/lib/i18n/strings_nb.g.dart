@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$nb extends Translations$settings$r
 	@override String get details => 'Detaljer';
 	@override String get empty => '(tom)';
 	@override String get sets => 'Meldingssett';
-	@override String get newSet => 'Nytt sett';
-	@override String get renameSet => 'Gi nytt navn til sett';
-	@override String get deleteSet => 'Slett sett';
-	@override String get newSetName => 'Navn';
 	@override String get setDefault => 'Standard';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM-meldinger';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$nb extends Translations$setting
 	@override String get sets => 'Meldingssett';
 	@override String get soundFilesSet => 'Lydfiler på denne datamaskinen';
 	@override String get openFileButton => 'Åpne fil';
-	@override String get newSet => 'Nytt sett';
-	@override String get renameSet => 'Gi nytt navn til sett';
-	@override String get deleteSet => 'Slett sett';
-	@override String get newSetName => 'Navn';
 	@override String deleteSetConfirm({required Object name}) => 'Slette ${name} og opptakene? Dette kan ikke angres.';
 	@override String get output => 'Send lyd til';
 	@override String get input => 'Ta opp fra';
@@ -5868,10 +5860,6 @@ extension on TranslationsNb {
 			'settings.radio.cwMessages.details' => 'Detaljer',
 			'settings.radio.cwMessages.empty' => '(tom)',
 			'settings.radio.cwMessages.sets' => 'Meldingssett',
-			'settings.radio.cwMessages.newSet' => 'Nytt sett',
-			'settings.radio.cwMessages.renameSet' => 'Gi nytt navn til sett',
-			'settings.radio.cwMessages.deleteSet' => 'Slett sett',
-			'settings.radio.cwMessages.newSetName' => 'Navn',
 			'settings.radio.cwMessages.setDefault' => 'Standard',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM-meldinger',
@@ -5945,10 +5933,6 @@ extension on TranslationsNb {
 			'settings.radio.voiceMessages.sets' => 'Meldingssett',
 			'settings.radio.voiceMessages.soundFilesSet' => 'Lydfiler på denne datamaskinen',
 			'settings.radio.voiceMessages.openFileButton' => 'Åpne fil',
-			'settings.radio.voiceMessages.newSet' => 'Nytt sett',
-			'settings.radio.voiceMessages.renameSet' => 'Gi nytt navn til sett',
-			'settings.radio.voiceMessages.deleteSet' => 'Slett sett',
-			'settings.radio.voiceMessages.newSetName' => 'Navn',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'Slette ${name} og opptakene? Dette kan ikke angres.',
 			'settings.radio.voiceMessages.output' => 'Send lyd til',
 			'settings.radio.voiceMessages.input' => 'Ta opp fra',
@@ -6052,8 +6036,6 @@ extension on TranslationsNb {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Personvern',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => 'Del data om bruken din',
 			'settings.privacy.shareAppData.descriptionOn' => 'Hjelper oss å forbedre appen ved å dele bruks-, oppsett-, krasj- og ytelsesdata',
 			'settings.privacy.shareAppData.descriptionOff' => 'Holder appbruksdata private.\nHam2K-teamet vil ikke kunne oppdage krasj eller andre problemer.',
@@ -6062,6 +6044,8 @@ extension on TranslationsNb {
 			'settings.privacy.shareOpData.descriptionOff' => 'Holder operasjonsdata private',
 			'settings.privacy.privacyPolicy' => 'Personvernpolicy',
 			'settings.privacy.termsOfService' => 'Tjenestevilkår',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => 'Operatørkallesignal',
 			'settings.sync.title' => 'Skysynkronisering',
 			'settings.sync.moreSettings' => 'Flere synkroniseringsinnstillinger',
@@ -6566,8 +6550,6 @@ extension on TranslationsNb {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT-keyer i ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Nøkkel på ${device}',
 			'settings.station.trackStationInfo' => 'Registrer stasjonsinfo for hver QSO',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'Ta med i ADIF-eksport',
 			'settings.station.whatToTrack' => 'Hva skal registreres?',
 			'settings.station.trackFieldRig' => 'Transceiver',
@@ -6576,6 +6558,8 @@ extension on TranslationsNb {
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-nøkkel',
 			'settings.station.placeholderConnectDelay' => 'Tilkoblingsforsinkelse (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => 'Hvor lang tid det simulerte handshaket tar. Tomt eller 0 kobler til umiddelbart.',
 			'settings.station.placeholderDropAfter' => 'Bryt etter (sekunder)',
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
@@ -7080,8 +7064,6 @@ extension on TranslationsNb {
 			'switchAccounts.siblingNoGrant' => 'Virket det ikke? Åpne den igjen, eller gå tilbake og koble til på en annen måte.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Kunne ikke åpne ${app}.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'Lenken utløp, og en ny er klar — åpne ${app} igjen.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => 'Prøv igjen',
 			'switchAccounts.linkWithQr' => 'Koble til med en QR-kode',
 			'switchAccounts.linkWithQrDescription' => 'Skann den fra en enhet som allerede bruker kontoen',
@@ -7090,6 +7072,8 @@ extension on TranslationsNb {
 			'switchAccounts.enterEmailPrompt' => 'Oppgi e-postadressen til kontoen du vil at denne enheten skal bruke.',
 			'switchAccounts.emailAddress' => 'E-postadresse',
 			'switchAccounts.linkAccount' => 'Koble til konto',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Koden er kopiert til utklippstavlen',
 			'switchAccounts.copyCode' => 'Kopier kode',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Åpne Ham2K-appen på en enhet som allerede er koblet til ${email}, og skriv inn denne koden for å godkjenne forespørselen:',

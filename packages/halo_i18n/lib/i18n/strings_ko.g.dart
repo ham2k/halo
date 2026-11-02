@@ -4045,10 +4045,6 @@ class _Translations$settings$radio$cwMessages$ko extends Translations$settings$r
 	@override String get details => '상세';
 	@override String get empty => '(비어 있음)';
 	@override String get sets => '메시지 세트';
-	@override String get newSet => '새 세트';
-	@override String get renameSet => '세트 이름 변경';
-	@override String get deleteSet => '세트 삭제';
-	@override String get newSetName => '이름';
 	@override String get setDefault => '기본';
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM 메시지';
@@ -4140,10 +4136,6 @@ class _Translations$settings$radio$voiceMessages$ko extends Translations$setting
 	@override String get sets => '메시지 세트';
 	@override String get soundFilesSet => '이 컴퓨터의 사운드 파일';
 	@override String get openFileButton => '파일 열기';
-	@override String get newSet => '새 세트';
-	@override String get renameSet => '세트 이름 변경';
-	@override String get deleteSet => '세트 삭제';
-	@override String get newSetName => '이름';
 	@override String deleteSetConfirm({required Object name}) => '${name}과(와) 그 녹음을 삭제할까요? 되돌릴 수 없습니다.';
 	@override String get output => '오디오 출력';
 	@override String get input => '녹음 입력';
@@ -5868,10 +5860,6 @@ extension on TranslationsKo {
 			'settings.radio.cwMessages.details' => '상세',
 			'settings.radio.cwMessages.empty' => '(비어 있음)',
 			'settings.radio.cwMessages.sets' => '메시지 세트',
-			'settings.radio.cwMessages.newSet' => '새 세트',
-			'settings.radio.cwMessages.renameSet' => '세트 이름 변경',
-			'settings.radio.cwMessages.deleteSet' => '세트 삭제',
-			'settings.radio.cwMessages.newSetName' => '이름',
 			'settings.radio.cwMessages.setDefault' => '기본',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM 메시지',
@@ -5945,10 +5933,6 @@ extension on TranslationsKo {
 			'settings.radio.voiceMessages.sets' => '메시지 세트',
 			'settings.radio.voiceMessages.soundFilesSet' => '이 컴퓨터의 사운드 파일',
 			'settings.radio.voiceMessages.openFileButton' => '파일 열기',
-			'settings.radio.voiceMessages.newSet' => '새 세트',
-			'settings.radio.voiceMessages.renameSet' => '세트 이름 변경',
-			'settings.radio.voiceMessages.deleteSet' => '세트 삭제',
-			'settings.radio.voiceMessages.newSetName' => '이름',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => '${name}과(와) 그 녹음을 삭제할까요? 되돌릴 수 없습니다.',
 			'settings.radio.voiceMessages.output' => '오디오 출력',
 			'settings.radio.voiceMessages.input' => '녹음 입력',
@@ -6052,8 +6036,6 @@ extension on TranslationsKo {
 			'settings.map.styleOpts.voyager' => 'Voyager',
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => '개인정보',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.shareAppData.title' => '앱 사용 데이터 공유',
 			'settings.privacy.shareAppData.descriptionOn' => '사용량, 구성, 충돌 및 성능 데이터를 공유하여 앱 개선에 도움',
 			'settings.privacy.shareAppData.descriptionOff' => '앱 사용 데이터를 비공개로 유지합니다.\nHam2K 팀은 앱 충돌 또는 기타 문제를 감지할 수 없습니다.',
@@ -6062,6 +6044,8 @@ extension on TranslationsKo {
 			'settings.privacy.shareOpData.descriptionOff' => '운용 데이터 비공개 유지',
 			'settings.privacy.privacyPolicy' => '개인정보처리방침',
 			'settings.privacy.termsOfService' => '서비스 약관',
+			_ => null,
+		} ?? switch (path) {
 			'settings.operatorCall' => '오퍼레이터 콜사인',
 			'settings.sync.title' => '클라우드 동기화',
 			'settings.sync.moreSettings' => '추가 동기화 설정',
@@ -6566,8 +6550,6 @@ extension on TranslationsKo {
 			'settings.station.keyViaRadio' => ({required Object radio}) => '${radio}의 CAT 키어',
 			'settings.station.keyOnDevice' => ({required Object device}) => '${device}의 키',
 			'settings.station.trackStationInfo' => 'QSO마다 무선국 정보 기록',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.includeStationInfoInAdif' => 'ADIF 내보내기에 포함',
 			'settings.station.whatToTrack' => '무엇을 기록할까요?',
 			'settings.station.trackFieldRig' => '트랜시버',
@@ -6576,6 +6558,8 @@ extension on TranslationsKo {
 			'settings.station.trackFieldAntenna' => '안테나',
 			'settings.station.trackFieldKey' => 'CW 키',
 			'settings.station.placeholderConnectDelay' => '연결 지연 (ms)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderConnectDelayDescription' => '시뮬레이션된 핸드셰이크에 걸리는 시간. 비워 두거나 0이면 즉시 연결됩니다.',
 			'settings.station.placeholderDropAfter' => '연결 끊기 (초)',
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
@@ -7080,8 +7064,6 @@ extension on TranslationsKo {
 			'switchAccounts.siblingNoGrant' => '작동하지 않았나요? 다시 열거나, 돌아가서 다른 방법으로 연결하세요.',
 			'switchAccounts.siblingOpenFailed' => ({required Object app}) => '${app}을(를) 열 수 없습니다.',
 			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => '링크가 만료되어 새 링크가 준비되었습니다. ${app}을(를) 다시 여세요.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.tryAgain' => '다시 시도',
 			'switchAccounts.linkWithQr' => 'QR 코드로 연결',
 			'switchAccounts.linkWithQrDescription' => '이미 계정을 사용 중인 기기로 스캔하세요',
@@ -7090,6 +7072,8 @@ extension on TranslationsKo {
 			'switchAccounts.enterEmailPrompt' => '이 기기에서 사용할 계정의 이메일 주소를 입력하세요.',
 			'switchAccounts.emailAddress' => '이메일 주소',
 			'switchAccounts.linkAccount' => '계정 연결',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => '코드를 클립보드에 복사했습니다',
 			'switchAccounts.copyCode' => '코드 복사',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email}과(와) 이미 연결된 기기에서 Ham2K 앱을 열고 이 코드를 입력하여 요청을 승인하세요:',

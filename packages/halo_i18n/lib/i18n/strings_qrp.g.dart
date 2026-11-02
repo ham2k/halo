@@ -4165,10 +4165,6 @@ class _Translations$settings$radio$cwMessages$qrp extends Translations$settings$
 	@override String get details => 'details';
 	@override String get empty => '(empty)';
 	@override String get sets => 'message set';
-	@override String get newSet => 'new set';
-	@override String get renameSet => 'rename set';
-	@override String get deleteSet => 'delete set';
-	@override String get newSetName => 'name';
 	@override String get setDefault => 'default';
 	@override String get setPota => 'pota';
 	@override String get setEsm => 'esm messages';
@@ -4265,10 +4261,6 @@ class _Translations$settings$radio$voiceMessages$qrp extends Translations$settin
 	@override String get sets => 'message set';
 	@override String get soundFilesSet => 'sound files on this computer';
 	@override String get openFileButton => 'open file';
-	@override String get newSet => 'new set';
-	@override String get renameSet => 'rename set';
-	@override String get deleteSet => 'delete set';
-	@override String get newSetName => 'name';
 	@override String deleteSetConfirm({required Object name}) => 'delete ${name} and its recordings? this cannot be undone.';
 	@override String get setsTitle => 'voice message sets';
 	@override String get manageSets => 'manage voice sets…';
@@ -6147,10 +6139,6 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.details' => 'details',
 			'settings.radio.cwMessages.empty' => '(empty)',
 			'settings.radio.cwMessages.sets' => 'message set',
-			'settings.radio.cwMessages.newSet' => 'new set',
-			'settings.radio.cwMessages.renameSet' => 'rename set',
-			'settings.radio.cwMessages.deleteSet' => 'delete set',
-			'settings.radio.cwMessages.newSetName' => 'name',
 			'settings.radio.cwMessages.setDefault' => 'default',
 			'settings.radio.cwMessages.setPota' => 'pota',
 			'settings.radio.cwMessages.setEsm' => 'esm messages',
@@ -6229,10 +6217,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.sets' => 'message set',
 			'settings.radio.voiceMessages.soundFilesSet' => 'sound files on this computer',
 			'settings.radio.voiceMessages.openFileButton' => 'open file',
-			'settings.radio.voiceMessages.newSet' => 'new set',
-			'settings.radio.voiceMessages.renameSet' => 'rename set',
-			'settings.radio.voiceMessages.deleteSet' => 'delete set',
-			'settings.radio.voiceMessages.newSetName' => 'name',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'delete ${name} and its recordings? this cannot be undone.',
 			'settings.radio.voiceMessages.setsTitle' => 'voice message sets',
 			'settings.radio.voiceMessages.manageSets' => 'manage voice sets…',
@@ -6326,8 +6310,6 @@ extension on TranslationsQrp {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'zero-beat: avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'how far off the spotted frequency to land, either side. the offset is never near zero — that would be a zero beat again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.title' => 'help & resources',
 			'settings.help.description' => 'community and support',
 			'settings.help.forums' => 'ham2k forums',
@@ -6336,6 +6318,8 @@ extension on TranslationsQrp {
 			'settings.help.chatDescription' => 'the discord server for our online community',
 			'settings.help.youtube' => 'ham2k youtube',
 			'settings.help.youtubeDescription' => 'videos and live streams',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.instagram' => 'ham2k instagram',
 			'settings.help.instagramDescription' => 'because you cannot have too many photos…',
 			'settings.help.bluesky' => 'ham2k bluesky',
@@ -6840,8 +6824,6 @@ extension on TranslationsQrp {
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'audio in this computer',
 			'settings.station.phoneKeyingComputerWords' => 'audio and words in this computer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingOff' => 'phone keying is off',
 			'settings.station.computerVoiceSettings' => 'computer audio',
 			'settings.station.cwKeyingOptions' => 'cw keying options',
@@ -6850,6 +6832,8 @@ extension on TranslationsQrp {
 			'settings.station.icomCivTroubleshootingTitle' => 'if two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'several icom radios, the ic-705 among them, present **two** usb serial ports at once (icom calls them port a and port b), both set to ci-v by default. neither this app nor your os can tell them apart beyond that: the same usb vendor/product id just shows up twice, sometimes marked with a `#2` suffix here. **port a is usually the right one** — normally the first one your os or browser lists, and where this app can tell the two ports apart it marks that one as suggested. if commands go out and the radio never responds, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'if the radio never responds',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **speed must match** the radio\'s ci-v baud rate (on usb, ci-v usb baud rate). set the radio to the same number shown here, **not auto**. on auto some radios, the ic-7300 among them, connect and then stop responding after a minute or so.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
@@ -7354,8 +7338,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.fixed.escape' => 'stop sending, back out one step, or close',
 			'keyboardShortcuts.fixed.enter' => 'log the contact',
 			'keyboardShortcuts.fixed.space' => 'next field',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.tab' => 'next or previous field',
 			'keyboardShortcuts.fixed.arrows' => 'move between fields, controls and the log',
 			'keyboardShortcuts.fixed.walk' => 'page through the log, or go to its ends',
@@ -7364,6 +7346,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.editor.listening' => 'press the keys for the shortcut…',
 			'keyboardShortcuts.editor.listeningHint' => 'esc stops listening',
 			'keyboardShortcuts.editor.addMidi' => 'add midi control',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.editor.listeningMidi' => 'press a button on your midi controller…',
 			'keyboardShortcuts.editor.listeningMidiHint' => 'press add midi control again to stop',
 			'keyboardShortcuts.editor.midiNoController' => 'no midi controller is connected. add one in station configuration.',
