@@ -1121,9 +1121,7 @@ one by `excludeOperation`, which is why they declare extension API 2 or later,
 the first level every host applies those filters at. When this operation's
 history cannot be read, earlier ones are not offered over it. The Phone Weekly
 Test instead tells this session's contacts by their time. The QSO parties have
-their own reader on the same filters but still declare API 1, so on a host
-older than the filters an earlier running's county reads as this operation's
-and skips the checks above. A
+their own reader on the same filters, and declare API 2 for the same reason. A
 save hook that fills a part the operator never touched — a contact logged from
 a call list — follows the same order; Sweepstakes and the QSO parties fill
 none at save.
