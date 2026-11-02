@@ -141,9 +141,7 @@ class FlexDaxSpectrum {
     _settle();
   }
 
-  /// From the session's own subscribe, after the handshake and on every
-  /// resync — the pan subscription, like the slice one, is the radio's to
-  /// forget.
+  /// From the session's own subscribe, after the handshake.
   void subscribe() {
     _handshakeDone = true;
     if (_wanted) send('sub pan all');

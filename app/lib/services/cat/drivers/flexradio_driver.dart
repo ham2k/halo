@@ -41,26 +41,20 @@ const flexModesByAppMode = <String, String>{'DATA-USB': 'DIGU', 'DATA-LSB': 'DIG
 
 final appModesByFlexMode = {for (final entry in flexModesByAppMode.entries) entry.value: entry.key};
 
-/// Belt-and-suspenders against a subscription silently going stale — a
-/// dropped WiFi/NAT mapping or a radio-side hiccup produces no error to
-/// react to. While updates are wanted, re-send the subscription: it's
-/// idempotent, and Flex answers with a full status refresh each time, so
-/// this doubles as a periodic resync.
-const _resyncInterval = Duration(seconds: 60);
-
 /// The manager marks a node "Not responding" after 30 s without a word from
-/// it, and this radio says nothing while the dial is still — so with only the
-/// resync above to speak for it, an idle Flex reads as dead for the second
-/// half of every minute. A `ping` gives the radio something to answer inside
-/// the window; the `R` line it sends back is the proof of life. One ping per
-/// window is enough because TCP delivers late but never drops.
+/// it, and this radio says nothing while the dial is still. A `ping` gives
+/// the radio something to answer inside the window; the `R` line it sends
+/// back is the proof of life. One ping per window is enough because TCP
+/// delivers late but never drops.
 ///
-/// A ping rather than resyncing inside the window (the Antenna Genius way):
-/// the resync is four commands answered with a full slice/tx/client/cwx
-/// burst that re-runs the settle timer and the channel inventory, and a
-/// ping is one line each way. The trade is that a subscription dying over a
-/// healthy socket now shows a frozen frequency for up to one resync instead
-/// of going stale at 30 s — bounded, and never captured on hardware.
+/// A ping and NOT a periodic re-subscribe (the Antenna Genius way).
+/// Re-subscribing to a slice, `all` or one by number, breaks its receive
+/// audio for a moment, in the radio's own headphones as much as in any
+/// client's — heard on RadioRoom (FLEX-6600, 4.2.20); the tx, client, cwx,
+/// dvk, license and atu subscriptions are silent. So each subscription is
+/// sent once per session, and everything on it is pushed from then on. The
+/// trade: a subscription dying over a healthy socket, never seen on
+/// hardware, would show frozen values until the next connect.
 const flexRadioPingInterval = Duration(seconds: 25);
 
 /// How long a subscription's full status refresh is given to arrive before
@@ -244,10 +238,9 @@ class FlexRadioSession
   bool _openingMeters = false;
   int _meterGeneration = 0;
 
-  /// Set once an open has failed, or answered with no socket (the web). Every
-  /// resync comes back through [_startMeters]; without this latch a host that
-  /// cannot be resolved costs a 5 s lookup and a diagnostic per resync, for the
-  /// whole session. A fresh subscription ([_stopMeters]) tries again.
+  /// Set once an open has failed, or answered with no socket (the web), so
+  /// that nothing retries a host that cannot be resolved — a 5 s lookup and
+  /// a diagnostic each time. A fresh subscription ([_stopMeters]) tries again.
   bool _metersUnavailable = false;
 
   void _startMeters() {
@@ -354,9 +347,7 @@ class FlexRadioSession
   /// remembered and sent once the handshake lands.
   bool _handshakeDone = false;
   bool _wantUpdates = false;
-  Timer? _resyncTimer;
   Timer? _pingTimer;
-  Timer? _tuneRefreshTimer;
   Timer? _powerRefreshTimer;
 
   /// Re-reads the tuner while it tunes: the radio may not echo a status to
@@ -401,7 +392,10 @@ class FlexRadioSession
 
   /// An extension's raw commands, one per line, each numbered like the
   /// driver's own: a line is a command without its `C<seq>|`, and its answer
-  /// is its `R` line.
+  /// is its `R` line. A slice change sent this way reads back only if the
+  /// radio echoes it (a mode change): the radio sends the client that made
+  /// a tune, filter or antenna change no status, and a re-read would break
+  /// the slice's audio ([flexRadioPingInterval]).
   @override
   int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
     final commands = rawCommandLines(bytes);
@@ -439,6 +433,8 @@ class FlexRadioSession
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
 
+  /// Once per session: re-subscribing to a slice breaks its audio
+  /// ([flexRadioPingInterval]).
   void _subscribe() {
     // Each subscription answers with a full status refresh, so this is also
     // when a slice that does not exist can be told apart from one that has
@@ -477,13 +473,10 @@ class FlexRadioSession
 
   void _armSettleTimer() {
     _settleTimer?.cancel();
-    _settleTimer = Timer(_sliceRefreshSettle, _checkTrackedSlice);
+    _settleTimer = Timer(_sliceRefreshSettle, _settle);
   }
 
   void _startPeriodicTimers() {
-    _resyncTimer ??= Timer.periodic(_resyncInterval, (_) {
-      if (_wantUpdates && _handshakeDone) _subscribe();
-    });
     _pingTimer ??= Timer.periodic(flexRadioPingInterval, (_) {
       if (_wantUpdates && _handshakeDone) _sendCommand('ping');
     });
@@ -491,14 +484,10 @@ class FlexRadioSession
 
   void _stopPeriodicTimers() {
     _stopMeters();
-    _tuneRefreshTimer?.cancel();
-    _tuneRefreshTimer = null;
     _powerRefreshTimer?.cancel();
     _powerRefreshTimer = null;
     _atuRefreshTimer?.cancel();
     _atuRefreshTimer = null;
-    _resyncTimer?.cancel();
-    _resyncTimer = null;
     _pingTimer?.cancel();
     _pingTimer = null;
     _settleTimer?.cancel();
@@ -748,8 +737,12 @@ class FlexRadioSession
     // e.g. "S40000001|slice 0 RF_frequency=14.250000 mode=USB in_use=1 ..."
     final index = int.tryParse(match.group(1)!);
     if (index == null) return;
-    final fields = _parseFields(match.group(2)!);
+    _handleSliceFields(index, _parseFields(match.group(2)!));
+  }
 
+  /// A slice's status, as the radio pushes it or as an acknowledged
+  /// [_changeSlice] stands in for the push it does not send.
+  void _handleSliceFields(int index, Map<String, String> fields) {
     // Flex reports MHz; we speak kHz throughout (see `Vfo.freq`). Keep the
     // decimals — down to Hz precision — rather than rounding to whole kHz.
     double? freqKHz;
@@ -828,17 +821,17 @@ class FlexRadioSession
   /// The slice's receive and transmit antennas, each its own setting.
   @override
   void setAntenna({String? rx, String? tx}) {
-    if (rx != null) _sendCommand('slice set $slice rxant=$rx');
-    if (tx != null) _sendCommand('slice set $slice txant=$tx');
-    _refreshAfterTune();
+    if (rx != null) _changeSlice('slice set $slice rxant=$rx', {'rxant': rx});
+    if (tx != null) _changeSlice('slice set $slice txant=$tx', {'txant': tx});
   }
 
   /// SmartSDR's `filt`: the slice's edges, in Hz from its frequency. The
-  /// radio clamps them to the mode's limits; the read-back says where.
+  /// radio takes edges exactly as sent or refuses them whole (inverted, or
+  /// too wide); it never clamps, so an acknowledged pair is the slice's —
+  /// seen on RadioRoom (FLEX-6600, 4.2.20).
   @override
   void setPassband(Passband passband) {
-    _sendCommand('filt $slice ${passband.lowHz} ${passband.highHz}');
-    _refreshAfterTune();
+    _changeSlice('filt $slice ${passband.lowHz} ${passband.highHz}', {'filter_lo': '${passband.lowHz}', 'filter_hi': '${passband.highHz}'});
   }
 
   /// e.g. "S5AC2F980|client 0x1C61D553 connected program=SmartSDR-Win
@@ -886,6 +879,17 @@ class FlexRadioSession
   /// Reported unconditionally rather than on transitions: `CatService`
   /// dedupes what it holds, and a driver keeping its own copy of what it
   /// last said is what [EquipmentSink.reportDiagnostic]'s own note forbids.
+  /// The settled verdict, and one more `sub slice all` when the radio has
+  /// described no slice at all: a subscription refused or lost at connect
+  /// would otherwise read as "no slices" for the whole session. Once — this
+  /// does not re-arm the settle — since re-subscribing breaks the audio of
+  /// any slice the radio does have ([flexRadioPingInterval]); a slice it then
+  /// describes clears the verdict.
+  void _settle() {
+    _checkTrackedSlice();
+    if (_slices.isEmpty && _wantUpdates && _handshakeDone) _sendCommand('sub slice all');
+  }
+
   void _checkTrackedSlice() {
     if (_slices.isEmpty) {
       _sink.reportProblem(t.settings.station.flexNoSlices);
@@ -964,33 +968,85 @@ class FlexRadioSession
 
   @override
   void setFrequency(double freqKHz) {
-    _sendCommand('slice tune $slice ${(freqKHz / 1000).toStringAsFixed(6)}');
-    _refreshAfterTune();
+    final mhz = (freqKHz / 1000).toStringAsFixed(6);
+    _changeSlice('slice tune $slice $mhz', {'RF_frequency': mhz});
   }
 
+  /// Read back from the radio's echo, not the acknowledgement: a mode change
+  /// is the one slice change the radio does push to the client that made it,
+  /// with that mode's own filter edges, ahead of its `R|0|`. And what it took
+  /// is not always what was sent — a mode name it does not know is accepted,
+  /// as DIGU — seen on RadioRoom (FLEX-6600, 4.2.20).
   @override
   void setMode(String mode) {
-    _sendCommand('slice set $slice mode=${flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase()}');
-    _refreshAfterTune();
+    final flexMode = flexModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase();
+    final command = 'slice set $slice mode=$flexMode';
+    _sendCommand(
+      command,
+      onReply: (code, _) {
+        if (code == 0 || !_wantUpdates || !_handshakeDone) return;
+        // As a refused tune does ([_changeSlice]): the app shows the mode as
+        // set before the radio answers.
+        _reportRefusal(command, code);
+        if (_slices[slice]?.mode case final mode?) _sink.report(VfoReading(mode: mode));
+      },
+    );
   }
 
-  // Flex suppresses status echoes to the client issuing a command. A fresh
-  // subscription returns actual slice state, including any radio-side clamp
-  // or rejection. Coalesce a frequency/mode burst into one read-back without
-  // postponing it indefinitely during continuous tuning.
-  void _refreshAfterTune() {
-    if (!_wantUpdates || !_handshakeDone || _tuneRefreshTimer != null) return;
-    _tuneRefreshTimer = Timer(const Duration(milliseconds: 100), () {
-      _tuneRefreshTimer = null;
-      if (_wantUpdates && _handshakeDone) _sendCommand('sub slice all');
-    });
+  /// Which command last set each slice field, so that the acknowledgement
+  /// of an older one — a dial turned faster than the radio answers — does
+  /// not put the slice back where that one left it.
+  final _latestSliceChange = <String, int>{};
+
+  /// Sends a change to the tracked slice that sets [fields], as the radio
+  /// names them in its status.
+  ///
+  /// Flex sends the client that changed a slice no status for a tune, filter
+  /// or antenna change, and asking again by re-subscribing breaks the slice's
+  /// audio ([flexRadioPingInterval]). So the acknowledgement is the
+  /// confirmation: on `R<seq>|0|` the slice reads as [fields], as if the
+  /// radio had pushed them. A refused tune or filter comes with a push of
+  /// where the slice stayed, ahead of the refusal, and a refused antenna
+  /// leaves the one already read — seen on RadioRoom (FLEX-6600, 4.2.20). A
+  /// refused tune still reports the frequency the slice last read: the app
+  /// shows a tune as made before the radio answers, and a refusal that came
+  /// with no push would otherwise leave it there.
+  void _changeSlice(String command, Map<String, String> fields) {
+    late final int seq;
+    seq = _sendCommand(
+      command,
+      onReply: (code, _) {
+        final current = {
+          for (final MapEntry(:key, :value) in fields.entries)
+            if (_latestSliceChange[key] == seq) key: value,
+        };
+        for (final key in current.keys) {
+          _latestSliceChange.remove(key);
+        }
+        if (!_wantUpdates || !_handshakeDone) return;
+        if (code == 0) {
+          if (current.isNotEmpty) _handleSliceFields(slice, current);
+          return;
+        }
+        _reportRefusal(command, code);
+        if (current.containsKey('RF_frequency') && _slices[slice]?.freqKHz != null) {
+          _sink.report(VfoReading(freqKHz: _slices[slice]!.freqKHz));
+        }
+      },
+    );
+    for (final key in fields.keys) {
+      _latestSliceChange[key] = seq;
+    }
   }
+
+  void _reportRefusal(String command, int code) => _sink.reportDiagnostic('Flex refused "$command": 0x${code.toRadixString(16).toUpperCase()}');
 
   @override
   void setPower(num watts) {
     _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
-    // Like slice tuning, transmit changes need a read-back when the radio
-    // suppresses the originating client's status echo. Coalesce slider bursts.
+    // The radio sends the client that set the power no status for it, and
+    // re-subscribing to `tx`, unlike to a slice, is silent. Coalesce slider
+    // bursts.
     if (!_wantUpdates || !_handshakeDone || _powerRefreshTimer != null) return;
     _powerRefreshTimer = Timer(const Duration(milliseconds: 100), () {
       _powerRefreshTimer = null;
@@ -1351,11 +1407,8 @@ class FlexRadioSession
     if (_handshakeDone) _unsubscribe();
   }
 
-  /// Null, and NOT [_resyncInterval]: this radio pushes a slice status the
-  /// moment the dial moves, so a quiet VFO is a still one. The 60 s resync
-  /// is a backstop against a missed push, not the rate at which movement is
-  /// reported — keying anything to it would treat a live stream as if it
-  /// were a once-a-minute poll.
+  /// Null: this radio pushes a slice status the moment the dial moves, so a
+  /// quiet VFO is a still one.
   @override
   Duration? get expectedUpdateInterval => null;
 

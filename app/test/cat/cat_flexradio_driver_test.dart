@@ -7,8 +7,8 @@
 // verified against real hardware.
 //
 // A session is pure given a fake sink, so all of this runs with no socket
-// and no radio. `fakeAsync` for the resync interval: a test that starts
-// updates without stopping them would otherwise leak a live 60 s timer.
+// and no radio. `fakeAsync` for the session timers: a test that starts
+// updates without stopping them would otherwise leak a live ping timer.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -159,6 +159,10 @@ void main() {
   });
 
   bool sentAny(String fragment) => sink.sent.any((line) => line.contains(fragment));
+
+  /// The sequence number the last command containing [fragment] went out
+  /// under, for the acknowledgement a test answers it with.
+  int seqOf(String fragment) => int.parse(RegExp(r'^C(\d+)\|').firstMatch(sink.sent.lastWhere((line) => line.contains(fragment)))![1]!);
 
   /// A session on one slice of the radio at `flex.test`, past its handshake:
   /// two of them are SO2R's two radios on one Flex.
@@ -378,7 +382,10 @@ void main() {
   });
 
   group('commands', () {
-    test('reads back a tune without relying on an echo or inventing confirmation', () {
+    // Re-subscribing to a slice breaks its receive audio on a real Flex, so a
+    // tune confirmed by `sub slice all` is a break in the headphones on every
+    // QSY. The acknowledgement is the confirmation; nothing re-subscribes.
+    test('confirms a tune by its acknowledgement, without re-subscribing to the slice', () {
       fakeAsync((async) {
         session.startUpdates();
         session.feed('H5AC2F980\n$_sliceStatusLine\n');
@@ -386,36 +393,114 @@ void main() {
         sink.readings.clear();
         session.setFrequency(14141.4);
         session.setMode('USB');
-        // A successful acknowledgement need not contain any slice status.
-        session.feed('R6|0|\n');
+        // Nothing reads as tuned before the radio has taken it.
         expect(sink.readings, isEmpty);
-        async.elapse(const Duration(milliseconds: 100));
-        expect(sink.sent.where((line) => line.contains('sub slice all')), hasLength(1));
-        expect(sink.readings, isEmpty);
-        // The radio's actual result, even if different, is authoritative.
-        session.feed('S5AC2F980|slice 0 RF_frequency=14.141000 mode=USB\n');
-        expect(sink.readings.last.freqKHz, 14141);
-        expect(sink.readings.last.mode, 'USB');
+        session.feed('R${seqOf('slice tune')}|0|\n');
+        expect(sink.readings, const [VfoReading(freqKHz: 14141.4)]);
+        // A mode is the radio's echo, ahead of its acknowledgement — and what
+        // it took. Read off the acknowledgement instead, a mode the radio
+        // turned into DIGU would read as the one asked for.
+        session.feed('S5AC2F980|slice 0 mode=DIGU filter_lo=0 filter_hi=3000\nR${seqOf('mode=USB')}|0|\n');
+        expect(sink.readings.last, const VfoReading(mode: 'DATA-USB'));
+        async.elapse(const Duration(seconds: 1));
+        expect(sentAny('sub slice'), isFalse);
+        // The channel inventory follows too: the slice is where it was sent.
+        expect(sink.channels.firstWhere((c) => c.key == '0').freqKHz, 14141.4);
         session.teardown();
       });
     });
 
-    test('cancels a queued tune read-back when updates stop or the session closes', () {
+    test('an earlier tune\'s acknowledgement does not pull the slice back', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n$_sliceStatusLine\n');
+        sink.sent.clear();
+        sink.readings.clear();
+        session.setFrequency(14100);
+        final first = seqOf('slice tune');
+        session.setFrequency(14101);
+        final second = seqOf('slice tune');
+        session.feed('R$first|0|\n');
+        // A dial turned faster than the radio answers would otherwise read
+        // as stepping backwards, and a knob building on it would lose a step.
+        expect(sink.readings, isEmpty);
+        session.feed('R$second|0|\n');
+        expect(sink.readings.single.freqKHz, 14101);
+        session.teardown();
+      });
+    });
+
+    test('a refused tune re-reads nothing, and reads where the slice stayed', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n$_sliceStatusLine\n');
+        sink.sent.clear();
+        sink.readings.clear();
+        session.setFrequency(99999);
+        // The radio's order: the slice where it stayed, then the refusal.
+        session.feed('S5AC2F980|slice 0 RF_frequency=14.074000\nR${seqOf('slice tune')}|50001000|\n');
+        expect(sink.readings.map((r) => r.freqKHz), everyElement(14074), reason: 'a refusal is not where the slice went');
+        async.elapse(const Duration(seconds: 1));
+        // A re-read would re-subscribe, and that breaks the slice's audio.
+        expect(sentAny('sub slice'), isFalse);
+        expect(sink.diagnostics.last, contains('slice tune'));
+        session.teardown();
+      });
+    });
+
+    test('a refused mode reads the mode the slice was in, with a diagnostic', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n$_sliceStatusLine\n');
+        sink.readings.clear();
+        session.setMode('CW');
+        // The app shows the mode as set before the radio answers, and a
+        // refusal brings no echo to correct it.
+        session.feed('R${seqOf('mode=CW')}|50000016|\n');
+        expect(sink.readings.single, const VfoReading(mode: 'DATA-USB'));
+        expect(sink.diagnostics.last, contains('mode=CW'));
+        session.teardown();
+      });
+    });
+
+    test('a refused tune with no push still reads where the slice was', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n$_sliceStatusLine\n');
+        sink.readings.clear();
+        session.setFrequency(14100);
+        // The app shows a tune as made before the radio answers; a refusal
+        // that reported nothing would leave it showing the frequency asked for.
+        session.feed('R${seqOf('slice tune')}|50001000|\n');
+        expect(sink.readings.single, const VfoReading(freqKHz: 14074));
+        session.teardown();
+      });
+    });
+
+    test('a reply reports nothing once updates stop or the session closes', () {
       for (final teardown in [false, true]) {
-        fakeAsync((async) {
-          final rig = FlexRadioSession(sink);
-          rig.startUpdates();
-          rig.feed('H5AC2F980\n');
-          rig.setMode('CW');
-          if (teardown) {
-            rig.teardown();
-          } else {
-            rig.stopUpdates();
-          }
-          sink.sent.clear();
-          async.elapse(const Duration(seconds: 1));
-          expect(sink.sent, isEmpty);
-        });
+        for (final code in ['0', '50001000']) {
+          fakeAsync((async) {
+            final rig = FlexRadioSession(sink);
+            rig.startUpdates();
+            rig.feed('H5AC2F980\n$_sliceStatusLine\n');
+            rig.setFrequency(14100);
+            final reply = 'R${seqOf('slice tune')}|$code|\n';
+            if (teardown) {
+              rig.teardown();
+            } else {
+              rig.stopUpdates();
+            }
+            sink.sent.clear();
+            sink.readings.clear();
+            // Arriving after the stop: a reading then would land on a
+            // connection the app has stopped listening to.
+            rig.feed(reply);
+            async.elapse(const Duration(seconds: 1));
+            expect(sink.sent, isEmpty);
+            expect(sink.readings, isEmpty);
+          });
+        }
       }
     });
 
@@ -489,30 +574,29 @@ void main() {
     });
   });
 
-  group('resync', () {
-    // A Flex subscription can go stale with no error to react to — a dropped
-    // WiFi/NAT mapping, a radio-side hiccup. Re-subscribing is idempotent and
-    // Flex answers with a full refresh, so it doubles as a resync. Without
-    // this the panel shows Connected next to a frozen frequency.
-    test('periodically re-subscribes while updates are wanted', () {
+  group('over time', () {
+    // Re-subscribing to a slice breaks its audio on a real Flex, so a
+    // periodic resync is a break in the headphones on a timer. An idle
+    // session says nothing but its ping.
+    test('an idle session sends only pings, and nothing once updates stop', () {
       fakeAsync((async) {
         session.feed('${_handshakeLines.join('\n')}\n');
         session.startUpdates();
+        session.feed('$_sliceStatusLine\n');
         sink.sent.clear();
 
-        async.elapse(const Duration(seconds: 60));
-        expect(sentAny('sub slice all'), isTrue);
+        async.elapse(const Duration(minutes: 5));
+        expect(sink.sent, isNotEmpty);
+        expect(sink.sent.where((line) => !line.endsWith('|ping\n')), isEmpty);
 
-        sink.sent.clear();
         session.stopUpdates();
         sink.sent.clear();
-
         async.elapse(const Duration(minutes: 2));
-        expect(sentAny('sub slice all'), isFalse, reason: 'the resync timer must stop with updates');
+        expect(sink.sent, isEmpty, reason: 'the ping timer must stop with updates');
       });
     });
 
-    test('teardown says goodbye and cancels the resync timer', () {
+    test('teardown says goodbye and cancels the timers', () {
       fakeAsync((async) {
         session.feed('${_handshakeLines.join('\n')}\n');
         session.startUpdates();
@@ -537,10 +621,9 @@ void main() {
   });
 
   group('the receive meter socket', () {
-    // Every 60 s resync re-enters the meter setup. A host that cannot be
-    // resolved would otherwise cost a 5 s lookup and a diagnostic per resync,
-    // for as long as the radio stays connected.
-    test('an open that fails is not retried on every resync, only by a new subscription', () {
+    // A host that cannot be resolved costs a 5 s lookup and a diagnostic per
+    // try; a retry loop would spend them for as long as the radio is connected.
+    test('an open that fails is not retried, except by a new subscription', () {
       fakeAsync((async) {
         var opens = 0;
         session = FlexRadioSession(
@@ -638,8 +721,7 @@ void main() {
   group('a radio nobody is touching', () {
     // A slice status is pushed only when something changes, so a still dial
     // is total silence — and the manager marks 30 s of it "Not responding".
-    // The 60 s resync then clears it, so without a ping an idle radio reads
-    // as dead for the second half of every minute.
+    // Without a ping an idle radio reads as dead.
     test('pings inside the silence window, and the acknowledgement counts as life', () {
       fakeAsync((async) {
         session.feed('${_handshakeLines.join('\n')}\n');
@@ -904,6 +986,38 @@ void main() {
       });
     });
 
+    test('a radio that describes no slice is asked once more, and only once', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        int subscribes() => sink.sent.where((line) => line.contains('sub slice all')).length;
+        expect(subscribes(), 1);
+        // A subscription refused at connect would otherwise read as "no
+        // slices" for the whole session; asked forever, each ask would break
+        // the audio of any slice the radio does have.
+        async.elapse(const Duration(seconds: 4));
+        expect(subscribes(), 2);
+        async.elapse(const Duration(seconds: 30));
+        expect(subscribes(), 2);
+        session.feed('$_sliceStatusLine\n');
+        expect(sink.problems.last, isNull, reason: 'the slice it then describes clears the verdict');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a radio that describes its slices is not asked again', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('$_sliceStatusLine\n');
+        async.elapse(const Duration(seconds: 30));
+        expect(sink.sent.where((line) => line.contains('sub slice all')), hasLength(1));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
     // The trap: every path that would say a slice is missing hangs off the
     // subscription, and the subscription hangs off a handshake that may
     // never land. The staleness watchdog would eventually flag the row, but
@@ -969,6 +1083,15 @@ void main() {
         sink.sent.clear();
         session.setAntenna(tx: 'ANT2');
         expect(sink.sent.single.split('|').last.trim(), 'slice set 0 txant=ANT2');
+        // The radio pushes the client that changed an antenna nothing, so the
+        // acknowledgement is the only word that it moved.
+        expect(sink.antennas.last?.tx, 'ANT1', reason: 'not moved before the radio takes it');
+        session.feed('R${seqOf('txant=ANT2')}|0|\n');
+        expect(sink.antennas.last?.tx, 'ANT2');
+        // A refused one brings no push either, and stays where it was read.
+        session.setAntenna(rx: 'BOGUS');
+        session.feed('R${seqOf('rxant=BOGUS')}|50000004|\n');
+        expect(sink.antennas.last?.rx, 'RX_A');
         session.teardown();
         async.flushTimers();
       });
@@ -992,15 +1115,22 @@ void main() {
       });
     });
 
-    test('is set with `filt`, and read back since the radio clamps it', () {
+    test('is set with `filt`, and reads as set once the radio takes it', () {
       fakeAsync((async) {
         session.feed('${_handshakeLines.join('\n')}\n');
         session.startUpdates();
+        session.feed('S0|slice 0 in_use=1 RF_frequency=14.243000 mode=USB filter_lo=100 filter_hi=2800\n');
         sink.sent.clear();
+        sink.passbands.clear();
         session.setPassband(const Passband(200, 2900));
         expect(sink.sent.single.split('|').last.trim(), 'filt 0 200 2900');
-        async.elapse(const Duration(milliseconds: 200));
-        expect(sink.sent.last, endsWith('|sub slice all\n'));
+        expect(sink.passbands, isEmpty);
+        session.feed('R${seqOf('filt 0')}|0|\n');
+        expect(sink.passbands, [const Passband(200, 2900)]);
+        // A passband knob re-subscribing on every step would break the audio
+        // on every step.
+        async.elapse(const Duration(seconds: 1));
+        expect(sentAny('sub slice'), isFalse);
         session.teardown();
         async.flushTimers();
       });
@@ -1371,6 +1501,7 @@ void main() {
       fakeAsync((async) {
         session.feed('${_handshakeLines.join('\n')}\n');
         session.startUpdates();
+        session.feed('$_sliceStatusLine\n');
         session.feed('S40000001|transmit dax=0\n');
         session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
         session.setPttWithComputerAudio(true);
@@ -1641,9 +1772,6 @@ void main() {
 
   group('the voice keyer (DVK)', () {
     List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
-
-    /// The sequence number [command] last went out under, which its reply names.
-    int seqOf(String command) => int.parse(RegExp(r'^C(\d+)\|').firstMatch(sink.sent.lastWhere((line) => line.contains(command)))!.group(1)!);
 
     void connect() {
       session.feed('${_handshakeLines.join('\n')}\n');

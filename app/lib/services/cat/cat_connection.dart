@@ -441,7 +441,7 @@ extension _Connection on CatService {
         // dead code for the same reason. If teardown's ordering ever changes,
         // the test 'a DELIBERATE disconnect is never undone' is what will
         // catch it.
-        // The driver keeps its own timers (FlexRadio resyncs every 60s, the
+        // The driver keeps its own timers (FlexRadio pings every 25 s, the
         // CI-V drivers poll every 5s). Dropping the session without tearing
         // it down leaves them ticking for the life of the process — once per
         // drop — each one retaining its sink and this dead connection.

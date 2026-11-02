@@ -141,7 +141,10 @@ abstract class EquipmentSink {
   /// exists for a live session over a dead reading stream, so a driver
   /// whose control and reading paths differ never calls this. What it does
   /// NOT vouch for even on one socket is the radio's own subscription
-  /// table; a driver that relies on it keeps its resync. A reading already
+  /// table; a driver that relies on it keeps its resync, unless the resync
+  /// itself costs the operator something — FlexRadio's breaks a slice's
+  /// audio, so there a dead subscription shows as frozen values until the
+  /// next connect (`flexRadioPingInterval`). A reading already
   /// counts as life, so calling this for one as well changes nothing — which
   /// lets a driver call it for every frame it accepts from the radio.
   void reportAlive();

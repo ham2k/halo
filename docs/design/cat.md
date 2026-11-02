@@ -974,7 +974,7 @@ The two directions have to not chase each other, and three things make that work
   recall bites, as is a frequency outside every band plan. A **band pick** names no frequency and
   takes its own route (§ Picking a band).
 - **Dropping no-op writes at the store.** `Vfo` gained value equality, so a radio restating what it
-  already reported — every status push, every 60 s resync — is not a change and notifies nobody.
+  already reported — every status push, every re-subscription's refresh — is not a change and notifies nobody.
   This has to live *at the store*, and only there. `CatService` deduping against its own cache as
   well looks like the same saving and is not: clear `vfoA.freq` (pick a band, empty the frequency
   field) and the radio has not moved, so every later report matches CAT's cache and is swallowed —
@@ -2865,7 +2865,7 @@ pushing (Yaesu `AI1;`, Icom transceive) cannot be read back:
 | FT-891 | `AI1;` pushes, poll is the backstop | `AdaptivePoller.interval` |
 | FT-817/857/897 | poll only — this protocol has no auto-information at all | `AdaptivePoller.interval` |
 | Icom CI-V | transceive pushes, the 5 s poll is the backstop | 5 s **until an unsolicited frame arrives**, null after |
-| FlexRadio | streams; the 60 s resync is the backstop | null |
+| FlexRadio | streams; nothing backs them up — re-subscribing breaks a slice's audio | null |
 
 Measured on a bench IC-705 over both WiFi and serial, updates arrive far faster than the 5 s poll —
 transceive is on, and reading `_pollInterval` as the cadence would charge the snap five seconds on
@@ -2880,8 +2880,20 @@ Two details worth not rediscovering:
   `noteChange()` *before* handing the reading up), and eases off the moment the dial stops — so
   re-reading it when the timer fires would chase the back-off and settle later and later. The 3 s
   slow interval can therefore never be added: a radio quiet enough to reach it has no burst open.
-- **FlexRadio's 60 s resync is not a cadence either.** Keying anything to it would treat a live
-  stream as a once-a-minute poll and add a minute to every snap.
+- **FlexRadio never re-subscribes.** Re-subscribing to a slice, `all` or one by number, breaks
+  that slice's receive audio for a moment, in the radio's own headphones too (heard on a FLEX-6600
+  on 4.2.20; the other subscriptions are silent). Each subscription is sent once per session. The
+  radio sends the client that changed a slice no status for a tune, filter or antenna change, so
+  each reads as done on its `R|0|` acknowledgement; a mode change it does echo, ahead of the
+  acknowledgement, and the echo is what it took (an unknown mode name is accepted as DIGU). A
+  refusal re-reads nothing: a refused tune or filter comes with a push of where the slice stayed,
+  a refused antenna leaves the one already read, and a refused tune re-reports the frequency the
+  slice last read in case no push came. The radio never clamps a filter — it takes the edges as
+  sent or refuses them. The 25 s `ping` proves the link is alive. A subscription dying over a
+  healthy socket, never seen on hardware, would show frozen values until the next connect; the one
+  exception is a radio that has described no slice at all once the connect settles, which is asked
+  `sub slice all` once more. A tune, filter or antenna change an extension sends raw is never read
+  back, for the same reason.
 
 What this actually buys, in practice, is **200 ms** — `kPollFast` — on the drivers that are really
 polling while the dial moves. Small against a 300 ms delay, and worth having only because the
@@ -2998,14 +3010,12 @@ It is the same command bring-up uses, verified idempotent on hardware
 (re-subscribing answers with the full port list and accumulates nothing), so
 the exchange that proves the link is alive also repairs a push that was never
 delivered. `expectedUpdateInterval` stays null regardless: it describes how a
-change reaches us, and a change still arrives the moment it happens — the same
-distinction FlexRadio's 60 s resync draws.
+change reaches us, and a change still arrives the moment it happens.
 
 FlexRadio has the same shape of silence — a slice status is pushed only when
-something changes — and its resync is twice the window, so an idle Flex read
-as Not Responding for the second half of every minute. Rather than resync at
-twice the rate — four commands answered with a full status burst, against
-one line each way — `FlexRadioSession` sends `ping` every 25 s
+something changes — so an idle Flex would read as Not Responding. It cannot
+re-subscribe the way the Antenna Genius does, since that breaks a slice's
+audio, so `FlexRadioSession` sends `ping` every 25 s
 (`flexRadioPingInterval`) and reports every `R` acknowledgement through
 `EquipmentSink.reportAlive` — a word that carries no reading, admitted because
 on this radio status and acknowledgements share one socket, so the

@@ -39,9 +39,8 @@ import 'line_framer.dart';
 /// `sub port all` rather than a ping: verified idempotent on a real 8x2 —
 /// re-subscribing answers with the full port list and accumulates nothing —
 /// so the same command that proves the link is alive also repairs a push
-/// that was never delivered. FlexRadio's driver keeps its 60 s resync for
-/// the repair and pings for the proof of life instead — its refresh is four
-/// commands and a status burst, too heavy to run three times a minute.
+/// that was never delivered. FlexRadio's driver pings instead, and never
+/// re-subscribes: there, re-subscribing to a slice breaks its audio.
 const antennaGeniusResyncInterval = Duration(seconds: 10);
 
 /// How many un-answered commands to remember, for naming one in a refusal.

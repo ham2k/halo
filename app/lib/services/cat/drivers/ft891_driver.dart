@@ -48,7 +48,7 @@ import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 import 'yaesu_cat_codec.dart';
 
-/// Belt-and-suspenders resync, same reasoning as the FlexRadio driver's:
+/// Belt-and-suspenders resync:
 /// `AI1;` *should* push a status line whenever the VFO changes, but the CAT
 /// manual doesn't spell out the unsolicited format beyond "reports change of
 /// status" — so poll as well, in case AI mode misses a case we need or a
