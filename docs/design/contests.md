@@ -1001,8 +1001,9 @@ to the looked-up name, and derives the location from state / DXCC entity.
   `dbLookupSelectAll` / `dbLookupSelectByLocation` (`sdk/src/index.ts:175-184`,
   Dart side `extension_service.dart:1031-1063`) to consult offline lookup tables
   — county lists, section tables, a bundled dataset.
-- `ctx.getQsos(operationUuid)` covers "what did I get from this call last time",
-  which is how NAQP's name guess works.
+- `ctx.getHistoryForCall(call, options)` covers "what did I get from this call
+  last time", in this operation or an earlier one — which is how NAQP's name
+  guess works (see "Where a suggestion comes from" below).
 
 Crucially this runs **once per callsign resolution, not per keystroke**, so a DB
 query here is affordable — the same budget `decorateRef` already spends.
@@ -1087,16 +1088,56 @@ Cabrillo row the file never writes — for a QSO that plainly happened. That
 holds even for an in-state caller, whose own state is not what they sent;
 crediting what is known beats refusing the contact.
 
+**Where a suggestion comes from.** A contest that prefills an exchange from
+the log — the SSB Sprint, Sweepstakes, NAQP, the Phone Weekly Test, CWT, CQ WW,
+IARU HF, WWSAC, the QSO parties and the VHF contests — takes each part from the
+first of these that has one:
+
+1. what the station sent earlier in **this operation** — copied minutes ago,
+   so it outranks everything, a call history file included;
+2. the contest's **call history file**, where it keeps one (N1MM's, for the
+   SSB Sprint and Sweepstakes);
+3. what the station sent in **earlier runnings of the same contest**, or of
+   one whose exchange is the same — NAQP, the Phone Weekly Test and the SSB
+   Sprint read each other's names and locations. The general call history is
+   not this step: it is a lookup source;
+4. the **lookup**, the country file and anything else.
+
+A part that says where the station is — a location, state, section, CQ WW
+RTTY's QTH, zone or grid — swaps the last two: the station can move, and the
+lookup is the fresher word on where it is now, so an earlier running fills in
+only where the lookup has nothing usable. A lookup grid shorter than the
+event's locator counts as nothing: it is offered only when no earlier running
+has a full one. A QSO party's earlier county, which no lookup gives, is kept
+only while it is a code the party still offers and, where the lookup knows the
+state, one in that state; a Sweepstakes section only where the lookup's state
+does not name another. A rover (`/R`) changes grid as it
+goes, so a VHF contest offers it the newest grid copied in this operation, else
+the lookup's, and never an earlier event's.
+
+Most of these read steps 1 and 3 through `priorSent` in the extensions'
+`@ham2k/lib-contest-exchange`: one `getHistoryForCall` read by `operation` and
+one by `excludeOperation`, which is why they declare extension API 2 or later,
+the first level every host applies those filters at. When this operation's
+history cannot be read, earlier ones are not offered over it. The Phone Weekly
+Test instead tells this session's contacts by their time. The QSO parties have
+their own reader on the same filters but still declare API 1, so on a host
+older than the filters an earlier running's county reads as this operation's
+and skips the checks above. A
+save hook that fills a part the operator never touched — a contact logged from
+a call list — follows the same order; Sweepstakes and the QSO parties fill
+none at save.
+
 Worked examples, all expressible with the above:
 
 | Contest | Field | Mechanism |
 |---|---|---|
-| CQ WW | zone | `suggestedValue` from `their.guess.cqZone` |
+| CQ WW | zone | `suggestedValue`: sent earlier in this operation, else `their.guess.cqZone`, else the country file, else sent in an earlier running |
 | ARRL DX | state *or* power | `placeholder` from `their.guess.state` (never filled — polo hints only) |
-| NAQP | name | `suggestedValue` from a prior QSO via `ctx.getQsos`, else `their.guess.name` |
-| NAQP | location | `suggestedValue` derived from state / entity prefix |
+| NAQP | name | `suggestedValue`: sent earlier in this operation, else in an earlier NAQP, PWT or Sprint, else `their.guess.name` |
+| NAQP | location | `suggestedValue`: sent earlier in this operation, else derived from state / entity prefix, else sent in an earlier running |
 | QSO party | county | `optionSet` + `preferredCodes` from the guessed state; `suggestedValue` = what they sent earlier, else what an empty exchange scores as; `placeholder` = an in-party caller's own state |
-| IARU HF | zone/HQ | `placeholder` from the guessed ITU zone |
+| IARU HF | zone/HQ | `suggestedValue`: sent earlier in this operation, else the newest society or office among the 50 newest earlier contacts (even behind a zone sent since), else the guessed ITU zone, else an earlier zone |
 
 **Deliberately NOT added: `select` / `segmented`.** Polo uses those only for
 *operation-level* setup (mode, station type, power class), never in the per-QSO
