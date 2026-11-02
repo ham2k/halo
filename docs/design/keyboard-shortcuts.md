@@ -91,9 +91,11 @@ take it** (`KeyBindings.yieldsToField`, `fieldTakesKey`) — any chord without
 chord has matched:
 
 - **with no text field focused**, the shortcut runs;
-- **in the logging entry row**, the shortcut runs — no callsign, report or
-  exchange takes a `]` — save the call field reading a command that takes
-  free text (NOTE), which keeps what it would accept;
+- **in the logging entry row**, the shortcut runs — what a callsign needs is
+  fixed (below), and a bound `-`, `+` or `:`, which the call field's filter
+  admits for the time commands, is the operator's shortcut before it is a
+  character — save the call field reading a command's parameters (free
+  text, as NOTE's), which keeps what it would accept;
 - **in the logging panel's other controls**, a field that would take the
   character keeps it (a note) and one that would filter it out (the
   frequency) lets the shortcut have it;
@@ -109,14 +111,20 @@ Never bindable, and listed in the panel so the operator can see what is
 taken: Escape, with any modifier; Enter, Space, Tab, the arrows, Page Up/Down,
 Home, End, Backspace and Delete on their own or with ⇧; ⌥ or ⌘ with Up or
 Down (the QSO list's walk); ⌘Z (Ctrl+Z off a Mac); and **the callsign keys** —
-A–Z, 0–9, `,` `.` `/` and the keypad's digits, `.` and `/` — on their own or
-with ⇧, for every command, PTT included: a call could not be typed with one
-taken. Held with ⌘, Ctrl, Win or ⌥ they are chords like any other, and every
-other key on its own is bindable, the field rule above deciding where it
-fires.
+A–Z, 0–9, `,` `.` `/`, the `?` that marks a partial call, and the keypad's
+digits, `.` and `/` — on their own or with ⇧, for every command, PTT
+included: a call could not be typed with one taken. The editor refuses by
+what the press typed as well as by the key's name, since ⇧' is `?` on a
+Spanish layout and ⇧; is `.` on AZERTY; a chord read from a file carries no
+keystroke and is refused by the key's name alone. Held with ⌘, Ctrl, Win or ⌥
+they are chords like any other, and every other key on its own is bindable,
+the field rule above deciding where it fires.
 
 Chords the system or a browser may take first (⌘Q, ⌘W, ⌘C/V/X/A, Alt+F4…)
-are bindable with a warning.
+are bindable with a warning, and so is a key the call field's filter admits
+beyond the callsign keys — `-`, `+` and `:`, for the time commands — which a
+binding takes from every call typed there. The editor judges that by what
+the press typed, since ⇧= is `+` on one layout and not on another.
 
 ## The experiment
 
@@ -201,8 +209,10 @@ all at once, so `cmd`→`ctrl` and `ctrl`→`cmd` trade places. The suggestion:
 
 The file then **adds to** this device's config (its commands replace the
 same ones) or **replaces** it. A file is no way round the fixed keys: the
-chords the recorder would refuse are left out, and a command left with none
-keeps its defaults. Unknown commands, unreadable chords, refused chords,
+chords the recorder would refuse by the key's name are left out — a file
+carries no keystroke, so what a key types on this keyboard is the recorder's
+to know alone — and a command left with none keeps its defaults. Unknown
+commands, unreadable chords, refused chords,
 command text with no command in it, and the conflicts the result would hold
 are all named before Import.
 

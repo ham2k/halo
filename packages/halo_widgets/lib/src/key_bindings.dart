@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show BuildContext, EditableText, FocusManager, FocusNode, IconData, KeyEventResult, TextEditingValue, TextSelection;
 
+import 'call_field_text.dart' show callsignCharacters;
 import 'logging_controls.dart' show LoggingControls;
 import 'logging_controls_entry_row.dart' show LoggingEntryRow;
 import 'mdi_icons.g.dart';
@@ -19,6 +20,12 @@ import 'mdi_icons.g.dart';
 /// apart only so a file says which keyboard it was written for; both match
 /// either. Listed in the order a chord is written.
 enum KeyModifier { cmd, ctrl, meta, alt, shift }
+
+/// A character a callsign is typed with — a letter, a digit, `,` `.` `/`,
+/// and the `?` that marks a partial call (call_field_text.dart) — which no
+/// bare key may be bound to, whether the key's name says it types one or
+/// the press did (docs/design/keyboard-shortcuts.md § Fixed keys).
+final _callsignCharacter = RegExp(r'^[a-zA-Z0-9,./?]$');
 
 /// One key a chord can name: its name in a binding, the logical key it
 /// matches, and — for a key whose character a modifier changes — the
@@ -39,9 +46,9 @@ class _KeyName {
 
   const _KeyName(this.name, this.logical, {this.physical, this.character, this.numpad = false});
 
-  /// A key a callsign is typed with — a letter, a digit, `,` `.` `/` — which
-  /// no command may take on its own (docs/design/keyboard-shortcuts.md).
-  bool get callsign => character != null && RegExp(r'^[a-z0-9,./]$').hasMatch(character!);
+  /// A key that types a [_callsignCharacter] with nothing held, which no
+  /// command may take on its own (docs/design/keyboard-shortcuts.md).
+  bool get callsign => character != null && _callsignCharacter.hasMatch(character!);
 }
 
 final List<_KeyName> _keyNames = [
@@ -183,9 +190,14 @@ class KeyChord {
   /// it makes '∑' of W on a Mac, and '@' of 2 on a Spanish one.
   bool get typesCharacter => !hasCommandModifier && _name.character != null;
 
+  /// Whether the chord holds at most ⇧ — no ⌘, Ctrl, Win or ⌥ — which is
+  /// where a callsign key is still the callsign's: with ⌥ it is a chord like
+  /// any other, whatever character the platform reports for the press.
+  bool get atMostShift => !hasCommandModifier && !modifiers.contains(KeyModifier.alt);
+
   /// Whether the chord is a callsign key with at most ⇧ held — one no command
   /// may take, since every callsign is typed with it.
-  bool get isCallsignKey => _name.callsign && !hasCommandModifier && !modifiers.contains(KeyModifier.alt);
+  bool get isCallsignKey => _name.callsign && atMostShift;
 
   /// The character the key types with nothing held, if it types one.
   String? get character => _name.character;
@@ -809,7 +821,18 @@ bool fieldTakesKey(BuildContext? focused, String character) {
   final field = focused?.findAncestorWidgetOfExactType<EditableText>();
   if (field == null) return false;
   final row = focused!.findAncestorWidgetOfExactType<LoggingEntryRow>();
-  if (row != null) return identical(field.controller, row.call.controller) && _fieldTakes(field, character);
+  if (row != null) {
+    // Only the call field reading a command's parameters — free text, as
+    // NOTE's — keeps what it would accept. In callsign mode a bound key is
+    // the shortcut's: what a callsign needs is fixed and unbindable
+    // (KeyChordRefusal.callsignKey), and `-`, `+` and `:` — in the filter for
+    // the time commands — would otherwise make every binding on them dead
+    // wherever a call is typed; the editor warns of the trade
+    // (takesCallFieldKey). The mode follows the debounced interpretation, so
+    // a bound key typed within it after a command word runs rather than
+    // types.
+    return identical(field.controller, row.call.controller) && row.command.fieldAcceptsSpaces && _fieldTakes(field, character);
+  }
   if (focused.findAncestorWidgetOfExactType<LoggingControls>() == null) return true;
   return !field.readOnly && _fieldTakes(field, character);
 }
@@ -839,7 +862,8 @@ enum KeyChordRefusal {
   /// (docs/design/keyboard-shortcuts.md § Fixed keys).
   fixed,
 
-  /// A callsign key — a letter, a digit, `,` `.` `/` — with at most ⇧.
+  /// A callsign key — one typing a letter, a digit, `,` `.` `/` or the `?` of
+  /// a partial call, by its name or by what the press typed — with at most ⇧.
   callsignKey,
 }
 
@@ -860,7 +884,10 @@ final _fieldKeys = {
   LogicalKeyboardKey.delete,
 };
 
-KeyChordRefusal? keyChordRefusal(KeyChord chord, String id, [TargetPlatform? platform]) {
+/// [typed] is what the press typed, where the editor has one: a key the
+/// table knows as `'` types `?` on a Spanish layout, and ⇧; is `.` on
+/// AZERTY — a callsign key by what it types, which its name does not say.
+KeyChordRefusal? keyChordRefusal(KeyChord chord, String id, {TargetPlatform? platform, String? typed}) {
   if (chord.key == LogicalKeyboardKey.escape) return KeyChordRefusal.fixed;
   if (!chord.hasCommandModifier && !chord.modifiers.contains(KeyModifier.alt) && _fieldKeys.contains(chord.key)) return KeyChordRefusal.fixed;
   // The QSO list's walk (qso_list_walk.dart): ⌥ and ⌘ on Up and Down.
@@ -874,6 +901,7 @@ KeyChordRefusal? keyChordRefusal(KeyChord chord, String id, [TargetPlatform? pla
     if (chord.samePressAs(undo)) return KeyChordRefusal.fixed;
   }
   if (chord.isCallsignKey) return KeyChordRefusal.callsignKey;
+  if (typed != null && chord.atMostShift && _callsignCharacter.hasMatch(typed)) return KeyChordRefusal.callsignKey;
   return null;
 }
 
@@ -889,6 +917,24 @@ bool isReservedKeyChord(KeyChord chord, [TargetPlatform? platform]) {
     ],
   ];
   return reserved.any((text) => KeyChord.parse(text)!.samePressAs(chord));
+}
+
+/// Whether [chord], bound, takes a character the call field's filter admits
+/// beyond the callsign keys — `-`, `+` and `:`, the time commands'
+/// ([callsignCharacters] less [_callsignCharacter]) — from every call typed
+/// there: the shortcut wins in the field ([fieldTakesKey]), so the character
+/// can no longer be typed into a call. Bindable, with a warning. Read as a
+/// callsign key is, with at most ⇧ held ([KeyChord.atMostShift]): a ⌥ chord
+/// is a chord like any other, whatever character the platform reports.
+///
+/// Judged by [typed], what the press typed on this keyboard — a chord's name
+/// does not say that ⇧= is `+` on a US layout — or, for a press that
+/// reported no character, by the key's own: a numpad `-` matches by key and
+/// takes the `-` whatever the press said.
+bool takesCallFieldKey(KeyChord chord, String? typed) {
+  final character = typed ?? chord.character;
+  if (character == null || !chord.atMostShift) return false;
+  return !_callsignCharacter.hasMatch(character) && RegExp('^[$callsignCharacters]\$').hasMatch(character);
 }
 
 /// A command pressed by something that is not a key — a MIDI control bound

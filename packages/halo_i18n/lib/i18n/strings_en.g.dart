@@ -7369,6 +7369,9 @@ class Translations$keyboardShortcuts$editor$en {
 	/// en: 'The system may take ${keys} before the app sees it.'
 	String reserved({required Object keys}) => 'The system may take ${keys} before the app sees it.';
 
+	/// en: '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.'
+	String callField({required Object keys}) => '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.';
+
 	/// en: '${keys} is already one of this command’s keys.'
 	String already({required Object keys}) => '${keys} is already one of this command’s keys.';
 
@@ -12928,6 +12931,7 @@ extension on Translations {
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} belongs to the logging fields or a dialog, and can’t be changed.',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.',
 			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'The system may take ${keys} before the app sees it.',
+			'keyboardShortcuts.editor.callField' => ({required Object keys}) => '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.',
 			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} is already one of this command’s keys.',
 			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Take ${keys} from “${command}”',
 			'keyboardShortcuts.editor.resetDefault' => 'Reset to Default',
@@ -12971,9 +12975,9 @@ extension on Translations {
 			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
-			'expiredBuild.visit' => 'Visit ham2k.com',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',

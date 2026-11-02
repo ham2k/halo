@@ -190,7 +190,7 @@ void main() {
       test('can all be bound on ${platform.name} — none is a key the app keeps for itself', () {
         for (final spec in keyCommandSpecs) {
           for (final c in spec.defaultChords(platform)) {
-            expect(keyChordRefusal(c, spec.id, platform), isNull, reason: '${spec.id}: $c');
+            expect(keyChordRefusal(c, spec.id, platform: platform), isNull, reason: '${spec.id}: $c');
           }
         }
       });
@@ -261,17 +261,24 @@ void main() {
     test("never the QSO list's walk, nor undo", () {
       expect(keyChordRefusal(chord('alt+Up'), 'app.toggleTheme'), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('cmd+Down'), 'app.toggleTheme'), KeyChordRefusal.fixed);
-      expect(keyChordRefusal(chord('cmd+Z'), 'app.toggleTheme', TargetPlatform.macOS), KeyChordRefusal.fixed);
-      expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', TargetPlatform.windows), KeyChordRefusal.fixed);
-      expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', TargetPlatform.macOS), isNull, reason: 'Ctrl+Z is no undo on a Mac');
+      expect(keyChordRefusal(chord('cmd+Z'), 'app.toggleTheme', platform: TargetPlatform.macOS), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', platform: TargetPlatform.windows), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', platform: TargetPlatform.macOS), isNull, reason: 'Ctrl+Z is no undo on a Mac');
     });
 
     // Every callsign is typed with these: taken by a command, a call could
     // not be entered at all.
-    test('no callsign key on its own, for any command', () {
+    test('no callsign key on its own, for any command — by its name or by what the press typed', () {
       for (final text in ['A', 'shift+A', '7', ',', '.', '/', 'Numpad5', 'NumpadDecimal', 'NumpadDivide']) {
         expect(keyChordRefusal(chord(text), pttCommandId), KeyChordRefusal.callsignKey, reason: text);
       }
+      // A refusal by the key's name alone misses what another layout types
+      // with a key the table knows otherwise: ⇧' is `?` on a Spanish layout,
+      // ⇧; is `.` on AZERTY, and a call needs both.
+      expect(keyChordRefusal(chord("shift+'"), pttCommandId, typed: '?'), KeyChordRefusal.callsignKey, reason: 'the ? of a partial call');
+      expect(keyChordRefusal(chord('shift+;'), pttCommandId, typed: '.'), KeyChordRefusal.callsignKey);
+      expect(keyChordRefusal(chord("shift+'"), pttCommandId, typed: '"'), isNull, reason: 'the same key typing something a call does not need');
+      expect(keyChordRefusal(chord('cmd+/'), pttCommandId, typed: '?'), isNull, reason: 'a command modifier types nothing, whatever the event reports');
     });
 
     test('any other key on its own, for any command — the field rule decides where it fires', () {
@@ -286,6 +293,24 @@ void main() {
       expect(isReservedKeyChord(chord('cmd+Q'), TargetPlatform.macOS), isTrue);
       expect(isReservedKeyChord(chord('alt+F4'), TargetPlatform.windows), isTrue);
       expect(isReservedKeyChord(chord('cmd+J'), TargetPlatform.macOS), isFalse);
+    });
+
+    // Judged by what the press typed, never by the chord's name: ⇧= is `+`
+    // on a US layout, and a bound `shift+=` takes that `+` from the call
+    // field as a bare `-` takes its `-`. A check on the key alone would miss
+    // every shifted one.
+    test("a key the call field's filter admits, with a warning", () {
+      expect(takesCallFieldKey(chord('-'), '-'), isTrue);
+      expect(takesCallFieldKey(chord('NumpadSubtract'), '-'), isTrue);
+      expect(takesCallFieldKey(chord('shift+='), '+'), isTrue, reason: '⇧= types + on a US layout');
+      expect(takesCallFieldKey(chord('shift+;'), ':'), isTrue);
+      expect(takesCallFieldKey(chord(']'), ']'), isFalse, reason: 'the filter drops it: no call loses anything');
+      expect(takesCallFieldKey(chord('alt+-'), '-'), isFalse, reason: 'a held ⌥ makes it a chord, whatever character the platform reports');
+      expect(takesCallFieldKey(chord('alt+1'), '1'), isFalse);
+      expect(takesCallFieldKey(chord('shift+;'), '.'), isFalse, reason: "a callsign character is the refusal's, never a warning's");
+      expect(takesCallFieldKey(chord('NumpadSubtract'), null), isTrue, reason: "a press reporting no character: the key's own, which it matches by");
+      expect(takesCallFieldKey(chord(']'), null), isFalse);
+      expect(takesCallFieldKey(chord('cmd+-'), '-'), isFalse, reason: 'a command modifier types nothing, whatever the event reports');
     });
   });
 

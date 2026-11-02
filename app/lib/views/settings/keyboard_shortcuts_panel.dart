@@ -71,7 +71,7 @@ String _contextLabel(Translations t, KeyCommandContext context) => switch (conte
 /// written as [KeyChord.parse] reads them with `mod` for ⌘ or Ctrl.
 /// [labels] stand for a run of keys no single chord names, as `A–Z` does.
 List<({List<String> chords, List<String> labels, String Function(Translations t) what})> get _fixedKeys => [
-  (chords: const [], labels: const ['A–Z', '0–9', ',', '.', '/'], what: (t) => t.keyboardShortcuts.fixed.callsign),
+  (chords: const [], labels: const ['A–Z', '0–9', ',', '.', '/', '?'], what: (t) => t.keyboardShortcuts.fixed.callsign),
   (chords: ['Escape'], labels: const [], what: (t) => t.keyboardShortcuts.fixed.escape),
   (chords: ['Enter'], labels: const [], what: (t) => t.keyboardShortcuts.fixed.enter),
   (chords: ['Space'], labels: const [], what: (t) => t.keyboardShortcuts.fixed.space),
@@ -686,16 +686,17 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
     // A modifier on its own is the start of a chord, not one.
     final chord = KeyChord.fromEvent(event);
     if (chord == null) return KeyEventResult.handled;
-    if (_offer(chord)) _listen(false);
+    if (_offer(chord, event.character)) _listen(false);
     return KeyEventResult.handled;
   }
 
   /// Adds [chord] unless it cannot be bound here; says why not, or what to
-  /// know about it. True when it was added.
-  bool _offer(KeyChord chord) {
+  /// know about it. True when it was added. [typed] is what the press typed,
+  /// which decides whether the call field loses it.
+  bool _offer(KeyChord chord, String? typed) {
     final t = context.t.keyboardShortcuts.editor;
     final keys = chord.label();
-    final refusal = keyChordRefusal(chord, widget.id);
+    final refusal = keyChordRefusal(chord, widget.id, typed: typed);
     String? message;
     var error = true;
     var added = false;
@@ -710,7 +711,11 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
       error = false;
       _chords.add(chord);
       if (widget.bindings.othersOn(chord, id: widget.id).isNotEmpty) _take.add(chord);
-      if (isReservedKeyChord(chord)) message = t.reserved(keys: keys);
+      if (isReservedKeyChord(chord)) {
+        message = t.reserved(keys: keys);
+      } else if (takesCallFieldKey(chord, typed)) {
+        message = t.callField(keys: keys);
+      }
     }
     setState(() {
       _message = message;

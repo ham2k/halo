@@ -7,6 +7,8 @@
 // Driven through HaLoApp's own handler, since a handler copied into a test
 // could not notice the app's one losing its bindings.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,7 +19,9 @@ import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/key_bindings_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_dialog.dart';
+import 'package:ham2k_logger/views/operation_view.dart';
 import 'package:ham2k_logger/views/settings/keyboard_shortcuts_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -59,13 +63,20 @@ class _Commands extends ExtensionService {
   }
 }
 
-Future<({HaLoServices services, _Commands commands})> _boot(WidgetTester tester, {bool shortcuts = true}) async {
+/// [before] runs on the services before the app is pumped — what the app
+/// reads at launch, an operator's call among it, has to be there by then.
+Future<({HaLoServices services, _Commands commands})> _boot(
+  WidgetTester tester, {
+  bool shortcuts = true,
+  Future<void> Function(HaLoServices services)? before,
+}) async {
   SharedPreferences.setMockInitialValues({});
   setReleaseNotesForTesting(const []);
   setTesterNotesForTesting(const []);
   final commands = _Commands();
   final HaLoHarness(:services) = await makeHaLoServices(prefs: null, extensions: commands);
   await services.settings.setExperimentEnabled(keyBindingsExperiment, shortcuts);
+  await before?.call(services);
   // The bindings are one value for the whole test process.
   addTearDown(() => keyBindings.value = LegacyKeyBindings());
   await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
@@ -73,11 +84,11 @@ Future<({HaLoServices services, _Commands commands})> _boot(WidgetTester tester,
   return (services: services, commands: commands);
 }
 
-Future<void> _press(WidgetTester tester, List<LogicalKeyboardKey> modifiers, LogicalKeyboardKey key) async {
+Future<void> _press(WidgetTester tester, List<LogicalKeyboardKey> modifiers, LogicalKeyboardKey key, {String? character}) async {
   for (final m in modifiers) {
     await tester.sendKeyDownEvent(m);
   }
-  await tester.sendKeyEvent(key);
+  await tester.sendKeyEvent(key, character: character);
   for (final m in modifiers.reversed) {
     await tester.sendKeyUpEvent(m);
   }
@@ -249,6 +260,52 @@ void main() {
     await _unmount(tester);
   });
 
+  // The bug's own scenario, through the app's handler and the real view: a
+  // bare `-` bound to a command, the cursor in the call field, the key
+  // pressed. Asked of the app, not the rule — a handler that stopped asking
+  // fieldTakesKey, or a call field keeping the `-` its filter admits for the
+  // time commands, would run nothing. The simulator types into no field, so
+  // only the command is asked.
+  testWidgets('a bare `-` bound to a command runs it from the call field', (tester) async {
+    final (:services, :commands) = await _boot(
+      tester,
+      before: (services) async {
+        await services.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
+        // Neither the operation sheet nor the Cloud Sync question over the view.
+        await services.settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+        await services.settings.recordOnboardingShown(OnboardingFlows.cloudSync);
+        // A stored VFO with a frequency and a mode, or the Radio control opens
+        // over the entry row on mount (logging-fields.md § Asked up front).
+        services.radio.setVfo('vfoA', freq: 14250, mode: 'USB');
+      },
+    );
+    await services.keyBindingsService.setOverrides(const KeyBindingOverrides().withText('DEVMODE', [KeyChord.parse('-')!]));
+    tester.view.physicalSize = const Size(1200, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final operation = await services.operations.create(stationCall: 'KI2D');
+    unawaited(
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.tap(call);
+    await tester.pump();
+    final focused = FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<EditableText>();
+    expect(focused?.controller, same(tester.widget<TextField>(call).controller), reason: 'the cursor is in the call field');
+    await tester.sendKeyEvent(LogicalKeyboardKey.minus, character: '-');
+    await tester.pump();
+
+    expect(commands.executed, ['DEVMODE']);
+    await _unmount(tester);
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   // The density and font keys differ by ⇧ alone: matched loosely, ⌃⇧= would
   // also zoom.
   testWidgets('with Keyboard Shortcuts on, ⇧ still parts Layout Density from Font Scale', (tester) async {
@@ -314,7 +371,7 @@ void main() {
     await _unmount(tester);
   });
 
-  testWidgets('the recorder refuses a fixed key, and Escape stops it rather than being bound', (tester) async {
+  testWidgets('the recorder refuses a fixed key and a callsign character, and Escape stops it rather than being bound', (tester) async {
     final (:services, commands: _) = await _boot(tester);
     await tester.pumpWidget(
       TranslationProvider(
@@ -333,6 +390,15 @@ void main() {
     await _press(tester, const [], LogicalKeyboardKey.enter);
     expect(find.textContaining('can’t be changed'), findsOneWidget);
     expect(find.text('Press the keys for the shortcut…'), findsOneWidget, reason: 'still listening for one that can be bound');
+    // The `?` of a partial call, typed by a key the table knows as `'` —
+    // ⇧' on a Spanish layout, as a browser reports it: refused by what the
+    // press typed, which the key's name does not say.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft, platform: 'web');
+    await tester.sendKeyEvent(LogicalKeyboardKey.quoteSingle, platform: 'web', physicalKey: PhysicalKeyboardKey.quote, character: '?');
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft, platform: 'web');
+    await tester.pump();
+    expect(find.textContaining('is how callsigns are typed'), findsOneWidget);
+    expect(find.text('Press the keys for the shortcut…'), findsOneWidget, reason: 'refused, so still listening');
 
     await _press(tester, const [], LogicalKeyboardKey.escape);
     expect(find.text('Add Shortcut'), findsOneWidget, reason: 'Escape stopped listening');
@@ -340,6 +406,36 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
     expect(services.keyBindingsService.overrides.isEmpty, isTrue);
+    await _unmount(tester);
+  });
+
+  // A warning, not a refusal: the key is bound and the recorder stops. Without
+  // the warning the operator finds out at the next `-1m` that never moved the
+  // time.
+  testWidgets("the recorder binds a key the call field's filter admits, and says the shortcut wins there", (tester) async {
+    final (:services, commands: _) = await _boot(tester);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          theme: buildHaLoTheme(Brightness.light),
+          home: Scaffold(body: KeyboardShortcutsPanel(services: services)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Switch between light and dark'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add Shortcut'));
+    await tester.pump();
+    await _press(tester, const [], LogicalKeyboardKey.minus, character: '-');
+    final warning = find.textContaining('Bound, the shortcut wins there');
+    expect(warning, findsOneWidget);
+    expect(tester.widget<Text>(warning).style?.color, isNot(Theme.of(tester.element(warning)).colorScheme.error), reason: 'a warning, not a refusal');
+    expect(find.text('Add Shortcut'), findsOneWidget, reason: 'bound, so the recorder stopped');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(services.keyBindingsService.overrides.resolve().chordsFor('app.toggleTheme'), contains(KeyChord.parse('-')!));
     await _unmount(tester);
   });
 }

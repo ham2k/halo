@@ -46,6 +46,17 @@ void main() {
 
   bool quoteIsPtt() => !fieldTakesKey(FocusManager.instance.primaryFocus?.context, "'");
 
+  /// Every input reads as a command waiting for free text, as NOTE does.
+  const noteStubs = {
+    'command:*:interpret': [
+      {
+        'key': 'test',
+        'ok': true,
+        'value': {'expectsParams': true, 'mixedCase': true, 'describe': 'Note'},
+      },
+    ],
+  };
+
   Future<HaLoServices> pumpOperation(
     WidgetTester tester, {
     Map<String, dynamic> stubs = const {},
@@ -136,20 +147,7 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     testWidgets("a held key drops on ['] even where ['] would be typed", (tester) async {
-      // Every input reads as a command waiting for free text, as NOTE does.
-      final services = await pumpOperation(
-        tester,
-        radioMode: 'USB',
-        stubs: {
-          'command:*:interpret': [
-            {
-              'key': 'test',
-              'ok': true,
-              'value': {'expectsParams': true, 'mixedCase': true, 'describe': 'Note'},
-            },
-          ],
-        },
-      );
+      final services = await pumpOperation(tester, radioMode: 'USB', stubs: noteStubs);
       await focusField(tester, t.loggingControls.theirCall);
       await pressApostrophe(tester);
       await tester.pump();
@@ -561,26 +559,33 @@ void main() {
       await unmount(tester, services);
     });
 
+    testWidgets("a bound key the call field's filter admits — `-`, `+` and `:`, for the time commands — is the shortcut's there", (tester) async {
+      final services = await pumpOperation(tester);
+      final call = find.widgetWithText(TextField, t.loggingControls.theirCall);
+      await focusField(tester, t.loggingControls.theirCall);
+
+      for (final character in ['-', '+', ':']) {
+        await tester.enterText(call, character);
+        await tester.pumpAndSettle();
+        // The premise first: asked of the formatters alone the field would
+        // keep a character its filter admits, and every binding on it would
+        // be dead wherever a call is typed.
+        expect(tester.widget<TextField>(call).controller!.text, character, reason: 'the filter admits $character for the time commands');
+        expect(fieldTakesKey(FocusManager.instance.primaryFocus?.context, character), isFalse, reason: 'the call field in callsign mode');
+      }
+
+      await unmount(tester, services);
+    });
+
     testWidgets("the call field reading a command that takes free text keeps [']", (tester) async {
-      // Every input reads as a command waiting for free text, as NOTE does.
-      final services = await pumpOperation(
-        tester,
-        stubs: {
-          'command:*:interpret': [
-            {
-              'key': 'test',
-              'ok': true,
-              'value': {'expectsParams': true, 'mixedCase': true, 'describe': 'Note'},
-            },
-          ],
-        },
-      );
+      final services = await pumpOperation(tester, stubs: noteStubs);
       await focusField(tester, t.loggingControls.theirCall);
       await tester.enterText(find.widgetWithText(TextField, t.loggingControls.theirCall), 'NOTE ');
       await tester.pumpAndSettle();
 
       // Without this the operator's "can't" in a note keys the transmitter.
       expect(quoteIsPtt(), isFalse);
+      expect(fieldTakesKey(FocusManager.instance.primaryFocus?.context, '-'), isTrue, reason: "a note keeps its dashes, bound or not");
 
       await unmount(tester, services);
     });

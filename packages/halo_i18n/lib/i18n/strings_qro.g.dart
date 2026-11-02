@@ -3278,6 +3278,7 @@ class _Translations$keyboardShortcuts$editor$qro extends Translations$keyboardSh
 	@override String refusedFixed({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.';
 	@override String refusedCallsign({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.';
 	@override String reserved({required Object keys}) => 'THE SYSTEM MAY TAKE ${keys} BEFORE THE APP SEES IT.';
+	@override String callField({required Object keys}) => '${keys} IS ALSO TYPED IN THE CALL FIELD, FOR THE TIME COMMANDS. BOUND, THE SHORTCUT WINS THERE.';
 	@override String already({required Object keys}) => '${keys} IS ALREADY ONE OF THIS COMMAND’S KEYS.';
 	@override String takeIt({required Object keys, required Object command}) => 'TAKE ${keys} FROM “${command}”';
 	@override String get resetDefault => 'RESET TO DEFAULT';
@@ -7236,6 +7237,7 @@ extension on TranslationsQro {
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.',
 			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'THE SYSTEM MAY TAKE ${keys} BEFORE THE APP SEES IT.',
+			'keyboardShortcuts.editor.callField' => ({required Object keys}) => '${keys} IS ALSO TYPED IN THE CALL FIELD, FOR THE TIME COMMANDS. BOUND, THE SHORTCUT WINS THERE.',
 			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} IS ALREADY ONE OF THIS COMMAND’S KEYS.',
 			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'TAKE ${keys} FROM “${command}”',
 			'keyboardShortcuts.editor.resetDefault' => 'RESET TO DEFAULT',
@@ -7279,9 +7281,9 @@ extension on TranslationsQro {
 			'keyboardShortcuts.platform.android' => 'ANDROID',
 			'expiredBuild.title' => 'THIS BUILD HAS EXPIRED',
 			'expiredBuild.body' => 'PLEASE VISIT HAM2K.COM AND GET A NEWER VERSION.',
-			'expiredBuild.visit' => 'VISIT HAM2K.COM',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.visit' => 'VISIT HAM2K.COM',
 			'expiredBuild.dismiss' => 'CONTINUE ANYWAY',
 			'staleness.codePushFloorTitle' => 'AN IMPORTANT UPDATE IS WAITING',
 			'staleness.codePushFloorBody' => 'THIS VERSION HAS A FIX YOU DON\'T HAVE YET.',

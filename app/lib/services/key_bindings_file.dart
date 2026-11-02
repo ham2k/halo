@@ -80,8 +80,10 @@ class KeyBindingsFile {
 
   /// What an import takes from the file, its modifiers read through
   /// [translation]: the commands this version knows, with the chords the
-  /// recorder would refuse left out and returned as [refused] — a file is no
-  /// way round the fixed keys.
+  /// recorder would refuse by the key's name left out and returned as
+  /// [refused] — a file is no way round the fixed keys. A file carries no
+  /// keystroke, so what a key types on this keyboard, which the recorder
+  /// also refuses by, is unknown here.
   ({KeyBindingOverrides overrides, List<KeyChord> refused}) importable(Map<KeyModifier, KeyModifier?> translation) {
     final translated = KeyBindingOverrides(
       commands: {

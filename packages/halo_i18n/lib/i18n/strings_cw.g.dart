@@ -3278,6 +3278,7 @@ class _Translations$keyboardShortcuts$editor$cw extends Translations$keyboardSho
 	@override String refusedFixed({required Object keys}) => '${keys} / —··· · ·—·· ——— —· ——· ··· / — ——— / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ··· / ——— ·—· / ·— / —·· ·· ·— ·—·· ——— ——· ——··—— / ·— —· —·· / —·—· ·— —· ’ — / —··· · / —·—· ···· ·— —· ——· · —·· ·—·—·—';
 	@override String refusedCallsign({required Object keys}) => '${keys} / ·· ··· / ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ·— ·—· · / — —·—— ·——· · —·· ·—·—·— / ···· ——— ·—·· —·· / —·—· —— —·· ——··—— / —·—· — ·—· ·—·· / ——— ·—· / ·— ·—·· — / ·—— ·· — ···· / ·· — ·—·—·—';
 	@override String reserved({required Object keys}) => '— ···· · / ··· —·—— ··· — · —— / —— ·— —·—— / — ·— —·— · / ${keys} / —··· · ··—· ——— ·—· · / — ···· · / ·— ·——· ·——· / ··· · · ··· / ·· — ·—·—·—';
+	@override String callField({required Object keys}) => '${keys} / ·· ··· / ·— ·—·· ··· ——— / — —·—— ·——· · —·· / ·· —· / — ···· · / —·—· ·— ·—·· ·—·· / ··—· ·· · ·—·· —·· ——··—— / ··—· ——— ·—· / — ···· · / — ·· —— · / —·—· ——— —— —— ·— —· —·· ··· ·—·—·— / —··· ——— ··— —· —·· ——··—— / — ···· · / ··· ···· ——— ·—· — —·—· ··— — / ·—— ·· —· ··· / — ···· · ·—· · ·—·—·—';
 	@override String already({required Object keys}) => '${keys} / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ——— —· · / ——— ··—· / — ···· ·· ··· / —·—· ——— —— —— ·— —· —·· ’ ··· / —·— · —·—— ··· ·—·—·—';
 	@override String takeIt({required Object keys, required Object command}) => '— ·— —·— · / ${keys} / ··—· ·—· ——— —— / “ ${command} ”';
 	@override String get resetDefault => '·—· · ··· · — / — ——— / —·· · ··—· ·— ··— ·—·· —';
@@ -7236,6 +7237,7 @@ extension on TranslationsCw {
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} / —··· · ·—·· ——— —· ——· ··· / — ——— / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ··· / ——— ·—· / ·— / —·· ·· ·— ·—·· ——— ——· ——··—— / ·— —· —·· / —·—· ·— —· ’ — / —··· · / —·—· ···· ·— —· ——· · —·· ·—·—·—',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} / ·· ··· / ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ·— ·—· · / — —·—— ·——· · —·· ·—·—·— / ···· ——— ·—·· —·· / —·—· —— —·· ——··—— / —·—· — ·—· ·—·· / ——— ·—· / ·— ·—·· — / ·—— ·· — ···· / ·· — ·—·—·—',
 			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => '— ···· · / ··· —·—— ··· — · —— / —— ·— —·—— / — ·— —·— · / ${keys} / —··· · ··—· ——— ·—· · / — ···· · / ·— ·——· ·——· / ··· · · ··· / ·· — ·—·—·—',
+			'keyboardShortcuts.editor.callField' => ({required Object keys}) => '${keys} / ·· ··· / ·— ·—·· ··· ——— / — —·—— ·——· · —·· / ·· —· / — ···· · / —·—· ·— ·—·· ·—·· / ··—· ·· · ·—·· —·· ——··—— / ··—· ——— ·—· / — ···· · / — ·· —— · / —·—· ——— —— —— ·— —· —·· ··· ·—·—·— / —··· ——— ··— —· —·· ——··—— / — ···· · / ··· ···· ——— ·—· — —·—· ··— — / ·—— ·· —· ··· / — ···· · ·—· · ·—·—·—',
 			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ——— —· · / ——— ··—· / — ···· ·· ··· / —·—· ——— —— —— ·— —· —·· ’ ··· / —·— · —·—— ··· ·—·—·—',
 			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => '— ·— —·— · / ${keys} / ··—· ·—· ——— —— / “ ${command} ”',
 			'keyboardShortcuts.editor.resetDefault' => '·—· · ··· · — / — ——— / —·· · ··—· ·— ··— ·—·· —',
@@ -7279,9 +7281,9 @@ extension on TranslationsCw {
 			'keyboardShortcuts.platform.android' => '·— —· —·· ·—· ——— ·· —··',
 			'expiredBuild.title' => '— ···· ·· ··· / —··· ··— ·· ·—·· —·· / ···· ·— ··· / · —··— ·——· ·· ·—· · —··',
 			'expiredBuild.body' => '·——· ·—·· · ·— ··· · / ···— ·· ··· ·· — / ···· ·— —— ··——— —·— ·—·—·— —·—· ——— —— / ·— —· —·· / ——· · — / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· ·—·—·—',
-			'expiredBuild.visit' => '···— ·· ··· ·· — / ···· ·— —— ··——— —·— ·—·—·— —·—· ——— ——',
 			_ => null,
 		} ?? switch (path) {
+			'expiredBuild.visit' => '···— ·· ··· ·· — / ···· ·— —— ··——— —·— ·—·—·— —·—· ——— ——',
 			'expiredBuild.dismiss' => '—·—· ——— —· — ·· —· ··— · / ·— —· —·—— ·—— ·— —·——',
 			'staleness.codePushFloorTitle' => '·— —· / ·· —— ·——· ——— ·—· — ·— —· — / ··— ·——· —·· ·— — · / ·· ··· / ·—— ·— ·· — ·· —· ——·',
 			'staleness.codePushFloorBody' => '— ···· ·· ··· / ···— · ·—· ··· ·· ——— —· / ···· ·— ··· / ·— / ··—· ·· —··— / —·—— ——— ··— / —·· ——— —· ·————· — / ···· ·— ···— · / —·—— · — ·—·—·—',

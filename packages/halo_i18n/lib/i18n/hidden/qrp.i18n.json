@@ -2929,6 +2929,7 @@
       "refusedFixed": "${keys} belongs to the logging fields or a dialog, and can’t be changed.",
       "refusedCallsign": "${keys} is how callsigns are typed. hold cmd, ctrl or alt with it.",
       "reserved": "the system may take ${keys} before the app sees it.",
+      "callField": "${keys} is also typed in the call field, for the time commands. bound, the shortcut wins there.",
       "already": "${keys} is already one of this command’s keys.",
       "takeIt": "take ${keys} from “${command}”",
       "resetDefault": "reset to default",
