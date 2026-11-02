@@ -11,7 +11,8 @@ import 'package:halo_core/halo_core.dart';
 
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_ref_results.dart' show RefLink;
-import '../../services/extensions/extension_service.dart' show ExtensionInfo, activityScopeWordsOf, activityScopeWord, controlExtensionKey;
+import '../../services/extensions/extension_service.dart'
+    show ActivitySuggestionResult, ExtensionInfo, activityScopeWordsOf, activityScopeWord, controlExtensionKey;
 import '../../services/halo_services.dart';
 import '../../services/outline_grid_service.dart';
 import '../map/map_zoom_controller.dart' show MapViewBounds;
@@ -214,19 +215,32 @@ class ActivitySearchState extends ChangeNotifier {
       _loading = true;
       notifyListeners();
     }
-    final query = ActivitySearchQuery.parse(term, scopes());
+    final ActivitySearchQuery query;
+    final GridLocation? fallback;
+    final ActivitySuggestionResult results;
+    try {
+      query = ActivitySearchQuery.parse(term, scopes());
+      final fallbackPosition = services.location.position;
+      fallback = fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude);
+      results = await services.extensions.suggestActivities(
+        currentOperation().data,
+        searchTerm: query.otherTerm.isEmpty ? null : query.otherTerm,
+        activityKeys: query.activityKeys,
+        preferredKeys: query.preferredKeys,
+        preferredSearchTerm: query.term.isEmpty ? null : query.term,
+        fallbackLocation: fallback,
+      );
+    } catch (_) {
+      // Nothing else takes the spinner down, so the search ends as failed
+      // before the error goes on to be reported.
+      if (!_disposed && requestId == _searchRequestId) {
+        _loading = false;
+        _failed = true;
+        notifyListeners();
+      }
+      rethrow;
+    }
     final trimmed = query.term;
-    final location = services.location;
-    final fallbackPosition = location.position;
-    final fallback = fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude);
-    final results = await services.extensions.suggestActivities(
-      currentOperation().data,
-      searchTerm: query.otherTerm.isEmpty ? null : query.otherTerm,
-      activityKeys: query.activityKeys,
-      preferredKeys: query.preferredKeys,
-      preferredSearchTerm: trimmed.isEmpty ? null : trimmed,
-      fallbackLocation: fallback,
-    );
     // The nearby list only — or a scope's own list, which a bare `pota` asks
     // for too: a typed search is answered by what it names.
     final here = currentOperation().location ?? fallback;

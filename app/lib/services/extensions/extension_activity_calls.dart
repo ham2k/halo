@@ -244,7 +244,10 @@ mixin _ExtensionActivityCalls {
       // inside the comparator, which is the same escape route past the catch
       // below that the per-element check above exists to close.
       num orderOf(Map<String, dynamic> control) => control['order'] is num ? control['order'] as num : 0;
-      controls.sort((a, b) => orderOf(a).compareTo(orderOf(b)));
+      // Stable, unlike `List.sort` past 32 elements: controls that tie on
+      // `order` — every one that names none — keep the fan-out's order, so a
+      // panel's fields hold their places from one load to the next.
+      mergeSort(controls, compare: (a, b) => orderOf(a).compareTo(orderOf(b)));
       return (controls: controls, loadFailed: loadFailed);
     } on ExtensionHostException catch (e) {
       // A timeout with something salvageable behind it is handled above, by
@@ -253,8 +256,21 @@ mixin _ExtensionActivityCalls {
       // no partial answer to keep.
       debugPrint('[extensions] ${hook.method} failed: $e');
       return (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    } catch (e, st) {
+      // Anything else is a bug, in the runtime (an answer that is not a
+      // list of entries) or here. Thrown, it would leave the callers that
+      // start this from initState on `loading` for the life of the screen.
+      debugPrint('[extensions] ${hook.method} failed: $e');
+      _reportOnce('activity-controls', e, st);
+      return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     }
   }
+
+  /// Reports an error that is not the host's own, a runtime bug say, the
+  /// first time [key]'s call meets it in a session. The call meets it again
+  /// on every keystroke or load, and the first report already says what the
+  /// rest would.
+  static void _reportOnce(String key, Object error, StackTrace stackTrace) => ErrorReportingService.reportIfRepeated(key, error, stackTrace, threshold: 1);
 
   /// Candidate activities for the "add activity" search, merged across every
   /// `activity` hook and sorted by `distance / relevance` ascending — a more
@@ -301,10 +317,10 @@ mixin _ExtensionActivityCalls {
     // park two kilometres away and one eight kilometres away rank the same
     // from a square's centre, and this ordering is what the operator reads as
     // "nearby".
-    final gridLocation = locationFromLatLon(operationData['lat'], operationData['lon']) ?? gridToLocation(operationData['grid'] as String?) ?? fallbackLocation;
-    final callsign = (operationData['stationCall'] as String?)?.isNotEmpty == true
-        ? operationData['stationCall'] as String
-        : settings?.activeProfile.operatorCall;
+    final gridLocation =
+        locationFromLatLon(operationData['lat'], operationData['lon']) ?? gridToLocation(asQsonString(operationData['grid'])) ?? fallbackLocation;
+    final stationCall = asQsonString(operationData['stationCall']);
+    final callsign = stationCall != null && stationCall.isNotEmpty ? stationCall : settings?.activeProfile.operatorCall;
 
     // `scoped` tells a hook its type alone is being asked for — the operator
     // picked its "Activity Types" row, or typed its word as a scope. A bare
@@ -386,8 +402,11 @@ mixin _ExtensionActivityCalls {
                 if (entry['ok'] == true) entry,
             ];
           })
-          .onError<ExtensionHostException>((e, _) {
+          // Any error, not just the host's: a batch answered short is the
+          // runtime's bug, and still no reason to drop the others' results.
+          .onError((Object e, StackTrace st) {
             debugPrint('[extensions] preferred activity hooks failed: $e');
+            if (e is! ExtensionHostException) _reportOnce('activity-search', e, st);
             ownListFailed = ownList;
             preferredFailedKeys = [...?preferredKeys];
             return const <Map<String, dynamic>>[];
@@ -405,8 +424,9 @@ mixin _ExtensionActivityCalls {
             }
             return entries;
           })
-          .onError<ExtensionHostException>((e, _) {
+          .onError((Object e, StackTrace st) {
             debugPrint('[extensions] activity suggestion fan-out failed: $e');
+            if (e is! ExtensionHostException) _reportOnce('activity-search', e, st);
             fanOutFailed = true;
             return const [];
           });
@@ -428,6 +448,13 @@ mixin _ExtensionActivityCalls {
       );
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true, someSourcesFailed: true);
+    } catch (e, st) {
+      // Anything else is a bug, in the runtime (a batch answered with an
+      // entry missing) or here, and it is reported as one. The search still
+      // ends as failed, the answer every other failure here gets.
+      debugPrint('[extensions] suggestActivities failed: $e');
+      _reportOnce('activity-search', e, st);
       return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true, someSourcesFailed: true);
     }
   }

@@ -149,6 +149,19 @@ void main() {
       expect(state.answeredSearches, 1);
     });
 
+    test('a search that throws ends as failed rather than loading for good', () async {
+      // Nothing else takes the spinner down. The error still goes on, to be
+      // reported as any other escaped error is.
+      final state = await makeState();
+      final searching = state.search('bear');
+      await settle();
+      extensions.asks.single.answer.completeError(StateError('a bug'));
+
+      await expectLater(searching, throwsStateError);
+      expect(state.loading, isFalse);
+      expect(state.failed, isTrue);
+    });
+
     // On a fake clock: that the kept timer HAS fired is the late-not-early
     // direction a real timer cannot promise (time.md §7).
     test('typing is searched once the box sits still, for the last text only', () async {
