@@ -1315,7 +1315,7 @@ class _WaitingView extends StatelessWidget {
     final style = theme.textTheme.bodyMedium ?? const TextStyle();
     final color = style.color ?? theme.colorScheme.onSurface;
     final memory = send.memory;
-    final text = memory == null ? send.text ?? '' : voiceMessageLabelFor(keyer, memory, context.t.settings.radio.voiceMessages.key(n: memory));
+    final text = memory == null ? send.text ?? '' : voiceMessageLabelFor(keyer, memory, context.t.settings.radio.voiceMessages.message(n: memory));
     return Stack(
       children: [
         Padding(
@@ -1338,7 +1338,7 @@ class _WaitingView extends StatelessWidget {
               for (final n in send.then)
                 Flexible(
                   child: Text(
-                    ' · ${voiceMessageLabelFor(keyer, n, context.t.settings.radio.voiceMessages.key(n: n))}',
+                    ' · ${voiceMessageLabelFor(keyer, n, context.t.settings.radio.voiceMessages.message(n: n))}',
                     style: style.copyWith(color: color.withValues(alpha: 0.4)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

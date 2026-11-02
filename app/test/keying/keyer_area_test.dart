@@ -492,7 +492,6 @@ void main() {
       await cat.setRadio1(LocalRadio(left));
       await cat.setRadio2(right);
       await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
-      await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
       await services.settings.setVoiceMessageLabel(4, 'TU RIGHT', radio: 'B');
       Widget line(String radio) => FyiArea(key: ValueKey(radio), services: services, radio: radio, keyer: true, phone: true);
       await tester.pumpWidget(
@@ -509,12 +508,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(inRadio('A', find.text('CQ LEFT')), findsOneWidget);
-      expect(inRadio('A', find.textContaining('RIGHT')), findsNothing);
-      expect(inRadio('B', find.text('QRZ RIGHT')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
+      expect(inRadio('A', find.textContaining('Message 3')), findsNothing);
+      // A memory with no label reads as it does playing, never a bare "M3".
+      expect(inRadio('B', find.text('Message 3')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
       expect(inRadio('B', find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'under a bar that cannot say how long');
       cat.keyer('B').queueVoiceMemory(4);
       await tester.pump();
       expect(inRadio('B', find.text(' · TU RIGHT')), findsOneWidget, reason: 'a second memory waiting there, behind the first');
+      cat.keyer('B').queueVoiceMemory(5);
+      await tester.pump();
+      expect(inRadio('B', find.text(' · Message 5')), findsOneWidget);
       cat.keyer('A').stopVoice();
       cat.keyer('B').stopVoice();
       await tester.pump(const Duration(seconds: 62));
