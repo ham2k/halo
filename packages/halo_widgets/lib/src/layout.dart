@@ -26,6 +26,14 @@ import 'density.dart';
 /// layouts default their primary pane to this width.
 const double idealPaneWidth = 500.0;
 
+/// The widest a two-pane layout's primary pane opens by default: about two
+/// thirds of the window, never past this — content designed for a pane reads
+/// fine up to here, and beyond it the extra width serves the secondary pane
+/// better. Its own number rather than [ShirtSize.sMax]: that boundary is set
+/// against the divided width a phone or a foldable sees, while this one is
+/// about a desktop pane's content.
+const double primaryPaneMaxWidth = 660.0;
+
 /// Below this a pane stops being useful (forms wrap badly, lists truncate).
 /// The default minimum for either side of a resizable split.
 const double minPaneWidth = 280.0;
@@ -106,10 +114,12 @@ enum ShirtSize {
   /// 390/1.10 ≈ 355, so a 390pt iPhone stays S.
   static const double xsMax = 340.0;
 
-  /// Below this → S. At 660 the settings and operation views go two-pane;
-  /// a foldable's inner display held portrait (iPhone Duo, 669) and
-  /// iPad-mini portrait (744) and up qualify, and no phone held portrait does.
-  static const double sMax = 660.0;
+  /// Below this → S. At 607 the settings and operation views go two-pane.
+  /// Set against the DIVIDED width, which includes `mobileBaseUiScale` on a
+  /// phone: a foldable's inner display held portrait (iPhone Duo, 669 →
+  /// ≈608) qualifies, an iPhone SE in landscape (667 → ≈606) does not, and
+  /// neither does any phone held portrait.
+  static const double sMax = 607.0;
 
   /// Below this → L. XL is reserved: it behaves identically to L today and
   /// exists so views can diverge later (third columns, wider gutters)

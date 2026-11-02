@@ -20,8 +20,8 @@ separate vocabulary — five density rungs, below.
 | Size | Logical width | Typical device |
 |---|---|---|
 | **XS** | below 340 | small phones |
-| **S** | 340 – 659 | typical phones (390–430 at the mobile base) |
-| **L** | 660 – 1199 | tablets, foldables' inner displays (iPhone Duo, 669), small desktop windows |
+| **S** | 340 – 606 | typical phones (390–430 at the mobile base), and an iPhone SE in landscape |
+| **L** | 607 – 1199 | tablets, foldables' inner displays (iPhone Duo, 669 → ≈608 at the mobile base), larger phones in landscape, small desktop windows |
 | **XL** | 1200 and up | large windows, full screens |
 
 There is deliberately **no M**. Between S and L lies the **ideal pane width**
@@ -29,9 +29,11 @@ There is deliberately **no M**. Between S and L lies the **ideal pane width**
 around that width simply shows one pane at its best size; it isn't a distinct
 layout mode. When a view goes two-pane at L and the user has never dragged
 that divider, the primary pane defaults to about two thirds of the available
-width, capped at the S boundary (`ShirtSize.sMax`) — content designed for a
-pane reads fine up to the widest single-pane phone layout, and beyond that
-the extra width serves the secondary pane better.
+width, capped at `primaryPaneMaxWidth` (660) — content designed for a pane
+reads fine up to there, and beyond that the extra width serves the secondary
+pane better. A number of its own, not the S boundary: that one is set against
+the divided width a phone sees (the mobile base), this one against a pane's
+content.
 
 All values live in
 [`packages/halo_widgets/lib/src/layout.dart`](../../packages/halo_widgets/lib/src/layout.dart):
@@ -1475,10 +1477,10 @@ not add it.
 
 ## How to verify a change
 
-Run the app on macOS and drag the window width across 360, 660, and 1200.
+Run the app on macOS and drag the window width across 340, 607, and 1200.
 Confirm:
 
-- Home, Operation, and Settings each switch arrangements at 660 — and
+- Home, Operation, and Settings each switch arrangements at 607 — and
   nothing changes at 1200 (XL is reserved).
 - In-progress state survives the flip: a half-typed callsign in the logging
   controls, the operation list's scroll position.

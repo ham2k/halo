@@ -18,8 +18,8 @@ void main() {
       expect(ShirtSize.fromWidth(339.9), ShirtSize.xs);
       expect(ShirtSize.fromWidth(340), ShirtSize.s);
       expect(ShirtSize.fromWidth(430), ShirtSize.s);
-      expect(ShirtSize.fromWidth(659.9), ShirtSize.s);
-      expect(ShirtSize.fromWidth(660), ShirtSize.l);
+      expect(ShirtSize.fromWidth(606.9), ShirtSize.s);
+      expect(ShirtSize.fromWidth(607), ShirtSize.l);
       expect(ShirtSize.fromWidth(1199.9), ShirtSize.l);
       expect(ShirtSize.fromWidth(1200), ShirtSize.xl);
     });

@@ -51,7 +51,7 @@ class ResizableSplitView extends StatefulWidget {
   /// The caller-owned preferred width for [primary] (see the header
   /// comment), or null when the user has never dragged this divider — the
   /// primary then defaults to about two thirds of the available width,
-  /// capped at [ShirtSize.sMax].
+  /// capped at [primaryPaneMaxWidth].
   final double? preferredPrimaryWidth;
 
   final double minPrimaryWidth;
@@ -122,7 +122,7 @@ class ResizableSplitView extends StatefulWidget {
 
 class _ResizableSplitViewState extends State<ResizableSplitView> {
   /// Null until the user drags (or the caller supplies a persisted width) —
-  /// layout then uses the 2/3-capped-at-sMax default computed per build.
+  /// layout then uses the 2/3-capped default computed per build.
   late double? _preferredWidth = widget.preferredPrimaryWidth;
   bool _dragging = false;
 
@@ -258,11 +258,10 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         _dragLowerBound = lower;
         _dragUpperBound = upper;
         // No preference yet → the primary takes about two thirds of the
-        // width, never more than sMax (the widest a single-pane phone
-        // layout gets — content designed for a pane reads fine up to
-        // there). primaryFraction (fixed, non-resizable splits) overrides
-        // both the preference and that default.
-        final preferred = widget.primaryFraction != null ? total * widget.primaryFraction! : (_preferredWidth ?? math.min(total * 2 / 3, ShirtSize.sMax));
+        // width, never more than [primaryPaneMaxWidth]. primaryFraction
+        // (fixed, non-resizable splits) overrides both the preference and
+        // that default.
+        final preferred = widget.primaryFraction != null ? total * widget.primaryFraction! : (_preferredWidth ?? math.min(total * 2 / 3, primaryPaneMaxWidth));
         final effectiveWidth = grid.snap(preferred.clamp(lower, upper).toDouble());
         _effectiveWidthForDrag = effectiveWidth;
 

@@ -89,7 +89,7 @@ void main() {
     expect(bar.color, headerColor, reason: 'the solid divider reads as chrome: same surface as the header');
   });
 
-  testWidgets('no preference defaults primary to 2/3 of the width, capped at sMax', (tester) async {
+  testWidgets('no preference defaults primary to 2/3 of the width, capped at primaryPaneMaxWidth', (tester) async {
     tester.view.physicalSize = const Size(900, 600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -104,7 +104,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(primaryWidth(tester), 600);
 
-    // 1200 * 2/3 = 800 → capped at sMax (660).
+    // 1200 * 2/3 = 800 → capped at primaryPaneMaxWidth (660).
     tester.view.physicalSize = const Size(1200, 600);
     await tester.pumpWidget(
       harness(
@@ -113,7 +113,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(primaryWidth(tester), ShirtSize.sMax);
+    expect(primaryWidth(tester), primaryPaneMaxWidth);
   });
 
   testWidgets('resizable: false with primaryFraction sizes the primary as a fixed fraction and hides the drag handle', (tester) async {
@@ -206,7 +206,7 @@ void main() {
     expect(reported, isEmpty, reason: 'a click must not persist a preference');
 
     // And the default must still adapt to the window afterwards — to a width
-    // whose 2/3 stays under the sMax cap, or the cap would hide a frozen one.
+    // whose 2/3 stays under the primaryPaneMaxWidth cap, or the cap would hide a frozen one.
     tester.view.physicalSize = const Size(960, 600);
     await tester.pumpWidget(build(960));
     await tester.pumpAndSettle();

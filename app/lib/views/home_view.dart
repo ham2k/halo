@@ -266,9 +266,9 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     if (total <= 0) return null;
     // The cap the old split enforced through `maxPrimaryWidth`, applied here
     // because the dock has no such notion: without it a 2560px window gives
-    // the operation list ~1700px of stretched rows. `ShirtSize.sMax` is the
-    // widest a pane's content is designed for.
-    final primary = math.min(stored, ShirtSize.sMax);
+    // the operation list ~1700px of stretched rows. [primaryPaneMaxWidth] is
+    // the widest a pane's content is designed for.
+    final primary = math.min(stored, primaryPaneMaxWidth);
     final secondary = total - primary;
     if (secondary <= 0) return null;
     return [primary, secondary];
@@ -280,12 +280,12 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   /// Worked out against the window rather than written as `[2, 1]`, because
   /// that ratio has no ceiling and the dock enforces only a floor — on a
   /// 2560pt window it lays the list out at ~1700pt of stretched callsign rows,
-  /// where the split this replaced clamped it to [ShirtSize.sMax]. Weights
+  /// where the split this replaced clamped it to [primaryPaneMaxWidth]. Weights
   /// persist from here, so the cap applies as the default is first built.
   List<double> _shippedColumnWeights() {
     final total = MediaQuery.sizeOf(context).width - HomeNavigationRail.collapsedWidth;
     if (total <= 0) return [2, 1];
-    final primary = math.min(total * 2 / 3, ShirtSize.sMax);
+    final primary = math.min(total * 2 / 3, primaryPaneMaxWidth);
     final secondary = total - primary;
     return secondary <= 0 ? [2, 1] : [primary, secondary];
   }

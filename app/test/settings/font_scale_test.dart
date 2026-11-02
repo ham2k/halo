@@ -443,6 +443,15 @@ void main() {
       expect(ShirtSize.fromWidth(390 / (mobileBaseUiScale * FontScale.normal.scaleFactor)), ShirtSize.s);
     });
 
+    test("a foldable's inner display keeps two panes at Normal, a landscape iPhone SE does not", () {
+      // The S/L boundary reads the DIVIDED width too: placed for desktop
+      // windows alone, the base would drop the iPhone Duo held open (669pt)
+      // to one pane, or lift the SE (667pt) into two it has no room for.
+      const normal = mobileBaseUiScale * 1.0;
+      expect(ShirtSize.fromWidth(669 / normal).isTwoPane, isTrue, reason: 'iPhone Duo inner display');
+      expect(ShirtSize.fromWidth(667 / normal).isTwoPane, isFalse, reason: 'iPhone SE in landscape');
+    });
+
     // Drives the real HaLoApp: the base must multiply the setting at the
     // root, not replace it — a mobile operator who picks Larger still gets
     // Larger relative to the mobile Normal.
