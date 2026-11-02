@@ -446,7 +446,7 @@ class _IcomSession {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_closed) return;
       if (_pingsUnanswered >= _maxPingsUnanswered) {
-        _declareLost('no reply from the radio to $_maxPingsUnanswered pings');
+        _declareLost('nothing from the radio for $_maxPingsUnanswered pings');
         return;
       }
       _pingsUnanswered++;

@@ -78,6 +78,21 @@ void main() {
     peer.destroy();
     await connection.closed.timeout(const Duration(seconds: 2));
     expect(closed, isTrue);
+    expect((connection as ExplainsClose).closeReason, 'the other end closed the connection');
+  });
+
+  test('a peer that resets the connection is told apart from one that hung up', () async {
+    // A reset is the OS reporting a failure; a clean close is the other end's
+    // choice. Folding the first into "closed" would blame the radio for what
+    // can be this device's own network.
+    final connection = await const TcpTransport().connect(target, cancel: CatCancelToken());
+    final peer = await acceptedSocket();
+    // Unread bytes make the peer's close a reset rather than a clean one.
+    connection.send(List.filled(1000, 1));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    peer.destroy();
+    await connection.closed.timeout(const Duration(seconds: 2));
+    expect((connection as ExplainsClose).closeReason, startsWith('socket error: Connection reset by peer (code '));
   });
 
   test('close() completes `closed`, and writing afterwards is a no-op', () async {
@@ -86,6 +101,7 @@ void main() {
 
     await connection.close();
     await connection.closed.timeout(const Duration(seconds: 2));
+    expect((connection as ExplainsClose).closeReason, isNull, reason: 'a close this app asked for is no drop to explain');
 
     // Drivers write from timers they don't guard; a stale write must not
     // throw into a timer callback.

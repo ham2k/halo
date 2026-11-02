@@ -82,8 +82,9 @@ Future<RawDatagramSocket> _bindReplyPort(int port) async {
 /// on the same port. Not a SocketException, which the equipment row words
 /// as a network that cannot reach the host: the host was never asked, and
 /// what to do is free a port on this device.
-class UdpReplyPortTaken implements CatUnreachable {
+class UdpReplyPortTaken implements CatUnreachable, CarriesOsError {
   final int port;
+  @override
   final OSError? osError;
 
   const UdpReplyPortTaken(this.port, [this.osError]);

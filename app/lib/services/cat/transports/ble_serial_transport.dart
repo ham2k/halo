@@ -328,14 +328,14 @@ class BleSerialUnavailable implements CatUnreachable {
 
 /// The byte pipe over one [BleSerialPipe].
 @visibleForTesting
-class BleSerialConnection implements EquipmentConnection {
+class BleSerialConnection implements EquipmentConnection, ExplainsClose {
   BleSerialConnection(this._device, this._pipe, {this._deviceId = ''}) {
     // Through [close], not just [_markClosed]: a link that dropped still
     // holds the plugin's value-stream subscription until it is let go.
     unawaited(
       _device.disconnected.then((_) {
         if (_open) BleSerialTransport._note('the link dropped: the bridge or the platform ended it');
-        return close();
+        return _drop('the bridge or the platform ended the link');
       }),
     );
   }
@@ -348,6 +348,9 @@ class BleSerialConnection implements EquipmentConnection {
   final _data = StreamController<Uint8List>();
   final _closed = Completer<void>();
   bool _open = true;
+
+  @override
+  String? closeReason;
 
   /// Writes go out one at a time, in order: two in flight at once may land
   /// in either order, and a CAT command split across them would be garbled.
@@ -383,10 +386,16 @@ class BleSerialConnection implements EquipmentConnection {
           // A write that fails is a link that is gone; [closed] is what says
           // so, never a throw into the driver's timer.
           BleSerialTransport._note('write failed, closing: ${scrubBleDeviceId(e, _deviceId)}');
-          unawaited(close());
+          unawaited(_drop('a write failed (${e.runtimeType})'));
         }
       });
     }
+  }
+
+  /// Not the error's own text: the plugin's names the bridge's address.
+  Future<void> _drop(String reason) {
+    if (_open) closeReason = reason;
+    return close();
   }
 
   void _markClosed() {

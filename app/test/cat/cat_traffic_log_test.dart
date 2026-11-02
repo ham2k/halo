@@ -354,12 +354,12 @@ void main() {
       await log.start();
       final node = await cat.addNode(typeKey: 'fake-type', config: {});
       await cat.connect(node.uuid);
-      transport.connection.drop('socket error: Network is unreachable (errno 101), on the control channel');
+      transport.connection.drop('socket error: Network is unreachable (code 101), on the control channel');
       await until('closed by the transport');
 
       expect(
         await recorded(),
-        contains('${label(node)} -- connection closed by the transport: socket error: Network is unreachable (errno 101), on the control channel'),
+        contains('${label(node)} -- connection closed by the transport: socket error: Network is unreachable (code 101), on the control channel'),
       );
     });
 
@@ -383,9 +383,9 @@ void main() {
       await cat.connect(node.uuid);
 
       final text = await recorded();
-      expect(text, contains('${label(node)} -- connect failed: network (SocketException: Network is unreachable (errno 101))'));
+      expect(text, contains('${label(node)} -- connect failed: network (SocketException: Network is unreachable (code 101))'));
       expect(text, contains('${label(node)} -- connect failed: other (_PortNamingFailure)'));
-      expect(text, contains('${label(node)} -- connect failed: serial:other (SerialPortUnavailable: Input/output error (errno 5))'));
+      expect(text, contains('${label(node)} -- connect failed: serial:other (SerialPortUnavailable: Input/output error (code 5))'));
       expect(text, isNot(contains('192.0.2.17')));
       expect(text, isNot(contains('50001')));
       expect(text, isNot(contains('usbserial')));

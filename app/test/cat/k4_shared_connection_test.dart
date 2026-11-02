@@ -12,12 +12,14 @@ import 'package:ham2k_logger/services/cat/drivers/k4_shared_session.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/k4_shared_connection.dart';
 
-class _Physical implements EquipmentConnection {
+class _Physical implements EquipmentConnection, ExplainsClose {
   final List<String> events;
   final incoming = StreamController<Uint8List>(sync: true);
   final gone = Completer<void>();
   Completer<void>? closeBarrier;
   int closeCalls = 0;
+  @override
+  String? closeReason;
 
   _Physical(this.events);
 
@@ -30,7 +32,8 @@ class _Physical implements EquipmentConnection {
 
   void receive(String text) => incoming.add(Uint8List.fromList(ascii.encode(text)));
 
-  void drop() {
+  void drop([String? reason]) {
+    closeReason = reason;
     if (!gone.isCompleted) gone.complete();
     unawaited(incoming.close());
   }
@@ -218,6 +221,7 @@ void main() {
     await main.close();
     expect(h.events, ['detach:main']);
     expect(physical.closeCalls, 0);
+    expect(main.closeReason, isNull, reason: 'a receiver closed on its own was not dropped');
     sub.send(ascii.encode('FB;'));
     expect(h.events.last, 'send:FB;');
 
@@ -236,6 +240,7 @@ void main() {
     physical.closeBarrier!.complete();
     await Future.wait([first, second]);
     expect(h.owners.single.teardowns, 1);
+    expect(sub.closeReason, isNull, reason: 'the last receiver closing the link is no drop either');
   });
 
   test('shared startup, receiver commands and teardown are logged once before each physical send', () async {
@@ -389,8 +394,11 @@ void main() {
     addTearDown(() {
       if (!physical.closeBarrier!.isCompleted) physical.closeBarrier!.complete();
     });
-    physical.drop();
+    physical.drop('the other end closed the connection');
     await Future.wait([main.closed, sub.closed]);
+    // Each receiver is its own node in the recording; the physical link's
+    // reason is the only one either has.
+    expect((main.closeReason, sub.closeReason), ('the other end closed the connection', 'the other end closed the connection'));
     final retry = h.acquire();
     expect(h.attempts, hasLength(2));
     h.succeed(1);

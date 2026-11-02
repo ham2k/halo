@@ -413,6 +413,7 @@ void main() {
       async.flushMicrotasks();
       expect(closed, isTrue, reason: 'unframed garbage must not keep a dead session alive');
       expect(secure.closeCalls, 1);
+      expect(connection.closeReason, 'nothing from the radio for 10 s');
       final sentAtClose = secure.sent.length;
       connection.send(ascii.encode('IF;'));
       async.elapse(const Duration(seconds: 20));
@@ -440,6 +441,7 @@ void main() {
         expect(catDone, isTrue);
         expect(panDone, isTrue);
         expect(secure.closeCalls, 1);
+        expect(connection.closeReason, failure ? 'a write failed (StateError)' : 'the other end closed the connection');
         unawaited(connection.close());
         async.flushMicrotasks();
         expect(secure.closeCalls, 1);

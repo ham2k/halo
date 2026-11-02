@@ -3,10 +3,9 @@
 
 import 'dart:io';
 
-import 'transports/serial_transport_io.dart' show SerialPortUnavailable;
-import 'transports/udp_transport_io.dart' show UdpReplyPortTaken;
+import 'transport.dart';
 
-/// The OS's message and code for [error] — "Network is unreachable (errno
+/// The OS's message and code for [error] — "Network is unreachable (code
 /// 101)" — or null when it carries none.
 ///
 /// Only those two fields, never `'$error'`: a SocketException's text names
@@ -14,16 +13,18 @@ import 'transports/udp_transport_io.dart' show UdpReplyPortTaken;
 /// on macOS carries the adapter's serial number. A libserialport
 /// `SerialPortError` is an [OSError], so a serial failure reads the same way
 /// as a network one.
+///
+/// A code, not an errno: on Windows it is a Winsock or `GetLastError` number,
+/// and 5 there is "access denied" where errno 5 is an I/O error.
 String? osErrorDetail(Object error) => switch (error) {
   SocketException(osError: final os?) => _describe(os),
   OSError() => _describe(error),
-  SerialPortUnavailable(osError: final os?) => _describe(os),
-  UdpReplyPortTaken(osError: final os?) => _describe(os),
+  CarriesOsError(osError: final OSError os) => _describe(os),
   _ => null,
 };
 
 String? _describe(OSError os) {
   final hasCode = os.errorCode != OSError.noErrorCode;
-  if (os.message.isEmpty) return hasCode ? 'errno ${os.errorCode}' : null;
-  return hasCode ? '${os.message} (errno ${os.errorCode})' : os.message;
+  if (os.message.isEmpty) return hasCode ? 'code ${os.errorCode}' : null;
+  return hasCode ? '${os.message} (code ${os.errorCode})' : os.message;
 }

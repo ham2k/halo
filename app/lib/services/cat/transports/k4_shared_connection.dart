@@ -106,6 +106,10 @@ class _SharedEntry {
   bool _ready = false;
   bool _closing = false;
 
+  /// Why the physical connection ended, for every receiver on it: the
+  /// connection's own reason where it gives one.
+  String? _lostReason;
+
   _SharedEntry(this.pool, this.key, this.target, this.config, this.open);
 
   bool matches(Map<String, dynamic> target, Map<String, dynamic> config) =>
@@ -148,8 +152,8 @@ class _SharedEntry {
       _owner = pool._createSession(send: send, pan: pan, config: config, sendAudio: connection is K4RemoteConnection ? _sendAudio : null);
       // This reader exists before any receiver attaches: an early RDY must
       // reach the one protocol owner, even with no facade listening yet.
-      _subscription = connection.data.listen(_receive, onDone: close, onError: (Object _, StackTrace _) => close());
-      unawaited(connection.closed.then((_) => close(), onError: (Object _, StackTrace _) => close()));
+      _subscription = connection.data.listen(_receive, onDone: _lost, onError: (Object _, StackTrace _) => _lost());
+      unawaited(connection.closed.then((_) => _lost(), onError: (Object _, StackTrace _) => _lost()));
       _ready = true;
       for (final pending in _pending.toList()) {
         _deliver(pending);
@@ -193,8 +197,8 @@ class _SharedEntry {
     }
     try {
       connection.send(bytes);
-    } catch (_) {
-      unawaited(close());
+    } catch (e) {
+      _lost('a write failed (${e.runtimeType})');
     }
   }
 
@@ -217,6 +221,16 @@ class _SharedEntry {
     lease._finish();
     if (_closing) return _closeDone.future;
     return _leases.isEmpty && _pending.isEmpty ? close() : Future.value();
+  }
+
+  void _lost([String? fallback]) {
+    if (_closing) return;
+    final reason = switch (_connection) {
+      ExplainsClose(:final closeReason) => closeReason,
+      _ => null,
+    };
+    _lostReason = reason ?? fallback;
+    unawaited(close());
   }
 
   Future<void> close() {
@@ -261,7 +275,7 @@ class _SharedEntry {
 
 /// One logical receiver's lease. Raw CAT remains available for connection
 /// proof and traffic logging; its session facade does not parse it again.
-class K4ReceiverConnection implements EquipmentConnection {
+class K4ReceiverConnection implements EquipmentConnection, ExplainsClose {
   final _SharedEntry _entry;
   final _data = StreamController<Uint8List>(sync: true);
   final _closed = Completer<void>();
@@ -269,6 +283,11 @@ class K4ReceiverConnection implements EquipmentConnection {
   EquipmentSession? _session;
 
   K4ReceiverConnection._(this._entry);
+
+  /// The physical connection's reason, unless this receiver was closed on
+  /// its own: a sibling's close is not why this one ended.
+  @override
+  String? get closeReason => _closing == null ? _entry._lostReason : null;
 
   EquipmentSession createSession(EquipmentSink sink, {required String receiver}) {
     if (_closed.isCompleted || _entry._closing) throw StateError('K4 receiver connection is closed');

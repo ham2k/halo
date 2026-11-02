@@ -100,8 +100,9 @@ class _TcpConnection implements EquipmentConnection, ExplainsClose {
       cancelOnError: true,
     );
     // A failed write surfaces here rather than at the `add` call, and an
-    // unhandled error on `done` would escape into the zone.
-    unawaited(_socket.done.then((_) {}, onError: (Object _) {}));
+    // unhandled error on `done` would escape into the zone. When the read
+    // side has already said why, that reason stands.
+    unawaited(_socket.done.then((_) {}, onError: (Object e) => _markClosed('write error: ${osErrorDetail(e) ?? e.runtimeType}')));
   }
 
   void _markClosed([String? reason]) {

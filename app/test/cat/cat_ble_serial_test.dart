@@ -298,10 +298,12 @@ void main() {
     test('a failed write closes the connection instead of throwing into the driver', () async {
       final device = gateway.device = _FakeDevice([_nus]);
       final connection = await transport.connect(_target, cancel: CatCancelToken());
-      device.failWrites = Exception('link lost');
+      device.failWrites = Exception('link lost to AA:BB:CC:DD:EE:FF');
       connection.send(ascii.encode('FA;'));
       await connection.closed.timeout(const Duration(seconds: 1));
       expect(device.disconnects, 1);
+      // The reason, not the plugin's text: that names the bridge's address.
+      expect((connection as ExplainsClose).closeReason, 'a write failed (_Exception)');
     });
 
     test('a link that drops says so, and lets go of the plugin\'s stream', () async {
@@ -310,6 +312,7 @@ void main() {
       device.drop();
       await connection.closed.timeout(const Duration(seconds: 1));
       expect(device.disconnects, 1);
+      expect((connection as ExplainsClose).closeReason, 'the bridge or the platform ended the link');
     });
 
     test('a scan asks for permission, and lists what it found to pick from', () async {

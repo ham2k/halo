@@ -299,7 +299,7 @@ void main() {
       control.emitSocketError(SocketException('Read failed', osError: const OSError('Network is unreachable', 101), address: loopback, port: 50001));
       await connection.closed.timeout(const Duration(seconds: 1));
 
-      expect(reasonOf(connection), 'socket error: Network is unreachable (errno 101), on the control channel');
+      expect(reasonOf(connection), 'socket error: Network is unreachable (code 101), on the control channel');
     });
 
     test('the radio ending the session is told apart from a socket failure', () async {
@@ -326,7 +326,7 @@ void main() {
         // or out of range.
         await connection.closed;
 
-        expect(reasonOf(connection), startsWith('no reply from the radio to 3 pings, on the '));
+        expect(reasonOf(connection), startsWith('nothing from the radio for 3 pings, on the '));
       }),
     );
   });

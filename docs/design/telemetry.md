@@ -231,16 +231,22 @@ redaction included.
 - **The log names no port.** Its lines label a node by variant key and the
   head of its uuid, and a failed connect is logged by its classified reason
   and exception type, never its text — a serial open error names the device
-  node, which on macOS is the adapter's serial number. What it does keep is
-  the OS's own message and errno (`osErrorDetail`): "Network is unreachable"
-  is what tells a phone that lost its network from a radio that refused.
-- **A connection that closes on its own says why** (`ExplainsClose`): the
-  other end hung up, a read failed with the OS's words (on the web, the
-  browser's, which name no device), or — for the IC-705's network link,
-  whose pings and session notices never reach the CI-V stream the log
-  records — the radio went silent, ended the session, or its socket failed,
-  and on which channel. Without it a capture shows a healthy link
-  and then "closed", and nothing about whose side closed it.
+  node, which on macOS is the adapter's serial number. What it does keep,
+  where the failure carries one, is the OS's own message and code
+  (`osErrorDetail`, and `CarriesOsError` for a transport's own exception):
+  "Network is unreachable" is what tells a phone that lost its network from
+  a radio that refused. A code, not an errno: on Windows it is a Winsock or
+  `GetLastError` number. An Android USB failure has no OS error behind it,
+  so it carries none.
+- **A connection that closes on its own says why** (`ExplainsClose`, which
+  every connection CatService holds implements): the other end hung up, a
+  read or a write failed with the OS's words (on the web, the browser's,
+  which name no device), a Bluetooth bridge dropped the link, or the radio
+  went silent — for an Icom network link, whose pings and session notices
+  never reach the CI-V stream the log records, also that it ended the
+  session, and on which channel. A K4 receiver carries its shared link's
+  reason. Without it a capture shows a healthy link and then "closed", and
+  nothing about whose side closed it.
 - **Bounded**: 8 MB per recording, restarts included; a failed write ends
   the recording rather than the radio's session.
 

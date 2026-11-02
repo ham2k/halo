@@ -198,6 +198,15 @@ abstract interface class ExplainsClose {
   String? get closeReason;
 }
 
+/// A connect failure that keeps the OS error behind it, for `osErrorDetail`
+/// to quote: the exception's own text names a port or an address, which the
+/// CAT traffic log may not carry off the device.
+abstract interface class CarriesOsError {
+  /// An `OSError` where the platform has one. Typed loosely because this
+  /// file also compiles for the web, which has no `dart:io`.
+  Object? get osError;
+}
+
 abstract class EquipmentTransport {
   const EquipmentTransport();
 

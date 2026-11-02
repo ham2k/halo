@@ -468,13 +468,14 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 /// The kind is set where it is known — the catch site in [CatService] can
 /// only see the exception, and "Device or resource busy" is a very different
 /// thing to tell an operator than "Device not found".
-class SerialPortUnavailable implements SerialPortProblem {
+class SerialPortUnavailable implements SerialPortProblem, CarriesOsError {
   final String portName;
   final String? reason;
 
   /// libserialport's own error, when the failure came from it: the part of
   /// this exception `osErrorDetail` may quote, since [reason] sits beside a
   /// [portName] that carries the adapter's serial number.
+  @override
   final OSError? osError;
 
   @override

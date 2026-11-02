@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../drivers/k4_remote_codec.dart';
+import '../os_error_detail.dart';
 import '../transport.dart';
 
 class K4AudioNotSent implements Exception {
@@ -20,7 +21,7 @@ class K4AudioNotSent implements Exception {
 /// Multiplexes CAT and spectrum over an already authenticated TLS stream,
 /// and carries the voice keyer's transmit audio the other way. Every audio
 /// packet keys the K4: [sendAudio] is for a message playing, nothing else.
-class K4RemoteConnection implements EquipmentConnection {
+class K4RemoteConnection implements EquipmentConnection, ExplainsClose {
   final EquipmentConnection _secure;
   final _decoder = K4RemoteDecoder();
   late final _data = StreamController<Uint8List>(
@@ -40,10 +41,17 @@ class K4RemoteConnection implements EquipmentConnection {
   Timer? _watchdog;
   bool _paused = false;
 
+  @override
+  String? closeReason;
+
   K4RemoteConnection(this._secure) {
-    _subscription = _secure.data.listen(_receive, onDone: close, onError: (Object _, StackTrace _) => close());
+    _subscription = _secure.data.listen(
+      _receive,
+      onDone: () => _drop('the other end closed the connection'),
+      onError: (Object e, StackTrace _) => _drop('read error: ${osErrorDetail(e) ?? e.runtimeType}'),
+    );
     _updateBackpressure();
-    unawaited(_secure.closed.then((_) => close(), onError: (Object _, StackTrace _) => close()));
+    unawaited(_secure.closed.then((_) => _drop('the TLS link closed'), onError: (Object e, StackTrace _) => _drop('the TLS link failed (${e.runtimeType})')));
     _heartbeat = Timer.periodic(const Duration(seconds: 1), (_) => send(ascii.encode('PING;')));
     _armWatchdog();
   }
@@ -68,7 +76,7 @@ class K4RemoteConnection implements EquipmentConnection {
 
   void _armWatchdog() {
     _watchdog?.cancel();
-    _watchdog = Timer(const Duration(seconds: 10), close);
+    _watchdog = Timer(const Duration(seconds: 10), () => _drop('nothing from the radio for 10 s'));
   }
 
   void _receive(Uint8List bytes) {
@@ -90,8 +98,8 @@ class K4RemoteConnection implements EquipmentConnection {
     if (_closed.isCompleted) return;
     try {
       _secure.send(encodeK4RemoteCat(bytes));
-    } catch (_) {
-      unawaited(close());
+    } catch (e) {
+      unawaited(_drop('a write failed (${e.runtimeType})'));
     }
   }
 
@@ -103,9 +111,15 @@ class K4RemoteConnection implements EquipmentConnection {
     try {
       _secure.send(envelope);
     } catch (e) {
-      unawaited(close());
+      unawaited(_drop('a write failed (${e.runtimeType})'));
       throw K4AudioNotSent('$e');
     }
+  }
+
+  /// Never the error's own text, which can name the radio's address.
+  Future<void> _drop(String reason) {
+    if (!_closed.isCompleted) closeReason = reason;
+    return close();
   }
 
   @override
