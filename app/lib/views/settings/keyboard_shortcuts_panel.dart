@@ -17,7 +17,6 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/error_reporting_service.dart';
-import '../../services/export_service.dart' show ExportException;
 import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
 import '../../services/key_bindings_file.dart';
@@ -242,9 +241,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         if (saved != null) messenger?.showSnackBar(haloSnackBar(t.exported(location: saved.location)));
       }
     } catch (e, stack) {
-      // An ExportException is the platform's answer to the save — a refusal
-      // the operator is shown, not a fault to file.
-      if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'keys:export', told: messenger != null);
+      ErrorReportingService.report(e, stack, context: 'keys:export', told: messenger != null);
       messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
     }
   }

@@ -199,10 +199,18 @@ class VoiceAudioFailure implements Exception {
   final String doing;
   final String reason;
 
-  VoiceAudioFailure(this.doing, Object cause) : reason = _withoutPath(cause);
+  /// What the operator is told: the system's own words, as
+  /// [ErrorReportingService.messageOf] gives a file failure's.
+  final String detail;
+
+  VoiceAudioFailure(this.doing, Object cause)
+    : reason = _withoutPath(cause),
+      detail = cause is FileSystemException ? ErrorReportingService.messageOf(cause) : _withoutPath(cause);
 
   static String _withoutPath(Object cause) => switch (cause) {
-    FileSystemException(:final message, :final osError) => 'FileSystemException: $message${osError == null ? '' : ' ($osError)'}',
+    // The message too: a copy's names the path it was copying to.
+    FileSystemException(:final message, :final osError) =>
+      'FileSystemException: ${ErrorReportingService.withoutQuoted(message)}${osError == null ? '' : ' ($osError)'}',
     ProcessException(:final executable, :final message, :final errorCode) => 'ProcessException: $executable: $message (error $errorCode)',
     _ => '$cause',
   };
@@ -296,6 +304,9 @@ abstract class VoiceAudio {
   /// Writes [bytes] — a sound file this app made — to [path], making its
   /// directory if needed.
   void write(String path, Uint8List bytes);
+
+  /// [path]'s bytes, as [write] takes them; null where there is no file.
+  Future<Uint8List?> read(String path);
   void delete(String path);
 
   /// Deletes [path] and everything in it — a set's recordings.
@@ -434,6 +445,12 @@ class HaloVoiceAudio implements VoiceAudio {
       ..parent.createSync(recursive: true)
       ..writeAsBytesSync(bytes, flush: true);
     _lengths.remove(path);
+  }
+
+  @override
+  Future<Uint8List?> read(String path) async {
+    final file = File(path);
+    return await file.exists() ? await file.readAsBytes() : null;
   }
 
   @override

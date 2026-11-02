@@ -455,18 +455,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       }
     } catch (e, stack) {
       failure = e.toString();
-      // The dialog is the operator's copy; this is the developer's. An export
-      // that fails in the field leaves no other trace — the catch is where
-      // the stack ends.
-      debugPrint('[export] ${action.name} failed: $e\n$stack');
-      // An ExportException is an OUTCOME of this flow — a runtime that isn't
-      // up yet, a save the platform refused — reported to the operator and
-      // spent. Uploading one would file an expected answer as a crash, the
-      // way error-reporting.md rules out for `SyncEngine.onAuthError`.
-      // Anything else got here by surprise and is worth the event.
-      if (e is! ExportException) {
-        ErrorReportingService.report(e, stack, context: 'export:${action.name}');
-      }
+      // The dialog is the operator's copy; this is the developer's — the
+      // catch is where the stack ends.
+      ErrorReportingService.report(e, stack, context: 'export:${action.name}', told: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

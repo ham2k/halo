@@ -226,12 +226,22 @@ class FakeVoiceAudio implements VoiceAudio {
   /// Every sound file the app made, by path.
   final written = <String, Uint8List>{};
 
+  /// A path ending this way fails to write, as a full disk does partway
+  /// through a set's recordings.
+  String? failingWriteOf;
+
   @override
   void write(String path, Uint8List bytes) {
+    if (failingWriteOf != null && path.endsWith(failingWriteOf!)) throw FileSystemException('Cannot write file', path);
     written[path] = bytes;
     lengths[path] = Duration(microseconds: (bytes.length - 44) ~/ 2 * 1000000 ~/ 48000);
     modified[path] = DateTime.utc(2026).add(Duration(seconds: _writes++));
   }
+
+  /// What [write] put there; a file only set up by length reads as a
+  /// header's worth of zeros, which is all a copy of it needs to carry.
+  @override
+  Future<Uint8List?> read(String path) async => written[path] ?? (exists(path) ? Uint8List(44) : null);
 
   @override
   void delete(String path) {
@@ -274,7 +284,9 @@ class FakeVoiceAudio implements VoiceAudio {
 
   @override
   void deleteDirectory(String path) {
+    if (failingDelete) throw FileSystemException('Cannot delete directory', path);
     deleted.add(path);
+    written.removeWhere((file, _) => file.startsWith('$path/'));
     lengths.removeWhere((file, _) => file.startsWith('$path/'));
     modified.removeWhere((file, _) => file.startsWith('$path/'));
   }

@@ -176,8 +176,10 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
 
   /// The sets of recorded voice messages, and the one in use.
   Future<void> selectVoiceMessageSet(String id) => _keying.selectVoiceMessageSet(id);
-  Future<VoiceMessageSet?> addVoiceMessageSet(String name) => _keying.addVoiceMessageSet(name);
+  Future<VoiceMessageSet?> addVoiceMessageSet(String name, {String? from, bool select = true}) => _keying.addVoiceMessageSet(name, from: from, select: select);
   Future<void> renameVoiceMessageSet(String id, String name) => _keying.renameVoiceMessageSet(id, name);
+  Future<Map<int, Uint8List>> voiceMessageRecordings(String id) => _keying.voiceMessageRecordings(id);
+  Future<VoiceMessageSet> importVoiceMessageSet(VoiceMessageSet set, Map<int, Uint8List> recordings) => _keying.importVoiceMessageSet(set, recordings);
   Future<void> deleteVoiceMessageSet(String id) => _keying.deleteVoiceMessageSet(id);
 
   ValueNotifier<VoiceActivity?> get voiceActivity => operatorKeyer.voiceActivity;

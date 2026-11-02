@@ -46,6 +46,9 @@ class VoiceMessageSet {
   /// a set, so its name comes from the translations, not from storage.
   static const defaultId = 'default';
 
+  /// The Radio group's key for the folders the sets are filed in.
+  static const treeKey = 'voiceMessageSetTree';
+
   bool get isDefault => id == defaultId;
 
   VoiceMessageSet.empty({required this.id, required this.name}) : labels = List.filled(SettingsService.voiceMessageCount, ''), templates = _noTemplates;

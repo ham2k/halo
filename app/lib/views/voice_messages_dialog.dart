@@ -47,9 +47,11 @@ import '../services/cat/computer_voice_keyer.dart';
 import '../services/cat/voice_words.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
+import '../services/sets/voice_message_set_category.dart';
 import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 import 'keying_pickers.dart' show phoneKeyingParts;
-import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatFields, SetNameDialog, cwMessageNumberIcons;
+import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatFields, cwMessageNumberIcons;
+import 'sets/set_picker_field.dart';
 import 'keyer_area.dart' show keyerOrSay;
 import 'voice_words_pane.dart';
 
@@ -72,55 +74,6 @@ class _VoiceMessagesPane extends StatelessWidget {
   final String radio;
 
   const _VoiceMessagesPane({required this.services, required this.radio});
-
-  /// A name no other set answers to: two rows of the same name could not be
-  /// told apart.
-  String _uniqueName(BuildContext context, String wanted) {
-    final taken = {for (final set in services.settings.voiceMessageSets) set.name};
-    var name = wanted;
-    var suffix = 2;
-    while (taken.contains(name)) {
-      name = '$wanted $suffix';
-      suffix++;
-    }
-    return name;
-  }
-
-  Future<void> _newSet(BuildContext context) async {
-    final m = context.t.settings.radio.voiceMessages;
-    final name = await showHaloDialog<String>(
-      context: context,
-      builder: (context) => SetNameDialog(title: m.newSet, field: m.newSetName),
-    );
-    if (name == null || name.trim().isEmpty || !context.mounted) return;
-    await services.cat.addVoiceMessageSet(_uniqueName(context, name.trim()));
-  }
-
-  Future<void> _rename(BuildContext context, VoiceMessageSet set) async {
-    final m = context.t.settings.radio.voiceMessages;
-    final name = await showHaloDialog<String>(
-      context: context,
-      builder: (context) => SetNameDialog(title: m.renameSet, field: m.newSetName, initial: set.name),
-    );
-    if (name == null || name.trim().isEmpty || name.trim() == set.name || !context.mounted) return;
-    await services.cat.renameVoiceMessageSet(set.id, _uniqueName(context, name.trim()));
-  }
-
-  /// Asks first: the recordings go with the set, and nothing brings them
-  /// back.
-  Future<void> _delete(BuildContext context, VoiceMessageSet set) async {
-    final m = context.t.settings.radio.voiceMessages;
-    final confirmed = await showHaloDialog<bool>(
-      context: context,
-      builder: (context) => HaloDialog(
-        title: Text(m.deleteSet),
-        content: Text(m.deleteSetConfirm(name: set.name)),
-        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(context.t.common.delete))],
-      ),
-    );
-    if (confirmed == true) await services.cat.deleteVoiceMessageSet(set.id);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,42 +168,12 @@ class _VoiceMessagesPane extends StatelessWidget {
                         // Last, right above the messages it picks.
                         if (fromComputer) ...[
                           const SizedBox(height: Space.md),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  key: ValueKey('voiceSet:${active.id}'),
-                                  isExpanded: true,
-                                  initialValue: active.id,
-                                  icon: dropdownTrailingIcon,
-                                  decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
-                                  menuMaxHeight: dropdownMenuMaxHeight(context),
-                                  items: [
-                                    for (final set in settings.voiceMessageSets)
-                                      DropdownMenuItem(
-                                        value: set.id,
-                                        child: Text(set.name, overflow: TextOverflow.ellipsis),
-                                      ),
-                                  ],
-                                  onChanged: (id) => id == null ? null : unawaited(cat.selectVoiceMessageSet(id)),
-                                ),
-                              ),
-                              const SizedBox(width: Space.sm),
-                              // As in the CW editor. The default set is always
-                              // there: it is neither renamed nor deleted.
-                              IconButton(
-                                icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
-                                onPressed: () => _newSet(context),
-                              ),
-                              IconButton(
-                                icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
-                                onPressed: active.isDefault ? null : () => _rename(context, active),
-                              ),
-                              IconButton(
-                                icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: active.isDefault ? null : theme.colorScheme.error),
-                                onPressed: active.isDefault ? null : () => _delete(context, active),
-                              ),
-                            ],
+                          SetPickerField(
+                            services: services,
+                            category: VoiceMessageSetCategory(settings, cat),
+                            label: m.sets,
+                            value: active.id,
+                            onChanged: (id) => unawaited(cat.selectVoiceMessageSet(id)),
                           ),
                         ],
                       ],

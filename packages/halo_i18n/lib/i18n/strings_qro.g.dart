@@ -61,6 +61,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$settings$qro settings = _Translations$settings$qro._(_root);
 	@override late final _Translations$commands$qro commands = _Translations$commands$qro._(_root);
 	@override late final _Translations$commandDialog$qro commandDialog = _Translations$commandDialog$qro._(_root);
+	@override late final _Translations$sets$qro sets = _Translations$sets$qro._(_root);
 	@override late final _Translations$keyboardShortcuts$qro keyboardShortcuts = _Translations$keyboardShortcuts$qro._(_root);
 	@override late final _Translations$expiredBuild$qro expiredBuild = _Translations$expiredBuild$qro._(_root);
 	@override late final _Translations$staleness$qro staleness = _Translations$staleness$qro._(_root);
@@ -97,6 +98,7 @@ class _Translations$common$qro extends Translations$common$en {
 	@override String get error => 'ERROR';
 	@override String get close => 'CLOSE';
 	@override String get done => 'DONE';
+	@override String get revert => 'REVERT';
 	@override String get callsign => 'CALLSIGN';
 	@override String get clear => 'CLEAR';
 	@override String get dismiss => 'DISMISS';
@@ -920,6 +922,45 @@ class _Translations$commandDialog$qro extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'TRY';
 	@override String get lookingUp => 'LOOKING UP CALLSIGN…';
 	@override String get blockedByPane => 'CANNOT USE COMMANDS WHILE A PANEL OR DIALOG IS OPEN';
+}
+
+// Path: sets
+class _Translations$sets$qro extends Translations$sets$en {
+	_Translations$sets$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get newFolder => 'NEW FOLDER';
+	@override String get deleteFolder => 'DELETE FOLDER';
+	@override String deleteFolderConfirm({required Object name}) => 'DELETE THE FOLDER ${name}? WHAT IS IN IT MOVES UP A LEVEL.';
+	@override String get rename => 'RENAME';
+	@override String get duplicate => 'DUPLICATE';
+	@override String duplicateName({required Object name}) => '${name} COPY';
+	@override String duplicateFailed({required Object name, required Object error}) => 'COULD NOT DUPLICATE ${name}: ${error}';
+	@override String get moveTo => 'MOVE TO…';
+	@override String moveTitle({required Object name}) => 'MOVE ${name} TO';
+	@override String get topLevel => 'TOP LEVEL';
+	@override String get export => 'EXPORT…';
+	@override String get import => 'IMPORT…';
+	@override String get delete => 'DELETE…';
+	@override String get deleteSet => 'DELETE SET';
+	@override String deleteConfirm({required Object name}) => 'DELETE ${name}? THIS CANNOT BE UNDONE.';
+	@override String deleteFailed({required Object name, required Object error}) => 'COULD NOT DELETE ${name}: ${error}';
+	@override String get inUse => 'IN USE';
+	@override String actions({required Object name}) => 'ACTIONS FOR ${name}';
+	@override String get empty => 'EMPTY FOLDER';
+	@override String exported({required Object location}) => 'SAVED TO ${location}';
+	@override String exportedNamed({required Object names}) => 'SAVED ${names}';
+	@override String exportFailed({required Object error}) => 'COULD NOT EXPORT: ${error}';
+	@override String importPickerFailed({required Object error}) => 'COULD NOT OPEN THE FILE: ${error}';
+	@override String importFailed({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}';
+	@override String imported({required Object name}) => 'IMPORTED ${name}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} IS NOT A SET THIS APP CAN READ: ${problem}';
+	@override String get problemUnreadable => 'IT IS NOT A SET FILE';
+	@override String get problemWrongKind => 'IT HOLDS A DIFFERENT KIND OF SET';
+	@override String get problemNewerVersion => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP';
+	@override String get problemMalformed => 'PARTS OF IT ARE DAMAGED';
 }
 
 // Path: keyboardShortcuts
@@ -4132,6 +4173,10 @@ class _Translations$settings$radio$cwMessages$qro extends Translations$settings$
 	@override String get setPota => 'POTA';
 	@override String get setEsm => 'ESM MESSAGES';
 	@override String get setSaved => 'MY MESSAGES';
+	@override String get setsTitle => 'CW MESSAGE SETS';
+	@override String get manageSets => 'MANAGE CW SETS…';
+	@override String get fileLabel => 'HAM2K CW MESSAGE SET';
+	@override String get fileStem => 'CW MESSAGES';
 	@override String get repeat => 'REPEAT MESSAGE 1';
 	@override String get repeatShort => 'REPEAT M1';
 	@override String get cooldown => 'COOLDOWN BEFORE REPEAT';
@@ -4225,6 +4270,10 @@ class _Translations$settings$radio$voiceMessages$qro extends Translations$settin
 	@override String get deleteSet => 'DELETE SET';
 	@override String get newSetName => 'NAME';
 	@override String deleteSetConfirm({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.';
+	@override String get setsTitle => 'VOICE MESSAGE SETS';
+	@override String get manageSets => 'MANAGE VOICE SETS…';
+	@override String get fileLabel => 'HAM2K VOICE MESSAGE SET';
+	@override String get fileStem => 'VOICE MESSAGES';
 	@override String get output => 'SEND AUDIO TO';
 	@override String outputFor({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO';
 	@override String get input => 'RECORD FROM';
@@ -4745,6 +4794,7 @@ extension on TranslationsQro {
 			'common.error' => 'ERROR',
 			'common.close' => 'CLOSE',
 			'common.done' => 'DONE',
+			'common.revert' => 'REVERT',
 			'common.callsign' => 'CALLSIGN',
 			'common.clear' => 'CLEAR',
 			'common.dismiss' => 'DISMISS',
@@ -5248,9 +5298,9 @@ extension on TranslationsQro {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} LAYERS',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: A SCENE STRING IS LONGER THAN ${max} CHARACTERS',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS LAYOUT NESTS MORE THAN ${max} LEVELS DEEP',
 			'operation.layout.panelRenderRetry' => 'TRY AGAIN',
@@ -5762,9 +5812,9 @@ extension on TranslationsQro {
 			'loggingControls.bandOrFreqRequired' => 'SET A FREQUENCY OR BAND BEFORE LOGGING',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS',
-			'loggingControls.missingBand' => 'NO BAND',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.missingBand' => 'NO BAND',
 			'loggingControls.missingMode' => 'NO MODE',
 			'loggingControls.saveFailed' => ({required Object error}) => 'COULD NOT SAVE: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'COULD NOT DELETE: ${error}',
@@ -6105,6 +6155,10 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM MESSAGES',
 			'settings.radio.cwMessages.setSaved' => 'MY MESSAGES',
+			'settings.radio.cwMessages.setsTitle' => 'CW MESSAGE SETS',
+			'settings.radio.cwMessages.manageSets' => 'MANAGE CW SETS…',
+			'settings.radio.cwMessages.fileLabel' => 'HAM2K CW MESSAGE SET',
+			'settings.radio.cwMessages.fileStem' => 'CW MESSAGES',
 			'settings.radio.cwMessages.repeat' => 'REPEAT MESSAGE 1',
 			'settings.radio.cwMessages.repeatShort' => 'REPEAT M1',
 			'settings.radio.cwMessages.cooldown' => 'COOLDOWN BEFORE REPEAT',
@@ -6180,6 +6234,10 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.deleteSet' => 'DELETE SET',
 			'settings.radio.voiceMessages.newSetName' => 'NAME',
 			'settings.radio.voiceMessages.deleteSetConfirm' => ({required Object name}) => 'DELETE ${name} AND ITS RECORDINGS? THIS CANNOT BE UNDONE.',
+			'settings.radio.voiceMessages.setsTitle' => 'VOICE MESSAGE SETS',
+			'settings.radio.voiceMessages.manageSets' => 'MANAGE VOICE SETS…',
+			'settings.radio.voiceMessages.fileLabel' => 'HAM2K VOICE MESSAGE SET',
+			'settings.radio.voiceMessages.fileStem' => 'VOICE MESSAGES',
 			'settings.radio.voiceMessages.output' => 'SEND AUDIO TO',
 			'settings.radio.voiceMessages.outputFor' => ({required Object radio}) => 'SEND AUDIO FOR RADIO ${radio} TO',
 			'settings.radio.voiceMessages.input' => 'RECORD FROM',
@@ -6268,6 +6326,8 @@ extension on TranslationsQro {
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
 			'settings.radio.zeroBeatRange.title' => 'ZERO-BEAT: AVOIDANCE RANGE',
 			'settings.radio.zeroBeatRange.description' => 'HOW FAR OFF THE SPOTTED FREQUENCY TO LAND, EITHER SIDE. THE OFFSET IS NEVER NEAR ZERO — THAT WOULD BE A ZERO BEAT AGAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.help.title' => 'HELP & RESOURCES',
 			'settings.help.description' => 'COMMUNITY AND SUPPORT',
 			'settings.help.forums' => 'HAM2K FORUMS',
@@ -6277,8 +6337,6 @@ extension on TranslationsQro {
 			'settings.help.youtube' => 'HAM2K YOUTUBE',
 			'settings.help.youtubeDescription' => 'VIDEOS AND LIVE STREAMS',
 			'settings.help.instagram' => 'HAM2K INSTAGRAM',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
 			'settings.help.bluesky' => 'HAM2K BLUESKY',
 			'settings.help.blueskyDescription' => 'FOLLOW US FOR NEWS AND UPDATES',
@@ -6782,6 +6840,8 @@ extension on TranslationsQro {
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
 			'settings.station.phoneKeyingComputerWords' => 'AUDIO AND WORDS IN THIS COMPUTER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.phoneKeyingOff' => 'PHONE KEYING IS OFF',
 			'settings.station.computerVoiceSettings' => 'COMPUTER AUDIO',
 			'settings.station.cwKeyingOptions' => 'CW KEYING OPTIONS',
@@ -6791,8 +6851,6 @@ extension on TranslationsQro {
 			'settings.station.icomCivTroubleshooting' => 'SEVERAL ICOM RADIOS, THE IC-705 AMONG THEM, PRESENT **TWO** USB SERIAL PORTS AT ONCE (ICOM CALLS THEM PORT A AND PORT B), BOTH SET TO CI-V BY DEFAULT. NEITHER THIS APP NOR YOUR OS CAN TELL THEM APART BEYOND THAT: THE SAME USB VENDOR/PRODUCT ID JUST SHOWS UP TWICE, SOMETIMES MARKED WITH A `#2` SUFFIX HERE. **PORT A IS USUALLY THE RIGHT ONE** — NORMALLY THE FIRST ONE YOUR OS OR BROWSER LISTS, AND WHERE THIS APP CAN TELL THE TWO PORTS APART IT MARKS THAT ONE AS SUGGESTED. IF COMMANDS GO OUT AND THE RADIO NEVER RESPONDS, TRY THE OTHER PORT NEXT.',
 			'settings.station.civAddressTroubleshootingTitle' => 'IF THE RADIO NEVER RESPONDS',
 			'settings.station.civAddressTroubleshooting' => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n- **SPEED MUST MATCH** THE RADIO\'S CI-V BAUD RATE (ON USB, CI-V USB BAUD RATE). SET THE RADIO TO THE SAME NUMBER SHOWN HERE, **NOT AUTO**. ON AUTO SOME RADIOS, THE IC-7300 AMONG THEM, CONNECT AND THEN STOP RESPONDING AFTER A MINUTE OR SO.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n${speed}\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.icomUsbSpeedFollows' => '- **THERE IS NO SPEED TO SET.** OVER USB THIS RADIO TALKS AT WHATEVER SPEED THE COMPUTER USES, AND THIS ENTRY ALWAYS USES 115200, THE SPEED THE SCOPE NEEDS.',
 			'settings.station.ic7610UsbSpeed' => '- **SET CI-V USB BAUD RATE TO 115200**, THE SPEED THIS ENTRY ALWAYS USES, SINCE THE SCOPE NEEDS IT — **NOT AUTO**. A RADIO SET TO ANY OTHER SPEED ANSWERS WITH SILENCE.',
@@ -7223,6 +7281,36 @@ extension on TranslationsQro {
 			'commandDialog.sectionSuggestions' => 'TRY',
 			'commandDialog.lookingUp' => 'LOOKING UP CALLSIGN…',
 			'commandDialog.blockedByPane' => 'CANNOT USE COMMANDS WHILE A PANEL OR DIALOG IS OPEN',
+			'sets.newFolder' => 'NEW FOLDER',
+			'sets.deleteFolder' => 'DELETE FOLDER',
+			'sets.deleteFolderConfirm' => ({required Object name}) => 'DELETE THE FOLDER ${name}? WHAT IS IN IT MOVES UP A LEVEL.',
+			'sets.rename' => 'RENAME',
+			'sets.duplicate' => 'DUPLICATE',
+			'sets.duplicateName' => ({required Object name}) => '${name} COPY',
+			'sets.duplicateFailed' => ({required Object name, required Object error}) => 'COULD NOT DUPLICATE ${name}: ${error}',
+			'sets.moveTo' => 'MOVE TO…',
+			'sets.moveTitle' => ({required Object name}) => 'MOVE ${name} TO',
+			'sets.topLevel' => 'TOP LEVEL',
+			'sets.export' => 'EXPORT…',
+			'sets.import' => 'IMPORT…',
+			'sets.delete' => 'DELETE…',
+			'sets.deleteSet' => 'DELETE SET',
+			'sets.deleteConfirm' => ({required Object name}) => 'DELETE ${name}? THIS CANNOT BE UNDONE.',
+			'sets.deleteFailed' => ({required Object name, required Object error}) => 'COULD NOT DELETE ${name}: ${error}',
+			'sets.inUse' => 'IN USE',
+			'sets.actions' => ({required Object name}) => 'ACTIONS FOR ${name}',
+			'sets.empty' => 'EMPTY FOLDER',
+			'sets.exported' => ({required Object location}) => 'SAVED TO ${location}',
+			'sets.exportedNamed' => ({required Object names}) => 'SAVED ${names}',
+			'sets.exportFailed' => ({required Object error}) => 'COULD NOT EXPORT: ${error}',
+			'sets.importPickerFailed' => ({required Object error}) => 'COULD NOT OPEN THE FILE: ${error}',
+			'sets.importFailed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
+			'sets.imported' => ({required Object name}) => 'IMPORTED ${name}',
+			'sets.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} IS NOT A SET THIS APP CAN READ: ${problem}',
+			'sets.problemUnreadable' => 'IT IS NOT A SET FILE',
+			'sets.problemWrongKind' => 'IT HOLDS A DIFFERENT KIND OF SET',
+			'sets.problemNewerVersion' => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP',
+			'sets.problemMalformed' => 'PARTS OF IT ARE DAMAGED',
 			'keyboardShortcuts.title' => 'KEYBOARD SHORTCUTS',
 			'keyboardShortcuts.description' => 'CUSTOMIZE KEY MAPPINGS',
 			'keyboardShortcuts.search' => 'SEARCH COMMANDS AND KEYS',
@@ -7266,6 +7354,8 @@ extension on TranslationsQro {
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
 			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
 			'keyboardShortcuts.fixed.space' => 'NEXT FIELD',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.fixed.tab' => 'NEXT OR PREVIOUS FIELD',
 			'keyboardShortcuts.fixed.arrows' => 'MOVE BETWEEN FIELDS, CONTROLS AND THE LOG',
 			'keyboardShortcuts.fixed.walk' => 'PAGE THROUGH THE LOG, OR GO TO ITS ENDS',
@@ -7305,8 +7395,6 @@ extension on TranslationsQro {
 			'keyboardShortcuts.file.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE SHORTCUTS FORMAT',
 			'keyboardShortcuts.file.problemTooLarge' => 'IT IS TOO LARGE',
 			'keyboardShortcuts.file.importTitle' => 'IMPORT SHORTCUTS',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'WRITTEN ON ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'THE FILE DOESN’T SAY WHICH KEYBOARD IT WAS WRITTEN ON.',
 			'keyboardShortcuts.file.translate' => 'WHAT SHOULD EACH OF THESE KEYS BE ON THIS KEYBOARD?',

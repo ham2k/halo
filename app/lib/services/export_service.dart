@@ -13,6 +13,7 @@ import 'dart:ui' show Rect;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -94,6 +95,10 @@ bool _keepsEveryStash(Object? subscription, int nowMillis) {
   return retention is! num || retention > 0;
 }
 
+/// An export that ended in an answer rather than a fault — nothing to export,
+/// a runtime not up yet, a save the platform refused. The operator is shown
+/// it where it happened; ErrorPolicy keeps it to the console
+/// (`export-refused`), so a catch site reports it like any other error.
 class ExportException implements Exception {
   final String message;
   ExportException(this.message);
@@ -638,10 +643,12 @@ class ExportService {
       // Translated the way the Android loop translates its own: a full disk or
       // a read-only folder is an answer the platform gave, which the caller
       // reports and spends. Left raw it is an unclassified FileSystemException,
-      // which ErrorPolicy uploads as a crash on every retry.
+      // which ErrorPolicy uploads as a crash on every retry. Only the file
+      // system's answers: anything else thrown here is a fault of ours, and
+      // an ExportException would hide it (ErrorPolicy's `export-refused`).
       try {
-        await File(location.path).writeAsString(file['content'] as String);
-      } catch (e) {
+        await _write(File(location.path), file['content']);
+      } on FileSystemException catch (e) {
         throw ExportException('$e');
       }
       return (location: location.path, count: 1, namesFiles: false);
@@ -653,8 +660,8 @@ class ExportService {
     final written = <String>[];
     for (var i = 0; i < files.length; i++) {
       try {
-        await File(p.join(directory, filenames[i])).writeAsString(files[i]['content'] as String);
-      } catch (e) {
+        await _write(File(p.join(directory, filenames[i])), files[i]['content']);
+      } on FileSystemException catch (e) {
         // Names what already landed, as the Android loop does: a failure on
         // the third of four leaves two on disk, and an error mentioning only
         // the third sends the operator looking for files they already have.
@@ -681,8 +688,11 @@ class ExportService {
     for (var i = 0; i < files.length; i++) {
       final String? name;
       try {
-        name = await androidFileSave.saveFile(filename: names[i], content: files[i]['content'] as String);
-      } catch (e) {
+        name = switch (files[i]['content']) {
+          final Uint8List bytes => await androidFileSave.saveBytes(filename: names[i], bytes: bytes),
+          final content => await androidFileSave.saveFile(filename: names[i], content: content as String),
+        };
+      } on PlatformException catch (e) {
         throw ExportException(saved.isEmpty ? '$e' : '$e — ${saved.join(', ')} had already been saved');
       }
       // Cancelling one dialog abandons the files still to come, rather than
@@ -708,7 +718,13 @@ class ExportService {
     if (files.isEmpty) return;
     final filenames = uniqueExportFilenames(files);
     for (var i = 0; i < files.length; i++) {
-      downloadFile(filename: filenames[i], content: files[i]['content'] as String, mimeType: files[i]['mimeType'] as String?);
+      final mimeType = files[i]['mimeType'] as String?;
+      switch (files[i]['content']) {
+        case final Uint8List bytes:
+          downloadBytes(filename: filenames[i], bytes: bytes, mimeType: mimeType ?? 'application/octet-stream');
+        case final content:
+          downloadFile(filename: filenames[i], content: content as String, mimeType: mimeType);
+      }
     }
   }
 
@@ -757,6 +773,16 @@ class ExportService {
     return (uploaded: uploaded, errors: errors);
   }
 
+  /// A file's `content` is text, or bytes for a binary format — a zip, an
+  /// image.
+  static Future<void> _write(File file, Object? content) async {
+    if (content is Uint8List) {
+      await file.writeAsBytes(content);
+    } else {
+      await file.writeAsString(content as String);
+    }
+  }
+
   /// Mobile share flow: writes every file to a temp directory, then opens
   /// the native share sheet with all of them at once.
   ///
@@ -775,7 +801,7 @@ class ExportService {
     final paths = <XFile>[];
     for (var i = 0; i < files.length; i++) {
       final path = p.join(tempDir.path, filenames[i]);
-      await File(path).writeAsString(files[i]['content'] as String);
+      await _write(File(path), files[i]['content']);
       paths.add(XFile(path, mimeType: files[i]['mimeType'] as String?));
     }
     final result = await SharePlus.instance.share(ShareParams(files: paths, sharePositionOrigin: sharePositionOrigin));

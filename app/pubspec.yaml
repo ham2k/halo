@@ -38,8 +38,12 @@ dependencies:
   sqlite3: ^2.4.0
   # Reading and unpacking .h2kext extension bundles (HALO-422). Already
   # present transitively; named here because a transitive dependency cannot
-  # be imported.
-  archive: ^4.0.0
+  # be imported. Also the voice set importer's inflate
+  # (voice_message_set_category.dart), whose size cap counts what the
+  # inflater writes through the three write methods 4.0.x has. Later 4.x
+  # writes repeats through writeBackReference, which this version cannot
+  # override and the cap would not see — so a bump needs that override first.
+  archive: '>=4.0.9 <4.1.0'
   # Checking a .h2kext's declared sharedDependencies against what this build
   # carries (HALO-422). Transitive already; named here to be importable.
   pub_semver: ^2.2.0

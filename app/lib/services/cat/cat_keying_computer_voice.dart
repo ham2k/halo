@@ -144,21 +144,46 @@ extension ComputerVoiceKeying on CatKeying {
     _computerVoiceChanged();
   }
 
-  /// Adds a set named [name] and puts it in use. A copy of the set in use —
-  /// its labels and its recordings — the way a new CW set copies the one on
-  /// screen.
-  Future<VoiceMessageSet?> addVoiceMessageSet(String name) async {
-    final audio = voiceAudio, dir = voiceMessagesDir;
-    if (audio == null || dir == null) return null;
-    final from = settings.activeVoiceMessageSet;
+  /// Adds a set named [name], a copy of set [from] — its labels and its
+  /// recordings — or of the set in use, right after it in the list; and puts
+  /// it in use unless [select] is false, as the set manager's Duplicate does.
+  Future<VoiceMessageSet?> addVoiceMessageSet(String name, {String? from, bool select = true}) async {
+    final (audio, dir) = _recordingsHome();
+    final source = from == null ? settings.activeVoiceMessageSet : settings.voiceMessageSets.where((set) => set.id == from).firstOrNull;
+    if (source == null) return null;
     final id = uuidGenerator.v4();
-    final set = VoiceMessageSet(id: id, name: name, labels: from.labels, templates: from.templates);
-    for (var n = 1; n <= SettingsService.voiceMessageCount; n++) {
-      // A file this app cannot play is copied too: it is the operator's, and
-      // a set that left it out would lose it without a word.
-      if (audio.exists(_setFile(from.id, n))) audio.copy(_setFile(from.id, n), _setFile(id, n));
-    }
-    await settings.setVoiceMessageSets([...settings.voiceMessageSets, set], active: id);
+    final set = VoiceMessageSet(id: id, name: name, labels: source.labels, templates: source.templates);
+    _unlessPartial(audio, '$dir/$id', () {
+      for (var n = 1; n <= SettingsService.voiceMessageCount; n++) {
+        // A file this app cannot play is copied too: it is the operator's,
+        // and a set that left it out would lose it without a word.
+        if (audio.exists(_setFile(source.id, n))) audio.copy(_setFile(source.id, n), _setFile(id, n));
+      }
+    });
+    final sets = settings.voiceMessageSets;
+    final at = sets.indexWhere((other) => other.id == source.id) + 1;
+    await settings.setVoiceMessageSets([...sets]..insert(at == 0 ? sets.length : at, set), active: select ? id : settings.voiceMessageSetId);
+    _computerVoiceChanged();
+    return set;
+  }
+
+  /// Set [id]'s recordings by message number — what its file carries.
+  Future<Map<int, Uint8List>> voiceMessageRecordings(String id) async {
+    final (audio, _) = _recordingsHome();
+    return {for (var n = 1; n <= SettingsService.voiceMessageCount; n++) n: ?await audio.read(_setFile(id, n))};
+  }
+
+  /// Adds [set] — read from a file, under an id of its own — with its
+  /// [recordings], beside the operator's sets rather than in use: an import
+  /// is something to look at before it plays on the air.
+  Future<VoiceMessageSet> importVoiceMessageSet(VoiceMessageSet set, Map<int, Uint8List> recordings) async {
+    final (audio, dir) = _recordingsHome();
+    _unlessPartial(audio, '$dir/${set.id}', () {
+      for (final MapEntry(key: n, value: bytes) in recordings.entries) {
+        audio.write(_setFile(set.id, n), bytes);
+      }
+    });
+    await settings.setVoiceMessageSets([...settings.voiceMessageSets, set], active: settings.voiceMessageSetId);
     _computerVoiceChanged();
     return set;
   }
@@ -170,21 +195,54 @@ extension ComputerVoiceKeying on CatKeying {
     _computerVoiceChanged();
   }
 
+  /// The sound system and the recordings' directory, which every change to
+  /// a set's recordings needs. Throws where either is missing: the sets are
+  /// offered only once both are known ([_playsFromComputer]), and an answer
+  /// made up without them would be a copy with no recordings, a file
+  /// exported without its audio, or a set deleted with its files left behind.
+  (VoiceAudio, String) _recordingsHome() {
+    final audio = voiceAudio, dir = voiceMessagesDir;
+    if (audio == null || dir == null) throw StateError('no recordings directory');
+    return (audio, dir);
+  }
+
+  /// Writes a new set's recordings into [setDir] with [write], or — where a
+  /// write fails partway — removes what it left before the failure goes on.
+  /// No set names [setDir] yet, so what is left there would be on disk for
+  /// good with nothing in the app to find it by.
+  void _unlessPartial(VoiceAudio audio, String setDir, void Function() write) {
+    try {
+      write();
+    } catch (_) {
+      try {
+        audio.deleteDirectory(setDir);
+      } catch (e) {
+        // The first failure is the one the operator is told about.
+        debugPrint('[voice] could not clear a set left half made: $e');
+      }
+      rethrow;
+    }
+  }
+
   /// Deletes set [id] and its recordings — never the default set's. The set
   /// beside it in the list takes over when it was in use, as with CW.
+  ///
+  /// The recordings go first: a delete that fails partway leaves the set
+  /// listed, to be deleted again, rather than its files on disk under a set
+  /// that no longer exists.
   Future<void> deleteVoiceMessageSet(String id) async {
     if (id == VoiceMessageSet.defaultId) return;
     final sets = settings.voiceMessageSets;
     final index = sets.indexWhere((set) => set.id == id);
     if (index < 0) return;
+    final (audio, dir) = _recordingsHome();
     final active = settings.voiceMessageSetId;
     if (active == id) stopVoice();
+    audio.deleteDirectory('$dir/$id');
     final left = [...sets]..removeAt(index);
     // Never empty: the default set is never deleted.
     final next = active != id ? active : left[index.clamp(0, left.length - 1)].id;
     await settings.setVoiceMessageSets(left, active: next);
-    final dir = voiceMessagesDir;
-    if (dir != null) voiceAudio?.deleteDirectory('$dir/$id');
     _computerVoiceChanged();
   }
 

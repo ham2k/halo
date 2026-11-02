@@ -30,6 +30,7 @@
 // a prior opt-in's value can't linger in the backend's own scope.
 
 import 'dart:async';
+import 'dart:io' show FileSystemException;
 
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter/widgets.dart';
@@ -39,6 +40,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHost
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/version.dart' show Edition, kEdition;
+import 'cat/computer_voice_keyer.dart' show VoiceAudioFailure;
 import 'error_policy.dart';
 import 'error_reporting_backend.dart';
 import '../views/error_tile.dart';
@@ -449,12 +451,24 @@ class ErrorReportingService {
 
   /// [error]'s message as an operator reads it: without the type name an
   /// extension failure or a plain `Exception` puts in front of it, which says
-  /// nothing to anyone but whoever opens "Copy details".
+  /// nothing to anyone but whoever opens "Copy details". A file failure is
+  /// the system's own reason ("No space left on device"), not the path and
+  /// errno around it.
   static String messageOf(Object error) {
     if (error is ExtensionHostException) return error.message;
+    if (error is VoiceAudioFailure) return error.detail;
+    if (error is FileSystemException) {
+      final reason = error.osError?.message ?? '';
+      return reason.isNotEmpty ? reason : withoutQuoted(error.message);
+    }
     final text = '$error';
     return text.startsWith('Exception: ') ? text.substring('Exception: '.length) : text;
   }
+
+  /// [message] with whatever it quotes blanked: dart:io quotes the path it
+  /// failed on inside some messages ("Cannot copy file to '…'"), and a path
+  /// under the home folder names the operator's OS account.
+  static String withoutQuoted(String message) => message.replaceAll(RegExp(r"'[^']*'"), "'…'");
 
   /// The trace each error was last uploaded with — see [report].
   ///

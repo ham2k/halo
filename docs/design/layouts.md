@@ -1385,6 +1385,14 @@ Two distinct surfaces; pick deliberately:
   line length — passes `maxWidth` to widen the dialog presentation past
   `maxDialogWidth`. The window still bounds it; full screen ignores it.
 
+  A pane opened from inside another pane — the CW Keyer's Message Sets
+  manager, opened from its set picker — is drawn `nestedModalPaneStep`
+  narrower than the pane it came from in the dialog presentation, so the
+  edges of the pane behind stay visible and the stack reads as one thing
+  opened from another. `showModalPane` applies it on its own, from the route
+  it is called in; a call site does nothing to get it. On XS / S each pane
+  is full screen in turn, and the step does not apply.
+
   It is a single route that re-presents itself when the window crosses the
   S/L boundary while open — no pop-and-reshow. Both presentations resolve
   through `Navigator.pop(context, result)`; call sites `await` it exactly

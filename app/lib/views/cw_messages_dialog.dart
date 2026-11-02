@@ -8,14 +8,14 @@
 // Radio's CW Keyer row.
 //
 // An operator keeps SETS of these — a Default, a POTA, whatever else they
-// make — and the header's picker says which one is being edited AND, on
-// Save, which one F1-F8 key (`CwMessageSet`, settings_service.dart). The
-// whole dialog is a draft: the rows hand their edits up rather than storing
-// them, so Cancel abandons every set the operator touched and not merely the
-// one on screen. The keyer's behaviour — message 1's repeat and Enter Sends
-// Messages — sits under the picker and is NOT part of the draft: it applies
-// as it changes, as in the Phone Keyer dialog, so a dialog closed by a tap
-// outside cannot silently drop a pick that looked made.
+// make — and the header's picker says which one F1-F8 key, and so which one
+// is being edited (`CwMessageSet`). Everything applies as it changes — a
+// pick, a message, the keyer's behaviour under the picker — so a dialog
+// closed by a tap outside cannot silently drop an edit that looked made.
+// What the dialog changed is undone by Revert, from a copy of each set taken
+// before its first edit; the sets themselves — their names, folders, copies
+// — are the set manager's, reached from the picker, and Revert leaves them
+// as the manager left them.
 //
 // The active set's messages are still settings (`cwMessage1..8`,
 // `cwMessageLabel1..8` in the Radio group), so SET and SHOW reach them too;
@@ -30,7 +30,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat/cat_service.dart';
 import '../services/halo_services.dart';
+import '../services/sets/cw_message_set_category.dart';
 import '../services/settings_service.dart';
+import 'sets/set_picker_field.dart';
 import 'keying_pickers.dart';
 import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 
@@ -56,8 +58,8 @@ Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {
   context,
   title: context.t.settings.radio.cwMessages.title,
   closeLabel: context.t.common.close,
-  // The rows scroll under a pinned picker and a pinned footer, whose Cancel
-  // and Save are the way out — so no X in the header (haloDialogFooterBand).
+  // The rows scroll under a pinned picker and a pinned footer, whose Done is
+  // the way out — so no X in the header (haloDialogFooterBand).
   scrollable: false,
   closeButton: false,
   builder: (_) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
@@ -65,7 +67,7 @@ Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {
 
 /// Message [n] of the set in use, on its own — what a long press or a
 /// right click on its keyer button opens. Saved into that set on the
-/// dialog's Save, as the list's row would be on the list's.
+/// dialog's Save.
 Future<void> showCwMessageDialog(BuildContext context, HaLoServices services, int n) async {
   final settings = services.settings;
   final set = settings.activeCwMessageSet;
@@ -76,8 +78,8 @@ Future<void> showCwMessageDialog(BuildContext context, HaLoServices services, in
   if (edited == null) return;
   // The sets as they are now, not as the dialog opened on.
   await settings.setCwMessageSets([
-    for (final entry in settings.cwMessageSets) entry.name == set.name ? entry.withMessage(n, edited.message).withLabel(n, edited.label) : entry,
-  ], active: settings.activeCwMessageSet.name);
+    for (final entry in settings.cwMessageSets) entry.id == set.id ? entry.withMessage(n, edited.message).withLabel(n, edited.label) : entry,
+  ], active: settings.cwMessageSetId);
 }
 
 class _CwMessagesDialog extends StatefulWidget {
@@ -90,97 +92,47 @@ class _CwMessagesDialog extends StatefulWidget {
   State<_CwMessagesDialog> createState() => _CwMessagesDialogState();
 }
 
-/// The whole dialog edits a DRAFT of the sets and writes it on Save — which
-/// is why the rows below hand their edits back rather than storing them.
-/// Anything else and Cancel would only undo the set the operator was looking
-/// at when they pressed it, having already stored the ones they left.
+/// The dialog stores each edit as it is made, and keeps what it would take to
+/// undo them: every set touched as it was before its first edit, and the set
+/// in use when the dialog opened. Revert puts all of them back — not merely
+/// the set on screen, which would leave the ones the operator moved away
+/// from edited.
 class _CwMessagesDialogState extends State<_CwMessagesDialog> {
-  late final List<CwMessageSet> _sets = [...widget.services.settings.cwMessageSets];
-  late String _selected = widget.services.settings.cwMessageSetName;
+  late final _settings = widget.services.settings;
+  late final _category = CwMessageSetCategory(_settings);
 
-  CwMessageSet get _set => _sets.firstWhere((set) => set.name == _selected, orElse: () => _sets.first);
+  /// Each set the dialog has changed, as it was before the first change —
+  /// its messages and labels; its name is the manager's, never reverted.
+  final _before = <String, CwMessageSet>{};
+  late final _activeBefore = _settings.cwMessageSetId;
 
-  void _replace(CwMessageSet set) {
-    final index = _sets.indexWhere((entry) => entry.name == _selected);
-    if (index < 0) return;
-    setState(() => _sets[index] = set);
+  bool get _changed => _before.isNotEmpty || _settings.cwMessageSetId != _activeBefore;
+
+  Future<void> _pick(String id) => _settings.setCwMessageSets(_settings.cwMessageSets, active: id);
+
+  Future<void> _edit(int n, ({String message, String label}) edited) {
+    final set = _settings.activeCwMessageSet;
+    _before.putIfAbsent(set.id, () => set);
+    return _settings.editActiveCwMessageSet((set) => set.withMessage(n, edited.message).withLabel(n, edited.label));
   }
 
-  /// A name nothing else in the draft answers to — the name IS a set's
-  /// identity (it is what `cwMessageSet` stores), so two alike would leave
-  /// the function keys reading whichever came first.
-  String _uniqueName(String wanted) {
-    var name = wanted;
-    var suffix = 2;
-    while (_sets.any((set) => set.name == name)) {
-      name = '$wanted $suffix';
-      suffix++;
-    }
-    return name;
-  }
-
-  /// The seeded Default is not deletable, and neither is the last set left:
-  /// the function keys have to have somewhere to read from, and a set the
-  /// operator can rebuild from the seeds is the one that can always be
-  /// fallen back to. Renaming it away makes it an ordinary set — the name IS
-  /// the identity here, and pretending otherwise would need a flag stored
-  /// per set for a rule one dialog enforces.
-  bool get _canDelete => _sets.length > 1 && _selected != t.settings.radio.cwMessages.setDefault;
-
-  Future<void> _newSet() async {
-    final m = context.t.settings.radio.cwMessages;
-    final name = await showHaloDialog<String>(
-      context: context,
-      builder: (context) => SetNameDialog(title: m.newSet, field: m.newSetName),
-    );
-    if (name == null || name.trim().isEmpty || !mounted) return;
-    // A duplicate of what is on screen, not of what is stored: the operator
-    // asked for another set LIKE this one, edits included.
-    final copy = _set.renamed(_uniqueName(name.trim()));
-    setState(() {
-      _sets.add(copy);
-      _selected = copy.name;
-    });
-  }
-
-  Future<void> _rename() async {
-    final m = context.t.settings.radio.cwMessages;
-    final name = await showHaloDialog<String>(
-      context: context,
-      builder: (context) => SetNameDialog(title: m.renameSet, field: m.newSetName, initial: _selected),
-    );
-    if (name == null || name.trim().isEmpty || !mounted || name.trim() == _selected) return;
-    final index = _sets.indexWhere((set) => set.name == _selected);
-    if (index < 0) return;
-    setState(() {
-      _sets[index] = _sets[index].renamed(_uniqueName(name.trim()));
-      _selected = _sets[index].name;
-    });
-  }
-
-  /// Only from the draft — Save is what makes it real, so an accidental
-  /// delete is undone by Cancel and needs no confirmation of its own.
-  void _delete() {
-    if (!_canDelete) return;
-    final index = _sets.indexWhere((set) => set.name == _selected);
-    if (index < 0) return;
-    setState(() {
-      _sets.removeAt(index);
-      _selected = _sets[index.clamp(0, _sets.length - 1)].name;
-    });
-  }
-
-  Future<void> _save() async {
-    final navigator = Navigator.of(context);
-    await widget.services.settings.setCwMessageSets(_sets, active: _selected);
-    navigator.pop();
+  /// A set the manager deleted since is left deleted, and an active set it
+  /// deleted leaves the one in use now. The copies are let go only once the
+  /// write has landed: a write that fails leaves them there to try again.
+  Future<void> _revert() async {
+    await _settings.setCwMessageSets([
+      for (final set in _settings.cwMessageSets) _before[set.id]?.renamed(set.name) ?? set,
+    ], active: _settings.cwMessageSets.any((set) => set.id == _activeBefore) ? _activeBefore : _settings.cwMessageSetId);
+    if (mounted) setState(_before.clear);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(listenable: widget.services.settings, builder: (context, _) => _build(context));
+
+  Widget _build(BuildContext context) {
     final m = context.t.settings.radio.cwMessages;
     final theme = Theme.of(context);
-    final set = _set;
+    final set = _settings.activeCwMessageSet;
     // As showFormPane's: min so the dialog card fits the rows, spaceBetween
     // so full screen, where the pane IS the screen, the slack falls above the
     // footer rather than under it.
@@ -279,37 +231,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                       ),
                     ),
                     const SizedBox(height: Space.md),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            initialValue: set.name,
-                            icon: dropdownTrailingIcon,
-                            decoration: poloFieldDecoration(context, m.sets).copyWith(filled: true, fillColor: theme.colorScheme.surface),
-                            menuMaxHeight: dropdownMenuMaxHeight(context),
-                            items: [for (final entry in _sets) DropdownMenuItem<String>(value: entry.name, child: Text(entry.name))],
-                            onChanged: (name) => name == null ? null : setState(() => _selected = name),
-                          ),
-                        ),
-                        const SizedBox(width: Space.sm),
-                        // The three things one does to a set, beside the picker that
-                        // says which one. No hover tooltips (docs/design/user-interface.md),
-                        // so the accessible name is the only place each is named.
-                        IconButton(
-                          icon: Icon(MdiIcons.fileOutline, semanticLabel: m.newSet),
-                          onPressed: _newSet,
-                        ),
-                        IconButton(
-                          icon: Icon(MdiIcons.pencilOutline, semanticLabel: m.renameSet),
-                          onPressed: _rename,
-                        ),
-                        IconButton(
-                          icon: Icon(MdiIcons.trashCanOutline, semanticLabel: m.deleteSet, color: _canDelete ? theme.colorScheme.error : null),
-                          onPressed: _canDelete ? _delete : null,
-                        ),
-                      ],
-                    ),
+                    SetPickerField(services: widget.services, category: _category, label: m.sets, value: set.id, onChanged: (id) => unawaited(_pick(id))),
                   ],
                 ),
               ),
@@ -348,7 +270,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                                 builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
                               );
                               if (edited == null || !mounted) return;
-                              _replace(_set.withMessage(n, edited.message).withLabel(n, edited.label));
+                              await _edit(n, edited);
                             },
                             mouseCursor: SystemMouseCursors.click,
                           ),
@@ -369,10 +291,11 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
             ),
             child: Text(m.help),
           ),
-          // Cancel, not Done: there are pending changes to abandon now that the
-          // rows edit a draft (dialog_footer_convention_test.dart).
-          cancel: TextButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.cancel)),
-          actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+          // Done, not Save: every edit is already stored, so the way out
+          // commits nothing (dialog_footer_convention_test.dart). Revert
+          // beside it once there is something to put back.
+          secondary: _changed ? TextButton(onPressed: () => unawaited(_revert()), child: Text(context.t.common.revert)) : null,
+          cancel: FilledButton(onPressed: () => Navigator.of(context).maybePop(), child: Text(context.t.common.done)),
         ),
       ],
     );
@@ -594,7 +517,7 @@ class SetNameDialogState extends State<SetNameDialog> {
 
 /// One message: the template first, then its label under a Details band.
 /// Hands its two values back through `pop` rather than storing them — the
-/// dialog above holds the draft every set is edited in.
+/// caller knows which set they belong to.
 class _CwMessageDialog extends StatefulWidget {
   final int n;
   final String message;

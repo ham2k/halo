@@ -33,6 +33,8 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' s
 import 'package:ham2k_logger/services/cat/transports/udp_transport_io.dart' show UdpReplyPortTaken;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/export_service.dart' show ExportException;
+import 'package:ham2k_logger/services/sets/set_category.dart' show SetFileException, SetFileProblem;
 import 'package:ham2k_logger/services/midi/midi_backend.dart' show MidiUnavailable;
 import 'package:halo_core/halo_core.dart'
     show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, N1mmCallHistoryUnavailable, QsonFieldType, QsonTypeViolation, SyncPullStuck;
@@ -318,6 +320,23 @@ void main() {
     test('a bare UnsupportedError stays loud', () {
       expect(ErrorPolicy.decide(UnsupportedError('nope')).disposition, ErrorDisposition.notify);
     });
+  });
+
+  group('an export that ended in an answer', () {
+    // The screen that ran the export already said so; uploading it files a
+    // full disk as a crash on every retry.
+    test('kept to the console', () {
+      final decision = ErrorPolicy.decide(ExportException('No space left on device'));
+      expect(decision.disposition, ErrorDisposition.logOnly);
+      expect(decision.rule?.id, 'export-refused');
+    });
+  });
+
+  test('a file picked for import that is not a set is kept to the console', () {
+    // The set manager names the problem; the file is the operator's.
+    final decision = ErrorPolicy.decide(const SetFileException(SetFileProblem.wrongKind, 'kind voice-messages'));
+    expect(decision.disposition, ErrorDisposition.logOnly);
+    expect(decision.rule?.id, 'set-file-refused');
   });
 
   group("a failure the computer's voice keyer dealt with", () {

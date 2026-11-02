@@ -567,6 +567,12 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     }
   }
 
+  /// Writes [map] as [jsonMapPref] reads it.
+  Future<void> setJsonMapPref(String key, Map<String, dynamic> map) async {
+    await _prefs.setString(key, jsonEncode(map));
+    notifyListeners();
+  }
+
   /// Free-form sync bookkeeping (last-synced account uuid, server-tunable
   /// overrides) — see the design note in DESIGN.md §6: this is a handful of
   /// scalars, not per-row data, so it lives here rather than in a drift
@@ -677,15 +683,19 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   Future<void> _offerEsmMessageSet() async {
     if (settingValue(radioGroup, 'esmMessageSetOffered') == true) return;
     final sets = cwMessageSets;
-    final esm = CwMessageSet.esm();
+    var esm = CwMessageSet.esm();
     final taken = sets.any((set) => set.name == esm.name);
+    // A set stored before sets had ids goes by its name, which can be the
+    // built-in set's id; two sets under one id would be edited, reverted and
+    // filed as one.
+    if (sets.any((set) => set.id == esm.id)) esm = esm.copiedAs(id: uuidGenerator.v4(), name: esm.name);
     await updateSettingsGroup(radioGroup, {
       'esmMessageSetOffered': true,
       if (!taken)
-        cwMessageSetsKey: [
+        CwMessageSet.setsKey: [
           for (final set in [...sets, esm]) set.toJson(),
         ],
-      if (!taken) cwMessageSetKey: esm.name,
+      if (!taken) CwMessageSet.activeKey: esm.id,
     });
   }
 
@@ -996,13 +1006,13 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// How the PTT key keys radio1 in a Phone mode (cat_ptt.dart). Off by
   /// default: it puts the operator's transmitter on the air.
   ///
-  /// Stored as two keys the radio group syncs: the `pttKey` bool an older
-  /// build reads and writes says whether the key keys at all, and
-  /// `pttKeyMode` says how. Folding the mode into `pttKey` would throw where
-  /// an older build reads its bool; letting `pttKeyMode` alone decide would
-  /// leave an older device keying after the operator chose No here, or this
-  /// one keying after they switched it off there. A store from before the
-  /// choice has no mode, and on it toggled.
+  /// Stored as two keys: the `pttKey` bool an older build reads and writes
+  /// says whether the key keys at all, and `pttKeyMode` says how. Folding
+  /// the mode into `pttKey` would throw where an older build reads its bool;
+  /// letting `pttKeyMode` alone decide would leave an older build on the
+  /// same store keying after the operator chose No here, or this one keying
+  /// after they switched it off there. A store from before the choice has no
+  /// mode, and on it toggled.
   PttKeyMode get pttKeyMode {
     if (settingValue(radioGroup, 'pttKey') != true) return PttKeyMode.off;
     return switch (settingValue(radioGroup, 'pttKeyMode')) {
@@ -1030,7 +1040,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// activation and a contest alike.
   String cwMessage(int n) => activeCwMessageSet.message(n);
 
-  Future<void> setCwMessage(int n, String value) => _editActiveCwMessageSet((set) => set.withMessage(n, value));
+  Future<void> setCwMessage(int n, String value) => editActiveCwMessageSet((set) => set.withMessage(n, value));
 
   /// An optional name for message [n] — what the editor's row shows beside
   /// the key, since a template is not always readable at a glance.
@@ -1038,73 +1048,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   String cwMessageLabel(int n) => activeCwMessageSet.label(n);
 
-  Future<void> setCwMessageLabel(int n, String value) => _editActiveCwMessageSet((set) => set.withLabel(n, value));
-
-  /// The stored key of the SETS, and of the name of the one in use. Both in
-  /// the radio group, beside everything else the keyer reads.
-  static const cwMessageSetsKey = 'cwMessageSets';
-  static const cwMessageSetKey = 'cwMessageSet';
-
-  /// Every set the operator has, in the order they are offered. Never empty:
-  /// an install with nothing stored is answered with the seeds, and one whose
-  /// F1-F8 were written before sets existed keeps them as a set of their own
-  /// ([CwMessageSet.seeded]) rather than losing them to the seeds.
-  ///
-  /// Derived rather than persisted at startup: a getter that seeds and a
-  /// setter that writes cannot disagree, while a migration that runs once at
-  /// launch fails silently on the install where it threw.
-  List<CwMessageSet> get cwMessageSets {
-    final stored = settingValue(radioGroup, cwMessageSetsKey);
-    if (stored is List && stored.isNotEmpty) {
-      final sets = [
-        for (final entry in stored)
-          if (entry is Map) CwMessageSet.fromJson(entry.cast<String, dynamic>()),
-      ];
-      if (sets.isNotEmpty) return sets;
-    }
-    return CwMessageSet.seeded(_legacyCwMessageSet());
-  }
-
-  /// The pre-sets messages as a set, or null when there were none — every
-  /// field empty is an install that never wrote one, not a set of blanks.
-  CwMessageSet? _legacyCwMessageSet() {
-    final messages = [for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? ''];
-    final labels = [for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? ''];
-    if (messages.every((text) => text.trim().isEmpty)) return null;
-    return CwMessageSet(name: t.settings.radio.cwMessages.setSaved, messages: messages, labels: labels);
-  }
-
-  /// The name of the set F1-F8 key. Falls back to the first set rather than
-  /// to a name: a stored name whose set was renamed away would otherwise
-  /// leave the keys with nothing to send.
-  String get cwMessageSetName {
-    final sets = cwMessageSets;
-    final stored = settingValue(radioGroup, cwMessageSetKey) as String?;
-    if (stored != null && sets.any((set) => set.name == stored)) return stored;
-    return sets.first.name;
-  }
-
-  CwMessageSet get activeCwMessageSet {
-    final name = cwMessageSetName;
-    return cwMessageSets.firstWhere((set) => set.name == name, orElse: () => cwMessageSets.first);
-  }
-
-  /// Writes the sets and, when given, which one is in use — one write, so a
-  /// pick that arrives with edits cannot land half-applied.
-  Future<void> setCwMessageSets(List<CwMessageSet> sets, {String? active}) async {
-    if (sets.isEmpty) return;
-    final name = active != null && sets.any((set) => set.name == active) ? active : sets.first.name;
-    await updateSettingsGroup(radioGroup, {
-      cwMessageSetsKey: [for (final set in sets) set.toJson()],
-      cwMessageSetKey: name,
-    });
-  }
-
-  Future<void> _editActiveCwMessageSet(CwMessageSet Function(CwMessageSet) edit) {
-    final name = cwMessageSetName;
-    final sets = [for (final set in cwMessageSets) set.name == name ? edit(set) : set];
-    return setCwMessageSets(sets, active: name);
-  }
+  Future<void> setCwMessageLabel(int n, String value) => editActiveCwMessageSet((set) => set.withLabel(n, value));
 
   /// How many voice memory labels there are: one per function key, like
   /// the CW messages — the most any radio here has (an Icom's T1-T8). A

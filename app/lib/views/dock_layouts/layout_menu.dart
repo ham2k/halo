@@ -16,7 +16,6 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/error_reporting_service.dart';
-import '../../services/export_service.dart' show ExportException;
 import '../../services/extensions/extension_info.dart';
 import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
@@ -445,9 +444,7 @@ Future<void> runLayoutExport(BuildContext context, DockHost host) async {
       if (saved != null) messenger?.showSnackBar(haloSnackBar(t.exported(location: saved.location)));
     }
   } catch (e, stack) {
-    // An ExportException is the platform's answer to the save — a refusal the
-    // operator is shown, not a fault to file.
-    if (e is! ExportException) ErrorReportingService.report(e, stack, context: 'layout:export', told: messenger != null);
+    ErrorReportingService.report(e, stack, context: 'layout:export', told: messenger != null);
     messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
   }
 }

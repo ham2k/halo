@@ -18,6 +18,7 @@ import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart'
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/cw_messages_dialog.dart' show cwMessageNumberIcons;
+import 'package:ham2k_logger/views/sets/set_picker_field.dart';
 import 'package:ham2k_logger/views/voice_messages_dialog.dart';
 
 import '../support/fake_voice_audio.dart';
@@ -309,23 +310,43 @@ void main() {
       expect(find.widgetWithText(TextField, 'Say with my words'), findsOneWidget);
     });
 
-    IconButton setButton(WidgetTester tester, String name) =>
-        tester.widget<IconButton>(find.ancestor(of: find.bySemanticsLabel(name), matching: find.byType(IconButton)));
+    /// The picker's menu: its rows' texts, sets and footer alike.
+    Future<List<String?>> pickerMenu(WidgetTester tester) async {
+      await tester.tap(find.byType(SetPickerField));
+      await tester.pumpAndSettle();
+      return [
+        for (final button in tester.widgetList<MenuItemButton>(find.byType(MenuItemButton)))
+          tester.widget<Text>(find.descendant(of: find.byWidget(button), matching: find.byType(Text)).first).data,
+      ];
+    }
+
+    Future<void> openManager(WidgetTester tester) async {
+      await pickerMenu(tester);
+      await tester.tap(find.text('Manage Voice Sets…'));
+      await tester.pumpAndSettle();
+    }
+
+    /// The manager's row menu for set [name].
+    Future<void> rowMenu(WidgetTester tester, String name) async {
+      await tester.tap(find.bySemanticsLabel('Actions for $name'));
+      await tester.pumpAndSettle();
+    }
+
+    MenuItemButton menuItem(WidgetTester tester, String label) =>
+        tester.widget<MenuItemButton>(find.ancestor(of: find.text(label), matching: find.byType(MenuItemButton)));
 
     // Sets are recordings on this computer: offered while the computer
     // plays the messages, and never in the way of the radio's own memories,
     // which Phone Keying picks rather than this list.
     testWidgets('the sets are offered only while the computer plays the messages, the default first', (tester) async {
       await open(tester);
-      expect(find.bySemanticsLabel('New Set'), findsNothing, reason: "the radio's own memories are not a set");
+      expect(find.byType(SetPickerField), findsNothing, reason: "the radio's own memories are not a set");
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();
 
       await fromComputer(tester);
       await open(tester);
-      final picker = tester.widget<DropdownButton<String>>(find.byWidgetPredicate((widget) => widget is DropdownButton<String> && widget.items!.length == 2));
-      expect([for (final item in picker.items!) (item.child as Text).data], ['Sound files on this computer', 'CQ']);
-      expect(setButton(tester, 'New Set').onPressed, isNotNull);
+      expect(await pickerMenu(tester), ['Sound files on this computer', 'CQ', 'Manage Voice Sets…']);
     });
 
     // The default set is where sound files go before any set is made; gone,
@@ -333,10 +354,12 @@ void main() {
     // operator has yet to make.
     testWidgets('the default set is neither renamed nor deleted', (tester) async {
       await fromComputer(tester);
-      await tester.runAsync(() => services.cat.selectVoiceMessageSet(VoiceMessageSet.defaultId));
       await open(tester);
-      expect(setButton(tester, 'Rename Set').onPressed, isNull);
-      expect(setButton(tester, 'Delete Set').onPressed, isNull);
+      await openManager(tester);
+      await rowMenu(tester, 'Sound files on this computer');
+      expect(menuItem(tester, 'Rename').onPressed, isNull);
+      expect(menuItem(tester, 'Delete…').onPressed, isNull);
+      expect(menuItem(tester, 'Duplicate').onPressed, isNotNull, reason: 'copying it takes nothing from it');
     });
 
     // The folder, not the file: opening a .wav plays it in whatever the
@@ -417,19 +440,22 @@ void main() {
       expect(find.text('Not recorded'), findsNWidgets(SettingsService.voiceMessageCount - 1));
     });
 
-    // Deleting a set takes its recordings, and nothing is a draft here to
-    // Cancel back to.
+    // Deleting a set takes its recordings, and the manager has no Cancel
+    // that could bring them back.
     testWidgets('deleting a set asks first', (tester) async {
       await fromComputer(tester);
       await tester.runAsync(() => services.cat.selectVoiceMessageSet(cq.id));
       await open(tester);
-      await tester.tap(find.bySemanticsLabel('Delete Set'));
+      await openManager(tester);
+      await rowMenu(tester, 'CQ');
+      await tester.tap(find.text('Delete…'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
       expect(services.settings.voiceMessageSets, hasLength(2));
 
-      await tester.tap(find.bySemanticsLabel('Delete Set'));
+      await rowMenu(tester, 'CQ');
+      await tester.tap(find.text('Delete…'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();

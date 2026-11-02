@@ -20,12 +20,15 @@
 // each test body — before tearDowns run — so every test restores them
 // inline via try/finally (withErrorHooks) rather than addTearDown.
 
+import 'dart:io' show FileSystemException, OSError;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/version.dart' show Edition;
+import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show VoiceAudioFailure;
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -552,6 +555,15 @@ void main() {
       expect(ErrorReportingService.messageOf(HookTimeoutException('took too long')), 'took too long');
       expect(ErrorReportingService.messageOf(Exception('plain')), 'plain');
       expect(ErrorReportingService.messageOf(StateError('x')), 'Bad state: x', reason: 'a message of its own type keeps its wording');
+    });
+
+    test("a file failure reads as the system's reason, never the path", () {
+      // A snackbar showing the type, the path and the errno says less than
+      // the reason alone, and the path names the operator's OS account.
+      const full = FileSystemException("Cannot copy file to '/Users/ada/b.wav'", '/Users/ada/a.wav', OSError('No space left on device', 28));
+      expect(ErrorReportingService.messageOf(full), 'No space left on device');
+      expect(ErrorReportingService.messageOf(VoiceAudioFailure('sets:duplicate', full)), 'No space left on device');
+      expect(ErrorReportingService.messageOf(const FileSystemException("Cannot copy file to '/Users/ada/b.wav'")), "Cannot copy file to '…'");
     });
   });
 }

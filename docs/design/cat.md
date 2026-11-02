@@ -1580,8 +1580,8 @@ writing it:
 A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
 view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's CW Keying
 line picks the key and the speed and opens the editor, and `20WPM` typed into the call field sets the
-speed the way `5W` sets power. The editor is the **CW Keyer** dialog — the key, the message sets, saved
-together on Save, and message 1's repeat and Enter Sends Messages, which apply as they change —
+speed the way `5W` sets power. The editor is the **CW Keyer** dialog — the key, the message sets, message 1's repeat and Enter
+Sends Messages, all applied as they change —
 reached from that line, the keyer control and a row of its own in Settings → Radio; the settings it edits stay declared for SET/SHOW but are not Settings rows
 (`listed: false`). Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`).
 
@@ -1789,17 +1789,28 @@ mode's field — and a second after nothing is, and the area slides away with it
 uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
 to the extent the pacing is, and a paddle-stop at the rig is invisible to it.
 
-**Messages come in SETS.** `CwMessageSet` (settings_service.dart) is a name plus the eight templates
-and their labels; `cwMessageSets` holds them all and `cwMessageSet` names the one in use, which is
+**Messages come in SETS.** `CwMessageSet` (cw_message_set.dart) is an id, a name, the eight templates
+and their labels; `cwMessageSets` holds them all and `cwMessageSet` holds the id of the one in use
+(a set stored before sets had ids takes its name as one, so an older pick still finds it), which is
 what `cwMessage(n)` reads and what the function keys send. The keys address a message WITHIN the
 active set, so Settings and `SET` follow the operator's pick rather than editing a ninth hidden
 copy — `RadioSettingsGroup.commit` routes those keys into the set. An install with nothing stored is
 seeded with a Default worth keying and a POTA that differs from it only in the CQ; one whose F1-F8
 were written before sets existed keeps them as a set of its own, placed first and therefore active,
-so an upgrade never changes what the keys send. The editor is a DRAFT of every set at once: its
-header picks one, its rows hand their edits up rather than storing them, and Save writes the sets
-and the pick together — so Cancel abandons work in a set the operator has already left, which a
-dialog that stored as it went could not do. New Set duplicates what is on screen, edits included.
+so an upgrade never changes what the keys send. The editor stores as it goes: a pick in its header
+is the set in use at once, and a row's Save writes that message — so a pane closed by a tap outside
+never drops an edit that looked made. Its way out is **Done**; beside it, from the first change on,
+**Revert** puts back every set the dialog touched as it was before its first edit, and the set that
+was in use when it opened — not only the set on screen, which would leave the ones the operator
+moved away from edited. The keyer's behaviour (repeat, ESM) is not reverted. Naming, copying,
+filing, exporting and deleting sets is the **set manager's**, reached from the picker's pinned
+**Manage CW Sets…** footer and shared with voice sets (`SetCategory`, `app/lib/services/sets/`):
+sets are filed in folders, nested, stored with them in the Radio group (`cwMessageSetTree`), while
+which folders the picker shows open is kept apart (`setFoldersOpen`), as a settings section's fold
+is: how a list was left is not a setting. Each action is written as it is taken; a delete asks first. A set exports to a
+file of its own (`.h2kset`, YAML; a voice set's `.h2kvoice` is a zip of that YAML and its
+recordings, each entry capped by what it inflates to and checked against its checksum), and an import is a new set beside the
+others, renamed where its name is taken and never put in use.
 Turning Enter Sends Messages on (`EXP ESM`) adds one more, **ESM Messages**, and puts it in use: ESM
 reads messages by position, N1MM's — F1 CQ, F2 exchange, F3 thanks, F4 my call, F5 their call, F8
 again ([logging-fields.md](logging-fields.md) § Enter Sends Messages) — which the Default, whose F2
@@ -2238,14 +2249,16 @@ sets (`voiceMessageSets`: an id, a name and eight labels each), and the pick (`v
 is one for the app, like CW's: a recording is the operator's voice and not a rig's, so swapping
 radios keeps the CQ. A stored pick whose set is gone means the default set, never another of the
 operator's. The sets are named and recorded with no radio connected at all. A set's recordings
-are `<app data>/voice-messages/<set id>/<n>.wav` — under the id, so a rename moves nothing. A new
-set copies the set in use, recordings and labels, as a new CW set copies the one on screen. A
+are `<app data>/voice-messages/<set id>/<n>.wav` — under the id, so a rename moves nothing. A
+duplicate, made in the set manager like a CW set's, copies the recordings with the labels. A
 message's dialog has **Open File**, which opens the
 folder its file is in — made first if needed, the file selected where the system can (`open -R`,
 `explorer /select`; Linux's `xdg-open` only opens the folder) — rather than the file, which the
-system would play. Unlike CW's, nothing in the pane is a draft: a recording is
-written as it ends, so a Cancel could not undo it, and deleting a set — which deletes its
-recordings — asks first. The sound devices and the two delays stay on the radio's equipment node,
+system would play. Nothing in the pane is reverted: a recording is
+written as it ends, and deleting a set — which deletes its recordings — asks first. The recordings
+go before the set does, so a delete that fails partway leaves the set listed to delete again, and
+a copy or import that fails partway removes what it had written: nothing is left on disk under a
+set the app does not list. The sound devices and the two delays stay on the radio's equipment node,
 because they describe this shack's wiring — which sound card feeds which radio — and equipment is
 device-local, never synced; they are edited in their own dialog, behind the button beside Phone
 Keying's pick — each radio's own under SO2R, named for the radio and labelling its output "Send

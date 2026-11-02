@@ -43,6 +43,8 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
+import 'export_service.dart' show ExportException;
+import 'sets/set_category.dart' show SetFileException;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
@@ -360,6 +362,24 @@ class ErrorPolicy {
           'sound system gave, which is what tells a device that would not open from a bug of ours',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is VoiceAudioFailure,
+    ),
+    ErrorRule(
+      id: 'export-refused',
+      reason:
+          'an export ended in an answer rather than a fault — nothing to export, a runtime not up '
+          'yet, a save the platform refused (a full disk, a read-only folder) — and the screen that '
+          'ran it said so; uploading it would file an expected answer as a crash',
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, details) => error is ExportException,
+    ),
+    ErrorRule(
+      id: 'set-file-refused',
+      reason:
+          'a file picked for import is not a set this build can read — another kind, a newer '
+          'format, damaged, or not a set at all — and the set manager said which; the file is the '
+          "operator's, not a fault of ours",
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, details) => error is SetFileException,
     ),
     ErrorRule(
       id: 'peer-media-unreachable',

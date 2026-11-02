@@ -30,13 +30,13 @@ void main() {
   test('turning ESM on adds ESM Messages, in N1MM order, and puts it in use', () async {
     await settings.setExperimentEnabled('esm', true);
     expect(names(), ['Default', 'POTA', 'ESM Messages']);
-    expect(settings.cwMessageSetName, 'ESM Messages', reason: 'ESM keys by position; the Default is not laid out for it');
+    expect(settings.activeCwMessageSet.name, 'ESM Messages', reason: 'ESM keys by position; the Default is not laid out for it');
     expect([for (var n = 1; n <= 8; n++) settings.cwMessage(n)], ['CQ DE {{op.call}} K', '5NN', 'TU', '{{op.call}}', '{{qso.call}}', '', '', 'AGN?']);
   });
 
   test('sets the operator already has are kept, and in order', () async {
     final mine = settings.cwMessageSets.first.renamed('Mine').withMessage(1, 'CQ TEST {{op.call}}');
-    await settings.setCwMessageSets([mine], active: 'Mine');
+    await settings.setCwMessageSets([mine], active: mine.id);
     await settings.setExperimentEnabled('esm', true);
     expect(names(), ['Mine', 'ESM Messages']);
     expect(settings.cwMessageSets.first.message(1), 'CQ TEST {{op.call}}');
@@ -48,12 +48,26 @@ void main() {
       for (final set in settings.cwMessageSets)
         if (set.name != 'ESM Messages') set,
     ];
-    await settings.setCwMessageSets(kept, active: 'Default');
+    await settings.setCwMessageSets(kept, active: kept.first.id);
 
     await settings.setExperimentEnabled('esm', false);
     await settings.setExperimentEnabled('esm', true);
     expect(names(), ['Default', 'POTA']);
-    expect(settings.cwMessageSetName, 'Default', reason: 'the operator chose a set since; re-enabling must not take it back');
+    expect(settings.activeCwMessageSet.name, 'Default', reason: 'the operator chose a set since; re-enabling must not take it back');
+  });
+
+  test("a set stored before ids, named the ESM set's id, stays a set of its own", () async {
+    // Stored without an id, it goes by its name; an ESM set added under the
+    // same id would be edited, reverted and filed as one with it.
+    await settings.updateSettingsGroup(SettingsService.radioGroup, {
+      CwMessageSet.setsKey: [
+        {'name': 'esm', 'messages': <String>[], 'labels': <String>[]},
+      ],
+    });
+    await settings.setExperimentEnabled('esm', true);
+    expect(names(), ['esm', 'ESM Messages']);
+    expect({for (final set in settings.cwMessageSets) set.id}.length, 2);
+    expect(settings.activeCwMessageSet.name, 'ESM Messages');
   });
 
   test('turning on any other experiment adds nothing', () async {

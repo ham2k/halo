@@ -855,6 +855,19 @@ void main() {
       expect(failure.reason, contains('Access is denied'));
     });
 
+    test("nor the path a copy's message names, where dart:io quotes the destination", () {
+      final failure = VoiceAudioFailure(
+        'sets:duplicate',
+        const FileSystemException(
+          "Cannot copy file to '/Users/ada/Library/voice/2/1.wav'",
+          '/Users/ada/Library/voice/1/1.wav',
+          OSError('No space left on device', 28),
+        ),
+      );
+      expect('$failure', isNot(contains('ada')));
+      expect(failure.reason, contains('Cannot copy file to'));
+    });
+
     // A device another program holds refuses every key pressed; the second
     // upload of the same reason says nothing the first did not.
     test('the same reason goes up once a session', () async {

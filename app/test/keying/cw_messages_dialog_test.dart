@@ -59,7 +59,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(KeyerMessageKeys), findsNWidgets(SettingsService.cwMessageCount));
     expect(caps(), findsNothing);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
 
     await services.settings.setExperimentEnabled('kb', true);
@@ -92,10 +92,12 @@ void main() {
     expect(find.text('(empty)'), findsNWidgets(empties.length), reason: 'the unset ones say so');
   });
 
-  testWidgets('a row opens its own dialog: the message, then the label under Details; Save writes both', (tester) async {
+  testWidgets('a row opens its own dialog: the message, then the label under Details; its Save stores both', (tester) async {
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+    expect(find.text('Save'), findsNothing, reason: 'the editor stores as it goes; its way out is Done');
+    expect(find.text('Revert'), findsNothing, reason: 'nothing to put back yet');
 
     // The header above the rows is tall enough to push a row under the
     // footer at the test's window size; an operator scrolls it into view.
@@ -108,29 +110,28 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, 'M3'), '{{ qso.call }} 5NN TU');
     await tester.enterText(find.widgetWithText(TextField, 'Label'), 'Exchange');
-    // The row's own Save — the dialog behind it has one too.
-    await tester.tap(find.text('Save').last);
-    await tester.pumpAndSettle();
-
-    // The row's Save hands its two values UP; the dialog behind it holds
-    // them as a draft, which is why nothing is stored yet.
-    expect(services.settings.cwMessage(3), isNot('{{ qso.call }} 5NN TU'));
-    expect(find.widgetWithText(HaloDialog, 'Message 3'), findsNothing, reason: 'closed on Save');
-    expect(find.textContaining('Exchange'), findsOneWidget);
-    expect(find.text('{{ qso.call }} 5NN TU'), findsOneWidget);
-
-    // The dialog's own Save is what writes.
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
+
+    // Stored by the row's Save, with the editor still open: a pane closed by
+    // a tap outside must not drop an edit that looked made.
     expect(services.settings.cwMessage(3), '{{ qso.call }} 5NN TU');
     expect(services.settings.cwMessageLabel(3), 'Exchange');
+    expect(find.widgetWithText(HaloDialog, 'Message 3'), findsNothing, reason: 'closed on Save');
+    expect(find.textContaining('Exchange'), findsOneWidget);
+    expect(find.text('Revert'), findsOneWidget, reason: 'offered from the first change on');
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('CW Keyer Messages'), findsNothing);
+    expect(services.settings.cwMessage(3), '{{ qso.call }} 5NN TU', reason: 'Done keeps what is stored');
   });
 
   // Help is a detour, not a way out: an operator reaches for it WHILE
-  // writing a message, so its Done must land them back on the editor with
-  // the unsaved draft still in it. Popping one route too many — or Help
-  // sitting in the trailing group where Done reads as the editor's own —
-  // would cost them what they had typed.
+  // writing messages, so its Done must land them back on the editor. Popping
+  // one route too many — or Help sitting in the trailing group where its
+  // Done reads as the editor's own — would close the editor and, with it,
+  // the Revert of what they had changed.
   testWidgets('Help opens over the editor at the leading edge, and Done returns to the draft', (tester) async {
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));
@@ -143,10 +144,10 @@ void main() {
     await tester.tap(find.byType(ListTile).at(2));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'M3'), '{{ qso.call }} {{ qso.serial | pad: 3 }}');
-    await tester.tap(find.text('Save').last);
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(tester.getCenter(find.text('Help')).dx, lessThan(tester.getCenter(find.text('Cancel')).dx));
+    expect(tester.getCenter(find.text('Help')).dx, lessThan(tester.getCenter(find.text('Done')).dx));
     await tester.tap(find.text('Help'));
     await tester.pumpAndSettle();
     expect(find.text('Writing CW Messages'), findsOneWidget);
@@ -156,11 +157,12 @@ void main() {
     expect(find.textContaining('| pad: 3 }}'), findsWidgets);
     expect(find.textContaining('| cut }}'), findsWidgets);
 
-    await tester.tap(find.text('Done'));
+    // The help's Done, over the editor's own.
+    await tester.tap(find.text('Done').last);
     await tester.pumpAndSettle();
     expect(find.text('Writing CW Messages'), findsNothing);
     expect(find.text('CW Keyer Messages'), findsOneWidget, reason: 'the editor is still open behind it');
-    expect(find.text('{{ qso.call }} {{ qso.serial | pad: 3 }}'), findsOneWidget, reason: 'and still holds the draft');
+    expect(find.text('Revert'), findsOneWidget, reason: 'with what it would put back');
   });
 
   // What Enter keys from each F-key is ESM's to explain, and ESM exists only
@@ -191,32 +193,49 @@ void main() {
     expect(inHelp(find.textContaining('next.call')), findsOneWidget, reason: 'and the stacking thanks it suggests');
   });
 
-  testWidgets('Cancel abandons every set the operator touched, not just the one on screen', (tester) async {
+  testWidgets('Revert puts back every set the operator touched, and the set in use, not just the one on screen', (tester) async {
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    final before = services.settings.cwMessage(3);
-    // The header above the rows is tall enough to push a row under the
-    // footer at the test's window size; an operator scrolls it into view.
-    await tester.ensureVisible(find.byType(ListTile).at(2));
+    Future<void> editRow(int index, String text) async {
+      await tester.ensureVisible(find.byType(ListTile).at(index));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile).at(index));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'M${index + 1}'), text);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+
+    final sets = services.settings.cwMessageSets;
+    final (defaults, pota) = (sets.first, sets.last);
+    await editRow(2, 'DEFAULT EDIT');
+    // Edits land on whichever set is in use — so the dialog's way of
+    // touching a second set is to switch to it.
+    await tester.tap(find.text('Default').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(ListTile).at(2));
+    await tester.tap(find.text('POTA').last);
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'M3'), 'NEVER STORED');
-    await tester.tap(find.text('Save').last);
+    expect(services.settings.cwMessageSetId, pota.id, reason: 'a pick is in use the moment it is made');
+    await editRow(2, 'POTA EDIT');
+
+    // The trap: a Revert that kept only the set on screen would leave
+    // Default edited, and POTA keying F1-F8 after the operator undid it all.
+    await tester.tap(find.text('Revert'));
     await tester.pumpAndSettle();
-    // The trap: a dialog that stored as it went would leave this behind,
-    // and Cancel would only undo whatever was on screen at the end.
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(services.settings.cwMessage(3), before);
+    final after = {for (final set in services.settings.cwMessageSets) set.id: set};
+    expect(after[defaults.id]!.message(3), defaults.message(3));
+    expect(after[pota.id]!.message(3), pota.message(3));
+    expect(services.settings.cwMessageSetId, defaults.id);
+    expect(find.text('Revert'), findsNothing, reason: 'nothing left to put back');
   });
 
-  // The repeat and Enter Sends Messages are NOT part of the messages' draft:
-  // a dialog closed by Cancel, a tap outside or Escape would otherwise drop a
-  // pick that looked made, while the Phone Keyer beside it keeps its own.
-  testWidgets('the keyer behaviour applies as it changes, and survives a Cancel of the messages', (tester) async {
+  // The repeat and Enter Sends Messages are how the keyer behaves, not what
+  // the messages say: Revert takes back the messages, and taking these with
+  // them would undo a pick the operator made on purpose, which the Phone
+  // Keyer beside it keeps.
+  testWidgets('the keyer behaviour applies as it changes, and survives a Revert of the messages', (tester) async {
     await services.settings.setExperimentEnabled('esm', true);
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));
@@ -236,7 +255,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(services.cat.enterSends.value, (on: true, running: false));
 
-    await tester.tap(find.text('Cancel'));
+    await tester.ensureVisible(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'M3'), 'TAKEN BACK');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Revert'));
     await tester.pumpAndSettle();
     expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
     expect(services.cat.enterSends.value, (on: true, running: false));
@@ -245,7 +271,7 @@ void main() {
   testWidgets('an install with nothing stored is seeded: a Default to key, and a POTA beside it', (tester) async {
     final sets = services.settings.cwMessageSets;
     expect(sets.map((set) => set.name), ['Default', 'POTA']);
-    expect(services.settings.cwMessageSetName, 'Default');
+    expect(services.settings.activeCwMessageSet.name, 'Default');
     expect(services.settings.cwMessage(1), 'CQ DE {{op.call}} K');
     expect(services.settings.cwMessageLabel(1), 'CQ');
     // POTA is Default with its CQ changed — what duplicating a set makes,
@@ -261,24 +287,26 @@ void main() {
     expect(settings.cwMessageSets.map((set) => set.name), ['My Messages', 'Default', 'POTA']);
     // FIRST, and therefore active: an upgrade must not change what the
     // function keys send.
-    expect(settings.cwMessageSetName, 'My Messages');
+    expect(settings.activeCwMessageSet.name, 'My Messages');
     expect(settings.cwMessage(1), 'CQ DE N0CALL K');
     expect(settings.cwMessageLabel(1), 'MY CQ');
   });
 
-  testWidgets('picking a set changes what the keys send, and New Set duplicates what is on screen', (tester) async {
+  testWidgets('picking a set changes what the keys send at once, and Revert picks the one in use before', (tester) async {
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Default').last);
+    await tester.tap(find.text('Default').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('POTA').last);
     await tester.pumpAndSettle();
-    expect(services.settings.cwMessageSetName, 'Default', reason: 'the pick is a draft until Save');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(services.settings.cwMessageSetName, 'POTA');
+    expect(services.settings.activeCwMessageSet.name, 'POTA');
     expect(services.settings.cwMessage(1), 'CQ POTA DE {{op.call}} K');
+    expect(find.text('Revert'), findsOneWidget, reason: 'a pick is a change Revert can take back');
+
+    await tester.tap(find.text('Revert'));
+    await tester.pumpAndSettle();
+    expect(services.settings.activeCwMessageSet.name, 'Default');
   });
 }
