@@ -119,9 +119,16 @@ class FlexDaxSwitch {
     _settle();
   }
 
-  /// The interlock's report, after the session has taken it in.
-  void interlock({required bool transmitting}) {
+  /// The interlock's report, after the session has taken it in. [onAir] is
+  /// `TRANSMITTING` alone: keying and unkeying count as [transmitting] too,
+  /// and a change of `dax` sent then is answered and not applied.
+  void interlock({required bool transmitting, required bool onAir}) {
     if (transmitting) {
+      // On the air with a restore this switch sent still reported undone:
+      // sent while the radio was unkeying the last message — a plain key
+      // straight after it — it was not applied. On the air it is, and the
+      // mic is dead only for the moment between.
+      if (onAir && _owed && _restoreSent && _dax == true && keyedByUs()) _restore();
       _keyedSinceKey = true;
     } else {
       _settle(receiving: true);
@@ -131,6 +138,12 @@ class FlexDaxSwitch {
   /// DAX on for a message, unless the operator had it on already; before the
   /// key.
   void beforeKey() {
+    // A restore on its way makes the radio's last `dax=1` stale: keyed on
+    // that word without a `dax=1` of its own, the message goes out on the
+    // mic once the restore lands. Only while still owed here: a restore the
+    // other slice took over is never seen to settle by this switch, and
+    // trusted for good it would claim DAX the operator turned on later.
+    final restoring = _owed && _restoreSent;
     // A restore still waiting for the last message's unkey is for that
     // message: left armed, it would put DAX back off under this one, which
     // then goes out as mic hiss. DAX stays owed back after this one.
@@ -147,10 +160,25 @@ class FlexDaxSwitch {
     // operator's: this message takes the debt over, and turns DAX on again
     // in case that session's restore is already on its way.
     final taken = _owedElsewhere;
-    if (_dax != true || taken) {
+    if (_dax != true || taken || restoring) {
       _owed = true;
       send('transmit set dax=1');
     }
+  }
+
+  /// DAX back off before a plain key — the operator's mic, a CAT client's —
+  /// while a message's DAX is still owed back. Its restore waits for the
+  /// radio to be receiving, which a key straight after the message keeps
+  /// it from being, and the over goes out with the mic dead. Taken over
+  /// from the other slice's session as [beforeKey] does: one transmitter.
+  void beforePlainKey() {
+    // A key asserted again while held has had its restore; sent again, each
+    // would reset the tries, and a DAX that never goes off is never reported.
+    if (keyedByUs()) return;
+    if (!_owed && !_owedElsewhere) return;
+    _tries = 0;
+    _owed = true;
+    _restore();
   }
 
   /// DAX back off once the radio is receiving again; after the unkey.

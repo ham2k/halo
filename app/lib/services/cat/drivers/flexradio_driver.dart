@@ -665,7 +665,7 @@ class FlexRadioSession
     if (state == null) return;
     final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
     _transmitting = transmitting;
-    _daxSwitch.interlock(transmitting: transmitting);
+    _daxSwitch.interlock(transmitting: transmitting, onAir: state == 'TRANSMITTING');
     _reportOnAir();
   }
 
@@ -1095,6 +1095,11 @@ class FlexRadioSession
   @override
   void setPtt(bool on) {
     if (on && cannotTransmit != null) return;
+    if (on) _daxSwitch.beforePlainKey();
+    _key(on);
+  }
+
+  void _key(bool on) {
     // Set before a key and cleared only after an unkey: either one that
     // throws leaves [teardown] an unkey to send.
     _keyedByUs |= on;
@@ -1153,9 +1158,9 @@ class FlexRadioSession
     }
     if (on) {
       _daxSwitch.beforeKey();
-      setPtt(true);
+      _key(true);
     } else {
-      setPtt(false);
+      _key(false);
       _daxSwitch.afterUnkey();
     }
   }

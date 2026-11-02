@@ -2290,7 +2290,15 @@ applied, which on a FLEX-6600 left DAX on, and the operator's mic dead, after ev
 reported (`FlexDaxLeftOn`). A teardown while keyed sends it straight after its unkey, never before
 (the mic would go out between them), and cannot wait, so there it may not take: the debt is kept
 by the radio's address, and the next session to that radio sends it once the radio reports
-receive with DAX still on. A TS-590SG keys with `TX1;` (DATA SEND,
+receive with DAX still on. A message keyed while a `dax=0` is on its way sends its own `dax=1`
+whatever the last status said: that `dax=1` is about to be undone, and a message keyed on it goes
+out on the mic — M1 straight after a manual over. A plain key (['], a CAT client) while a
+message's `dax=0` is still owed sends it before `xmit 1`, taking it over from the other slice's
+session, since the restore's wait for receive would otherwise put the operator's over out on DAX
+with the mic dead; sent while the radio is still unkeying that message it does not take, so it
+goes again once the radio reports the key on the air, where a change of `dax` is applied. A plain
+key with nothing owed leaves DAX alone: a digital-mode program keying through the CAT server
+runs on the DAX the operator turned on. A TS-590SG keys with `TX1;` (DATA SEND,
 the audio its data menu routes from ACC2 or USB) and unkeys with the same `RX;`; the entry pins it
 (`dataSend`), because the Kenwood driver serves rigs whose `TX` takes no parameter. An Elecraft K4
 over USB or its LAN CAT port has its voice modes' input set to LINE IN for the message (below).

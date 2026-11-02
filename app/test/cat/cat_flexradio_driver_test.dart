@@ -1468,6 +1468,102 @@ void main() {
       });
     });
 
+    // The next message keyed in the moment between a restore going out and
+    // the radio's `dax=0` coming back — M1 straight after a manual over. On
+    // the stale `dax=1` it sends none of its own, the restore lands, and the
+    // message goes out on the mic.
+    test('a message keyed while a restore is on its way turns DAX on again', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S40000001|transmit dax=1\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands().last, 'transmit set dax=0', reason: 'sanity: the restore is on its way');
+        sink.sent.clear();
+        session.setPttWithComputerAudio(true);
+        expect(commands(), ['transmit set dax=1', 'xmit 1'], reason: 'sent after the restore, so it is what the radio ends on');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // ['] straight after a message, or over a repeating one: the message's
+    // restore waits for the radio to be receiving, the key keeps it from
+    // being, and the operator's over goes out on DAX with the mic dead.
+    test('a plain key straight after a message turns DAX off first', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S40000001|transmit dax=1\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        sink.sent.clear();
+        session.setPtt(true);
+        expect(commands(), ['transmit set dax=0', 'xmit 1']);
+        // Sent while the radio was still unkeying the message, the restore
+        // did not take: no `dax=0` comes back. Sent again while it unkeys or
+        // keys, it would not take either.
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=UNKEY_REQUESTED\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=PTT_REQUESTED source=SW\n');
+        expect(commands(), ['transmit set dax=0', 'xmit 1'], reason: 'not until the radio is on the air');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        expect(commands(), ['transmit set dax=0', 'xmit 1', 'transmit set dax=0'], reason: 'on the air, it takes');
+        session.feed('S40000001|transmit dax=0\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPtt(false);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands().where((c) => c.startsWith('transmit set')), hasLength(2), reason: 'settled once the radio says so');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A key asserted again while held — an extension, a CAT client — would
+    // send the restore each time and reset its tries, so a DAX that never
+    // goes off would never be reported.
+    test('a plain key asserted again while held sends the restore once', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=0\n');
+        session.setPttWithComputerAudio(true);
+        session.feed('S40000001|transmit dax=1\n');
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPttWithComputerAudio(false);
+        sink.sent.clear();
+        session.setPtt(true);
+        session.setPtt(true);
+        expect(commands().where((c) => c == 'transmit set dax=0'), hasLength(1));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // A digital-mode program keying through the CAT server runs on the DAX
+    // the operator turned on: a plain key owes nothing back, and turns
+    // nothing off.
+    test('a plain key with no message behind it leaves DAX as it is', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S40000001|transmit dax=1\n');
+        sink.sent.clear();
+        session.setPtt(true);
+        session.feed('S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW\n');
+        session.setPtt(false);
+        session.feed('S0|interlock tx_client_handle=0x00000000 state=READY\n');
+        expect(commands(), ['xmit 1', 'xmit 0']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
     // Escape during the lead: the radio has not yet said it keyed, and the
     // last thing it said was "receiving". Sent then, the restore lands while
     // the radio is keying and is not applied — DAX on, the mic dead after.
@@ -1666,6 +1762,65 @@ void main() {
           for (final rig in rigs) {
             rig.teardown();
           }
+          async.flushTimers();
+        });
+      });
+
+      // SO2R's ['] on the other radio straight after a message: one
+      // transmitter, so the message's DAX is this key's to turn off.
+      test("a plain key on the other slice turns off the DAX this slice's message left on", () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final a = open(sink, 0), b = open(sinkB, 1);
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          a.setPttWithComputerAudio(false);
+          sink.sent.clear();
+          sinkB.sent.clear();
+          b.setPtt(true);
+          expect(sentBy(sinkB).take(2), ['transmit set dax=0', 'xmit 1']);
+          feedBoth([a, b], 'S40000001|transmit dax=0');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          b.setPtt(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          async.elapse(const Duration(seconds: 3));
+          expect(sentBy(sink), isEmpty, reason: "A's restore went with the debt");
+          a.teardown();
+          b.teardown();
+          async.flushTimers();
+        });
+      });
+
+      // A restore taken over by the other slice is never seen to settle by
+      // the slice that sent it. Trusted as still on its way, it has that
+      // slice's next message claim the DAX the operator turned on since —
+      // and turn it off after, under their digital-mode program.
+      test("a restore the other slice took over does not make the operator's DAX this slice's", () {
+        fakeAsync((async) {
+          final sinkB = _FakeSink();
+          final a = open(sink, 0), b = open(sinkB, 1);
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          a.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          expect(sentBy(sink).last, 'transmit set dax=0', reason: "sanity: A's restore is on its way");
+          b.setPtt(true);
+          feedBoth([a, b], 'S40000001|transmit dax=0');
+          b.setPtt(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          // The operator turns DAX on for a digital mode.
+          feedBoth([a, b], 'S40000001|transmit dax=1');
+          sink.sent.clear();
+          a.setPttWithComputerAudio(true);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x05FAA816 state=TRANSMITTING source=SW');
+          a.setPttWithComputerAudio(false);
+          feedBoth([a, b], 'S0|interlock tx_client_handle=0x00000000 state=READY');
+          async.elapse(const Duration(seconds: 3));
+          expect(sentBy(sink).where((c) => c.startsWith('transmit set')), isEmpty, reason: "DAX on is the operator's");
+          a.teardown();
+          b.teardown();
           async.flushTimers();
         });
       });
