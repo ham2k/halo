@@ -2558,6 +2558,12 @@ export interface ExtensionManifest {
   shortName?: string
   version: string
   description?: string
+  /// What the extension is and does, at more length than [description]:
+  /// markdown, shown in the app's details for the extension and on its
+  /// catalog page. Not release notes — those go with each published version.
+  /// At most 10,000 characters. The build tools fill it from an `ABOUT.md`
+  /// beside the manifest, and a translation's from `ABOUT.<locale>.md`.
+  about?: string
   /// MDI icon name shown in the Extensions panel (and mirrored by the
   /// extension's own controls).
   icon?: string
@@ -2648,10 +2654,10 @@ export interface ExtensionManifest {
   /// [ExtensionSettingsPlacement]. Needed by any extension that registers a
   /// `settingsPanel`.
   settings?: ExtensionSettingsPlacement
-  /// Per-locale overrides for name/description plus extra localized search
+  /// Per-locale overrides for name/description/about plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.
-  translations?: Record<string, { name?: string; description?: string; keywords?: string[] }>
+  translations?: Record<string, { name?: string; description?: string; about?: string; keywords?: string[] }>
 }
 
 export interface ExtensionDefinition extends ExtensionManifest {

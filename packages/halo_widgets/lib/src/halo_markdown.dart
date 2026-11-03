@@ -24,7 +24,7 @@ import 'theme.dart';
 /// instead, and can lose the emoji font;
 /// `no_bare_markdown_body_test.dart` keeps every render coming through here.
 class HaloMarkdown extends StatelessWidget {
-  const HaloMarkdown({super.key, required this.data, this.style, this.selectable = false, this.softLineBreak = false, this.onTapLink});
+  const HaloMarkdown({super.key, required this.data, this.style, this.selectable = false, this.softLineBreak = false, this.onTapLink, this.sizedImageBuilder});
 
   final String data;
 
@@ -36,6 +36,11 @@ class HaloMarkdown extends StatelessWidget {
   final bool selectable;
   final bool softLineBreak;
   final MarkdownTapLinkCallback? onTapLink;
+
+  /// What an image is drawn as. Null is flutter_markdown's own, which loads
+  /// it from wherever it says; text that is not the app's own can draw its
+  /// alt text instead, so showing it fetches nothing.
+  final MarkdownSizedImageBuilder? sizedImageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +57,7 @@ class HaloMarkdown extends StatelessWidget {
         selectable: selectable,
         softLineBreak: softLineBreak,
         onTapLink: onTapLink,
+        sizedImageBuilder: sizedImageBuilder,
       ),
     );
   }

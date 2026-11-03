@@ -47,11 +47,40 @@ A manifest that uses most of what there is:
 | `shortName` | | The name where there is little room: a control's label, a locked switch naming the rules it follows. |
 | `version` | required | Semantic version. The catalog freezes a version's bytes the first time a reviewer approves it, so a fix is a new version. |
 | `description` | required | One sentence for the panel and the catalog. |
-| `translations` | | `{ "<locale>": { "name"?, "description"?, "keywords"? } }`. A localized `keywords` adds to the base list; both are searched. |
+| `about` | | What the extension is and does, at more length: markdown, shown on its install screen and in its details in the app, and on its catalog page. Usually written as an `ABOUT.md`; [below](#about). |
+| `translations` | | `{ "<locale>": { "name"?, "description"?, "about"?, "keywords"? } }`. A localized `keywords` adds to the base list; both are searched. |
 
 Why a callsign: it is a globally unique namespace every author of this
 software already holds, so two people who never met cannot ship the same
 key, and nobody has to run a registry.
+
+### About
+
+`description` is one sentence; `about` is the rest of what an operator
+deciding whether to install wants to know. What the program is and who runs
+it, what the extension does for them, what it asks of them (an account, a
+key, a location), where to read the rules. It shows in the app on the
+install screen, folded under what the extension may reach so the
+permissions stay the question there, and in the extension's details, both
+beside its screenshots; and on its catalog page.
+
+It is not release notes, which say what changed and go up with each
+published version (`--notes`, [Publishing](publishing.md)). `about` is part
+of the manifest, so it changes with a release and is reviewed with it.
+
+Write it in an `ABOUT.md` beside `manifest.json`, and a translation in
+`ABOUT.<locale>.md` (`ABOUT.es.md`, `ABOUT.pt-BR.md`). `buildExtension`
+and `h2kext-dev` put each file's text into the manifest they ship, as
+`about` and `translations.<locale>.about`; the `manifest.json` you edit
+stays as it is. Writing `about` straight into `manifest.json` works too,
+but giving one text both ways fails the build.
+
+The markdown is CommonMark with GitHub's tables, strikethrough and
+autolinks. Links open in the browser. Images are not shown, and neither is
+raw HTML: pictures belong in the [screenshots](publishing.md#screenshots).
+The details already show the extension's name, so start with text or a
+`##` heading rather than a `#` title. At most 10,000 characters in each
+language.
 
 ## Listing
 
@@ -286,7 +315,8 @@ one newer than the packer knows; `webSockets` under `api` 2, a `chasing`
 hook under 9, a cluster grant or a `cluster` hook under 10,
 `requiresRadioRaw` under 11; a missing `category`;
 `sharedDependencies` naming a package the app does not carry or giving no
-range; `experiments`, `enabledByDefault` or `geo`; `adifFields` with neither
+range; an `about`, or a translation's, that is not a string, is blank or is
+over 10,000 characters; `experiments`, `enabledByDefault` or `geo`; `adifFields` with neither
 a `ref:` type nor `adifFieldsScope`; and every malformed `relevance` or
 `settings` listed above. It reports all of them at once.
 

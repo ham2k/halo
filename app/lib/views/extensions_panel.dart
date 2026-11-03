@@ -361,6 +361,11 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     // the dialog and the badge on the row can never disagree.
     final entry = _catalogEntryFor(info);
     final from = info.isInstalled ? _installedFrom(info) : null;
+    // The extension's, not a release's (catalog SPEC §4.8): any listing of
+    // the key carries the same screenshots, newer than what is installed or
+    // not.
+    final listed =
+        (_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key).firstOrNull ?? widget.services.catalogUpdateCheck.pendingUpdates[info.key];
     final action = await showExtensionDetails(
       context,
       info: info,
@@ -369,12 +374,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       installedFromIcon: from?.icon,
       updateVersion: entry?.version,
       channel: info.isInstalled ? widget.services.catalog.channelFollowedBy(info.key) : CatalogChannel.stable,
-      // The extension's, not a release's (catalog SPEC §4.8): any listing of
-      // the key carries the same ones, newer than what is installed or not.
-      screenshots:
-          (_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key).firstOrNull?.screenshots ??
-          widget.services.catalogUpdateCheck.pendingUpdates[info.key]?.screenshots ??
-          const [],
+      screenshots: listed?.screenshots ?? const [],
+      // What is installed describes itself; a listing's is the fallback for
+      // one installed before it had any — `about` goes with a release, so
+      // the listing's may describe a newer one.
+      // By the full tag: `about` is long enough that an author writes a
+      // region's own (`ABOUT.pt-BR.md`), which the language alone misses.
+      about: info.aboutFor(LocaleSettings.currentLocale.languageTag) ?? listed?.aboutFor(LocaleSettings.currentLocale.languageTag),
     );
     if (!mounted || action == null) return;
     switch (action) {

@@ -79,6 +79,7 @@
     "installFromFile": "Install from file…",
     "installVersion": "Version ${version}",
     "screenshotLabel": "Screenshot ${n} of ${count}",
+    "aboutSection": "About this extension",
     "moreScreenshots": "+${count}",
     "previousScreenshot": "Previous screenshot",
     "nextScreenshot": "Next screenshot",

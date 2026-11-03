@@ -41,6 +41,31 @@ enum ExtensionSource {
   }
 }
 
+/// The translation for [locale] among [translations]: the exact tag
+/// (`pt-BR`), else its language (`pt`), else another region of that
+/// language — an author who wrote only `ABOUT.pt-BR.md` is read in Portuguese
+/// rather than English. Null when there is none, or it is not a map.
+Map<String, Object?>? translationFor(Map<Object?, Object?> translations, String locale) {
+  final language = locale.split(RegExp('[-_]')).first;
+  final key = translations.containsKey(locale)
+      ? locale
+      : translations.containsKey(language)
+      ? language
+      : translations.keys.whereType<String>().where((k) => k.split(RegExp('[-_]')).first == language).firstOrNull;
+  final found = translations[key];
+  return found is Map ? found.cast<String, Object?>() : null;
+}
+
+/// The `about` to show: [translated] when it is text, else [base] — and
+/// null for a blank or unreadable one, so a caller draws nothing rather than
+/// an empty section. Shared by everything that reads a manifest's `about`.
+String? pickAbout(Object? base, Object? translated) {
+  for (final text in [translated, base]) {
+    if (text is String && text.trim().isNotEmpty) return text;
+  }
+  return null;
+}
+
 /// What the Extensions panel's search field matches an extension on —
 /// the same terms for a built-in, an installed one and a catalog row, so
 /// the one field filters all three alike.
@@ -53,6 +78,16 @@ mixin ExtensionSearchable {
 
   String nameFor(String locale) => (translations[locale]?['name'] as String?) ?? name;
   String? descriptionFor(String locale) => (translations[locale]?['description'] as String?) ?? description;
+
+  /// The manifest's `about`: what the extension is, at more length than
+  /// [description], in markdown. Shown in its details, never searched.
+  String? get about;
+
+  /// [about] in [locale] — a full tag, `pt-BR`, so the region's own text is
+  /// found (see [translationFor]) — when a translation gives it. Lenient,
+  /// like [keywordsFor]: a translation that is not a string is skipped, and a
+  /// blank text is none at all.
+  String? aboutFor(String locale) => pickAbout(about, translationFor(translations, locale)?['about']);
 
   /// The base [keywords] plus the locale's extra ones — localized keywords
   /// add to the English set (both stay searchable), they don't replace it.
@@ -316,6 +351,8 @@ class ExtensionInfo with ExtensionSearchable {
   final String? icon;
   @override
   final String? description;
+  @override
+  final String? about;
 
   /// The extension's brand accent as a #RRGGBB hex string (manifest.json
   /// `accentColor`, e.g. POTA's green) — informational, for hosts that
@@ -382,6 +419,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.experiments = const [],
     this.icon,
     this.description,
+    this.about,
     this.accentColor,
     this.keywords = const [],
     this.hooks = const [],
@@ -422,6 +460,9 @@ class ExtensionInfo with ExtensionSearchable {
     experiments: ((json['experiments'] as List?) ?? const []).cast<String>(),
     icon: json['icon'] as String?,
     description: json['description'] as String?,
+    // Read leniently: the door does not refuse a bundle over it, and a bad
+    // one costs only the text — the consent screen and the details draw none.
+    about: json['about'] is String ? json['about'] as String : null,
     accentColor: json['accentColor'] as String?,
     keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
     hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),

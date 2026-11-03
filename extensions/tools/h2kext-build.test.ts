@@ -115,6 +115,63 @@ test("buildExtension leaves the manifest beside the bundle it was built from", a
   assert.deepEqual(JSON.parse(await readFile(join(outDir, "manifest.json"), "utf8")), manifest)
 })
 
+async function extensionDir(manifest: Record<string, unknown>, files: Record<string, string> = {}) {
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-about-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await writeFile(join(dir, "src/index.ts"), "globalThis.hello = 'world'")
+  await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest))
+  for (const [name, text] of Object.entries(files)) await writeFile(join(dir, name), text)
+  return dir
+}
+
+test("buildExtension folds ABOUT.md and ABOUT.<locale>.md into the manifest it ships", async () => {
+  const manifest = { key: "w7abc-notes", api: H2KEXT_API_VERSION, sharedDependencies: {}, translations: { es: { description: "Notas" } } }
+  const dir = await extensionDir(manifest, {
+    "ABOUT.md": "\n# Notes\n\nKeeps **notes**.\n\n",
+    "ABOUT.es.md": "Guarda *notas*.",
+    "ABOUT.pt-BR.md": "Guarda notas.",
+  })
+
+  const { outDir, manifest: shipped } = await buildExtension(build, { dir })
+
+  const written = JSON.parse(await readFile(join(outDir, "manifest.json"), "utf8"))
+  assert.deepEqual(written, shipped)
+  assert.equal(written.about, "# Notes\n\nKeeps **notes**.")
+  assert.deepEqual(written.translations, { es: { description: "Notas", about: "Guarda *notas*." }, "pt-BR": { about: "Guarda notas." } })
+  // The source manifest is the author's, and stays as they wrote it.
+  assert.deepEqual(JSON.parse(await readFile(join(dir, "manifest.json"), "utf8")), manifest)
+})
+
+test("a blank or oversized ABOUT file fails the build, naming the file rather than the manifest", async () => {
+  const blank = await extensionDir({ key: "w7abc-notes", api: H2KEXT_API_VERSION }, { "ABOUT.md": "  \n" })
+  await assert.rejects(
+    buildExtension(build, { dir: blank }),
+    (e: Error) => e instanceof BuildError && /^ABOUT\.md is empty — delete the file instead/.test(e.message),
+  )
+
+  const long = await extensionDir({ key: "w7abc-notes", api: H2KEXT_API_VERSION }, { "ABOUT.es.md": "x".repeat(10001) })
+  await assert.rejects(buildExtension(build, { dir: long }), /ABOUT\.es\.md is 10001 characters/)
+})
+
+test("an 'about' left null in the manifest gives way to the file; a translation that is not an object is refused", async () => {
+  const placeholder = await extensionDir({ key: "w7abc-notes", api: H2KEXT_API_VERSION, about: null }, { "ABOUT.md": "From the file." })
+  assert.equal((await buildExtension(build, { dir: placeholder })).manifest.about, "From the file.")
+
+  const flat = await extensionDir({ key: "w7abc-notes", api: H2KEXT_API_VERSION, translations: { es: "Notas" } }, { "ABOUT.es.md": "Notas." })
+  await assert.rejects(buildExtension(build, { dir: flat }), /'translations\.es' is not an object/)
+})
+
+test("an 'about' given both in the manifest and in an ABOUT file fails the build", async () => {
+  const dir = await extensionDir({ key: "w7abc-notes", api: H2KEXT_API_VERSION, about: "Inline." }, { "ABOUT.md": "From the file." })
+  await assert.rejects(buildExtension(build, { dir }), (e: Error) => e instanceof BuildError && /both manifest\.json and ABOUT\.md/.test(e.message))
+
+  const translated = await extensionDir(
+    { key: "w7abc-notes", api: H2KEXT_API_VERSION, translations: { es: { about: "En línea." } } },
+    { "ABOUT.es.md": "Del archivo." },
+  )
+  await assert.rejects(buildExtension(build, { dir: translated }), /translations\.es\.about' and ABOUT\.es\.md/)
+})
+
 test("liquidjs resolves to its browser build, so an extension that inlines it can compile", async () => {
   // HALO-443: liquidjs's `main`/`module` are its NODE builds, and
   // `platform: 'neutral'` ignores the `browser` field that would pick the

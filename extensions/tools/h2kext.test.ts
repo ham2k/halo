@@ -26,6 +26,8 @@ import {
   validateRelevance,
   validateManifest,
   validateSettingsPlacement,
+  ABOUT_MAX_LENGTH,
+  indexEntryFor as formatIndexEntryFor,
   settingsReviewReasons,
   SETTINGS_SECTIONS,
 } from "./h2kext.mjs"
@@ -117,6 +119,24 @@ test("a bundle with no category is refused", () => {
   const problems = validateManifest({ ...validManifest, category: undefined })
   assert.equal(problems.length, 1)
   assert.match(problems[0], /core: always on, and invisible/)
+})
+
+test("an 'about' in markdown passes, and travels in the index entry the app reads", () => {
+  const manifest = { ...validManifest, about: "Logs **notes**.\n\n- one\n- two", translations: { es: { about: "Anota **notas**." } } }
+  assert.deepEqual(validateManifest(manifest), [])
+  assert.equal(formatIndexEntryFor(manifest.key, manifest).about, manifest.about)
+})
+
+test("an 'about' that is blank, not a string, or too long is refused, a translation's too", () => {
+  const problems = validateManifest({
+    ...validManifest,
+    about: "  \n ",
+    translations: { es: { about: "x".repeat(ABOUT_MAX_LENGTH + 1) }, fr: { about: 42 }, de: { name: "Notizen" } },
+  })
+  assert.equal(problems.length, 3)
+  assert.match(problems[0], /'about' is empty/)
+  assert.match(problems[1], /'translations\.es\.about' is 10001 characters; at most 10000/)
+  assert.match(problems[2], /'translations\.fr\.about' must be a string/)
 })
 
 test("a bundle gating on an experiment is refused", () => {

@@ -46,7 +46,9 @@ await buildExtension(build, { dir: import.meta.dirname })
 ```
 
 Reads your `manifest.json`, compiles `src/index.ts` into `build/index.js`, and
-copies the manifest alongside it. The esbuild settings it applies are
+copies the manifest alongside it — with the text of an `ABOUT.md` beside it as
+the manifest's `about`, and of each `ABOUT.<locale>.md` as that translation's
+(see the manifest docs). The esbuild settings it applies are
 requirements of the runtime rather than preferences: one IIFE because the
 sandbox evaluates a script and has no module loader, `neutral` because there is
 no Node and no DOM, and `es2020` because that is what its engine speaks.

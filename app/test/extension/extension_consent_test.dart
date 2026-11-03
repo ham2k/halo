@@ -340,6 +340,28 @@ void main() {
     }
   });
 
+  testWidgets("the bundle's about is there to open, folded and after what it may reach", (tester) async {
+    // The question this screen asks is whether to grant what it lists; the
+    // author's own story is there to read, never in the way of that.
+    await show(tester, await inspect(withManifest((m) => {...m, 'about': 'Shows **the time** in UTC.'})));
+    final header = find.text(t.extensionsPanel.aboutSection);
+    final story = find.textContaining('in UTC', findRichText: true).hitTestable();
+    expect(header, findsOneWidget);
+    expect(story, findsNothing);
+    final capabilities = find.text(t.extensionsPanel.noCapabilities).evaluate().isNotEmpty ? t.extensionsPanel.noCapabilities : t.extensionsPanel.canReach;
+    expect(tester.getTopLeft(header).dy, greaterThan(tester.getTopLeft(find.text(capabilities)).dy));
+
+    await tester.tap(header);
+    await tester.pumpAndSettle();
+    expect(story, findsOneWidget);
+  });
+
+  testWidgets('a bundle with no about has no section for one', (tester) async {
+    await show(tester, await inspect(fixture));
+
+    expect(find.text(t.extensionsPanel.aboutSection), findsNothing);
+  });
+
   testWidgets('a bundle picked off disk names no source', (tester) async {
     await show(tester, await inspect(fixture));
 

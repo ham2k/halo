@@ -39,7 +39,7 @@ import { networkInterfaces } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
-import { buildOptionsFor } from "./h2kext-build.mjs"
+import { ABOUT_FILE, buildOptionsFor, withAboutFiles } from "./h2kext-build.mjs"
 import { indexEntryFor, MANIFEST_ENTRY, validateManifest } from "./h2kext.mjs"
 
 /// The protocol the app's dev client speaks. Bumped when the shape below
@@ -193,7 +193,10 @@ export async function createDevServer({
   /// the extension from the manifest as it stands and the bundle route serves
   /// [EMPTY_BUNDLE], so the app connects and hears the error.
   let source = null
-  let servedManifest = startManifest
+  // Folded now as well, so an index served before the first good build lists
+  // the extension as it will ship; a problem with the files is the first
+  // build's to report.
+  let servedManifest = await withAboutFiles(startManifest, dir).catch(() => startManifest)
   let servedManifestText = null
   let buildError = null
   const clients = new Set()
@@ -220,10 +223,14 @@ export async function createDevServer({
     } catch (e) {
       throw new Error(`${MANIFEST_ENTRY}: ${e.message}`)
     }
+    // As the build folds them in, so the dialog shows what will ship. The
+    // text compared for "unchanged" is the folded one: an edit to ABOUT.md
+    // alone is a reload too.
+    parsed = await withAboutFiles(parsed, dir)
     const problems = validateManifest(parsed)
     if (problems.length) throw new Error(problems.join("\n"))
     if (parsed.key !== key) throw new Error(`${MANIFEST_ENTRY}: 'key' changed from ${key} to ${parsed.key}; restart h2kext-dev to serve it`)
-    return { parsed, text }
+    return { parsed, text: JSON.stringify(parsed) }
   }
 
   /// The esbuild context, rebuilt from scratch when the manifest changes in
@@ -326,12 +333,13 @@ export async function createDevServer({
   // The manifest may change without changing any bundle input (an entry that
   // does not import it), and an editor that saves by writing a temporary file
   // and renaming it replaces the file's inode, which a watch on the file alone
-  // would lose. So the directory is watched, for that one name.
+  // would lose. So the directory is watched, for that one name — and for the
+  // ABOUT files, which reach the manifest the same way.
   const manifestWatch = new AbortController()
   ;(async () => {
     try {
       for await (const event of watch(dir, { signal: manifestWatch.signal })) {
-        if (event.filename !== MANIFEST_ENTRY) continue
+        if (event.filename !== MANIFEST_ENTRY && !ABOUT_FILE.test(event.filename ?? "")) continue
         await restarting
         await ctx?.rebuild().catch(() => {})
       }

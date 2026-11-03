@@ -26,9 +26,12 @@
 // all of them, and each rebuild whose bytes actually changed reloads.
 
 import { context } from "esbuild"
+import { watch } from "node:fs"
 import { createServer } from "node:http"
+import { dirname, join } from "node:path"
 
-import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest } from "./build-config.mjs"
+import { bundles, buildOptionsFor, indexEntryFor, loadHostSharedVersions, loadKnownExperiments, loadManifests, readManifest, root } from "./build-config.mjs"
+import { ABOUT_FILE } from "./tools/h2kext-build.mjs"
 import { broadcast as broadcastTo, handlePreflight, json, lanAddresses, PROTOCOL, readBody, SERVER_NAME, stamp } from "./tools/h2kext-dev.mjs"
 
 const args = process.argv.slice(2)
@@ -70,6 +73,11 @@ await loadManifests(served)
 /// a half-written file mid-keystroke is not a reason to take the extension away.
 const sources = new Map()
 const buildErrors = new Map()
+
+/// The manifest each key last served, as JSON: an edit that changes only the
+/// manifest (an ABOUT.md) leaves the bundle's bytes as they were, and is a
+/// reload all the same.
+const servedManifests = new Map()
 
 /// Connected apps. An SSE response per client.
 const clients = new Set()
@@ -145,8 +153,10 @@ function watchPlugin(bundle) {
         // Reloading an extension whose bytes are identical costs the running
         // app a teardown and re-activation for nothing, which at fifty at once
         // is the difference between a loop and a pause.
-        const unchanged = sources.get(bundle.key) === built && !hadError
+        const manifestText = JSON.stringify(bundle.manifest)
+        const unchanged = sources.get(bundle.key) === built && servedManifests.get(bundle.key) === manifestText && !hadError
         sources.set(bundle.key, built)
+        servedManifests.set(bundle.key, manifestText)
         done()
         if (!watching) return // the initial build is summarised at startup
         if (unchanged) return
@@ -194,6 +204,7 @@ async function watchKernel() {
 }
 
 const contexts = []
+const aboutWatchers = []
 for (const bundle of served) {
   const options = buildOptionsFor(bundle, { hostSharedVersions })
   options.plugins = [...(options.plugins ?? []), watchPlugin(bundle)]
@@ -203,6 +214,13 @@ for (const bundle of served) {
   const ctx = await context(options)
   contexts.push(ctx)
   await ctx.watch()
+  // ABOUT files reach the manifest without being imported by anything, so
+  // esbuild's own watch never sees them; their directory is watched for them.
+  aboutWatchers.push(
+    watch(join(root, dirname(bundle.entry), ".."), (_, filename) => {
+      if (filename && ABOUT_FILE.test(filename)) ctx.rebuild().catch(() => {})
+    }),
+  )
 }
 await Promise.all([...firstBuilds.values()].map((b) => b.promise))
 watching = true
@@ -299,6 +317,7 @@ server.listen(port, bindHost, () => {
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, async () => {
+    for (const watcher of aboutWatchers) watcher.close()
     for (const ctx of contexts) await ctx.dispose()
     server.close()
     process.exit(0)

@@ -197,6 +197,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get installFromFile => 'INSTALL FROM FILE…';
 	@override String installVersion({required Object version}) => 'VERSION ${version}';
 	@override String screenshotLabel({required Object n, required Object count}) => 'SCREENSHOT ${n} OF ${count}';
+	@override String get aboutSection => 'ABOUT THIS EXTENSION';
 	@override String moreScreenshots({required Object count}) => '+${count}';
 	@override String get previousScreenshot => 'PREVIOUS SCREENSHOT';
 	@override String get nextScreenshot => 'NEXT SCREENSHOT';
@@ -4864,6 +4865,7 @@ extension on TranslationsQro {
 			'extensionsPanel.installFromFile' => 'INSTALL FROM FILE…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'VERSION ${version}',
 			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'SCREENSHOT ${n} OF ${count}',
+			'extensionsPanel.aboutSection' => 'ABOUT THIS EXTENSION',
 			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
 			'extensionsPanel.previousScreenshot' => 'PREVIOUS SCREENSHOT',
 			'extensionsPanel.nextScreenshot' => 'NEXT SCREENSHOT',
@@ -5304,9 +5306,9 @@ extension on TranslationsQro {
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK NESTS MORE THAN ${max} LEVELS DEEP',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} COULD NOT BE DISPLAYED: ITS ARTWORK IS NOT SELF-CONTAINED',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} LAYERS',
-			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS SCENE HAS MORE THAN ${max} CONTROLS',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: PART OF ITS SCENE HAS MORE THAN ${max} ENTRIES',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: A SCENE STRING IS LONGER THAN ${max} CHARACTERS',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} COULD NOT BE DISPLAYED: ITS LAYOUT NESTS MORE THAN ${max} LEVELS DEEP',
@@ -5818,9 +5820,9 @@ extension on TranslationsQro {
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'RE-SPOT EVERY ${minutes} MIN',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'AUTO IN ${time}. STOP?',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'AUTO IN ${minutes}M',
-			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'AUTO IN ${seconds}S',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'AUTO IN ${seconds}S',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'AUTO IN ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'AUTO RE-SPOT NOT STARTED: THE SPOT DID NOT GO THROUGH',
 			'loggingControls.spotAutoMoved' => 'AUTO RE-SPOT NOT STARTED: THE FREQUENCY CHANGED WHILE SPOTTING',
@@ -6332,9 +6334,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceWords.splitLinesTooClose' => 'COULDN\'T TELL THE WORDS APART. LEAVE A LONGER BREATH BETWEEN WORDS.',
 			'settings.radio.avoidZeroBeat.title' => 'AVOID ZERO-BEATING ON SPOTS',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'WITH A RADIO CONNECTED, TUNING A FEW HZ OFF A CW SPOT, SO EVERYONE ANSWERING IT ISN’T CALLING ON THE SAME NOTE.',
-			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
 			'settings.radio.zeroBeatRange.title' => 'ZERO-BEAT: AVOIDANCE RANGE',
 			'settings.radio.zeroBeatRange.description' => 'HOW FAR OFF THE SPOTTED FREQUENCY TO LAND, EITHER SIDE. THE OFFSET IS NEVER NEAR ZERO — THAT WOULD BE A ZERO BEAT AGAIN.',
 			'settings.help.title' => 'HELP & RESOURCES',
@@ -6846,9 +6848,9 @@ extension on TranslationsQro {
 			'settings.station.keyInUse' => 'CW KEYING',
 			'settings.station.phoneKeying' => 'PHONE KEYING',
 			'settings.station.phoneKeyingNone' => 'NONE',
-			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
 			'settings.station.phoneKeyingComputerWords' => 'AUDIO AND WORDS IN THIS COMPUTER',
 			'settings.station.phoneKeyingOff' => 'PHONE KEYING IS OFF',
@@ -7360,9 +7362,9 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.densityDenser' => 'DENSER LAYOUT',
 			'keyboardShortcuts.command.densityAuto' => 'AUTOMATIC LAYOUT DENSITY',
 			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
-			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',

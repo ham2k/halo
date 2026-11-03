@@ -20,12 +20,12 @@
 // path a third party takes from being the untested one.
 
 import { readFileSync } from "node:fs"
-import { copyFile, mkdir, readFile } from "node:fs/promises"
+import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import vm from "node:vm"
 
-import { H2KEXT_API_VERSION, HALO_GLOBAL_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, sharedModulesFor } from "./h2kext.mjs"
+import { H2KEXT_API_VERSION, HALO_GLOBAL_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, aboutProblem, sharedModulesFor } from "./h2kext.mjs"
 
 /// What an extension's own `build.mjs` says, for everything that has to write
 /// one: `h2kext-init`'s scaffold, and the samples the SDK ships.
@@ -353,10 +353,58 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
   // The packer reads both from one directory, so the manifest the bundle was
   // built against is the manifest that ships with it. Copied rather than left
   // for the author to remember: a stale manifest beside a fresh bundle is a
-  // declared dependency list that no longer describes the code.
-  await copyFile(join(dir, MANIFEST_ENTRY), join(out, MANIFEST_ENTRY))
+  // declared dependency list that no longer describes the code. With ABOUT
+  // files it is written instead, carrying their text.
+  const shipped = await withAboutFiles(manifest, dir)
+  if (shipped === manifest) await copyFile(join(dir, MANIFEST_ENTRY), join(out, MANIFEST_ENTRY))
+  else await writeFile(join(out, MANIFEST_ENTRY), `${JSON.stringify(shipped, null, 2)}\n`)
 
-  return { outDir: out, manifest }
+  return { outDir: out, manifest: shipped }
+}
+
+/// `ABOUT.md`, and `ABOUT.<locale>.md` for a translation (`ABOUT.es.md`,
+/// `ABOUT.pt-BR.md`), beside `manifest.json`.
+export const ABOUT_FILE = /^ABOUT(?:\.([A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*))?\.md$/
+
+/// [manifest] with the text of the ABOUT files in [dir] as its `about` and
+/// its translations' `about` — or [manifest] itself, the same object, when
+/// there are none. Markdown several paragraphs long is miserable to write as
+/// one JSON string, so an author can keep it in a file of its own; the
+/// bundle carries it in the manifest either way, where the app and the
+/// catalog read it.
+///
+/// A text given both ways is refused rather than one silently winning: the
+/// author would be editing a copy that never ships.
+export async function withAboutFiles(manifest, dir) {
+  const names = (await readdir(dir)).filter((name) => ABOUT_FILE.test(name)).sort()
+  if (!names.length) return manifest
+  const folded = { ...manifest }
+  for (const name of names) {
+    const text = (await readFile(join(dir, name), "utf8")).trim()
+    // Checked here, naming the file: the packer would say the same about
+    // `'about'` in a manifest.json the author never wrote it into.
+    const problem = aboutProblem(text)
+    if (problem) throw new BuildError(`${name} ${problem.replace("leave it out instead", "delete the file instead")}`)
+    const locale = name.match(ABOUT_FILE)[1]
+    if (!locale) {
+      if (manifest.about != null) throw new BuildError(`both ${MANIFEST_ENTRY} and ${name} give 'about' — keep one`)
+      folded.about = text
+      continue
+    }
+    const translations = folded.translations
+    if (translations !== undefined && (typeof translations !== "object" || translations === null || Array.isArray(translations))) {
+      throw new BuildError(`${name} is a translation, but ${MANIFEST_ENTRY}'s 'translations' is not an object of locales`)
+    }
+    const fields = translations?.[locale]
+    if (fields !== undefined && (typeof fields !== "object" || fields === null || Array.isArray(fields))) {
+      throw new BuildError(`${name} is the '${locale}' translation, but ${MANIFEST_ENTRY}'s 'translations.${locale}' is not an object`)
+    }
+    if (fields?.about != null) {
+      throw new BuildError(`both ${MANIFEST_ENTRY} 'translations.${locale}.about' and ${name} give it — keep one`)
+    }
+    folded.translations = { ...translations, [locale]: { ...translations?.[locale], about: text } }
+  }
+  return folded
 }
 
 /// Fails the build when the bundle registers a `settingsPanel` hook its

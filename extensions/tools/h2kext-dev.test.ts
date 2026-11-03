@@ -257,6 +257,22 @@ test("a manifest saved the way editors save, by renaming a temporary file over i
   }
 })
 
+test("an ABOUT.md saved on its own reaches the app as a reload carrying it", async () => {
+  const dir = await project()
+  const { dev } = await serve(dir)
+  try {
+    const stream = await events(dev.url)
+    await stream.next() // hello
+    await edit(join(dir, "ABOUT.md"), "Keeps **notes**.\n")
+    const reload = await stream.next()
+    assert.equal(reload.type, "reload")
+    assert.equal(reload.about, "Keeps **notes**.")
+    stream.close()
+  } finally {
+    await dev.close()
+  }
+})
+
 test("declaring a shared library in the manifest rebuilds with it taken from the app, without a restart", async () => {
   const { i18next: _declared, ...withoutI18next } = SCAFFOLD_SHARED_DEPENDENCIES as Record<string, string>
   const dir = await project("ONE", manifestFor({ sharedDependencies: withoutI18next }))

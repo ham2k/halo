@@ -52,6 +52,12 @@ the defaults operators expect.
   `translations` give the name, description and keywords in each language
   you support. They are what the Extensions panel and the catalog search,
   separately from the names your `suggest` answers to.
+- **Say what it is.** An `ABOUT.md` beside the manifest is the longer
+  story `description` has no room for: what the program is, what the
+  extension does, what it needs from the operator and where its rules are.
+  It shows on the install screen, in the extension's details and on its
+  catalog page
+  ([The manifest](manifest.md#about)).
 - **Show it.** A `screenshots/` folder published with the extension shows
   on its row in the activity search, on the install consent screen and in
   its details: an operator deciding whether to install sees what they get

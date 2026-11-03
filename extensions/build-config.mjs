@@ -16,8 +16,8 @@ import { readFile } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { buildOptionsFor as extensionBuildOptions } from "./tools/h2kext-build.mjs"
-import { indexEntryFor as indexEntry, validateAdifFieldsScope, validateRelevance, validateSettingsPlacement } from "./tools/h2kext.mjs"
+import { buildOptionsFor as extensionBuildOptions, withAboutFiles } from "./tools/h2kext-build.mjs"
+import { aboutProblems, indexEntryFor as indexEntry, validateAdifFieldsScope, validateRelevance, validateSettingsPlacement } from "./tools/h2kext.mjs"
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, "../app/assets/extensions")
@@ -171,7 +171,8 @@ export async function loadKnownExperiments() {
 /// exists to prevent.
 export async function readManifest(bundle, knownExperiments) {
   const manifestPath = join(root, dirname(bundle.entry), "../manifest.json")
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+  // ABOUT files fold in as a third party's build folds them (tools/h2kext-build.mjs).
+  const manifest = await withAboutFiles(JSON.parse(await readFile(manifestPath, "utf8")), dirname(manifestPath))
   validateManifest(manifest, bundle.key, knownExperiments, manifestPath)
   return manifest
 }
@@ -184,6 +185,11 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
     if (typeof manifest[field] !== "string" || manifest[field].trim() === "") {
       throw new Error(`manifest for '${bundleKey}' is missing required field '${field}' (${manifestPath})`)
     }
+  }
+  // Shown in the extension's details as markdown; the format's limits.
+  const aboutTextProblems = aboutProblems(manifest)
+  if (aboutTextProblems.length) {
+    throw new Error(`manifest for '${bundleKey}': ${aboutTextProblems.join("; ")} (${manifestPath})`)
   }
   // `experiments` gates availability in the host: a malformed list — or a key
   // the catalog doesn't define (a typo, an alias, a retired entry) — would

@@ -107,6 +107,8 @@ class CatalogEntry with ExtensionSearchable {
   final String name;
   @override
   final String? description;
+  @override
+  final String? about;
   final String? category;
   final String? icon;
 
@@ -153,6 +155,7 @@ class CatalogEntry with ExtensionSearchable {
     required this.bundleUrl,
     this.channel = CatalogChannel.stable,
     this.description,
+    this.about,
     this.category,
     this.icon,
     this.accentColor,
@@ -191,6 +194,7 @@ class CatalogEntry with ExtensionSearchable {
       bundleUrl: bundleUrl,
       channel: channelOf(json['channel']),
       description: json['description'] is String ? json['description'] as String : null,
+      about: json['about'] is String ? json['about'] as String : null,
       category: json['category'] is String ? json['category'] as String : null,
       icon: json['icon'] is String ? json['icon'] as String : null,
       accentColor: json['accentColor'] is String ? json['accentColor'] as String : null,

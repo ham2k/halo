@@ -25,6 +25,7 @@ import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogR
 import '../services/error_reporting_service.dart';
 import '../services/file_pick.dart';
 import '../services/halo_services.dart';
+import '../services/link_opener.dart' show openExternalUrl;
 import '../services/extensions/installed_extensions.dart';
 import 'extension_screenshots.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
@@ -484,6 +485,7 @@ class _ConsentDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.t.extensionsPanel;
     final theme = Theme.of(context);
+    final about = bundle.aboutFor(LocaleSettings.currentLocale.languageTag);
 
     return HaloDialog(
       // The extension's own name, and nothing wrapped around it. Whether
@@ -540,6 +542,11 @@ class _ConsentDialog extends StatelessWidget {
           ],
           const SizedBox(height: Space.xl),
           Text(t.sandboxNote, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          // After what it may reach, and folded: the question this screen
+          // asks is whether to grant that, and a page of the author's own
+          // prose above it would push the answer out of view. Shut, the
+          // screen is as tall as it was without one.
+          if (about != null) ...[const SizedBox(height: Space.md), _FoldedAbout(markdown: about)],
         ],
       ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
@@ -741,7 +748,8 @@ enum ExtensionDetailsAction { uninstall, update, followStable }
 ///
 /// [update] is the release the catalog offers when that is newer than what is
 /// installed; null means there is nothing to move to. [channel] is the
-/// catalog track the extension follows. The dialog only ever ANSWERS: acting
+/// catalog track the extension follows. [about] is the extension's longer
+/// story in markdown, already in the operator's language, when it has one. The dialog only ever ANSWERS: acting
 /// is the panel's, which owns the applying state and the status bar.
 Future<ExtensionDetailsAction?> showExtensionDetails(
   BuildContext context, {
@@ -752,6 +760,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   String? updateVersion,
   CatalogChannel channel = CatalogChannel.stable,
   List<CatalogScreenshot> screenshots = const [],
+  String? about,
 }) => showHaloDialog<ExtensionDetailsAction>(
   context: context,
   builder: (context) => _DetailsDialog(
@@ -762,6 +771,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
     updateVersion: updateVersion,
     channel: channel,
     screenshots: screenshots,
+    about: about,
   ),
 );
 
@@ -776,6 +786,7 @@ class _DetailsDialog extends StatelessWidget {
   final String? updateVersion;
   final CatalogChannel channel;
   final List<CatalogScreenshot> screenshots;
+  final String? about;
 
   const _DetailsDialog({
     required this.info,
@@ -785,6 +796,7 @@ class _DetailsDialog extends StatelessWidget {
     required this.updateVersion,
     required this.channel,
     required this.screenshots,
+    required this.about,
   });
 
   @override
@@ -824,6 +836,7 @@ class _DetailsDialog extends StatelessWidget {
             const SizedBox(height: Space.md),
             ExtensionScreenshotStrip(screenshots: screenshots, title: info.nameFor(locale), height: 88),
           ],
+          if (about case final about?) ...[const SizedBox(height: Space.md), ExtensionAbout(markdown: about)],
           const SizedBox(height: Space.xl),
           // Where it came from, in the same words the consent screen used
           // when it arrived. For an extension the app ships there is nothing
@@ -946,3 +959,48 @@ List<String> extensionHookLabels(List<String> hooks, Translations$extensionsPane
 /// A reference type as a program is written: an abbreviation hams read in
 /// capitals, with the hyphens a hook name needs turned back into spaces.
 String _programName(String code) => code.replaceAll('-', ' ').toUpperCase();
+
+/// An extension's `about`: markdown its author wrote, drawn as text and
+/// nothing more. Links leave for the browser, as a panel's do; an image is
+/// its alt text, so opening the details fetches nothing from anywhere the
+/// manifest names — pictures are the catalog's screenshots, which it serves
+/// itself.
+@visibleForTesting
+class ExtensionAbout extends StatelessWidget {
+  final String markdown;
+
+  const ExtensionAbout({super.key, required this.markdown});
+
+  @override
+  Widget build(BuildContext context) => HaloMarkdown(
+    data: markdown,
+    selectable: true,
+    onTapLink: (text, href, title) {
+      if (href != null) openExternalUrl(href);
+    },
+    sizedImageBuilder: (config) => config.alt == null || config.alt!.isEmpty ? const SizedBox.shrink() : Text(config.alt!),
+  );
+}
+
+/// The install screen's `about`: shut until the operator opens it, so the
+/// capabilities stay what the screen is about.
+class _FoldedAbout extends StatefulWidget {
+  final String markdown;
+
+  const _FoldedAbout({required this.markdown});
+
+  @override
+  State<_FoldedAbout> createState() => _FoldedAboutState();
+}
+
+class _FoldedAboutState extends State<_FoldedAbout> {
+  var _expanded = false;
+
+  @override
+  Widget build(BuildContext context) => CollapsibleSection.row(
+    title: context.t.extensionsPanel.aboutSection,
+    expanded: _expanded,
+    onToggle: () => setState(() => _expanded = !_expanded),
+    child: ExtensionAbout(markdown: widget.markdown),
+  );
+}

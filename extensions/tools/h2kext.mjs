@@ -148,6 +148,39 @@ export function keyProblem(key, { forceName = false } = {}) {
   return null
 }
 
+/// The longest `about` the packer, the app and the catalog accept, in each
+/// language: room for several paragraphs, not for a manual. It travels on
+/// every catalog listing entry, so its size is everyone's download.
+export const ABOUT_MAX_LENGTH = 10000
+
+/// What is wrong with [value] as an `about` text, or null. Markdown, at most
+/// [ABOUT_MAX_LENGTH] characters, and not blank: an empty one would draw an
+/// empty section where the app would otherwise draw none.
+export function aboutProblem(value) {
+  if (typeof value !== "string") return "must be a string of markdown"
+  if (value.trim() === "") return "is empty — leave it out instead"
+  if (value.length > ABOUT_MAX_LENGTH) return `is ${value.length} characters; at most ${ABOUT_MAX_LENGTH} are allowed`
+  return null
+}
+
+/// Every problem with [manifest]'s `about` and its translations' `about`, as
+/// "'<field>' <problem>" — one list the packer and the built-in build share.
+export function aboutProblems(manifest) {
+  const problems = []
+  if (manifest?.about !== undefined) {
+    const problem = aboutProblem(manifest.about)
+    if (problem) problems.push(`'about' ${problem}`)
+  }
+  if (typeof manifest?.translations === "object" && manifest.translations !== null) {
+    for (const [locale, fields] of Object.entries(manifest.translations)) {
+      if (fields?.about === undefined) continue
+      const problem = aboutProblem(fields.about)
+      if (problem) problems.push(`'translations.${locale}.about' ${problem}`)
+    }
+  }
+  return problems
+}
+
 /// The only entries a bundle may contain, beyond `assets/`.
 export const MANIFEST_ENTRY = "manifest.json"
 export const BUNDLE_ENTRY = "index.js"
@@ -489,6 +522,8 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
     say("'experiments' refers to the app's own experiment catalog and would hide this extension permanently — remove it")
   }
 
+  for (const problem of aboutProblems(manifest)) say(problem)
+
   // The name `relevance` replaced. Nothing reads `geo`, and nothing here
   // rejects unknown top-level keys, so a manifest still carrying it would
   // pack, publish and install as WORLDWIDE — the author's audience silently
@@ -685,6 +720,7 @@ export function indexEntryFor(key, m) {
           enabledByDefault: m.enabledByDefault ?? true,
           ...(m.icon ? { icon: m.icon } : {}),
           ...(m.description ? { description: m.description } : {}),
+          ...(m.about ? { about: m.about } : {}),
           ...(m.accentColor ? { accentColor: m.accentColor } : {}),
           ...(m.keywords ? { keywords: m.keywords } : {}),
           ...(m.hooks ? { hooks: m.hooks } : {}),

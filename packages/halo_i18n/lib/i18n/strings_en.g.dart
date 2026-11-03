@@ -342,6 +342,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Screenshot ${n} of ${count}'
 	String screenshotLabel({required Object n, required Object count}) => 'Screenshot ${n} of ${count}';
 
+	/// en: 'About this extension'
+	String get aboutSection => 'About this extension';
+
 	/// en: '+${count}'
 	String moreScreenshots({required Object count}) => '+${count}';
 
@@ -10673,6 +10676,7 @@ extension on Translations {
 			'extensionsPanel.installFromFile' => 'Install from file…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
 			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Screenshot ${n} of ${count}',
+			'extensionsPanel.aboutSection' => 'About this extension',
 			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
 			'extensionsPanel.previousScreenshot' => 'Previous screenshot',
 			'extensionsPanel.nextScreenshot' => 'Next screenshot',
@@ -11113,9 +11117,9 @@ extension on Translations {
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers',
-			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} could not be displayed: part of its scene has more than ${max} entries',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} could not be displayed: a scene string is longer than ${max} characters',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its layout nests more than ${max} levels deep',
@@ -11627,9 +11631,9 @@ extension on Translations {
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot every ${minutes} min',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stop?',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
-			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto in ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'Auto re-spot not started: the spot did not go through',
 			'loggingControls.spotAutoMoved' => 'Auto re-spot not started: the frequency changed while spotting',
@@ -12141,9 +12145,9 @@ extension on Translations {
 			'settings.radio.voiceWords.splitLinesTooClose' => 'Couldn\'t tell the words apart. Leave a longer breath between words.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
-			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
@@ -12655,9 +12659,9 @@ extension on Translations {
 			'settings.station.keyInUse' => 'CW Keying',
 			'settings.station.phoneKeying' => 'Phone Keying',
 			'settings.station.phoneKeyingNone' => 'None',
-			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
 			'settings.station.phoneKeyingComputerWords' => 'Audio and words in this computer',
 			'settings.station.phoneKeyingOff' => 'Phone keying is off',
@@ -13169,9 +13173,9 @@ extension on Translations {
 			'keyboardShortcuts.command.densityDenser' => 'Denser layout',
 			'keyboardShortcuts.command.densityAuto' => 'Automatic layout density',
 			'keyboardShortcuts.command.find' => 'Find in the log',
-			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',

@@ -197,6 +197,7 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get installFromFile => '·· —· ··· — ·— ·—·· ·—·· / ··—· ·—· ——— —— / ··—· ·· ·—·· · …';
 	@override String installVersion({required Object version}) => '···— · ·—· ··· ·· ——— —· / ${version}';
 	@override String screenshotLabel({required Object n, required Object count}) => '··· —·—· ·—· · · —· ··· ···· ——— — / ${n} / ——— ··—· / ${count}';
+	@override String get aboutSection => '·— —··· ——— ··— — / — ···· ·· ··· / · —··— — · —· ··· ·· ——— —·';
 	@override String moreScreenshots({required Object count}) => '·—·—· ${count}';
 	@override String get previousScreenshot => '·——· ·—· · ···— ·· ——— ··— ··· / ··· —·—· ·—· · · —· ··· ···· ——— —';
 	@override String get nextScreenshot => '—· · —··— — / ··· —·—· ·—· · · —· ··· ···· ——— —';
@@ -4864,6 +4865,7 @@ extension on TranslationsCw {
 			'extensionsPanel.installFromFile' => '·· —· ··· — ·— ·—·· ·—·· / ··—· ·—· ——— —— / ··—· ·· ·—·· · …',
 			'extensionsPanel.installVersion' => ({required Object version}) => '···— · ·—· ··· ·· ——— —· / ${version}',
 			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => '··· —·—· ·—· · · —· ··· ···· ——— — / ${n} / ——— ··—· / ${count}',
+			'extensionsPanel.aboutSection' => '·— —··· ——— ··— — / — ···· ·· ··· / · —··— — · —· ··· ·· ——— —·',
 			'extensionsPanel.moreScreenshots' => ({required Object count}) => '·—·—· ${count}',
 			'extensionsPanel.previousScreenshot' => '·——· ·—· · ···— ·· ——— ··— ··· / ··· —·—· ·—· · · —· ··· ···· ——— —',
 			'extensionsPanel.nextScreenshot' => '—· · —··— — / ··· —·—· ·—· · · —· ··· ···· ——— —',
@@ -5304,9 +5306,9 @@ extension on TranslationsCw {
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ·· ··· / —· ——— — / ··· · ·—·· ··—· —····— —·—· ——— —· — ·— ·· —· · —··',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· ·— —·—— · ·—· ···',
-			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / —·—· ——— —· — ·—· ——— ·—·· ···',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / —·—· ——— —· — ·—· ——— ·—·· ···',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·——· ·— ·—· — / ——— ··—· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · —· — ·—· ·· · ···',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·— / ··· —·—· · —· · / ··· — ·—· ·· —· ——· / ·· ··· / ·—·· ——— —· ——· · ·—· / — ···· ·— —· / ${max} / —·—· ···· ·— ·—· ·— —·—· — · ·—· ···',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·—·· ·— —·—— ——— ··— — / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·',
@@ -5818,9 +5820,9 @@ extension on TranslationsCw {
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·',
 			'loggingControls.spotAutoNext' => ({required Object time}) => '·— ··— — ——— / ·· —· / ${time} ·—·—·— / ··· — ——— ·——· ··——··',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => '·— ··— — ——— / ·· —· / ${minutes} ——',
-			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '·— ··— — ——— / ·· —· / ${seconds} ···',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '·— ··— — ——— / ·· —· / ${seconds} ···',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => '·— ··— — ——— / ·· —· / ${seconds}',
 			'loggingControls.spotAutoNotStarted' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····',
 			'loggingControls.spotAutoMoved' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·',
@@ -6332,9 +6334,9 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.splitLinesTooClose' => '—·—· ——— ··— ·—·· —·· —· ·————· — / — · ·—·· ·—·· / — ···· · / ·—— ——— ·—· —·· ··· / ·— ·——· ·— ·—· — ·—·—·— / ·—·· · ·— ···— · / ·— / ·—·· ——— —· ——· · ·—· / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
 			'settings.radio.avoidZeroBeat.title' => '·— ···— ——— ·· —·· / ——·· · ·—· ——— —····— —··· · ·— — ·· —· ——· / ——— —· / ··· ·——· ——— — ···',
 			'settings.radio.avoidZeroBeat.descriptionOn' => '·—— ·· — ···· / ·— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —·· ——··—— / — ··— —· ·· —· ——· / ·— / ··—· · ·—— / ···· ——·· / ——— ··—· ··—· / ·— / —·—· ·—— / ··· ·——· ——— — ——··—— / ··· ——— / · ···— · ·—· —·—— ——— —· · / ·— —· ··· ·—— · ·—· ·· —· ——· / ·· — / ·· ··· —· ’ — / —·—· ·— ·—·· ·—·· ·· —· ——· / ——— —· / — ···· · / ··· ·— —— · / —· ——— — · ·—·—·—',
-			'settings.radio.avoidZeroBeat.descriptionOff' => '— ··— —· ·· —· ——· / · —··— ·— —·—· — ·—·· —·—— / — ——— / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.avoidZeroBeat.descriptionOff' => '— ··— —· ·· —· ——· / · —··— ·— —·—· — ·—·· —·—— / — ——— / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— ·—·—·—',
 			'settings.radio.zeroBeatRange.title' => '——·· · ·—· ——— —····— —··· · ·— — ———··· / ·— ···— ——— ·· —·· ·— —· —·—· · / ·—· ·— —· ——· ·',
 			'settings.radio.zeroBeatRange.description' => '···· ——— ·—— / ··—· ·— ·—· / ——— ··—· ··—· / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / ·—·· ·— —· —·· ——··—— / · ·· — ···· · ·—· / ··· ·· —·· · ·—·—·— / — ···· · / ——— ··—· ··—· ··· · — / ·· ··· / —· · ···— · ·—· / —· · ·— ·—· / ——·· · ·—· ——— / — / — ···· ·— — / ·—— ——— ··— ·—·· —·· / —··· · / ·— / ——·· · ·—· ——— / —··· · ·— — / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.help.title' => '···· · ·—·· ·——· / ·—··· / ·—· · ··· ——— ··— ·—· —·—· · ···',
@@ -6846,9 +6848,9 @@ extension on TranslationsCw {
 			'settings.station.keyInUse' => '—·—· ·—— / —·— · —·—— ·· —· ——·',
 			'settings.station.phoneKeying' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·',
 			'settings.station.phoneKeyingNone' => '—· ——— —· ·',
-			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}',
 			'settings.station.phoneKeyingComputer' => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
 			'settings.station.phoneKeyingComputerWords' => '·— ··— —·· ·· ——— / ·— —· —·· / ·—— ——— ·—· —·· ··· / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
 			'settings.station.phoneKeyingOff' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—·',
@@ -7360,9 +7362,9 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.densityDenser' => '—·· · —· ··· · ·—· / ·—·· ·— —·—— ——— ··— —',
 			'keyboardShortcuts.command.densityAuto' => '·— ··— — ——— —— ·— — ·· —·—· / ·—·· ·— —·—— ——— ··— — / —·· · —· ··· ·· — —·——',
 			'keyboardShortcuts.command.find' => '··—· ·· —· —·· / ·· —· / — ···· · / ·—·· ——— ——·',
-			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
 			'keyboardShortcuts.command.keyboardMode' => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·',
 			'keyboardShortcuts.command.ptt' => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—',
 			'keyboardShortcuts.command.so2rStereo' => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·',

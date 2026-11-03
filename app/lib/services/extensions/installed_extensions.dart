@@ -238,6 +238,12 @@ class InspectedBundle {
   String get version => (manifest['version'] as String?) ?? '';
   String? get description => manifest['description'] as String?;
 
+  /// The manifest's `about` in [locale], a full tag (docs/extensions/manifest.md#about).
+  String? aboutFor(String locale) {
+    final translations = manifest['translations'];
+    return pickAbout(manifest['about'], translations is Map ? (translationFor(translations, locale)?['about']) : null);
+  }
+
   /// The hosts this extension may reach through `host.fetch`. Nothing else is
   /// permitted, so this list IS its network access.
   List<String> get domains => ((manifest['domains'] as List?) ?? const []).cast<String>();
