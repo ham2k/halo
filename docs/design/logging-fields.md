@@ -240,32 +240,57 @@ colours instead.
 
 ## How wide each main field is
 
-Every main field states a **minimum width** — the width it renders at whenever
-the row has the room, not a fixed size. The callsign field states none at all:
-it takes whatever the others leave, down to a floor of **six characters** (a
-full call with a portable suffix, `W1AW/4`), which it holds however many other
-fields are enabled.
+Every main field states its width **in characters** of its own monospace
+value — a **min**, an **ideal** and a **max** — and the row turns them into
+pixels from one measured character, so every width follows the OS text size
+together (`FieldChars`, `logging_controls_metrics.dart`):
 
-When the enabled fields don't all fit, the row makes its concessions in this
-order, and never reaches for the next one until the last is spent:
+| Field | min | ideal | max |
+| --- | --- | --- | --- |
+| Callsign | 6 (`W1AW/4`) | 10 | none |
+| RST | 3 | 4 | 6 |
+| State | 3 | 3 | 3 |
+| Grid | 4 | 6 | 6 |
+| An extension's `text`, `options` or `serial` | 3 | 6 | its `maxLength`, else 6 |
 
-1. **The fields shrink, evenly** — the same number of pixels off each, not the
-   same share of each, so a field that asked for more stays wider by exactly as
-   much as it started.
-2. **They stop at two characters.** Enough to tell a filled field from an empty
-   one and to aim a click at it. Every field floors at the same two characters,
-   so down here the wider ones are no longer wider.
-3. **The gaps between the fields and the padding inside them go next**, both
+A `maxLength` under those numbers lowers them to it.
+
+An extension sets its own with `input.chars: { min, ideal, max }`
+([activities.md](../extensions/activities.md)); a missing `min` is 3, a
+missing `ideal` is the min, a missing `max` is the `maxLength`, else the ideal.
+None goes past 20 (`maxFieldChars`): an author who wrote pixels would
+otherwise take a phone's whole row, and see nothing wrong on a desktop.
+
+The row fills its width in this order, and never moves to the next step until
+the last is spent:
+
+1. **Every field at its min.**
+2. **The callsign to its ideal.** It is the field every contact starts in.
+3. **The other fields to their ideals**, the room shared in proportion to what
+   each still needs, so they all arrive together.
+4. **Every field toward its max**, the callsign included, the room shared in
+   proportion to the width each already has — the wider field gets more of it.
+   A field at its max drops out; the callsign has none, so past every other
+   max the rest of the row is its.
+
+When even the mins don't fit — a min is what a field asks for, not a
+guarantee:
+
+1. **The gaps between the fields and the padding inside them go**, both
    together and *gradually* — a single fraction of each, falling with the width
    rather than snapping off at a breakpoint, and all the way to nothing. This
-   shrinks the floors above with them: two characters without padding is
-   narrower than two with.
-4. **The callsign gives up its six characters.** It is the last thing left, and
-   a narrow callsign field reads better than a row of overflow stripes.
+   shrinks the fields with them: three characters without padding is narrower
+   than three with.
+2. **The fields go under their mins**, down to two characters, each in
+   proportion to what it has above two so they all reach it together.
+3. **The callsign gives up its min.** It is the last thing left, and a narrow
+   callsign field reads better than a row of overflow stripes.
 
-**The focused field is exempt from all of it.** It renders at its full minimum
-width for as long as it has focus, and its neighbours carry its share — the
-field the operator is typing in is the one worth reading. This is the one place
+**The focused field is exempt from all of it.** It renders at its ideal width
+for as long as it has focus — the field the operator is typing in is the one
+worth reading — and that ideal counts as its min in everything above: the
+others wait short of their ideals for it, and on a row short even of that the
+gaps and padding give way before the callsign's min does. This is the one place
 in the panel where moving focus changes the layout, so the change is
 **animated**, briefly (100ms). A change in the space *available* is not: the
 callsign is `Expanded` and never animates, so animating the others through a
@@ -288,8 +313,8 @@ Two consequences worth knowing before changing any of this:
   measurement taken in a different style is a measurement of nothing.
 - **A field's real inset is more than its `contentPadding`.** Material adds 4pt
   a side to every `filled` field of its own accord (`_kInputExtraPadding`),
-  which no `InputDecoration` field exposes. Step 3 counts it as part of what
-  there is to give and cancels it with a *negative* content padding, which is
+  which no `InputDecoration` field exposes. The padding that goes when the
+  mins don't fit counts it as part of what there is to give and cancels it with a *negative* content padding, which is
   the only way to get it back; the arithmetic would otherwise be 8pt per field
   short of what the row actually spends.
 - **What never compresses**: the panel's own 12pt edge inset (shared with the

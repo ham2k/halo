@@ -932,8 +932,8 @@ class ExchangeField extends StatelessWidget {
 
   final bool enabled;
 
-  /// Resolved by [resolveMainFieldLayout] — [exchangeFieldMinWidth] when the
-  /// row has room, and less when it doesn't.
+  /// Resolved by [resolveMainFieldLayout] from the control's
+  /// [exchangeFieldChars].
   final double width;
   final double padding;
   final Duration duration;

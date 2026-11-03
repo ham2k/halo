@@ -125,9 +125,9 @@ different validation:
 | `input.kind` | Edits | Also takes | Where |
 | --- | --- | --- | --- |
 | `refList` | a list of references of `refType` | `placeholder`, `pattern`, `transforms`, `numbersRowKey` | both |
-| `text` | one `field` on the ref of `refType` | `placeholder`, `pattern`, `transforms`, `numeric`, `uppercase` (default true), `numbersRowKey`, `maxLength`, `suggestedValue` | logging panel |
+| `text` | one `field` on the ref of `refType` | `placeholder`, `pattern`, `transforms`, `numeric`, `uppercase` (default true), `numbersRowKey`, `maxLength`, `chars`, `suggestedValue` | logging panel |
 | `options` | one `field`, from a known set | `options: [{ code, name? }]`, `matchOn`, `allowFreeform`, `preferredCodes`, `minCharsForSuggestions`, and everything `text` takes | logging panel |
-| `serial` | a serial number the app allocates | `sequence: { key, scope?, start?, padTo? }`, `editable` | logging panel |
+| `serial` | a serial number the app allocates | `sequence: { key, scope?, start?, padTo? }`, `editable`, `chars` | logging panel |
 | `form` | a whole form over the ref | `form` | operation setup |
 
 - `pattern` is anchored and matched case-insensitively; a malformed regex
@@ -147,6 +147,17 @@ different validation:
   the info area, and Space accepts the top hit before advancing, but only a
   hit the typed text is a prefix of, and never from an empty field. A value
   outside the set tints the field unless `allowFreeform`.
+- `chars: { min?, ideal?, max? }` sizes a `text`, `options` or `serial`
+  field on the logging row, in characters of its value, not pixels. The row
+  gives every field its `min` (going under it only when nothing else is left
+  to give), then the callsign its own ideal, then each
+  field its `ideal`, and shares what is left toward each `max`, more to the
+  wider fields. `min` defaults to 3, `ideal` to `min`, `max` to `maxLength`,
+  else to `ideal`, and none goes past 20. A field that declares no `chars`
+  asks for 6, or its `maxLength` if that is fewer, and may grow to its
+  `maxLength`. A count that is not a whole number of at least 1, one past 20,
+  or an `ideal` under the `min` is adjusted and named on the console. A host
+  that predates `chars` gives the field its usual size.
 - A `serial`'s number is allocated by the app when the contact commits. Two
   extensions keying controls under one prefix share a counter.
 - `shortLabel` is the same name in fewer characters, for a row that has

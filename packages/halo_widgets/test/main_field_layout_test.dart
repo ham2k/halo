@@ -14,80 +14,233 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/src/logging_controls_metrics.dart';
 import 'package:halo_widgets/src/theme.dart';
 
-// Round numbers a test can reason about: a callsign floor of 60, a field
-// floor of 20, and 8 of padding, so a field's floor is 28.
-const _floors = (callValue: 60.0, fieldValue: 20.0, fullPadding: 8.0);
+// Round numbers a test can reason about: a character is 10 wide, so with the
+// caret's 3 a field of n characters has a value of 10n + 3, and 8 of padding
+// on top of that.
+const _metrics = (charWidth: 10.0, fullPadding: 8.0);
 const _button = 44.0;
+const _call = (min: 6, ideal: 10, max: null);
 
-MainField _field({double minWidth = 64, double gapBefore = 8, FocusNode? focus}) =>
-    (gapBefore: gapBefore, minWidth: minWidth, focusNode: focus ?? FocusNode(), build: (_, _, _) => const SizedBox());
+double _value(int chars) => mainFieldValueWidth(_metrics, chars);
 
-/// The width at which [fields] fit with [slack] to spare — the gaps, the
-/// button, and the callsign's floor plus its padding, all at full size. A
-/// field's declared minimum already includes its own padding.
-double _fits(List<MainField> fields, {double slack = 0}) =>
-    _button + logButtonGap + fields.fold(0.0, (w, f) => w + f.gapBefore + f.minWidth) + _floors.fullPadding + _floors.callValue + slack;
+MainField _field(FieldChars chars, {double gapBefore = 8, FocusNode? focus}) =>
+    (gapBefore: gapBefore, chars: chars, focusNode: focus ?? FocusNode(), build: (_, _, _) => const SizedBox());
+
+/// The width at which every one of [fields] and the callsign sit exactly at
+/// their mins, with the gaps and padding whole — plus [slack].
+double _atMins(List<MainField> fields, {double slack = 0}) =>
+    _button +
+    logButtonGap +
+    (fields.length + 1) * _metrics.fullPadding +
+    _value(_call.min) +
+    fields.fold(0.0, (w, f) => w + f.gapBefore + _value(f.chars.min)) +
+    slack;
+
+({MainFieldLayout layout, bool squeezed}) _resolve(List<MainField> fields, double maxWidth) =>
+    resolveMainFieldLayout(fields: fields, maxWidth: maxWidth, buttonWidth: _button, metrics: _metrics, call: _call);
+
+/// The callsign's value width: whatever the row leaves it, being `Expanded`.
+double _callValue(List<MainField> fields, ({MainFieldLayout layout, bool squeezed}) r, double maxWidth) =>
+    maxWidth -
+    _button -
+    r.layout.gapScale * fields.fold(logButtonGap, (sum, f) => sum + f.gapBefore) -
+    r.layout.fieldPadding -
+    r.layout.widths.fold(0.0, (sum, w) => sum + w);
+
+/// What a field resolved to, less its padding: its value width.
+List<double> _values(({MainFieldLayout layout, bool squeezed}) r) => [for (final w in r.layout.widths) w - r.layout.fieldPadding];
+
+Future<FocusNode> _focused(WidgetTester tester) async {
+  final focus = FocusNode();
+  addTearDown(focus.dispose);
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Focus(focusNode: focus, child: const SizedBox()),
+    ),
+  );
+  focus.requestFocus();
+  await tester.pump();
+  return focus;
+}
 
 void main() {
-  test('everything fits: declared widths, nothing given up', () {
-    final fields = [_field(), _field(), _field(minWidth: 76)];
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: _fits(fields, slack: 40), buttonWidth: _button, floors: _floors);
-    expect(r.layout.widths, [64, 64, 76]);
-    expect(r.layout.gapScale, 1);
-    expect(r.layout.fieldPadding, 8);
-    expect(r.squeezed, isFalse);
+  test('a declared width fills in what it leaves out, in order', () {
+    expect(fieldChars(), (min: 3, ideal: 3, max: 3));
+    expect(fieldChars(min: 2, max: 8), (min: 2, ideal: 2, max: 8));
+    // The trap: a max under the ideal taken as given would shrink the field as
+    // the row grows past its ideal.
+    expect(fieldChars(min: 4, ideal: 6, max: 5), (min: 4, ideal: 6, max: 6));
+    expect(fieldChars(min: 5, ideal: 3), (min: 5, ideal: 5, max: 5));
   });
 
-  test('a shortfall comes off each field evenly, the same pixels off each', () {
-    final fields = [_field(), _field(), _field(minWidth: 76)];
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: _fits(fields) - 30, buttonWidth: _button, floors: _floors);
-    expect(r.layout.widths, [54, 54, 66], reason: 'the wider field stays wider by exactly what it asked');
-    expect(r.layout.gapScale, 1, reason: 'the gaps are untouched while the fields can still give');
+  test("an extension field's width comes from input.chars, then maxLength, then six", () {
+    expect(exchangeFieldChars(const {'kind': 'text'}), (min: 3, ideal: 6, max: 6));
+    expect(exchangeFieldChars(const {'kind': 'text', 'maxLength': 12}), (min: 3, ideal: 6, max: 12));
+    expect(exchangeFieldChars(const {'kind': 'text', 'maxLength': 2}), (min: 2, ideal: 2, max: 2), reason: 'never wider than it can hold');
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'maxLength': 12,
+        'chars': {'min': 2},
+      }),
+      (min: 2, ideal: 2, max: 12),
+    );
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 2, 'ideal': 4.0, 'max': 5},
+      }),
+      (min: 2, ideal: 4, max: 5),
+    );
+  });
+
+  test('no extension field asks for more than twenty characters', () {
+    // The trap: a width written in pixels. Sixty characters is a phone's whole
+    // row, with the log button pushed off it — and fine on a desktop.
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 60, 'ideal': 80},
+      }),
+      (min: 20, ideal: 20, max: 20),
+    );
+    expect(exchangeFieldChars(const {'kind': 'text', 'maxLength': 50}), (min: 3, ideal: 6, max: 20));
+  });
+
+  test('a declaration the row cannot take as written is named on the console, once', () {
+    final lines = <String>[];
+    final saved = debugPrint;
+    debugPrint = (message, {wrapWidth}) => lines.add(message ?? '');
+    addTearDown(() => debugPrint = saved);
+
+    // Untrusted extension JSON: a count that is no count leaves the default.
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 'wide', 'ideal': 0},
+      }, key: 'qp/county'),
+      (min: 3, ideal: 3, max: 3),
+    );
+    expect(exchangeFieldChars(const {'kind': 'text', 'chars': 8}, key: 'qp/name'), (min: 3, ideal: 6, max: 6));
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'ideal': 10, 'max': 6},
+      }, key: 'qp/loc'),
+      (min: 3, ideal: 10, max: 10),
+    );
+    // Laid out on every frame: still one line each.
+    exchangeFieldChars(const {'kind': 'text', 'chars': 8}, key: 'qp/name');
+    expect(lines, hasLength(3));
+    expect(lines.every((line) => line.startsWith('[extensions] ')), isTrue);
+    expect(lines.map((line) => RegExp(r'qp/\w+').firstMatch(line)?[0]), ['qp/county', 'qp/name', 'qp/loc']);
+
+    // A declaration taken as written says nothing.
+    exchangeFieldChars(const {
+      'kind': 'text',
+      'chars': {'min': 2, 'ideal': 4, 'max': 5},
+    }, key: 'qp/fine');
+    expect(lines, hasLength(3));
+  });
+
+  test('the callsign reaches its ideal before any field leaves its min', () {
+    final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 3, ideal: 6, max: 6))];
+    final r = _resolve(fields, _atMins(fields, slack: 30));
+    expect(_values(r), [_value(3), _value(3)], reason: 'the 30 went to the callsign, 40 short of its ideal');
+    expect(r.layout.gapScale, 1);
     expect(r.squeezed, isTrue);
   });
 
-  test('a field at its floor gives no more; the others carry the rest', () {
-    // Floors at 28: a 40 shortfall over three 64s would be 13.3 each, but
-    // the narrow field can only give 4, so the other two give 18 each.
-    final fields = [_field(minWidth: 32), _field(), _field()];
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: _fits(fields) - 40, buttonWidth: _button, floors: _floors);
-    expect(r.layout.widths[0], 28);
-    expect(r.layout.widths[1], closeTo(46, 0.5));
-    expect(r.layout.widths[2], closeTo(46, 0.5));
+  test('the fields reach their ideals together, each in proportion to what it needs', () {
+    // The callsign takes 40 to its ideal; the 20 left is half of the 10 + 30
+    // the fields need, so each gets half of its own need.
+    final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 3, ideal: 6, max: 6))];
+    final r = _resolve(fields, _atMins(fields, slack: 40 + 20));
+    expect(_values(r)[0], moreOrLessEquals(_value(3) + 5));
+    expect(_values(r)[1], moreOrLessEquals(_value(3) + 15));
+    expect(r.squeezed, isTrue);
   });
 
-  testWidgets('the focused field is exempt, and its neighbours carry its share', (tester) async {
-    final focus = FocusNode();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Focus(focusNode: focus, child: const SizedBox()),
-      ),
-    );
-    focus.requestFocus();
-    await tester.pump();
-    final fields = [_field(focus: focus), _field(), _field()];
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: _fits(fields) - 30, buttonWidth: _button, floors: _floors);
-    expect(r.layout.widths, [64, 49, 49]);
+  test('past the ideals the room goes in proportion to width, so the wider field gets more', () {
+    final fields = [_field((min: 3, ideal: 4, max: 20)), _field((min: 3, ideal: 6, max: 20))];
+    final atIdeals = _atMins(fields, slack: 40 + 10 + 30);
+    final r = _resolve(fields, atIdeals + 50);
+    final grown = [_values(r)[0] - _value(4), _values(r)[1] - _value(6)];
+    expect(grown[1], greaterThan(grown[0]));
+    expect(grown[0] / _value(4), moreOrLessEquals(grown[1] / _value(6)), reason: 'the same share of each one\'s width');
+    expect(r.squeezed, isFalse);
   });
 
-  test('past the floors, gaps and padding shrink together and gradually', () {
-    final fields = [_field(), _field()];
-    // Even at their floors the fields need 28 each; take 20 more than that.
-    final atFloors = _fits(fields) - 2 * (64 - 28);
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: atFloors - 20, buttonWidth: _button, floors: _floors);
+  test('a field stops at its max and the callsign takes the rest', () {
+    final fields = [_field((min: 3, ideal: 4, max: 4)), _field((min: 3, ideal: 4, max: 6))];
+    final r = _resolve(fields, _atMins(fields, slack: 1000));
+    expect(_values(r), [_value(4), _value(6)]);
+    expect(r.squeezed, isFalse);
+  });
+
+  testWidgets('the focused field has its ideal even on a squeezed row, and the gaps pay before the callsign', (tester) async {
+    final focus = await _focused(tester);
+    final fields = [_field((min: 3, ideal: 6, max: 6), focus: focus), _field((min: 3, ideal: 6, max: 6))];
+    final maxWidth = _atMins(fields);
+    final r = _resolve(fields, maxWidth);
+    expect(_values(r), [_value(6), _value(3)]);
+    // The trap: a focused field's extra width taken straight out of the
+    // Expanded callsign drives it under its own min — or to nothing, for an
+    // extension field with a wide ideal — while the gaps stay whole.
+    expect(r.layout.gapScale, lessThan(1), reason: 'the focused field\'s ideal counts as its min');
+    expect(_callValue(fields, r, maxWidth), moreOrLessEquals(_value(_call.min)));
+    expect(r.squeezed, isTrue, reason: 'the field it is not in is under its ideal, so the next focus change must rebuild');
+  });
+
+  testWidgets('a callsign short of its ideal keeps the row squeezed, so leaving the focused field gives it back', (tester) async {
+    final focus = await _focused(tester);
+    final fields = [_field((min: 3, ideal: 6, max: 6), focus: focus), _field((min: 3, ideal: 3, max: 3))];
+    final focusedIdeal = _value(6) - _value(3);
+    final short = _resolve(fields, _atMins(fields, slack: focusedIdeal + 20));
+    expect(short.squeezed, isTrue, reason: 'the callsign gave up 20 of its ideal to the focused field');
+
+    final roomy = _resolve(fields, _atMins(fields, slack: focusedIdeal + 40));
+    expect(roomy.squeezed, isFalse, reason: 'everything besides the focused field has its ideal');
+  });
+
+  test('short of the mins, gaps and padding shrink together and gradually', () {
+    final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 3, ideal: 4, max: 6))];
+    final r = _resolve(fields, _atMins(fields) - 20);
     expect(r.layout.gapScale, lessThan(1));
     expect(r.layout.gapScale, greaterThan(0));
     expect(r.layout.fieldPadding, r.layout.gapScale * 8, reason: 'one fraction of both');
-    expect(r.layout.widths, everyElement(lessThan(28)), reason: 'the floors shrink with the padding');
-    expect(r.layout.widths, everyElement(closeTo(20 + r.layout.fieldPadding, 0.5)));
+    expect(_values(r), [_value(3), _value(3)], reason: 'the characters themselves are never given up');
+    expect(r.squeezed, isTrue);
   });
 
-  test('with nothing left to give, the callsign gives its own floor', () {
-    final fields = [_field(), _field()];
-    final r = resolveMainFieldLayout(fields: fields, maxWidth: _button + 40 + 2 * 20, buttonWidth: _button, floors: _floors);
+  test('with the gaps and padding gone, the fields go under their mins together, before the callsign', () {
+    final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 4, ideal: 6, max: 6))];
+    // Zero gaps and padding, the callsign at its min, and 15 short of the
+    // fields' mins: they have 10 and 20 above the two-character floor, so
+    // they give 5 and 10 of it.
+    final maxWidth = _button + _value(_call.min) + _value(3) + _value(4) - 15;
+    final r = _resolve(fields, maxWidth);
+    expect(r.layout.gapScale, 0);
+    expect(_values(r)[0], moreOrLessEquals(_value(3) - 5));
+    expect(_values(r)[1], moreOrLessEquals(_value(4) - 10));
+    expect(_callValue(fields, r, maxWidth), moreOrLessEquals(_value(_call.min)), reason: 'the callsign\'s min is the last thing given');
+    expect(r.squeezed, isTrue);
+  });
+
+  testWidgets('a focused field keeps its ideal while the others go under their mins', (tester) async {
+    final focus = await _focused(tester);
+    final fields = [_field((min: 3, ideal: 6, max: 6), focus: focus), _field((min: 4, ideal: 6, max: 6))];
+    final maxWidth = _button + _value(_call.min) + _value(6) + _value(4) - 15;
+    final r = _resolve(fields, maxWidth);
+    expect(_values(r), [moreOrLessEquals(_value(6)), moreOrLessEquals(_value(4) - 15)]);
+  });
+
+  test('with nothing left to give, the callsign gives its own min', () {
+    final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 3, ideal: 4, max: 6))];
+    final r = _resolve(fields, _button + 2 * _value(fieldFloorChars));
     expect(r.layout.gapScale, 0);
     expect(r.layout.fieldPadding, 0);
-    expect(r.layout.widths, [20, 20]);
+    expect(r.layout.widths, [_value(fieldFloorChars), _value(fieldFloorChars)], reason: 'no field goes under the floor');
     expect(r.squeezed, isTrue);
   });
 

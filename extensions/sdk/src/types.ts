@@ -760,6 +760,8 @@ export interface SequenceBinding {
 export interface SerialInputDescriptor {
   kind: "serial"
   refType: string
+  /// As `text`.
+  chars?: FieldChars
   /// `'ourSerial'`, with the received number beside it as `'theirSerial'`:
   /// templates find a contest's serials by these names (`qso.serialSent`,
   /// docs/extensions/templates.md), so any other name keys a blank.
@@ -802,6 +804,17 @@ export interface FormInputDescriptor {
   form: FormDefinition
 }
 
+/// A logging-row field's width, in characters of its value — not pixels. The
+/// row gives a field its `min` when it is short of room, its `ideal` when it
+/// has the room, and grows it toward `max` when it has more. Each is optional:
+/// `min` is 3, `ideal` is `min`, and `max` is the input's `maxLength`, else
+/// `ideal`. None goes past 20.
+export interface FieldChars {
+  min?: number
+  ideal?: number
+  max?: number
+}
+
 /// A free-form or pattern-constrained exchange field (contest exchanges: a CQ
 /// zone, a Field Day class, a name). The typed value round-trips onto a ref of
 /// `refType` under the key `field` — the same core-owned path `refList` writes
@@ -835,6 +848,10 @@ export interface TextInputDescriptor {
   /// operator's decimal separator.
   numbersRowKey?: string
   maxLength?: number
+  /// How wide the field is on the logging row, in characters. Without it the
+  /// field asks for six, or `maxLength` if that is fewer, and may grow to
+  /// `maxLength`, up to 20.
+  chars?: FieldChars
   /// Pre-filled into the field and flagged as a guess: the core writes it only
   /// while the field is empty or still holds a previous suggestion, so a
   /// callsign lookup that resolves late can never clobber operator input.
@@ -910,6 +927,8 @@ export interface OptionsInputDescriptor {
   /// As `text`.
   numbersRowKey?: string
   maxLength?: number
+  /// As `text`.
+  chars?: FieldChars
   suggestedValue?: string
   /// The same three modifiers `text` takes, honoured identically here because the
   /// core builds both kinds from one code path: an anchored, case-insensitive

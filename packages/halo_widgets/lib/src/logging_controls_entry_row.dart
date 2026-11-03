@@ -144,9 +144,9 @@ class LoggingEntryRow extends StatefulWidget {
 }
 
 class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenFrames {
-  /// Whether the last layout couldn't give every main field its declared
-  /// minimum ([resolveMainFieldLayout]). A squeezed row hands the focused
-  /// field its full width back, which only happens if a focus change
+  /// Whether the last layout left some main field under its ideal width
+  /// ([resolveMainFieldLayout]). A squeezed row hands the focused field its
+  /// ideal back, which only happens if a focus change
   /// rebuilds — and off a squeezed row it would be a rebuild that changes
   /// nothing, so the focus listener is gated on this.
   bool _squeezed = false;
@@ -221,8 +221,8 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
   /// all logging input, and Enter logs.
   ///
   /// [width] and [padding] are resolved by [resolveMainFieldLayout], not
-  /// chosen here: [fixedFieldMinWidth] whenever the row has room, and less
-  /// when it doesn't.
+  /// chosen here: the field's ideal ([FieldChars]) whenever the row has room,
+  /// up to its max when it has more, and down to its min when it doesn't.
   Widget _fixedField(
     BuildContext context, {
     required TextEditingController controller,
@@ -277,7 +277,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     for (final (index, field) in widget.rstFields.indexed)
       (
         gapBefore: index == 0 ? mainFieldGroupGap : mainFieldGap,
-        minWidth: fixedFieldMinWidth,
+        chars: rstFieldChars,
         focusNode: field.focus,
         build: (width, padding, duration) => _fixedField(
           context,
@@ -315,7 +315,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     for (final control in widget.textControls)
       (
         gapBefore: mainFieldGap,
-        minWidth: exchangeFieldMinWidth,
+        chars: exchangeFieldChars(control['input'] as Map?, key: control['key'] as String?),
         focusNode: widget.exchange.focusFor(control['key'] as String),
         build: (width, padding, duration) => ExchangeField(
           model: widget.exchange,
@@ -332,7 +332,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     if (widget.state case final state?)
       (
         gapBefore: mainFieldGroupGap,
-        minWidth: fixedFieldMinWidth,
+        chars: stateFieldChars,
         focusNode: state.focus,
         build: (width, padding, duration) => _fixedField(
           context,
@@ -350,7 +350,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     if (widget.grid case final grid?)
       (
         gapBefore: mainFieldGroupGap,
-        minWidth: fixedFieldMinWidth,
+        chars: gridFieldChars,
         focusNode: grid.focus,
         build: (width, padding, duration) => _fixedField(
           context,
@@ -394,7 +394,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
           fields: trailingFields,
           maxWidth: constraints.maxWidth,
           buttonWidth: widget.buttonWidth,
-          floors: mainFieldFloors(context),
+          metrics: mainFieldMetrics(context),
         );
         _squeezed = squeezed;
         final widthDuration = _widthDuration(constraints.maxWidth, widget.buttonWidth);

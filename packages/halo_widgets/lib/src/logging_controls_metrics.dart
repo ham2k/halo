@@ -13,7 +13,9 @@
 // interface from one root wrapper (ui-scaling.md), so nothing here is
 // multiplied by it.
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
@@ -23,14 +25,103 @@ import 'theme.dart';
 /// and reach the view's true edges.
 const secondaryPanelHorizontalInset = 12.0;
 
-/// What a main logging field asks for when the row has the room: an RST, a
-/// state or a grid at [fixedFieldMinWidth]; a contest exchange a little
-/// wider, since it can be a zone, a serial or a section name.
+/// How wide a main logging field is, in characters of its own monospace
+/// value: never narrower than [min] unless the row runs out of room, [ideal]
+/// whenever the row has the room, and no wider than [max] — null for no limit,
+/// which only the callsign has. [resolveMainFieldLayout] turns them into
+/// pixels; every field states them in characters so that they follow OS text
+/// scaling together.
+typedef FieldChars = ({int min, int ideal, int? max});
+
+/// A field's [FieldChars] from what it declares, any part of it missing: [min]
+/// [defaultFieldMinChars], [ideal] its min, [max] its ideal — and put in order,
+/// so a max under the ideal is not a field that shrinks as the row grows.
+FieldChars fieldChars({int? min, int? ideal, int? max}) {
+  final lo = min ?? defaultFieldMinChars;
+  final mid = ideal == null || ideal < lo ? lo : ideal;
+  return (min: lo, ideal: mid, max: max == null || max < mid ? mid : max);
+}
+
+/// A main field's floor when it declares none. Three characters reads a
+/// filled field from an empty one and takes an RST whole — and focusing a
+/// field brings it straight back to its ideal, so this is only ever what a
+/// field the operator isn't in looks like.
+const defaultFieldMinChars = 3;
+
+/// How far under its min a field goes when the row has nothing else left to
+/// give: two characters still tell a filled field from an empty one and take
+/// a tap.
+const fieldFloorChars = 2;
+
+/// The callsign: a full call with a portable suffix (`W1AW/4`) at the least,
+/// room for `VP2V/W1AW/P` when there is some, and no limit — past every
+/// other field's max, the rest of the row is the callsign's.
+const FieldChars callFieldChars = (min: 6, ideal: 10, max: null);
+
+/// The built-in fields after the callsign.
+const FieldChars rstFieldChars = (min: 3, ideal: 4, max: 6);
+const FieldChars stateFieldChars = (min: 3, ideal: 3, max: 3);
+const FieldChars gridFieldChars = (min: 4, ideal: 6, max: 6);
+
+/// The most characters an extension's field may ask for, in any of its
+/// counts. Without a ceiling a width written in pixels — `min: 60` — would
+/// take a phone's whole row, push the log button off it and look fine on the
+/// desktop it was tried on.
+const maxFieldChars = 20;
+
+/// An extension's `text`, `options` or `serial` control, from its
+/// `input.chars: { min, ideal, max }` (docs/extensions/activities.md). One that
+/// declares none asks for six characters, enough for a zone, a serial or a
+/// section name — or its `maxLength`, if that is fewer — and may grow to its
+/// `maxLength`. Every count stops at [maxFieldChars].
 ///
-/// **Minimums, not fixed sizes.** When the enabled fields don't all fit, they
-/// render narrower than this — see [resolveMainFieldLayout].
-const fixedFieldMinWidth = 64.0;
-const exchangeFieldMinWidth = 76.0;
+/// A declaration the row cannot take as written — not a map, a part that is
+/// no count, one past the ceiling, an ideal under the min — still sizes the
+/// field from what it can use, and is named on the console once, for [key]:
+/// the field comes out a character or two off what was asked, too little for
+/// its author to notice on their own.
+FieldChars exchangeFieldChars(Map<dynamic, dynamic>? input, {String? key}) {
+  final maxLength = _chars(input?['maxLength']);
+  final longest = maxLength == null ? 6 : math.min(maxLength, maxFieldChars);
+  final fallback = fieldChars(min: math.min(defaultFieldMinChars, longest), ideal: math.min(6, longest), max: longest);
+  final declared = input?['chars'];
+  if (declared == null) return fallback;
+  if (declared is! Map) {
+    _reportChars(key, declared, fallback);
+    return fallback;
+  }
+
+  var adjusted = false;
+  int? count(String name) {
+    final raw = declared[name];
+    if (raw == null) return null;
+    final chars = _chars(raw);
+    if (chars == null || chars > maxFieldChars) adjusted = true;
+    return chars == null ? null : math.min(chars, maxFieldChars);
+  }
+
+  final min = count('min');
+  final ideal = count('ideal');
+  final max = count('max');
+  final result = fieldChars(min: min, ideal: ideal, max: max ?? (maxLength == null ? null : longest));
+  if ((ideal != null && ideal != result.ideal) || (max != null && max != result.max)) adjusted = true;
+  if (adjusted) _reportChars(key, declared, result);
+  return result;
+}
+
+/// A character count from extension JSON, which arrives as `int` or `double`;
+/// anything else, or under one, is not a count.
+int? _chars(Object? value) => value is num && value >= 1 ? value.floor() : null;
+
+/// Once per control and declaration, since the row sizes its fields on every
+/// layout.
+void _reportChars(String? key, Object? declared, FieldChars used) {
+  if (_reportedChars.add('$key $declared')) {
+    debugPrint('[extensions] logging field ${key ?? '(no key)'}: chars $declared adjusted to min ${used.min}, ideal ${used.ideal}, max ${used.max}');
+  }
+}
+
+final Set<String> _reportedChars = {};
 
 /// The gap that precedes a main field: [mainFieldGap] between two of a kind
 /// (the two RSTs, consecutive exchanges), [mainFieldGroupGap] where a new
@@ -76,26 +167,16 @@ const materialFilledInputGap = 8.0;
 /// last character scrolled out from under the cursor.
 const caretAllowance = 3.0;
 
-/// The callsign field's floor, in characters of its own value: a full call
-/// with a portable suffix (`W1AW/4`).
-const callFieldMinChars = 6;
-
-/// Every other main field's floor. Two characters is enough to tell a filled
-/// field from an empty one and to aim a click at it — and focusing it brings
-/// it straight back to the width it asked for, so this is only ever what a
-/// field the operator isn't in looks like.
-const mainFieldMinChars = 2;
-
 /// How long a main field takes to reach a new width. Deliberately brief: once
 /// the row is squeezed it reflows on every focus move, and anything slower
 /// reads as the layout lagging behind the keyboard rather than following it.
 const fieldWidthDuration = Duration(milliseconds: 100);
 
 /// One of the main logging fields that follow the callsign, as the row needs
-/// it: the gap before it, the width it asks for, the node whose focus exempts
-/// it from being squeezed, and how to build it at whatever width and inner
-/// padding it ends up with.
-typedef MainField = ({double gapBefore, double minWidth, FocusNode focusNode, Widget Function(double width, double padding, Duration duration) build});
+/// it: the gap before it, its width in characters, the node whose focus
+/// exempts it from being squeezed, and how to build it at whatever width and
+/// inner padding it ends up with.
+typedef MainField = ({double gapBefore, FieldChars chars, FocusNode focusNode, Widget Function(double width, double padding, Duration duration) build});
 
 /// One main logging field as everything OUTSIDE the row needs it: what it is
 /// called, what the operator has typed into it, and the hint standing in while
@@ -227,115 +308,166 @@ double mainFieldLabelWidth({required double width, required double horizontalPad
 /// than trusted.
 const floatingLabelScale = 0.75;
 
-/// The width [chars] characters of a main field's monospace value paint at,
-/// plus the caret's reserved strip — everything a field needs EXCEPT its own
-/// horizontal padding, which the caller adds because the row can take that
-/// padding away again.
+/// What the row's arithmetic measures once per layout: one character of the
+/// main fields' monospace value, and the full padding a field carries — the
+/// theme's own content padding, which scales with OS text size, plus
+/// Material's fixed extra, which doesn't. The padding is the row's to give
+/// away; the characters are not.
 ///
-/// Every width this row states in characters goes through here, so they all
-/// track OS/accessibility text scaling together — a 6-character minimum
-/// measured at one scale and hardcoded would be five characters at the next.
-double mainFieldValueWidth(BuildContext context, int chars) =>
-    textWidth(context, 'W' * chars, mainFieldStyle(context, fontWeight: FontWeight.w500)) + caretAllowance;
+/// Measured, so every width stated in characters tracks OS/accessibility text
+/// scaling together — a 6-character width measured at one scale and
+/// hardcoded would be five characters at the next.
+typedef MainFieldMetrics = ({double charWidth, double fullPadding});
 
-/// What the row's arithmetic measures once per layout: the callsign's and
-/// the other fields' character floors as widths, and the full padding a
-/// field carries — the theme's own content padding, which scales with OS text
-/// size, plus Material's fixed extra, which doesn't. Both are the row's to
-/// give away.
-typedef MainFieldFloors = ({double callValue, double fieldValue, double fullPadding});
-
-MainFieldFloors mainFieldFloors(BuildContext context) => (
-  callValue: mainFieldValueWidth(context, callFieldMinChars),
-  fieldValue: mainFieldValueWidth(context, mainFieldMinChars),
+MainFieldMetrics mainFieldMetrics(BuildContext context) => (
+  charWidth: textWidth(context, 'W' * 10, mainFieldStyle(context, fontWeight: FontWeight.w500)) / 10,
   fullPadding: mainFieldContentPadding * MediaQuery.textScalerOf(context).scale(1.0) + materialFilledInputGap,
 );
 
+/// The width [chars] characters of value paint at, plus the caret's reserved
+/// strip — everything a field needs EXCEPT its own horizontal padding, which
+/// the row adds because it can take that padding away again.
+double mainFieldValueWidth(MainFieldMetrics metrics, int chars) => chars * metrics.charWidth + caretAllowance;
+
 /// Resolves how the main logging row fills [maxWidth], and whether it had to
-/// squeeze anything to do it.
+/// squeeze anything to do it. Every field's [FieldChars] become pixels through
+/// [metrics].
 ///
-/// Concessions, in the order the row makes them:
+/// The row is filled in this order:
 ///
-/// 1. **Everything fits.** Each of [fields] renders at its declared minimum
-///    and the callsign takes whatever is left.
-/// 2. **They don't.** The shortfall is split **evenly** across them — the
-///    same number of pixels off each, not the same share of each — down to
-///    [mainFieldMinChars] characters, with whatever a floored field can't
-///    give up re-spread over the ones that still have room. The **focused
-///    field is left out of the split entirely**: it renders at its full
-///    declared minimum and its neighbours carry its share, which is what
-///    keeps a squeezed row usable to type in.
-/// 3. **Not even at their floors.** The gaps between the fields and the
-///    padding inside them go next, together and *gradually* — a single
-///    fraction of both, falling with the width rather than snapping off at
-///    some breakpoint. Note this shrinks the floors too: two characters
-///    without padding is narrower than two with.
-/// 4. **Still not.** The callsign gives up its own [callFieldMinChars] — it
-///    is the last thing left to give, and a callsign field too narrow reads
-///    better than a row of overflow stripes.
+/// 1. **Every field at its min**, the callsign ([call]) included — and the
+///    **focused field at its ideal**, so a squeezed row stays usable to type
+///    in. That ideal counts as the focused field's min everywhere below: the
+///    others wait short of their ideals for it, and short of even that the
+///    gaps and padding give way before the callsign's own min does.
+/// 2. **The callsign to its ideal.**
+/// 3. **The other fields to their ideals**, the room shared in proportion to
+///    what each still needs, so they all arrive together.
+/// 4. **Every field toward its max**, the callsign included, the room shared
+///    in proportion to the width each already has: the wider field gets more
+///    of it. A field at its max drops out; the callsign has none, so past
+///    every other max the rest of the row is its.
+///
+/// When even the mins don't fit, the gaps between the fields and the padding
+/// inside them go first, together and *gradually* — a single fraction of both,
+/// falling with the width rather than snapping off at some breakpoint. With
+/// those gone the fields go under their mins, down to [fieldFloorChars], each
+/// in proportion to what it has above that so they reach it together; the
+/// focused field keeps its ideal. Past that the callsign gives up its own min
+/// — the last thing left to give, and a callsign field too narrow reads better
+/// than a row of overflow stripes.
 ///
 /// The callsign is never in [fields]: it is `Expanded` over what they leave,
-/// and this arithmetic only reserves its minimum before dividing up the rest.
+/// so its share here is only reserved, never returned.
 ///
-/// `squeezed` says the row couldn't give every field its declared minimum.
-/// The row's own focus listener reads it: the focused field renders at full
-/// width, which only happens if a focus change rebuilds — and off a squeezed
-/// row it would be a rebuild that changes nothing.
+/// `squeezed` says something besides the focused field is under its ideal —
+/// another field, the callsign, or the gaps and padding. The row's own focus
+/// listener reads it: the focused field renders at its ideal, which only
+/// happens if a focus change rebuilds — and off a row where everything has its
+/// ideal it would be a rebuild that changes nothing.
 ({MainFieldLayout layout, bool squeezed}) resolveMainFieldLayout({
   required List<MainField> fields,
   required double maxWidth,
   required double buttonWidth,
-  required MainFieldFloors floors,
+  required MainFieldMetrics metrics,
+  FieldChars call = callFieldChars,
 }) {
-  final fullPadding = floors.fullPadding;
+  double px(int chars) => mainFieldValueWidth(metrics, chars);
+  final fullPadding = metrics.fullPadding;
   var fullGaps = logButtonGap;
   for (final field in fields) {
     fullGaps += field.gapBefore;
   }
 
-  // Concession 3, solved rather than iterated: the narrowest this row can be
-  // is linear in how much gap and padding it keeps, so the largest fraction
-  // that still fits is one division. 1 — nothing given up — whenever
-  // squeezing the fields alone is enough, which is almost always.
-  final incompressible = buttonWidth + floors.callValue + fields.length * floors.fieldValue;
+  // The gaps and padding, solved rather than iterated: the narrowest this row
+  // can be is linear in how much of them it keeps, so the largest fraction
+  // that still fits is one division. 1 — nothing given up — whenever the mins
+  // fit, which is almost always.
+  var incompressible = buttonWidth + px(call.min);
+  for (final field in fields) {
+    incompressible += px(field.focusNode.hasFocus ? field.chars.ideal : field.chars.min);
+  }
   final compressible = fullGaps + (fields.length + 1) * fullPadding;
   final scale = compressible <= 0 ? 1.0 : ((maxWidth - incompressible) / compressible).clamp(0.0, 1.0);
-
   final padding = fullPadding * scale;
-  final widths = [for (final field in fields) field.minWidth];
-  final reserved = buttonWidth + fullGaps * scale + floors.callValue + padding;
-  var deficit = widths.fold(0.0, (sum, w) => sum + w) - (maxWidth - reserved);
-  final squeezed = deficit > 0;
-  if (deficit <= 0) return (layout: (widths: widths, gapScale: scale, fieldPadding: padding), squeezed: squeezed);
 
-  final floor = floors.fieldValue + padding;
-  final open = {
-    for (var i = 0; i < fields.length; i++)
-      if (!fields[i].focusNode.hasFocus) i,
-  };
-  // Water-filling: an even share each pass, and anything a field that hit
-  // its floor couldn't absorb goes back into the pot for the next one.
-  // Terminates because every pass either clears the deficit or drops a field
-  // out of `open`. A sub-pixel remainder isn't worth another pass.
-  while (deficit > 0.5 && open.isNotEmpty) {
-    final share = deficit / open.length;
-    deficit = 0;
-    for (final i in open.toList()) {
-      // Never above what the field asked for: at a large enough OS text
-      // scale two characters are wider than the declared minimum, and a
-      // "floor" over the ceiling would quietly widen the field instead.
-      final limit = floor < fields[i].minWidth ? floor : fields[i].minWidth;
-      final shrunk = widths[i] - share;
-      if (shrunk <= limit) {
-        deficit += limit - shrunk;
-        widths[i] = limit;
-        open.remove(i);
-      } else {
-        widths[i] = shrunk;
+  // Index 0 is the callsign, the fields follow. Value widths, no padding.
+  final focused = [false, for (final field in fields) field.focusNode.hasFocus];
+  final specs = [call, for (final field in fields) field.chars];
+  final ideals = [for (final spec in specs) px(spec.ideal)];
+  final caps = [for (final spec in specs) spec.max == null ? double.infinity : px(spec.max!)];
+  final widths = [for (var i = 0; i < specs.length; i++) focused[i] ? ideals[i] : px(specs[i].min)];
+  var rest = maxWidth - buttonWidth - fullGaps * scale - specs.length * padding - widths.fold(0.0, (sum, w) => sum + w);
+
+  // Short even with the gaps and padding gone: the fields under their mins,
+  // toward the floor, in proportion to what each has above it.
+  if (rest < 0) {
+    final floor = px(fieldFloorChars);
+    var givable = 0.0;
+    for (var i = 1; i < specs.length; i++) {
+      if (!focused[i]) givable += math.max(0.0, widths[i] - floor);
+    }
+    if (givable > 0) {
+      final share = math.min(1.0, -rest / givable);
+      for (var i = 1; i < specs.length; i++) {
+        if (!focused[i]) widths[i] -= math.max(0.0, widths[i] - floor) * share;
       }
+      rest += givable * share;
     }
   }
-  return (layout: (widths: widths, gapScale: scale, fieldPadding: padding), squeezed: squeezed);
+
+  // 2. The callsign to its ideal.
+  if (rest > 0) {
+    final grow = math.min(rest, ideals[0] - widths[0]);
+    widths[0] += grow;
+    rest -= grow;
+  }
+
+  // 3. The fields to their ideals, in proportion to what each still needs.
+  if (rest > 0) {
+    var needed = 0.0;
+    for (var i = 1; i < specs.length; i++) {
+      needed += ideals[i] - widths[i];
+    }
+    if (needed > 0) {
+      final share = math.min(1.0, rest / needed);
+      for (var i = 1; i < specs.length; i++) {
+        widths[i] += (ideals[i] - widths[i]) * share;
+      }
+      rest -= needed * share;
+    }
+  }
+
+  // 4. Toward the maxes, in proportion to width. Water-filling: a field that
+  // reaches its max gives what it couldn't take back to the next pass. Ends
+  // because every pass either places all of it or caps another field; a
+  // sub-pixel remainder isn't worth another.
+  while (rest > 0.5) {
+    final open = [
+      for (var i = 0; i < specs.length; i++)
+        if (widths[i] < caps[i]) i,
+    ];
+    if (open.isEmpty) break;
+    final total = open.fold(0.0, (sum, i) => sum + widths[i]);
+    var placed = 0.0;
+    var capped = false;
+    for (final i in open) {
+      final grant = rest * widths[i] / total;
+      final take = math.min(grant, caps[i] - widths[i]);
+      if (take < grant) capped = true;
+      widths[i] += take;
+      placed += take;
+    }
+    rest -= placed;
+    if (!capped) break;
+  }
+
+  final squeezed =
+      scale < 1 ||
+      rest < -0.5 ||
+      widths[0] < ideals[0] - 0.5 ||
+      [for (var i = 1; i < specs.length; i++) !focused[i] && widths[i] < ideals[i] - 0.5].any((under) => under);
+  return (layout: (widths: [for (var i = 1; i < specs.length; i++) widths[i] + padding], gapScale: scale, fieldPadding: padding), squeezed: squeezed);
 }
 
 /// What every main logging field does instead of `EditableText`'s default

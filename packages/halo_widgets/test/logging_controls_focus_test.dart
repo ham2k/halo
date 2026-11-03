@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:halo_widgets/src/logging_controls_metrics.dart';
 
 import 'support/logging_controls_harness.dart';
 
@@ -1522,9 +1523,8 @@ void main() {
     }
 
     // Every field the panel can put in the row at once: the two RSTs, a
-    // contest exchange, State and Grid. The exchange is the one that asks for
-    // a DIFFERENT width than the rest (76 against 64), which is what makes
-    // "evenly" below distinguishable from "in proportion".
+    // contest exchange, State and Grid — each with a different min, ideal or
+    // max, which is what lets the order below be told apart.
     Widget crowded() => MaterialApp(
       home: Scaffold(
         body: Column(
@@ -1549,19 +1549,35 @@ void main() {
       ),
     );
 
-    const fixedLabels = ['Sent', 'Rcvd', 'State', 'Grid'];
+    /// Each field's [FieldChars], by label — the ones the row is built with.
+    final chars = <String, FieldChars>{
+      'Their call': callFieldChars,
+      'Sent': rstFieldChars,
+      'Rcvd': rstFieldChars,
+      'State': stateFieldChars,
+      'Grid': gridFieldChars,
+      'Exch': exchangeFieldChars(const {'kind': 'text'}),
+    };
+    const trailing = ['Sent', 'Rcvd', 'State', 'Grid', 'Exch'];
+
+    /// How wide a field of [n] characters is with its padding whole.
+    double px(WidgetTester tester, int n) {
+      final metrics = mainFieldMetrics(tester.element(find.widgetWithText(TextField, 'Sent')));
+      return mainFieldValueWidth(metrics, n) + metrics.fullPadding;
+    }
 
     // The widths below are in TEST-font units, where every glyph is a square
     // of the font size — roughly 1.7x the real face's advance, so the panel
-    // runs out of room sooner here than on screen. 900 is roomy for all five
-    // fields, 540 squeezes them without reaching their floors, 400 is well
-    // past those floors, and 330 is where there is nothing left to give.
+    // runs out of room sooner here than on screen. At 1000 every field is at
+    // its max; at 800 past its ideal; at 700 the callsign has its ideal and
+    // the fields are on their way to theirs; at 670 there is room for any one
+    // field to take its ideal with the padding whole; at 620 the fields are at
+    // their mins and the callsign on its way to its ideal; below about 590 even
+    // the mins don't fit; at 400 the gaps and padding are gone, and below that
+    // the fields go under their mins.
 
     testWidgets('the callsign field always fits at least 6 characters', (tester) async {
-      // Narrow enough that the other fields alone would have eaten the row:
-      // Sent, Rcvd, Exch, State and Grid at their declared widths, plus the
-      // gaps and the log button, is most of this.
-      await pumpAt(tester, 540, at: crowded());
+      await pumpAt(tester, 500, at: crowded());
 
       // 6 characters is a full call with a portable suffix. Measured as the
       // field itself would paint it, so this fails if the minimum silently
@@ -1573,106 +1589,128 @@ void main() {
       );
     });
 
-    testWidgets('with room to spare, every field keeps its declared width', (tester) async {
-      await pumpAt(tester, 900, at: crowded());
-
-      // The squeeze is not always on: a wide panel renders the fields at the
-      // widths they ask for, and the callsign takes everything left over.
-      for (final label in fixedLabels) {
-        expect(widthOf(tester, label), 64, reason: '$label at its declared minimum');
+    testWidgets('with room to spare, every field reaches its max and the callsign takes the rest', (tester) async {
+      await pumpAt(tester, 1000, at: crowded());
+      for (final label in trailing) {
+        expect(widthOf(tester, label), moreOrLessEquals(px(tester, chars[label]!.max!), epsilon: 0.01), reason: '$label at its max');
       }
-      expect(widthOf(tester, 'Exch'), 76, reason: 'an exchange asks for more than an RST');
-      expect(widthOf(tester, 'Their call'), greaterThan(200));
+      expect(widthOf(tester, 'Their call'), greaterThan(px(tester, callFieldChars.ideal) + 100));
     });
 
-    testWidgets('when they do not all fit, the fields give up width evenly', (tester) async {
-      await pumpAt(tester, 540, at: crowded());
+    testWidgets('the callsign reaches its ideal before any field leaves its min', (tester) async {
+      await pumpAt(tester, 620, at: crowded());
+      for (final label in trailing) {
+        expect(widthOf(tester, label), moreOrLessEquals(px(tester, chars[label]!.min), epsilon: 0.01), reason: '$label waits at its min');
+      }
+      expect(widthOf(tester, 'Their call'), greaterThan(px(tester, callFieldChars.min)));
+      expect(widthOf(tester, 'Their call'), lessThan(px(tester, callFieldChars.ideal)));
+    });
 
-      // Evenly means each field gives up the same NUMBER OF PIXELS, not the
-      // same share of what it asked for — so the exchange, which is wider to
-      // begin with, stays wider by exactly as much as it started. A
-      // proportional split would have taken more from it.
-      final givenUp = [for (final label in fixedLabels) 64 - widthOf(tester, label), 76 - widthOf(tester, 'Exch')];
-      expect(givenUp.first, greaterThan(1), reason: 'the row is genuinely short of space here');
-      for (final amount in givenUp) {
-        expect(amount, closeTo(givenUp.first, 0.5));
+    testWidgets('then the fields reach their ideals together, each in proportion to what it needs', (tester) async {
+      await pumpAt(tester, 700, at: crowded());
+      expect(widthOf(tester, 'Their call'), moreOrLessEquals(px(tester, callFieldChars.ideal), epsilon: 0.01));
+
+      // The same fraction of the way there for every field that has a way to
+      // go: an even split in pixels would have the one-character RST arrive
+      // long before the three-character exchange.
+      double progress(String label) {
+        final (:min, :ideal, max: _) = chars[label]!;
+        return (widthOf(tester, label) - px(tester, min)) / (px(tester, ideal) - px(tester, min));
+      }
+
+      expect(progress('Sent'), greaterThan(0.1));
+      expect(progress('Sent'), lessThan(0.9));
+      for (final label in ['Rcvd', 'Grid', 'Exch']) {
+        expect(progress(label), moreOrLessEquals(progress('Sent'), epsilon: 0.01), reason: label);
       }
     });
 
-    testWidgets('the focused field takes its full width back, and its neighbours pay', (tester) async {
-      await pumpAt(tester, 540, at: crowded());
-      final unfocused = widthOf(tester, 'Rcvd');
-      expect(unfocused, lessThan(64), reason: 'the row starts out squeezed');
+    testWidgets('past their ideals the fields grow toward their maxes beside the callsign, the wider getting more', (tester) async {
+      await pumpAt(tester, 800, at: crowded());
+      final sentGrew = widthOf(tester, 'Sent') - px(tester, rstFieldChars.ideal);
+      final callGrew = widthOf(tester, 'Their call') - px(tester, callFieldChars.ideal);
+      expect(sentGrew, greaterThan(1));
+      expect(widthOf(tester, 'Sent'), lessThan(px(tester, rstFieldChars.max!)));
+      expect(callGrew, greaterThan(sentGrew), reason: 'in proportion to width, and the callsign is the widest');
+      expect(widthOf(tester, 'State'), moreOrLessEquals(px(tester, stateFieldChars.max!), epsilon: 0.01), reason: 'a field at its max takes no more');
+    });
 
-      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+    testWidgets('the focused field takes its ideal, and the others pay', (tester) async {
+      await pumpAt(tester, 670, at: crowded());
+      final call = widthOf(tester, 'Their call');
+
+      await tester.tap(find.widgetWithText(TextField, 'Exch'));
       await settleWidths(tester);
 
       // The field you are typing in is worth reading, whatever the row's
       // budget — the ones you are not carry its share.
-      expect(widthOf(tester, 'Sent'), 64);
-      expect(widthOf(tester, 'Rcvd'), lessThan(unfocused));
+      expect(widthOf(tester, 'Exch'), moreOrLessEquals(px(tester, 6), epsilon: 0.01));
+      expect(widthOf(tester, 'Sent'), moreOrLessEquals(px(tester, rstFieldChars.min), epsilon: 0.01));
+      expect(widthOf(tester, 'Their call'), lessThan(call));
 
       // And it gives the width back on the way out.
-      await tester.tap(find.widgetWithText(TextField, 'Exch'));
+      await tester.tap(find.widgetWithText(TextField, 'Sent'));
       await settleWidths(tester);
-      expect(widthOf(tester, 'Exch'), 76);
-      expect(widthOf(tester, 'Sent'), lessThan(64));
+      expect(widthOf(tester, 'Sent'), moreOrLessEquals(px(tester, rstFieldChars.ideal), epsilon: 0.01));
+      expect(widthOf(tester, 'Exch'), lessThan(px(tester, 6)));
     });
 
     testWidgets('a field animates to a new width rather than jumping there', (tester) async {
-      await pumpAt(tester, 540, at: crowded());
-      final before = widthOf(tester, 'Sent');
+      await pumpAt(tester, 670, at: crowded());
+      final before = widthOf(tester, 'Exch');
 
-      await tester.tap(find.widgetWithText(TextField, 'Sent'));
+      await tester.tap(find.widgetWithText(TextField, 'Exch'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 30));
 
       // Caught in flight: past where it started, not yet where it's going.
       // Widths change on every focus move once the row is squeezed, so the
       // row has to follow the keyboard rather than snap at it.
-      final midway = widthOf(tester, 'Sent');
+      final midway = widthOf(tester, 'Exch');
       expect(midway, greaterThan(before), reason: 'it has started moving');
-      expect(midway, lessThan(64), reason: 'it has not arrived in one frame');
+      expect(midway, lessThan(px(tester, 6)), reason: 'it has not arrived in one frame');
 
       await settleWidths(tester);
-      expect(widthOf(tester, 'Sent'), 64, reason: 'and it does arrive');
+      expect(widthOf(tester, 'Exch'), moreOrLessEquals(px(tester, 6), epsilon: 0.01), reason: 'and it does arrive');
     });
 
-    testWidgets('no field is squeezed past two characters of its own value', (tester) async {
-      // Narrower than the fields can honestly fit in, even at their floors.
-      await pumpAt(tester, 400, at: crowded());
-
-      final widths = [
-        for (final label in [...fixedLabels, 'Exch']) widthOf(tester, label),
-      ];
-      for (final (i, label) in [...fixedLabels, 'Exch'].indexed) {
-        expect(widths[i], greaterThanOrEqualTo(paintedWidth(tester, label, 'WW')), reason: '$label still shows two characters');
-        // Two characters is two characters: the floor is the same for every
-        // field, so down here the exchange — which asked for 76 against an
-        // RST's 64 — is exactly as wide as one. Left to the even split alone
-        // it would still be 12pt wider, having simply given up the same
-        // amount from a bigger start.
-        expect(widths[i], closeTo(widths.first, 0.5), reason: '$label is at the same floor as the rest');
+    testWidgets('no field is squeezed past its min in characters of its own value', (tester) async {
+      // Narrower than the mins fit in with their padding.
+      await pumpAt(tester, 450, at: crowded());
+      for (final label in trailing) {
+        final min = chars[label]!.min;
+        expect(widthOf(tester, label), greaterThanOrEqualTo(paintedWidth(tester, label, 'W' * min)), reason: '$label still shows $min characters');
       }
+      expect(widthOf(tester, 'Grid'), greaterThan(widthOf(tester, 'Sent')), reason: 'a four-character min is wider than a three-character one');
     });
 
-    testWidgets('past the floors, the gaps and the fields\' own padding go next', (tester) async {
-      await pumpAt(tester, 500, at: crowded());
+    testWidgets('with the gaps and padding gone, the fields go under their mins before the callsign does', (tester) async {
+      await pumpAt(tester, 370, at: crowded());
+      expect(gapBetween(tester, 'Sent', 'Rcvd'), 0);
+      expect(widthOf(tester, 'Sent'), lessThan(paintedWidth(tester, 'Sent', 'WWW')), reason: 'a min is not a guarantee');
+      for (final label in trailing) {
+        expect(widthOf(tester, label), greaterThanOrEqualTo(paintedWidth(tester, label, 'WW')), reason: '$label stops at two characters');
+      }
+      expect(widthOf(tester, 'Their call'), greaterThanOrEqualTo(paintedWidth(tester, 'Their call', 'W1AW/4')));
+    });
+
+    testWidgets("short of the mins, the gaps and the fields' own padding go next", (tester) async {
+      await pumpAt(tester, 620, at: crowded());
       final roomyGap = gapBetween(tester, 'Sent', 'Rcvd');
       final roomyPadding = innerPadding(tester, 'Sent');
       expect(roomyGap, greaterThan(0));
       expect(roomyPadding, greaterThan(0));
 
-      // Below the point where every field is already at two characters, the
-      // only room left is between and inside them — and it goes gradually,
-      // both together, rather than snapping off at a breakpoint.
-      await pumpAt(tester, 440, at: crowded());
+      // Below the point where every field is at its min, the only room left
+      // is between and inside them — and it goes gradually, both together,
+      // rather than snapping off at a breakpoint.
+      await pumpAt(tester, 540, at: crowded());
       final tightGap = gapBetween(tester, 'Sent', 'Rcvd');
       final tightPadding = innerPadding(tester, 'Sent');
       expect(tightGap, lessThan(roomyGap));
       expect(tightPadding, lessThan(roomyPadding));
 
-      await pumpAt(tester, 400, at: crowded());
+      await pumpAt(tester, 480, at: crowded());
       expect(gapBetween(tester, 'Sent', 'Rcvd'), lessThan(tightGap), reason: 'gradually, not in one step');
       expect(innerPadding(tester, 'Sent'), lessThan(tightPadding));
 
@@ -1685,7 +1723,7 @@ void main() {
       // exposes (`_kInputExtraPadding`), so a value would otherwise stop 8pt
       // short of its own edge with no way to say otherwise; the row cancels it
       // with a negative content padding once it needs to.
-      await pumpAt(tester, 330, at: crowded());
+      await pumpAt(tester, 400, at: crowded());
       expect(gapBetween(tester, 'Sent', 'Rcvd'), 0);
       expect(innerPadding(tester, 'Sent'), 0);
     });

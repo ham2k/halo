@@ -153,38 +153,46 @@ void main() {
     expect(tester.getTopLeft(_fieldFor(h.rcvd.controller)).dx, lessThan(tester.getTopLeft(_fieldFor(h.sent.controller)).dx));
   });
 
-  testWidgets('a squeezed row hands the focused field its width back on its own; a roomy one stays put', (tester) async {
+  testWidgets('a squeezed row hands the focused field its ideal back on its own; a roomy one stays put', (tester) async {
     final h = _Harness()..exchangeKeys = const ['serial'];
-    // Squeezed — five trailing fields want 332px of the 300 — yet wide enough
-    // for any ONE of them at its full minimum beside the others at their
-    // floors, so the row never overflows when the focused one takes it.
-    await tester.pumpWidget(h.host(width: 300));
-    double width(TextEditingController c) => tester.getSize(_fieldFor(c)).width;
-    expect(width(h.sent.controller), lessThan(fixedFieldMinWidth), reason: 'five trailing fields cannot each get their minimum in 300px');
+    await tester.pumpWidget(h.host());
+    final metrics = mainFieldMetrics(tester.element(find.byType(LoggingEntryRow)));
+    double px(int chars) => mainFieldValueWidth(metrics, chars) + metrics.fullPadding;
+    final serial = exchangeFieldChars(const {'kind': 'text'});
+    // Every field at its min and the callsign at its ideal, with a little to
+    // spare: room for any ONE field to take its ideal from the callsign, never
+    // for all of them — so the row is squeezed and never overflows.
+    final mins = [rstFieldChars.min, rstFieldChars.min, serial.min, stateFieldChars.min, gridFieldChars.min];
+    final gaps = logButtonGap + mainFieldGroupGap + mainFieldGap + mainFieldGap + mainFieldGroupGap + mainFieldGroupGap;
+    final width = 44 + gaps + px(callFieldChars.ideal) + mins.fold(0.0, (sum, chars) => sum + px(chars)) + 10;
+    await tester.pumpWidget(h.host(width: width));
+    await tester.pumpAndSettle();
+    double widthOf(TextEditingController c) => tester.getSize(_fieldFor(c)).width;
+    expect(widthOf(h.sent.controller), lessThan(px(rstFieldChars.ideal)), reason: 'the fields cannot all have their ideals here');
 
     // The trap: the widening only happens if the focus change rebuilds the
     // row, and nothing outside it is told about the focus change — for
     // every kind of trailing field, not only the reports.
     h.sent.focus.requestFocus();
     await tester.pumpAndSettle();
-    expect(width(h.sent.controller), fixedFieldMinWidth);
-    expect(width(h.rcvd.controller), lessThan(width(h.sent.controller)), reason: 'the others give up what the focused one takes');
+    expect(widthOf(h.sent.controller), moreOrLessEquals(px(rstFieldChars.ideal), epsilon: 0.01));
+    expect(widthOf(h.rcvd.controller), lessThan(widthOf(h.sent.controller)), reason: 'the others stay short while the focused one has its ideal');
     h.grid.focus.requestFocus();
     await tester.pumpAndSettle();
-    expect(width(h.grid.controller), fixedFieldMinWidth);
-    expect(width(h.sent.controller), lessThan(width(h.grid.controller)));
+    expect(widthOf(h.grid.controller), moreOrLessEquals(px(gridFieldChars.ideal), epsilon: 0.01));
+    expect(widthOf(h.sent.controller), lessThan(px(rstFieldChars.ideal)));
     h.exchange.focusFor('serial').requestFocus();
     await tester.pumpAndSettle();
-    expect(tester.getSize(find.byType(ExchangeField)).width, exchangeFieldMinWidth);
-    expect(width(h.grid.controller), lessThan(fixedFieldMinWidth));
+    expect(tester.getSize(find.byType(ExchangeField)).width, moreOrLessEquals(px(serial.ideal), epsilon: 0.01));
+    expect(widthOf(h.grid.controller), lessThan(px(gridFieldChars.ideal)));
 
     await tester.pumpWidget(h.host(width: 780));
     await tester.pumpAndSettle();
     final roomy = h.controlWalks;
     h.sent.focus.requestFocus();
     await tester.pumpAndSettle();
-    expect(h.controlWalks, roomy, reason: 'off a squeezed row a focus change would be a rebuild that changes nothing');
-    expect(width(h.sent.controller), fixedFieldMinWidth);
+    expect(h.controlWalks, roomy, reason: 'off a row where every field has its ideal, a focus change would be a rebuild that changes nothing');
+    expect(widthOf(h.sent.controller), greaterThanOrEqualTo(px(rstFieldChars.ideal)));
   });
 
   testWidgets('Enter in a field asks to log and leaves the field focused', (tester) async {
