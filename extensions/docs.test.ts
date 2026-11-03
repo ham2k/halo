@@ -342,6 +342,12 @@ const VOICE_RULES: { name: string; pattern: RegExp; why: string }[] = [
   { name: "a comparison with another app", pattern: /\b(PoLo|app-polo|web-lofi|polo)\b/i, why: "the pages describe this app" },
   { name: "a status marker", pattern: /[✅🔜🚧⏳]/u, why: "every page describes what ships" },
   {
+    name: "a British spelling",
+    pattern:
+      /\b(colours?|honoured|honours?|behaviours?|recognis(e|es|ed|ing)|organis(e|es|ed|ing)|normalis(e|es|ed|ing)|customis(e|es|ed|ing)|centres?|labelled|labelling|licences?|cancelled|cancelling|grey|programmes?|catalogue|favourite|favours?|neighbours?)\b/i,
+    why: "the pages use US spelling: color, behavior, recognize, center, labeled, license, canceled, gray, program",
+  },
+  {
     name: "history",
     pattern: /\b(used to|previously|historically|not yet implemented|TODO|FIXME)\b|Implemented by:/,
     why: "state the rule as it stands; git blame holds the history",

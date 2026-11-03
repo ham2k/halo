@@ -4,7 +4,10 @@ Three categories move a log in and out of the app. `export` writes a file;
 `adifFields` lets a program add its own fields to every ADIF record a
 contact produces, whoever is writing the file; `adifImport` recovers a
 program's references from an ADIF file someone else wrote. [How hooks
-work](hooks.md) covers registration, keys, priority and `ctx`.
+work](hooks.md) covers registration, keys, priority and `ctx`. Which files
+operators expect, and what goes in them, is in Guidelines,
+[for an activity](guidelines.md#exports) and
+[for a contest](guidelines.md#cabrillo-and-contest-adif).
 
 ## `export`
 
@@ -45,7 +48,7 @@ the hook key and the station callsign with a selection, so different hooks
 and stations stay independent. Prefer `<activationType>-<format>` to a key
 namespace: two extensions offering that type share one settings entry, the
 highest-priority registration supplies its definition, and the others must
-honour it; a program with distinct sponsor requirements uses a distinct type.
+honor it; a program with distinct sponsor requirements uses a distinct type.
 
 **Types and settings.** `getExportTypes` runs without an operation, so
 Settings can list your types before the operator has a matching log:
@@ -74,10 +77,10 @@ operation. Empty templates deliberately suppress text. A definition may
 supply `templateSample: { operation, log }` for the editor's preview.
 
 **How a row looks.** `refType` names the activity the export covers: the
-app slices the file's contacts by it and takes the row's icon and colour
+app slices the file's contacts by it and takes the row's icon and color
 from that activity's own control. `icon` and `color` override that, which is
 how an export claiming no activity asks for a glyph; an icon name that does
-not resolve, or an unreadable colour, falls back to the activity's. An
+not resolve, or an unreadable color, falls back to the activity's. An
 export claiming
 **one** reference of its type (one park's log when the operation activated
 several) names it in `ref`, and the app narrows the slice to the segments
@@ -243,7 +246,7 @@ builds the whole hook, tagging the activation side for you.
 - **A reference the program's pattern rejects is imported anyway**, as
   written. By the time `normalize` runs the file has said whose the
   reference is, so a pattern failure means malformed, not foreign. The
-  decorated reference is labelled invalid, in front of the operator to fix;
+  decorated reference is labeled invalid, in front of the operator to fix;
   discarding it would lose the only text a correction could work from.
   `normalize` repairs what it can (a dashless `us1234` becomes `US-1234`).
 

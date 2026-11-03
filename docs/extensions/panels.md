@@ -5,7 +5,8 @@ app's own QSOs, Info, Spots and Map panes. An extension declares one or
 several, each with its own identity, configuration form and refresh budget,
 and answers each render with a **document** the app draws, or a
 [scene](scenes.md) the app keeps live. [How hooks work](hooks.md) covers
-registration, keys, priority and `ctx`.
+registration, keys, priority and `ctx`. How a panel is expected to look,
+update and be configured is in [Guidelines](guidelines.md#dashboard-panels).
 
 ## `panel`
 
@@ -50,7 +51,7 @@ UI toolkit, by design.
   navigation**. A link the operator taps opens in the OS browser; one the
   document triggers itself is blocked. The no-network rule is enforced by
   content blockers on Apple platforms and a block on Android; where a web
-  view honours neither it still gets no scripts and no navigation, so treat
+  view honors neither it still gets no scripts and no navigation, so treat
   "no network" as a rule your document follows rather than one it is held
   to everywhere. HTML panels do not render where there is no web view
   (Linux, and Windows without the WebView2 runtime), nor on the web build,

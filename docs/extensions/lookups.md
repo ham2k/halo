@@ -1,6 +1,6 @@
 # Lookups
 
-A lookup answers *who is this station*: a name, a location, a licence class,
+A lookup answers *who is this station*: a name, a location, a license class,
 the parks or summits the station is at. Sources register under `lookup`;
 sources whose answer is only true for a contact in progress register under
 `recentContextLookup`; and the app's own orchestrator, registered under
@@ -35,7 +35,7 @@ their raw answers (`callInfo.lookups`), and the whole `qso` and `operation`,
 so a program's source can read `qso.refs` for a hunted reference.
 
 **You return** zero or more records. Each is a `CallInfo` (name, location,
-licence and the rest, in the shape `@ham2k/lib-qson-tools` defines) plus:
+license and the rest, in the shape `@ham2k/lib-qson-tools` defines) plus:
 
 - `source`: who answered, shown beside each field the operator sees.
 - `scope`: `qso` for an answer about **one of the QSO's references** (a
@@ -160,5 +160,5 @@ with its ordinary sign, `"GMT-5"` being five hours behind; the SDK's
 version of the country file the app carries.
 
 The merge itself is a pure function with its own tests, in the app's core
-lookup extension. Where this page and its behaviour disagree, the behaviour
+lookup extension. Where this page and its behavior disagree, the behavior
 is the contract and this page needs fixing.

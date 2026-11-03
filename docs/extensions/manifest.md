@@ -59,7 +59,7 @@ key, and nobody has to run a registry.
 | --- | --- |
 | `category` | Where the Extensions panel groups it: `activity`, `award`, `contest`, `lookup`, `spots` or `dashboard`, in that display order. A value outside the list lands under *Other*. Required in a distributed bundle: without one an extension is treated as part of the app's core, always on and never listed, which is a status only the app's own extensions have. |
 | `icon` | A [Material Design Icons](https://pictogrammers.com/library/mdi/) name (`pine-tree`), or a FontAwesome solid name prefixed `fa-` (`fa-tree`). An unknown name draws a placeholder. |
-| `accentColor` | `#RRGGBB`, the program's own colour; the app tints the extension's icon and its references' chips with it. |
+| `accentColor` | `#RRGGBB`, the program's own color; the app tints the extension's icon and its references' chips with it. |
 | `keywords` | Extra search terms for the panel and the catalog, beyond name and description. |
 | `relevance` | Where, when and for whom the extension matters; below. |
 

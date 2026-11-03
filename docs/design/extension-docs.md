@@ -35,6 +35,8 @@ first is served too.
   service catches it does not.
 - **One term per thing.** The vocabulary below. An agent that reads "the
   host" in one paragraph and "the runtime" in the next looks for two things.
+- **US spelling.** Color, behavior, recognize, center, labeled, license,
+  canceled, gray, program. The guard refuses the British forms in prose.
 - **Short sentences, no ornament.** A reference page is read under pressure,
   by someone who has a failing extension in front of them.
 
@@ -54,7 +56,7 @@ And one that does not, with each reason:
 
 > ~~As of October the lookup pipeline (HALO-752) now settles the guess the
 > way PoLo does — see `resolveGuess.ts` in `extensions/core/lookups`; the
-> old behaviour used to drop the state. 🔜 A future change may revisit
+> old behavior used to drop the state. 🔜 A future change may revisit
 > this.~~
 
 A date, a card reference, a comparison with another app, a repo path, history

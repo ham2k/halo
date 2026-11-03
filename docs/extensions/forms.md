@@ -114,7 +114,7 @@ const result = await host.showForm(
   },
   { operatorCall: "W7ABC" },      // pre-filled state
 )
-if (result) { /* result.operatorCall, result.category */ } else { /* cancelled */ }
+if (result) { /* result.operatorCall, result.category */ } else { /* canceled */ }
 ```
 
 The call completes when the dialog closes, with the submitted values or

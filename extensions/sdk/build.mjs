@@ -188,6 +188,7 @@ const shippedDocs = [
   "templates.md",
   "packaging.md",
   "publishing.md",
+  "guidelines.md",
 ]
 
 /// The suggested AGENTS.md, written once in docs/extensions and shipped at the

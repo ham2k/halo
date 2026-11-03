@@ -117,6 +117,7 @@ in plain functions you can test with the project's own runner.
 | Translating strings, numbers, dates, what the engine lacks | `docs/localization.md` |
 | The `.h2kext` format, the build, keys, API levels | `docs/packaging.md` |
 | The catalog: tokens, channels, review, what the app does after | `docs/publishing.md` |
+| What an activity, a contest or a panel is expected to do: dupes, alerts, prefills, suggestions, exports, themes, settings | `docs/guidelines.md` |
 
 ## What the sandbox is
 
@@ -222,6 +223,9 @@ spots board. `dist/index.d.ts` has the rest.
   carry the versions the build suggested.
 - Nothing you wrote stores a password outside the `account` hook, relies on
   `host.secret()`, or builds a `Liquid` of its own.
+- You have read `docs/guidelines.md` for the shape you built, and the
+  extension does what it lists, or you have told the person which items it
+  leaves out and why.
 - You have exercised every hook you registered against the running app,
   through the dev server or an installed `.h2kext` with Developer Mode on, or
   you have told the person why you could not.

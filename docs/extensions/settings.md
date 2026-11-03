@@ -164,7 +164,7 @@ depend on it, and register everything that does not depend on it first.
 
 ## Field types
 
-The full schema is in [Forms](forms.md). Settings panels add behaviour to a
+The full schema is in [Forms](forms.md). Settings panels add behavior to a
 few:
 
 ### The `list` field type

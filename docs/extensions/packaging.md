@@ -12,7 +12,7 @@ A `.h2kext` is a **zip**:
 ```
 manifest.json     required: identity and capabilities
 index.js          required: your extension, built
-assets/           optional: icons, data, licence text
+assets/           optional: icons, data, license text
 ```
 
 A zip rather than a tarball because the app must read `manifest.json`

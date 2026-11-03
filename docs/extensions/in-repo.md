@@ -242,7 +242,7 @@ halo-ext invoke ref:pota decorateRef --args '{"ref":{"type":"pota","ref":"US-123
   except `account set`, which creates it.
 - **It has no log, no UI, no app translations and no sync**: `getOperation`
   and `getQsos` answer from what you passed and nothing else; `showForm`
-  answers cancelled and status-bar calls are printed to stderr;
+  answers canceled and status-bar calls are printed to stderr;
   `host.translate` answers null; `syncTransport` is a stateful loop the app
   owns, not a one-shot call. Its `getSpots` board is every spot handed to it,
   never annotated, since there is no operator.

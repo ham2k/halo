@@ -9,7 +9,8 @@ suggestions, `ref:<type>` for what one kind of reference means, and
 `dataFile` for an offline list. Most award programs need almost none of it
 written by hand: the `referenceActivity` factory builds the lot from one
 description. [How hooks work](hooks.md) covers registration, keys, priority
-and `ctx`.
+and `ctx`. What operators expect an award program and a contest to do with
+all of this is in [Guidelines](guidelines.md#activities).
 
 ## The `referenceActivity` factory
 
@@ -53,7 +54,7 @@ defineExtension({
 | `key` | Your extension key. It prefixes the control keys (`w7abc-lakes/activation`); two extensions keying controls under one prefix share a serial counter. The scope words in the activity search come from the reference types and the extension key itself |
 | `label` | The short program name on the control and in ADIF's `MY_SIG` |
 | `activationType` | The reference type an operation carries while activating |
-| `huntingType` | The type a contact carries for a reference the other station was at. Omit it for an award that recognises only activations; with it the logging panel gains a per-QSO control and exports carry `SIG`/`SIG_INFO` |
+| `huntingType` | The type a contact carries for a reference the other station was at. Omit it for an award that recognizes only activations; with it the logging panel gains a per-QSO control and exports carry `SIG`/`SIG_INFO` |
 | `splitRecordsPerHuntedRef` | Whether a contact hunting several references is submitted as one ADIF record per reference |
 | `referenceRegex` | What a code looks like; a value that fails it is flagged, never refused |
 | `icon`, `color` | The control's glyph and accent |
@@ -171,7 +172,7 @@ different validation:
   set by the factory, and the app does not read it yet.
 - **A `form` control prompts on add.** Tapping one of its suggestions saves
   the reference and then opens the form over it, because a contest that has
-  not been set up cannot score. Cancelling leaves the activity added and
+  not been set up cannot score. Canceling leaves the activity added and
   unconfigured. So the suggestion must carry its own `label`, `shortLabel`
   and `program`, since the cancel path never reaches `decorateRef`; and
   `decorateRef` runs on whatever the form submits, merged with the
@@ -186,7 +187,7 @@ station defaults.
 
 - **With no `searchTerm`**, answer what is nearby, with a `distance` from
   the given `location`. When the operator pans the results map the app asks
-  again with the view as `bounds` and its centre as `location`: answer with
+  again with the view as `bounds` and its center as `location`: answer with
   **every** reference inside the view, not the nearest few, or the corners
   stay empty however far they pan. `nearbyLookupRows` from the SDK reads
   either case for you, through `host.dbLookupSelectInBounds` for a view

@@ -7,6 +7,8 @@ the radio's live readings. The app draws it and keeps it live itself. Your
 extension renders a scene when something changes and answers `onEvent` when
 the operator uses a control; a value moving under a binding, a local control
 and an animation frame cost no bridge call at all.
+[Guidelines](guidelines.md#dashboard-panels) says when a panel should be a
+scene, and how one takes its colors from the app and offers its own.
 
 ```ts
 return { kind: "scene", scene, title?, triggers? }
@@ -67,7 +69,7 @@ call.
 **Text layers** are the typography path; SVG `<text>` is not portable through
 the renderer. A text layer takes a `literal` or a bound `value` (a number
 or a string name), `size`, `color`, `fontFamily`, `fontWeight`,
-`lineHeight`, `letterSpacing`, and a `glow` colour that draws a soft halo
+`lineHeight`, `letterSpacing`, and a `glow` color that draws a soft halo
 for legibility over busy artwork. Numeric text formats locally with
 `scale`, `truncate`, `modulo` and `minIntegerDigits`; `samples` may hold
 numbers or preformatted strings. A frequency readout binds its digit groups
@@ -364,7 +366,7 @@ the control says why instead. Placed like a native control, it takes:
 - `floor`, `range`, `average` (0 to 99, default 40), `fps` (default 15),
   `waterfallSpeed`, `waterfallFloor`, `waterfallRange`: numbers, or the names
   of scene values read on every sweep.
-- Colours (`#RRGGBB` or `#AARRGGBB`): `palette` or `waterfallColors`,
+- Colors (`#RRGGBB` or `#AARRGGBB`): `palette` or `waterfallColors`,
   `traceColor`/`traceWidth`, `fillColor`/`fillColorBottom`,
   `backgroundColor`, `gridColor`/`gridDashed`, `waterfallGridColor`.
 - `center`: the tuned-frequency line, styled per part; `overlays`: up to 16
@@ -377,14 +379,14 @@ the control says why instead. Placed like a native control, it takes:
 - `span`: Hz shown across the control, from the middle of each sweep, a
   number or a scene value. A wider sweep is cropped to it, so a radio whose
   scope comes in a few fixed widths can be shown at any narrower one; set the
-  scope to the narrowest that covers it, and everything is drawn, labelled
+  scope to the narrowest that covers it, and everything is drawn, labeled
   and clicked on the window shown. Where the radio's `spectrum` says
   `autoSpan` (API 12) the app sizes the scope itself to the narrowest span
   covering the widest `span` on screen, so a panel there names its width
   here and leaves `setRadioSpectrum`'s `spanHz` alone.
 - `follow` (0 to 0.45): keeps the tuned frequency at least this share of the
   width from either edge by moving the radio's scope just far enough, so the
-  picture scrolls with the dial rather than jumping to centre it. Only where
+  picture scrolls with the dial rather than jumping to center it. Only where
   the radio lets the app place its scope and the panel declares
   `requiresRadioWrite`; elsewhere it changes nothing.
 - `annotations`: up to 64 pieces of text at frequencies, each with a pointer.

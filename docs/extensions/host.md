@@ -179,7 +179,7 @@ app), make it a constant.
 ### `host.showForm(form, state?)`
 
 Opens a dialog from a [form definition](forms.md) with `state` pre-filled
-and resolves with the submitted values, or `null` when cancelled. A dialog is
+and resolves with the submitted values, or `null` when canceled. A dialog is
 one extension's at a time: while another extension's dialogs are up, yours
 waits for them to close. You may have **3 open**, one over the other, **3
 waiting**, and open **10 a minute**; past any of these the call throws. (A
@@ -268,7 +268,7 @@ are read back through four calls. Each row is a `LookupRow`:
 | `dbLookupSelectOne(category, key)` | One row by key, or `null` |
 | `dbLookupSelectAll(category, query, subCategory?, activeOnly?)` | Rows matching `query` on key and name, the first 100 found. `subCategory` filters in the query, which matters because of that cap: a common word matches thousands of rows worldwide, and filtering afterwards can empty an already-truncated set. `activeOnly` drops rows whose `flags` is 0, the convention for a reference its program has retired |
 | `dbLookupSelectByLocation(category, lat, lon, delta, activeOnly?)` | Rows within `delta` degrees of a point |
-| `dbLookupSelectInBounds(category, bounds, { activeOnly?, limit? })` | Every row inside `{ south, west, north, east }`, nearest the centre first, at most `limit` (default 500, never past 1,000); `west` past `east` is a box across the antimeridian. Only an app that sends `SuggestArgs.bounds` answers it, so call it only when `bounds` arrived |
+| `dbLookupSelectInBounds(category, bounds, { activeOnly?, limit? })` | Every row inside `{ south, west, north, east }`, nearest the center first, at most `limit` (default 500, never past 1,000); `west` past `east` is a box across the antimeridian. Only an app that sends `SuggestArgs.bounds` answers it, so call it only when `bounds` arrived |
 
 The SDK's `nearbyLookupRows` reads either the point or the bounds case for
 a `suggest` hook, and the `referenceActivity` factory uses it for you.

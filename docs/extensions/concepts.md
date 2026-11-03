@@ -64,14 +64,14 @@ out and warn.
 and only on a change. `onHide` also fires as activation completes if the app
 is hidden by then, so an extension always learns the state it starts in; one
 whose activation failed hears neither, and the timers it set while
-activating are cancelled. The app does not pause your timers while hidden,
+activating are canceled. The app does not pause your timers while hidden,
 though the platform may; work worth doing only while someone can see it
 stops and starts here.
 
 **The runtime restarts** whenever the set of running extensions changes: an
 extension installed, updated, enabled or disabled. A restart evaluates every
 bundle again and runs every `onActivation` again. Your open sockets are closed
-without an `onclose`, your timers are cancelled, and what you kept in module
+without an `onclose`, your timers are canceled, and what you kept in module
 scope is gone, and so is the key-value store. What the app holds for you
 survives: settings, credentials, panel configuration. Open sockets and set
 timers from `onActivation`, never only from module scope.

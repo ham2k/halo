@@ -6,7 +6,9 @@ duplicate and new-entity rules. A **chasing program** keeps an award's
 checklist across every operation: which entities, parks or states a station
 has worked and confirmed, so the app can rank spots by what working them
 would add. [How hooks work](hooks.md) covers registration, keys, priority
-and `ctx`.
+and `ctx`. The dupe checks and alerts operators expect are in Guidelines,
+[for an activity](guidelines.md#rules-dupes-and-alerts) and
+[for a contest](guidelines.md#dupes-multipliers-and-alerts).
 
 ## `scoring`
 

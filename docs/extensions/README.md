@@ -33,6 +33,39 @@ the catalog reads before deciding where to list it.
 One extension may be several of these at once. POTA is an activity, a lookup
 source, a spot source and destination, an exporter and a settings panel.
 
+Whatever the shape, [Guidelines](guidelines.md) says what operators expect
+of it: the dupe checks, alerts, prefilled fields, suggestions and files an
+activity or a contest offers, and how a panel looks at home in the app.
+
+## What you could build
+
+The app ships with none of these. Each is an extension away:
+
+- **Your region's award program**: lighthouses along a coast, castles,
+  islands of a lake, the trails of a state. A reference list as a
+  `dataFile`, the `referenceActivity` factory, an activation threshold, the
+  program's own submission file, and a spot feed if it has one.
+- **Your club's contest or weekly sprint**: its exchange, its dupe rules,
+  its multipliers, its Cabrillo, and a call history file so the regulars'
+  names and numbers are filled in before they finish sending them.
+- **A state event scored over another program's references**: parks within
+  a state, counted the way the event counts them.
+- **An award checklist**: counties, grid fields, prefixes, provinces,
+  members of a club, worked and confirmed, marked on the spots that would
+  add to it.
+- **A membership lookup**: a club's roster or numbers, from a published
+  list or a service, answering as the operator types the call.
+- **A spot source**: a program's spotting site, a chat channel, a feed the
+  app does not read, and posting back to it.
+- **A dashboard panel**: a contest clock with off-time remaining, the
+  multipliers still needed, beam heading and distance to the station being
+  typed, a gray line, a rate goal, the band plan for the operator's
+  license.
+- **A command**: anything the operator can ask for by typing in the call
+  field.
+- **An export**: a sponsor's own file format, an award application, a QSL
+  service's upload.
+
 ## The smallest extension
 
 ```ts
@@ -89,7 +122,9 @@ Read in this order the first time:
    hook is handed in its context.
 5. [How hooks work](hooks.md), then the reference page for the shape you
    are building.
-6. [Packaging](packaging.md) and [Publishing](publishing.md).
+6. [Guidelines](guidelines.md) for that shape: what operators expect it to
+   do, and the checklist to build against.
+7. [Packaging](packaging.md) and [Publishing](publishing.md).
 
 Writing with a coding agent? Put [AGENTS.md](agents.md) in your project. It
 is the same material, condensed for an agent that reads it before touching
@@ -118,6 +153,7 @@ anything.
 | [Settings panels](settings.md) | `settingsPanel`, placement, field types, reading and writing settings |
 | [Forms](forms.md) | The form schema shared by dialogs and settings |
 | [Templates](templates.md) | Liquid templates, their vocabulary and filters |
+| [Guidelines](guidelines.md) | What operators expect of every extension, and of an activity, a contest, an award checklist and a dashboard panel |
 | [Packaging](packaging.md) | The `.h2kext` format, building, keys, the packer, API levels |
 | [Publishing](publishing.md) | The catalog: tokens, channels, review, screenshots, what the app does after |
 | [AGENTS.md](agents.md) | A file to put in your project for the agent writing your extension |

@@ -50,7 +50,7 @@ logged.
 - `ok: true, skipped: true` means your own rules declined this one (a
   channel whose message template rendered blank). The icon stays neutral
   instead of lighting as sent, no failure is reported, and the Spotting
-  chip's colour counts only the sources that did not skip. A round every
+  chip's color counts only the sources that did not skip. A round every
   source skips is reported to the operator through each source's `message`,
   is never what auto-respotting repeats, and ends an auto-respot.
 - `skipped` without `ok` is a failure.
