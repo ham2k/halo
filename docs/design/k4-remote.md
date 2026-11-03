@@ -73,9 +73,15 @@ Startup selects `K40;K31;`, requests `RDY;` and initial state, and uses AI4
 push updates without periodic idle-state or transmit polling. Meta modes and
 AI are per client. The shared owner requests receiver-specific frequency,
 mode, data submode, passband and high-resolution signal reports, together
-with diversity and Sub enable state. IF supplies global transmit state,
-not receiver frequency or mode. A legacy PC push triggers a PCX read for
-the explicit power range.
+with diversity and Sub enable state. IF supplies the initial global transmit
+state, not receiver frequency or mode. Parameterless `TX;` and `RX;` AI4
+notifications update that same shared state when a paddle, external PTT or
+another client keys or unkeys the radio; `TQ` replies also update it. These
+notifications are receive-side state reports, never commands to key the radio,
+and are not interpreted on the local CAT pairings. QK4's
+[TX/RX handlers](https://github.com/mikeg-dal/QK4/blob/cc3fb6d17f3f2dc29689a413f01affffea9c0e06/src/models/radiostate/rxtxmeterstate.cpp#L118-L130)
+provide the wire behavior reference (GPL-3.0, read for protocol facts only).
+A legacy PC push triggers a PCX read for the explicit power range.
 
 AI4 excludes changes made by this client, so setters read back the affected
 state. Main changes also refresh Sub where the radio can couple their state.
