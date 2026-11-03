@@ -8,6 +8,7 @@
 // js_engine.dart for the conditional-export wiring.
 
 import 'dart:convert';
+import 'dart:math';
 
 class ExtensionBundle {
   final String key;
@@ -22,9 +23,24 @@ class ExtensionBundle {
   const ExtensionBundle({required this.key, required this.source, this.api});
 }
 
+/// A fresh token for the kernel's host bridge: 32 random bytes, hex. The
+/// kernel claims the first one it is handed and refuses every host-only
+/// entry without it, so a bundle — which shares the kernel's realm — cannot
+/// call one. It never reaches a bundle: it lives in this host and in the
+/// kernel's own scope.
+String newBridgeToken() {
+  final random = Random.secure();
+  return [for (var i = 0; i < 32; i++) random.nextInt(256).toRadixString(16).padLeft(2, '0')].join();
+}
+
+/// JS source calling the kernel's host-only [entry] through its bridge, with
+/// [args] as JSON literals.
+String bridgeCall(String token, String entry, [List<Object?> args = const []]) =>
+    '__halo.bridge(${jsonEncode(token)}, ${jsonEncode(entry)}${[for (final arg in args) ', ${jsonEncode(arg)}'].join()})';
+
 /// The kernel's `beginBundle` call for [bundle]: the host declares the key
 /// the bundle may define, and the API level it was built for.
-String beginBundleCall(ExtensionBundle bundle) => '__polo.beginBundle(${jsonEncode(bundle.key)}, ${jsonEncode(bundle.api)})';
+String beginBundleCall(String token, ExtensionBundle bundle) => bridgeCall(token, 'beginBundle', [bundle.key, bundle.api]);
 
 class ExtensionHostException implements Exception {
   final String message;

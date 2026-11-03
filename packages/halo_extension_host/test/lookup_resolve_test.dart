@@ -16,7 +16,7 @@ import 'support/bundles.dart';
 // A callsign source as QRZ answers: the full call resolves to the license's
 // own record, address and all, whatever indicator the call carries.
 const _callbookSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'test-callbook',
   name: 'Test Callbook',
   version: '0.0.1',
@@ -38,7 +38,7 @@ void main() {
     host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [
-        ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
+        bundleFor('lookups'),
         const ExtensionBundle(key: 'test-callbook', source: _callbookSource),
       ],
       useIsolate: false,

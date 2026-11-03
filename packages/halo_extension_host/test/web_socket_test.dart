@@ -33,7 +33,7 @@ String _socketExtension(String key) =>
 var call = null
 var sockets = {}
 var events = []
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Sockets',
   version: '0.0.1',
@@ -41,7 +41,7 @@ __polo.defineExtension({
     call = api.hostCall
     api.registerHook('bench', { key: '$key', hook: {
       open: async function (args) {
-        var id = __polo.registerSocket(function (e) {
+        var id = __halo.registerSocket(function (e) {
           var copy = { socket: args.name }
           for (var k in e) copy[k] = e[k]
           events.push(copy)
@@ -77,7 +77,7 @@ __polo.defineExtension({
 /// An extension that opens a socket under an id it did not register.
 const _intruderExtension = '''
 (function () {
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'intruder',
   name: 'Intruder',
   version: '0.0.1',

@@ -5,7 +5,7 @@
 // actually puts on the wire.
 //
 // This boundary is untyped in both directions — the args map is JSON-encoded
-// into `__polo.invokeHook`, and the extension reads `args?.refreshWebhookToken`.
+// into `__halo.invokeHook`, and the extension reads `args?.refreshWebhookToken`.
 // A renamed or misspelled key is therefore silently falsy on the far side, and
 // the only symptom is that an hour-old webhook token goes into an OAuth
 // `state` and the relay refuses the login. Nothing else in the suite looks at

@@ -123,7 +123,11 @@ JSON message passing; essentially JSON-RPC with cancellation and timeouts.
 
 **Dart → JS:** `invokeHook(category, key, method, argsJson)` with a per-call
 budget (e.g. 2s for lookups, 250ms for command matching). A misbehaving extension
-degrades — it never hangs the app.
+degrades — it never hangs the app. Every such entry goes through a bridge only
+the host holds: it hands the kernel a token before any bundle evaluates, and
+the kernel refuses a call without it. Bundles share the kernel's realm, so an
+entry they could reach would let one extension run another's hooks with that
+extension's account.
 
 **JS → Dart (host API):** a capability-scoped surface, wrapped by the SDK in
 typed functions:

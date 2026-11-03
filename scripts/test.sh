@@ -463,8 +463,9 @@ run_browser_tests() { # [extra flutter test flags…]
     || command -v chromium >/dev/null 2>&1 \
     || command -v chromium-browser >/dev/null 2>&1 \
     || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
-    echo "▶ app: browser-platform tests (web number semantics, platform-view shields, extension store)"
+    echo "▶ app: browser-platform tests (web number semantics, platform-view shields, extension store, extension worker)"
     (cd "$ROOT_DIR/app" && flutter test "$@" --platform chrome test/settings/settings_fuzzy_test.dart test/web/platform_view_shield_web_test.dart test/web/bundle_storage_web_test.dart)
+    (cd "$ROOT_DIR/packages/halo_extension_host" && flutter test "$@" --platform chrome test/engine_runtime_web_test.dart)
   elif [[ "${BROWSER_REQUIRED:-0}" -eq 1 ]]; then
     echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
     exit 1

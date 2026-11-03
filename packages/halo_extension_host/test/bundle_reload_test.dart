@@ -23,7 +23,7 @@ import 'support/bundles.dart';
 /// changed return value. Also round-trips KV, to show what a reload keeps.
 String _versioned(String answer) =>
     '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'reloadable',
   name: 'Reloadable',
   version: '0.0.1',
@@ -41,7 +41,7 @@ var boundHostCall = null
 
 /// A bystander: nothing about a reload of `reloadable` may disturb it.
 const _bystanderSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'bystander',
   name: 'Bystander',
   version: '0.0.1',
@@ -63,7 +63,7 @@ var boundHostCall = null
 /// leave the second one behind.
 String _multiKey(String answer) =>
     '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'multi',
   name: 'Multi',
   version: '0.0.1',
@@ -71,7 +71,7 @@ __polo.defineExtension({
     api.registerHook('bench', { key: 'multi', hook: { answer: async function () { return '$answer' } }})
   },
 })
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'multi-extra',
   name: 'Multi Extra',
   version: '0.0.1',
@@ -184,7 +184,7 @@ void main() {
     });
 
     const fetcher = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'fetcher',
   name: 'Fetcher',
   version: '0.0.1',
@@ -230,7 +230,7 @@ var boundHostCall = null
   test('an omitted domains list leaves the capability as it was', () async {
     final client = MockClient((request) async => http.Response('{}', 200));
     const fetcher = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'fetcher', name: 'Fetcher', version: '0.0.1',
   onActivation: function (api) {
     boundHostCall = api.hostCall

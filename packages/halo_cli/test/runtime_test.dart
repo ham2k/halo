@@ -143,14 +143,14 @@ void main() {
     addTearDown(() => dir.deleteSync(recursive: true));
     File('${dir.path}/kernel.js').writeAsStringSync(index.kernelSource);
     File('${dir.path}/socks.js').writeAsStringSync("""
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'socks',
   name: 'Socks',
   version: '0.0.1',
   onActivation: function (api) {
     api.registerHook('bench', { key: 'socks', hook: {
       open: async function (args) {
-        await api.hostCall('webSocketOpen', { socketId: __polo.registerSocket(function () {}), url: args.url })
+        await api.hostCall('webSocketOpen', { socketId: __halo.registerSocket(function () {}), url: args.url })
         return 'accepted'
       },
     }})

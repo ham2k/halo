@@ -62,7 +62,8 @@ function set(callback: unknown, delay: unknown, repeat: boolean, args: unknown[]
     // Before activation the key is not known here; the kernel names the
     // bundle whose evaluation this happens in.
     const who = preferredKey !== null ? `${preferredKey}: ` : ""
-    ;(globalThis as { __polo?: { log(message: string): void } }).__polo?.log(`ERROR ${who}a timer was ignored: ${why}`)
+    const g = globalThis as { __halo?: { log(message: string): void }; __polo?: { log(message: string): void } }
+    ;(g.__halo ?? g.__polo)?.log(`ERROR ${who}a timer was ignored: ${why}`)
   }
   return 0
 }

@@ -3,7 +3,7 @@
 //
 // @ham2k/extension-sdk — the surface extensions import. Each extension bundle carries
 // its own copy of this module (esbuild bundles it in), while all shared
-// state lives on the kernel singleton at globalThis.__polo. That split is
+// state lives on the kernel singleton at globalThis.__halo. That split is
 // deliberate: the module-scoped `currentExtensionKey` below is per-bundle, which
 // is how host KV calls get namespaced to the extension without extensions having
 // to pass their own key around.
@@ -53,7 +53,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 15
+export const API_VERSION = 16
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -97,12 +97,15 @@ interface KernelApi {
   ): Promise<{ key: string; ok: boolean; value?: unknown; error?: string }[]>
   log(message: string): void
   registerSocket(listener: (event: Record<string, unknown>) => unknown): number
-  socketEvent(socketId: number, eventJson: string): void
   updateInterpretation(input: string, interpretation: Record<string, unknown>): void
   getAccountKvKey(extensionKey: string): string
-  registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>): void
-  unregisterDynamicForm(formId: string): void
-  host: {
+  // The rest are on a kernel before extension API 16, and on `__polo`.
+  /// Delivers a socket event, with the kernel's logging and its guard
+  /// around the listener.
+  socketEvent?(socketId: number, eventJson: string): void
+  registerDynamicForm?(formId: string, extensionKey: string, hookObj: Record<string, unknown>): void
+  unregisterDynamicForm?(formId: string): void
+  host?: {
     showForm(form: FormDefinition, state?: Record<string, any>, extensionKey?: string): Promise<Record<string, any> | null>
   }
 }
@@ -122,9 +125,13 @@ const privilegedHostCalls: Record<string, (method: string, params: Record<string
 /// kernel's public entry, which takes the extension key from here.
 const boundShowForms: Record<string, (form: FormDefinition, state: Record<string, unknown>) => Promise<Record<string, any> | null>> = {}
 
+/// The kernel, as `__halo` — or as `__polo` on an app before extension API
+/// 16, which is all such an app defines. A bundle built with this SDK that
+/// declares an older level still runs there.
 function kernel(): KernelApi {
-  const k = (globalThis as Record<string, unknown>).__polo as KernelApi | undefined
-  if (!k) throw new Error("polo kernel not loaded; kernel.js must be evaluated before extension bundles")
+  const g = globalThis as Record<string, unknown>
+  const k = (g.__halo ?? g.__polo) as KernelApi | undefined
+  if (!k) throw new Error("kernel not loaded; kernel.js must be evaluated before extension bundles")
   return k
 }
 
@@ -230,7 +237,7 @@ function openWebSocket(
   if (typeof kernel().registerSocket !== "function") throw new Error("host.webSocket needs a newer version of HaLo")
   // Registered before the host is asked to connect, so no event can arrive
   // for an id nothing is listening on.
-  const socketId = kernel().registerSocket((event) => {
+  const deliver = (event: Record<string, unknown>) => {
     switch (event.type) {
       case "open":
         // A close asked for while connecting keeps the socket closing.
@@ -248,12 +255,34 @@ function openWebSocket(
         readyState = 3
         return socket.onclose?.({ code: Number(event.code), reason: String(event.reason ?? ""), wasClean: event.wasClean === true })
     }
-  })
+  }
+  const socketId = kernel().registerSocket(deliver)
   call("webSocketOpen", { socketId, url, ...(options?.protocols ? { protocols: options.protocols } : {}) }).catch((e) => {
     // Refused before any connection existed, so the host will send nothing:
-    // the events a browser gives a socket that failed to connect come from here.
-    kernel().socketEvent(socketId, JSON.stringify({ type: "error", message: e instanceof Error ? e.message : String(e) }))
-    kernel().socketEvent(socketId, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
+    // the events a browser gives a socket that failed to connect come from
+    // the kernel from extension API 16, and from here before it, through the
+    // kernel's `socketEvent` when it has one.
+    if (readyState === 3) return
+    const message = e instanceof Error ? e.message : String(e)
+    const k = kernel()
+    if (typeof k.socketEvent === "function") {
+      k.socketEvent(socketId, JSON.stringify({ type: "error", message }))
+      k.socketEvent(socketId, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
+      return
+    }
+    // A handler that throws must not keep `close` from coming, or leave the
+    // refusal unsaid.
+    failed("open")(e)
+    for (const event of [
+      { type: "error", message },
+      { type: "close", code: 1006, reason: "", wasClean: false },
+    ]) {
+      try {
+        Promise.resolve(deliver(event)).catch(failed(`${event.type} handler`))
+      } catch (err) {
+        failed(`${event.type} handler`)(err)
+      }
+    }
   })
   return socket
 }
@@ -545,7 +574,9 @@ export const host = {
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {
     const bound = boundShowForms[currentExtensionKey] ?? Object.values(boundShowForms)[0]
     if (bound) return bound(form, state)
-    return kernel().host.showForm(form, state, currentExtensionKey)
+    const older = kernel().host
+    if (!older) throw new Error("showForm is for an extension's own hooks, after it has activated")
+    return older.showForm(form, state, currentExtensionKey)
   },
 
   statusBar: {

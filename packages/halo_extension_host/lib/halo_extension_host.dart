@@ -10,13 +10,16 @@
 // main isolate, still fully async at the API level.
 //
 // Protocol with the JS side (see extensions/sdk/src/kernel.ts):
-//   Dart → JS   __polo.invokeHook(id, category, key|null, method, argsJson)
-//               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
-//               __polo.invokeHookBatch(id, callsJson, wantsPartials)
-//               __polo.hostResponse(callId, ok, resultJson)
-//               __polo.unloadBundle(key) + beginBundle/eval/endBundle +
-//               __polo.activateReloaded(token)  — the dev loop's reload
-//               __polo.runTimers(), __polo.setAppVisible(visible)
+//   Dart → JS   __halo.claimBridge(token) — once, right after the kernel, so
+//               that every call below is the host's alone. Each goes through
+//               __halo.bridge(token, entry, …args), entry being:
+//               invokeHook(id, category, key|null, method, argsJson)
+//               invokeHookAll(id, category, method, argsJson, wantsPartials)
+//               invokeHookBatch(id, callsJson, wantsPartials)
+//               hostResponse(callId, ok, resultJson)
+//               unloadBundle(key) + beginBundle/eval/endBundle +
+//               activateReloaded(token)  — the dev loop's reload
+//               runTimers(), setAppVisible(visible)
 //   JS → Dart   'polo' channel messages:
 //               {type:'result', id, ok, value|error, jsMillis}
 //                 — the core adds `queueMicros` on the way through: how long

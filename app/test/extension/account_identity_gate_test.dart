@@ -4,7 +4,7 @@
 // Account credentials, settings groups and dynamic forms belong to an identity
 // the kernel derives from which bundle is calling, never to what a host call
 // says. Each test here is one bundle claiming to be another, driven through
-// the REAL kernel by hand-written probe bundles that reach for `__polo`
+// the REAL kernel by hand-written probe bundles that reach for `__halo`
 // directly: the SDK's own wrappers never make these calls, so a test through
 // them would prove nothing about the host. In-runtime composition
 // (`invokeLocal`) is held by halo_extension_host's composition_allowlist_test.
@@ -19,7 +19,7 @@ import '../support/shipped_extensions.dart';
 
 /// Owns an account, and reports what its hooks and forms are handed.
 const victim = r'''
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: 'victim',
     name: 'victim',
     version: '0.0.1',
@@ -51,14 +51,16 @@ const victim = r'''
 ''';
 
 /// Claims the victim's account, forms and traffic every way the public
-/// kernel surface allows.
+/// kernel surface allows. Loaded at extension API 15, so `__polo` answers,
+/// with the caller-named form entries on it.
 const thief = r'''
-  const polo = globalThis.__polo;
-  const originalHostResponse = polo.hostResponse;
+  const polo = globalThis.__halo;
+  const older = globalThis.__polo;
+  const originalDefine = polo.defineExtension;
   const originalQsonTools = polo.sharedModules['@ham2k/lib-qson-tools'];
   const originalParse = JSON.parse;
   let wrapperCalls = 0;
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: 'thief',
     name: 'thief',
     version: '0.0.1',
@@ -75,30 +77,33 @@ const thief = r'''
               case 'boundSetSettings':
                 return await api.hostCall('setSettings', { ns: 'victim', values: { pwned: true } });
               case 'forgedForm':
-                polo.registerDynamicForm('forged', 'victim', { grab: async (a, c) => ({ account: c.account ?? null }) });
+                older.registerDynamicForm('forged', 'victim', { grab: async (a, c) => ({ account: c.account ?? null }) });
                 return null;
               case 'dropForgedForm':
-                polo.unregisterDynamicForm('forged');
+                older.unregisterDynamicForm('forged');
                 return null;
               case 'claimForm':
-                polo.registerDynamicForm('login', 'victim', { grab: async () => ({ owner: 'thief' }) });
+                older.registerDynamicForm('login', 'victim', { grab: async () => ({ owner: 'thief' }) });
                 return null;
               case 'publicUnregister':
-                polo.unregisterDynamicForm('login');
+                older.unregisterDynamicForm('login');
                 return null;
               case 'boundUnregister':
                 api.unregisterDynamicForm('login');
                 return null;
               case 'tamper': {
-                try { globalThis.__polo = { hostResponse() {} }; } catch (e) {}
-                try { polo.hostResponse = function () {}; } catch (e) {}
-                try { polo.host.showForm = async () => null; } catch (e) {}
+                try { globalThis.__halo = { hostResponse() {} }; } catch (e) {}
+                try { polo.defineExtension = function () {}; } catch (e) {}
+                try { older.host.showForm = async () => null; } catch (e) {}
                 try { polo.sharedModules['@ham2k/lib-qson-tools'] = {}; } catch (e) {}
                 try { JSON.parse = (s) => { wrapperCalls++; return originalParse(s); }; } catch (e) {}
+                const wrapped = { parse: (s) => { wrapperCalls++; return originalParse(s); }, stringify: JSON.stringify };
+                try { globalThis.JSON = wrapped; } catch (e) {}
+                try { Object.defineProperty(globalThis, 'JSON', { value: wrapped }); } catch (e) {}
                 return {
-                  frozen: Object.isFrozen(globalThis.__polo),
-                  sameKernel: globalThis.__polo === polo,
-                  hostResponseIntact: polo.hostResponse === originalHostResponse,
+                  frozen: Object.isFrozen(globalThis.__halo) && Object.isFrozen(older) && Object.isFrozen(older.host),
+                  sameKernel: globalThis.__halo === polo,
+                  defineIntact: polo.defineExtension === originalDefine && older.defineExtension === originalDefine,
                   sharedIntact: polo.sharedModules['@ham2k/lib-qson-tools'] === originalQsonTools,
                   jsonIntact: JSON.parse === originalParse,
                 };
@@ -116,8 +121,8 @@ const thief = r'''
   });
 ''';
 
-({String source, ExtensionInfo info}) bundle(String key, String source) =>
-    (source: source, info: ExtensionInfo(key: key, file: '$key.js', source: ExtensionSource.dev, core: true, name: key));
+({String source, ExtensionInfo info}) bundle(String key, String source, {int? api}) =>
+    (source: source, info: ExtensionInfo(key: key, file: '$key.js', source: ExtensionSource.dev, core: api == null, api: api, name: key));
 
 const victimCredentials = {'username': 'v', 'password': 'p'};
 
@@ -133,7 +138,7 @@ void main() {
     extensions = ExtensionService()..settings = settings;
     prepareExtensionServiceForTest(extensions);
     await extensions.setAccountCredentials('victim', victimCredentials);
-    await extensions.setDevBundles({'victim': bundle('victim', victim), 'thief': bundle('thief', thief)});
+    await extensions.setDevBundles({'victim': bundle('victim', victim), 'thief': bundle('thief', thief, api: 15)});
   });
 
   Future<dynamic> call(String who, String probe) =>
@@ -222,7 +227,7 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the kernel can be neither replaced nor rewritten from a bundle, and JSON stays its own', () async {
-    expect(await call('thief', 'tamper'), {'frozen': true, 'sameKernel': true, 'hostResponseIntact': true, 'sharedIntact': true, 'jsonIntact': true});
+    expect(await call('thief', 'tamper'), {'frozen': true, 'sameKernel': true, 'defineIntact': true, 'sharedIntact': true, 'jsonIntact': true});
     // The same runtime answers afterwards, and its traffic crossed no wrapper.
     expect(accountOf(await call('victim', 'account'))['credentials'], victimCredentials);
     expect(await call('thief', 'wrapperCalls'), {'wrapperCalls': 0});

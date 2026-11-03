@@ -37,18 +37,35 @@ final _extensionSources = Directory('../../extensions');
 
 File bundleFile(String key) => File('${_assets.path}/$key.js');
 
-/// The `index.js` of the catalog bundle the app pre-loads as [key], or null
-/// when it pre-loads none. The exact bytes the app installs, so a test through
-/// one exercises what ships rather than a build of the same source.
-String? _preloadedSource(String key) {
+/// The archive of the catalog bundle the app pre-loads as [key], or null when
+/// it pre-loads none.
+Archive? _preloadedArchive(String key) {
   final index = File('${_preloaded.path}/index.json');
   if (!index.existsSync()) return null;
   final entries = (jsonDecode(index.readAsStringSync()) as Map)['preloaded'] as List;
   final entry = entries.cast<Map>().where((e) => e['key'] == key).firstOrNull;
   if (entry == null) return null;
-  final archive = ZipDecoder().decodeBytes(File('${_preloaded.path}/${entry['file']}').readAsBytesSync());
-  final bundle = archive.findFile('index.js');
+  return ZipDecoder().decodeBytes(File('${_preloaded.path}/${entry['file']}').readAsBytesSync());
+}
+
+/// The `index.js` of the catalog bundle the app pre-loads as [key], or null
+/// when it pre-loads none. The exact bytes the app installs, so a test through
+/// one exercises what ships rather than a build of the same source.
+String? _preloadedSource(String key) {
+  final bundle = _preloadedArchive(key)?.findFile('index.js');
   return bundle == null ? null : utf8.decode(bundle.content as List<int>);
+}
+
+/// [key]'s bundle as the app loads it: a pre-loaded catalog bundle at the
+/// extension API level its manifest declares, as the app passes it (an
+/// older one reaches the kernel by its older name), and one built here at the
+/// app's own.
+ExtensionBundle bundleFor(String key) {
+  final source = bundleSource(key);
+  if (bundleFile(key).existsSync() || File('${_fixtures.path}/$key.js').existsSync()) return ExtensionBundle(key: key, source: source);
+  final manifest = _preloadedArchive(key)?.findFile('manifest.json');
+  final api = manifest == null ? null : (jsonDecode(utf8.decode(manifest.content as List<int>)) as Map)['api'] as int?;
+  return ExtensionBundle(key: key, source: source, api: api ?? 0);
 }
 
 final Map<String, String> _sourceCache = {};
@@ -240,10 +257,6 @@ Future<ExtensionHost> sharedHost(List<String> keys, {HostCallHandler? onHostCall
   // loser overwritten in the map and never disposed.
   return _sharedHosts.putIfAbsent(
     id,
-    () => ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [for (final key in keys) ExtensionBundle(key: key, source: bundleSource(key))],
-      onHostCall: onHostCall,
-    ),
+    () => ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [for (final key in keys) bundleFor(key)], onHostCall: onHostCall),
   );
 }

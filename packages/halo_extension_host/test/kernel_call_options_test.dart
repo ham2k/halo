@@ -17,7 +17,7 @@ import 'support/bundles.dart';
 /// A panel that asks for spots and for a call's history with the options its
 /// config carries, and shows what came back or why it did not.
 const _reader = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'option-reader',
   name: 'option-reader',
   version: '0.0.1',

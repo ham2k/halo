@@ -235,7 +235,7 @@ void main() {
     Future<Map<String, dynamic>?> live({List<Map<String, dynamic>>? segments}) async {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
-        extensions: [ExtensionBundle(key: 'k2hrc-cqww', source: bundleSource('k2hrc-cqww'))],
+        extensions: [bundleFor('k2hrc-cqww')],
         // The log as a host serves it: `getQsoChanges` is what the kernel's
         // copy asks, the whole log once and then from its cursor.
         onHostCall: (method, params) async => switch (method) {

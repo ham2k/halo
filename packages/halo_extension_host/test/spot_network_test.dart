@@ -45,10 +45,7 @@ void main() {
     Future<ExtensionHost> hostWithBoth(http.Client client) async {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
-        extensions: [
-          ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota')),
-          ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota')),
-        ],
+        extensions: [bundleFor('ham2k-pota'), bundleFor('ham2k-sota')],
         fetchAllowlists: const {
           'ham2k-pota': ['api.pota.app'],
           'ham2k-sota': ['api-db2.sota.org.uk'],
@@ -135,7 +132,7 @@ void main() {
       });
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
-        extensions: [ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota'))],
+        extensions: [bundleFor('ham2k-sota')],
         fetchAllowlists: const {
           'ham2k-sota': ['api-db2.sota.org.uk'],
         },

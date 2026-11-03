@@ -237,7 +237,7 @@ function installKernel(hostCalls: HostCallStubs, timerRefusals: string[]) {
     if (method.startsWith("dbLookup")) return []
     return null
   }
-  ;(globalThis as Record<string, unknown>).__polo = {
+  ;(globalThis as Record<string, unknown>).__halo = {
     defineExtension: (definition: ExtensionDefinition) => captured.push(definition),
     hostCall: answer,
     log: (message: string) => {
@@ -253,9 +253,6 @@ function installKernel(hostCalls: HostCallStubs, timerRefusals: string[]) {
     },
     updateInterpretation: () => {},
     getAccountKvKey: (extensionKey: string) => extensionKey,
-    registerDynamicForm: () => {},
-    unregisterDynamicForm: () => {},
-    host: { showForm: async () => null },
     sharedModules: {},
     sharedVersions: {},
   }
@@ -300,6 +297,9 @@ export async function loadExtension(importer: () => Promise<unknown>, options: L
     const owner = queue.owner(definition.key)
     await definition.onActivation({
       hostCall: answer,
+      showForm: async () => null,
+      registerDynamicForm: () => {},
+      unregisterDynamicForm: () => {},
       timers: {
         set: (callback, delay, repeat, args) => queue.set(owner, callback, delay, repeat, args),
         clear: (id) => queue.clear(owner, id),

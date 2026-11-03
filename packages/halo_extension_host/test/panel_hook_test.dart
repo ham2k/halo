@@ -18,11 +18,8 @@ void main() {
   /// Its own host per test: the sample keeps each placement's simulated radio
   /// in module state, which a shared host would carry from one test into the
   /// next.
-  Future<ExtensionHost> panelHost() => ExtensionHost.start(
-    kernelSource: bundleSource('kernel'),
-    extensions: [ExtensionBundle(key: 'k2hrc-panel-scenes', source: bundleSource('k2hrc-panel-scenes'))],
-    onHostCall: nullHostCall,
-  );
+  Future<ExtensionHost> panelHost() =>
+      ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('k2hrc-panel-scenes')], onHostCall: nullHostCall);
 
   test('a panel hook advertises its panels, and renders one', () async {
     final host = await panelHost();
@@ -107,7 +104,7 @@ void main() {
   /// registered": activation errors are logged and swallowed by the kernel,
   /// so the real cause is in `host.logs`, not in the failure message.
   const contextualPanelSource = """
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'panel-test-extension',
   name: 'Panel Test Extension',
   version: '0.0.1',

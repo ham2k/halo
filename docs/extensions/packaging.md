@@ -142,7 +142,7 @@ The extension API is numbered, and your manifest's `api` is the **lowest**
 level that has everything you use. An app speaking an older level refuses
 the bundle at install and says so; the catalog offers each app the newest
 release it can run. The SDK's minor version is the level it describes
-(SDK 1.15 is API 15) and `API_VERSION` exports it.
+(SDK 1.16 is API 16) and `API_VERSION` exports it.
 
 | Level | Adds |
 | --- | --- |
@@ -161,6 +161,7 @@ release it can run. The SDK's minor version is the level it describes
 | 13 | A panel's `radio` trigger; the radio's dial among a scene's radio values and strings; `when` on layers and controls |
 | 14 | `host.fyi`: messages on the FYI line under the call info |
 | 15 | `incomplete` on a live scoring verdict: the fields a contact still needs before Enter logs it |
+| 16 | the kernel is `globalThis.__halo`; `__polo`, its name before, answers only once a bundle declaring a lower level is loaded, and only it carries `registerDynamicForm`, `unregisterDynamicForm` and `host.showForm`, which take the extension's key from their caller |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook

@@ -17,15 +17,28 @@ interface Call {
 }
 
 // A stand-in kernel: records host calls, and delivers socket events the way
-// the real one does — through the listener registered under the id.
+// the real one does — through the listener registered under the id. With
+// [kernelDelivers], it fails a refused open itself before rejecting, as the
+// kernel does from extension API 16 for a refusal it sees.
 let calls: Call[]
 let listeners: Map<number, (event: Record<string, unknown>) => unknown>
 let refuseOpen: string | null
 let refuseClose: string | null
-;(globalThis as Record<string, unknown>).__polo = {
+let kernelDelivers: boolean
+let logged: string[]
+;(globalThis as Record<string, unknown>).__halo = {
   hostCall(method: string, params: Record<string, unknown>) {
     calls.push({ method, params })
-    if (method === "webSocketOpen" && refuseOpen) return Promise.reject(new Error(refuseOpen))
+    if (method === "webSocketOpen" && refuseOpen) {
+      const refusal = new Error(refuseOpen)
+      if (!kernelDelivers) return Promise.reject(refusal)
+      return Promise.resolve().then(() => {
+        const listener = listeners.get(params.socketId as number)!
+        listener({ type: "error", message: refusal.message })
+        listener({ type: "close", code: 1006, reason: "", wasClean: false })
+        throw refusal
+      })
+    }
     if (method === "webSocketClose" && refuseClose) return Promise.reject(new Error(refuseClose))
     return Promise.resolve(null)
   },
@@ -34,10 +47,9 @@ let refuseClose: string | null
     listeners.set(id, listener)
     return id
   },
-  socketEvent(socketId: number, eventJson: string) {
-    listeners.get(socketId)?.(JSON.parse(eventJson))
+  log(message: string) {
+    logged.push(message)
   },
-  log() {},
 }
 
 const { host } = await import("./index.ts")
@@ -54,6 +66,8 @@ describe("host.webSocket", () => {
     listeners = new Map()
     refuseOpen = null
     refuseClose = null
+    kernelDelivers = false
+    logged = []
   })
 
   it("asks the host to connect under the id its listener was registered with", () => {
@@ -104,6 +118,42 @@ describe("host.webSocket", () => {
 
     assert.deepEqual(seen, [`error ${refuseOpen}`, "close 1006 false"])
     assert.equal(socket.readyState, 3)
+  })
+
+  it("a refused socket whose onerror throws still closes, and the refusal is logged", async () => {
+    // Delivered one after the other, a throwing onerror would keep close from
+    // coming: the socket connecting forever, and nothing said about why.
+    refuseOpen = "webSocket blocked: too many sockets"
+    const socket = host.webSocket("wss://stream.example.com/feed")
+    socket.onerror = () => {
+      throw new Error("handler bug")
+    }
+    let closed = false
+    socket.onclose = () => {
+      closed = true
+    }
+
+    await settle()
+
+    assert.equal(closed, true)
+    assert.equal(socket.readyState, 3)
+    assert.ok(logged.some((line) => line.includes("too many sockets")))
+    assert.ok(logged.some((line) => line.includes("handler bug")))
+  })
+
+  it("a socket the kernel has already failed hears its error and close once", async () => {
+    // Without the SDK's check, a refusal the kernel delivered is delivered
+    // twice: onclose fires again on a closed socket.
+    refuseOpen = "webSocket: socket 1 is not reserved, or already in use"
+    kernelDelivers = true
+    const socket = host.webSocket("wss://stream.example.com/feed")
+    const seen: string[] = []
+    socket.onerror = (e) => seen.push(`error ${e.message}`)
+    socket.onclose = (e) => seen.push(`close ${e.code} ${e.wasClean}`)
+
+    await settle()
+
+    assert.deepEqual(seen, [`error ${refuseOpen}`, "close 1006 false"])
   })
 
   it("close() checks its code at the caller and goes to closing once", () => {

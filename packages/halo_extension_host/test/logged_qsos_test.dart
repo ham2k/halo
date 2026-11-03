@@ -30,7 +30,7 @@ void main() {
   Future<ExtensionHost> start(Object? Function(Map<String, dynamic> params) changes) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'k2hrc-cqww', source: bundleSource('k2hrc-cqww'))],
+      extensions: [bundleFor('k2hrc-cqww')],
       onHostCall: (method, params) async => method == 'getQsoChanges' ? changes(params) : null,
     );
     addTearDown(host.dispose);

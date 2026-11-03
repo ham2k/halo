@@ -28,11 +28,7 @@ void main() {
   };
 
   setUpAll(() async {
-    host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
-      useIsolate: false,
-    );
+    host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('scoring')], useIsolate: false);
   });
   tearDownAll(() => host.dispose());
 

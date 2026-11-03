@@ -8,11 +8,10 @@
 import { COMPOSABLE_CATEGORIES } from "./hookCategories.ts"
 
 /// Throws unless [category] is one extensions may compose
-/// (COMPOSABLE_CATEGORIES). A bundle reaches `invokeLocal` through `__polo`
+/// (COMPOSABLE_CATEGORIES). A bundle reaches `invokeLocal` on the kernel
 /// whatever SDK it was built with, so the narrowed `hooks.*` types are a
-/// convenience and this is the rule for that entry. The kernel's bridge
-/// entries on `__polo` (`invokeHook`, `invokeHookAll`, `invokeHookBatch`) are
-/// not held to it: they are the host's, but a bundle can reach them too.
+/// convenience and this is the rule for that entry. The host's own way in,
+/// which reaches every category, is its `bridge`, which no bundle can call.
 ///
 /// Compared by hand, never through `Array.prototype.includes` or an iterator:
 /// a bundle shares this realm's intrinsics and can rewrite either to answer

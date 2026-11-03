@@ -56,8 +56,9 @@ import yazl from "yazl"
 /// `radio.status` — `when` on layers and controls, and the `radio` panel
 /// trigger; 14 adds `host.fyi`, messages on the FYI line under the call
 /// info; 15 adds `incomplete` on a live scoring verdict, the fields a
-/// contact still needs before Enter logs it.
-export const H2KEXT_API_VERSION = 15
+/// contact still needs before Enter logs it; 16 names the kernel `__halo`,
+/// and keeps `__polo` only for a bundle that declares a lower level.
+export const H2KEXT_API_VERSION = 16
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -79,6 +80,12 @@ export const CLUSTER_API_VERSION = 10
 /// `requiresRadioRaw` under an older one is refused: an older app would
 /// install it and refuse every raw command it sends.
 export const RADIO_RAW_API_VERSION = 11
+
+/// The first API whose app names the kernel `__halo`. Below it, the app also
+/// answers `__polo`; from it, nothing answers that name for the bundle. A
+/// bundle declaring this level or more whose SDK reaches only `__polo` is
+/// refused at build: it would fail to load on the app it declares.
+export const HALO_GLOBAL_API_VERSION = 16
 
 /// The first API with timers. The build points a bundle's bare `setTimeout`
 /// and friends at the SDK's only from here on: an older app's kernel hands an
@@ -148,7 +155,7 @@ export const ASSETS_PREFIX = "assets/"
 
 /// The libraries the extension host carries, per API version, so a bundle does
 /// not have to ship its own copy of each. The kernel holds one instance and
-/// hands it to every extension through `__polo.sharedModules`.
+/// hands it to every extension through `__halo.sharedModules`.
 ///
 /// NAMES only. The VERSION a given app carries is that build's business, which
 /// is the whole reason a bundle declares a RANGE in `sharedDependencies` and
@@ -189,6 +196,7 @@ SHARED_MODULES_BY_API[12] = SHARED_MODULES_BY_API[11]
 SHARED_MODULES_BY_API[13] = SHARED_MODULES_BY_API[12]
 SHARED_MODULES_BY_API[14] = SHARED_MODULES_BY_API[13]
 SHARED_MODULES_BY_API[15] = SHARED_MODULES_BY_API[14]
+SHARED_MODULES_BY_API[16] = SHARED_MODULES_BY_API[15]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still
@@ -511,7 +519,8 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 }
 
 /// Every library a bundle takes from the host rather than carrying its own
-/// copy — the `globalThis.__polo.sharedModules[...]` lookups its build emitted.
+/// copy — the `sharedModules[...]` lookups on the kernel its build emitted,
+/// under either of the kernel's names.
 ///
 /// Taking them is the supported path and worth roughly thirty times the bundle
 /// size. What the caller checks is that each one was DECLARED: the host carries
@@ -522,7 +531,7 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 /// else's app.
 export function findSharedModuleReferences(source) {
   const hits = []
-  const pattern = /__polo\s*\.\s*sharedModules\s*\[\s*["']([^"']+)["']\s*\]/g
+  const pattern = /__(?:halo|polo)\s*\)?\s*\.\s*sharedModules\s*\[\s*["']([^"']+)["']\s*\]/g
   for (const match of source.matchAll(pattern)) hits.push(match[1])
   return [...new Set(hits)]
 }

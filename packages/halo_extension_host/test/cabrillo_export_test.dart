@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // A contest bundle does not carry a Cabrillo writer. It reaches for the
-// kernel's — `__polo.sharedModules['@ham2k/lib-qson-cabrillo']` — and that seam
+// kernel's — `__halo.sharedModules['@ham2k/lib-qson-cabrillo']` — and that seam
 // is invisible to every test on either side of it:
 //
 //   * a node test of a contest resolves the package from `node_modules` like
@@ -27,14 +27,14 @@ import 'support/bundles.dart';
 /// kernel's shared writer, with this extension supplying only the header
 /// values and each QSO line's exchange columns.
 const _contestSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'cabrillo-contest',
   name: 'Cabrillo Contest',
   version: '0.0.1',
   onActivation: function (api) {
     api.registerHook('export', { key: 'cabrillo-contest', hook: {
       generateExport: async function (args) {
-        var writer = __polo.sharedModules['@ham2k/lib-qson-cabrillo']
+        var writer = __halo.sharedModules['@ham2k/lib-qson-cabrillo']
         var ours = (args.operation.refs || [])[0] || {}
         var content = writer.qsonToCabrillo(args.qsos, {
           headers: [['CONTEST', 'TEST-QP'], ['CALLSIGN', args.operation.stationCall]],

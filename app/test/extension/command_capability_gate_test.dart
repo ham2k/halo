@@ -22,7 +22,7 @@ import '../support/shipped_extensions.dart';
 /// One extension, [key], answering a few words with one action each.
 String probe(String key) =>
     '''
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: '$key',
     name: '$key probe',
     version: '0.0.1',
@@ -36,8 +36,8 @@ String probe(String key) =>
 /// own, `<key>-cmds`, the way `pota` defines `pota-all-parks`.
 String probeWithSub(String key) =>
     '''
-  globalThis.__polo.defineExtension({ key: '$key', name: '$key probe', version: '0.0.1', onActivation() {} });
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({ key: '$key', name: '$key probe', version: '0.0.1', onActivation() {} });
+  globalThis.__halo.defineExtension({
     key: '$key-cmds',
     name: '$key commands',
     version: '0.0.1',

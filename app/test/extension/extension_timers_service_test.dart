@@ -25,7 +25,7 @@ import '../support/halo_test_support.dart';
 const _probe = r'''
 (function () {
 var heard = []
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'dev-timers',
   name: 'Timers probe',
   version: '0.0.1',

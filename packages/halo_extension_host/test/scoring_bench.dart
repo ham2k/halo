@@ -51,11 +51,7 @@ void main() {
   test('benchmark: scoring cost by log size, full pass vs resumed append', () async {
     // Not `sharedHost`: this one measures the engine, so it wants an isolate-free
     // host of its very own, unwarmed by anything another test did.
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('scoring')], useIsolate: false);
     addTearDown(host.dispose);
 
     final start = DateTime.utc(2026, 7, 5, 12);

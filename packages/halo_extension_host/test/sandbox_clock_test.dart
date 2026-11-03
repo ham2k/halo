@@ -129,7 +129,7 @@ void main() {
     final clock = AppClock.instance;
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'templates', source: bundleSource('templates'))],
+      extensions: [bundleFor('templates')],
       clock: ClockTravelState(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed),
     );
     addTearDown(host.dispose);

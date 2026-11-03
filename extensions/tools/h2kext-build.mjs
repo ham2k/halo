@@ -25,7 +25,7 @@ import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
 import vm from "node:vm"
 
-import { H2KEXT_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, sharedModulesFor } from "./h2kext.mjs"
+import { H2KEXT_API_VERSION, HALO_GLOBAL_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, sharedModulesFor } from "./h2kext.mjs"
 
 /// What an extension's own `build.mjs` says, for everything that has to write
 /// one: `h2kext-init`'s scaffold, and the samples the SDK ships.
@@ -160,7 +160,8 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
       }
 
       build.onLoad({ filter: /.*/, namespace: "ham2k-shared-module" }, (args) => ({
-        contents: `module.exports = globalThis.__polo.sharedModules[${JSON.stringify(args.path)}];`,
+        // `__polo` is the kernel's name on an app before extension API 16.
+        contents: `module.exports = (globalThis.__halo ?? globalThis.__polo).sharedModules[${JSON.stringify(args.path)}];`,
         loader: "js",
       }))
     },
@@ -346,6 +347,7 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
     }),
   )
 
+  await checkKernelName({ bundle: join(out, "index.js"), manifest })
   await checkSettingsPanelDeclared({ bundle: join(out, "index.js"), manifest, dir })
 
   // The packer reads both from one directory, so the manifest the bundle was
@@ -376,6 +378,22 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
 /// told the check did not run.
 const ACTIVATION_DEADLINE_MS = 2000
 
+/// Refuses a bundle that declares extension API 16 or more but was built with
+/// an SDK that reaches the kernel only as \`__polo\`, which such an app answers
+/// for nothing that declares that level. The SDK and the tools are separate
+/// packages, so a project can update one and not the other.
+async function checkKernelName({ bundle, manifest }) {
+  const api = manifest.api ?? H2KEXT_API_VERSION
+  if (api < HALO_GLOBAL_API_VERSION) return
+  const source = await readFile(bundle, "utf8")
+  if (source.includes("__halo") || !source.includes("__polo")) return
+  throw new BuildError(
+    `${MANIFEST_ENTRY} declares extension API ${api}, where the app's kernel is \`__halo\`, but this bundle's ` +
+      `@ham2k/extension-sdk reaches it only as \`__polo\`, which the app keeps for bundles declaring a level below ` +
+      `${HALO_GLOBAL_API_VERSION}. Update @ham2k/extension-sdk to 1.${HALO_GLOBAL_API_VERSION} or later, or declare a lower "api".`,
+  )
+}
+
 async function checkSettingsPanelDeclared({ bundle, manifest, dir }) {
   const require = createRequire(resolve(dir, "noop.js"))
   const sharedModules = new Proxy(
@@ -395,23 +413,27 @@ async function checkSettingsPanelDeclared({ bundle, manifest, dir }) {
   )
   const hostCall = async (method) => (method === "getSettings" ? {} : method.startsWith("dbLookup") ? [] : null)
   const definitions = []
+  const kernel = {
+    defineExtension: (definition) => definitions.push(definition),
+    hostCall,
+    log: () => {},
+    invokeLocal: async () => [],
+    invokeLocalSequential: async () => [],
+    updateInterpretation: () => {},
+    getAccountKvKey: (extensionKey) => extensionKey,
+    registerDynamicForm: () => {},
+    unregisterDynamicForm: () => {},
+    host: { showForm: async () => null },
+    sharedModules,
+    sharedVersions: {},
+  }
+  // The names the app answers for the level the manifest declares: `__polo`
+  // only below HALO_GLOBAL_API_VERSION, whose SDKs may predate `__halo`.
   const sandbox = {
     console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
     sendMessage: () => {},
-    __polo: {
-      defineExtension: (definition) => definitions.push(definition),
-      hostCall,
-      log: () => {},
-      invokeLocal: async () => [],
-      invokeLocalSequential: async () => [],
-      updateInterpretation: () => {},
-      getAccountKvKey: (extensionKey) => extensionKey,
-      registerDynamicForm: () => {},
-      unregisterDynamicForm: () => {},
-      host: { showForm: async () => null },
-      sharedModules,
-      sharedVersions: {},
-    },
+    __halo: kernel,
+    ...((manifest.api ?? H2KEXT_API_VERSION) < HALO_GLOBAL_API_VERSION ? { __polo: kernel } : {}),
   }
   sandbox.globalThis = sandbox
 

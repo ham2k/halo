@@ -7,7 +7,7 @@
 // the UI thread — mirroring the isolate used natively. The worker is built
 // at runtime from a Blob URL (bundle sources are only known at runtime, not
 // static asset paths) and speaks the same 'polo' protocol as kernel.ts,
-// just over postMessage instead of the native `sendMessage` global.
+// just over a private MessagePort instead of the native `sendMessage` global.
 //
 // The bootstrap script below loads bundle sources via indirect `eval` and
 // the worker itself is constructed from a `blob:` URL. A Content-Security-
@@ -28,17 +28,47 @@ import 'engine_runtime.dart';
 const bool runningOnWeb = true;
 
 const _bootstrapJs = r'''
-let ready = false;
-// Captured before any bundle evaluates: raw postMessage is the web
-// equivalent of the native `sendMessage` global — left reachable, any
-// extension could forge protocol messages. The kernel captures and removes
-// `sendMessage` itself; this closes the underlying worker channel too.
-const rawPostMessage = self.postMessage.bind(self);
+// All of it inside one function: a bundle is evaluated with indirect eval, in
+// the worker's global scope, where every top-level name of a classic script
+// is in reach — a bundle could call this glue's own send and dispatch by
+// name, and put any message on the wire as any extension. Strict, so that a
+// function of this glue that ever reaches a bundle carries no readable
+// `arguments` or `caller`: the load message, token and port included.
+(function () {
+'use strict';
+// Dart's side of the conversation is a MessageChannel port that arrives with
+// the load message, held here and nowhere else. The worker's own channel is
+// not private: any bundle can add a 'message' listener to `self` and read
+// what the host sends — host results, other extensions' credentials
+// included — or post to the host through DedicatedWorkerGlobalScope's
+// prototype. So the host listens only to the port, and this glue only to the
+// port once loaded.
+let port = null;
+// The port's own postMessage, bound in onLoad before any bundle evaluates:
+// `port.postMessage(...)` looks the method up on MessagePort.prototype at
+// every call, and a bundle that replaced it there would be handed the port.
+let portPost = null;
+// A message's `data`, read through the platform's own getter: `e.data` looks
+// it up on MessageEvent.prototype, where a bundle's getter would read every
+// message the host sends.
+const dataOf = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data').get);
+// The host bridge's token, from the load message: what lets this glue call
+// the kernel's host-only entries, which no bundle can.
+let token = null;
+let kernel = null;
+function bridge(entry, a, b, c, d, e) {
+  return kernel.bridge(token, entry, a, b, c, d, e);
+}
+function post(payload) {
+  portPost(JSON.stringify(payload));
+}
+// The kernel captures this and removes it from the global before any bundle
+// evaluates.
 self.sendMessage = function (channel, message) {
   // `message` is already JSON (kernel.ts's post() calls JSON.stringify
   // before handing it to us) — parse it back so the envelope below only
   // stringifies it once instead of double-escaping the whole payload.
-  rawPostMessage(JSON.stringify({ kind: 'polo', message: JSON.parse(message) }));
+  post({ kind: 'polo', message: JSON.parse(message) });
 };
 // What a busy span is charged to — the labels the native core uses, as far
 // as the worker can tell them apart (it never learns a host call's method).
@@ -75,6 +105,7 @@ function busyLabel(msg) {
 // every later span would land in the past and be dropped.
 const realDateNow = Date.now.bind(Date);
 const spanCloser = new MessageChannel();
+const closeSpan = spanCloser.port2.postMessage.bind(spanCloser.port2, null);
 let spanStart = null;
 let spanStartMono = 0;
 let spanLabel = 'message';
@@ -83,12 +114,12 @@ let spanLabel = 'message';
 // while the span's time had not reached Dart yet.
 let pongOwed = false;
 function pong() {
-  rawPostMessage(JSON.stringify({ kind: 'polo', message: { type: 'pong' } }));
+  post({ kind: 'polo', message: { type: 'pong' } });
 }
 spanCloser.port1.onmessage = function () {
   const length = performance.now() - spanStartMono;
   if (length > 0) {
-    rawPostMessage(JSON.stringify({ kind: 'busy', start: Math.round(spanStart * 1000), end: Math.round((spanStart + length) * 1000), label: spanLabel }));
+    post({ kind: 'busy', start: Math.round(spanStart * 1000), end: Math.round((spanStart + length) * 1000), label: spanLabel });
   }
   spanStart = null;
   if (pongOwed) {
@@ -96,9 +127,10 @@ spanCloser.port1.onmessage = function () {
     pong();
   }
 };
-self.onmessage = function (e) {
+function onPortMessage(e) {
   // Never a span of its own, or every heartbeat would read as busy time.
-  if (e.data === '{"kind":"ping"}') {
+  const data = dataOf(e);
+  if (data === '{"kind":"ping"}') {
     if (spanStart === null) pong();
     else pongOwed = true;
     return;
@@ -110,52 +142,62 @@ self.onmessage = function (e) {
     spanLabel = 'message';
   }
   try {
-    const msg = JSON.parse(e.data);
+    const msg = JSON.parse(data);
     if (opens) spanLabel = busyLabel(msg);
     handleMessage(msg);
   } finally {
-    if (opens) spanCloser.port2.postMessage(null);
+    if (opens) closeSpan();
   }
-};
-function handleMessage(msg) {
-  if (!ready) {
-    if (msg.kind !== 'load') return;
-    try {
-      (0, eval)(msg.kernelSource);
-      try {
-        self.postMessage = function () { throw new Error('the raw worker channel is kernel-private'); };
-      } catch (err) { /* not shadowable: nothing more we can do */ }
-      if (msg.clock) {
-        self.__polo.setClockTravel(msg.clock.anchorRealMillis, msg.clock.anchorVirtualMillis, msg.clock.speed);
-      }
-      for (const bundle of msg.bundles) {
-        self.__polo.beginBundle(bundle.key, bundle.api);
-        (0, eval)(bundle.source);
-        self.__polo.endBundle();
-      }
-      self.__polo.activateAll();
-      ready = true;
-      rawPostMessage(JSON.stringify({ kind: 'ready' }));
-    } catch (err) {
-      rawPostMessage(JSON.stringify({ kind: 'initError', error: String((err && err.stack) || err) }));
+}
+// The one message the worker's own channel carries. Removed before anything
+// else runs, so no later message there — a bundle's synthetic one included —
+// reaches this glue.
+function onLoad(e) {
+  self.removeEventListener('message', onLoad);
+  port = e.ports[0];
+  portPost = port.postMessage.bind(port);
+  // Set now, while MessagePort.prototype's `onmessage` setter is still the
+  // platform's: set after the bundles, it could be one of theirs, handed
+  // the port. Nothing arrives on it before `ready`.
+  port.onmessage = onPortMessage;
+  const msg = JSON.parse(e.data);
+  token = msg.token;
+  try {
+    (0, eval)(msg.kernelSource);
+    kernel = self.__halo;
+    // Before any bundle: the first claim is the only one the kernel accepts.
+    kernel.claimBridge(token);
+    if (msg.clock) {
+      bridge('setClockTravel', msg.clock.anchorRealMillis, msg.clock.anchorVirtualMillis, msg.clock.speed);
     }
-    return;
+    for (const bundle of msg.bundles) {
+      bridge('beginBundle', bundle.key, bundle.api);
+      (0, eval)(bundle.source);
+      bridge('endBundle');
+    }
+    bridge('activateAll');
+    post({ kind: 'ready' });
+  } catch (err) {
+    post({ kind: 'initError', error: String((err && err.stack) || err) });
   }
+}
+self.addEventListener('message', onLoad);
+function handleMessage(msg) {
   switch (msg.kind) {
     case 'invoke':
-      self.__polo.invokeHook(msg.id, msg.category, msg.key, msg.method, msg.argsJson);
+      bridge('invokeHook', msg.id, msg.category, msg.key, msg.method, msg.argsJson);
       break;
     case 'invokeAll':
-      self.__polo.invokeHookAll(msg.id, msg.category, msg.method, msg.argsJson, msg.wantsPartials);
+      bridge('invokeHookAll', msg.id, msg.category, msg.method, msg.argsJson, msg.wantsPartials);
       break;
     case 'invokeBatch':
-      self.__polo.invokeHookBatch(msg.id, msg.callsJson, msg.wantsPartials);
+      bridge('invokeHookBatch', msg.id, msg.callsJson, msg.wantsPartials);
       break;
     case 'hostResponse':
-      self.__polo.hostResponse(msg.callId, msg.ok, msg.resultJson);
+      bridge('hostResponse', msg.callId, msg.ok, msg.resultJson);
       break;
     case 'socketEvent':
-      self.__polo.socketEvent(msg.socketId, msg.eventJson);
+      bridge('socketEvent', msg.socketId, msg.eventJson);
       break;
     case 'reload':
       // The dev loop's per-extension reload. Mirrors engine_runtime_io's
@@ -163,41 +205,41 @@ function handleMessage(msg) {
       // source that throws part-way can't leave it open and get every later
       // definition refused.
       try {
-        self.__polo.unloadBundle(msg.key);
-        self.__polo.beginBundle(msg.key, msg.api);
+        bridge('unloadBundle', msg.key);
+        bridge('beginBundle', msg.key, msg.api);
         try {
           (0, eval)(msg.source);
         } finally {
-          self.__polo.endBundle();
+          bridge('endBundle');
         }
-        self.__polo.activateReloaded(msg.key, msg.token);
+        bridge('activateReloaded', msg.key, msg.token);
       } catch (err) {
-        self.sendMessage('polo', JSON.stringify({
-          type: 'reloadComplete',
-          token: msg.token,
-          ok: false,
-          error: String((err && err.stack) || err),
-        }));
+        post({
+          kind: 'polo',
+          message: { type: 'reloadComplete', token: msg.token, ok: false, error: String((err && err.stack) || err) },
+        });
       }
       break;
     case 'runTimers':
-      self.__polo.runTimers();
+      bridge('runTimers');
       break;
     case 'setAppVisible':
-      self.__polo.setAppVisible(msg.visible);
+      bridge('setAppVisible', msg.visible);
       break;
     case 'invalidateContext':
-      self.__polo.invalidateContext();
+      bridge('invalidateContext');
       break;
     case 'setClockTravel':
-      self.__polo.setClockTravel(msg.anchorRealMillis, msg.anchorVirtualMillis, msg.speed);
+      bridge('setClockTravel', msg.anchorRealMillis, msg.anchorVirtualMillis, msg.speed);
       break;
   }
 }
+})();
 ''';
 
 class _WebWorkerEngineRuntime implements EngineRuntime {
   web.Worker? _worker;
+  web.MessagePort? _port;
   String? _blobUrl;
   void Function(Map<String, dynamic>)? _onMessage;
   void Function(String)? _onFatalError;
@@ -229,8 +271,13 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
     final worker = web.Worker(url.toJS);
     _worker = worker;
 
+    // Everything after the load travels on this channel's port, which only
+    // the bootstrap's closure holds: the worker's own channel is open to
+    // every bundle in it, both ways (see the bootstrap).
+    final channel = web.MessageChannel();
+    _port = channel.port1;
     final ready = Completer<void>();
-    web.EventStreamProviders.messageEvent.forTarget(worker).listen((event) {
+    web.EventStreamProviders.messageEvent.forTarget(channel.port1).listen((event) {
       final data = (event.data as JSString).toDart;
       final msg = jsonDecode(data) as Map<String, dynamic>;
       switch (msg['kind']) {
@@ -245,6 +292,9 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
           if (msg case {'start': int start, 'end': int end, 'label': String label}) _onBusySpan?.call(start, end, label);
       }
     });
+    // A port listened to through addEventListener delivers nothing until
+    // started; `onmessage` would start it implicitly.
+    channel.port1.start();
     web.EventStreamProviders.errorEvent.forTarget(worker).listen((event) {
       if (!ready.isCompleted) {
         ready.completeError(ExtensionHostException('worker failed to load'));
@@ -256,16 +306,20 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
       }
     });
 
-    _send({
-      'kind': 'load',
-      'kernelSource': kernelSource,
-      'bundles': [
-        for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
-      ],
-      // Applied by the bootstrap between the kernel and the bundles, so the
-      // sandbox's Date is already on the app's clock when they evaluate.
-      if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},
-    });
+    worker.postMessage(
+      jsonEncode({
+        'kind': 'load',
+        'token': newBridgeToken(),
+        'kernelSource': kernelSource,
+        'bundles': [
+          for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
+        ],
+        // Applied by the bootstrap between the kernel and the bundles, so the
+        // sandbox's Date is already on the app's clock when they evaluate.
+        if (!clock.isReal) 'clock': {'anchorRealMillis': clock.anchorRealMillis, 'anchorVirtualMillis': clock.anchorVirtualMillis, 'speed': clock.speed},
+      }).toJS,
+      [channel.port2].toJS,
+    );
     // On failure, _HostCore.init disposes us before rethrowing.
     await ready.future.timeout(const Duration(seconds: 30));
   }
@@ -311,7 +365,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void ping() {
     // Matched by the bootstrap as this exact string.
-    _worker!.postMessage('{"kind":"ping"}'.toJS);
+    _port!.postMessage('{"kind":"ping"}'.toJS);
   }
 
   @override
@@ -330,7 +384,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   void _send(Map<String, dynamic> payload) {
-    _worker!.postMessage(jsonEncode(payload).toJS);
+    _port!.postMessage(jsonEncode(payload).toJS);
   }
 
   @override
@@ -341,6 +395,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
 
   @override
   void dispose() {
+    _port?.close();
     _worker?.terminate();
     final url = _blobUrl;
     if (url != null) web.URL.revokeObjectURL(url);

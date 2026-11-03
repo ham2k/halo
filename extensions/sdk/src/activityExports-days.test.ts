@@ -33,7 +33,7 @@ const extension = await loadExtension(async () => {
 })
 
 const delegated: Record<string, unknown>[] = []
-const kernel = (globalThis as unknown as { __polo: Record<string, unknown> }).__polo
+const kernel = (globalThis as unknown as { __halo: Record<string, unknown> }).__halo
 kernel.invokeLocal = async (_category: string, _method: string, args: Record<string, unknown>) => {
   delegated.push(args)
   return [{ key: "adif", ok: true, value: { content: "<EOH>\n" } }]

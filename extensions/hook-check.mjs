@@ -67,7 +67,7 @@ function sandboxFor(kernelStub) {
     // The QuickJS host's bridge primitive. The kernel logs through it while
     // being evaluated, so it has to exist before the first line runs.
     sendMessage: () => {},
-    __polo: kernelStub,
+    __halo: kernelStub,
   }
   sandbox.globalThis = sandbox
   return vm.createContext(sandbox)
@@ -75,12 +75,12 @@ function sandboxFor(kernelStub) {
 
 /// The real kernel, evaluated once — only to borrow the shared libraries it
 /// publishes. Extension bundles resolve `@ham2k/lib-*` through
-/// `__polo.sharedModules` (build-config.mjs externalizes them), so a stub that
+/// `__halo.sharedModules` (build-config.mjs externalizes them), so a stub that
 /// did not carry them could not evaluate a single bundle.
 async function sharedModulesFrom(outDir) {
   const context = sandboxFor(undefined)
   vm.runInContext(await readFile(join(outDir, "kernel.js"), "utf8"), context, { filename: "kernel.js" })
-  return context.__polo.sharedModules
+  return context.__halo.sharedModules
 }
 
 /// Evaluates and activates one bundle, returning what it registered:

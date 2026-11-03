@@ -21,7 +21,7 @@ String _probe(String key) =>
     '''
 (function () {
 'use strict'
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Log probe',
   version: '0.0.1',
@@ -50,7 +50,7 @@ String _scorer(String key) =>
     '''
 (function () {
 'use strict'
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Scorer probe',
   version: '0.0.1',

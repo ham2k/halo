@@ -43,7 +43,7 @@ void main() {
   Future<ExtensionHost> hostWith(http.Client client, {List<String> domains = const ['api.pota.app', 'pota.app']}) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota'))],
+      extensions: [bundleFor('ham2k-pota')],
       fetchAllowlists: {'ham2k-pota': domains},
       httpClient: client,
       userAgent: 'Ham2K-Test/1.0',
@@ -238,7 +238,7 @@ void main() {
     // An extension that fetches whatever URL it is handed, so the host's own
     // routing is the only thing under test.
     const fetcherSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'fetcher',
   name: 'Fetcher',
   version: '0.0.1',

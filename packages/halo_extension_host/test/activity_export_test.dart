@@ -22,7 +22,7 @@ import 'support/bundles.dart';
 /// array literal), or throws when [fields] is null.
 String _fieldsExtension(String key, {String? fields}) =>
     '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: '$key',
   version: '0.0.1',
@@ -275,9 +275,9 @@ void main() {
   Future<ExtensionHost> standInHost() async => standIns ??= await ExtensionHost.start(
     kernelSource: bundleSource('kernel'),
     extensions: [
-      ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-      ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota')),
-      ExtensionBundle(key: 'ham2k-wwff', source: bundleSource('ham2k-wwff')),
+      bundleFor('adif'),
+      bundleFor('ham2k-pota'),
+      bundleFor('ham2k-wwff'),
       ExtensionBundle(
         key: 'listed',
         source: _fieldsExtension('listed', fields: "[{ name: 'PROP_MODE', value: 'SAT' }, { name: 'SAT_NAME', value: 'SO-50' }]"),

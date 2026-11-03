@@ -18,13 +18,13 @@ import 'support/fake_clock.dart';
 // and a KV round-trip hook. Declared hooks come AFTER defineExtension to prove
 // lazy activation removed the declaration-order footgun.
 const _testPluginSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'test-extension',
   name: 'Test Extension',
   version: '0.0.1',
   onActivation: function (api) {
     // KV (like every identity-bearing host call) goes through the
-    // activation-scoped api.hostCall — the raw __polo.hostCall refuses it.
+    // activation-scoped api.hostCall — the raw __halo.hostCall refuses it.
     boundHostCall = api.hostCall
     api.registerHook('lookup', { key: 'good', priority: 10, hook: goodHook })
     api.registerHook('lookup', { key: 'bad', priority: 5, hook: badHook })
@@ -112,7 +112,7 @@ void main() {
         ExtensionBundle(
           key: 'locale-test-extension',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'locale-test-extension',
   name: 'Locale Test Extension',
   version: '0.0.1',
@@ -145,11 +145,7 @@ __polo.defineExtension({
   });
 
   test('ADIF export extension generates a valid file from QSON', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('adif')], useIsolate: false);
     addTearDown(host.dispose);
 
     final result =
@@ -212,11 +208,7 @@ __polo.defineExtension({
   // or follow from the callsign — and a field the pane accepts but the export
   // drops is a field the operator filled in for nothing.
   test('ADIF export carries the county, zones, section and their power', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('adif')], useIsolate: false);
     addTearDown(host.dispose);
 
     final result =
@@ -265,11 +257,7 @@ __polo.defineExtension({
   // end-to-end is that the flag survives the bridge and changes the answer —
   // a bundle that ignored it would look identical from the Dart side.
   test('compactFilenames reaches the bundle and changes the name it offers AND writes', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('adif')], useIsolate: false);
     addTearDown(host.dispose);
 
     final payload = {
@@ -299,14 +287,7 @@ __polo.defineExtension({
   });
 
   test('POTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [
-        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota')),
-      ],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('adif'), bundleFor('ham2k-pota')], useIsolate: false);
     addTearDown(host.dispose);
 
     // POTA ref validation works without network.
@@ -374,11 +355,7 @@ __polo.defineExtension({
   });
 
   test('radio-commands extension: band, frequency and mode via invokeHookAll', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'radio-commands', source: bundleSource('radio-commands'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('radio-commands')], useIsolate: false);
     addTearDown(host.dispose);
 
     // Picks the first non-null result from every registered `command` hook,
@@ -466,10 +443,7 @@ __polo.defineExtension({
     final spotCalls = <Map<String, dynamic>>[];
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [
-        ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
-        ExtensionBundle(key: 'ham2k-spot-history', source: bundleSource('ham2k-spot-history')),
-      ],
+      extensions: [bundleFor('lookups'), bundleFor('ham2k-spot-history')],
       useIsolate: false,
       onHostCall: (method, params) async {
         if (method != 'getSpotsForCall') return null;
@@ -536,10 +510,7 @@ __polo.defineExtension({
   test('call-notes extension: raw dataFile round-trip and lookup notes', () async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [
-        ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
-        ExtensionBundle(key: 'ham2k-call-notes', source: bundleSource('ham2k-call-notes')),
-      ],
+      extensions: [bundleFor('lookups'), bundleFor('ham2k-call-notes')],
       useIsolate: false,
       // call-notes' onActivation awaits host.getSettings() (HALO-53, to
       // read enabledNotes/customFiles before registering this run's
@@ -620,14 +591,7 @@ __polo.defineExtension({
   });
 
   test('SOTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [
-        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota')),
-      ],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('adif'), bundleFor('ham2k-sota')], useIsolate: false);
     addTearDown(host.dispose);
 
     // SOTA ref validation works without network.
@@ -676,11 +640,7 @@ __polo.defineExtension({
   });
 
   test('Scoring extension detects dupes and tallies DXCC/bands/modes in one batched call', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
-      useIsolate: false,
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('scoring')], useIsolate: false);
     addTearDown(host.dispose);
 
     final day1 = DateTime.utc(2026, 7, 5, 18);
@@ -791,15 +751,20 @@ __polo.defineExtension({
     expect(operationSummary['bandsAndModes']['total'], 3);
   });
 
-  test('form hooks: getDefinition, validateField, transformField, and dynamic showForm', () async {
-    ExtensionHost? host;
-    host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: const [
-        ExtensionBundle(
-          key: 'form-test-extension',
-          source: '''
-__polo.defineExtension({
+  // The extension's own bound entry, and the caller-named one an SDK before
+  // 1.12.6 reaches on `__polo`.
+  for (final (label, showForm, api) in [('its own', 'api.showForm', null), ('on __polo', 'globalThis.__polo.host.showForm', 15)]) {
+    test('form hooks: getDefinition, validateField, transformField, and dynamic showForm ($label)', () async {
+      ExtensionHost? host;
+      host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: [
+          ExtensionBundle(
+            key: 'form-test-extension',
+            api: api,
+            source:
+                '''
+__halo.defineExtension({
   key: 'form-test-extension',
   name: 'Form Test Extension',
   version: '0.0.1',
@@ -840,7 +805,7 @@ __polo.defineExtension({
       key: 'trigger',
       hook: {
         runDynamicForm: async function (args) {
-          const result = await globalThis.__polo.host.showForm({
+          const result = await $showForm({
             title: 'Dynamic Form',
             elements: [
               {
@@ -865,129 +830,130 @@ __polo.defineExtension({
   },
 })
 ''',
-        ),
-      ],
-      useIsolate: false,
-      onHostCall: (method, params) async {
-        if (method == 'showForm') {
-          expect(params['formId'], startsWith('dynamic:'));
-          final form = params['form'] as Map;
-          expect(form['title'], 'Dynamic Form');
-          final elements = form['elements'] as List;
-          expect(elements[0]['key'], 'call');
+          ),
+        ],
+        useIsolate: false,
+        onHostCall: (method, params) async {
+          if (method == 'showForm') {
+            expect(params['formId'], startsWith('dynamic:'));
+            final form = params['form'] as Map;
+            expect(form['title'], 'Dynamic Form');
+            final elements = form['elements'] as List;
+            expect(elements[0]['key'], 'call');
 
-          final formId = params['formId'] as String;
+            final formId = params['formId'] as String;
 
-          final validationResult = await host?.invokeHook(
-            'form',
-            key: formId,
-            method: 'validateField',
-            args: {
-              'fieldKey': 'call',
-              'value': 'ki',
-              'state': {'call': 'ki'},
-            },
-          );
-          expect(validationResult, 'Short call');
+            final validationResult = await host?.invokeHook(
+              'form',
+              key: formId,
+              method: 'validateField',
+              args: {
+                'fieldKey': 'call',
+                'value': 'ki',
+                'state': {'call': 'ki'},
+              },
+            );
+            expect(validationResult, 'Short call');
 
-          final validationResultOk = await host?.invokeHook(
-            'form',
-            key: formId,
-            method: 'validateField',
-            args: {
-              'fieldKey': 'call',
-              'value': 'ki2d',
-              'state': {'call': 'ki2d'},
-            },
-          );
-          expect(validationResultOk, isNull);
+            final validationResultOk = await host?.invokeHook(
+              'form',
+              key: formId,
+              method: 'validateField',
+              args: {
+                'fieldKey': 'call',
+                'value': 'ki2d',
+                'state': {'call': 'ki2d'},
+              },
+            );
+            expect(validationResultOk, isNull);
 
-          final transformed = await host?.invokeHook(
-            'form',
-            key: formId,
-            method: 'transformField',
-            args: {
-              'fieldKey': 'call',
-              'value': 'ki2d',
-              'state': {'call': 'ki2d'},
-            },
-          );
-          expect(transformed, 'KI2D');
+            final transformed = await host?.invokeHook(
+              'form',
+              key: formId,
+              method: 'transformField',
+              args: {
+                'fieldKey': 'call',
+                'value': 'ki2d',
+                'state': {'call': 'ki2d'},
+              },
+            );
+            expect(transformed, 'KI2D');
 
-          final onChangeResult = await host?.invokeHook(
-            'form',
-            key: formId,
-            method: 'onChangeField',
-            args: {
-              'fieldKey': 'call',
-              'value': 'update',
-              'state': {'call': 'update'},
-            },
-          );
-          expect(onChangeResult, {'otherField': 'W1AW'});
+            final onChangeResult = await host?.invokeHook(
+              'form',
+              key: formId,
+              method: 'onChangeField',
+              args: {
+                'fieldKey': 'call',
+                'value': 'update',
+                'state': {'call': 'update'},
+              },
+            );
+            expect(onChangeResult, {'otherField': 'W1AW'});
 
-          return {'call': transformed};
-        }
-        return null;
-      },
-    );
-    addTearDown(host.dispose);
+            return {'call': transformed};
+          }
+          return null;
+        },
+      );
+      addTearDown(host.dispose);
 
-    final def = await host.invokeHook('form', key: 'test-form', method: 'getDefinition', args: {});
-    expect(def['title'], 'Test Static Form');
-    expect(def['elements'][0]['key'], 'name');
+      final def = await host.invokeHook('form', key: 'test-form', method: 'getDefinition', args: {});
+      expect(def['title'], 'Test Static Form');
+      expect(def['elements'][0]['key'], 'name');
 
-    final err1 = await host.invokeHook(
-      'form',
-      key: 'test-form',
-      method: 'validateField',
-      args: {
-        'fieldKey': 'name',
-        'value': '',
-        'state': {'name': ''},
-      },
-    );
-    expect(err1, 'Name cannot be empty');
+      final err1 = await host.invokeHook(
+        'form',
+        key: 'test-form',
+        method: 'validateField',
+        args: {
+          'fieldKey': 'name',
+          'value': '',
+          'state': {'name': ''},
+        },
+      );
+      expect(err1, 'Name cannot be empty');
 
-    final err2 = await host.invokeHook(
-      'form',
-      key: 'test-form',
-      method: 'validateField',
-      args: {
-        'fieldKey': 'name',
-        'value': 'John',
-        'state': {'name': 'John'},
-      },
-    );
-    expect(err2, isNull);
+      final err2 = await host.invokeHook(
+        'form',
+        key: 'test-form',
+        method: 'validateField',
+        args: {
+          'fieldKey': 'name',
+          'value': 'John',
+          'state': {'name': 'John'},
+        },
+      );
+      expect(err2, isNull);
 
-    final trans = await host.invokeHook(
-      'form',
-      key: 'test-form',
-      method: 'transformField',
-      args: {
-        'fieldKey': 'name',
-        'value': ' john ',
-        'state': {'name': ' john '},
-      },
-    );
-    expect(trans, 'JOHN');
+      final trans = await host.invokeHook(
+        'form',
+        key: 'test-form',
+        method: 'transformField',
+        args: {
+          'fieldKey': 'name',
+          'value': ' john ',
+          'state': {'name': ' john '},
+        },
+      );
+      expect(trans, 'JOHN');
 
-    final changeRes = await host.invokeHook(
-      'form',
-      key: 'test-form',
-      method: 'onChangeField',
-      args: {
-        'fieldKey': 'name',
-        'value': 'trigger',
-        'state': {'name': 'trigger'},
-      },
-    );
-    expect(changeRes, {'otherField': 'triggered'});
+      final changeRes = await host.invokeHook(
+        'form',
+        key: 'test-form',
+        method: 'onChangeField',
+        args: {
+          'fieldKey': 'name',
+          'value': 'trigger',
+          'state': {'name': 'trigger'},
+        },
+      );
+      expect(changeRes, {'otherField': 'triggered'});
 
-    final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
-    expect(dynamicResult, {'call': 'KI2D'});
-  });
+      final dynamicResult = await host.invokeHook('testTrigger', key: 'trigger', method: 'runDynamicForm', args: {});
+      expect(dynamicResult, {'call': 'KI2D'});
+    });
+  }
 
   test('a hook answering something JSON cannot carry fails alone in a fan-out', () async {
     final host = await ExtensionHost.start(
@@ -996,7 +962,7 @@ __polo.defineExtension({
         ExtensionBundle(
           key: 'circular-extension',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'circular-extension',
   name: 'Circular Extension',
   version: '0.0.1',
@@ -1047,7 +1013,7 @@ __polo.defineExtension({
         ExtensionBundle(
           key: 'weird-extension',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'weird-extension',
   name: 'Weird Extension',
   version: '0.0.1',
@@ -1056,7 +1022,7 @@ __polo.defineExtension({
       key: 'weird-extension',
       hook: {
         callWeird: async function () {
-          return await __polo.hostCall('weird', {})
+          return await __halo.hostCall('weird', {})
         }
       }
     })
@@ -1089,7 +1055,7 @@ __polo.defineExtension({
         ExtensionBundle(
           key: 'stuck-extension',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'stuck-extension',
   name: 'Stuck Extension',
   version: '0.0.1',
@@ -1126,7 +1092,7 @@ __polo.defineExtension({
         ExtensionBundle(
           key: 'attacker',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'attacker',
   name: 'Attacker',
   version: '0.0.1',
@@ -1137,7 +1103,7 @@ __polo.defineExtension({
       // a spoofed ns (kernel overrides it), and the raw kernel hostCall
       // (refused outright for identity-bearing methods).
       viaBound: async function () { return await boundHostCall('kvGet', { ns: 'victim', key: 'secret' }) },
-      viaRaw: async function () { return await __polo.hostCall('kvGet', { ns: 'victim', key: 'secret' }) }
+      viaRaw: async function () { return await __halo.hostCall('kvGet', { ns: 'victim', key: 'secret' }) }
     } })
   },
 })
@@ -1172,8 +1138,8 @@ var boundHostCall = null
           // also mint a 'victim' identity — the kernel rejects it.
           key: 'honest',
           source: '''
-__polo.defineExtension({ key: 'honest', name: 'Honest', version: '0.0.1', onActivation: function () {} })
-__polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', onActivation: function (api) {
+__halo.defineExtension({ key: 'honest', name: 'Honest', version: '0.0.1', onActivation: function () {} })
+__halo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', onActivation: function (api) {
   api.registerHook('impersonate', { key: 'victim', hook: { ping: async function () { return 'i am victim' } } })
 } })
 ''',
@@ -1196,7 +1162,7 @@ __polo.defineExtension({ key: 'victim', name: 'Impersonator', version: '0.0.1', 
         ExtensionBundle(
           key: 'fetcher',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'fetcher',
   name: 'Fetcher',
   version: '0.0.1',
@@ -1305,7 +1271,7 @@ var boundFetch = null
         ExtensionBundle(
           key: 'ctx-extension',
           source: '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'ctx-extension',
   name: 'Ctx Extension',
   version: '0.0.1',
@@ -1380,7 +1346,7 @@ __polo.defineExtension({
 // placeholder, then pushes the real result asynchronously after its own
 // Promise has already settled — the SOLAR/WEATHER shape issue #189 needs.
 const _asyncInterpretationSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'test-extension',
   name: 'Test Extension',
   version: '0.0.1',
@@ -1392,7 +1358,7 @@ __polo.defineExtension({
 var solarHook = {
   interpret: async function (args) {
     Promise.resolve().then(function () {
-      __polo.updateInterpretation(args.input, { confirm: 'Solar flux: 120' })
+      __halo.updateInterpretation(args.input, { confirm: 'Solar flux: 120' })
     })
     return { describe: 'Fetching…' }
   },

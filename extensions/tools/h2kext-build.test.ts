@@ -256,7 +256,7 @@ async function scheduleBuiltFor(api: number) {
 
   const { outDir } = await buildExtension(build, { dir })
   const logs: string[] = []
-  const sandbox: Record<string, any> = { __polo: { log: (message: string) => logs.push(message) } }
+  const sandbox: Record<string, any> = { __halo: { log: (message: string) => logs.push(message) } }
   sandbox.globalThis = sandbox
   vm.runInNewContext(await readFile(join(outDir, "index.js"), "utf8"), sandbox)
   return { schedule: () => sandbox.schedule(), logs }
@@ -307,7 +307,7 @@ async function settingsPanelExtension({ hooks, activation }: { hooks?: string[];
     join(dir, "src/index.ts"),
     activation ??
       `import i18next from "i18next"
-       globalThis.__polo.defineExtension({
+       globalThis.__halo.defineExtension({
          key: "w7abc-t",
          async onActivation({ registerHook }) {
            await null
@@ -324,6 +324,35 @@ async function settingsPanelExtension({ hooks, activation }: { hooks?: string[];
   await writeFile(join(dir, "node_modules/i18next/index.js"), 'module.exports = { hookName: "settingsPanel" }')
   return dir
 }
+
+test("a bundle declaring API 16 whose SDK reaches only __polo fails the build", async () => {
+  // The SDK and the tools update separately. An SDK before 1.16 reads only
+  // `__polo`, which an app gives no bundle declaring 16, so this one would
+  // build, publish and never load.
+  const dir = await settingsPanelExtension({
+    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation() {} })`,
+  })
+
+  await assert.rejects(
+    () => buildExtension(build, { dir }),
+    (e: Error) => {
+      assert.ok(e instanceof BuildError)
+      assert.match(e.message, /reaches it only as `__polo`/)
+      return true
+    },
+  )
+})
+
+test("a bundle declaring API 15 may reach the kernel as __polo", async (t) => {
+  t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({
+    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation() {} })`,
+  })
+  const manifest = JSON.parse(await readFile(join(dir, "manifest.json"), "utf8"))
+  await writeFile(join(dir, "manifest.json"), JSON.stringify({ ...manifest, api: 15 }))
+
+  await buildExtension(build, { dir })
+})
 
 test("a settings panel the manifest's hooks do not list fails the build", async (t) => {
   // The app shows an installed extension's panel only when its manifest
@@ -357,7 +386,7 @@ test("a bundle the check cannot activate builds, and says the check did not run"
   // Failing it would blame the author for what the stand-in kernel lacks.
   const warn = t.mock.method(console, "warn", () => {})
   const dir = await settingsPanelExtension({
-    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation() { throw new Error("needs a radio") } })`,
+    activation: `globalThis.__halo.defineExtension({ key: "w7abc-t", onActivation() { throw new Error("needs a radio") } })`,
   })
 
   await buildExtension(build, { dir })
@@ -371,7 +400,7 @@ test("an activation that never finishes builds, says the check did not run, and 
   // activation lets Node exit mid-build — no error, no manifest beside the bundle.
   const warn = t.mock.method(console, "warn", () => {})
   const dir = await settingsPanelExtension({
-    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation: () => new Promise(() => {}) })`,
+    activation: `globalThis.__halo.defineExtension({ key: "w7abc-t", onActivation: () => new Promise(() => {}) })`,
   })
 
   const { outDir } = await buildExtension(build, { dir })
@@ -384,7 +413,7 @@ test("an activation that never finishes builds, says the check did not run, and 
 test("a bundle that throws something other than an Error still builds with the warning", async (t) => {
   const warn = t.mock.method(console, "warn", () => {})
   const dir = await settingsPanelExtension({
-    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation: () => Promise.reject() })`,
+    activation: `globalThis.__halo.defineExtension({ key: "w7abc-t", onActivation: () => Promise.reject() })`,
   })
 
   await buildExtension(build, { dir })

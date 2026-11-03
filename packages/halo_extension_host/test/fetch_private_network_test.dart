@@ -20,7 +20,7 @@ import 'support/bundles.dart';
 // its grant and, since a grant is a bundle's, on its fetch slots.
 const probe = r'''
   for (const key of ['probe', 'probe-sub']) {
-    globalThis.__polo.defineExtension({
+    globalThis.__halo.defineExtension({
       key,
       name: key,
       version: '0.0.1',

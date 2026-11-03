@@ -101,8 +101,12 @@ test("findSharedModuleReferences names every library, once each", () => {
     a = globalThis.__polo.sharedModules["i18next"]
     b = __polo.sharedModules['liquidjs']
     c = __polo . sharedModules [ "i18next" ]
+    d = (globalThis.__halo ?? globalThis.__polo).sharedModules["@ham2k/lib-callsigns"]
+    e = __halo.sharedModules["@ham2k/lib-geo-tools"]
   `)
-  assert.deepEqual(hits.sort(), ["i18next", "liquidjs"])
+  // The middle form is what the build emits; the `__polo` ones are what
+  // tools before 1.16 emitted, in bundles still installed today.
+  assert.deepEqual(hits.sort(), ["@ham2k/lib-callsigns", "@ham2k/lib-geo-tools", "i18next", "liquidjs"])
 })
 
 test("a bundle with no category is refused", () => {

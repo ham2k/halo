@@ -31,7 +31,7 @@ await mkdir(dist, { recursive: true })
 /// minus the two that stand in for the host.
 ///
 /// `kernel.ts` sits in this directory and must never leave it. It IS the host —
-/// it defines `globalThis.__polo` and holds the one instance of every shared
+/// it defines `globalThis.__halo` and holds the one instance of every shared
 /// library that extensions look up. `testing.ts` installs a stand-in for that
 /// same object so this repo's tests can call a hook without a runtime, which
 /// makes it host-shaped too, and it is imported by path rather than through
@@ -102,9 +102,9 @@ if (emitted.length < 2) {
 }
 
 // The kernel IS the host. Published, it would hand every extension author the
-// code that defines `globalThis.__polo` and holds the single instance of every
-// shared library.
-const kernelMarkers = Object.entries(modules).filter(([, code]) => code.includes("__polo =") || code.includes('"__polo"'))
+// code that defines `globalThis.__halo` (and `__polo`) and holds the single
+// instance of every shared library.
+const kernelMarkers = Object.entries(modules).filter(([, code]) => ["__halo =", "__polo =", '"__halo"', '"__polo"'].some((marker) => code.includes(marker)))
 if (kernelMarkers.length) {
   throw new Error(`dist/${kernelMarkers[0][0]} defines the kernel — that belongs to the host, not the SDK`)
 }

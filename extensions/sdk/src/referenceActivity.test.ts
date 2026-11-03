@@ -48,7 +48,7 @@ const ROWS: Record<string, Record<string, unknown>> = {
   "X-1": { key: "X-1", name: "Near", lat: 48, lon: 2, data: { region: "a" } },
   "X-2": { key: "X-2", name: "Far", lat: 49, lon: 3, data: { region: "b" } },
 }
-;(globalThis as Record<string, unknown>).__polo = {
+;(globalThis as Record<string, unknown>).__halo = {
   hostCall: async (method: string, params: Record<string, unknown>) => {
     if (method === "dbLookupSelectOne") return ROWS[params.key as string] ?? null
     if (method === "dbLookupSelectAll") return Object.values(ROWS)

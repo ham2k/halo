@@ -182,7 +182,8 @@ Opens a dialog from a [form definition](forms.md) with `state` pre-filled
 and resolves with the submitted values, or `null` when canceled. A dialog is
 one extension's at a time: while another extension's dialogs are up, yours
 waits for them to close. You may have **3 open**, one over the other, **3
-waiting**, and open **10 a minute**; past any of these the call throws. (A
+waiting**, and open **10 a minute**; past any of these the call throws, as
+it does before your extension has activated. (A
 bundle built with an SDK before 1.12.6 opens its forms without naming
 itself, and every such form shares one budget, as one extension's.)
 

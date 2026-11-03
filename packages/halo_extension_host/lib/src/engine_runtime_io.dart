@@ -25,6 +25,7 @@ class _IoEngineRuntime implements EngineRuntime {
   void Function(Map<String, dynamic>)? _onMessage;
   bool _disposed = false;
   bool _kernelLoaded = false;
+  final String _bridgeToken = newBridgeToken();
 
   /// Wall-clock ceiling for one pump() call. Well under the host's 10s hook
   /// timeout so the isolate stays able to answer while jobs are still running.
@@ -120,6 +121,8 @@ class _IoEngineRuntime implements EngineRuntime {
     });
 
     _evaluate(kernelSource, name: 'kernel');
+    // Before any bundle: the first claim is the only one the kernel accepts.
+    _evaluate('__halo.claimBridge(${jsonEncode(_bridgeToken)})', name: 'claimBridge');
     _kernelLoaded = true;
     // Between the kernel and the bundles: the kernel installs the sandbox's
     // Date, and every bundle (and the activateAll below) must already see the
@@ -129,74 +132,58 @@ class _IoEngineRuntime implements EngineRuntime {
       // The begin/end bracket is what makes extension identity
       // host-declared: the kernel only accepts defineExtension keys matching
       // the manifest key this bundle was loaded under.
-      _evaluate(beginBundleCall(bundle), name: 'beginBundle');
+      _evaluate(beginBundleCall(_bridgeToken, bundle), name: 'beginBundle');
       _evaluate(bundle.source, name: bundle.key);
-      _evaluate('__polo.endBundle()', name: 'endBundle');
+      _evaluate(_bridge('endBundle'), name: 'endBundle');
     }
     // Activation is deferred until every bundle is evaluated, so extensions
     // never depend on declaration order within their own bundle.
-    _evaluate('__polo.activateAll()', name: 'activateAll');
+    _evaluate(_bridge('activateAll'), name: 'activateAll');
   }
 
   @override
   void reloadBundle(ExtensionBundle bundle, int token) {
-    _evaluate('__polo.unloadBundle(${jsonEncode(bundle.key)})', name: 'unloadBundle');
-    _evaluate(beginBundleCall(bundle), name: 'beginBundle');
+    _evaluate(_bridge('unloadBundle', [bundle.key]), name: 'unloadBundle');
+    _evaluate(beginBundleCall(_bridgeToken, bundle), name: 'beginBundle');
     try {
       _evaluate(bundle.source, name: bundle.key);
     } finally {
       // The window must close even when the source throws part-way through,
       // or every later definition — the next reload's included — is refused
       // as belonging to a bundle that never ended.
-      _evaluate('__polo.endBundle()', name: 'endBundle');
+      _evaluate(_bridge('endBundle'), name: 'endBundle');
     }
-    _evaluate('__polo.activateReloaded(${jsonEncode(bundle.key)}, $token)', name: 'activateReloaded');
+    _evaluate(_bridge('activateReloaded', [bundle.key, token]), name: 'activateReloaded');
   }
 
   @override
   void invoke(int id, String category, String? key, String method, String argsJson) {
-    _evaluate(
-      '__polo.invokeHook('
-      '$id, '
-      '${jsonEncode(category)}, '
-      '${key == null ? 'null' : jsonEncode(key)}, '
-      '${jsonEncode(method)}, '
-      '${jsonEncode(argsJson)})',
-      name: 'invokeHook',
-    );
+    _evaluate(_bridge('invokeHook', [id, category, key, method, argsJson]), name: 'invokeHook');
   }
 
   @override
   void invokeAll(int id, String category, String method, String argsJson, {bool wantsPartials = false}) {
-    _evaluate(
-      '__polo.invokeHookAll('
-      '$id, '
-      '${jsonEncode(category)}, '
-      '${jsonEncode(method)}, '
-      '${jsonEncode(argsJson)}, '
-      '$wantsPartials)',
-      name: 'invokeHookAll',
-    );
+    _evaluate(_bridge('invokeHookAll', [id, category, method, argsJson, wantsPartials]), name: 'invokeHookAll');
   }
 
   @override
   void invokeBatch(int id, String callsJson, {bool wantsPartials = false}) {
-    _evaluate('__polo.invokeHookBatch($id, ${jsonEncode(callsJson)}, $wantsPartials)', name: 'invokeHookBatch');
+    _evaluate(_bridge('invokeHookBatch', [id, callsJson, wantsPartials]), name: 'invokeHookBatch');
   }
 
   @override
   void hostResponse(int callId, bool ok, String resultJson) {
-    _evaluate('__polo.hostResponse($callId, $ok, ${jsonEncode(resultJson)})', name: 'hostResponse');
+    _evaluate(_bridge('hostResponse', [callId, ok, resultJson]), name: 'hostResponse');
   }
 
   @override
   void socketEvent(int socketId, String eventJson) {
-    _evaluate('__polo.socketEvent($socketId, ${jsonEncode(eventJson)})', name: 'socketEvent');
+    _evaluate(_bridge('socketEvent', [socketId, eventJson]), name: 'socketEvent');
   }
 
   @override
   void runTimers() {
-    _evaluate('__polo.runTimers()', name: 'runTimers');
+    _evaluate(_bridge('runTimers'), name: 'runTimers');
   }
 
   /// Answered at once: the engine runs on this thread, so if this runs, it is
@@ -206,18 +193,20 @@ class _IoEngineRuntime implements EngineRuntime {
 
   @override
   void setAppVisible(bool visible) {
-    _evaluate('__polo.setAppVisible($visible)', name: 'setAppVisible');
+    _evaluate(_bridge('setAppVisible', [visible]), name: 'setAppVisible');
   }
 
   @override
   void invalidateContext() {
-    _evaluate('__polo.invalidateContext()', name: 'invalidateContext');
+    _evaluate(_bridge('invalidateContext'), name: 'invalidateContext');
   }
 
   @override
   void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed) {
-    _evaluate('__polo.setClockTravel($anchorRealMillis, $anchorVirtualMillis, $speed)', name: 'setClockTravel');
+    _evaluate(_bridge('setClockTravel', [anchorRealMillis, anchorVirtualMillis, speed]), name: 'setClockTravel');
   }
+
+  String _bridge(String entry, [List<Object?> args = const []]) => bridgeCall(_bridgeToken, entry, args);
 
   void _evaluate(String code, {required String name}) {
     final js = _js;
@@ -269,7 +258,7 @@ class _IoEngineRuntime implements EngineRuntime {
   void _stampTimerClock(HaloQuickJs js) {
     final now = extensionTimerClock;
     if (now == null || !_kernelLoaded) return;
-    final result = js.eval('__polo.setMonotonicNow(${now()})', filename: 'setMonotonicNow');
+    final result = js.eval(_bridge('setMonotonicNow', [now()]), filename: 'setMonotonicNow');
     if (!result.ok) throw ExtensionHostException('stamping the timer clock: ${result.text}');
   }
 

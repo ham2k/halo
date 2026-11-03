@@ -21,7 +21,7 @@ import 'support/bundles.dart';
 String _extension(String key, {List<String> refCategories = const [], List<String>? declared, bool patches = true}) {
   final hooks = [...(declared ?? refCategories), 'activity'].map((h) => "'$h'").join(', ');
   return '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: '$key',
   version: '0.0.1',

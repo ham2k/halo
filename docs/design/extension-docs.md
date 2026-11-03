@@ -71,7 +71,7 @@ and a plan, in two lines. The guard refuses each of them.
 | you, your extension | the developer, the author, the hook author |
 | the host, `host.*` | the bridge, the host API object |
 | the runtime | the sandbox engine, QuickJS (name the engine only where it matters) |
-| the kernel | the shared runtime, `__polo` |
+| the kernel | the shared runtime, `__halo` |
 | a hook, a hook category | a handler, a plugin point |
 | the packer | `h2kext-pack`, the validator (name the command only in a command line) |
 | the catalog | the store, the registry |

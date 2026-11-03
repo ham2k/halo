@@ -19,7 +19,7 @@ import '../support/shipped_extensions.dart';
 
 String probe(String key) =>
     '''
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: '$key',
     name: '$key probe',
     version: '0.0.1',

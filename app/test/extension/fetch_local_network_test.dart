@@ -17,7 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/shipped_extensions.dart';
 
 const probe = r'''
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: 'probe',
     name: 'probe',
     version: '0.0.1',

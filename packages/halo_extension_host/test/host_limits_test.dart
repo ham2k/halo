@@ -22,7 +22,7 @@ import 'package:http/testing.dart';
 import 'support/bundles.dart';
 
 const probe = r'''
-  globalThis.__polo.defineExtension({
+  globalThis.__halo.defineExtension({
     key: 'probe',
     name: 'probe',
     version: '0.0.1',
@@ -32,7 +32,7 @@ const probe = r'''
         hook: {
           fetch: async (args) => await hostCall('fetch', args),
           chatter: async ({ lines }) => {
-            for (let i = 0; i < lines; i++) globalThis.__polo.log('line ' + i);
+            for (let i = 0; i < lines; i++) globalThis.__halo.log('line ' + i);
             return lines;
           },
           hog: async () => {

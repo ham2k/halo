@@ -27,7 +27,7 @@ void main() {
   /// it tries to name somebody else's identity explicitly.
   String probe(String key) =>
       '''
-    globalThis.__polo.defineExtension({
+    globalThis.__halo.defineExtension({
       key: '$key',
       name: '$key probe',
       version: '0.0.1',

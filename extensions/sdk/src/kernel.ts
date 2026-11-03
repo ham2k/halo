@@ -3,8 +3,9 @@
 //
 // The extension runtime kernel. This bundle is evaluated FIRST, before any
 // extension bundle. It owns all shared state (registry, pending host calls) as a
-// singleton on globalThis.__polo. Extension bundles talk to it through the thin
-// wrappers in `index.ts`.
+// singleton on globalThis.__halo (and `__polo`, the same kernel with the
+// caller-named form entries a bundle built before extension API 16 may use).
+// Extension bundles talk to it through the thin wrappers in `index.ts`.
 //
 // Activation is lazy: defineExtension only registers the definition; the host
 // calls activateAll() after every bundle has been evaluated. This removes
@@ -20,14 +21,16 @@
 //               {type:'socketsDropped', socketIds}
 //               {type:'timerWake', delayMillis|null}
 //               {type:'timersSuspended', extensionKey, reason}
-//   Dart → JS:  __polo.invokeHook(id, category, key|null, method, argsJson)
-//               __polo.invokeHookAll(id, category, method, argsJson, wantsPartials)
-//               __polo.invokeHookBatch(id, callsJson, wantsPartials)
-//               __polo.activateAll()
-//               __polo.hostResponse(callId, ok, resultJson)
-//               __polo.socketEvent(socketId, eventJson)
-//               __polo.runTimers()
-//               __polo.setAppVisible(visible)
+//   Dart → JS:  __halo.claimBridge(token)          — once, before any bundle
+//               __halo.bridge(token, entry, …args)  — every other call, where
+//               entry is one of HOST_ENTRIES:
+//                 invokeHook(id, category, key|null, method, argsJson)
+//                 invokeHookAll(id, category, method, argsJson, wantsPartials)
+//                 invokeHookBatch(id, callsJson, wantsPartials)
+//                 beginBundle(key, api), endBundle(), activateAll()
+//                 hostResponse(callId, ok, resultJson)
+//                 socketEvent(socketId, eventJson)
+//                 runTimers(), setAppVisible(visible), …
 
 // FIRST: patches Number.prototype.toLocaleString on engines without Intl
 // (QuickJS-NG). Imported ahead of everything else so the patch is in place
@@ -95,7 +98,7 @@ declare function sendMessage(channel: string, message: string): void
 // function into module scope and removes the global: from here on, the only
 // way onto the wire is through kernel APIs, which enforce identity.
 // (This is soft, single-realm containment — a hostile bundle can still
-// tamper with shared globals like __polo itself. Hard isolation needs
+// tamper with the realm's shared intrinsics. Hard isolation needs
 // per-extension realms; see DESIGN.md §3's manifest/review story.)
 const rawSendMessage: typeof sendMessage = typeof sendMessage === "function" ? sendMessage : (globalThis as Record<string, any>).sendMessage
 try {
@@ -178,9 +181,8 @@ interface HookRecord {
   extensionKey: string
   hook: Record<string, unknown>
   /// Registered through a public entry that takes `extensionKey` from its
-  /// caller (`registerDynamicForm`, `host.showForm`: kept for a bundle whose
-  /// SDK captures no bound entry at activation, until the next extension API
-  /// bump). The key is a claim, so the record is never handed that
+  /// caller (`registerDynamicForm`, `host.showForm`: on `__polo` only, for a
+  /// bundle whose SDK captures no bound entry at activation). The key is a claim, so the record is never handed that
   /// extension's account, reads the log frozen, and only the public entry
   /// removes it.
   unattributed?: boolean
@@ -514,16 +516,29 @@ function dispatchHostCall(method: string, params: Record<string, unknown>): Prom
 /// surface: the host budgets what each caller has awaiting an answer, and a
 /// key the caller supplied would pick the slot — another bundle's, or a fresh
 /// one per call.
-const PUBLIC_CALLER = "__polo.hostCall"
+const PUBLIC_CALLER = "__halo.hostCall"
 
-/// The public (`__polo.hostCall`) surface: identity-bearing methods are
+/// The public (`__halo.hostCall`) surface: identity-bearing methods are
 /// refused — extensions reach those through the activation-scoped
 /// `api.hostCall` their SDK copy captures (see activateExtension), whose
 /// identity params the kernel injects itself. The rest go out as the
 /// surface's own, whatever `extensionKey` they claim.
 function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   if (IDENTITY_HOST_METHODS.has(method)) {
-    return Promise.reject(new Error(`host call '${method}' needs the calling extension's identity and is only available through the SDK host API`))
+    const refused = Promise.reject(new Error(`host call '${method}' needs the calling extension's identity and is only available through the SDK host API`))
+    // A socket refused here never reaches the bound path that fails it, and
+    // its reservation would stay open: the socket connecting forever, and the
+    // id free for any bundle to open and feed. Taken now, failed once the
+    // caller holds it, as the bound path does.
+    const socketId = method === "webSocketOpen" ? (params?.socketId as number) : undefined
+    const socket = socketId === undefined ? undefined : socketListeners.get(socketId)
+    if (!socket || socket.owner !== null) return refused
+    socket.owner = PUBLIC_CALLER
+    return refused.catch((e) => {
+      kernelEntries.socketEvent(socketId!, JSON.stringify({ type: "error", message: e instanceof Error ? e.message : String(e) }))
+      kernelEntries.socketEvent(socketId!, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
+      throw e
+    })
   }
   return dispatchHostCall(method, { ...params, extensionKey: PUBLIC_CALLER })
 }
@@ -551,6 +566,16 @@ function boundHostCallFor(extensionKey: string) {
         return Promise.reject(new Error(`webSocket: socket ${String(params.socketId)} is not reserved, or already in use`))
       }
       socket.owner = extensionKey
+      // Refused before any connection existed, the host sends this socket
+      // nothing: the events a browser gives a socket that failed to connect
+      // come from here. Delivered by the kernel, since `socketEvent` is the
+      // host's entry.
+      const socketId = params.socketId as number
+      return dispatchHostCall(method, bound).catch((e) => {
+        kernelEntries.socketEvent(socketId, JSON.stringify({ type: "error", message: e instanceof Error ? e.message : String(e) }))
+        kernelEntries.socketEvent(socketId, JSON.stringify({ type: "close", code: 1006, reason: "", wasClean: false }))
+        throw e
+      })
     }
     return dispatchHostCall(method, bound)
   }
@@ -668,7 +693,7 @@ async function showFormAs(
 // round trips (the account one hitting the platform keychain) multiplied
 // by N hooks in every invokeHookAll fan-out, on paths as hot as the
 // debounced per-keystroke lookup. Both change rarely; a short TTL bounds
-// staleness and the host can force-invalidate (__polo.invalidateContext)
+// staleness and the host can force-invalidate (the `invalidateContext` entry)
 // when it writes settings or credentials.
 const CONTEXT_CACHE_TTL_MILLIS = 3000
 // The cache holds the in-flight PROMISE, not the resolved value: an
@@ -1023,7 +1048,7 @@ function activatePending(): Promise<Array<string | null>> {
   return Promise.all(Object.values(extensions).map(activateExtension))
 }
 
-const kernel = {
+const kernelEntries = {
   defineExtension(def: ExtensionDefinition) {
     if (bundlesStarted && currentBundleKey == null) {
       log(`ERROR defineExtension('${def.key}') outside a bundle evaluation window — ignored`)
@@ -1048,6 +1073,7 @@ const kernel = {
     bundlesStarted = true
     currentBundleKey = key
     bundleApi[key] = typeof api === "number" ? api : null
+    aliasPoloFor(bundleApi[key])
   },
 
   endBundle() {
@@ -1529,9 +1555,9 @@ const kernel = {
     return accountHookRecord ? accountKvKeyOf(accountHookRecord) : extensionKey
   },
 
-  // Public, caller-named entries, kept for a bundle whose SDK captures no
-  // bound entry at activation; they go at the next extension API bump. The
-  // key is whatever the caller says, so the record is unattributed and the
+  // Public, caller-named entries, for a bundle whose SDK captures no bound
+  // entry at activation; only `__polo` carries them. The key is whatever the
+  // caller says, so the record is unattributed and the
   // name buys nothing: the SDK's own wrappers never read a form callback's
   // ctx, so a form shown this way works as before.
   registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>) {
@@ -1551,21 +1577,156 @@ const kernel = {
   sharedVersions: typeof __SHARED_VERSIONS__ !== "undefined" ? __SHARED_VERSIONS__ : {},
 }
 
-// Every bundle shares this realm, and every host entry (`__polo.invokeHook`,
-// `__polo.hostResponse`, …) is resolved from the global at call time. A
-// writable `__polo`, or a kernel whose members can be reassigned, lets one
-// bundle wrap another's traffic — host results, credentials included — and
-// so does a rewritten `JSON`, which every message crosses. Both are frozen,
-// one level deep: the shared libraries' exports stay as they ship. What
-// stays open is the rest of the realm's intrinsics (`Promise.prototype`,
-// `Map.prototype`, …), which a bundle can still rewrite and watch the kernel
-// through; closing that takes a context per extension, not a freeze.
+// ---- The host's entries ----------------------------------------------------
+// Evaluating bundles, invoking hooks, answering host calls, delivering socket
+// events and timers, moving the clock: everything the host calls into the
+// kernel stays off the global. Every bundle shares this realm, so an entry on
+// the global is one any bundle can call — to run another extension's hook
+// with that extension's context and account, settle its host calls, forge its
+// socket events, unload it, or move the app's clock. The host proves itself
+// with a token it hands over once, right after evaluating the kernel and
+// before any bundle runs, and `bridge` refuses every call without it.
+const HOST_ENTRIES = [
+  "beginBundle",
+  "endBundle",
+  "activateAll",
+  "unloadBundle",
+  "activateReloaded",
+  "invokeHook",
+  "invokeHookBatch",
+  "invokeHookAll",
+  "invalidateContext",
+  "setClockTravel",
+  "setMonotonicNow",
+  "runTimers",
+  "setAppVisible",
+  "hostResponse",
+  "socketEvent",
+] as const
+type HostEntry = (typeof HOST_ENTRIES)[number]
+
+let bridgeToken: string | null = null
+
+/// Hands the kernel the token every later `bridge` call must carry. Once: a
+/// second claim, a bundle's included, throws.
+function claimBridge(token: unknown): void {
+  if (bridgeToken !== null) throw new Error("the host bridge is already claimed")
+  if (typeof token !== "string" || token.length < 32) throw new Error("the host bridge needs a token of at least 32 characters")
+  bridgeToken = token
+}
+
+/// The host's way into the kernel: [entry] is one of HOST_ENTRIES, called
+/// with the arguments that follow.
+///
+/// Dispatched through a switch with the arguments named, never as
+/// `kernelEntries[entry](...args)`: a lookup by the caller's string reaches the
+/// prototype, and a spread runs Array.prototype's iterator, which a bundle
+/// can rewrite to watch every argument the host passes — host results,
+/// credentials included.
+function bridge(token: unknown, entry: HostEntry, a?: any, b?: any, c?: any, d?: any, e?: any): unknown {
+  if (bridgeToken === null || token !== bridgeToken) throw new Error(`${String(entry)} is the host's to call`)
+  switch (entry) {
+    case "beginBundle":
+      return kernelEntries.beginBundle(a, b)
+    case "endBundle":
+      return kernelEntries.endBundle()
+    case "activateAll":
+      return kernelEntries.activateAll()
+    case "unloadBundle":
+      return kernelEntries.unloadBundle(a)
+    case "activateReloaded":
+      return kernelEntries.activateReloaded(a, b)
+    case "invokeHook":
+      return kernelEntries.invokeHook(a, b, c, d, e)
+    case "invokeHookBatch":
+      return kernelEntries.invokeHookBatch(a, b, c)
+    case "invokeHookAll":
+      return kernelEntries.invokeHookAll(a, b, c, d, e)
+    case "invalidateContext":
+      return kernelEntries.invalidateContext()
+    case "setClockTravel":
+      return kernelEntries.setClockTravel(a, b, c)
+    case "setMonotonicNow":
+      return kernelEntries.setMonotonicNow(a)
+    case "runTimers":
+      return kernelEntries.runTimers()
+    case "setAppVisible":
+      return kernelEntries.setAppVisible(a)
+    case "hostResponse":
+      return kernelEntries.hostResponse(a, b, c)
+    case "socketEvent":
+      return kernelEntries.socketEvent(a, b)
+  }
+  throw new Error(`no host entry ${String(entry)}`)
+}
+
+/// What every bundle reaches as `__halo`, named one by one: an entry added
+/// to [kernelEntries] stays the host's until it is listed here.
+const kernel = {
+  defineExtension: kernelEntries.defineExtension,
+  hostCall: kernelEntries.hostCall,
+  invokeLocal: kernelEntries.invokeLocal,
+  invokeLocalSequential: kernelEntries.invokeLocalSequential,
+  registerSocket: kernelEntries.registerSocket,
+  log: kernelEntries.log,
+  updateInterpretation: kernelEntries.updateInterpretation,
+  registeredHooks: kernelEntries.registeredHooks,
+  getAccountKvKey: kernelEntries.getAccountKvKey,
+  sharedModules: kernelEntries.sharedModules,
+  sharedVersions: kernelEntries.sharedVersions,
+  claimBridge,
+  bridge,
+}
+
+/// What a bundle below extension API 16 reaches as `__polo`: the same, plus
+/// the entries only an older SDK uses. The form entries take the extension
+/// key from their caller; an SDK from 1.12.6 uses the bound ones each
+/// extension is handed at activation instead.
+const olderKernel = {
+  ...kernel,
+  registerDynamicForm: kernelEntries.registerDynamicForm,
+  unregisterDynamicForm: kernelEntries.unregisterDynamicForm,
+  host: kernelEntries.host,
+  // An SDK before 1.16 delivers a refused open's error and close itself,
+  // through this name. The kernel has already delivered both, so this does
+  // nothing: one that delivered would hand any bundle another extension's
+  // socket.
+  socketEvent: (_socketId: number, _eventJson: string) => {},
+}
+
+/// The extension API level whose SDK reaches the kernel as `__halo`. A bundle
+/// below it — built with an SDK before 1.16 — reads `__polo`, which answers
+/// with [olderKernel] once the first such bundle begins. A bundle built with
+/// the app declares no level and needs no alias.
+const HALO_GLOBAL_API = 16
+let poloAliased = false
+
+function aliasPoloFor(api: number | null): void {
+  if (api !== null && api < HALO_GLOBAL_API) poloAliased = true
+}
+
+// Every bundle shares this realm. A writable `__halo`, or a kernel whose
+// members can be reassigned, lets one bundle wrap another's traffic — host
+// results, credentials included — and so does a rewritten or replaced
+// `JSON`, which every message crosses. Both are frozen, one level deep, and
+// neither name can be rebound: the shared libraries' exports stay as they
+// ship. What stays open is the rest of the realm's
+// intrinsics (`Promise.prototype`, `Map.prototype`, …), which a bundle can
+// still rewrite and watch the kernel through; closing that takes a context
+// per extension, not a freeze.
 Object.freeze(JSON)
-Object.freeze(kernel.host)
+Object.defineProperty(globalThis, "JSON", { value: JSON, writable: false, configurable: false, enumerable: false })
+Object.freeze(olderKernel.host)
 Object.freeze(kernel.sharedModules)
 Object.freeze(kernel.sharedVersions)
 Object.freeze(kernel)
-Object.defineProperty(globalThis, "__polo", { value: kernel, writable: false, configurable: false, enumerable: true })
+Object.freeze(olderKernel)
+Object.defineProperty(globalThis, "__halo", { value: kernel, writable: false, configurable: false, enumerable: true })
+// Defined now, before any bundle, and never configurable, even while it
+// answers nothing: a name left free could be claimed by the first bundle to
+// evaluate, and every older bundle after it would talk to that bundle's
+// kernel instead.
+Object.defineProperty(globalThis, "__polo", { get: () => (poloAliased ? olderKernel : undefined), configurable: false, enumerable: false })
 
 // Route console.log to the host so extension debugging output is visible.
 ;(globalThis as Record<string, unknown>).console = {

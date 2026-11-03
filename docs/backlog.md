@@ -143,8 +143,9 @@ from the tree 2026-07-15). Three items were deferred by design and are
 tracked only here:
 
 - **Hard extension isolation.** The shipped containment is soft and
-  single-realm — a hostile bundle can tamper with shared globals (`__polo`
-  itself) — and there is no true execution-time interrupt on any platform
+  single-realm — a hostile bundle can rewrite the realm's shared intrinsics
+  (`Promise.prototype`, `Map.prototype`, …) and watch the kernel through
+  them — and there is no true execution-time interrupt on any platform
   (a `while(true)` hook is caught by the Dart-side timeout + host restart,
   not pre-empted). Both need DESIGN.md §3's direct-FFI QuickJS binding.
   Prerequisite for the third-party/OTA extension channel.

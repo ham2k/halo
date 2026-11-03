@@ -24,10 +24,7 @@ void main() {
     // (extensions/sdk/src/i18n.ts caches it), so on a reused host the very log
     // line this looks for would already have been emitted before the test ran,
     // making the assertion vacuous rather than merely noisy.
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'scoring', source: bundleSource('scoring'))],
-    );
+    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: [bundleFor('scoring')]);
     addTearDown(host.dispose);
     final logs = <String>[];
     final subscription = host.logs.listen(logs.add);

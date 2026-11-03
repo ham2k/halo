@@ -26,7 +26,7 @@ import 'support/bundles.dart';
 String probeBundle(List<String> keys) =>
     '''
   for (const key of [${keys.map((key) => "'$key'").join(', ')}]) {
-    globalThis.__polo.defineExtension({
+    globalThis.__halo.defineExtension({
       key,
       name: key,
       version: '0.0.1',
@@ -39,7 +39,7 @@ String probeBundle(List<String> keys) =>
           key,
           hook: {
             hang: async () => attempt(() => hostCall('hang', {})),
-            hangAs: async ({ claim }) => attempt(() => globalThis.__polo.hostCall('hang', { extensionKey: claim })),
+            hangAs: async ({ claim }) => attempt(() => globalThis.__halo.hostCall('hang', { extensionKey: claim })),
             qsos: async ({ uuid }, ctx) => attempt(() => ctx.getQsos(uuid)),
             fetch: async (args) => attempt(() => hostCall('fetch', args)),
             kvSet: async ({ key: k, value }) => attempt(() => hostCall('kvSet', { key: k, value })),
@@ -173,7 +173,7 @@ void main() {
       ];
       await until(() => app.holding() == kMaxHostCallsPending, reason: 'the app to hold the calls');
 
-      expect(await call(host, 'hangAs', args: {'claim': 'b0'}), contains("'__polo.hostCall' already has $kMaxHostCallsPending calls"));
+      expect(await call(host, 'hangAs', args: {'claim': 'b0'}), contains("'__halo.hostCall' already has $kMaxHostCallsPending calls"));
       final own = call(host, 'hang');
       await until(() => app.holding() == kMaxHostCallsPending + 1, reason: "probe's own call to be held");
 

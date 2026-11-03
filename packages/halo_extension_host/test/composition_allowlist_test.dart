@@ -4,16 +4,14 @@
 // Which hooks one extension may invoke inside the runtime. A composed hook
 // runs with its OWN context — its account, its settings — so a bundle that
 // could reach ham2k-lofi's `syncTransport` or any `command` hook through
-// `__polo.invokeLocal` would act with that extension's credentials. The kernel
+// `__halo.invokeLocal` would act with that extension's credentials. The kernel
 // allows only the data categories extensions actually compose, and the
 // refusal must hold for a bundle that skips the SDK and its narrowed types,
-// which is why these drive `__polo` directly through the REAL kernel. `form`
+// which is why these drive `__halo` directly through the REAL kernel. `form`
 // and `bench` are refused cases because the app's identity tests probe
 // accounts through both; allowing either would hand one probe another's.
-//
-// This holds `invokeLocal` only. The host's own entries on `__polo`
-// (`invokeHook`, `invokeHookAll`, `invokeHookBatch`) are reachable from a
-// bundle too and are not held to the allowlist.
+// The host's own way in, which reaches every category, is closed to bundles
+// separately (host_bridge_test).
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -36,7 +34,7 @@ const answer = (category, from = category, key = 'target', priority = 0) => ({
   },
 })
 
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'target',
   name: 'target',
   version: '0.0.1',
@@ -50,10 +48,10 @@ __polo.defineExtension({
 })
 ''';
 
-/// Composes through `__polo` and reports what came back, or why it was
+/// Composes through `__halo` and reports what came back, or why it was
 /// refused.
 const _caller = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'caller',
   name: 'caller',
   version: '0.0.1',
@@ -67,7 +65,7 @@ __polo.defineExtension({
           const includes = Array.prototype.includes
           if (tamper) Array.prototype.includes = () => true
           try {
-            const entries = await __polo.invokeLocal(category, 'ask', {}, true, key ?? null)
+            const entries = await __halo.invokeLocal(category, 'ask', {}, true, key ?? null)
             return { answered: entries.map((e) => e.value), ran: globalThis.__composeRan }
           } catch (e) {
             return { refused: String(e.message), ran: globalThis.__composeRan }
@@ -79,7 +77,7 @@ __polo.defineExtension({
           globalThis.__composeRan = []
           try {
             const fold = (args, value) => ({ seen: [...args.seen, value.from] })
-            const entries = await __polo.invokeLocalSequential(category, 'ask', { seen: [] }, fold)
+            const entries = await __halo.invokeLocalSequential(category, 'ask', { seen: [] }, fold)
             return { answered: entries.map((e) => e.value), ran: globalThis.__composeRan }
           } catch (e) {
             return { refused: String(e.message), ran: globalThis.__composeRan }

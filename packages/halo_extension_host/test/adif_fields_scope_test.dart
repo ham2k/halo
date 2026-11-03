@@ -23,7 +23,7 @@ import 'support/bundles.dart';
 /// spreads its manifest into `defineExtension`.
 String _extension(String key, {required String field, List<String> refCategories = const [], String manifest = ''}) =>
     '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: '$key',
   version: '0.0.1',
@@ -41,7 +41,7 @@ __polo.defineExtension({
 /// may take (STATE) and ones that identify the contact and it may not — one
 /// the contact left empty (FREQ) and one in lower case.
 const _overreach = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'overreach',
   name: 'overreach',
   version: '0.0.1',
@@ -65,7 +65,7 @@ __polo.defineExtension({
 /// for every contact — the split its own file would make, and that the full
 /// export never asks for.
 const _splitOnly = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'split-only',
   name: 'split-only',
   version: '0.0.1',
@@ -89,8 +89,8 @@ void main() {
     host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [
-        ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota')),
+        bundleFor('adif'),
+        bundleFor('ham2k-sota'),
         // Two extensions claiming the same reference type equally precisely,
         // the way a program that resolves another's references while that one
         // is off claims them.

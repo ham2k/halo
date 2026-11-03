@@ -13,7 +13,7 @@ import 'dart:async';
 typedef TimerSuspension = ({String extensionKey, String reason});
 
 class ExtensionTimerWake {
-  /// Evaluates `__polo.runTimers()`, throwing when the engine could not finish.
+  /// Calls the kernel's `runTimers` entry, throwing when the engine could not finish.
   final void Function() runTimers;
   final void Function(String message) log;
 

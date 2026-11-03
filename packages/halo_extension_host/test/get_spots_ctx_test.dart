@@ -14,7 +14,7 @@ import 'support/bundles.dart';
 /// A panel that lists the calls `ctx.getSpots` answers, asking with whatever
 /// options its config carries.
 const _reader = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'spots-reader',
   name: 'spots-reader',
   version: '0.0.1',

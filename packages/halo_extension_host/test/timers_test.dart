@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Extension timers through the real path: the kernel's queue, its `timerWake`
-// message, the host's single Dart timer, and `__polo.runTimers()` back into
+// message, the host's single Dart timer, and `__halo.runTimers()` back into
 // QuickJS. sdk/src/timerQueue.test.ts holds the queue's rules against a clock
 // moved by hand; this is where a timer has to actually fire, with no hook call
 // outstanding to keep the engine pumped.
@@ -39,7 +39,7 @@ String _timerExtension(String key) =>
 var timers = null
 var fired = []
 var shown = []
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Timers',
   version: '0.0.1',
@@ -93,7 +93,7 @@ __polo.defineExtension({
 String _failingActivation(String key) =>
     '''
 (function () {
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Fails',
   version: '0.0.1',
@@ -117,7 +117,7 @@ String _gatedActivation(String key) =>
 (function () {
 var shown = []
 var release = null
-__polo.defineExtension({
+__halo.defineExtension({
   key: '$key',
   name: 'Gated',
   version: '0.0.1',

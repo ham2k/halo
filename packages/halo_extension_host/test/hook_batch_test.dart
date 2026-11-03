@@ -15,7 +15,7 @@ import 'support/fake_clock.dart';
 // use to answer legacy references. Plus a hook that throws and one that never
 // answers.
 const _alphaSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'alpha',
   name: 'Alpha',
   version: '0.0.1',
@@ -37,7 +37,7 @@ __polo.defineExtension({
 ''';
 
 const _kiloSource = '''
-__polo.defineExtension({
+__halo.defineExtension({
   key: 'kilo',
   name: 'Kilo',
   version: '0.0.1',

@@ -2464,7 +2464,7 @@ export interface ActivationApi {
   /// shown through these is THIS extension's. The SDK captures them at
   /// activation and uses them for `host.showForm`; absent on an app whose
   /// kernel hands none out, where the SDK falls back to the kernel's public
-  /// entries, which take the key from their caller and go at the next API bump.
+  /// entries, which take the key from their caller and are on `__polo` only.
   showForm?(form: FormDefinition, state?: Record<string, unknown>): Promise<Record<string, any> | null>
   registerDynamicForm?(formId: string, hookObj: Record<string, unknown>): void
   unregisterDynamicForm?(formId: string): void
