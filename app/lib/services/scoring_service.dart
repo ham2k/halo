@@ -326,6 +326,10 @@ class ScoringService {
   /// is already folding the whole log: a second whole-log pass beside it
   /// would buy one spots pass.
   ///
+  /// Chasing has no stored operation: its stand-in and [log] are already
+  /// narrowed to the selected station and period, so its fold uses those
+  /// directly rather than reloading the whole loose-contact bucket.
+  ///
   /// Missing from the result: a scorer whose pass failed, found an empty log,
   /// or answered without a sheet. It folds cold.
   Future<Map<String, ScoringResume>> candidateResumesFor(Operation operation, List<Qso> log, List<Scorer> scorers) async {
@@ -349,19 +353,20 @@ class ScoringService {
       for (final scorer in byKey.values)
         if (scoring[scorer.key]?['unresumable'] != true && resumeOf(scorer.key, operation, log)?.tail.isEmpty != true) scorer,
     ];
-    if (stale.isNotEmpty) await _foldCandidates(operation.uuid, scoring, stale, resumeOf);
+    if (stale.isNotEmpty) await _foldCandidates(operation, log, scoring, stale, resumeOf);
     return {for (final key in byKey.keys) key: ?resumeOf(key, operation, log)};
   }
 
   Future<void> _foldCandidates(
-    String uuid,
+    Operation shown,
+    List<Qso> log,
     Map<String, Map<String, dynamic>> scoring,
     List<Scorer> scorers,
     ScoringResume? Function(String scorerKey, Operation of, List<Qso> rows) resumeOf,
   ) async {
-    final operation = await operations.get(uuid);
+    final operation = shown.uuid.isEmpty ? shown : await operations.get(shown.uuid);
     if (operation == null) return;
-    final all = await qsos.forOperation(uuid);
+    final all = shown.uuid.isEmpty ? log.where((qso) => !qso.deleted).toList() : await qsos.forOperation(shown.uuid);
     final qsoList = all.where((q) => !q.isEvent && !q.hasIncompleteCall).toList();
     if (qsoList.isEmpty) return;
     final checkpoint = checkpointStampOf(operation, all);
@@ -444,9 +449,9 @@ class ScoringService {
     'operation': operationQsonFor(operation),
     // A tail is a handful of contacts and goes as itself. A full pass names
     // the contacts it read, and the runtime folds them from its copy of the
-    // log (`withLoggedQsos` in the SDK kernel) — the whole log would
-    // otherwise cross the bridge once per scorer.
-    if (tail != null) 'qsos': tail else 'qsoUuids': [for (final qso in qsoList) qso.uuid],
+    // log (`withLoggedQsos` in the SDK kernel). Chasing has no operation ID
+    // through which to read that copy, so its filtered log travels in full.
+    if (tail != null || operation.uuid.isEmpty) 'qsos': tail ?? [for (final qso in qsoList) qso.data] else 'qsoUuids': [for (final qso in qsoList) qso.uuid],
     // The runtime keeps this pass's end sheet under this name, so the live
     // paths can name it rather than send it back on every keystroke.
     'checkpointKey': checkpointKeyOf(checkpoint),
