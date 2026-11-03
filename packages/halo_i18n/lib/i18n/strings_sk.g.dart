@@ -147,7 +147,8 @@ class _Translations$onboarding$sk extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Zdieľať údaje o používaní aplikácie';
 	@override String get consentOperationBody => 'Niektoré funkcie môžu zahŕňať zdieľanie údajov o vašej prevádzke s inými používateľmi. Kedykoľvek to môžete vypnúť.';
 	@override String get consentOperationLabel => 'Zdieľať údaje o prevádzke';
-	@override String get finishingSetup => 'Dokončuje sa nastavenie — sťahujú sa referenčné údaje…';
+	@override String get finishingSetupTitle => 'Dokončuje sa nastavenie…';
+	@override String get finishingSetup => 'Sťahujú sa referenčné údaje…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsSk {
 			'onboarding.consentUsageLabel' => 'Zdieľať údaje o používaní aplikácie',
 			'onboarding.consentOperationBody' => 'Niektoré funkcie môžu zahŕňať zdieľanie údajov o vašej prevádzke s inými používateľmi. Kedykoľvek to môžete vypnúť.',
 			'onboarding.consentOperationLabel' => 'Zdieľať údaje o prevádzke',
-			'onboarding.finishingSetup' => 'Dokončuje sa nastavenie — sťahujú sa referenčné údaje…',
+			'onboarding.finishingSetupTitle' => 'Dokončuje sa nastavenie…',
+			'onboarding.finishingSetup' => 'Sťahujú sa referenčné údaje…',
 			'startScreen.credits' => 'od KI2D a priateľov',
 			'testerOverlay.tape' => 'POZOR: STAVENISKO',
 			'testerOverlay.warningTitle' => 'Táto aplikácia je rozpracovaná',
@@ -4999,9 +5001,9 @@ extension on TranslationsSk {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} sa nepodarilo zobraziť: jeho grafika nie je samostatná',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} vrstiev',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} ovládacích prvkov',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: časť jeho scény má viac ako ${max} položiek',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: časť jeho scény má viac ako ${max} položiek',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: reťazec scény je dlhší ako ${max} znakov',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho rozloženie je vnorené hlbšie ako ${max} úrovní',
 			'operation.layout.panelRenderRetry' => 'Skúsiť znova',
@@ -5513,9 +5515,9 @@ extension on TranslationsSk {
 			'loggingControls.bandOrFreqRequired' => 'Pred zápisom nastavte frekvenciu alebo pásmo',
 			'loggingControls.missingBand' => 'Bez pásma',
 			'loggingControls.missingMode' => 'Bez módu',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Nepodarilo sa uložiť: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Nepodarilo sa uložiť: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nepodarilo sa vymazať: ${error}',
 			'loggingControls.info.noQsos' => 'Zatiaľ žiadne QSO... poďme do éteru!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsSk {
 			'settings.privacy.shareOpData.descriptionOn' => 'Niektoré údaje o prevádzke sa zdieľajú verejne a s inými používateľmi',
 			'settings.privacy.shareOpData.descriptionOff' => 'Údaje o prevádzke zostávajú súkromné',
 			'settings.privacy.privacyPolicy' => 'Zásady ochrany osobných údajov',
-			'settings.privacy.termsOfService' => 'Podmienky služby',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Podmienky služby',
 			'settings.operatorCall' => 'Volací znak operátora',
 			'settings.sync.title' => 'Cloudová synchronizácia',
 			'settings.sync.moreSettings' => 'Ďalšie nastavenia synchronizácie',
@@ -6541,9 +6543,9 @@ extension on TranslationsSk {
 			'settings.station.watts' => 'Watty',
 			'settings.station.trackFieldAntenna' => 'Anténa',
 			'settings.station.trackFieldKey' => 'CW kľúč',
-			'settings.station.placeholderConnectDelay' => 'Oneskorenie pripojenia (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Oneskorenie pripojenia (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Ako dlho trvá simulovaný handshake. Prázdne alebo 0 sa pripojí okamžite.',
 			'settings.station.placeholderDropAfter' => 'Odpojiť po (sekundy)',
 			'settings.station.placeholderDropAfterDescription' => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.',
@@ -7055,9 +7057,9 @@ extension on TranslationsSk {
 			'switchAccounts.noLinkCode' => 'Synchronizačný server nevrátil kód na prepojenie. Skúste to neskôr.',
 			'switchAccounts.noConfirmationCode' => 'Synchronizačný server neposlal potvrdzovací kód. Skúste to neskôr.',
 			'switchAccounts.switchNotAccepted' => 'Tento účet prepnutie neprijal. Skúste ho namiesto toho prepojiť pomocou e-mailovej adresy.',
-			'switchAccounts.requestFailed' => 'Pri komunikácii so synchronizačným serverom sa niečo pokazilo. Skúste to neskôr.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Pri komunikácii so synchronizačným serverom sa niečo pokazilo. Skúste to neskôr.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} prevádzka', other: '${count} prevádzok', ), 
 			'qsonImport.title' => 'Importovať prevádzku QSON',

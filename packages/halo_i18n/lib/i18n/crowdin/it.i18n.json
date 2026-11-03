@@ -52,7 +52,8 @@
     "consentUsageLabel": "Condividi i dati di utilizzo dell'app",
     "consentOperationBody": "Alcune funzioni potrebbero comportare la condivisione dei dati delle tue operazioni con altri utenti. Puoi rinunciare in qualsiasi momento.",
     "consentOperationLabel": "Condividi i dati dell'operazione",
-    "finishingSetup": "Completamento configurazione — download dei dati delle referenze…"
+    "finishingSetupTitle": "Completamento configurazione…",
+    "finishingSetup": "Download dei dati delle referenze…"
   },
   "startScreen": {
     "credits": "da KI2D e amici"

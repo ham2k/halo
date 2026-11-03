@@ -53,7 +53,8 @@
     "consentUsageLabel": "SHARE APP USAGE DATA",
     "consentOperationBody": "SOME FEATURES MIGHT INVOLVE SHARING YOUR OPERATION DATA WITH OTHER USERS. YOU CAN OPT-OUT AT ANY TIME.",
     "consentOperationLabel": "SHARE OPERATION DATA",
-    "finishingSetup": "FINISHING SETUP — DOWNLOADING REFERENCE DATA…"
+    "finishingSetupTitle": "FINISHING SETUP…",
+    "finishingSetup": "DOWNLOADING REFERENCE DATA…"
   },
   "startScreen": {
     "credits": "BY KI2D AND FRIENDS"

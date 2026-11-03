@@ -52,7 +52,8 @@
     "consentUsageLabel": "앱 사용 데이터 공유",
     "consentOperationBody": "일부 기능은 운용 데이터를 다른 사용자와 공유할 수 있습니다. 언제든지 거부할 수 있습니다.",
     "consentOperationLabel": "운용 데이터 공유",
-    "finishingSetup": "설정 마무리 중 — 레퍼런스 데이터 다운로드 중…"
+    "finishingSetupTitle": "설정 마무리 중…",
+    "finishingSetup": "레퍼런스 데이터 다운로드 중…"
   },
   "startScreen": {
     "credits": "KI2D & 친구들 제작"

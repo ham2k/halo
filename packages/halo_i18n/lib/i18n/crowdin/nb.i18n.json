@@ -52,7 +52,8 @@
     "consentUsageLabel": "Del data om bruken din",
     "consentOperationBody": "Noen funksjoner kan innebære at operasjonsdataene dine deles med andre brukere. Du kan reservere deg når som helst.",
     "consentOperationLabel": "Del operasjonsdata",
-    "finishingSetup": "Fullfører oppsettet — laster ned referansedata…"
+    "finishingSetupTitle": "Fullfører oppsettet…",
+    "finishingSetup": "Laster ned referansedata…"
   },
   "startScreen": {
     "credits": "av KI2D og venner"

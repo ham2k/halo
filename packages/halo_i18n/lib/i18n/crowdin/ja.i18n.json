@@ -52,7 +52,8 @@
     "consentUsageLabel": "アプリ使用データを共有",
     "consentOperationBody": "一部の機能では、オペレーションデータを他のユーザーと共有する場合があります。いつでもオプトアウトできます。",
     "consentOperationLabel": "オペレーションデータを共有",
-    "finishingSetup": "セットアップを完了しています — 参照データをダウンロード中…"
+    "finishingSetupTitle": "セットアップを完了しています…",
+    "finishingSetup": "参照データをダウンロード中…"
   },
   "startScreen": {
     "credits": "KI2Dと仲間たちによる"

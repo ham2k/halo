@@ -147,7 +147,8 @@ class Translations$onboarding$pt extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Partilhar dados de uso da app';
 	@override String get consentOperationBody => 'Algumas funcionalidades podem envolver partilhar os seus dados de operação com outros utilizadores. Pode desativar a qualquer momento.';
 	@override String get consentOperationLabel => 'Partilhar Dados de Operação';
-	@override String get finishingSetup => 'A concluir a configuração — a descarregar dados de referência…';
+	@override String get finishingSetupTitle => 'A concluir a configuração…';
+	@override String get finishingSetup => 'A descarregar dados de referência…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsPt {
 			'onboarding.consentUsageLabel' => 'Partilhar dados de uso da app',
 			'onboarding.consentOperationBody' => 'Algumas funcionalidades podem envolver partilhar os seus dados de operação com outros utilizadores. Pode desativar a qualquer momento.',
 			'onboarding.consentOperationLabel' => 'Partilhar Dados de Operação',
-			'onboarding.finishingSetup' => 'A concluir a configuração — a descarregar dados de referência…',
+			'onboarding.finishingSetupTitle' => 'A concluir a configuração…',
+			'onboarding.finishingSetup' => 'A descarregar dados de referência…',
 			'startScreen.credits' => 'por KI2D e amigos',
 			'testerOverlay.tape' => 'CUIDADO: EM CONSTRUÇÃO',
 			'testerOverlay.warningTitle' => 'Esta app está em desenvolvimento',
@@ -4999,9 +5001,9 @@ extension on TranslationsPt {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => 'Não foi possível mostrar ${panel}: a sua ilustração não é autónoma',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} camadas',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua cena tem mais de ${max} controlos',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: parte da sua cena tem mais de ${max} entradas',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: parte da sua cena tem mais de ${max} entradas',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: um texto da cena tem mais de ${max} caracteres',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'Não foi possível mostrar ${panel}: a sua disposição tem mais de ${max} níveis de aninhamento',
 			'operation.layout.panelRenderRetry' => 'Tentar novamente',
@@ -5513,9 +5515,9 @@ extension on TranslationsPt {
 			'loggingControls.bandOrFreqRequired' => 'Defina uma frequência ou banda antes de registar',
 			'loggingControls.missingBand' => 'Sem Banda',
 			'loggingControls.missingMode' => 'Sem Modo',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Não foi possível guardar: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Não foi possível guardar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Não foi possível eliminar: ${error}',
 			'loggingControls.info.noQsos' => 'Ainda nenhum QSO… vamos para o ar!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsPt {
 			'settings.privacy.shareOpData.descriptionOn' => 'A partilhar alguns dados de operação publicamente e com outros utilizadores',
 			'settings.privacy.shareOpData.descriptionOff' => 'A manter os dados de operação privados',
 			'settings.privacy.privacyPolicy' => 'Política de Privacidade',
-			'settings.privacy.termsOfService' => 'Termos de Serviço',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Termos de Serviço',
 			'settings.operatorCall' => 'Indicativo do Operador',
 			'settings.sync.title' => 'Sincronização na Nuvem',
 			'settings.sync.moreSettings' => 'Mais configurações de sincronização',
@@ -6541,9 +6543,9 @@ extension on TranslationsPt {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Chave CW',
-			'settings.station.placeholderConnectDelay' => 'Atraso de ligação (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Atraso de ligação (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quanto tempo demora o handshake simulado. Vazio ou 0 liga instantaneamente.',
 			'settings.station.placeholderDropAfter' => 'Desligar após (segundos)',
 			'settings.station.placeholderDropAfterDescription' => 'Fecha a ligação por si só, para testar o caminho de religação. Vazio ou 0 nunca desliga.',
@@ -7055,9 +7057,9 @@ extension on TranslationsPt {
 			'switchAccounts.noLinkCode' => 'O servidor de sincronização não devolveu um código de ligação. Tente novamente mais tarde.',
 			'switchAccounts.noConfirmationCode' => 'O servidor de sincronização não enviou um código de confirmação. Tente novamente mais tarde.',
 			'switchAccounts.switchNotAccepted' => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de email.',
-			'switchAccounts.requestFailed' => 'Algo correu mal na comunicação com o servidor de sincronização. Tente novamente mais tarde.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Algo correu mal na comunicação com o servidor de sincronização. Tente novamente mais tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} operação', other: '${count} operações', ), 
 			'qsonImport.title' => 'Importar Operação QSON',

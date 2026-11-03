@@ -147,7 +147,8 @@ class _Translations$onboarding$ja extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'アプリ使用データを共有';
 	@override String get consentOperationBody => '一部の機能では、オペレーションデータを他のユーザーと共有する場合があります。いつでもオプトアウトできます。';
 	@override String get consentOperationLabel => 'オペレーションデータを共有';
-	@override String get finishingSetup => 'セットアップを完了しています — 参照データをダウンロード中…';
+	@override String get finishingSetupTitle => 'セットアップを完了しています…';
+	@override String get finishingSetup => '参照データをダウンロード中…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsJa {
 			'onboarding.consentUsageLabel' => 'アプリ使用データを共有',
 			'onboarding.consentOperationBody' => '一部の機能では、オペレーションデータを他のユーザーと共有する場合があります。いつでもオプトアウトできます。',
 			'onboarding.consentOperationLabel' => 'オペレーションデータを共有',
-			'onboarding.finishingSetup' => 'セットアップを完了しています — 参照データをダウンロード中…',
+			'onboarding.finishingSetupTitle' => 'セットアップを完了しています…',
+			'onboarding.finishingSetup' => '参照データをダウンロード中…',
 			'startScreen.credits' => 'KI2Dと仲間たちによる',
 			'testerOverlay.tape' => '注意：工事中',
 			'testerOverlay.warningTitle' => 'このアプリは開発中です',
@@ -4999,9 +5001,9 @@ extension on TranslationsJa {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel}を表示できませんでした：アートワークが自己完結していません',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのレイヤーが${max}個を超えています',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのコントロールが${max}個を超えています',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの文字列が${max}文字を超えています',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：レイアウトのネストが${max}階層を超えています',
 			'operation.layout.panelRenderRetry' => '再試行',
@@ -5513,9 +5515,9 @@ extension on TranslationsJa {
 			'loggingControls.bandOrFreqRequired' => '記録する前に周波数またはバンドを設定してください',
 			'loggingControls.missingBand' => 'バンドなし',
 			'loggingControls.missingMode' => 'モードなし',
-			'loggingControls.saveFailed' => ({required Object error}) => '保存できませんでした：${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => '保存できませんでした：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '削除できませんでした：${error}',
 			'loggingControls.info.noQsos' => 'まだQSOがありません... オンエアしましょう！',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsJa {
 			'settings.privacy.shareOpData.descriptionOn' => '一部のオペレーションデータを公開し、他のユーザーと共有しています',
 			'settings.privacy.shareOpData.descriptionOff' => 'オペレーションデータをプライベートに保っています',
 			'settings.privacy.privacyPolicy' => 'プライバシーポリシー',
-			'settings.privacy.termsOfService' => '利用規約',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => '利用規約',
 			'settings.operatorCall' => 'オペレーターのコールサイン',
 			'settings.sync.title' => 'クラウド同期',
 			'settings.sync.moreSettings' => 'その他の同期設定',
@@ -6541,9 +6543,9 @@ extension on TranslationsJa {
 			'settings.station.watts' => 'ワット',
 			'settings.station.trackFieldAntenna' => 'アンテナ',
 			'settings.station.trackFieldKey' => 'CWキー',
-			'settings.station.placeholderConnectDelay' => '接続遅延（ms）',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => '接続遅延（ms）',
 			'settings.station.placeholderConnectDelayDescription' => 'シミュレートしたハンドシェイクにかかる時間。空欄または0で即座に接続します。',
 			'settings.station.placeholderDropAfter' => '切断までの時間（秒）',
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
@@ -7055,9 +7057,9 @@ extension on TranslationsJa {
 			'switchAccounts.noLinkCode' => '同期サーバーがリンクコードを返しませんでした。後で再試行してください。',
 			'switchAccounts.noConfirmationCode' => '同期サーバーが確認コードを送信しませんでした。後で再試行してください。',
 			'switchAccounts.switchNotAccepted' => 'そのアカウントは切り替えを受け付けませんでした。代わりにメールアドレスでリンクしてみてください。',
-			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のQSO', other: '${count}件のQSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
 			'qsonImport.title' => 'QSONオペレーションをインポート',

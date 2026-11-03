@@ -52,7 +52,8 @@
     "consentUsageLabel": "Compartilhar dados de uso do app",
     "consentOperationBody": "Alguns recursos podem envolver o compartilhamento dos seus dados de operação com outros usuários. Você pode desativar isso a qualquer momento.",
     "consentOperationLabel": "Compartilhar dados de operação",
-    "finishingSetup": "Concluindo a configuração — baixando dados de referência…"
+    "finishingSetupTitle": "Concluindo a configuração…",
+    "finishingSetup": "Baixando dados de referência…"
   },
   "startScreen": {
     "credits": "por KI2D e amigos"

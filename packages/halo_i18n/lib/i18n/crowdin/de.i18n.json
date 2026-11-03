@@ -52,7 +52,8 @@
     "consentUsageLabel": "App-Nutzungsdaten teilen",
     "consentOperationBody": "Einige Funktionen können deine Betriebsdaten mit anderen Nutzern teilen. Du kannst das jederzeit abschalten.",
     "consentOperationLabel": "Betriebsdaten teilen",
-    "finishingSetup": "Einrichtung wird abgeschlossen — Referenzdaten werden heruntergeladen…"
+    "finishingSetupTitle": "Einrichtung wird abgeschlossen…",
+    "finishingSetup": "Referenzdaten werden heruntergeladen…"
   },
   "startScreen": {
     "credits": "von KI2D und Freunden"

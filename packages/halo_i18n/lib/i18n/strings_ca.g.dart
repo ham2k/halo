@@ -147,7 +147,8 @@ class _Translations$onboarding$ca extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Comparteix dades d\'ús de l\'aplicació';
 	@override String get consentOperationBody => 'Algunes funcions poden implicar compartir les teves dades d\'operació amb altres usuaris. Pots desactivar-ho en qualsevol moment.';
 	@override String get consentOperationLabel => 'Comparteix dades d\'operació';
-	@override String get finishingSetup => 'Acabant la configuració: descarregant dades de referència…';
+	@override String get finishingSetupTitle => 'Acabant la configuració…';
+	@override String get finishingSetup => 'Descarregant dades de referència…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsCa {
 			'onboarding.consentUsageLabel' => 'Comparteix dades d\'ús de l\'aplicació',
 			'onboarding.consentOperationBody' => 'Algunes funcions poden implicar compartir les teves dades d\'operació amb altres usuaris. Pots desactivar-ho en qualsevol moment.',
 			'onboarding.consentOperationLabel' => 'Comparteix dades d\'operació',
-			'onboarding.finishingSetup' => 'Acabant la configuració: descarregant dades de referència…',
+			'onboarding.finishingSetupTitle' => 'Acabant la configuració…',
+			'onboarding.finishingSetup' => 'Descarregant dades de referència…',
 			'startScreen.credits' => 'per KI2D i amics',
 			'testerOverlay.tape' => 'ATENCIÓ: EN CONSTRUCCIÓ',
 			'testerOverlay.warningTitle' => 'Aquesta aplicació està en desenvolupament',
@@ -4999,9 +5001,9 @@ extension on TranslationsCa {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => 'No s\'ha pogut mostrar ${panel}: el seu dibuix no és autocontingut',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva escena té més de ${max} capes',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva escena té més de ${max} controls',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una part de la seva escena té més de ${max} entrades',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una part de la seva escena té més de ${max} entrades',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una cadena de l\'escena té més de ${max} caràcters',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva disposició té més de ${max} nivells d\'imbricació',
 			'operation.layout.panelRenderRetry' => 'Torna-ho a provar',
@@ -5513,9 +5515,9 @@ extension on TranslationsCa {
 			'loggingControls.bandOrFreqRequired' => 'Defineix una freqüència o banda abans de registrar',
 			'loggingControls.missingBand' => 'Sense banda',
 			'loggingControls.missingMode' => 'Sense mode',
-			'loggingControls.saveFailed' => ({required Object error}) => 'No s\'ha pogut desar: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'No s\'ha pogut desar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'No s\'ha pogut esborrar: ${error}',
 			'loggingControls.info.noQsos' => 'Cap QSO encara… Som-hi, sortim a l\'aire!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsCa {
 			'settings.privacy.shareOpData.descriptionOn' => 'Es comparteixen algunes dades d\'operació públicament i amb altres usuaris',
 			'settings.privacy.shareOpData.descriptionOff' => 'Es mantenen privades les dades d\'operació',
 			'settings.privacy.privacyPolicy' => 'Política de privacitat',
-			'settings.privacy.termsOfService' => 'Condicions de servei',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Condicions de servei',
 			'settings.operatorCall' => 'Indicatiu de l\'operador',
 			'settings.sync.title' => 'Sincronització al núvol',
 			'settings.sync.moreSettings' => 'Més opcions de sincronització',
@@ -6541,9 +6543,9 @@ extension on TranslationsCa {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador CW',
-			'settings.station.placeholderConnectDelay' => 'Retard de connexió (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Retard de connexió (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quant de temps triga la negociació simulada. En blanc o 0 connecta a l\'instant.',
 			'settings.station.placeholderDropAfter' => 'Desconnecta al cap de (segons)',
 			'settings.station.placeholderDropAfterDescription' => 'Tanca la connexió per si sola, per provar el camí de reconnexió. En blanc o 0 no es desconnecta mai.',
@@ -7055,9 +7057,9 @@ extension on TranslationsCa {
 			'switchAccounts.noLinkCode' => 'El servidor de sincronització no ha retornat cap codi de vinculació. Torna-ho a provar més tard.',
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronització no ha enviat cap codi de confirmació. Torna-ho a provar més tard.',
 			'switchAccounts.switchNotAccepted' => 'Aquest compte no ha acceptat el canvi. Prova de vincular-lo amb una adreça de correu electrònic.',
-			'switchAccounts.requestFailed' => 'Alguna cosa ha anat malament en comunicar-se amb el servidor de sincronització. Torna-ho a provar més tard.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Alguna cosa ha anat malament en comunicar-se amb el servidor de sincronització. Torna-ho a provar més tard.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} operació', other: '${count} operacions', ), 
 			'qsonImport.title' => 'Importa una operació QSON',

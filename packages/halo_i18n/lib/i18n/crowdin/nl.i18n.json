@@ -52,7 +52,8 @@
     "consentUsageLabel": "Deel app-gebruiksgegevens",
     "consentOperationBody": "Sommige functies kunnen je activatiegegevens met andere gebruikers delen. Je kunt je op elk moment afmelden.",
     "consentOperationLabel": "Deel activatiegegevens",
-    "finishingSetup": "Installatie afronden — referentiegegevens downloaden…"
+    "finishingSetupTitle": "Installatie afronden…",
+    "finishingSetup": "Referentiegegevens downloaden…"
   },
   "startScreen": {
     "credits": "door KI2D en vrienden"

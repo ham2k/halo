@@ -527,7 +527,10 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Finishing setup — downloading reference data…'), findsOneWidget);
+    expect(find.text('Downloading reference data…'), findsOneWidget);
+    // The privacy choices are gone from the screen, so its title must not still claim them.
+    expect(find.text('Finishing setup…'), findsOneWidget);
+    expect(find.text('Data & Privacy'), findsNothing);
     expect(find.byType(OnboardingOverlayView), findsOneWidget, reason: 'must still be up mid-sync');
     // Both buttons disabled while finishing — no way to back out or double-tap.
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Done')).onPressed, isNull);

@@ -147,7 +147,8 @@ class _Translations$onboarding$tr extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Uygulama kullanım verilerini paylaş';
 	@override String get consentOperationBody => 'Bazı özellikler operasyon verilerinizin diğer kullanıcılarla paylaşılmasını içerebilir. İstediğiniz zaman vazgeçebilirsiniz.';
 	@override String get consentOperationLabel => 'Operasyon Verilerini Paylaş';
-	@override String get finishingSetup => 'Kurulum tamamlanıyor — referans verileri indiriliyor…';
+	@override String get finishingSetupTitle => 'Kurulum tamamlanıyor…';
+	@override String get finishingSetup => 'Referans verileri indiriliyor…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsTr {
 			'onboarding.consentUsageLabel' => 'Uygulama kullanım verilerini paylaş',
 			'onboarding.consentOperationBody' => 'Bazı özellikler operasyon verilerinizin diğer kullanıcılarla paylaşılmasını içerebilir. İstediğiniz zaman vazgeçebilirsiniz.',
 			'onboarding.consentOperationLabel' => 'Operasyon Verilerini Paylaş',
-			'onboarding.finishingSetup' => 'Kurulum tamamlanıyor — referans verileri indiriliyor…',
+			'onboarding.finishingSetupTitle' => 'Kurulum tamamlanıyor…',
+			'onboarding.finishingSetup' => 'Referans verileri indiriliyor…',
 			'startScreen.credits' => 'KI2D ve arkadaşları tarafından',
 			'testerOverlay.tape' => 'DİKKAT: YAPIM AŞAMASINDA',
 			'testerOverlay.warningTitle' => 'Bu uygulama hâlâ geliştiriliyor',
@@ -4999,9 +5001,9 @@ extension on TranslationsTr {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} görüntülenemedi: çizimi kendi başına bütün değil',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} katmandan fazla içeriyor',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} kontrolden fazla içeriyor',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: bir sahne metni ${max} karakterden uzun',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: düzeni ${max} seviyeden derin iç içe geçiyor',
 			'operation.layout.panelRenderRetry' => 'Tekrar dene',
@@ -5513,9 +5515,9 @@ extension on TranslationsTr {
 			'loggingControls.bandOrFreqRequired' => 'Kaydetmeden önce bir frekans veya bant ayarlayın',
 			'loggingControls.missingBand' => 'Bant Yok',
 			'loggingControls.missingMode' => 'Mod Yok',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Kaydedilemedi: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Kaydedilemedi: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Silinemedi: ${error}',
 			'loggingControls.info.noQsos' => 'Henüz QSO yok... hadi havaya çıkalım!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsTr {
 			'settings.privacy.shareOpData.descriptionOn' => 'Bazı operasyon verileri herkese açık olarak ve diğer kullanıcılarla paylaşılıyor',
 			'settings.privacy.shareOpData.descriptionOff' => 'Operasyon verileri gizli tutuluyor',
 			'settings.privacy.privacyPolicy' => 'Gizlilik Politikası',
-			'settings.privacy.termsOfService' => 'Hizmet Şartları',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Hizmet Şartları',
 			'settings.operatorCall' => 'Operatör Çağrı İşareti',
 			'settings.sync.title' => 'Bulut Senkronizasyonu',
 			'settings.sync.moreSettings' => 'Diğer senkronizasyon ayarları',
@@ -6541,9 +6543,9 @@ extension on TranslationsTr {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Anten',
 			'settings.station.trackFieldKey' => 'CW Anahtarı',
-			'settings.station.placeholderConnectDelay' => 'Bağlantı gecikmesi (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Bağlantı gecikmesi (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Simüle edilen el sıkışmanın ne kadar sürdüğü. Boş veya 0 anında bağlanır.',
 			'settings.station.placeholderDropAfter' => 'Şu süre sonra kes (saniye)',
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
@@ -7055,9 +7057,9 @@ extension on TranslationsTr {
 			'switchAccounts.noLinkCode' => 'Senkronizasyon sunucusu bir bağlantı kodu döndürmedi. Daha sonra tekrar deneyin.',
 			'switchAccounts.noConfirmationCode' => 'Senkronizasyon sunucusu bir onay kodu göndermedi. Daha sonra tekrar deneyin.',
 			'switchAccounts.switchNotAccepted' => 'Bu hesap geçişi kabul etmedi. Bunun yerine bir e-posta adresiyle bağlamayı deneyin.',
-			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
 			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',

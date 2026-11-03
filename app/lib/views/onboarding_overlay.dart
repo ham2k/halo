@@ -826,7 +826,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
         );
       case _OnboardingStep.consent:
         return _stepScaffold(
-          title: Text(s.consentTitle, style: titleStyle),
+          title: Text(_finishingSetup ? s.finishingSetupTitle : s.consentTitle, style: titleStyle),
           body: _finishingSetup
               ? Column(
                   mainAxisAlignment: MainAxisAlignment.center,

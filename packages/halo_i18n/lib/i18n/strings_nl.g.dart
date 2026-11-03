@@ -147,7 +147,8 @@ class _Translations$onboarding$nl extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Deel app-gebruiksgegevens';
 	@override String get consentOperationBody => 'Sommige functies kunnen je activatiegegevens met andere gebruikers delen. Je kunt je op elk moment afmelden.';
 	@override String get consentOperationLabel => 'Deel activatiegegevens';
-	@override String get finishingSetup => 'Installatie afronden — referentiegegevens downloaden…';
+	@override String get finishingSetupTitle => 'Installatie afronden…';
+	@override String get finishingSetup => 'Referentiegegevens downloaden…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsNl {
 			'onboarding.consentUsageLabel' => 'Deel app-gebruiksgegevens',
 			'onboarding.consentOperationBody' => 'Sommige functies kunnen je activatiegegevens met andere gebruikers delen. Je kunt je op elk moment afmelden.',
 			'onboarding.consentOperationLabel' => 'Deel activatiegegevens',
-			'onboarding.finishingSetup' => 'Installatie afronden — referentiegegevens downloaden…',
+			'onboarding.finishingSetupTitle' => 'Installatie afronden…',
+			'onboarding.finishingSetup' => 'Referentiegegevens downloaden…',
 			'startScreen.credits' => 'door KI2D en vrienden',
 			'testerOverlay.tape' => 'LET OP: IN AANBOUW',
 			'testerOverlay.warningTitle' => 'Aan deze app wordt nog gewerkt',
@@ -4999,9 +5001,9 @@ extension on TranslationsNl {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kon niet worden weergegeven: de afbeelding staat niet op zichzelf',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} lagen',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} bedieningselementen',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een tekst in de scène is langer dan ${max} tekens',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de indeling is meer dan ${max} niveaus diep genest',
 			'operation.layout.panelRenderRetry' => 'Opnieuw proberen',
@@ -5513,9 +5515,9 @@ extension on TranslationsNl {
 			'loggingControls.bandOrFreqRequired' => 'Stel een frequentie of band in voordat je logt',
 			'loggingControls.missingBand' => 'Geen band',
 			'loggingControls.missingMode' => 'Geen mode',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Kon niet opslaan: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Kon niet opslaan: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kon niet verwijderen: ${error}',
 			'loggingControls.info.noQsos' => 'Nog geen QSO\'s… Laten we starten!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsNl {
 			'settings.privacy.shareOpData.descriptionOn' => 'Bepaalde activatiegegevens openbaar en met andere gebruikers delen',
 			'settings.privacy.shareOpData.descriptionOff' => 'Activatiegegevens privé houden',
 			'settings.privacy.privacyPolicy' => 'Privacybeleid',
-			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
 			'settings.operatorCall' => 'Roepnaam van de operator',
 			'settings.sync.title' => 'Cloudsynchronisatie',
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
@@ -6541,9 +6543,9 @@ extension on TranslationsNl {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-seinsleutel',
-			'settings.station.placeholderConnectDelay' => 'Verbindingsvertraging (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Verbindingsvertraging (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hoe lang de gesimuleerde handshake duurt. Leeg of 0 verbindt meteen.',
 			'settings.station.placeholderDropAfter' => 'Verbreken na (seconden)',
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
@@ -7055,9 +7057,9 @@ extension on TranslationsNl {
 			'switchAccounts.noLinkCode' => 'De synchronisatieserver gaf geen koppelcode terug. Probeer het later opnieuw.',
 			'switchAccounts.noConfirmationCode' => 'De synchronisatieserver stuurde geen bevestigingscode. Probeer het later opnieuw.',
 			'switchAccounts.switchNotAccepted' => 'Dat account accepteerde de wissel niet. Probeer het in plaats daarvan te koppelen met een e-mailadres.',
-			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
 			'qsonImport.title' => 'QSON-activatie importeren',

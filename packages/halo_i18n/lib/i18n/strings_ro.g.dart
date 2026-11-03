@@ -147,7 +147,8 @@ class _Translations$onboarding$ro extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Partajează datele de utilizare a aplicației';
 	@override String get consentOperationBody => 'Unele funcții pot implica partajarea datelor operațiunilor dvs. cu alți utilizatori. Puteți renunța oricând.';
 	@override String get consentOperationLabel => 'Partajează datele operațiunilor';
-	@override String get finishingSetup => 'Se finalizează configurarea — se descarcă datele de referință…';
+	@override String get finishingSetupTitle => 'Se finalizează configurarea…';
+	@override String get finishingSetup => 'Se descarcă datele de referință…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsRo {
 			'onboarding.consentUsageLabel' => 'Partajează datele de utilizare a aplicației',
 			'onboarding.consentOperationBody' => 'Unele funcții pot implica partajarea datelor operațiunilor dvs. cu alți utilizatori. Puteți renunța oricând.',
 			'onboarding.consentOperationLabel' => 'Partajează datele operațiunilor',
-			'onboarding.finishingSetup' => 'Se finalizează configurarea — se descarcă datele de referință…',
+			'onboarding.finishingSetupTitle' => 'Se finalizează configurarea…',
+			'onboarding.finishingSetup' => 'Se descarcă datele de referință…',
 			'startScreen.credits' => 'de către KI2D și prietenii',
 			'testerOverlay.tape' => 'ATENȚIE: ÎN CONSTRUCȚIE',
 			'testerOverlay.warningTitle' => 'Această aplicație este în lucru',
@@ -4999,9 +5001,9 @@ extension on TranslationsRo {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} nu a putut fi afișat: grafica lui nu este de sine stătătoare',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: scena lui are mai mult de ${max} straturi',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: scena lui are mai mult de ${max} controale',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: o parte a scenei lui are mai mult de ${max} intrări',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: o parte a scenei lui are mai mult de ${max} intrări',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: un text din scenă depășește ${max} caractere',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: aranjamentul lui are mai mult de ${max} niveluri de imbricare',
 			'operation.layout.panelRenderRetry' => 'Încercați din nou',
@@ -5513,9 +5515,9 @@ extension on TranslationsRo {
 			'loggingControls.bandOrFreqRequired' => 'Setați o frecvență sau o bandă înainte de înregistrare',
 			'loggingControls.missingBand' => 'Fără bandă',
 			'loggingControls.missingMode' => 'Fără mod',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Nu s-a putut salva: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Nu s-a putut salva: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nu s-a putut șterge: ${error}',
 			'loggingControls.info.noQsos' => 'Niciun QSO încă... hai să operăm!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsRo {
 			'settings.privacy.shareOpData.descriptionOn' => 'Se partajează public și cu alți utilizatori unele date despre operațiuni',
 			'settings.privacy.shareOpData.descriptionOff' => 'Datele despre operațiuni rămân private',
 			'settings.privacy.privacyPolicy' => 'Politica de confidențialitate',
-			'settings.privacy.termsOfService' => 'Termeni și condiții',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Termeni și condiții',
 			'settings.operatorCall' => 'Indicativul operatorului',
 			'settings.sync.title' => 'Sincronizare în cloud',
 			'settings.sync.moreSettings' => 'Mai multe setări de sincronizare',
@@ -6541,9 +6543,9 @@ extension on TranslationsRo {
 			'settings.station.watts' => 'Wați',
 			'settings.station.trackFieldAntenna' => 'Antenă',
 			'settings.station.trackFieldKey' => 'Manipulator CW',
-			'settings.station.placeholderConnectDelay' => 'Întârziere la conectare (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Întârziere la conectare (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cât durează handshake-ul simulat. Gol sau 0 se conectează instantaneu.',
 			'settings.station.placeholderDropAfter' => 'Deconectare după (secunde)',
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
@@ -7055,9 +7057,9 @@ extension on TranslationsRo {
 			'switchAccounts.noLinkCode' => 'Serverul de sincronizare nu a returnat un cod de conectare. Încercați din nou mai târziu.',
 			'switchAccounts.noConfirmationCode' => 'Serverul de sincronizare nu a trimis un cod de confirmare. Încercați din nou mai târziu.',
 			'switchAccounts.switchNotAccepted' => 'Acel cont nu a acceptat schimbarea. Încercați în schimb conectarea cu o adresă de e-mail.',
-			'switchAccounts.requestFailed' => 'Ceva n-a mers bine în comunicarea cu serverul de sincronizare. Încercați din nou mai târziu.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Ceva n-a mers bine în comunicarea cu serverul de sincronizare. Încercați din nou mai târziu.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO', other: '${count} QSO-uri', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} operațiune', other: '${count} operațiuni', ), 
 			'qsonImport.title' => 'Importă operațiune QSON',

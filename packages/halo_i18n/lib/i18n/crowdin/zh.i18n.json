@@ -52,7 +52,8 @@
     "consentUsageLabel": "分享应用使用数据",
     "consentOperationBody": "某些功能可能会将您的操作数据分享给其他用户。您可以随时选择退出。",
     "consentOperationLabel": "分享操作数据",
-    "finishingSetup": "正在完成设置——下载参考数据…"
+    "finishingSetupTitle": "正在完成设置…",
+    "finishingSetup": "正在下载参考数据…"
   },
   "startScreen": {
     "credits": "由 KI2D 和朋友们制作"

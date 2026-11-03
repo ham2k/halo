@@ -147,7 +147,8 @@ class _Translations$onboarding$zh extends Translations$onboarding$en {
 	@override String get consentUsageLabel => '分享应用使用数据';
 	@override String get consentOperationBody => '某些功能可能会将您的操作数据分享给其他用户。您可以随时选择退出。';
 	@override String get consentOperationLabel => '分享操作数据';
-	@override String get finishingSetup => '正在完成设置——下载参考数据…';
+	@override String get finishingSetupTitle => '正在完成设置…';
+	@override String get finishingSetup => '正在下载参考数据…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsZh {
 			'onboarding.consentUsageLabel' => '分享应用使用数据',
 			'onboarding.consentOperationBody' => '某些功能可能会将您的操作数据分享给其他用户。您可以随时选择退出。',
 			'onboarding.consentOperationLabel' => '分享操作数据',
-			'onboarding.finishingSetup' => '正在完成设置——下载参考数据…',
+			'onboarding.finishingSetupTitle' => '正在完成设置…',
+			'onboarding.finishingSetup' => '正在下载参考数据…',
 			'startScreen.credits' => '由 KI2D 和朋友们制作',
 			'testerOverlay.tape' => '注意：施工中',
 			'testerOverlay.warningTitle' => '此应用仍在开发中',
@@ -4999,9 +5001,9 @@ extension on TranslationsZh {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} 无法显示：其图形不是自包含的',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个图层',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个控件',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} 无法显示：某个场景字符串长度超过 ${max} 个字符',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} 无法显示：其布局嵌套超过 ${max} 层',
 			'operation.layout.panelRenderRetry' => '重试',
@@ -5513,9 +5515,9 @@ extension on TranslationsZh {
 			'loggingControls.bandOrFreqRequired' => '记录前请设置频率或频段',
 			'loggingControls.missingBand' => '无频段',
 			'loggingControls.missingMode' => '无模式',
-			'loggingControls.saveFailed' => ({required Object error}) => '无法保存：${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => '无法保存：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '无法删除：${error}',
 			'loggingControls.info.noQsos' => '还没有 QSO…开始通联吧！',
 			'loggingControls.info.qsoCountOne' => '1 个 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsZh {
 			'settings.privacy.shareOpData.descriptionOn' => '公开并与其他用户分享部分操作数据',
 			'settings.privacy.shareOpData.descriptionOff' => '保持操作数据私密',
 			'settings.privacy.privacyPolicy' => '隐私政策',
-			'settings.privacy.termsOfService' => '服务条款',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => '服务条款',
 			'settings.operatorCall' => '操作员呼号',
 			'settings.sync.title' => '云同步',
 			'settings.sync.moreSettings' => '更多同步设置',
@@ -6541,9 +6543,9 @@ extension on TranslationsZh {
 			'settings.station.watts' => '瓦',
 			'settings.station.trackFieldAntenna' => '天线',
 			'settings.station.trackFieldKey' => 'CW 电键',
-			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
 			'settings.station.placeholderConnectDelayDescription' => '模拟握手所需的时间。留空或 0 表示立即连接。',
 			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
@@ -7055,9 +7057,9 @@ extension on TranslationsZh {
 			'switchAccounts.noLinkCode' => '同步服务器没有返回链接代码。请稍后重试。',
 			'switchAccounts.noConfirmationCode' => '同步服务器没有发送确认代码。请稍后重试。',
 			'switchAccounts.switchNotAccepted' => '该账户不接受切换。请改用电子邮件地址链接。',
-			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个 QSO', other: '${count} 个 QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
 			'qsonImport.title' => '导入 QSON 操作',

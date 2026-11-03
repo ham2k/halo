@@ -52,7 +52,8 @@
     "consentUsageLabel": "Uygulama kullanım verilerini paylaş",
     "consentOperationBody": "Bazı özellikler operasyon verilerinizin diğer kullanıcılarla paylaşılmasını içerebilir. İstediğiniz zaman vazgeçebilirsiniz.",
     "consentOperationLabel": "Operasyon Verilerini Paylaş",
-    "finishingSetup": "Kurulum tamamlanıyor — referans verileri indiriliyor…"
+    "finishingSetupTitle": "Kurulum tamamlanıyor…",
+    "finishingSetup": "Referans verileri indiriliyor…"
   },
   "startScreen": {
     "credits": "KI2D ve arkadaşları tarafından"

@@ -52,7 +52,8 @@
     "consentUsageLabel": "Zdieľať údaje o používaní aplikácie",
     "consentOperationBody": "Niektoré funkcie môžu zahŕňať zdieľanie údajov o vašej prevádzke s inými používateľmi. Kedykoľvek to môžete vypnúť.",
     "consentOperationLabel": "Zdieľať údaje o prevádzke",
-    "finishingSetup": "Dokončuje sa nastavenie — sťahujú sa referenčné údaje…"
+    "finishingSetupTitle": "Dokončuje sa nastavenie…",
+    "finishingSetup": "Sťahujú sa referenčné údaje…"
   },
   "startScreen": {
     "credits": "od KI2D a priateľov"

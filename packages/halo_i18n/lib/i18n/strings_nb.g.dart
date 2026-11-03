@@ -147,7 +147,8 @@ class _Translations$onboarding$nb extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'Del data om bruken din';
 	@override String get consentOperationBody => 'Noen funksjoner kan innebære at operasjonsdataene dine deles med andre brukere. Du kan reservere deg når som helst.';
 	@override String get consentOperationLabel => 'Del operasjonsdata';
-	@override String get finishingSetup => 'Fullfører oppsettet — laster ned referansedata…';
+	@override String get finishingSetupTitle => 'Fullfører oppsettet…';
+	@override String get finishingSetup => 'Laster ned referansedata…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsNb {
 			'onboarding.consentUsageLabel' => 'Del data om bruken din',
 			'onboarding.consentOperationBody' => 'Noen funksjoner kan innebære at operasjonsdataene dine deles med andre brukere. Du kan reservere deg når som helst.',
 			'onboarding.consentOperationLabel' => 'Del operasjonsdata',
-			'onboarding.finishingSetup' => 'Fullfører oppsettet — laster ned referansedata…',
+			'onboarding.finishingSetupTitle' => 'Fullfører oppsettet…',
+			'onboarding.finishingSetup' => 'Laster ned referansedata…',
 			'startScreen.credits' => 'av KI2D og venner',
 			'testerOverlay.tape' => 'FORSIKTIG: UNDER ARBEID',
 			'testerOverlay.warningTitle' => 'Denne appen er under utvikling',
@@ -4999,9 +5001,9 @@ extension on TranslationsNb {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kunne ikke vises: grafikken er ikke selvstendig',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} lag',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} kontroller',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en scenestreng er lengre enn ${max} tegn',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: oppsettet er nøstet mer enn ${max} nivåer dypt',
 			'operation.layout.panelRenderRetry' => 'Prøv igjen',
@@ -5513,9 +5515,9 @@ extension on TranslationsNb {
 			'loggingControls.bandOrFreqRequired' => 'Angi frekvens eller bånd før du logger',
 			'loggingControls.missingBand' => 'Ingen bånd',
 			'loggingControls.missingMode' => 'Ingen modus',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Kunne ikke lagre: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Kunne ikke lagre: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kunne ikke slette: ${error}',
 			'loggingControls.info.noQsos' => 'Ingen QSOer ennå... la oss gå på lufta!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsNb {
 			'settings.privacy.shareOpData.descriptionOn' => 'Deler noen operasjonsdata offentlig og med andre brukere',
 			'settings.privacy.shareOpData.descriptionOff' => 'Holder operasjonsdata private',
 			'settings.privacy.privacyPolicy' => 'Personvernpolicy',
-			'settings.privacy.termsOfService' => 'Tjenestevilkår',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Tjenestevilkår',
 			'settings.operatorCall' => 'Operatørkallesignal',
 			'settings.sync.title' => 'Skysynkronisering',
 			'settings.sync.moreSettings' => 'Flere synkroniseringsinnstillinger',
@@ -6541,9 +6543,9 @@ extension on TranslationsNb {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-nøkkel',
-			'settings.station.placeholderConnectDelay' => 'Tilkoblingsforsinkelse (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Tilkoblingsforsinkelse (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hvor lang tid det simulerte handshaket tar. Tomt eller 0 kobler til umiddelbart.',
 			'settings.station.placeholderDropAfter' => 'Bryt etter (sekunder)',
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
@@ -7055,9 +7057,9 @@ extension on TranslationsNb {
 			'switchAccounts.noLinkCode' => 'Synkroniseringsserveren returnerte ingen tilkoblingskode. Prøv igjen senere.',
 			'switchAccounts.noConfirmationCode' => 'Synkroniseringsserveren sendte ingen bekreftelseskode. Prøv igjen senere.',
 			'switchAccounts.switchNotAccepted' => 'Den kontoen godtok ikke byttet. Prøv å koble den til med en e-postadresse i stedet.',
-			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO', other: '${count} QSOer', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
 			'qsonImport.title' => 'Importer QSON-operasjon',

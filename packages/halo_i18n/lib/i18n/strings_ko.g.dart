@@ -147,7 +147,8 @@ class _Translations$onboarding$ko extends Translations$onboarding$en {
 	@override String get consentUsageLabel => '앱 사용 데이터 공유';
 	@override String get consentOperationBody => '일부 기능은 운용 데이터를 다른 사용자와 공유할 수 있습니다. 언제든지 거부할 수 있습니다.';
 	@override String get consentOperationLabel => '운용 데이터 공유';
-	@override String get finishingSetup => '설정 마무리 중 — 레퍼런스 데이터 다운로드 중…';
+	@override String get finishingSetupTitle => '설정 마무리 중…';
+	@override String get finishingSetup => '레퍼런스 데이터 다운로드 중…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsKo {
 			'onboarding.consentUsageLabel' => '앱 사용 데이터 공유',
 			'onboarding.consentOperationBody' => '일부 기능은 운용 데이터를 다른 사용자와 공유할 수 있습니다. 언제든지 거부할 수 있습니다.',
 			'onboarding.consentOperationLabel' => '운용 데이터 공유',
-			'onboarding.finishingSetup' => '설정 마무리 중 — 레퍼런스 데이터 다운로드 중…',
+			'onboarding.finishingSetupTitle' => '설정 마무리 중…',
+			'onboarding.finishingSetup' => '레퍼런스 데이터 다운로드 중…',
 			'startScreen.credits' => 'KI2D & 친구들 제작',
 			'testerOverlay.tape' => '주의: 공사 중',
 			'testerOverlay.warningTitle' => '이 앱은 개발 중입니다',
@@ -4999,9 +5001,9 @@ extension on TranslationsKo {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel}을(를) 표시할 수 없습니다: 아트워크가 자체 완결형이 아닙니다',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 레이어가 ${max}개를 초과합니다',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 컨트롤이 ${max}개를 초과합니다',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 일부에 항목이 ${max}개를 초과합니다',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 일부에 항목이 ${max}개를 초과합니다',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬 문자열이 ${max}자를 초과합니다',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 레이아웃의 중첩 깊이가 ${max}단계를 초과합니다',
 			'operation.layout.panelRenderRetry' => '다시 시도',
@@ -5513,9 +5515,9 @@ extension on TranslationsKo {
 			'loggingControls.bandOrFreqRequired' => '로깅 전에 주파수나 밴드를 지정하세요',
 			'loggingControls.missingBand' => '밴드 없음',
 			'loggingControls.missingMode' => '모드 없음',
-			'loggingControls.saveFailed' => ({required Object error}) => '저장할 수 없습니다: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => '저장할 수 없습니다: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '삭제할 수 없습니다: ${error}',
 			'loggingControls.info.noQsos' => '아직 QSO가 없습니다... 운용을 시작하세요!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsKo {
 			'settings.privacy.shareOpData.descriptionOn' => '일부 운용 데이터를 공개 및 다른 사용자와 공유',
 			'settings.privacy.shareOpData.descriptionOff' => '운용 데이터 비공개 유지',
 			'settings.privacy.privacyPolicy' => '개인정보처리방침',
-			'settings.privacy.termsOfService' => '서비스 약관',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => '서비스 약관',
 			'settings.operatorCall' => '오퍼레이터 콜사인',
 			'settings.sync.title' => '클라우드 동기화',
 			'settings.sync.moreSettings' => '추가 동기화 설정',
@@ -6541,9 +6543,9 @@ extension on TranslationsKo {
 			'settings.station.watts' => '와트',
 			'settings.station.trackFieldAntenna' => '안테나',
 			'settings.station.trackFieldKey' => 'CW 키',
-			'settings.station.placeholderConnectDelay' => '연결 지연 (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => '연결 지연 (ms)',
 			'settings.station.placeholderConnectDelayDescription' => '시뮬레이션된 핸드셰이크에 걸리는 시간. 비워 두거나 0이면 즉시 연결됩니다.',
 			'settings.station.placeholderDropAfter' => '연결 끊기 (초)',
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
@@ -7055,9 +7057,9 @@ extension on TranslationsKo {
 			'switchAccounts.noLinkCode' => '동기화 서버가 연결 코드를 반환하지 않았습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.noConfirmationCode' => '동기화 서버가 확인 코드를 보내지 않았습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.switchNotAccepted' => '해당 계정이 전환을 받아들이지 않았습니다. 대신 이메일 주소로 연결해 보세요.',
-			'switchAccounts.requestFailed' => '동기화 서버와 통신 중 문제가 발생했습니다. 나중에 다시 시도하세요.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => '동기화 서버와 통신 중 문제가 발생했습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '운용 ${count}개', other: '운용 ${count}개', ), 
 			'qsonImport.title' => 'QSON 운용 가져오기',

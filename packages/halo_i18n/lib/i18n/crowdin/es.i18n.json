@@ -52,7 +52,8 @@
     "consentUsageLabel": "Compartir datos de uso de la aplicación",
     "consentOperationBody": "Algunas funciones pueden implicar compartir datos de tus operaciones con otros usuarios. Puedes desactivarlo en cualquier momento.",
     "consentOperationLabel": "Compartir datos de operación",
-    "finishingSetup": "Terminando la configuración — descargando datos de referencia…"
+    "finishingSetupTitle": "Terminando la configuración…",
+    "finishingSetup": "Descargando datos de referencia…"
   },
   "startScreen": {
     "credits": "por KI2D y sus amigos"

@@ -52,7 +52,8 @@
     "consentUsageLabel": "Sdílet údaje o používání aplikace",
     "consentOperationBody": "Některé funkce mohou sdílet údaje o vašich aktivitách s ostatními uživateli. Kdykoli to můžete vypnout.",
     "consentOperationLabel": "Sdílet údaje o aktivitách",
-    "finishingSetup": "Dokončování nastavení — stahování referenčních dat…"
+    "finishingSetupTitle": "Dokončování nastavení…",
+    "finishingSetup": "Stahování referenčních dat…"
   },
   "startScreen": {
     "credits": "od KI2D a přátel"

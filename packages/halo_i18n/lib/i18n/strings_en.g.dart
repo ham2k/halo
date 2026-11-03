@@ -255,8 +255,11 @@ class Translations$onboarding$en {
 	/// en: 'Share Operation Data'
 	String get consentOperationLabel => 'Share Operation Data';
 
-	/// en: 'Finishing setup — downloading reference data…'
-	String get finishingSetup => 'Finishing setup — downloading reference data…';
+	/// en: 'Finishing setup…'
+	String get finishingSetupTitle => 'Finishing setup…';
+
+	/// en: 'Downloading reference data…'
+	String get finishingSetup => 'Downloading reference data…';
 }
 
 // Path: startScreen
@@ -10656,7 +10659,8 @@ extension on Translations {
 			'onboarding.consentUsageLabel' => 'Share app usage data',
 			'onboarding.consentOperationBody' => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.',
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
-			'onboarding.finishingSetup' => 'Finishing setup — downloading reference data…',
+			'onboarding.finishingSetupTitle' => 'Finishing setup…',
+			'onboarding.finishingSetup' => 'Downloading reference data…',
 			'startScreen.credits' => 'by KI2D and friends',
 			'testerOverlay.tape' => 'CAUTION: UNDER CONSTRUCTION',
 			'testerOverlay.warningTitle' => 'This app is a work in progress',
@@ -11116,9 +11120,9 @@ extension on Translations {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
-			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} could not be displayed: part of its scene has more than ${max} entries',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} could not be displayed: a scene string is longer than ${max} characters',
@@ -11630,9 +11634,9 @@ extension on Translations {
 			'loggingControls.spottingAutoControl' => 'Auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot every ${minutes} min',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stop?',
-			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto in ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'Auto re-spot not started: the spot did not go through',
@@ -12144,9 +12148,9 @@ extension on Translations {
 			'settings.radio.voiceWords.splitLineCount' => 'Couldn\'t find every word in the reading. Read each one three times, with a breath between words.',
 			'settings.radio.voiceWords.splitLinesTooClose' => 'Couldn\'t tell the words apart. Leave a longer breath between words.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
-			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
@@ -12658,9 +12662,9 @@ extension on Translations {
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'CW Keying',
 			'settings.station.phoneKeying' => 'Phone Keying',
-			'settings.station.phoneKeyingNone' => 'None',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.phoneKeyingNone' => 'None',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
 			'settings.station.phoneKeyingComputerWords' => 'Audio and words in this computer',
@@ -13172,9 +13176,9 @@ extension on Translations {
 			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',
 			'keyboardShortcuts.command.densityDenser' => 'Denser layout',
 			'keyboardShortcuts.command.densityAuto' => 'Automatic layout density',
-			'keyboardShortcuts.command.find' => 'Find in the log',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.find' => 'Find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',

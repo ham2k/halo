@@ -147,7 +147,8 @@ class _Translations$onboarding$de extends Translations$onboarding$en {
 	@override String get consentUsageLabel => 'App-Nutzungsdaten teilen';
 	@override String get consentOperationBody => 'Einige Funktionen können deine Betriebsdaten mit anderen Nutzern teilen. Du kannst das jederzeit abschalten.';
 	@override String get consentOperationLabel => 'Betriebsdaten teilen';
-	@override String get finishingSetup => 'Einrichtung wird abgeschlossen — Referenzdaten werden heruntergeladen…';
+	@override String get finishingSetupTitle => 'Einrichtung wird abgeschlossen…';
+	@override String get finishingSetup => 'Referenzdaten werden heruntergeladen…';
 }
 
 // Path: startScreen
@@ -4538,7 +4539,8 @@ extension on TranslationsDe {
 			'onboarding.consentUsageLabel' => 'App-Nutzungsdaten teilen',
 			'onboarding.consentOperationBody' => 'Einige Funktionen können deine Betriebsdaten mit anderen Nutzern teilen. Du kannst das jederzeit abschalten.',
 			'onboarding.consentOperationLabel' => 'Betriebsdaten teilen',
-			'onboarding.finishingSetup' => 'Einrichtung wird abgeschlossen — Referenzdaten werden heruntergeladen…',
+			'onboarding.finishingSetupTitle' => 'Einrichtung wird abgeschlossen…',
+			'onboarding.finishingSetup' => 'Referenzdaten werden heruntergeladen…',
 			'startScreen.credits' => 'von KI2D und Freunden',
 			'testerOverlay.tape' => 'ACHTUNG: BAUSTELLE',
 			'testerOverlay.warningTitle' => 'Diese App ist noch in Arbeit',
@@ -4999,9 +5001,9 @@ extension on TranslationsDe {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} konnte nicht angezeigt werden: seine Grafik ist nicht in sich geschlossen',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: seine Szene hat mehr als ${max} Ebenen',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: seine Szene hat mehr als ${max} Bedienelemente',
-			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: ein Teil seiner Szene hat mehr als ${max} Einträge',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: ein Teil seiner Szene hat mehr als ${max} Einträge',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: ein Text in der Szene ist länger als ${max} Zeichen',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} konnte nicht angezeigt werden: sein Layout ist mehr als ${max} Stufen tief verschachtelt',
 			'operation.layout.panelRenderRetry' => 'Erneut versuchen',
@@ -5513,9 +5515,9 @@ extension on TranslationsDe {
 			'loggingControls.bandOrFreqRequired' => 'Vor dem Loggen eine Frequenz oder ein Band einstellen',
 			'loggingControls.missingBand' => 'Kein Band',
 			'loggingControls.missingMode' => 'Kein Modus',
-			'loggingControls.saveFailed' => ({required Object error}) => 'Speichern fehlgeschlagen: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.saveFailed' => ({required Object error}) => 'Speichern fehlgeschlagen: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Löschen fehlgeschlagen: ${error}',
 			'loggingControls.info.noQsos' => 'Noch keine QSOs... Lass uns loslegen!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
@@ -6027,9 +6029,9 @@ extension on TranslationsDe {
 			'settings.privacy.shareOpData.descriptionOn' => 'Einige Betriebsdaten werden öffentlich und mit anderen Nutzern geteilt',
 			'settings.privacy.shareOpData.descriptionOff' => 'Betriebsdaten bleiben privat',
 			'settings.privacy.privacyPolicy' => 'Datenschutzerklärung',
-			'settings.privacy.termsOfService' => 'Nutzungsbedingungen',
 			_ => null,
 		} ?? switch (path) {
+			'settings.privacy.termsOfService' => 'Nutzungsbedingungen',
 			'settings.operatorCall' => 'Operator-Rufzeichen',
 			'settings.sync.title' => 'Cloud-Sync',
 			'settings.sync.moreSettings' => 'Weitere Sync-Einstellungen',
@@ -6541,9 +6543,9 @@ extension on TranslationsDe {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-Taste',
-			'settings.station.placeholderConnectDelay' => 'Verbindungsverzögerung (ms)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Verbindungsverzögerung (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Wie lange der simulierte Handshake dauert. Leer oder 0 verbindet sofort.',
 			'settings.station.placeholderDropAfter' => 'Trennen nach (Sekunden)',
 			'settings.station.placeholderDropAfterDescription' => 'Die Verbindung von selbst schließen, um das Wiederverbinden zu testen. Leer oder 0 trennt nie.',
@@ -7055,9 +7057,9 @@ extension on TranslationsDe {
 			'switchAccounts.noLinkCode' => 'Der Sync-Server hat keinen Verknüpfungscode geliefert. Versuche es später erneut.',
 			'switchAccounts.noConfirmationCode' => 'Der Sync-Server hat keinen Bestätigungscode gesendet. Versuche es später erneut.',
 			'switchAccounts.switchNotAccepted' => 'Dieses Konto hat den Wechsel nicht angenommen. Versuche stattdessen, es mit einer E-Mail-Adresse zu verknüpfen.',
-			'switchAccounts.requestFailed' => 'Bei der Kommunikation mit dem Sync-Server ist etwas schiefgelaufen. Versuche es später erneut.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.requestFailed' => 'Bei der Kommunikation mit dem Sync-Server ist etwas schiefgelaufen. Versuche es später erneut.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Betrieb', other: '${count} Betriebe', ), 
 			'qsonImport.title' => 'QSON-Betrieb importieren',

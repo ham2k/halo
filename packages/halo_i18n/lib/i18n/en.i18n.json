@@ -53,7 +53,8 @@
     "consentUsageLabel": "Share app usage data",
     "consentOperationBody": "Some features might involve sharing your operation data with other users. You can opt-out at any time.",
     "consentOperationLabel": "Share Operation Data",
-    "finishingSetup": "Finishing setup — downloading reference data…"
+    "finishingSetupTitle": "Finishing setup…",
+    "finishingSetup": "Downloading reference data…"
   },
   "startScreen": {
     "credits": "by KI2D and friends"

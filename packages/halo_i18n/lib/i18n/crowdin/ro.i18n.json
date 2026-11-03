@@ -52,7 +52,8 @@
     "consentUsageLabel": "Partajează datele de utilizare a aplicației",
     "consentOperationBody": "Unele funcții pot implica partajarea datelor operațiunilor dvs. cu alți utilizatori. Puteți renunța oricând.",
     "consentOperationLabel": "Partajează datele operațiunilor",
-    "finishingSetup": "Se finalizează configurarea — se descarcă datele de referință…"
+    "finishingSetupTitle": "Se finalizează configurarea…",
+    "finishingSetup": "Se descarcă datele de referință…"
   },
   "startScreen": {
     "credits": "de către KI2D și prietenii"
