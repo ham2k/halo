@@ -148,7 +148,7 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
-    _stashForUndo(_draft.toData());
+    _stashForUndo(_draft.toData(pending: false));
     _time.leaveForWipe();
     _wipe();
   }
@@ -172,7 +172,7 @@ extension _WipeAndUndo on _LoggingControlsState {
     // would otherwise resume that wipe's manual time on this entry.
     _time.forgetWipe();
     _time.leaveForWipe();
-    _stashForUndo({..._draft.toData(), 'freq': startedOn.freq, 'band': startedOn.band, 'mode': startedOn.mode});
+    _stashForUndo({..._draft.toData(pending: false), 'freq': startedOn.freq, 'band': startedOn.band, 'mode': startedOn.mode});
     // As a seed, not an edit: the wipe writes the VFO's new frequency into
     // the field, which read as typed stops the panel following the radio and
     // pushes that frequency back at it five seconds on.

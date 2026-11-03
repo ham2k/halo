@@ -34,6 +34,8 @@ extension _ControlStrip on _LoggingControlsState {
         return _spotting.state.showComment ? _spotting.commentFocus : null;
       case 'notes':
         return _notesFocus;
+      case 'operator':
+        return _operator.multiCall ? null : _operator.focusNode;
       default:
         // Every remaining control is an extension's. Only `refList` builds a
         // field to focus — the same condition that gave it a chip.
@@ -68,6 +70,8 @@ extension _ControlStrip on _LoggingControlsState {
         return _spotting.state.showComment ? [(_spotting.commentFocus, _spotting.commentController)] : const [];
       case 'notes':
         return [(_notesFocus, _notesController)];
+      case 'operator':
+        return _operator.multiCall ? const [] : [(_operator.focusNode, _operator.operatorController)];
       default:
         return _refs.isRefListControl(key) ? [(_refs.focusFor(key), _refs.controllerFor(key))] : const [];
     }
@@ -87,6 +91,7 @@ extension _ControlStrip on _LoggingControlsState {
     if (key != null && _controlDisabled(key)) return;
     _setStateFromPart(() {
       if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
+      if (key == 'operator' && _selectedControlKey != 'operator') _operator.seed();
       _selectedControlKey = key;
     });
   }
@@ -104,12 +109,13 @@ extension _ControlStrip on _LoggingControlsState {
     if (_selectedControlKey case final key? when _controlDisabled(key)) _selectedControlKey = null;
   }
 
-  /// An open Time control's fields are written when it opens, so one that
-  /// stays open while the entry is wiped, replaced or loaded is written
-  /// again here — after the entry's own time has been set — or it shows the
-  /// time of the contact that just left.
+  /// An open Time or Operator control's fields are written when it opens, so
+  /// one that stays open while the entry is wiped, replaced or loaded is
+  /// written again here — after the entry's own time has been set — or it
+  /// shows the time, or the operator, of the contact that just left.
   void _reseedOpenTime() {
     if (_selectedControlKey == 'time') _time.seedFields();
+    if (_selectedControlKey == 'operator') _operator.seed();
   }
 
   /// A tap on a chip, or the keyboard arriving on one: what a tap means is
@@ -180,6 +186,8 @@ extension _ControlStrip on _LoggingControlsState {
           specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':
           specs.add(spottingControlSpec(_spotting, theme, selected: _selectedControlKey == 'spotting', onPressed: _focusCallAfterSpotPress));
+        case 'operator':
+          specs.add(operatorControlSpec(_operator, theme));
         case 'notes':
           specs.add(notesControlSpec(theme, controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':

@@ -56,6 +56,11 @@ typedef QsoDraftConfig = ({
   /// Whether a freq/band mirrors the operation's VFO: then freq and band are
   /// not something the operator composed for this QSO.
   bool hasRadioService,
+
+  /// What the Operator control has changed that the operation does not say
+  /// yet — the operator typed, the calls checked
+  /// (`OperatorControlModel.ourForNewContact`).
+  Map<String, dynamic> ourOverride,
 });
 
 /// The draft. See the file comment.
@@ -277,7 +282,12 @@ class QsoDraft extends ChangeNotifier with PanelModel {
   /// the QSO about to be edited by the time this runs, and `base`/the Time
   /// control's effective time would otherwise pull from THAT record instead
   /// of from the still-blank-base draft being stepped away from.
-  Map<String, dynamic> toData({String? callOverride, bool composing = false}) {
+  ///
+  /// [pending] false leaves out what the Operator control has not stored yet
+  /// ([QsoDraftConfig.ourOverride]): an undo snapshot restored with it would
+  /// carry it as the operator's own override, kept after the control moves
+  /// on.
+  Map<String, dynamic> toData({String? callOverride, bool composing = false, bool pending = true}) {
     final config = this.config();
     final base = composing ? const <String, dynamic>{} : (config.editingQso?.data ?? const <String, dynamic>{});
     final call = callOverride ?? config.call;
@@ -294,16 +304,28 @@ class QsoDraft extends ChangeNotifier with PanelModel {
       'refs': refs,
       'our': {
         ...?(base['our'] as Map<String, dynamic>?),
-        // The FIRST of the operation's callsigns, not the field: several
-        // callsigns live in it as one comma-separated string, and a contact
-        // holds exactly one. Stamping the field puts "N0DEV,KI2D" — which is
-        // not a callsign — on every contact and into the `our_call` column
-        // the cross-operation Logs view groups by. Which of several calls
-        // made a given contact is not recorded here (app-polo doesn't record
-        // it either); the exports fan out per call and restamp each file's
-        // records themselves (`ExportService._qsosAs`).
-        'call': config.operation.stationCalls.first,
+        // ONE of the operation's callsigns, not the field: several callsigns
+        // live in it as one comma-separated string, and a contact holds
+        // exactly one. Stamping the field puts "N0DEV,KI2D" — which is not a
+        // callsign — on every contact and into the `our_call` column the
+        // cross-operation Logs view groups by. A contact that lists the calls
+        // it was made under (`our.stationCalls`) names the first of THOSE; a
+        // new one the first on the air, which `qsoWithStationCalls` keeps as
+        // the station that made it; any other the operation's first, and the
+        // exports restamp each file's records themselves
+        // (`ExportService._qsosAs`).
+        'call':
+            stationCallsOfOur(asQsonMap(base['our']))?.first ??
+            (config.editingQso == null ? onAirStationCalls(config.operation).first : config.operation.stationCalls.first),
         'sent': config.rstOrDefault(config.sentController.text.trim()),
+        // The Operator control writes the operation when the field is left or
+        // a box is ticked, and the panel holds the old operation until that
+        // write comes back — a contact logged in between would be stamped
+        // (`qsoWithOperator`, which leaves a value already here alone) with
+        // what the control no longer shows. Never in a snapshot
+        // ([composing]): restored, it would come back as an override and mark
+        // an empty entry composed.
+        if (pending && !composing && config.editingQso == null) ...config.ourOverride,
         ...ourExtra,
       },
       'their': {

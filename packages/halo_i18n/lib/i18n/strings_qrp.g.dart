@@ -606,6 +606,19 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String get radioControl => 'radio';
 	@override String get powerControl => 'power';
 	@override String get notesControl => 'notes';
+	@override String get operatorControl => 'operator';
+	@override String get operatorField => 'operator';
+	@override String stationCallsOnAir({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} call',
+		other: '${count} calls',
+	);
+	@override String get editStationCalls => 'edit list';
+	@override String get stationCallsTitle => 'station callsigns';
+	@override String get stationCallsHint => 'calls added here count from the next contact on. a call removed here keeps the contacts already logged under it.';
+	@override String get stationCallsAdd => 'add a callsign';
+	@override String get stationCallsAddButton => 'add';
+	@override String stationCallsRemove({required Object call}) => 'remove ${call}';
+	@override String stationSaveFailed({required Object error}) => 'could not change the operator or station calls: ${error}';
 	@override String get power => 'power';
 	@override String get powerUnit => 'w';
 	@override String get controlSettings => 'logging controls';
@@ -5778,6 +5791,16 @@ extension on TranslationsQrp {
 			'loggingControls.radioControl' => 'radio',
 			'loggingControls.powerControl' => 'power',
 			'loggingControls.notesControl' => 'notes',
+			'loggingControls.operatorControl' => 'operator',
+			'loggingControls.operatorField' => 'operator',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} call', other: '${count} calls', ), 
+			'loggingControls.editStationCalls' => 'edit list',
+			'loggingControls.stationCallsTitle' => 'station callsigns',
+			'loggingControls.stationCallsHint' => 'calls added here count from the next contact on. a call removed here keeps the contacts already logged under it.',
+			'loggingControls.stationCallsAdd' => 'add a callsign',
+			'loggingControls.stationCallsAddButton' => 'add',
+			'loggingControls.stationCallsRemove' => ({required Object call}) => 'remove ${call}',
+			'loggingControls.stationSaveFailed' => ({required Object error}) => 'could not change the operator or station calls: ${error}',
 			'loggingControls.power' => 'power',
 			'loggingControls.powerUnit' => 'w',
 			'loggingControls.controlSettings' => 'logging controls',
@@ -5794,6 +5817,8 @@ extension on TranslationsQrp {
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'auto in ${time}. stop?',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'auto in ${minutes}m',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'auto in ${seconds}s',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'auto in ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'auto re-spot not started: the spot did not go through',
 			'loggingControls.spotAutoMoved' => 'auto re-spot not started: the frequency changed while spotting',
@@ -5804,8 +5829,6 @@ extension on TranslationsQrp {
 			'loggingControls.bandOrFreqRequired' => 'set a frequency or band before logging',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy. shift+enter logs it as is',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.missingBand' => 'no band',
 			'loggingControls.missingMode' => 'no mode',
 			'loggingControls.saveFailed' => ({required Object error}) => 'could not save: ${error}',
@@ -6308,6 +6331,8 @@ extension on TranslationsQrp {
 			'settings.radio.avoidZeroBeat.title' => 'avoid zero-beating on spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'with a radio connected, tuning a few hz off a cw spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'tuning exactly to the spotted frequency.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.zeroBeatRange.title' => 'zero-beat: avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'how far off the spotted frequency to land, either side. the offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'help & resources',
@@ -6318,8 +6343,6 @@ extension on TranslationsQrp {
 			'settings.help.chatDescription' => 'the discord server for our online community',
 			'settings.help.youtube' => 'ham2k youtube',
 			'settings.help.youtubeDescription' => 'videos and live streams',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.instagram' => 'ham2k instagram',
 			'settings.help.instagramDescription' => 'because you cannot have too many photos…',
 			'settings.help.bluesky' => 'ham2k bluesky',
@@ -6822,6 +6845,8 @@ extension on TranslationsQrp {
 			'settings.station.phoneKeying' => 'phone keying',
 			'settings.station.phoneKeyingNone' => 'none',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'memories in ${radio}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.phoneKeyingComputer' => 'audio in this computer',
 			'settings.station.phoneKeyingComputerWords' => 'audio and words in this computer',
 			'settings.station.phoneKeyingOff' => 'phone keying is off',
@@ -6832,8 +6857,6 @@ extension on TranslationsQrp {
 			'settings.station.icomCivTroubleshootingTitle' => 'if two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'several icom radios, the ic-705 among them, present **two** usb serial ports at once (icom calls them port a and port b), both set to ci-v by default. neither this app nor your os can tell them apart beyond that: the same usb vendor/product id just shows up twice, sometimes marked with a `#2` suffix here. **port a is usually the right one** — normally the first one your os or browser lists, and where this app can tell the two ports apart it marks that one as suggested. if commands go out and the radio never responds, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'if the radio never responds',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **speed must match** the radio\'s ci-v baud rate (on usb, ci-v usb baud rate). set the radio to the same number shown here, **not auto**. on auto some radios, the ic-7300 among them, connect and then stop responding after a minute or so.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
@@ -7336,6 +7359,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.wipe' => 'clear the contact being logged',
 			'keyboardShortcuts.fixed.callsign' => 'typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'stop sending, back out one step, or close',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'log the contact',
 			'keyboardShortcuts.fixed.space' => 'next field',
 			'keyboardShortcuts.fixed.tab' => 'next or previous field',
@@ -7346,8 +7371,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.editor.listening' => 'press the keys for the shortcut…',
 			'keyboardShortcuts.editor.listeningHint' => 'esc stops listening',
 			'keyboardShortcuts.editor.addMidi' => 'add midi control',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.editor.listeningMidi' => 'press a button on your midi controller…',
 			'keyboardShortcuts.editor.listeningMidiHint' => 'press add midi control again to stop',
 			'keyboardShortcuts.editor.midiNoController' => 'no midi controller is connected. add one in station configuration.',

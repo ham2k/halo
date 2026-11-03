@@ -180,6 +180,10 @@ const _qsoOurFields = <String, QsonFieldType>{
   // naming them after the device moves on to another operator.
   'operatorCall': QsonFieldType.string,
   'multiIdentifier': QsonFieldType.string,
+  // Which of a multi-call operation's station calls were on the air for it
+  // (`operation_station_calls.dart`) — a list, or the contact reads as
+  // listing none and files under its segment instead.
+  'stationCalls': QsonFieldType.list,
   // SO2R: which of the two radios — `A` or `B` — the contact was logged
   // from, so an edit loads it back into that radio's set of fields.
   'radio': QsonFieldType.string,
@@ -277,6 +281,8 @@ const _operationFields = <String, QsonFieldType>{
   'createdOnMillis': QsonFieldType.number,
   'updatedOnMillis': QsonFieldType.number,
   'refs': QsonFieldType.list,
+  // The station calls off the air (`operation_station_calls.dart`).
+  'stationCallsOff': QsonFieldType.list,
 };
 
 Object? _coerce(Object? value, QsonFieldType type) => switch (type) {

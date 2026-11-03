@@ -606,6 +606,19 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String get radioControl => 'RADIO';
 	@override String get powerControl => 'POWER';
 	@override String get notesControl => 'NOTES';
+	@override String get operatorControl => 'OPERATOR';
+	@override String get operatorField => 'OPERATOR';
+	@override String stationCallsOnAir({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} CALL',
+		other: '${count} CALLS',
+	);
+	@override String get editStationCalls => 'EDIT LIST';
+	@override String get stationCallsTitle => 'STATION CALLSIGNS';
+	@override String get stationCallsHint => 'CALLS ADDED HERE COUNT FROM THE NEXT CONTACT ON. A CALL REMOVED HERE KEEPS THE CONTACTS ALREADY LOGGED UNDER IT.';
+	@override String get stationCallsAdd => 'ADD A CALLSIGN';
+	@override String get stationCallsAddButton => 'ADD';
+	@override String stationCallsRemove({required Object call}) => 'REMOVE ${call}';
+	@override String stationSaveFailed({required Object error}) => 'COULD NOT CHANGE THE OPERATOR OR STATION CALLS: ${error}';
 	@override String get power => 'POWER';
 	@override String get powerUnit => 'W';
 	@override String get controlSettings => 'LOGGING CONTROLS';
@@ -5778,6 +5791,16 @@ extension on TranslationsQro {
 			'loggingControls.radioControl' => 'RADIO',
 			'loggingControls.powerControl' => 'POWER',
 			'loggingControls.notesControl' => 'NOTES',
+			'loggingControls.operatorControl' => 'OPERATOR',
+			'loggingControls.operatorField' => 'OPERATOR',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CALL', other: '${count} CALLS', ), 
+			'loggingControls.editStationCalls' => 'EDIT LIST',
+			'loggingControls.stationCallsTitle' => 'STATION CALLSIGNS',
+			'loggingControls.stationCallsHint' => 'CALLS ADDED HERE COUNT FROM THE NEXT CONTACT ON. A CALL REMOVED HERE KEEPS THE CONTACTS ALREADY LOGGED UNDER IT.',
+			'loggingControls.stationCallsAdd' => 'ADD A CALLSIGN',
+			'loggingControls.stationCallsAddButton' => 'ADD',
+			'loggingControls.stationCallsRemove' => ({required Object call}) => 'REMOVE ${call}',
+			'loggingControls.stationSaveFailed' => ({required Object error}) => 'COULD NOT CHANGE THE OPERATOR OR STATION CALLS: ${error}',
 			'loggingControls.power' => 'POWER',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'LOGGING CONTROLS',
@@ -5794,6 +5817,8 @@ extension on TranslationsQro {
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'AUTO IN ${time}. STOP?',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'AUTO IN ${minutes}M',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'AUTO IN ${seconds}S',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'AUTO IN ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'AUTO RE-SPOT NOT STARTED: THE SPOT DID NOT GO THROUGH',
 			'loggingControls.spotAutoMoved' => 'AUTO RE-SPOT NOT STARTED: THE FREQUENCY CHANGED WHILE SPOTTING',
@@ -5804,8 +5829,6 @@ extension on TranslationsQro {
 			'loggingControls.bandOrFreqRequired' => 'SET A FREQUENCY OR BAND BEFORE LOGGING',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.missingBand' => 'NO BAND',
 			'loggingControls.missingMode' => 'NO MODE',
 			'loggingControls.saveFailed' => ({required Object error}) => 'COULD NOT SAVE: ${error}',
@@ -6308,6 +6331,8 @@ extension on TranslationsQro {
 			'settings.radio.avoidZeroBeat.title' => 'AVOID ZERO-BEATING ON SPOTS',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'WITH A RADIO CONNECTED, TUNING A FEW HZ OFF A CW SPOT, SO EVERYONE ANSWERING IT ISN’T CALLING ON THE SAME NOTE.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.zeroBeatRange.title' => 'ZERO-BEAT: AVOIDANCE RANGE',
 			'settings.radio.zeroBeatRange.description' => 'HOW FAR OFF THE SPOTTED FREQUENCY TO LAND, EITHER SIDE. THE OFFSET IS NEVER NEAR ZERO — THAT WOULD BE A ZERO BEAT AGAIN.',
 			'settings.help.title' => 'HELP & RESOURCES',
@@ -6318,8 +6343,6 @@ extension on TranslationsQro {
 			'settings.help.chatDescription' => 'THE DISCORD SERVER FOR OUR ONLINE COMMUNITY',
 			'settings.help.youtube' => 'HAM2K YOUTUBE',
 			'settings.help.youtubeDescription' => 'VIDEOS AND LIVE STREAMS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.instagram' => 'HAM2K INSTAGRAM',
 			'settings.help.instagramDescription' => 'BECAUSE YOU CANNOT HAVE TOO MANY PHOTOS…',
 			'settings.help.bluesky' => 'HAM2K BLUESKY',
@@ -6822,6 +6845,8 @@ extension on TranslationsQro {
 			'settings.station.phoneKeying' => 'PHONE KEYING',
 			'settings.station.phoneKeyingNone' => 'NONE',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
 			'settings.station.phoneKeyingComputerWords' => 'AUDIO AND WORDS IN THIS COMPUTER',
 			'settings.station.phoneKeyingOff' => 'PHONE KEYING IS OFF',
@@ -6832,8 +6857,6 @@ extension on TranslationsQro {
 			'settings.station.icomCivTroubleshootingTitle' => 'IF TWO SERIAL PORTS SHOW UP FOR THE SAME RADIO',
 			'settings.station.icomCivTroubleshooting' => 'SEVERAL ICOM RADIOS, THE IC-705 AMONG THEM, PRESENT **TWO** USB SERIAL PORTS AT ONCE (ICOM CALLS THEM PORT A AND PORT B), BOTH SET TO CI-V BY DEFAULT. NEITHER THIS APP NOR YOUR OS CAN TELL THEM APART BEYOND THAT: THE SAME USB VENDOR/PRODUCT ID JUST SHOWS UP TWICE, SOMETIMES MARKED WITH A `#2` SUFFIX HERE. **PORT A IS USUALLY THE RIGHT ONE** — NORMALLY THE FIRST ONE YOUR OS OR BROWSER LISTS, AND WHERE THIS APP CAN TELL THE TWO PORTS APART IT MARKS THAT ONE AS SUGGESTED. IF COMMANDS GO OUT AND THE RADIO NEVER RESPONDS, TRY THE OTHER PORT NEXT.',
 			'settings.station.civAddressTroubleshootingTitle' => 'IF THE RADIO NEVER RESPONDS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n- **SPEED MUST MATCH** THE RADIO\'S CI-V BAUD RATE (ON USB, CI-V USB BAUD RATE). SET THE RADIO TO THE SAME NUMBER SHOWN HERE, **NOT AUTO**. ON AUTO SOME RADIOS, THE IC-7300 AMONG THEM, CONNECT AND THEN STOP RESPONDING AFTER A MINUTE OR SO.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **THE CI-V ADDRESS MUST MATCH** THE RADIO\'S MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH, BUT A RIG SHARING A CI-V BUS IS EXACTLY WHERE THAT GETS CHANGED. A FRAME SENT TO THE WRONG ADDRESS IS IGNORED IN SILENCE, WHICH LOOKS EXACTLY LIKE A DEAD CABLE.\n${speed}\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.icomUsbSpeedFollows' => '- **THERE IS NO SPEED TO SET.** OVER USB THIS RADIO TALKS AT WHATEVER SPEED THE COMPUTER USES, AND THIS ENTRY ALWAYS USES 115200, THE SPEED THE SCOPE NEEDS.',
@@ -7336,6 +7359,8 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',
 			'keyboardShortcuts.fixed.callsign' => 'TYPING CALLSIGNS',
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
 			'keyboardShortcuts.fixed.space' => 'NEXT FIELD',
 			'keyboardShortcuts.fixed.tab' => 'NEXT OR PREVIOUS FIELD',
@@ -7346,8 +7371,6 @@ extension on TranslationsQro {
 			'keyboardShortcuts.editor.listening' => 'PRESS THE KEYS FOR THE SHORTCUT…',
 			'keyboardShortcuts.editor.listeningHint' => 'ESC STOPS LISTENING',
 			'keyboardShortcuts.editor.addMidi' => 'ADD MIDI CONTROL',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.editor.listeningMidi' => 'PRESS A BUTTON ON YOUR MIDI CONTROLLER…',
 			'keyboardShortcuts.editor.listeningMidiHint' => 'PRESS ADD MIDI CONTROL AGAIN TO STOP',
 			'keyboardShortcuts.editor.midiNoController' => 'NO MIDI CONTROLLER IS CONNECTED. ADD ONE IN STATION CONFIGURATION.',

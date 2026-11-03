@@ -230,12 +230,16 @@ extension _Submit on _LoggingControlsState {
   /// The in-panel message is load-bearing, not a courtesy: the host's own
   /// notice for a write error shows at most once per session, so without it
   /// an operator on a full disk loses every QSO after the first in silence.
-  void _reportWriteFailure(Object e, StackTrace stack, {bool delete = false}) {
-    widget.log.onWriteError?.call(e, stack);
+  ///
+  /// [message] replaces the contact's own wording for a write that was not
+  /// the contact's — "Could not save" over the Operator control's failure
+  /// reads as the contact not being logged.
+  void _reportWriteFailure(Object e, StackTrace stack, {bool delete = false, String context = 'loggingControls:log', String? message}) {
+    widget.log.onWriteError?.call(e, stack, context: context, told: mounted);
     if (!mounted) return;
     // A confirm-clear timer from an earlier command would wipe this message
     // moments after it appears — the failure owns the slot now.
-    _command.showError(delete ? t.loggingControls.deleteFailed(error: e) : t.loggingControls.saveFailed(error: e));
+    _command.showError(message ?? (delete ? t.loggingControls.deleteFailed(error: e) : t.loggingControls.saveFailed(error: e)));
   }
 
   /// [focusCall] false leaves the focus alone when the entry is wiped after

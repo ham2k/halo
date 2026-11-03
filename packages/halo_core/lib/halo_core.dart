@@ -24,6 +24,7 @@ export 'src/models/claims.dart';
 export 'src/models/location_from_refs.dart';
 export 'src/models/location_repair.dart';
 export 'src/models/operation_operator.dart';
+export 'src/models/operation_station_calls.dart';
 export 'src/models/operation_title.dart';
 export 'src/models/qso_merge.dart';
 export 'src/models/qson_values.dart';

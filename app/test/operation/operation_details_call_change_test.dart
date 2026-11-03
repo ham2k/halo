@@ -114,6 +114,65 @@ void main() {
       expect((await operations.get(operation.uuid))!.stationCall, 'KI2D');
       expect((await storedContacts()).single.ourCall, 'KI2D');
     });
+
+    testWidgets('a call correction and an operator restamp on the same contact both land', (tester) async {
+      // They go in one batch, so a failure leaves neither written; built
+      // carelessly, one half's update of a contact replaces the other's.
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'our': {
+          'call': 'N0DEV',
+          'operatorCall': 'N0DEV',
+          ourStationCallsKey: ['N0DEV'],
+        },
+        'band': '20m',
+        'startAtMillis': 1721736000000,
+      });
+      await openDialog(tester);
+      await tester.enterText(stationField(), 'N0DEW');
+      await tester.enterText(operatorField(), 'KI2D');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(Checkbox));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      final contact = (await storedContacts()).single;
+      expect(stationCallsOfOur(asQsonMap(contact.data['our'])), ['N0DEW']);
+      expect(contact.ourOperatorCall, 'KI2D');
+    });
+
+    testWidgets('a corrected call reaches the contacts that list their calls, where the typo was', (tester) async {
+      // A contact listing its own calls (`our.stationCalls`) follows no
+      // segment, so the segment restamp above cannot reach it. Without this,
+      // the typo goes on filing its contacts under a call nobody holds.
+      operation = Operation(uuid: operation.uuid, data: {...operation.data, 'stationCall': 'N0DEV, K1ABX'});
+      await operations.saveData(operation);
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'our': {
+          'call': 'N0DEV',
+          ourStationCallsKey: ['N0DEV', 'K1ABX'],
+        },
+        'band': '20m',
+        'startAtMillis': 1721736000000,
+      });
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'JA1XYZ'},
+        'our': {
+          'call': 'N0DEV',
+          ourStationCallsKey: ['N0DEV'],
+        },
+        'band': '20m',
+        'startAtMillis': 1721736060000,
+      });
+      await openDialog(tester);
+      await tester.enterText(stationField(), 'N0DEV, K1ABC');
+      await save(tester);
+
+      final listed = {for (final qso in await storedContacts()) qso.theirCall: stationCallsOfOur(asQsonMap(qso.data['our']))};
+      expect(listed['W1AW'], ['N0DEV', 'K1ABC']);
+      expect(listed['JA1XYZ'], ['N0DEV'], reason: 'made while K1ABX was off the air: the correction does not hand it the call');
+    });
   });
 
   group('what reaches the log and the operation', () {

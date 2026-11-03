@@ -52,6 +52,7 @@ import 'logging_controls_info_frame.dart';
 import 'logging_controls_ladder.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
+import 'logging_controls_operator.dart';
 import 'logging_controls_radio.dart';
 import 'logging_controls_refs.dart';
 import 'logging_controls_so2r.dart';
@@ -275,6 +276,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       call: _call,
       rstOrDefault: _rstOrDefault,
       hasRadioService: widget.radio.radioService != null,
+      ourOverride: _operator.ourForNewContact,
+    ),
+  );
+
+  /// The Operator control — see [OperatorControlModel].
+  late final _operator = OperatorControlModel(
+    config: () => (
+      operation: widget.log.operation,
+      editingQso: widget.session.editingQso,
+      ourExtra: _draft.ourExtra,
+      operations: widget.log.operationsRepository,
+      qsos: widget.log.qsosRepository,
+      log: widget.log.qsos,
+      onWriteFailed: (error, stack) => _reportWriteFailure(
+        error,
+        stack,
+        context: 'loggingControls:operator',
+        message: t.loggingControls.stationSaveFailed(error: error),
+      ),
     ),
   );
 
@@ -492,6 +512,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _command.addListener(_onModelChanged);
     _time.addListener(_onModelChanged);
     _spotting.addListener(_onModelChanged);
+    _operator.addListener(_onModelChanged);
     _exchange.addListener(_onModelChanged);
     _refs.addListener(_onModelChanged);
     // Population normally happens in didUpdateWidget, as editingQso
@@ -870,6 +891,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _refs.dispose();
     _notesController.dispose();
     _notesFocus.dispose();
+    _operator.dispose();
     _ladder.dispose();
     _callController.dispose();
     _sentController.dispose();
@@ -903,6 +925,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     config: () => (
       radioIcon: _radio.chipIcon,
       hasPowerStore: widget.radio.radioService != null,
+      offersOperator: operatorControlOffered(widget.log.operation),
       canSpot: widget.spotting.suggestSpotSources != null && widget.spotting.sendSpot != null,
       activityControls: _refs.controls,
       controlOrder: widget.strip.controlOrder,

@@ -1089,5 +1089,65 @@ void main() {
       expect(await qsos.restampSegmentStationCall(op.uuid, '  '), 0);
       expect((await qsos.forOperation(op.uuid)).single.ourCall, 'N0DEV');
     });
+
+    test('a contact listing its own calls keeps the first of them', () async {
+      // Made while N0DEV was off the air: its `our.call` is K1ABC, and a
+      // restamp to the operation's first call would name a station that was
+      // not on the air for it.
+      final op = await operations.create(stationCall: 'N0DEV, K1ABC');
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'our': {
+          'call': 'K1ABC',
+          ourStationCallsKey: ['K1ABC'],
+        },
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, 'N0DEV'), 0);
+      expect((await qsos.forOperation(op.uuid)).single.ourCall, 'K1ABC');
+    });
+  });
+
+  group('freezeStationCalls', () {
+    test('pins each unlisted contact to the calls its segment names, and leaves listed ones alone', () async {
+      // The trap: a call added to the list from the logging controls must
+      // not claim contacts made before it joined. An unlisted contact follows
+      // its segment, so it is pinned to what the segment says NOW.
+      final op = await operations.create(stationCall: 'N0DEV');
+      await qsos.add(op.uuid, {
+        'their': {'call': 'W1AW'},
+        'our': {'call': 'N0DEV'},
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+      await qsos.addEvent(op.uuid, kind: 'break', atMillis: 1500, operation: {...segmentOverrideOf(op.data), 'stationCall': 'N0DEV, KI2D'});
+      await qsos.add(op.uuid, {
+        'their': {'call': 'K1ABC'},
+        'our': {'call': 'N0DEV'},
+        'band': '20m',
+        'startAtMillis': 2000,
+      });
+      await qsos.add(op.uuid, {
+        'their': {'call': 'K2XYZ'},
+        'our': {
+          'call': 'KI2D',
+          ourStationCallsKey: ['KI2D'],
+        },
+        'band': '20m',
+        'startAtMillis': 3000,
+      });
+
+      expect(await qsos.freezeStationCalls(op.uuid, op.data), 2);
+      final byCall = {
+        for (final qso in await qsos.forOperation(op.uuid))
+          if (qso.isRealContact) qso.theirCall: stationCallsOfOur(asQsonMap(qso.data['our'])),
+      };
+      expect(byCall['W1AW'], ['N0DEV']);
+      expect(byCall['K1ABC'], ['N0DEV', 'KI2D'], reason: "the break's calls, not the base operation's");
+      expect(byCall['K2XYZ'], ['KI2D'], reason: 'already listed: never rewritten');
+      expect(await qsos.freezeStationCalls(op.uuid, op.data), 0, reason: 'once pinned, a second change writes nothing');
+    });
   });
 }

@@ -16,6 +16,7 @@ import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
+import '../models/operation_station_calls.dart';
 import '../models/qso_merge.dart';
 import '../models/segments.dart';
 import '../models/qson_values.dart';
@@ -1023,7 +1024,10 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// everything, so every contact follows.
   ///
   /// Event rows are skipped ([Qso.isRealContact]): a break marker is not a
-  /// contact and has no station to be wrong about.
+  /// contact and has no station to be wrong about. So is a contact that lists
+  /// its own calls (`our.stationCalls`): it says which of several calls were
+  /// on the air when it was made, and its `our.call` is the first of THOSE —
+  /// the operation's first call may be one that was off the air then.
   Future<int> restampSegmentStationCall(String operationUuid, String stationCall) async {
     final call = stationCall.trim();
     if (call.isEmpty) return 0;
@@ -1033,7 +1037,7 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     }
     final contacts = [
       for (final qso in await forOperation(operationUuid))
-        if (qso.isRealContact && (qso.startAtMillis ?? 0) >= from && qso.ourCall != call) qso,
+        if (qso.isRealContact && (qso.startAtMillis ?? 0) >= from && qso.ourCall != call && stationCallsOfOur(asQsonMap(qso.data['our'])) == null) qso,
     ];
     if (contacts.isEmpty) return 0;
     return writeBatch(
@@ -1052,6 +1056,25 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
       // Read a moment ago, and a sync pull landing in between must survive
       // everywhere this restamp does not reach.
       updateBases: {for (final qso in contacts) qso.uuid: qso},
+    );
+  }
+
+  /// Stamps every contact of [operationUuid] that lists no station calls
+  /// with the calls it was made under ([freezeStationCallsUpdates]), read off
+  /// [operationData] as it stands BEFORE the list changes. Returns how many
+  /// were written.
+  Future<int> freezeStationCalls(String operationUuid, Map<String, dynamic> operationData) async {
+    final log = await forOperation(operationUuid);
+    final updates = freezeStationCallsUpdates(operationData, log);
+    if (updates.isEmpty) return 0;
+    final frozen = {for (final qso in updates) qso.uuid};
+    return writeBatch(
+      operationUuid: operationUuid,
+      updates: updates,
+      updateBases: {
+        for (final qso in log)
+          if (frozen.contains(qso.uuid)) qso.uuid: qso,
+      },
     );
   }
 

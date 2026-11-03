@@ -986,11 +986,12 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         operation: widget.operation,
         qsosRepository: widget.services.qsos,
         qsos: widget.qsos,
-        decorateQsoBeforeSave: (qso, operation) {
-          final stamped = qsoWithOperator(_withStationInfo(so2r == null ? qso : _withSo2rRadio(qso, so2r.radio), radio: radio), widget.operation);
-          return widget.services.extensions.decorateQsoBeforeSave(widget.stampQso?.call(stamped) ?? stamped, operation);
+        decorateQsoBeforeSave: (qso, seg) {
+          final stamped = qsoWithOperator(_withStationInfo(so2r == null ? qso : _withSo2rRadio(qso, so2r.radio), radio: radio), widget.operation, segment: seg);
+          return widget.services.extensions.decorateQsoBeforeSave(widget.stampQso?.call(stamped) ?? stamped, seg);
         },
-        onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
+        onWriteError: (error, stack, {required context, required told}) => ErrorReportingService.report(error, stack, context: context, told: told),
+        operationsRepository: widget.services.operations,
         serialNumbers: widget.serialNumbers,
         onLogged: (qso) {
           // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation

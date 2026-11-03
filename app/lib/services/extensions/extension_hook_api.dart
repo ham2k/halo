@@ -185,14 +185,20 @@ HookPartition partitionHookEntries(List<Map<String, dynamic>> entries) {
 ///    means a plain single-station operation. Only the FIRST of a
 ///    comma-separated call takes it, as in app-polo, where the additional
 ///    calls (`stationCallPlusArray`) are spotted bare.
+///  * Only the calls ON THE AIR are spotted (`onAirStationCalls`): a call the
+///    Operator control has unchecked is not at the station, and a spot under
+///    it sends hunters after a contact it cannot give them. The list is left
+///    as typed when every call is on the air.
 ///
 /// Other-spots post the spotted station's OWN call, so neither rule reaches
 /// them — see [ExtensionService.sendSpot].
 String spotCallForSelfSpot(Map<String, dynamic> operation) {
   // Probed, not cast, like the identifier below: this operation blob crossed
   // the extension bridge, and a cast that throws here takes the spot with it.
-  final stationCall = asQsonString(operation['stationCall']) ?? '';
-  final withTest = Operation(uuid: '', data: operation).isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
+  final listed = Operation(uuid: '', data: operation);
+  final onAir = onAirStationCalls(listed);
+  final stationCall = onAir.length < listed.stationCalls.length ? onAir.join(', ') : listed.stationCall;
+  final withTest = listed.isTestOperation ? _spotCallForTestOperation(stationCall) : stationCall;
   final local = operation['local'];
   // `toString()`, not a cast: this arrives across the extension bridge, where
   // a number would throw inside the spot path and surface as a generic

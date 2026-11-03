@@ -75,6 +75,45 @@ value the More pane's Notes field edits, so the two are two views of one
 string rather than two places to write it, and its chip carries the ✓ the
 reference controls use to say a field is filled in.
 
+**Operator** says who is at the key, and on an operation run under several
+station calls, which of them are on the air. It is in the row by default only
+where there is something to say: an operation with several calls, or an
+operator other than its one call; a station logging under its own holder's call
+doesn't see it. Its default is the operation's, unlike every other control's,
+so the strip's settings dialog lists it everywhere, checked as that default
+says, and records a decision only when the operator ticks or unticks it — off
+in the hidden set, on as a `+operator` entry in the saved order — which then
+holds for every operation. Saved untouched, the dialog leaves it following
+each operation. With one call it holds the Operator field alone; with several,
+a checkbox per call (the last one checked stays checked) on the logging
+controls' own ground, scrolling sideways when they outgrow the strip, and an Edit list button
+beside them. While a contact is being
+composed it speaks for the operation: the operator is written when the field is
+left, not per keystroke (opening a saved contact leaves it too) — a contact
+logged before that write reaches the panel carries the typed operator, and the
+calls a tap just changed, itself — and a call unchecked is marked off in
+`stationCallsOff` — and left out of self-spots, which go out under the calls
+on the air. Taps write one after another, each changing its one call in
+`stationCallsOff` over the operation as stored — never `stationCall`, which
+rewritten would read as a changed segment — so neither a second tap before the
+first write lands nor another device's tap is undone; a tap the stored state
+refuses (the last call on the air) goes back to what the operation says. An open contact that lists no calls shows the
+calls of the segment it was made in. While a saved contact is open it speaks for that contact
+alone, and the operation is left as it was — that is how one contact's calls are
+corrected without moving the next ones. Edit list changes the operation's calls
+from the next contact on, applying what its dialog added and removed to the
+list as stored: the contacts that don't yet list their calls are
+stamped with the ones they were made under before the new list is written, or
+an added call would claim them. Each contact made under several calls carries
+the ones on the air as `our.stationCalls`, and each call's export takes exactly
+the contacts that list it (`operation_station_calls.dart`). A contact that
+already names one of the operation's calls — what WSJT-X or N1MM reported —
+keeps it first and listed even when it is unchecked here, since the checkboxes
+do not govern the other program. A contact timed in a stretch run under other
+calls — back-dated past a `break` — is not stamped, and follows that stretch. A
+call no contact lists gets no export files. The control's failed writes say so
+in their own words, and are reported as `loggingControls:operator`.
+
 **Information area.** Presents information to the user: details for the
 current callsign, or a summary of operation statistics when no callsign is
 entered. Content usually comes from extensions as markdown and can link to

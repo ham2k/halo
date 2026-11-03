@@ -10,6 +10,7 @@
 // which is the whole reason the identifier exists.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 Map<String, dynamic> op(String stationCall, {String? multiIdentifier}) => {
@@ -52,6 +53,25 @@ void main() {
         'local': {'multiIdentifier': 2},
       }),
       'KI2D/OP2',
+    );
+  });
+
+  test('a call taken off the air is not spotted, and /OP<n> goes on the first one still on', () {
+    // A spot under a call that left the station sends hunters after a
+    // contact nobody there can give them.
+    expect(
+      spotCallForSelfSpot({
+        ...op('KI2D, N0DEV, K1ABC'),
+        stationCallsOffKey: ['KI2D'],
+      }),
+      'N0DEV, K1ABC',
+    );
+    expect(
+      spotCallForSelfSpot({
+        ...op('KI2D, N0DEV', multiIdentifier: '1'),
+        stationCallsOffKey: ['KI2D'],
+      }),
+      'N0DEV/OP1',
     );
   });
 

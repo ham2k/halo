@@ -314,4 +314,20 @@ void main() {
       expect(violations.single.path, 'guess');
     });
   });
+
+  test('a station-call list that is not a list is reported, naming its field', () {
+    // Read as "lists none", the contact would quietly file under its segment's
+    // calls, and the next Edit list would overwrite the value without anyone
+    // learning which writer sent a string.
+    final violations = <QsonTypeViolation>[];
+    normalizeQsoQson({
+      'band': '20m',
+      'our': {'stationCalls': 'K1A, K1B'},
+    }, violations: violations);
+    expect(violations.single.path, 'our.stationCalls');
+
+    final opViolations = <QsonTypeViolation>[];
+    normalizeOperationQson({'stationCall': 'K1A, K1B', 'stationCallsOff': 'K1B'}, violations: opViolations);
+    expect(opViolations.single.path, 'stationCallsOff');
+  });
 }

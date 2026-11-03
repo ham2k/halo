@@ -135,6 +135,13 @@ typedef PeerDraftField = ({String key, String label, String value, String? hint}
 /// shows them — see [LoggingSession.onPeerDraftChanged].
 typedef PeerDraftChanged = void Function(Map<String, dynamic> qso, List<PeerDraftField> fields);
 
+/// A failed write, reported to the host. [context] names the write —
+/// `loggingControls:log` for a contact, `loggingControls:operator` for the
+/// Operator control's — and [told] says the panel showed its own failure
+/// message in the info area, which it does while it is mounted; the host's
+/// generic notice would stack on top of it (docs/design/error-reporting.md).
+typedef WriteErrorHandler = void Function(Object error, StackTrace stackTrace, {required String context, required bool told});
+
 /// The log the panel writes to and reads: the operation, its repository and
 /// QSOs, and what the app hears when a contact lands, is deleted or restored,
 /// or fails to write.
@@ -150,6 +157,7 @@ class LogHooks {
     this.onCallListLogged,
     this.decorateQsoBeforeSave,
     this.onWriteError,
+    this.operationsRepository,
   });
 
   final Operation operation;
@@ -194,11 +202,15 @@ class LogHooks {
   /// edit from moving it.
   final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorateQsoBeforeSave;
 
-  /// A QSO write failed. The panel has already shown its own failure message
-  /// in the info area; this is the host's hook to report the error
-  /// (Sentry/console). The error does NOT also escape to the zone handler,
-  /// so a host that leaves this unwired records nothing.
-  final void Function(Object error, StackTrace stackTrace)? onWriteError;
+  /// A write failed — a contact's, or the Operator control's to the
+  /// operation. This is the host's hook to report the error (Sentry/console):
+  /// [WriteErrorHandler]. The error does NOT also escape to the zone
+  /// handler, so a host that leaves this unwired records nothing.
+  final WriteErrorHandler? onWriteError;
+
+  /// Where the Operator control writes the operation's operator and station
+  /// calls. Null leaves the control showing them without changing them.
+  final OperationsRepository? operationsRepository;
 
   /// The log with some of it replaced — what a caller holding one of these
   /// writes to vary a field instead of restating the rest. A null argument
@@ -217,7 +229,8 @@ class LogHooks {
     void Function(Qso qso)? onQsoUndeleted,
     VoidCallback? onCallListLogged,
     Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorateQsoBeforeSave,
-    void Function(Object error, StackTrace stackTrace)? onWriteError,
+    WriteErrorHandler? onWriteError,
+    OperationsRepository? operationsRepository,
   }) => LogHooks(
     operation: operation ?? this.operation,
     qsosRepository: qsosRepository ?? this.qsosRepository,
@@ -229,6 +242,7 @@ class LogHooks {
     onCallListLogged: onCallListLogged ?? this.onCallListLogged,
     decorateQsoBeforeSave: decorateQsoBeforeSave ?? this.decorateQsoBeforeSave,
     onWriteError: onWriteError ?? this.onWriteError,
+    operationsRepository: operationsRepository ?? this.operationsRepository,
   );
 }
 

@@ -371,6 +371,64 @@ void main() {
       expect(eventTimes('W1AW'), [3000]);
     });
 
+    test('a contact listing its calls is filed under those alone, and a call taken off the list keeps its files', () async {
+      // Who was on the air changes during the operation: W1AW left before
+      // the second contact, and K1ABC is no longer on the list at all. Read
+      // off the operation alone, W1AW's file would claim a contact it never
+      // made and K1ABC's contact would vanish from every submission.
+      final created = await operations.create(stationCall: 'N0CALL, W1AW', userTitle: 'Comings and goings');
+      await qsos.add(created.uuid, {
+        'our': {
+          'call': 'N0CALL',
+          ourStationCallsKey: ['N0CALL', 'W1AW', 'K1ABC'],
+        },
+        'their': {'call': 'DL1ABC'},
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+      await qsos.add(created.uuid, {
+        'our': {
+          'call': 'N0CALL',
+          ourStationCallsKey: ['N0CALL'],
+        },
+        'their': {'call': 'JA1XYZ'},
+        'band': '20m',
+        'startAtMillis': 2000,
+      });
+
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+      await service.getExportOptions((await operations.get(created.uuid))!);
+
+      final byCall = {
+        for (final request in extensions.optionRequests)
+          ((request['operation'] as Map)['stationCall'] as String): ((request['qsos'] as List).map((qso) => ((qso as Map)['their'] as Map)['call']).toList()),
+      };
+      expect(byCall['N0CALL'], ['DL1ABC', 'JA1XYZ']);
+      expect(byCall['W1AW'], ['DL1ABC'], reason: 'off the air for the second contact');
+      expect(byCall['K1ABC'], ['DL1ABC'], reason: 'off the list now, but on the air for the first contact');
+    });
+
+    test('a call no contact lists is offered no files', () async {
+      // W1AW never came on the air: an empty submission under it is a file
+      // nobody should send.
+      final created = await operations.create(stationCall: 'N0CALL, W1AW', userTitle: 'No show');
+      await qsos.add(created.uuid, {
+        'our': {
+          'call': 'N0CALL',
+          ourStationCallsKey: ['N0CALL'],
+        },
+        'their': {'call': 'DL1ABC'},
+        'band': '20m',
+        'startAtMillis': 1000,
+      });
+
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      await ExportService(extensions: extensions, qsos: qsos, settings: settings).getExportOptions((await operations.get(created.uuid))!);
+
+      expect(extensions.optionRequests.map((r) => (r['operation'] as Map)['stationCall']), ['N0CALL']);
+    });
+
     test('generating rebuilds the payload for the call the option was listed under', () async {
       final host = _CapturingHost();
       final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings);

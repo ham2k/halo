@@ -14,6 +14,7 @@
 // can read, and a device that knows it is seat 2 reads seat 2's operator.
 
 import 'models.dart';
+import 'operation_station_calls.dart';
 import 'qson_values.dart';
 
 /// The `data` key holding the operator of a positionless operation. Also the
@@ -98,9 +99,18 @@ String multiIdentifierFor(Operation operation) => normalizedMultiIdentifier(asQs
 /// QSO editor record a deliberately emptied field as empty.
 ///
 /// Event rows are left alone — a break marker has no operator.
-Map<String, dynamic> qsoWithOperator(Map<String, dynamic> qso, Operation operation) {
-  if (qso['band'] == 'event') return qso;
-  if ((asQsonString(qso['uuid']) ?? '').isNotEmpty) return qso;
+///
+/// On an operation run under several station calls, the calls on the air are
+/// stamped here too ([qsoWithStationCalls]): which of them were present is
+/// the same kind of fact as who was at the key, and every path that records
+/// one has to record the other.
+///
+/// [segment] is the operation as it stood at the contact's own time
+/// ([qsoWithStationCalls]).
+Map<String, dynamic> qsoWithOperator(Map<String, dynamic> logged, Operation operation, {Map<String, dynamic>? segment}) {
+  if (logged['band'] == 'event') return logged;
+  if ((asQsonString(logged['uuid']) ?? '').isNotEmpty) return logged;
+  final qso = qsoWithStationCalls(logged, operation, segment: segment);
   final operatorCall = operatorCallFor(operation);
   final multiIdentifier = multiIdentifierFor(operation);
   if (operatorCall.isEmpty && multiIdentifier.isEmpty) return qso;

@@ -1356,6 +1356,39 @@ class Translations$loggingControls$en {
 	/// en: 'Notes'
 	String get notesControl => 'Notes';
 
+	/// en: 'Operator'
+	String get operatorControl => 'Operator';
+
+	/// en: 'Operator'
+	String get operatorField => 'Operator';
+
+	/// en: '(one) {${count} call} (other) {${count} calls}'
+	String stationCallsOnAir({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} call',
+		other: '${count} calls',
+	);
+
+	/// en: 'Edit list'
+	String get editStationCalls => 'Edit list';
+
+	/// en: 'Station Callsigns'
+	String get stationCallsTitle => 'Station Callsigns';
+
+	/// en: 'Calls added here count from the next contact on. A call removed here keeps the contacts already logged under it.'
+	String get stationCallsHint => 'Calls added here count from the next contact on. A call removed here keeps the contacts already logged under it.';
+
+	/// en: 'Add a callsign'
+	String get stationCallsAdd => 'Add a callsign';
+
+	/// en: 'Add'
+	String get stationCallsAddButton => 'Add';
+
+	/// en: 'Remove ${call}'
+	String stationCallsRemove({required Object call}) => 'Remove ${call}';
+
+	/// en: 'Could not change the operator or station calls: ${error}'
+	String stationSaveFailed({required Object error}) => 'Could not change the operator or station calls: ${error}';
+
 	/// en: 'Power'
 	String get power => 'Power';
 
@@ -11582,6 +11615,16 @@ extension on Translations {
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
+			'loggingControls.operatorControl' => 'Operator',
+			'loggingControls.operatorField' => 'Operator',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
+			'loggingControls.editStationCalls' => 'Edit list',
+			'loggingControls.stationCallsTitle' => 'Station Callsigns',
+			'loggingControls.stationCallsHint' => 'Calls added here count from the next contact on. A call removed here keeps the contacts already logged under it.',
+			'loggingControls.stationCallsAdd' => 'Add a callsign',
+			'loggingControls.stationCallsAddButton' => 'Add',
+			'loggingControls.stationCallsRemove' => ({required Object call}) => 'Remove ${call}',
+			'loggingControls.stationSaveFailed' => ({required Object error}) => 'Could not change the operator or station calls: ${error}',
 			'loggingControls.power' => 'Power',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Logging Controls',
@@ -11598,6 +11641,8 @@ extension on Translations {
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stop?',
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto in ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'Auto re-spot not started: the spot did not go through',
 			'loggingControls.spotAutoMoved' => 'Auto re-spot not started: the frequency changed while spotting',
@@ -11608,8 +11653,6 @@ extension on Translations {
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy. Shift+Enter logs it as is',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.missingBand' => 'No Band',
 			'loggingControls.missingMode' => 'No Mode',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
@@ -12112,6 +12155,8 @@ extension on Translations {
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
@@ -12122,8 +12167,6 @@ extension on Translations {
 			'settings.help.chatDescription' => 'The Discord server for our online community',
 			'settings.help.youtube' => 'Ham2K YouTube',
 			'settings.help.youtubeDescription' => 'Videos and live streams',
-			_ => null,
-		} ?? switch (path) {
 			'settings.help.instagram' => 'Ham2K Instagram',
 			'settings.help.instagramDescription' => 'Because you cannot have too many photos…',
 			'settings.help.bluesky' => 'Ham2K BlueSky',
@@ -12626,6 +12669,8 @@ extension on Translations {
 			'settings.station.phoneKeying' => 'Phone Keying',
 			'settings.station.phoneKeyingNone' => 'None',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
 			'settings.station.phoneKeyingComputerWords' => 'Audio and words in this computer',
 			'settings.station.phoneKeyingOff' => 'Phone keying is off',
@@ -12636,8 +12681,6 @@ extension on Translations {
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios, the IC-705 among them, present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that: the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never responds, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never responds',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE (on USB, CI-V USB Baud Rate). Set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop responding after a minute or so.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **The CI-V address must match** the radio\'s menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **There is no speed to set.** Over USB this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
@@ -13140,6 +13183,8 @@ extension on Translations {
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
 			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'Log the contact',
 			'keyboardShortcuts.fixed.space' => 'Next field',
 			'keyboardShortcuts.fixed.tab' => 'Next or previous field',
@@ -13150,8 +13195,6 @@ extension on Translations {
 			'keyboardShortcuts.editor.listening' => 'Press the keys for the shortcut…',
 			'keyboardShortcuts.editor.listeningHint' => 'Esc stops listening',
 			'keyboardShortcuts.editor.addMidi' => 'Add MIDI Control',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.editor.listeningMidi' => 'Press a button on your MIDI controller…',
 			'keyboardShortcuts.editor.listeningMidiHint' => 'Press Add MIDI Control again to stop',
 			'keyboardShortcuts.editor.midiNoController' => 'No MIDI controller is connected. Add one in Station Configuration.',

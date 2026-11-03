@@ -262,6 +262,34 @@ Qso _qsoWithOur(Qso qso, Map<String, String> fields) {
   return Qso(uuid: qso.uuid, operationUuid: qso.operationUuid, data: {...qso.data, 'our': our});
 }
 
+/// The writes that carry an edit of the station calls onto the contacts that
+/// list their own (`respreadStationCallsUpdates`), with the rows they were
+/// computed from as their bases: this dialog corrects the log's calls, and a
+/// contact naming a call the edit fixed would otherwise go on filing under
+/// the typo.
+Future<({List<Qso> updates, Map<String, Qso> bases})> _stationCallRespread(QsosRepository qsos, Operation operation, List<String> newCalls) async {
+  final oldCalls = operation.stationCalls;
+  final removed = {
+    for (final call in oldCalls)
+      if (call.isNotEmpty && !newCalls.contains(call)) call,
+  };
+  final added = [
+    for (final call in newCalls)
+      if (call.isNotEmpty && !oldCalls.contains(call)) call,
+  ];
+  if (removed.isEmpty && added.isEmpty) return (updates: const <Qso>[], bases: const <String, Qso>{});
+  final log = await qsos.forOperation(operation.uuid);
+  final updates = respreadStationCallsUpdates(log, removed: removed, added: added, fromMillis: latestSegmentStart(log));
+  final touched = {for (final qso in updates) qso.uuid};
+  return (
+    updates: updates,
+    bases: {
+      for (final qso in log)
+        if (touched.contains(qso.uuid)) qso.uuid: qso,
+    },
+  );
+}
+
 /// The names of the rules [operation]'s refs impose against [key], one per
 /// activity or contest: the short name of the extension that claims each
 /// forbidding ref, as the activities header names it, or the bare ref type
@@ -370,7 +398,7 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
   final updated = Operation(
     uuid: operation.uuid,
     data: {
-      ...operation.data,
+      ...withStationCalls(operation.data, splitStationCalls(newStationCall)),
       'stationCall': newStationCall,
       'userTitle': result.userTitle.trim(),
       'notes': result.notes.trim(),
@@ -391,51 +419,55 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
   // BEFORE the operation is written, so a batch that throws leaves the whole
   // edit undone rather than a renamed operation over a log that still says
   // the old call — a half-applied rename the reopened dialog would describe
-  // as though the operator had never asked.
+  // as though the operator had never asked. The operator restamp and the
+  // station calls' go in ONE batch for the same reason: two would leave the
+  // first written when the second fails.
   //
   // The `save: false` path stages the operation's shared data in the setup
   // sheet's draft, which always commits when the sheet closes; a discard path
   // added there would have to reach this write too.
-  if (restamped.isNotEmpty) {
-    final bases = {for (final qso in result.restampOperator) qso.uuid: qso};
-    final int written;
-    try {
-      // ONLY the write is guarded, as `adif_import_flow.dart` guards its own:
-      // everything after it is reporting, and reporting must never be able to
-      // retract a committed fact.
-      written = await qsos.writeBatch(
-        operationUuid: operation.uuid,
-        updates: [for (final entry in restamped.entries) _qsoWithOur(bases[entry.key]!, entry.value)],
-        // Every target was read when the dialog opened; a sync pull or a peer
-        // merge landing while it sat open must survive everywhere the restamp
-        // didn't touch.
-        updateBases: bases,
-      );
-    } catch (e, stack) {
-      // Named, because the generic "Something went wrong" cannot say which
-      // half landed — and here neither half has: the operation is written
-      // below, and returning now leaves the whole edit undone.
-      ErrorReportingService.report(
-        e,
-        stack,
-        context: 'operationDetails:restamp',
-        notice: ErrorNotice(
-          services.statusBar,
-          key: 'operationDetails:restampFailed',
-          text: t.restampFailed(error: ErrorReportingService.messageOf(e)),
-        ),
-      );
-      return null;
+  // Every operator target was read when the dialog opened; a sync pull or a
+  // peer merge landing while it sat open must survive everywhere the restamp
+  // didn't touch.
+  final bases = {for (final qso in result.restampOperator) qso.uuid: qso};
+  final updates = {for (final entry in restamped.entries) entry.key: _qsoWithOur(bases[entry.key]!, entry.value)};
+  final int written;
+  try {
+    // Only the read and the write are guarded, as `adif_import_flow.dart`
+    // guards its own: everything after is reporting, and reporting must never
+    // be able to retract a committed fact.
+    final respread = await _stationCallRespread(qsos, operation, splitStationCalls(newStationCall));
+    for (final qso in respread.updates) {
+      // The row as read just now is the fresher base for a contact both
+      // halves change.
+      bases[qso.uuid] = respread.bases[qso.uuid]!;
+      updates[qso.uuid] = restamped[qso.uuid] == null ? qso : _qsoWithOur(qso, restamped[qso.uuid]!);
     }
-    // The repository counts rows actually affected, so a contact deleted
-    // while the dialog sat open shows up here. Agreeing to "40 contacts" and
-    // having 39 change is exactly what the honest count exists to prevent.
-    if (written != restamped.length) {
-      services.statusBar.showNotice(
-        key: 'operationDetails:restampShortfall',
-        text: t.restampShortfall(written: written, planned: restamped.length),
-      );
-    }
+    written = updates.isEmpty ? 0 : await qsos.writeBatch(operationUuid: operation.uuid, updates: updates.values.toList(), updateBases: bases);
+  } catch (e, stack) {
+    // Named, because the generic "Something went wrong" cannot say which
+    // half landed — and here neither half has: the operation is written
+    // below, and returning now leaves the whole edit undone.
+    ErrorReportingService.report(
+      e,
+      stack,
+      context: 'operationDetails:restamp',
+      notice: ErrorNotice(
+        services.statusBar,
+        key: 'operationDetails:restampFailed',
+        text: t.restampFailed(error: ErrorReportingService.messageOf(e)),
+      ),
+    );
+    return null;
+  }
+  // The repository counts rows actually affected, so a contact deleted
+  // while the dialog sat open shows up here. Agreeing to "40 contacts" and
+  // having 39 change is exactly what the honest count exists to prevent.
+  if (written != updates.length) {
+    services.statusBar.showNotice(
+      key: 'operationDetails:restampShortfall',
+      text: t.restampShortfall(written: written, planned: updates.length),
+    );
   }
   if (save) await operations.saveData(updated);
   // Written whatever `save` says: `save: false` stages the operation's SHARED

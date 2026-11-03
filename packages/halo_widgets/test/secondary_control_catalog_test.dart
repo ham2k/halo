@@ -13,6 +13,7 @@ import 'package:halo_widgets/src/logging_controls_catalog.dart';
 class _Harness {
   bool hasPowerStore = true;
   bool canSpot = true;
+  bool offersOperator = false;
   List<Map<String, dynamic>> activityControls = const [];
   List<String> controlOrder = const [];
   Set<String> hidden = const {};
@@ -23,6 +24,7 @@ class _Harness {
     config: () => (
       radioIcon: Icons.radio,
       hasPowerStore: hasPowerStore,
+      offersOperator: offersOperator,
       canSpot: canSpot,
       activityControls: activityControls,
       controlOrder: controlOrder,
@@ -70,7 +72,7 @@ void main() {
     final h = _Harness()
       ..spottingAfterReferences = true
       ..activityControls = const [_pota, sota];
-    expect(h.catalog.effectiveOrder(), ['time', 'radio', 'power', 'pota', 'sota', 'spotting', 'notes', 'more']);
+    expect(h.catalog.effectiveOrder(), ['time', 'radio', 'operator', 'power', 'pota', 'sota', 'spotting', 'notes', 'more']);
     expect(h.catalog.visibleKeys(), ['time', 'radio', 'pota', 'sota', 'spotting', 'more']);
 
     h.controlOrder = const ['spotting', 'time', 'radio', 'pota', 'sota', 'more'];
@@ -85,7 +87,15 @@ void main() {
 
     // A key whose earlier descriptors are all absent still goes last.
     h.controlOrder = const ['more'];
-    expect(h.catalog.effectiveOrder(), ['more', 'time', 'radio', 'power', 'spotting', 'notes'], reason: 'a run of new keys keeps its own relative order');
+    expect(h.catalog.effectiveOrder(), [
+      'more',
+      'time',
+      'radio',
+      'operator',
+      'power',
+      'spotting',
+      'notes',
+    ], reason: 'a run of new keys keeps its own relative order');
   });
 
   // The app's keyer goes beside the radio it keys: anywhere else, an
@@ -132,7 +142,75 @@ void main() {
       ..hasPowerStore = false
       ..canSpot = false
       ..controlOrder = const ['power', 'spotting'];
-    expect(h.catalog.descriptors().map((d) => d.key), ['time', 'radio', 'notes', 'more']);
+    expect(h.catalog.descriptors().map((d) => d.key), ['time', 'radio', 'operator', 'notes', 'more']);
     expect(h.catalog.powerVisible, isFalse, reason: 'a saved order cannot conjure a control the operation lacks');
+  });
+
+  group('Operator follows each operation until the operator decides', () {
+    // The strip's choices are saved for every operation, but Operator's
+    // default is per operation. Saving the dialog to move Notes on a solo
+    // operation must not hide Operator on the multi-call ones.
+    (List<String>, Set<String>) saveUntouched(_Harness h) {
+      final draft = h.catalog.settingsDraft();
+      return h.catalog.settingsResult(draft, draft.order, draft.hidden);
+    }
+
+    (List<String>, Set<String>) saveWith(_Harness h, {required bool operatorShown}) {
+      final draft = h.catalog.settingsDraft();
+      final hidden = {...draft.hidden};
+      operatorShown ? hidden.remove('operator') : hidden.add('operator');
+      return h.catalog.settingsResult(draft, draft.order, hidden);
+    }
+
+    test('is listed whatever the operation, checked as its default says', () {
+      final h = _Harness();
+      expect(h.catalog.settingsDraft().order, contains('operator'));
+      expect(h.catalog.settingsDraft().hidden, contains('operator'));
+      h.offersOperator = true;
+      expect(h.catalog.settingsDraft().hidden, isNot(contains('operator')));
+    });
+
+    test('an untouched checkbox records nothing, on either kind of operation', () {
+      final solo = _Harness();
+      final (order, hidden) = saveUntouched(solo);
+      final multi = _Harness()
+        ..offersOperator = true
+        ..controlOrder = order
+        ..hidden = hidden;
+      expect(multi.catalog.visibleKeys(), contains('operator'), reason: 'saved on a solo operation, it still follows the multi-call one');
+
+      final (order2, hidden2) = saveUntouched(multi);
+      final solo2 = _Harness()
+        ..controlOrder = order2
+        ..hidden = hidden2;
+      expect(solo2.catalog.visibleKeys(), isNot(contains('operator')), reason: 'saved on a multi-call operation, it still follows the solo one');
+    });
+
+    test('ticked, it is in the row on every operation', () {
+      final (order, hidden) = saveWith(_Harness(), operatorShown: true);
+      final solo = _Harness()
+        ..controlOrder = order
+        ..hidden = hidden;
+      expect(solo.catalog.visibleKeys(), contains('operator'));
+      final (order2, hidden2) = saveUntouched(solo);
+      expect(
+        (_Harness()
+              ..controlOrder = order2
+              ..hidden = hidden2)
+            .catalog
+            .visibleKeys(),
+        contains('operator'),
+        reason: 'a later save keeps the decision',
+      );
+    });
+
+    test('unticked, it is out of the row on every operation', () {
+      final (order, hidden) = saveWith(_Harness()..offersOperator = true, operatorShown: false);
+      final multi = _Harness()
+        ..offersOperator = true
+        ..controlOrder = order
+        ..hidden = hidden;
+      expect(multi.catalog.visibleKeys(), isNot(contains('operator')));
+    });
   });
 }

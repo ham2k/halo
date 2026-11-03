@@ -243,7 +243,7 @@ void main() {
     final errors = <Object>[];
     await tester.pumpWidget(
       host(
-        log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db), onWriteError: (e, _) => errors.add(e)),
+        log: baseLog().copyWith(qsosRepository: FailingQsosRepository(db), onWriteError: (e, _, {required context, required told}) => errors.add(e)),
       ),
     );
 

@@ -30,6 +30,7 @@ class _FakeVfoStore implements VfoStore {
 /// configuration, as the real one wires them.
 class _Harness {
   Qso? editingQso;
+  Map<String, dynamic> ourOverride = const {};
   bool powerInPlay = false;
   bool hasRadioService = true;
   List<Map<String, dynamic>> controls = const [];
@@ -99,6 +100,7 @@ class _Harness {
       call: callText,
       rstOrDefault: (text) => text.isEmpty ? '59' : text,
       hasRadioService: hasRadioService,
+      ourOverride: ourOverride,
     ),
   );
 
@@ -138,6 +140,16 @@ void main() {
   });
 
   group('the record', () {
+    testWidgets("carries the Operator control's pending changes when logged, never in an undo snapshot", (tester) async {
+      // Restored from a snapshot, a pending operator comes back as the
+      // operator's own override on that entry — kept after the control has
+      // moved on, and marking an empty entry composed.
+      final h = _Harness()..ourOverride = {'operatorCall': 'K1ABC'};
+      addTearDown(h.dispose);
+      expect((h.draft.toData()['our'] as Map)['operatorCall'], 'K1ABC');
+      expect((h.draft.toData(pending: false)['our'] as Map).containsKey('operatorCall'), isFalse);
+    });
+
     testWidgets('carries what the operator did, and a round trip keeps it', (tester) async {
       final h = _Harness();
       addTearDown(h.dispose);

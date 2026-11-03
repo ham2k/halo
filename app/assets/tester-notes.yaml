@@ -12,6 +12,7 @@ upcoming:
     - "Contests hold a contact until its exchange is in; a ? or Shift+Enter logs it anyway"
     - "Improved phone layout: larger text, tighter spacing, wider dialogs (feedback welcome)"
     - "Improved Cloud Sync: contacts logged on your other devices arrive sooner (tell us how quickly)"
+    - "New Operator control: the guest operator, or which station calls are on the air"
 
 "186":
   changes:

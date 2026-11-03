@@ -322,7 +322,7 @@ class ExportService {
     return [
       for (final qso in qsoList)
         () {
-          if (stationCall != null && !segmented.segmentUses(qso.startAtMillis, stationCall)) return null;
+          if (stationCall != null && !contactUsesStationCall(qso, segmented, stationCall)) return null;
           final data = {...qso.data};
           final our = {...?asQsonMap(data['our'])};
           final theirCall = asQsonString(asQsonMap(data['their'])?['call'])?.toUpperCase();
@@ -385,13 +385,24 @@ class ExportService {
   /// one rule for every slice — by call or by activity. Each file is a log of
   /// those stretches, and another's breaks and notes would land among
   /// contacts it does not hold.
-  Map<String, dynamic> _payloadAs(String stationCall, Operation operation, List<Qso> qsoList, SegmentedOperation segmented, {List<Qso> events = const []}) {
+  ///
+  /// [perCall] is whether the WHOLE log was made under several calls
+  /// ([allStationCallsOf]), counted once by the caller: a slice holding none
+  /// of a removed call's contacts is still one of several calls' files, and
+  /// the count reads every contact.
+  Map<String, dynamic> _payloadAs(
+    String stationCall,
+    Operation operation,
+    List<Qso> qsoList,
+    SegmentedOperation segmented, {
+    List<Qso> events = const [],
+    required bool perCall,
+  }) {
     final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
     // The calls of every SEGMENT, not the base operation's: a log that changed
     // call at a `break` has more than one even when the operation itself names
     // exactly one, and short-circuiting on the base would hand each file the
     // whole log under the last call.
-    final perCall = segmented.allStationCalls.length >= 2;
     if (perCall || segmented.isSegmented) {
       if (perCall) (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
       payload['qsos'] = _qsosAs(perCall ? stationCall : null, qsoList, segmented);
@@ -438,8 +449,8 @@ class ExportService {
   /// Every export option offered by every extension for this operation, for
   /// the Exports Panel's checkbox list.
   ///
-  /// Asked once PER STATION CALLSIGN ([SegmentedOperation.allStationCalls] —
-  /// base and segments both, since a `break` can change the call), because each
+  /// Asked once PER STATION CALLSIGN ([allStationCallsOf] — base, segments
+  /// and contacts, since a `break` can change the call), because each
   /// call owes its own set of files; every option is tagged with the call it
   /// belongs to so the panel can group them and `generateExports` can rebuild
   /// the same payload.
@@ -450,13 +461,18 @@ class ExportService {
     // empty answer this exists to give into a worse failure than the one it
     // replaced.
     if (log == null) return <Map<String, dynamic>>[];
-    final calls = log.segmented.allStationCalls;
+    final calls = allStationCallsOf(log.segmented, log.qsos);
+    final severalCalls = calls.length >= 2;
     final types = await extensions.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides);
     final settingsByType = {for (final type in types) type['exportType']: type['settings']};
 
     final perCall = await Future.wait(
       calls.map((call) async {
-        final payload = _payloadAs(call, operation, log.qsos, log.segmented, events: log.events);
+        final payload = _payloadAs(call, operation, log.qsos, log.segmented, events: log.events, perCall: severalCalls);
+        // One of several calls that no contact lists — never on the air, or
+        // unchecked for the whole log — owes no submission, and an empty file
+        // under it would be one.
+        if (severalCalls && (payload['qsos'] as List).isEmpty) return <Map<String, dynamic>>[];
 
         // Hooks are asked about every ref ANY segment carries, not just the base's.
         // Each contest's `suggestExportOptions` opens with
@@ -482,7 +498,8 @@ class ExportService {
                 // Match generation's activity and station scope. A hook may
                 // narrow it further, as a hunter log does, and supplies its count.
                 'qsoCount':
-                    option['qsoCount'] ?? (_payloadAs(call, operation, _qsosForOption(option, log.qsos, log.segmented), log.segmented)['qsos'] as List).length,
+                    option['qsoCount'] ??
+                    (_payloadAs(call, operation, _qsosForOption(option, log.qsos, log.segmented), log.segmented, perCall: severalCalls)['qsos'] as List).length,
               },
         ];
         if (registered.isNotEmpty) {
@@ -520,6 +537,7 @@ class ExportService {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
     final log = await _logFor(operation);
+    final perCall = allStationCallsOf(log.segmented, log.qsos).length >= 2;
 
     // Independent per-option calls (each produces its own file) — no
     // ordering dependency, so run them concurrently rather than paying for
@@ -535,7 +553,7 @@ class ExportService {
         // call covers an option that predates the fan-out (or a caller passing
         // one by hand, as the tests do).
         final call = option['stationCall'] as String? ?? operation.stationCalls.first;
-        final args = _payloadAs(call, operation, scoped, log.segmented, events: log.events);
+        final args = _payloadAs(call, operation, scoped, log.segmented, events: log.events, perCall: perCall);
         // Same reason `getExportOptions` patches the refs above: a hook offered an
         // option off a ref that lives only in a segment has to be able to READ
         // that ref when it writes the file. Without it the two halves of one

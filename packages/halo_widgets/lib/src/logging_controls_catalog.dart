@@ -13,6 +13,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
+import 'logging_controls_operator.dart' show operatorChipIcon;
 import 'logging_controls_radio.dart' show powerChipIcon;
 import 'logging_controls_spotting.dart' show spottingChipIcon;
 import 'logging_controls_time.dart' show timeChipIcon;
@@ -38,6 +39,13 @@ class ControlDescriptor {
   /// a default-hidden control needs no second stored set of its own.
   final bool defaultHidden;
 
+  /// For a control whose default follows the OPERATION rather than the
+  /// install — whether it is in the row until the operator decides
+  /// otherwise. Null for every other control. The decision, once made, is
+  /// the operator's for every operation: off in the hidden set, on as
+  /// [shownMarker] in the saved order.
+  final bool? autoShown;
+
   /// For a chip contributed by an activity: the control it belongs to, which
   /// the panel builds the chip from. Null for the built-in controls.
   final Map<String, dynamic>? activityControl;
@@ -48,9 +56,16 @@ class ControlDescriptor {
     required this.label,
     this.mandatory = false,
     this.defaultHidden = false,
+    this.autoShown,
     this.activityControl,
   });
 }
+
+/// The saved-order entry recording that the operator turned an
+/// [ControlDescriptor.autoShown] control ON. The order is the one store that
+/// can hold it: the hidden set records the opposite decision, and the order
+/// ignores a key no control has, so nothing else reads this as a control.
+String shownMarker(String key) => '+$key';
 
 /// What the catalog reads from the panel's live configuration.
 typedef ControlCatalogConfig = ({
@@ -60,6 +75,12 @@ typedef ControlCatalogConfig = ({
   /// Power lives on the VFO ([Vfo.power]); without a store the control would
   /// edit nothing, so it is not offered at all.
   bool hasPowerStore,
+
+  /// The operation has several station calls, or an operator apart from its
+  /// one call ([operatorControlOffered]) — the Operator control's default.
+  /// Without either it has nothing to say, and stays out of the row unless
+  /// the operator has asked for it.
+  bool offersOperator,
 
   /// Both a way to suggest spot sources and a way to send.
   bool canSpot,
@@ -98,6 +119,7 @@ class SecondaryControlCatalog {
     ControlDescriptor(key: 'time', icon: timeChipIcon, label: t.loggingControls.timeControl, mandatory: true),
     ControlDescriptor(key: 'radio', icon: config.radioIcon, label: t.loggingControls.radioControl, mandatory: true),
     ...config.hostControls,
+    ControlDescriptor(key: 'operator', icon: operatorChipIcon, label: t.loggingControls.operatorControl, autoShown: config.offersOperator),
     if (config.hasPowerStore) ControlDescriptor(key: 'power', icon: powerChipIcon, label: t.loggingControls.powerControl, defaultHidden: true),
     if (config.canSpot && !config.spottingAfterReferences) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
     for (final control in config.activityControls)
@@ -126,6 +148,7 @@ class SecondaryControlCatalog {
   bool _isHidden(ControlCatalogConfig config, ControlDescriptor descriptor) {
     if (descriptor.mandatory) return false;
     if (config.hiddenControlKeys.contains(descriptor.key)) return true;
+    if (descriptor.autoShown case final shown?) return !shown && !config.controlOrder.contains(shownMarker(descriptor.key));
     return descriptor.defaultHidden && !config.controlOrder.contains(descriptor.key);
   }
 
@@ -209,6 +232,37 @@ class SecondaryControlCatalog {
       },
     );
   }
+
+  /// What the settings dialog stores, from the [draft] it opened on and the
+  /// [order] and [hidden] it ends with. An [ControlDescriptor.autoShown]
+  /// control whose checkbox is where the draft put it keeps whatever was stored for it, decided or not:
+  /// saving the dialog to move Notes on an operation where Operator is off by
+  /// default must not hide it on the operations where it is on. One the
+  /// operator ticked or unticked is decided, for every operation.
+  (List<String>, Set<String>) settingsResult(
+    ({List<ControlDescriptor> descriptors, List<String> order, Set<String> hidden}) draft,
+    List<String> order,
+    Set<String> hidden,
+  ) {
+    final config = this.config();
+    final resultOrder = [...order];
+    final resultHidden = {...hidden};
+    for (final descriptor in draft.descriptors) {
+      if (descriptor.autoShown == null) continue;
+      final key = descriptor.key;
+      final shown = !hidden.contains(key);
+      final toggled = shown == draft.hidden.contains(key);
+      final off = toggled ? !shown : config.hiddenControlKeys.contains(key);
+      final pinned = toggled ? shown : config.controlOrder.contains(shownMarker(key));
+      if (off) {
+        resultHidden.add(key);
+      } else {
+        resultHidden.remove(key);
+      }
+      if (pinned) resultOrder.add(shownMarker(key));
+    }
+    return (resultOrder, resultHidden);
+  }
 }
 
 /// The show/hide + reorder dialog over [catalog]. Resolves to the order and
@@ -274,7 +328,7 @@ Future<(List<String>, Set<String>)?> showControlSettingsDialog(BuildContext cont
           ),
         ),
         cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.cancel)),
-        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop((order, hidden)), child: Text(t.common.save))],
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(catalog.settingsResult(draft, order, hidden)), child: Text(t.common.save))],
       ),
     ),
   );
