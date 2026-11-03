@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:ham2k_logger/services/pusher_service.dart';
+import 'package:ham2k_logger/services/push_service.dart';
 import 'package:ham2k_logger/views/oauth_browser_login.dart';
 
 const _state = 'abc123';
@@ -70,7 +70,7 @@ void main() {
       WidgetTester tester, {
       bool launchSucceeds = true,
       List<Map<String, dynamic>> Function()? fetch,
-      Stream<PusherEvent>? pings,
+      Stream<PushEvent>? pings,
       Duration pollInterval = const Duration(days: 1),
     }) async {
       final codes = <String>[];

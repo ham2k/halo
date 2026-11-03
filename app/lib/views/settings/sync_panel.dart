@@ -12,7 +12,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
-import '../../services/pusher_service.dart';
+import '../../services/push_service.dart';
 import '../../tools/sync_account_identity.dart';
 import '../confirm_device_dialog.dart';
 import '../operation_dialogs.dart';
@@ -32,12 +32,12 @@ class SyncPanel extends StatefulWidget {
 ///
 /// api-lofi pushes a `permission` event on the ACCOUNT's channel the moment
 /// another device asks to join (`Permission#notify_listeners`) and an
-/// `account` event when its email settles, so where Pusher is configured
+/// `account` event when its email settles, so with a push subscription live
 /// this poll is only a backstop for a socket that dropped — and one that
-/// reconnects on its own inside 30s. Where it isn't (a checkout with no
-/// `PUSHER_KEY`, so `services.pusher` is null), the poll is the *only* way
-/// the Connection Requests row ever appears, which is why the two intervals
-/// are so far apart.
+/// reconnects on its own inside 30s. Without one (no push client, or an
+/// account payload naming no channel), the poll is the *only* way the
+/// Connection Requests row ever appears, which is why the two intervals are
+/// so far apart.
 const syncAccountPollWithRealtime = Duration(seconds: 60);
 const syncAccountPollWithoutRealtime = Duration(seconds: 10);
 
@@ -51,16 +51,15 @@ class _SyncPanelState extends State<SyncPanel> {
 
   Timer? _accountPollTimer;
   Timer? _localCountsTimer;
-  StreamSubscription<PusherEvent>? _accountEvents;
+  StreamSubscription<PushEvent>? _accountEvents;
 
-  /// The account's Pusher channel, known only once account data has landed
-  /// (`current_account.push_channel`) — so subscribing happens after a
-  /// fetch, not in [initState].
-  String? _accountChannel;
+  /// Whether the running poll is on the realtime cadence.
+  bool _pollingWithRealtime = false;
 
   @override
   void initState() {
     super.initState();
+    widget.services.accountPushChannelChanges.addListener(_onAccountChannelChanged);
     if (widget.services.settings.syncEnabled) {
       _refreshSyncAccount();
       _startWatchingAccount();
@@ -69,18 +68,28 @@ class _SyncPanelState extends State<SyncPanel> {
 
   @override
   void dispose() {
+    widget.services.accountPushChannelChanges.removeListener(_onAccountChannelChanged);
     _stopWatchingAccount();
     super.dispose();
+  }
+
+  bool get _realtimeLive => widget.services.push != null && widget.services.accountPushChannel != null;
+
+  /// Re-paces a running poll when the subscription comes or goes — this
+  /// panel's own fetch sets it, but any sync round can clear it.
+  void _onAccountChannelChanged() {
+    if (_accountPollTimer != null && _realtimeLive != _pollingWithRealtime) _startWatchingAccount();
   }
 
   void _startWatchingAccount() {
     _accountPollTimer?.cancel();
     // Keyed on whether a subscription is actually LIVE, not merely on
-    // whether this build has Pusher configured: before the first fetch the
+    // whether a push client exists: before the first fetch or sync round the
     // channel is unknown, and a payload that carries none never yields one,
-    // so deciding by `pusher != null` alone would drop those cases to a
+    // so deciding by `push != null` alone would drop those cases to a
     // 60-second wait with nothing anywhere saying why.
-    final live = widget.services.pusher != null && _accountChannel != null;
+    final live = _realtimeLive;
+    _pollingWithRealtime = live;
     _accountPollTimer = Timer.periodic(
       live ? syncAccountPollWithRealtime : syncAccountPollWithoutRealtime,
       // A poll runs unattended, so anything escaping it escapes into the
@@ -101,11 +110,11 @@ class _SyncPanelState extends State<SyncPanel> {
       syncAccountPollWithoutRealtime,
       (_) => unawaited(_refreshLocalCounts().catchError((Object error) => debugPrint('[sync-panel] local count refresh failed: $error'))),
     );
-    _accountEvents ??= widget.services.pusher?.events.listen((event) {
+    _accountEvents ??= widget.services.push?.events.listen((event) {
       // Anything the server says about THIS account: a device asking to
       // join, or the account itself changing (an email confirmed from the
       // link, possibly on another device entirely).
-      if (event.channel != _accountChannel) return;
+      if (event.channel != widget.services.accountPushChannel) return;
       if (event.event != 'permission' && event.event != 'account') return;
       unawaited(_refreshSyncAccount(quiet: true));
     });
@@ -118,31 +127,25 @@ class _SyncPanelState extends State<SyncPanel> {
     _localCountsTimer = null;
     _accountEvents?.cancel();
     _accountEvents = null;
-    final channel = _accountChannel;
-    if (channel != null) widget.services.pusher?.unsubscribe(channel);
-    _accountChannel = null;
   }
 
   /// Keeps the realtime subscription pointed at whatever account the last
-  /// fetch reported — a switch mid-session moves it.
+  /// fetch reported — a switch mid-session moves it. The subscription itself
+  /// is the services' ([HaLoServices.setAccountPushChannel]); the sync loop
+  /// reports the same channel from every round.
   void _subscribeToAccountChannel(Map<String, dynamic>? account) {
     final channel = ((account?['current_account'] as Map?)?['push_channel']) as String?;
     if (channel == null) {
       // Not fatal — the poll covers it — but it silently costs realtime, so
       // it must not be invisible to whoever is wondering why.
-      if (widget.services.pusher != null && _accountChannel == null) {
+      if (widget.services.push != null && widget.services.accountPushChannel == null) {
         debugPrint('[sync-panel] account payload carries no push_channel — polling only');
       }
       return;
     }
-    if (channel == _accountChannel) return;
-    final previous = _accountChannel;
-    if (previous != null) widget.services.pusher?.unsubscribe(previous);
-    _accountChannel = channel;
-    widget.services.pusher?.subscribe(channel);
-    // Now that a push can wake this panel, back the poll off to its
-    // fallback cadence.
-    if (_accountPollTimer != null) _startWatchingAccount();
+    // [_onAccountChannelChanged] backs the poll off now that a push can wake
+    // this panel.
+    widget.services.setAccountPushChannel(channel);
   }
 
   /// The four numbers that come from this device's own database — no network,

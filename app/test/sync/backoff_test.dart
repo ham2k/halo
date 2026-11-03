@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Shared by PusherService's reconnect loop and ExtensionService's restart
+// Shared by PushService's reconnect loop and ExtensionService's restart
 // loop — pinned here once rather than through either caller, since both
 // exercise it only incidentally to their own retry behaviour.
 

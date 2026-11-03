@@ -19,17 +19,22 @@ import 'package:stream_channel/stream_channel.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/pusher_service.dart';
+import 'package:ham2k_logger/services/push_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/settings/sync_panel.dart';
 
 import '../support/halo_test_support.dart';
 
-/// Plays the server's WebSocket end for a real [PusherService], the same
-/// way pusher_service_test does.
+/// Plays the server's WebSocket end for a real [PushService], the same
+/// way push_service_test does.
 class _FakeSocket {
   final _controller = StreamChannelController<dynamic>(sync: true);
+  final List<Map<String, dynamic>> sentByClient = [];
+
+  _FakeSocket() {
+    _controller.foreign.stream.listen((raw) => sentByClient.add(jsonDecode(raw as String) as Map<String, dynamic>));
+  }
 
   StreamChannel<dynamic> get local => _controller.local;
 
@@ -74,12 +79,12 @@ class _Extensions extends ExtensionServiceWithFakeHost {
   }
 }
 
-Future<(HaLoServices, _Extensions)> makeServices(Map<String, dynamic>? account, {int? pendingChallenges, PusherService? pusher}) async {
+Future<(HaLoServices, _Extensions)> makeServices(Map<String, dynamic>? account, {int? pendingChallenges, PushService? push}) async {
   SharedPreferences.setMockInitialValues({'flutter.syncEnabled': true});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   final extensions = _Extensions(account, pendingChallenges: pendingChallenges)..settings = settings;
-  return (HaLoServices(db, settings, extensions: extensions, pusher: pusher), extensions);
+  return (HaLoServices(db, settings, extensions: extensions, push: push), extensions);
 }
 
 Future<void> openSyncPanel(WidgetTester tester, HaLoServices services) async {
@@ -255,8 +260,8 @@ void main() {
       // another device asks in — the whole point of the long fallback
       // interval is that this arrives first.
       final server = _FakeSocket();
-      final pusher = PusherService(appKey: 'k', cluster: 'mt1', connect: (_) => server.local);
-      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, pusher: pusher);
+      final push = PushService(connect: (_) => server.local);
+      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, push: push);
       await openSyncPanel(tester, services);
       server.establish();
       await tester.pumpAndSettle();
@@ -269,13 +274,13 @@ void main() {
       // Well inside the fallback interval, which is what proves the push
       // and not a poll did it.
       expect(extensions.accountFetches, greaterThan(1));
-      pusher.dispose();
+      push.dispose();
     });
 
     testWidgets('a push about somebody else\'s account is ignored', (tester) async {
       final server = _FakeSocket();
-      final pusher = PusherService(appKey: 'k', cluster: 'mt1', connect: (_) => server.local);
-      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, pusher: pusher);
+      final push = PushService(connect: (_) => server.local);
+      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, push: push);
       await openSyncPanel(tester, services);
       server.establish();
       await tester.pumpAndSettle();
@@ -285,7 +290,50 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(extensions.accountFetches, before);
-      pusher.dispose();
+      push.dispose();
+    });
+
+    testWidgets('closing the panel keeps the account subscription the sync loop listens on', (tester) async {
+      // The subscription is not counted: a panel unsubscribing on close
+      // would silence the pushes that bring the sync loop's next pull
+      // forward, for the rest of the session.
+      final server = _FakeSocket();
+      final push = PushService(connect: (_) => server.local);
+      final (services, _) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, push: push);
+      await openSyncPanel(tester, services);
+      server.establish();
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(services.accountPushChannel, 'account-abc-1234');
+      expect(server.sentByClient.where((m) => m['event'] == 'pusher:unsubscribe'), isEmpty);
+      push.dispose();
+    });
+
+    testWidgets('a subscription cleared behind the panel brings the short poll back', (tester) async {
+      // A sync round reporting no channel (an operation-scoped grant) clears
+      // it while the panel is open. Kept on the minute-long cadence, a
+      // request would wait up to a minute with no push left to announce it.
+      final server = _FakeSocket();
+      final push = PushService(connect: (_) => server.local);
+      final (services, extensions) = await makeServices({'uuid': 'acct-1', 'email': 'me@example.com', 'push_channel': 'account-abc-1234'}, push: push);
+      await openSyncPanel(tester, services);
+      server.establish();
+      await tester.pumpAndSettle();
+
+      extensions.pendingChallenges = 1;
+      await tester.pump(syncAccountPollWithoutRealtime);
+      await tester.pumpAndSettle();
+      expect(find.text(t.settings.syncPanel.connectionRequests), findsNothing, reason: 'sanity: subscribed, the poll is the long one');
+
+      services.setAccountPushChannel(null);
+      await tester.pump(syncAccountPollWithoutRealtime);
+      await tester.pumpAndSettle();
+
+      expect(find.text(t.settings.syncPanel.connectionRequests), findsOneWidget);
+      push.dispose();
     });
 
     testWidgets('a poll that cannot reach the server leaves the account on screen', (tester) async {

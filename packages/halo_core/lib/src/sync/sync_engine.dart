@@ -78,6 +78,11 @@ class SyncEngine {
   /// [SyncProgress]. Null when the app layer doesn't surface progress.
   final void Function(SyncProgress progress)? onProgress;
 
+  /// Called after every accepted round with `account.push_channel`, or null
+  /// when the response names none (an operation-scoped grant). The app
+  /// subscribes to it and answers its events with [notifyRemoteChanged].
+  final void Function(String? channel)? onAccountPushChannel;
+
   /// Called after every periodic round that succeeded, with whether a push
   /// backlog is still draining: the round moved records out and more are
   /// dirty behind them, so the next round follows at once. `false` on any
@@ -125,6 +130,14 @@ class SyncEngine {
   static const defaultLargeBatchSize = 100; // matches sync.js
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
+
+  /// The least wait between a push and the pull it brings forward, so a
+  /// burst of pushes (a sync from another device) becomes one pull.
+  static const remoteChangeDelay = Duration(seconds: 1);
+
+  /// How long a push about an operation this device just sent counts as its
+  /// own write echoed back; another device's change inside it waits a round.
+  static const ownEchoWindow = Duration(seconds: 10);
 
   /// The wait after a full page while paging through a large set — the
   /// server's `suggested_sync_loop_delay`, which api-lofi clamps to clear its
@@ -242,6 +255,21 @@ class SyncEngine {
   int _authErrorStreak = 0;
   bool _running = false;
 
+  /// When the last pull was answered, on the real clock: the server's
+  /// cooldown runs from it, and [notifyRemoteChanged] must not ask sooner.
+  DateTime? _lastPullAt;
+
+  /// Operations this device just sent, and when. Without it, the account
+  /// channel's echo of each contact logged here buys a pull of nothing new.
+  final Map<String, DateTime> _recentlySentOperations = {};
+
+  /// The plan's `realtime_sync` flag (`plans.flags`, beside the pacing
+  /// knobs): whether a push may bring a pull forward. Off until granted.
+  bool _realtimeSync = false;
+
+  /// A [notifyRemoteChanged] that arrived while a round held the engine.
+  bool _remoteChangeDeferred = false;
+
   /// Whether the round holding [_running] is a small-batch one.
   bool _runningSmallBatch = false;
 
@@ -343,6 +371,7 @@ class SyncEngine {
     this.refusalQuarantine = defaultRefusalQuarantine,
     this.log,
     this.onProgress,
+    this.onAccountPushChannel,
     this.onPushBacklog,
     this.onError,
     this.onAuthError,
@@ -410,6 +439,49 @@ class SyncEngine {
       _debounceStartedAt = null;
       unawaited(runOneRound(smallBatch: true));
     });
+  }
+
+  /// Another device changed this account (a push on its channel). Brings
+  /// the next pull forward to the end of the server's cooldown — a pull
+  /// inside it is answered with nothing, and [_loopDelay] measures it.
+  /// Ignored unless the plan grants it ([_realtimeSync]), and while the loop
+  /// backs off: a push proves the push service up, not the sync server.
+  void notifyRemoteChanged({String? operationUuid}) {
+    if (!_mayRun || _disposed || !_realtimeSync) return;
+    if (_errorCount > 0 || _authErrorStreak > 0) return;
+    final now = realNowUtc();
+    if (operationUuid != null) {
+      final sentAt = _recentlySentOperations[operationUuid];
+      if (sentAt != null && now.difference(sentAt) < ownEchoWindow) return;
+    }
+    if (_running) {
+      _remoteChangeDeferred = true;
+      return;
+    }
+    _pullSoon(now);
+  }
+
+  void _pullSoon(DateTime now) {
+    var delay = remoteChangeDelay;
+    final last = _lastPullAt;
+    if (last != null) {
+      final cooldownLeft = last.add(_loopDelay).difference(now);
+      if (cooldownLeft > delay) delay = cooldownLeft;
+    }
+    // A pull due by then needs no help; moving it later undoes its scheduler.
+    final next = _nextAttemptAt;
+    if (next != null && !next.isAfter(now.add(delay))) return;
+    _scheduleLoop(delay);
+  }
+
+  void _noteSent(SyncBatch batch, DateTime at) {
+    _recentlySentOperations.removeWhere((_, sentAt) => at.difference(sentAt) >= ownEchoWindow);
+    for (final operation in batch.operations) {
+      _recentlySentOperations[operation.uuid] = at;
+    }
+    for (final qso in batch.qsos) {
+      _recentlySentOperations[qso.operationUuid] = at;
+    }
   }
 
   /// The user answered the Settings banner for a new/changed account.
@@ -769,8 +841,13 @@ class SyncEngine {
           pushing: batch.operations.length + batch.qsos.length,
         );
       }
-      final response = await _callTransport(Hooks.syncTransportSync, await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit));
+      final payload = await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit);
+      _noteSent(batch, realNowUtc());
+      final response = await _callTransport(Hooks.syncTransportSync, payload);
+      // Again on the answer: a large upload can outlast the echo window.
+      _noteSent(batch, realNowUtc());
       if (_pullInFlight) {
+        _lastPullAt = realNowUtc();
         _pullPageCap = serverMaxPullLimit;
         _requestFailures = 0;
       }
@@ -824,6 +901,11 @@ class SyncEngine {
         }
         return;
       }
+
+      final responseAccount = response['account'];
+      // Not once sync is off: a round still in flight then would subscribe
+      // the channel that switching sync off just cleared.
+      if (responseAccount is Map && _mayRun && !_disposed) onAccountPushChannel?.call(responseAccount['push_channel'] as String?);
 
       // Records the server refused, per uuid. Marking one synced would leave
       // it flagged as sent while the server holds nothing of it — the local
@@ -1028,6 +1110,11 @@ class SyncEngine {
         _periodicRoundDeferred = false;
         _scheduleLoop(Duration.zero);
       }
+      if (_remoteChangeDeferred) {
+        _remoteChangeDeferred = false;
+        // After the round's own scheduling, which [_pullSoon] defers to.
+        if (_mayRun && !_disposed && _errorCount == 0 && _authErrorStreak == 0) _pullSoon(realNowUtc());
+      }
       if (_smallBatchDeferred) {
         _smallBatchDeferred = false;
         // From a timer, never synchronously: this round's caller (`retryNow`) resumes only after
@@ -1093,6 +1180,9 @@ class SyncEngine {
     if (suggestedCheckPeriodMillis != null && suggestedCheckPeriodMillis > 0) {
       _checkPeriod = Duration(milliseconds: suggestedCheckPeriodMillis);
     }
+
+    // Only a response that carries flags speaks for the plan.
+    if (flags.isNotEmpty) _realtimeSync = flags['realtime_sync'] == true || flags['realtime_sync'] == 'true';
 
     // A small-batch round never requested a `meta.sync` page, so there's
     // nothing page-oriented (backfill cursor / forward watermark) to track.

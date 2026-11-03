@@ -2305,13 +2305,13 @@ export interface SyncTransportHook {
   /// Ensures this device is registered with the sync server, independent of
   /// whether the operator has QSO sync enabled — registration establishes
   /// device identity and the realtime push channel, it does not push any log
-  /// data. Returns the Pusher channel to subscribe to and the signed token
+  /// data. Returns the push channel to subscribe to and the signed token
   /// used to build the `state` param for a webhook-relayed OAuth flow
   /// (HALO-65/66). Optional so transports predating this contract keep
   /// compiling.
   ensureClientRegistered?(args: { refreshWebhookToken?: boolean }, ctx: HookContext): Promise<{ push_channel_name: string; webhook_client_token: string }>
   /// Fetches this device's pending webhook events (HALO-65) — the poll
-  /// fallback, and how the app retrieves the actual payload after a Pusher
+  /// fallback, and how the app retrieves the actual payload after a push
   /// `webhook_event` ping (which intentionally carries only an id, never the
   /// sensitive payload — see HALO-65's design note).
   fetchWebhookEvents?(args: Record<string, never>, ctx: HookContext): Promise<{ webhook_events: Record<string, JSONValue>[] }>

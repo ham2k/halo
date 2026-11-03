@@ -42,19 +42,19 @@ void main() {
     });
 
     test('a value belonging to no extension', () {
-      // The Pusher key lives in the same store because the app reads it
+      // The push key lives in the same store because the app reads it
       // directly. That must not make it extension-readable.
-      expect(extensionMaySeeSecret('pota', 'PUSHER_KEY'), isFalse);
+      expect(extensionMaySeeSecret('pota', 'HAM2K_PUSH_KEY'), isFalse);
     });
 
     test('including an extension whose key spells that value\'s own prefix', () {
       // The hole `appOnlySecrets` exists to close, and the prefix rule alone
       // cannot: the catalog serves Ham2K's own extensions under a reserved
       // prefix which the app STRIPS before asking, so a bundle published as
-      // `ham2k-pusher` arrives here as `pusher` — and by name alone it owns
-      // `PUSHER_*`. An extension key is not entirely ours to choose.
-      expect(extensionMaySeeSecret('pusher', 'PUSHER_KEY'), isFalse);
-      expect(extensionMaySeeSecret('pusher', 'PUSHER_CLUSTER'), isFalse);
+      // `ham2k-ham2k` arrives here as `ham2k` — and by name alone it owns
+      // `HAM2K_*`. An extension key is not entirely ours to choose.
+      expect(extensionMaySeeSecret('ham2k', 'HAM2K_PUSH_KEY'), isFalse);
+      expect(extensionMaySeeSecret('ham2k', 'HAM2K_PUSH_HOST'), isFalse);
     });
 
     test('a longer key that merely starts the same way', () {
@@ -79,7 +79,7 @@ void main() {
     test('the refusal list is not, and names what Dart alone consumes', () {
       // The opposite direction from the two above: this one only ever takes
       // access away, so an entry LEAVING it is the change worth noticing.
-      expect(appOnlySecrets, {'PUSHER_KEY', 'PUSHER_CLUSTER'});
+      expect(appOnlySecrets, {'HAM2K_PUSH_HOST', 'HAM2K_PUSH_KEY'});
     });
   });
 }

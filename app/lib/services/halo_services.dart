@@ -8,11 +8,12 @@
 // which acts on the whole graph and so lives beside it.
 
 import 'dart:async';
+import 'dart:io' as io;
 
 import 'package:intl/intl.dart';
 import 'package:intl/number_symbols.dart';
 
-import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
+import 'package:flutter/foundation.dart' show ValueListenable, kIsWeb, setEquals;
 // Prefixed separately from the AppExitResponse import above: some import in
 // this file's graph makes the bare name `TextDirection` resolve to something
 // without an `.ltr` getter, so the real dart:ui one needs this to be reached
@@ -84,7 +85,7 @@ import 'lookup_queue_service.dart';
 import 'metrics_service.dart';
 import 'panel_service.dart';
 import 'purchase_service.dart';
-import 'pusher_service.dart';
+import 'push_service.dart';
 import 'radio_service.dart';
 import 'operation_command_context.dart';
 import 'operation_title_service.dart';
@@ -120,13 +121,15 @@ import 'sibling_apps_service.dart';
 
 export 'operation_command_context.dart';
 
+part 'halo_services_realtime.dart';
 part 'halo_services_time_travel.dart';
 
 /// The core services bundle passed down to screens.
-class HaLoServices with _TimeTravel {
+class HaLoServices with _Realtime, _TimeTravel {
   final HaLoDatabase db;
   @override
   final SettingsService settings;
+  @override
   final ExtensionService extensions;
   final MetricsService metrics;
   final PurchaseService purchases;
@@ -477,60 +480,14 @@ class HaLoServices with _TimeTravel {
   final SiblingAppsService? _siblingAppsOverride;
   late final SiblingAppsService siblingApps = _siblingAppsOverride ?? SiblingAppsService();
 
-  /// Push app key plus either a host or a cluster for the realtime client —
-  /// public,
-  /// non-secret values (every Pusher client SDK ships them this way), but
-  /// still build-time configured like SOTA's OAuth client id
-  /// (config/secrets.dart) since they point at whichever LoFi
-  /// deployment this build talks to. Empty in a checkout that hasn't filled
-  /// them in: [pusher] is then null and every realtime feature falls back
-  /// to its polling path rather than crashing.
-  /// Injectable so a test can drive the realtime path over a fake socket —
-  /// the real one only ever exists in a build whose secrets name a Pusher
-  /// deployment, which no test has.
-  final PusherService? _pusherOverride;
-  late final PusherService? pusher = _pusherOverride ?? _pusherFromSecrets();
+  /// The realtime client for LoFi's pushes (ham2k-push). Null under
+  /// `flutter test`, where the compiled-in production host would otherwise
+  /// put every test that registers a device on the real network; a test that
+  /// drives the realtime path injects its own over a fake socket.
+  final PushService? _pushOverride;
+  @override
+  late final PushService? push = _pushOverride ?? _pushFromConfig();
 
-  /// LoFi is migrating off Pusher onto Ham2K's own fan-out service, which
-  /// speaks the same protocol on purpose (LOFI-47). A build names one or the
-  /// other: `PUSHER_HOST` for ours, `PUSHER_CLUSTER` for Pusher's. Ours wins
-  /// where a checkout has filled in both, so moving a build across is one line
-  /// in secrets.dart.
-  PusherService? _pusherFromSecrets() {
-    final key = secrets['PUSHER_KEY'];
-    if (key?.isEmpty ?? true) return null;
-
-    final host = secrets['PUSHER_HOST'];
-    if (host?.isNotEmpty ?? false) return PusherService(appKey: key!, host: host);
-
-    final cluster = secrets['PUSHER_CLUSTER'];
-    if (cluster?.isEmpty ?? true) return null;
-
-    return PusherService(appKey: key!, cluster: cluster);
-  }
-
-  /// Registers this device with the sync server — independent of QSO sync
-  /// being enabled, deliberately — and, once that succeeds,
-  /// subscribes the realtime client to its push channel. Safe to call
-  /// repeatedly (boot, and every [setOperatorCall]):
-  /// `ensureLofiClientRegistered` is idempotent, and re-subscribing an
-  /// already-subscribed channel is a no-op ([PusherService.subscribe]).
-  ///
-  /// Returns the registration so a caller that also needs it directly (e.g.
-  /// `_doOAuth`, for the `webhookClientToken` its `state` param carries) can
-  /// go through this one place rather than re-registering by hand.
-  Future<LofiClientRegistration?> connectLofiRealtime({bool refreshWebhookToken = false}) async {
-    final registration = await extensions.ensureLofiClientRegistered(refreshWebhookToken: refreshWebhookToken);
-    if (registration != null) pusher?.subscribe(registration.pushChannelName);
-    return registration;
-  }
-
-  /// Webhook-relay events on this device's push channel — an
-  /// OAuth flow waiting on a provider redirect listens here for
-  /// the ping, then calls [ExtensionService.fetchLofiWebhookEvents] for the
-  /// payload (the push itself only ever carries an event id, never the
-  /// sensitive payload — deliberately).
-  Stream<PusherEvent> get webhookEvents => pusher?.events.where((e) => e.event == 'webhook_event') ?? const Stream.empty();
   final DataFileManager? _dataFilesOverride;
   late final DataFileManager dataFiles =
       _dataFilesOverride ??
@@ -1012,6 +969,7 @@ class HaLoServices with _TimeTravel {
     settings: settings,
     log: debugPrint,
     onProgress: _showSyncProgress,
+    onAccountPushChannel: setAccountPushChannel,
     onPushBacklog: wakeLock.onPushBacklog,
     onError: ErrorReportingService.report,
     onAuthError: _showSyncAuthNotice,
@@ -1108,7 +1066,7 @@ class HaLoServices with _TimeTravel {
     OutlineGridService? outlineGrid,
     CatService? cat,
     CatTrafficLog? catTrafficLog,
-    PusherService? pusher,
+    PushService? push,
     LocationService? location,
     InboundQsoListenerService? inboundQsos,
     PeerService? peerService,
@@ -1125,7 +1083,7 @@ class HaLoServices with _TimeTravel {
        _peerServiceOverride = peerService,
        _inboundQsosOverride = inboundQsos,
        _locationOverride = location,
-       _pusherOverride = pusher,
+       _pushOverride = push,
        extensions = extensions ?? ExtensionService(),
        metrics = metrics ?? const NoopMetricsService(),
        purchases = purchases ?? const NoopPurchaseService(),
@@ -1532,7 +1490,10 @@ class HaLoServices with _TimeTravel {
     if (settings.onboardingShownCount(OnboardingFlows.cloudSync) == 0) {
       await settings.recordOnboardingShown(OnboardingFlows.cloudSync);
     }
-    if (!enabled) return true;
+    if (!enabled) {
+      setAccountPushChannel(null);
+      return true;
+    }
     // Boot skips credential setup when the keyring is locked
     // (ensureSyncDeviceKey returns null), so starting the engine now without a
     // device key would run sync unauthenticated. If boot never established the

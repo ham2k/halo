@@ -670,7 +670,7 @@ async function approveLinkRequest(
 /// Registers this device with the sync server if it hasn't been already —
 /// independent of whether QSO sync is enabled (unlike `sync`/`getAccountData`,
 /// this never touches log data, so the host calls it regardless of
-/// `settings.syncEnabled`; see HALO-66). Returns the Pusher channel to
+/// `settings.syncEnabled`; see HALO-66). Returns the push channel to
 /// subscribe to and the signed token used to build the `state` param for a
 /// webhook-relayed OAuth flow (HALO-65).
 async function ensureClientRegistered(
@@ -719,7 +719,7 @@ async function ensureClientRegistered(
 }
 
 /// Fetches this device's pending webhook events (HALO-65) — the poll
-/// fallback, and how the app retrieves the actual payload after a Pusher
+/// fallback, and how the app retrieves the actual payload after a push
 /// `webhook_event` ping, which intentionally carries only an id.
 async function fetchWebhookEvents(_args: Record<string, never>, _ctx: HookContext): Promise<{ webhook_events: Record<string, JSONValue>[] }> {
   const response = await request("GET", "v1/client/webhooks")

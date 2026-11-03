@@ -4,7 +4,7 @@
 import 'dart:math';
 
 /// Capped exponential backoff: doubles per attempt, capped at [cap]. Shared
-/// by every reconnect/restart loop in the app (PusherService, ExtensionService)
+/// by every reconnect/restart loop in the app (PushService, ExtensionService)
 /// so a retuned cap or clamp doesn't have to be remembered and re-applied in
 /// more than one place. `attempt` is clamped before shifting — an uncapped
 /// attempt counter would otherwise overflow `1 << attempt` into a negative

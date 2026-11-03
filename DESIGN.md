@@ -284,7 +284,11 @@ implements directly.
 - The **sync engine** is a Dart service implementing exactly the design in
   `app-polo/src/store/sync/README.md`: dirty flags, small-batch on change,
   large-batch on loop, server-tunable parameters. Only the transport call goes
-  through an extension.
+  through an extension. A push from LoFi's realtime service (ham2k-push,
+  `PushService`) about the account brings the next pull forward to the end of
+  the server's cooldown, for accounts whose plan sets the `realtime_sync` flag;
+  the pull stays the only way data arrives. Every account keeps the socket for
+  its account and sign-in events.
 - A **shared operation** — one owner's log that other accounts watch, log
   into or help run — syncs through the owner's account and over peer links,
   never into a member's own account.

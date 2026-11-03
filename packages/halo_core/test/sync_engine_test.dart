@@ -82,6 +82,7 @@ class _FakeTransport {
 
 void main() {
   group('connectivity probe', _reachabilityTests);
+  group('pushes from other devices', _remoteChangeTests);
   late HaLoDatabase db;
   late OperationsRepository operations;
   late QsosRepository qsos;
@@ -3370,3 +3371,186 @@ void _reachabilityTests() {
 }
 
 class _NoAnswer implements Exception {}
+
+/// A push on the account channel (another device changed something) brings
+/// the next pull forward — but only as far as the server's per-client
+/// cooldown allows, which api-lofi answers with an empty page.
+void _remoteChangeTests() {
+  late HaLoDatabase db;
+  late OperationsRepository operations;
+  late QsosRepository qsos;
+  late _FakeSyncSettings settings;
+  late _FakeTransport transport;
+  late SyncEngine engine;
+  final reportedChannels = <String?>[];
+
+  // The server's own pacing: a 33 s loop delay clears its 30 s cooldown,
+  // and an idle device checks once a minute.
+  const loopDelay = Duration(seconds: 33);
+  const checkPeriod = Duration(seconds: 60);
+  Map<String, dynamic> answer({Map<String, dynamic>? account, Object? realtimeSync = true}) => {
+    'meta': {
+      'flags': {
+        'suggested_sync_loop_delay': loopDelay.inMilliseconds,
+        'suggested_sync_check_period': checkPeriod.inMilliseconds,
+        'realtime_sync': ?realtimeSync,
+      },
+    },
+    'account': account ?? {'uuid': 'acct-1', 'push_channel': 'account-abc'},
+  };
+
+  int pulls() => transport.calls.where((c) => c.$1 == Hooks.syncTransportSync.method).length;
+
+  setUp(() {
+    db = HaLoDatabase(NativeDatabase.memory());
+    operations = OperationsRepository(db);
+    qsos = QsosRepository(db);
+    settings = _FakeSyncSettings(state: {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true});
+    transport = _FakeTransport((method, args) => answer());
+    reportedChannels.clear();
+    engine = SyncEngine(operations: operations, qsos: qsos, transport: transport.call, settings: settings, onAccountPushChannel: reportedChannels.add);
+  });
+
+  tearDown(() async {
+    engine.dispose();
+    await db.close();
+  });
+
+  test(
+    'brings an idle wait forward to the end of the cooldown, and no sooner',
+    () => runOnFakeClock((async) async {
+      await engine.runOneRound();
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), checkPeriod, reason: 'sanity: idle, the next pull is a minute out');
+
+      await Future<void>.delayed(const Duration(seconds: 5));
+      engine.notifyRemoteChanged();
+
+      // Any sooner and the server answers "please wait" with no records —
+      // the push would have bought a wasted request instead of the change.
+      await Future<void>.delayed(loopDelay - const Duration(seconds: 5) - const Duration(milliseconds: 10));
+      expect(pulls(), 1);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(pulls(), 2);
+    }),
+  );
+
+  test(
+    'pulls almost at once when the last pull is long past',
+    () => runOnFakeClock((async) async {
+      await engine.runOneRound();
+      await Future<void>.delayed(const Duration(seconds: 50));
+
+      engine.notifyRemoteChanged();
+      await Future<void>.delayed(SyncEngine.remoteChangeDelay + const Duration(milliseconds: 10));
+      expect(pulls(), 2, reason: 'the cooldown has cleared, so the only wait left is the coalescing one');
+    }),
+  );
+
+  test(
+    'ignores the echo of its own upload, not a change to another operation',
+    () => runOnFakeClock((async) async {
+      final mine = await operations.create(stationCall: 'KI2D');
+      await qsos.add(mine.uuid, {
+        'their': {'call': 'W1AW'},
+        'startAtMillis': 1000,
+      });
+      await engine.runOneRound();
+      final idle = engine.nextAttemptAt;
+
+      // The account channel tells every device, the sender included. Taken
+      // as news, every contact logged here would buy a pull fetching it back.
+      engine.notifyRemoteChanged(operationUuid: mine.uuid);
+      expect(engine.nextAttemptAt, idle);
+
+      engine.notifyRemoteChanged(operationUuid: 'someone-elses-operation');
+      expect(engine.nextAttemptAt!.isBefore(idle!), isTrue);
+    }),
+  );
+
+  test(
+    'a change arriving mid-round is acted on once the round lands',
+    () => runOnFakeClock((async) async {
+      await engine.runOneRound();
+      await Future<void>.delayed(checkPeriod);
+      final gate = Completer<void>();
+      transport.gate = gate.future;
+      final round = engine.runOneRound();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      engine.notifyRemoteChanged();
+      gate.complete();
+      await round;
+
+      // The round in flight may have been served before the change landed;
+      // dropped, it would wait the full idle minute.
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), lessThanOrEqualTo(loopDelay));
+    }),
+  );
+
+  test(
+    'leaves a failing loop to its backoff',
+    () => runOnFakeClock((async) async {
+      // Granted first: an engine that never heard the flag ignores the push
+      // anyway, and the guard below would go untested.
+      await engine.runOneRound();
+      transport.responder = (method, args) => throw StateError('server unreachable');
+      await engine.runOneRound();
+      final backoff = engine.nextAttemptAt;
+
+      // A push proves the push service is up, not that the sync server will
+      // take this device's next round.
+      engine.notifyRemoteChanged();
+      expect(engine.nextAttemptAt, backoff);
+    }),
+  );
+
+  test(
+    'acts on a push only while the plan grants realtime sync',
+    () => runOnFakeClock((async) async {
+      // A plan without the flag keeps the plain poll: reacting anyway would
+      // hand every free account the paid plans' faster delivery.
+      transport.responder = (method, args) => answer(realtimeSync: null);
+      await engine.runOneRound();
+      final idle = engine.nextAttemptAt;
+      engine.notifyRemoteChanged();
+      expect(engine.nextAttemptAt, idle, reason: 'no flag, no early pull');
+
+      transport.responder = (method, args) => answer();
+      await engine.runOneRound();
+      engine.notifyRemoteChanged();
+      expect(engine.nextAttemptAt!.isBefore(realNowUtc().add(checkPeriod)), isTrue, reason: 'granted, the push brings the pull forward');
+
+      // A lapsed subscription drops the flag from the very next response.
+      transport.responder = (method, args) => answer(realtimeSync: false);
+      await engine.runOneRound();
+      final lapsed = engine.nextAttemptAt;
+      engine.notifyRemoteChanged();
+      expect(engine.nextAttemptAt, lapsed, reason: 'revoked, pushes are ignored again');
+    }),
+  );
+
+  test('a round landing after sync was switched off does not report the channel', () async {
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+    final round = engine.runOneRound();
+    await Future<void>.delayed(Duration.zero);
+
+    // Switching sync off clears the subscription; the round's late answer
+    // re-subscribing it would leave a channel open with nothing using it.
+    settings.enabled = false;
+    gate.complete();
+    await round;
+
+    expect(reportedChannels, isEmpty);
+  });
+
+  test('reports the account channel each round, and its absence', () async {
+    await engine.runOneRound();
+    // An operation-scoped grant is never told the account's channel; a
+    // stale one kept subscribed would deliver another scope's news.
+    transport.responder = (method, args) => answer(account: {'uuid': 'acct-1'});
+    await engine.runOneRound();
+
+    expect(reportedChannels, ['account-abc', null]);
+  });
+}

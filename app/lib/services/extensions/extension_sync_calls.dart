@@ -6,7 +6,7 @@
 
 part of 'extension_service.dart';
 
-/// This device's LoFi identity: the Pusher channel to subscribe
+/// This device's LoFi identity: the push channel to subscribe
 /// to, and the signed token a webhook-relayed OAuth login embeds in its
 /// `state` param. Returned by [ExtensionService.ensureLofiClientRegistered]
 /// and [HaLoServices.connectLofiRealtime] alike.
@@ -174,7 +174,7 @@ mixin _ExtensionSyncCalls {
 
   /// Fetches this device's pending webhook events — the poll
   /// fallback, and how a caller retrieves the actual payload after a
-  /// [HaLoServices.webhookEvents] Pusher ping (which intentionally carries
+  /// [HaLoServices.webhookEvents] push ping (which intentionally carries
   /// only an id, never the sensitive payload).
   Future<List<Map<String, dynamic>>> fetchLofiWebhookEvents() async {
     final host = this.host;

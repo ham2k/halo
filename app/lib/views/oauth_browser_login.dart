@@ -26,7 +26,7 @@
 //   webhook-relay URL instead
 //   (https://lofi.ham2k.net/v1/webhooks/client/oauth), the browser lands on
 //   LoFi's own confirmation page, and LoFi's server-side receiver creates a
-//   WebhookEvent and Pusher-pings this device's channel — with periodic
+//   WebhookEvent and pushes a ping to this device's channel — with periodic
 //   polling as the fallback for a missed ping. Here the body itself is what
 //   spots the result and hands it back.
 //
@@ -51,7 +51,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/error_reporting_service.dart';
-import '../services/pusher_service.dart';
+import '../services/push_service.dart';
 
 /// How long the body keeps saying it is waiting before it says instead that
 /// nothing has come back. Generous: a first-time sign-in means finding a
@@ -91,7 +91,7 @@ bool oauthUsesWebhookRelay({TargetPlatform? platform, bool? isWeb}) {
 /// the authorization code to come home.
 ///
 /// On the relay platforms that means reacting instantly to a [webhookEvents]
-/// Pusher ping when one arrives, and polling [fetchWebhookEvents] every
+/// push ping when one arrives, and polling [fetchWebhookEvents] every
 /// [pollInterval] regardless, since a missed ping shouldn't strand the
 /// operator here. On the deep-link platforms all three are null and this body
 /// only waits: `_doOAuth`'s own `DeepLinkService` listener is what ends it.
@@ -116,7 +116,7 @@ class OAuthBrowserLoginBody extends StatefulWidget {
   /// plus this device's signed webhook-relay token).
   final String? expectedState;
 
-  final Stream<PusherEvent>? webhookEvents;
+  final Stream<PushEvent>? webhookEvents;
   final Future<List<Map<String, dynamic>>> Function()? fetchWebhookEvents;
 
   /// The authorization code came home.
@@ -165,7 +165,7 @@ class _OAuthBrowserLoginBodyState extends State<OAuthBrowserLoginBody> {
   // complete an already-completed login. `_checking` alone doesn't cover that
   // window since it's cleared once `fetchWebhookEvents` returns.
   bool _resolved = false;
-  StreamSubscription<PusherEvent>? _pingSub;
+  StreamSubscription<PushEvent>? _pingSub;
   Timer? _pollTimer;
   Timer? _deadline;
 

@@ -37,22 +37,21 @@ bool extensionMaySeeSecret(String extensionKey, String name) {
 /// extension key its name happens to begin with, and an extension key is not
 /// entirely the app's to choose: the catalog serves Ham2K's own under a
 /// reserved prefix, and the app strips that prefix before asking this. A
-/// bundle published as `ham2k-pusher` would therefore be asked about as
-/// `pusher` and pass the prefix rule. Nothing but this list says it should
-/// not.
+/// bundle keyed `ham2k` would therefore pass the prefix rule for every
+/// `HAM2K_*` value. Nothing but this list says it should not.
 ///
 /// Listed by name rather than inferred, because what makes a value app-only is
 /// which code consumes it — something no spelling of the name can carry, and
 /// the distinction the flat map is missing (README.md's planned secrets
 /// service).
 ///
-/// Being refused here says nothing about being confidential. `PUSHER_KEY` and
-/// `PUSHER_CLUSTER` are Pusher's client-side identifiers, public by design and
-/// shipped by every Pusher client SDK; the confidential half of a Pusher app
-/// is its `secret`, which lives on api-lofi and never reaches a build. They
-/// are listed because `PusherService` is the only thing that wants them, not
+/// Being refused here says nothing about being confidential.
+/// `HAM2K_PUSH_HOST` and `HAM2K_PUSH_KEY` name the ham2k-push deployment the
+/// realtime client dials, public by design; the confidential half, the
+/// publish secret, lives on api-lofi and never reaches a build. They are
+/// listed because `PushService` is the only thing that wants them, not
 /// because they would do harm.
-const appOnlySecrets = <String>{'PUSHER_KEY', 'PUSHER_CLUSTER'};
+const appOnlySecrets = <String>{'HAM2K_PUSH_HOST', 'HAM2K_PUSH_KEY'};
 
 /// Secrets any extension may read. Empty, and worth keeping that way: a value
 /// here is one every bundle in the app can see.
