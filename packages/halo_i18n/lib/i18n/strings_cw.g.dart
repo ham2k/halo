@@ -986,8 +986,7 @@ class _Translations$keyboardShortcuts$cw extends Translations$keyboardShortcuts$
 	@override String get title => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···';
 	@override String get description => '—·—· ··— ··· — ——— —— ·· ——·· · / —·— · —·—— / —— ·— ·——· ·——· ·· —· ——· ···';
 	@override String get search => '··· · ·— ·—· —·—· ···· / —·—· ——— —— —— ·— —· —·· ··· / ·— —· —·· / —·— · —·—— ···';
-	@override String get import => '·· —— ·——· ——— ·—· — …';
-	@override String get export => '· —··— ·——· ——— ·—· — …';
+	@override late final _Translations$keyboardShortcuts$sets$cw sets = _Translations$keyboardShortcuts$sets$cw._(_root);
 	@override String get resetAll => '·—· · ··· · — / ·— ·—·· ·—··';
 	@override String get resetAllTitle => '·—· · ··· · — / · ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — ··——··';
 	@override String get resetAllBody => '· ···— · ·—· —·—— / —·—· ——— —— —— ·— —· —·· / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — / —·— · —·—— ··· ——··—— / ·— —· —·· / — ···· · / —·— · —·—— ··· / —··· ——— ··— —· —·· / — ——— / — —·—— ·——· · —·· / —·—· ——— —— —— ·— —· —·· ··· / ·— ·—· · / ·—· · —— ——— ···— · —·· ·—·—·—';
@@ -3289,6 +3288,23 @@ class _Translations$settings$gridPrecisionDescription$cw extends Translations$se
 	@override String get eight => '———·· / —·· ·· ——· ·· — ···';
 }
 
+// Path: keyboardShortcuts.sets
+class _Translations$keyboardShortcuts$sets$cw extends Translations$keyboardShortcuts$sets$en {
+	_Translations$keyboardShortcuts$sets$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => '··· ···· ——— ·—· — —·—· ··— — / ··· · —';
+	@override String get title => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ···';
+	@override String get manage => '—— ·— —· ·— ——· · / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ··· …';
+	@override String get appDefaults => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ···';
+	@override String get carriedName => '—— —·—— / ··· ···· ——— ·—· — —·—· ··— — ···';
+	@override String get appDefaultsLocked => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·— ·—· · / — ···· · / ·— ·——· ·——· ’ ··· / ——— ·—— —· / —·— · —·—— ··· ·—·—·— / — ——— / —·—· ···· ·— —· ——· · / — ···· · —— ——··—— / —·· ··— ·——· ·—·· ·· —·—· ·— — · / ·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·· —· / —— ·— —· ·— ——· · / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ··· … / ·— —· —·· / ··— ··· · / — ···· · / —·—· ——— ·——· —·—— ·—·—·—';
+	@override String get fileLabel => '···· ·— —— ··——— —·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···';
+	@override String get fileStem => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···';
+}
+
 // Path: keyboardShortcuts.command
 class _Translations$keyboardShortcuts$command$cw extends Translations$keyboardShortcuts$command$en {
 	_Translations$keyboardShortcuts$command$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -3371,30 +3387,16 @@ class _Translations$keyboardShortcuts$file$cw extends Translations$keyboardShort
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => '··· ···· ——— ·—· — —·—· ··— — ··· / ··· ·— ···— · —·· / — ——— / ${location}';
-	@override String exportFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ’ — / · —··— ·——· ——— ·—· — / — ···· · / ··· ···· ——— ·—· — —·—· ··— — ··· ———··· / ${error}';
-	@override String importPickerFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ’ — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ’ — / ·— / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ·· ·—·· · / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}';
-	@override String problemNotYaml({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—';
-	@override String get problemNotKeysFile => '·· — / ·· ··· —· ’ — / ·— / ···· ·— —— ··——— —·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ·· ·—·· ·';
-	@override String get problemNewerVersion => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·';
-	@override String get problemMalformed => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ——— ·—· —— ·— —';
-	@override String get problemTooLarge => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·';
 	@override String get importTitle => '·· —— ·——· ——— ·—· — / ··· ···· ——— ·—· — —·—· ··— — ···';
 	@override String writtenOn({required Object platform}) => '·—— ·—· ·· — — · —· / ——— —· / ${platform} ·—·—·—';
 	@override String get writtenOnUnknown => '— ···· · / ··—· ·· ·—·· · / —·· ——— · ··· —· ’ — / ··· ·— —·—— / ·—— ···· ·· —·—· ···· / —·— · —·—— —··· ——— ·— ·—· —·· / ·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / ——— —· ·—·—·—';
 	@override String get translate => '·—— ···· ·— — / ··· ···· ——— ··— ·—·· —·· / · ·— —·—· ···· / ——— ··—· / — ···· · ··· · / —·— · —·—— ··· / —··· · / ——— —· / — ···· ·· ··· / —·— · —·—— —··· ——— ·— ·—· —·· ··——··';
 	@override String get leaveOut => '·—·· · ·— ···— · / — ···· ——— ··· · / ··· ···· ——— ·—· — —·—· ··— — ··· / ——— ··— —';
-	@override String get replace => '·—· · ·——· ·—·· ·— —·—· · / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / —·—· ——— —· ··—· ·· ——·';
-	@override String get replaceHint => '· ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — / —· ——— — / ·· —· / — ···· · / ··—· ·· ·—·· · / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — ·—·—·—';
-	@override String get merge => '·— —·· —·· / — ——— / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / —·—· ——— —· ··—· ·· ——·';
-	@override String get mergeHint => '— ···· · / ··—· ·· ·—·· · ’ ··· / ··· ···· ——— ·—· — —·—· ··— — ··· / ·—· · ·——· ·—·· ·— —·—· · / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / ··—· ——— ·—· / — ···· · / ··· ·— —— · / —·—· ——— —— —— ·— —· —·· ··· ——··—— / ·— —· —·· / — ···· · / ·—· · ··· — / ··· — ·— —·—— ·—·—·—';
 	@override String unknown({required Object commands}) => '—· ——— — / —·— —· ——— ·—— —· / ·· —· / — ···· ·· ··· / ···— · ·—· ··· ·· ——— —· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${commands}';
 	@override String unreadableChords({required Object chords}) => '—· ——— — / ··· ···· ——— ·—· — —·—· ··— — ··· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${chords}';
 	@override String refusedChords({required Object chords}) => '—·— · —·—— ··· / — ···· · / ·— ·——· ·——· / —·— · · ·——· ··· / ··—· ——— ·—· / ·· — ··· · ·—·· ··—· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${chords}';
 	@override String conflicts({required Object keys}) => '—··· ——— ··— —· —·· / — ——— / —— ——— ·—· · / — ···· ·— —· / ——— —· · / —·—· ——— —— —— ·— —· —·· / ·— ··—· — · ·—· / — ···· · / ·· —— ·——· ——— ·—· — ———··· / ${keys}';
 	@override String get importAction => '·· —— ·——· ——— ·—· —';
-	@override String get imported => '··· ···· ——— ·—· — —·—· ··— — ··· / ·· —— ·——· ——— ·—· — · —··';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -7321,8 +7323,14 @@ extension on TranslationsCw {
 			'keyboardShortcuts.title' => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.description' => '—·—· ··— ··· — ——— —— ·· ——·· · / —·— · —·—— / —— ·— ·——· ·——· ·· —· ——· ···',
 			'keyboardShortcuts.search' => '··· · ·— ·—· —·—· ···· / —·—· ——— —— —— ·— —· —·· ··· / ·— —· —·· / —·— · —·—— ···',
-			'keyboardShortcuts.import' => '·· —— ·——· ——— ·—· — …',
-			'keyboardShortcuts.export' => '· —··— ·——· ——— ·—· — …',
+			'keyboardShortcuts.sets.label' => '··· ···· ——— ·—· — —·—· ··— — / ··· · —',
+			'keyboardShortcuts.sets.title' => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ···',
+			'keyboardShortcuts.sets.manage' => '—— ·— —· ·— ——· · / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ··· …',
+			'keyboardShortcuts.sets.appDefaults' => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ···',
+			'keyboardShortcuts.sets.carriedName' => '—— —·—— / ··· ···· ——— ·—· — —·—· ··— — ···',
+			'keyboardShortcuts.sets.appDefaultsLocked' => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·— ·—· · / — ···· · / ·— ·——· ·——· ’ ··· / ——— ·—— —· / —·— · —·—— ··· ·—·—·— / — ——— / —·—· ···· ·— —· ——· · / — ···· · —— ——··—— / —·· ··— ·——· ·—·· ·· —·—· ·— — · / ·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·· —· / —— ·— —· ·— ——· · / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ··· … / ·— —· —·· / ··— ··· · / — ···· · / —·—· ——— ·——· —·—— ·—·—·—',
+			'keyboardShortcuts.sets.fileLabel' => '···· ·— —— ··——— —·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
+			'keyboardShortcuts.sets.fileStem' => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.resetAll' => '·—· · ··· · — / ·— ·—·· ·—··',
 			'keyboardShortcuts.resetAllTitle' => '·—· · ··· · — / · ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — ··——··',
 			'keyboardShortcuts.resetAllBody' => '· ···— · ·—· —·—— / —·—· ——— —— —— ·— —· —·· / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — / —·— · —·—— ··· ——··—— / ·— —· —·· / — ···· · / —·— · —·—— ··· / —··· ——— ··— —· —·· / — ——— / — —·—— ·——· · —·· / —·—· ——— —— —— ·— —· —·· ··· / ·— ·—· · / ·—· · —— ——— ···— · —·· ·—·—·—',
@@ -7353,14 +7361,14 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.densityAuto' => '·— ··— — ——— —— ·— — ·· —·—· / ·—·· ·— —·—— ——— ··— — / —·· · —· ··· ·· — —·——',
 			'keyboardShortcuts.command.find' => '··—· ·· —· —·· / ·· —· / — ···· · / ·—·· ——— ——·',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.keyboardMode' => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·',
 			'keyboardShortcuts.command.ptt' => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—',
 			'keyboardShortcuts.command.so2rStereo' => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·',
 			'keyboardShortcuts.command.wipe' => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··',
 			'keyboardShortcuts.fixed.callsign' => '— —·—— ·——· ·· —· ——· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'keyboardShortcuts.fixed.escape' => '··· — ——— ·——· / ··· · —· —·· ·· —· ——· ——··—— / —··· ·— —·—· —·— / ——— ··— — / ——— —· · / ··· — · ·——· ——··—— / ——— ·—· / —·—· ·—·· ——— ··· ·',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => '·—·· ——— ——· / — ···· · / —·—· ——— —· — ·— —·—· —',
 			'keyboardShortcuts.fixed.space' => '—· · —··— — / ··—· ·· · ·—·· —··',
 			'keyboardShortcuts.fixed.tab' => '—· · —··— — / ——— ·—· / ·——· ·—· · ···— ·· ——— ··— ··· / ··—· ·· · ·—·· —··',
@@ -7392,30 +7400,16 @@ extension on TranslationsCw {
 			'keyboardShortcuts.editor.removeCommand' => '·—· · —— ——— ···— · / —·—· ——— —— —— ·— —· —··',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '—· ——— / —·—· ——— —— —— ·— —· —·· / ·—· · ·— —·· ··· / “ ${text} ”',
 			'keyboardShortcuts.editor.noShortcuts' => '—· ——— / —·— · —·—— / —·—— · —',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => '··· ···· ——— ·—· — —·—· ··— — ··· / ··· ·— ···— · —·· / — ——— / ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ’ — / · —··— ·——· ——— ·—· — / — ···· · / ··· ···· ——— ·—· — —·—· ··— — ··· ———··· / ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ’ — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ’ — / ·— / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ·· ·—·· · / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—',
-			'keyboardShortcuts.file.problemNotKeysFile' => '·· — / ·· ··· —· ’ — / ·— / ···· ·— —— ··——— —·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ·· ·—·· ·',
-			'keyboardShortcuts.file.problemNewerVersion' => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·',
-			'keyboardShortcuts.file.problemMalformed' => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ··· ···· ——— ·—· — —·—· ··— — ··· / ··—· ——— ·—· —— ·— —',
-			'keyboardShortcuts.file.problemTooLarge' => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·',
 			'keyboardShortcuts.file.importTitle' => '·· —— ·——· ——— ·—· — / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '·—— ·—· ·· — — · —· / ——— —· / ${platform} ·—·—·—',
 			'keyboardShortcuts.file.writtenOnUnknown' => '— ···· · / ··—· ·· ·—·· · / —·· ——— · ··· —· ’ — / ··· ·— —·—— / ·—— ···· ·· —·—· ···· / —·— · —·—— —··· ——— ·— ·—· —·· / ·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / ——— —· ·—·—·—',
 			'keyboardShortcuts.file.translate' => '·—— ···· ·— — / ··· ···· ——— ··— ·—·· —·· / · ·— —·—· ···· / ——— ··—· / — ···· · ··· · / —·— · —·—— ··· / —··· · / ——— —· / — ···· ·· ··· / —·— · —·—— —··· ——— ·— ·—· —·· ··——··',
 			'keyboardShortcuts.file.leaveOut' => '·—·· · ·— ···— · / — ···· ——— ··· · / ··· ···· ——— ·—· — —·—· ··— — ··· / ——— ··— —',
-			'keyboardShortcuts.file.replace' => '·—· · ·——· ·—·· ·— —·—· · / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / —·—· ——— —· ··—· ·· ——·',
-			'keyboardShortcuts.file.replaceHint' => '· ···— · ·—· —·—— / ··· ···· ——— ·—· — —·—· ··— — / —· ——— — / ·· —· / — ···· · / ··—· ·· ·—·· · / ——· ——— · ··· / —··· ·— —·—· —·— / — ——— / ·· — ··· / —·· · ··—· ·— ··— ·—·· — ·—·—·—',
-			'keyboardShortcuts.file.merge' => '·— —·· —·· / — ——— / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / —·—· ——— —· ··—· ·· ——·',
-			'keyboardShortcuts.file.mergeHint' => '— ···· · / ··—· ·· ·—·· · ’ ··· / ··· ···· ——— ·—· — —·—· ··— — ··· / ·—· · ·——· ·—·· ·— —·—· · / — ···· ·· ··· / —·· · ···— ·· —·—· · ’ ··· / ··—· ——— ·—· / — ···· · / ··· ·— —— · / —·—· ——— —— —— ·— —· —·· ··· ——··—— / ·— —· —·· / — ···· · / ·—· · ··· — / ··· — ·— —·—— ·—·—·—',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => '—· ——— — / —·— —· ——— ·—— —· / ·· —· / — ···· ·· ··· / ···— · ·—· ··· ·· ——— —· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => '—· ——— — / ··· ···· ——— ·—· — —·—· ··— — ··· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => '—·— · —·—— ··· / — ···· · / ·— ·——· ·——· / —·— · · ·——· ··· / ··—· ——— ·—· / ·· — ··· · ·—·· ··—· ——··—— / ··· ——— / ·—·· · ··—· — / ——— ··— — ———··· / ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => '—··· ——— ··— —· —·· / — ——— / —— ——— ·—· · / — ···· ·— —· / ——— —· · / —·—· ——— —— —— ·— —· —·· / ·— ··—· — · ·—· / — ···· · / ·· —— ·——· ——— ·—· — ———··· / ${keys}',
 			'keyboardShortcuts.file.importAction' => '·· —— ·——· ——— ·—· —',
-			'keyboardShortcuts.file.imported' => '··· ···· ——— ·—· — —·—· ··— — ··· / ·· —— ·——· ——— ·—· — · —··',
 			'keyboardShortcuts.modifier.cmd' => '⌘ / —·—· ——— —— —— ·— —· —··',
 			'keyboardShortcuts.modifier.ctrl' => '—·—· — ·—· ·—··',
 			'keyboardShortcuts.modifier.meta' => '·—— ·· —· —·· ——— ·—— ··· / —··—· / ··· ··— ·——· · ·—·',

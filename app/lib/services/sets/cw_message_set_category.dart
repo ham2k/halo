@@ -15,7 +15,7 @@ import '../../views/dock_layouts/yaml_writer.dart' as yaml_writer;
 import '../settings_service.dart';
 import 'set_category.dart';
 
-class CwMessageSetCategory extends SetCategory {
+class CwMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
   @override
   final SettingsService settings;
 

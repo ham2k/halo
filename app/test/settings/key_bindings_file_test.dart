@@ -133,14 +133,6 @@ text:
     });
   });
 
-  // One device's exports for several profiles must not overwrite each other,
-  // and a portable call's slash would read as a folder.
-  test("is named for the profile's callsign, safely", () {
-    expect(keyBindingsFileStem('KI2D'), 'Keyboard Shortcuts KI2D');
-    expect(keyBindingsFileStem('KI2D/P'), 'Keyboard Shortcuts KI2D-P');
-    expect(keyBindingsFileStem(''), 'Keyboard Shortcuts');
-  });
-
   test('iOS is sent the ⌘ chords the app-wide handler runs, and only those', () {
     final bindings = const KeyBindingOverrides()
         .withText('20M', [chord('cmd+alt+2'), chord('F10')])

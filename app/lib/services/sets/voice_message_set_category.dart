@@ -24,7 +24,7 @@ import 'set_category.dart';
 /// A voice set's file, unpacked: its id is the importer's to give.
 typedef VoiceSetFile = ({String name, List<String> labels, List<String> templates, Map<int, Uint8List> recordings});
 
-class VoiceMessageSetCategory extends SetCategory {
+class VoiceMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
   @override
   final SettingsService settings;
   final CatService cat;

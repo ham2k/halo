@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$ro extends Translations$keyboardShortcuts$
 	@override String get title => 'Scurtături de tastatură';
 	@override String get description => 'Personalizați asocierile tastelor';
 	@override String get search => 'Căutați comenzi și taste';
-	@override String get import => 'Importă…';
-	@override String get export => 'Exportă…';
 	@override String get resetAll => 'Resetează tot';
 	@override String get resetAllTitle => 'Resetați toate scurtăturile?';
 	@override String get resetAllBody => 'Fiecare comandă revine la tastele ei implicite, iar tastele asociate comenzilor tastate sunt eliminate.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$ro extends Translations$keyboardShort
 	final TranslationsRo _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Scurtăturile au fost salvate în ${location}';
-	@override String exportFailed({required Object error}) => 'Scurtăturile nu au putut fi exportate: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Fișierul nu a putut fi deschis: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} nu este un fișier de scurtături pe care aplicația îl poate citi: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'textul nu este YAML valid (linia ${line})';
-	@override String get problemNotKeysFile => 'nu este un fișier de scurtături de tastatură Ham2K';
-	@override String get problemNewerVersion => 'a fost scris de o versiune mai nouă a aplicației';
-	@override String get problemMalformed => 'o parte din el nu respectă formatul de scurtături';
-	@override String get problemTooLarge => 'este prea mare';
 	@override String get importTitle => 'Importă scurtături';
 	@override String writtenOn({required Object platform}) => 'Scris pe ${platform}.';
 	@override String get writtenOnUnknown => 'Fișierul nu spune pe ce tastatură a fost scris.';
 	@override String get translate => 'Ce ar trebui să fie fiecare dintre aceste taste pe această tastatură?';
 	@override String get leaveOut => 'Lasă deoparte acele scurtături';
-	@override String get replace => 'Înlocuiește configurația acestui dispozitiv';
-	@override String get replaceHint => 'Fiecare scurtătură care nu e în fișier revine la valoarea ei implicită.';
-	@override String get merge => 'Adaugă la configurația acestui dispozitiv';
-	@override String get mergeHint => 'Scurtăturile din fișier le înlocuiesc pe cele ale acestui dispozitiv pentru aceleași comenzi, iar restul rămân.';
 	@override String unknown({required Object commands}) => 'Necunoscute în această versiune, deci omise: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Nu sunt scurtături, deci omise: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Taste pe care aplicația le păstrează pentru sine, deci omise: ${chords}';
 	@override String conflicts({required Object keys}) => 'Asociate mai multor comenzi după import: ${keys}';
 	@override String get importAction => 'Importă';
-	@override String get imported => 'Scurtăturile au fost importate';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsRo {
 			'keyboardShortcuts.title' => 'Scurtături de tastatură',
 			'keyboardShortcuts.description' => 'Personalizați asocierile tastelor',
 			'keyboardShortcuts.search' => 'Căutați comenzi și taste',
-			'keyboardShortcuts.import' => 'Importă…',
-			'keyboardShortcuts.export' => 'Exportă…',
 			'keyboardShortcuts.resetAll' => 'Resetează tot',
 			'keyboardShortcuts.resetAllTitle' => 'Resetați toate scurtăturile?',
 			'keyboardShortcuts.resetAllBody' => 'Fiecare comandă revine la tastele ei implicite, iar tastele asociate comenzilor tastate sunt eliminate.',
@@ -6899,30 +6881,16 @@ extension on TranslationsRo {
 			'keyboardShortcuts.editor.removeCommand' => 'Elimină comanda',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Nicio comandă nu recunoaște „${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'Nicio tastă încă',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Scurtăturile au fost salvate în ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Scurtăturile nu au putut fi exportate: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Fișierul nu a putut fi deschis: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} nu este un fișier de scurtături pe care aplicația îl poate citi: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'textul nu este YAML valid (linia ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'nu este un fișier de scurtături de tastatură Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'a fost scris de o versiune mai nouă a aplicației',
-			'keyboardShortcuts.file.problemMalformed' => 'o parte din el nu respectă formatul de scurtături',
-			'keyboardShortcuts.file.problemTooLarge' => 'este prea mare',
 			'keyboardShortcuts.file.importTitle' => 'Importă scurtături',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Scris pe ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Fișierul nu spune pe ce tastatură a fost scris.',
 			'keyboardShortcuts.file.translate' => 'Ce ar trebui să fie fiecare dintre aceste taste pe această tastatură?',
 			'keyboardShortcuts.file.leaveOut' => 'Lasă deoparte acele scurtături',
-			'keyboardShortcuts.file.replace' => 'Înlocuiește configurația acestui dispozitiv',
-			'keyboardShortcuts.file.replaceHint' => 'Fiecare scurtătură care nu e în fișier revine la valoarea ei implicită.',
-			'keyboardShortcuts.file.merge' => 'Adaugă la configurația acestui dispozitiv',
-			'keyboardShortcuts.file.mergeHint' => 'Scurtăturile din fișier le înlocuiesc pe cele ale acestui dispozitiv pentru aceleași comenzi, iar restul rămân.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Necunoscute în această versiune, deci omise: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Nu sunt scurtături, deci omise: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Taste pe care aplicația le păstrează pentru sine, deci omise: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Asociate mai multor comenzi după import: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importă',
-			'keyboardShortcuts.file.imported' => 'Scurtăturile au fost importate',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsRo {
 			'switchAccounts.enterEmailPrompt' => 'Introduceți adresa de e-mail a contului pe care doriți să-l folosească acest dispozitiv.',
 			'switchAccounts.emailAddress' => 'Adresă de e-mail',
 			'switchAccounts.linkAccount' => 'Conectează contul',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Codul a fost copiat în clipboard',
 			'switchAccounts.copyCode' => 'Copiază codul',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Deschideți aplicația Ham2K pe un dispozitiv deja conectat cu ${email} și introduceți acest cod pentru a aproba cererea:',
@@ -7090,6 +7056,8 @@ extension on TranslationsRo {
 			'switchAccounts.noConfirmationCode' => 'Serverul de sincronizare nu a trimis un cod de confirmare. Încercați din nou mai târziu.',
 			'switchAccounts.switchNotAccepted' => 'Acel cont nu a acceptat schimbarea. Încercați în schimb conectarea cu o adresă de e-mail.',
 			'switchAccounts.requestFailed' => 'Ceva n-a mers bine în comunicarea cu serverul de sincronizare. Încercați din nou mai târziu.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO', other: '${count} QSO-uri', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} operațiune', other: '${count} operațiuni', ), 
 			'qsonImport.title' => 'Importă operațiune QSON',

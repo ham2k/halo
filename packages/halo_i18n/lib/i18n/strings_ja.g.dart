@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$ja extends Translations$keyboardShortcuts$
 	@override String get title => 'キーボードショートカット';
 	@override String get description => 'キー割り当てをカスタマイズ';
 	@override String get search => 'コマンドとキーを検索';
-	@override String get import => 'インポート…';
-	@override String get export => 'エクスポート…';
 	@override String get resetAll => 'すべてリセット';
 	@override String get resetAllTitle => 'すべてのショートカットをリセットしますか？';
 	@override String get resetAllBody => 'すべてのコマンドがデフォルトのキーに戻り、入力コマンドに割り当てたキーは削除されます。';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$ja extends Translations$keyboardShort
 	final TranslationsJa _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'ショートカットを${location}に保存しました';
-	@override String exportFailed({required Object error}) => 'ショートカットをエクスポートできませんでした：${error}';
-	@override String importPickerFailed({required Object error}) => 'ファイルを開けませんでした：${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるショートカットファイルではありません：${problem}';
-	@override String problemNotYaml({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）';
-	@override String get problemNotKeysFile => 'Ham2Kのキーボードショートカットファイルではありません';
-	@override String get problemNewerVersion => '新しいバージョンのアプリで書き出されたものです';
-	@override String get problemMalformed => '一部がショートカット形式に従っていません';
-	@override String get problemTooLarge => '大きすぎます';
 	@override String get importTitle => 'ショートカットをインポート';
 	@override String writtenOn({required Object platform}) => '${platform}で書き出されました。';
 	@override String get writtenOnUnknown => 'このファイルには、どのキーボードで書き出されたかの記載がありません。';
 	@override String get translate => 'これらの各キーは、このキーボードでは何にしますか？';
 	@override String get leaveOut => 'それらのショートカットを除外';
-	@override String get replace => 'このデバイスの設定と置き換え';
-	@override String get replaceHint => 'ファイルにないショートカットはすべてデフォルトに戻ります。';
-	@override String get merge => 'このデバイスの設定に追加';
-	@override String get mergeHint => '同じコマンドについてはファイルのショートカットがこのデバイスのものを置き換え、それ以外は残ります。';
 	@override String unknown({required Object commands}) => 'このバージョンでは不明なため除外：${commands}';
 	@override String unreadableChords({required Object chords}) => 'ショートカットではないため除外：${chords}';
 	@override String refusedChords({required Object chords}) => 'アプリが予約しているキーのため除外：${chords}';
 	@override String conflicts({required Object keys}) => 'インポート後に複数のコマンドに割り当てられています：${keys}';
 	@override String get importAction => 'インポート';
-	@override String get imported => 'ショートカットをインポートしました';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsJa {
 			'keyboardShortcuts.title' => 'キーボードショートカット',
 			'keyboardShortcuts.description' => 'キー割り当てをカスタマイズ',
 			'keyboardShortcuts.search' => 'コマンドとキーを検索',
-			'keyboardShortcuts.import' => 'インポート…',
-			'keyboardShortcuts.export' => 'エクスポート…',
 			'keyboardShortcuts.resetAll' => 'すべてリセット',
 			'keyboardShortcuts.resetAllTitle' => 'すべてのショートカットをリセットしますか？',
 			'keyboardShortcuts.resetAllBody' => 'すべてのコマンドがデフォルトのキーに戻り、入力コマンドに割り当てたキーは削除されます。',
@@ -6899,30 +6881,16 @@ extension on TranslationsJa {
 			'keyboardShortcuts.editor.removeCommand' => 'コマンドを削除',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '「${text}」というコマンドはありません',
 			'keyboardShortcuts.editor.noShortcuts' => 'キーはまだありません',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'ショートカットを${location}に保存しました',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'ショートカットをエクスポートできませんでした：${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'ファイルを開けませんでした：${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename}はこのアプリで読めるショートカットファイルではありません：${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'テキストが有効なYAMLではありません（${line}行目）',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'Ham2Kのキーボードショートカットファイルではありません',
-			'keyboardShortcuts.file.problemNewerVersion' => '新しいバージョンのアプリで書き出されたものです',
-			'keyboardShortcuts.file.problemMalformed' => '一部がショートカット形式に従っていません',
-			'keyboardShortcuts.file.problemTooLarge' => '大きすぎます',
 			'keyboardShortcuts.file.importTitle' => 'ショートカットをインポート',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '${platform}で書き出されました。',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'このファイルには、どのキーボードで書き出されたかの記載がありません。',
 			'keyboardShortcuts.file.translate' => 'これらの各キーは、このキーボードでは何にしますか？',
 			'keyboardShortcuts.file.leaveOut' => 'それらのショートカットを除外',
-			'keyboardShortcuts.file.replace' => 'このデバイスの設定と置き換え',
-			'keyboardShortcuts.file.replaceHint' => 'ファイルにないショートカットはすべてデフォルトに戻ります。',
-			'keyboardShortcuts.file.merge' => 'このデバイスの設定に追加',
-			'keyboardShortcuts.file.mergeHint' => '同じコマンドについてはファイルのショートカットがこのデバイスのものを置き換え、それ以外は残ります。',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'このバージョンでは不明なため除外：${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'ショートカットではないため除外：${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'アプリが予約しているキーのため除外：${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'インポート後に複数のコマンドに割り当てられています：${keys}',
 			'keyboardShortcuts.file.importAction' => 'インポート',
-			'keyboardShortcuts.file.imported' => 'ショートカットをインポートしました',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsJa {
 			'switchAccounts.enterEmailPrompt' => 'このデバイスで使用するアカウントのメールアドレスを入力してください。',
 			'switchAccounts.emailAddress' => 'メールアドレス',
 			'switchAccounts.linkAccount' => 'アカウントをリンク',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'コードをクリップボードにコピーしました',
 			'switchAccounts.copyCode' => 'コードをコピー',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email}ですでにリンクされているデバイスでHam2Kアプリを開き、このコードを入力してリクエストを承認してください：',
@@ -7090,6 +7056,8 @@ extension on TranslationsJa {
 			'switchAccounts.noConfirmationCode' => '同期サーバーが確認コードを送信しませんでした。後で再試行してください。',
 			'switchAccounts.switchNotAccepted' => 'そのアカウントは切り替えを受け付けませんでした。代わりにメールアドレスでリンクしてみてください。',
 			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のQSO', other: '${count}件のQSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
 			'qsonImport.title' => 'QSONオペレーションをインポート',

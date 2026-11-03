@@ -1804,7 +1804,7 @@ never drops an edit that looked made. Its way out is **Done**; beside it, from t
 was in use when it opened — not only the set on screen, which would leave the ones the operator
 moved away from edited. The keyer's behaviour (repeat, ESM) is not reverted. Naming, copying,
 filing, exporting and deleting sets is the **set manager's**, reached from the picker's pinned
-**Manage CW Sets…** footer and shared with voice sets (`SetCategory`, `app/lib/services/sets/`):
+**Manage CW Sets…** footer and shared with voice sets and keyboard shortcut sets (`SetCategory`, `app/lib/services/sets/`):
 sets are filed in folders, nested, stored with them in the Radio group (`cwMessageSetTree`), while
 which folders the picker shows open is kept apart (`setFoldersOpen`), as a settings section's fold
 is: how a list was left is not a setting. Each action is written as it is taken; a delete asks first. A set exports to a

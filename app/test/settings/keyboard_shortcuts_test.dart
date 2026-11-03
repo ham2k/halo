@@ -76,6 +76,8 @@ Future<({HaLoServices services, _Commands commands})> _boot(
   final commands = _Commands();
   final HaLoHarness(:services) = await makeHaLoServices(prefs: null, extensions: commands);
   await services.settings.setExperimentEnabled(keyBindingsExperiment, shortcuts);
+  // A set of the operator's own in use: App Defaults takes no changes.
+  await services.keyBindingsService.setSets(const [KeyBindingSet(id: 'mine', name: 'Mine')], active: 'mine');
   await before?.call(services);
   // The bindings are one value for the whole test process.
   addTearDown(() => keyBindings.value = LegacyKeyBindings());

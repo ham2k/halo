@@ -986,8 +986,7 @@ class _Translations$keyboardShortcuts$qro extends Translations$keyboardShortcuts
 	@override String get title => 'KEYBOARD SHORTCUTS';
 	@override String get description => 'CUSTOMIZE KEY MAPPINGS';
 	@override String get search => 'SEARCH COMMANDS AND KEYS';
-	@override String get import => 'IMPORT…';
-	@override String get export => 'EXPORT…';
+	@override late final _Translations$keyboardShortcuts$sets$qro sets = _Translations$keyboardShortcuts$sets$qro._(_root);
 	@override String get resetAll => 'RESET ALL';
 	@override String get resetAllTitle => 'RESET EVERY SHORTCUT?';
 	@override String get resetAllBody => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.';
@@ -3289,6 +3288,23 @@ class _Translations$settings$gridPrecisionDescription$qro extends Translations$s
 	@override String get eight => '8 DIGITS';
 }
 
+// Path: keyboardShortcuts.sets
+class _Translations$keyboardShortcuts$sets$qro extends Translations$keyboardShortcuts$sets$en {
+	_Translations$keyboardShortcuts$sets$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'SHORTCUT SET';
+	@override String get title => 'KEYBOARD SHORTCUT SETS';
+	@override String get manage => 'MANAGE SHORTCUT SETS…';
+	@override String get appDefaults => 'APP DEFAULTS';
+	@override String get carriedName => 'MY SHORTCUTS';
+	@override String get appDefaultsLocked => 'APP DEFAULTS ARE THE APP’S OWN KEYS. TO CHANGE THEM, DUPLICATE APP DEFAULTS IN MANAGE SHORTCUT SETS… AND USE THE COPY.';
+	@override String get fileLabel => 'HAM2K KEYBOARD SHORTCUTS';
+	@override String get fileStem => 'KEYBOARD SHORTCUTS';
+}
+
 // Path: keyboardShortcuts.command
 class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardShortcuts$command$en {
 	_Translations$keyboardShortcuts$command$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -3371,30 +3387,16 @@ class _Translations$keyboardShortcuts$file$qro extends Translations$keyboardShor
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'SHORTCUTS SAVED TO ${location}';
-	@override String exportFailed({required Object error}) => 'COULDN’T EXPORT THE SHORTCUTS: ${error}';
-	@override String importPickerFailed({required Object error}) => 'COULDN’T OPEN THE FILE: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} ISN’T A SHORTCUTS FILE THIS APP CAN READ: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})';
-	@override String get problemNotKeysFile => 'IT ISN’T A HAM2K KEYBOARD SHORTCUTS FILE';
-	@override String get problemNewerVersion => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP';
-	@override String get problemMalformed => 'PART OF IT DOESN’T FOLLOW THE SHORTCUTS FORMAT';
-	@override String get problemTooLarge => 'IT IS TOO LARGE';
 	@override String get importTitle => 'IMPORT SHORTCUTS';
 	@override String writtenOn({required Object platform}) => 'WRITTEN ON ${platform}.';
 	@override String get writtenOnUnknown => 'THE FILE DOESN’T SAY WHICH KEYBOARD IT WAS WRITTEN ON.';
 	@override String get translate => 'WHAT SHOULD EACH OF THESE KEYS BE ON THIS KEYBOARD?';
 	@override String get leaveOut => 'LEAVE THOSE SHORTCUTS OUT';
-	@override String get replace => 'REPLACE THIS DEVICE’S CONFIG';
-	@override String get replaceHint => 'EVERY SHORTCUT NOT IN THE FILE GOES BACK TO ITS DEFAULT.';
-	@override String get merge => 'ADD TO THIS DEVICE’S CONFIG';
-	@override String get mergeHint => 'THE FILE’S SHORTCUTS REPLACE THIS DEVICE’S FOR THE SAME COMMANDS, AND THE REST STAY.';
 	@override String unknown({required Object commands}) => 'NOT KNOWN IN THIS VERSION, SO LEFT OUT: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'NOT SHORTCUTS, SO LEFT OUT: ${chords}';
 	@override String refusedChords({required Object chords}) => 'KEYS THE APP KEEPS FOR ITSELF, SO LEFT OUT: ${chords}';
 	@override String conflicts({required Object keys}) => 'BOUND TO MORE THAN ONE COMMAND AFTER THE IMPORT: ${keys}';
 	@override String get importAction => 'IMPORT';
-	@override String get imported => 'SHORTCUTS IMPORTED';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -7321,8 +7323,14 @@ extension on TranslationsQro {
 			'keyboardShortcuts.title' => 'KEYBOARD SHORTCUTS',
 			'keyboardShortcuts.description' => 'CUSTOMIZE KEY MAPPINGS',
 			'keyboardShortcuts.search' => 'SEARCH COMMANDS AND KEYS',
-			'keyboardShortcuts.import' => 'IMPORT…',
-			'keyboardShortcuts.export' => 'EXPORT…',
+			'keyboardShortcuts.sets.label' => 'SHORTCUT SET',
+			'keyboardShortcuts.sets.title' => 'KEYBOARD SHORTCUT SETS',
+			'keyboardShortcuts.sets.manage' => 'MANAGE SHORTCUT SETS…',
+			'keyboardShortcuts.sets.appDefaults' => 'APP DEFAULTS',
+			'keyboardShortcuts.sets.carriedName' => 'MY SHORTCUTS',
+			'keyboardShortcuts.sets.appDefaultsLocked' => 'APP DEFAULTS ARE THE APP’S OWN KEYS. TO CHANGE THEM, DUPLICATE APP DEFAULTS IN MANAGE SHORTCUT SETS… AND USE THE COPY.',
+			'keyboardShortcuts.sets.fileLabel' => 'HAM2K KEYBOARD SHORTCUTS',
+			'keyboardShortcuts.sets.fileStem' => 'KEYBOARD SHORTCUTS',
 			'keyboardShortcuts.resetAll' => 'RESET ALL',
 			'keyboardShortcuts.resetAllTitle' => 'RESET EVERY SHORTCUT?',
 			'keyboardShortcuts.resetAllBody' => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.',
@@ -7353,14 +7361,14 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.densityAuto' => 'AUTOMATIC LAYOUT DENSITY',
 			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',
 			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',
 			'keyboardShortcuts.fixed.callsign' => 'TYPING CALLSIGNS',
 			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
 			'keyboardShortcuts.fixed.space' => 'NEXT FIELD',
 			'keyboardShortcuts.fixed.tab' => 'NEXT OR PREVIOUS FIELD',
@@ -7392,30 +7400,16 @@ extension on TranslationsQro {
 			'keyboardShortcuts.editor.removeCommand' => 'REMOVE COMMAND',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'NO COMMAND READS “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'NO KEY YET',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'SHORTCUTS SAVED TO ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'COULDN’T EXPORT THE SHORTCUTS: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'COULDN’T OPEN THE FILE: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} ISN’T A SHORTCUTS FILE THIS APP CAN READ: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'IT ISN’T A HAM2K KEYBOARD SHORTCUTS FILE',
-			'keyboardShortcuts.file.problemNewerVersion' => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP',
-			'keyboardShortcuts.file.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE SHORTCUTS FORMAT',
-			'keyboardShortcuts.file.problemTooLarge' => 'IT IS TOO LARGE',
 			'keyboardShortcuts.file.importTitle' => 'IMPORT SHORTCUTS',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'WRITTEN ON ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'THE FILE DOESN’T SAY WHICH KEYBOARD IT WAS WRITTEN ON.',
 			'keyboardShortcuts.file.translate' => 'WHAT SHOULD EACH OF THESE KEYS BE ON THIS KEYBOARD?',
 			'keyboardShortcuts.file.leaveOut' => 'LEAVE THOSE SHORTCUTS OUT',
-			'keyboardShortcuts.file.replace' => 'REPLACE THIS DEVICE’S CONFIG',
-			'keyboardShortcuts.file.replaceHint' => 'EVERY SHORTCUT NOT IN THE FILE GOES BACK TO ITS DEFAULT.',
-			'keyboardShortcuts.file.merge' => 'ADD TO THIS DEVICE’S CONFIG',
-			'keyboardShortcuts.file.mergeHint' => 'THE FILE’S SHORTCUTS REPLACE THIS DEVICE’S FOR THE SAME COMMANDS, AND THE REST STAY.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'NOT KNOWN IN THIS VERSION, SO LEFT OUT: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'NOT SHORTCUTS, SO LEFT OUT: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'KEYS THE APP KEEPS FOR ITSELF, SO LEFT OUT: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'BOUND TO MORE THAN ONE COMMAND AFTER THE IMPORT: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'IMPORT',
-			'keyboardShortcuts.file.imported' => 'SHORTCUTS IMPORTED',
 			'keyboardShortcuts.modifier.cmd' => '⌘ COMMAND',
 			'keyboardShortcuts.modifier.ctrl' => 'CTRL',
 			'keyboardShortcuts.modifier.meta' => 'WINDOWS / SUPER',

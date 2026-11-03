@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:yaml/yaml.dart';
 
 import '../../views/dock_layouts/yaml_reader.dart';
+import '../key_bindings_file.dart' show keyBindingsFileMarker;
 import '../settings_service.dart';
 import 'set_tree.dart';
 
@@ -68,6 +69,7 @@ Map<dynamic, dynamic> readSetFile(String text, String kind) {
   }
   if (document is! Map) throw const SetFileException(SetFileProblem.unreadable, 'the document is not a map');
   final version = document[setFileMarker];
+  if (version is! int && document[keyBindingsFileMarker] is int) throw const SetFileException(SetFileProblem.wrongKind, 'a keyboard shortcuts file');
   if (version is! int) throw const SetFileException(SetFileProblem.unreadable, 'no "$setFileMarker" version');
   if (version > setFileVersion) throw SetFileException(SetFileProblem.newerVersion, 'format $version');
   if (document['kind'] != kind) throw SetFileException(SetFileProblem.wrongKind, 'kind ${document['kind']}');
@@ -89,9 +91,9 @@ abstract class SetCategory {
   /// What changes when [sets], [tree], [openFolders] or [activeId] does.
   Listenable get listenable => settings;
 
-  /// The settings group, and the key in it, the folders are kept under —
-  /// beside the sets they file.
-  String get settingsGroup;
+  /// What tells this kind's folders apart from another's — the key
+  /// [openFolders] is kept under, and [tree] too where the kind stores it
+  /// in a settings group ([SetTreeInSettingsGroup]).
   String get treeKey;
 
   /// The manager pane's title — "CW Message Sets".
@@ -106,8 +108,9 @@ abstract class SetCategory {
   /// The set in use.
   String get activeId;
 
-  SetTree get tree => SetTree.fromJson(settings.settingValue(settingsGroup, treeKey));
-  Future<void> setTree(SetTree tree) => settings.updateSettingsGroup(settingsGroup, {treeKey: tree.toJson()});
+  /// The folders, kept beside the sets they file.
+  SetTree get tree;
+  Future<void> setTree(SetTree tree);
 
   /// The prefs entry holding every kind's open folders, by [treeKey].
   static const openFoldersPrefsKey = 'setFoldersOpen';
@@ -155,8 +158,9 @@ abstract class SetCategory {
   Future<SetFileOut> export(String id);
 
   /// Adds the set in [bytes] — renamed where its name is taken — and
-  /// returns its id. Throws [SetFileException] for a file that is not one.
-  Future<String> import(Uint8List bytes, String filename);
+  /// returns its id; null where the operator called it off partway. Throws
+  /// [SetFileException] for a file that is not one.
+  Future<String?> import(Uint8List bytes, String filename);
 
   /// [wanted], or [wanted] with a number after it where one of [taken]
   /// already is — names are what the operator picks a set or a folder by, and
@@ -180,4 +184,16 @@ abstract class SetCategory {
 
   /// [sets] as the picker and the manager lay them out.
   List<SetTreeRow> get rows => tree.rows([for (final set in sets) set.id]);
+}
+
+/// The folders of a kind whose sets are kept in a settings group, under
+/// [treeKey] in that same group.
+mixin SetTreeInSettingsGroup on SetCategory {
+  String get settingsGroup;
+
+  @override
+  SetTree get tree => SetTree.fromJson(settings.settingValue(settingsGroup, treeKey));
+
+  @override
+  Future<void> setTree(SetTree tree) => settings.updateSettingsGroup(settingsGroup, {treeKey: tree.toJson()});
 }

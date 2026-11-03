@@ -64,7 +64,7 @@ Future<void> _import(BuildContext context, SetCategory category) async {
   if (chosen == null) return;
   try {
     final id = await category.import(await chosen.readAsBytes(), chosen.name);
-    messenger?.showSnackBar(haloSnackBar(m.imported(name: category.nameOf(id))));
+    if (id != null) messenger?.showSnackBar(haloSnackBar(m.imported(name: category.nameOf(id))));
   } on SetFileException catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'sets:import', told: messenger != null);
     final problem = switch (e.problem) {

@@ -491,11 +491,6 @@ class KeyBindingOverrides {
     );
   }
 
-  /// [other] on top of these: its commands and command text in place of the
-  /// same ones here, the rest kept.
-  KeyBindingOverrides mergedWith(KeyBindingOverrides other) =>
-      KeyBindingOverrides(commands: {...commands, ...other.commands}, text: {...text, ...other.text}, midi: {...midi, ...other.midi});
-
   /// The modifiers among `cmd`, `ctrl` and `meta` that any chord here holds.
   Set<KeyModifier> get platformModifiers => {
     for (final chords in [...commands.values, ...text.values])
@@ -567,7 +562,7 @@ class KeyBindingOverrides {
   );
 
   /// [midi] alone, less the bindings to command text [text] does not hold:
-  /// what replacing or resetting the keys leaves. The controls belong to a
+  /// what resetting the keys leaves. The controls belong to a
   /// controller, not a keyboard; one left bound to command text that is gone
   /// would press a command no row shows.
   Map<String, List<String>> midiKeptWith(Map<String, List<KeyChord>> text) => {

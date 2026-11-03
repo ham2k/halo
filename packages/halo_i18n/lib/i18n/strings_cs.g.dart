@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$cs extends Translations$keyboardShortcuts$
 	@override String get title => 'Klávesové zkratky';
 	@override String get description => 'Přizpůsobte si přiřazení kláves';
 	@override String get search => 'Hledat příkazy a klávesy';
-	@override String get import => 'Importovat…';
-	@override String get export => 'Exportovat…';
 	@override String get resetAll => 'Obnovit vše na výchozí';
 	@override String get resetAllTitle => 'Obnovit výchozí u všech zkratek?';
 	@override String get resetAllBody => 'Každý příkaz se vrátí ke svým výchozím klávesám a klávesy přiřazené příkazům zadaným jako text se odeberou.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$cs extends Translations$keyboardShort
 	final TranslationsCs _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Zkratky uloženy do ${location}';
-	@override String exportFailed({required Object error}) => 'Zkratky se nepodařilo exportovat: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Soubor se nepodařilo otevřít: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} není soubor zkratek, který tato aplikace umí přečíst: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'text není platný YAML (řádek ${line})';
-	@override String get problemNotKeysFile => 'není to soubor klávesových zkratek Ham2K';
-	@override String get problemNewerVersion => 'zapsala ho novější verze aplikace';
-	@override String get problemMalformed => 'část z něj neodpovídá formátu zkratek';
-	@override String get problemTooLarge => 'je příliš velký';
 	@override String get importTitle => 'Importovat zkratky';
 	@override String writtenOn({required Object platform}) => 'Zapsáno na ${platform}.';
 	@override String get writtenOnUnknown => 'Soubor neuvádí, na jaké klávesnici byl zapsán.';
 	@override String get translate => 'Čemu má každá z těchto kláves odpovídat na této klávesnici?';
 	@override String get leaveOut => 'Tyto zkratky vynechat';
-	@override String get replace => 'Nahradit nastavení tohoto zařízení';
-	@override String get replaceHint => 'Každá zkratka, která v souboru není, se vrátí na výchozí.';
-	@override String get merge => 'Přidat k nastavení tohoto zařízení';
-	@override String get mergeHint => 'Zkratky ze souboru nahradí zkratky tohoto zařízení u stejných příkazů, ostatní zůstanou.';
 	@override String unknown({required Object commands}) => 'V této verzi neznámé, proto vynechány: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Nejsou to zkratky, proto vynechány: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Klávesy, které si aplikace vyhrazuje, proto vynechány: ${chords}';
 	@override String conflicts({required Object keys}) => 'Po importu přiřazeny více než jednomu příkazu: ${keys}';
 	@override String get importAction => 'Importovat';
-	@override String get imported => 'Zkratky importovány';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsCs {
 			'keyboardShortcuts.title' => 'Klávesové zkratky',
 			'keyboardShortcuts.description' => 'Přizpůsobte si přiřazení kláves',
 			'keyboardShortcuts.search' => 'Hledat příkazy a klávesy',
-			'keyboardShortcuts.import' => 'Importovat…',
-			'keyboardShortcuts.export' => 'Exportovat…',
 			'keyboardShortcuts.resetAll' => 'Obnovit vše na výchozí',
 			'keyboardShortcuts.resetAllTitle' => 'Obnovit výchozí u všech zkratek?',
 			'keyboardShortcuts.resetAllBody' => 'Každý příkaz se vrátí ke svým výchozím klávesám a klávesy přiřazené příkazům zadaným jako text se odeberou.',
@@ -6899,30 +6881,16 @@ extension on TranslationsCs {
 			'keyboardShortcuts.editor.removeCommand' => 'Odebrat příkaz',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Žádný příkaz se nejmenuje „${text}“',
 			'keyboardShortcuts.editor.noShortcuts' => 'Zatím bez klávesy',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Zkratky uloženy do ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Zkratky se nepodařilo exportovat: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Soubor se nepodařilo otevřít: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} není soubor zkratek, který tato aplikace umí přečíst: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'text není platný YAML (řádek ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'není to soubor klávesových zkratek Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'zapsala ho novější verze aplikace',
-			'keyboardShortcuts.file.problemMalformed' => 'část z něj neodpovídá formátu zkratek',
-			'keyboardShortcuts.file.problemTooLarge' => 'je příliš velký',
 			'keyboardShortcuts.file.importTitle' => 'Importovat zkratky',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Zapsáno na ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Soubor neuvádí, na jaké klávesnici byl zapsán.',
 			'keyboardShortcuts.file.translate' => 'Čemu má každá z těchto kláves odpovídat na této klávesnici?',
 			'keyboardShortcuts.file.leaveOut' => 'Tyto zkratky vynechat',
-			'keyboardShortcuts.file.replace' => 'Nahradit nastavení tohoto zařízení',
-			'keyboardShortcuts.file.replaceHint' => 'Každá zkratka, která v souboru není, se vrátí na výchozí.',
-			'keyboardShortcuts.file.merge' => 'Přidat k nastavení tohoto zařízení',
-			'keyboardShortcuts.file.mergeHint' => 'Zkratky ze souboru nahradí zkratky tohoto zařízení u stejných příkazů, ostatní zůstanou.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'V této verzi neznámé, proto vynechány: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Nejsou to zkratky, proto vynechány: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Klávesy, které si aplikace vyhrazuje, proto vynechány: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Po importu přiřazeny více než jednomu příkazu: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importovat',
-			'keyboardShortcuts.file.imported' => 'Zkratky importovány',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsCs {
 			'switchAccounts.enterEmailPrompt' => 'Zadejte e-mailovou adresu účtu, který má toto zařízení používat.',
 			'switchAccounts.emailAddress' => 'E-mailová adresa',
 			'switchAccounts.linkAccount' => 'Propojit účet',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Kód zkopírován do schránky',
 			'switchAccounts.copyCode' => 'Kopírovat kód',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Otevřete aplikaci Ham2K na zařízení, které už je propojeno s ${email}, a zadejte tento kód pro schválení žádosti:',
@@ -7090,6 +7056,8 @@ extension on TranslationsCs {
 			'switchAccounts.noConfirmationCode' => 'Synchronizační server neposlal potvrzovací kód. Zkuste to později.',
 			'switchAccounts.switchNotAccepted' => 'Tento účet přepnutí nepřijal. Zkuste ho místo toho propojit pomocí e-mailové adresy.',
 			'switchAccounts.requestFailed' => 'Při komunikaci se synchronizačním serverem se něco pokazilo. Zkuste to později.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} aktivita', other: '${count} aktivit', ), 
 			'qsonImport.title' => 'Importovat aktivitu QSON',

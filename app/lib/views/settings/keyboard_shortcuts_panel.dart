@@ -3,29 +3,26 @@
 //
 // Settings → Keyboard Shortcuts (`EXP KB`): every command a key can run, the
 // keys bound to it, and where two commands share one; an editor that records
-// a chord, and import and export of `.h2kkey` files
+// a chord, and the set in use, picked from the sets the set manager keeps
 // (docs/design/keyboard-shortcuts.md).
 
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../services/error_reporting_service.dart';
-import '../../services/file_pick.dart';
 import '../../services/halo_services.dart';
 import '../../services/key_bindings_file.dart';
 import '../../services/key_bindings_service.dart';
+import '../../services/sets/keyboard_shortcut_set_category.dart';
 import '../../services/midi/midi_codec.dart';
 import '../../services/midi/midi_service.dart';
 import '../command_engine.dart' show commandTextParts;
 import '../midi_controller_pane.dart' show midiControlLabel, midiTargetLabel;
 import '../../services/midi/midi_targets.dart' show midiTargetById;
+import '../sets/set_picker_field.dart';
 import 'settings_category.dart';
 
 /// What [id] does, in the operator's language — a command id, or bound
@@ -101,6 +98,7 @@ Future<void> editKeyCommand(BuildContext context, HaLoServices services, String 
       overrides: overrides,
       // MIDI controls are offered only with MIDI controllers on at all.
       midi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */ ? services.midi : null,
+      keysLocked: service.onAppDefaults,
     ),
   );
   if (result == null) return;
@@ -165,6 +163,14 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
 
   KeyBindingsService get _service => widget.services.keyBindingsService;
 
+  late final _sets = KeyboardShortcutSetCategory(
+    _service,
+    translate: (file) => showHaloDialog<KeyBindingOverrides>(
+      context: context,
+      builder: (_) => _ImportDialog(file: file),
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -214,97 +220,8 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.reset))],
       ),
     );
-    // The MIDI controls stay, as an import's Replace keeps them.
+    // The MIDI controls stay: they are the device's, not the set's.
     if (confirmed == true) await _service.setOverrides(KeyBindingOverrides(midi: midi));
-  }
-
-  Future<void> _export() async {
-    final t = context.t.keyboardShortcuts.file;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    final exports = widget.services.exports;
-    final file = KeyBindingsFile(platform: keyboardPlatformToken(), overrides: _service.overrides);
-    final files = [
-      {
-        'filename': '${keyBindingsFileStem(widget.services.settings.activeProfile.operatorCall)}.$keyBindingsFileExtension',
-        'content': file.toYaml(),
-        'mimeType': 'application/yaml',
-      },
-    ];
-    try {
-      if (isWebPlatform) {
-        await exports.downloadFiles(files);
-      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final box = context.findRenderObject() as RenderBox?;
-        await exports.shareFiles(files, sharePositionOrigin: box == null ? null : box.localToGlobal(Offset.zero) & box.size);
-      } else {
-        final saved = await exports.saveToDisk(files);
-        if (saved != null) messenger?.showSnackBar(haloSnackBar(t.exported(location: saved.location)));
-      }
-    } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'keys:export', told: messenger != null);
-      messenger?.showSnackBar(haloSnackBar(t.exportFailed(error: ErrorReportingService.messageOf(e))));
-    }
-  }
-
-  Future<void> _import() async {
-    final t = context.t.keyboardShortcuts.file;
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    final XFile? chosen;
-    try {
-      chosen = await pickFile(
-        acceptedTypeGroups: const [
-          // Plain `.yaml` too: the format is meant to be written by hand.
-          // iOS filters by UTI and throws for a group carrying none.
-          XTypeGroup(
-            label: 'Ham2K keyboard shortcuts',
-            extensions: [keyBindingsFileExtension, 'yaml', 'yml'],
-            uniformTypeIdentifiers: ['public.data'],
-            mimeTypes: ['application/yaml', 'text/yaml'],
-          ),
-        ],
-      );
-    } catch (e, stack) {
-      ErrorReportingService.report(e, stack, context: 'keys:import-picker', told: messenger != null);
-      messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: ErrorReportingService.messageOf(e))));
-      return;
-    }
-    if (chosen == null) return;
-    final List<int> bytes;
-    try {
-      bytes = await chosen.readAsBytes();
-    } catch (e) {
-      // A file the operator picked and the platform will not hand over — a
-      // placeholder not downloaded yet, a permission withdrawn — is theirs to
-      // sort out, not a fault to file.
-      debugPrint('[keys] could not read ${chosen.name}: $e');
-      messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: '$e')));
-      return;
-    }
-    final KeyBindingsFile file;
-    try {
-      file = KeyBindingsFile.parse(utf8.decode(bytes, allowMalformed: true));
-    } on KeyBindingsFileException catch (e) {
-      // The file, not the app: nothing to report.
-      debugPrint('[keys] ${chosen.name} is not a shortcuts file: $e');
-      final problem = switch (e.problem) {
-        KeyBindingsFileProblem.notYaml => t.problemNotYaml(line: e.line ?? '?'),
-        KeyBindingsFileProblem.notKeysFile => t.problemNotKeysFile,
-        KeyBindingsFileProblem.newerVersion => t.problemNewerVersion,
-        KeyBindingsFileProblem.malformed => t.problemMalformed,
-        KeyBindingsFileProblem.tooLarge => t.problemTooLarge,
-      };
-      messenger?.showSnackBar(haloSnackBar(t.importUnreadable(filename: chosen.name, problem: problem)));
-      return;
-    }
-    if (!mounted) return;
-    final current = _service.overrides;
-    final next = await showHaloDialog<KeyBindingOverrides>(
-      context: context,
-      builder: (_) => _ImportDialog(file: file, current: current),
-    );
-    if (next == null) return;
-    await _service.setOverrides(next);
-    messenger?.showSnackBar(haloSnackBar(t.imported));
   }
 
   /// The category open while nothing is searched — one at a time, as in
@@ -411,6 +328,26 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: rowInset.add(const EdgeInsets.only(top: Space.xl, bottom: Space.md)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SetPickerField(
+                    services: widget.services,
+                    category: _sets,
+                    label: t.sets.label,
+                    value: _sets.activeId,
+                    onChanged: (id) => unawaited(_sets.use(id)),
+                  ),
+                  if (_service.onAppDefaults)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.sm),
+                      child: Text(t.sets.appDefaultsLocked, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ),
+                ],
+              ),
+            ),
             // Application Preferences' search strip: pinned above the scroll,
             // on a lighter wash of the category bands' ground.
             ColoredBox(
@@ -441,26 +378,10 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                     ),
                     const SizedBox(width: Space.sm),
                     HoverLabel(
-                      label: t.import,
-                      namesChild: false,
-                      child: IconButton(
-                        onPressed: _import,
-                        icon: Icon(MdiIcons.fileImport, semanticLabel: t.import),
-                      ),
-                    ),
-                    HoverLabel(
-                      label: t.export,
-                      namesChild: false,
-                      child: IconButton(
-                        onPressed: _export,
-                        icon: Icon(MdiIcons.fileExport, semanticLabel: t.export),
-                      ),
-                    ),
-                    HoverLabel(
                       label: t.resetAll,
                       namesChild: false,
                       child: IconButton(
-                        onPressed: overrides.commands.isEmpty && overrides.text.isEmpty ? null : _resetAll,
+                        onPressed: _service.onAppDefaults || (overrides.commands.isEmpty && overrides.text.isEmpty) ? null : _resetAll,
                         icon: Icon(MdiIcons.restore, semanticLabel: t.resetAll),
                       ),
                     ),
@@ -478,7 +399,13 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                     'commands',
                     t.groupCommands,
                     textRows,
-                    footer: ListTile(leading: const Icon(MdiIcons.plus), title: Text(t.addCommand), onTap: _addCommand, mouseCursor: SystemMouseCursors.click),
+                    footer: ListTile(
+                      leading: const Icon(MdiIcons.plus),
+                      title: Text(t.addCommand),
+                      enabled: !_service.onAppDefaults,
+                      onTap: _addCommand,
+                      mouseCursor: SystemMouseCursors.click,
+                    ),
                   ),
                   category('fixed', t.groupFixed, fixedRows),
                   const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
@@ -597,7 +524,19 @@ class _ShortcutEditor extends StatefulWidget {
   /// Null where MIDI controllers are off: no MIDI rows, no Add MIDI Control.
   final MidiService? midi;
 
-  const _ShortcutEditor({required this.id, required this.title, required this.chords, required this.bindings, required this.overrides, this.midi});
+  /// The keys shown and not changed: App Defaults is in use. Its MIDI
+  /// controls still change — they belong to the device, not to a set.
+  final bool keysLocked;
+
+  const _ShortcutEditor({
+    required this.id,
+    required this.title,
+    required this.chords,
+    required this.bindings,
+    required this.overrides,
+    this.midi,
+    this.keysLocked = false,
+  });
 
   @override
   State<_ShortcutEditor> createState() => _ShortcutEditorState();
@@ -753,13 +692,15 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
                       alignment: AlignmentDirectional.centerStart,
                       child: _KeyCap(chord: chord),
                     ),
-                    trailing: IconButton(
-                      icon: Icon(MdiIcons.close, semanticLabel: t.remove),
-                      onPressed: () => setState(() {
-                        _chords.remove(chord);
-                        _take.remove(chord);
-                      }),
-                    ),
+                    trailing: widget.keysLocked
+                        ? null
+                        : IconButton(
+                            icon: Icon(MdiIcons.close, semanticLabel: t.remove),
+                            onPressed: () => setState(() {
+                              _chords.remove(chord);
+                              _take.remove(chord);
+                            }),
+                          ),
                   ),
                   for (final other in widget.bindings.othersOn(chord, id: widget.id))
                     CheckboxListTile(
@@ -806,8 +747,12 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
                         : Wrap(
                             spacing: Space.md,
                             runSpacing: Space.sm,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              OutlinedButton.icon(onPressed: () => _listen(true), icon: const Icon(MdiIcons.keyboard), label: Text(t.addShortcut)),
+                              if (widget.keysLocked)
+                                Text(context.t.keyboardShortcuts.sets.appDefaultsLocked, style: theme.textTheme.bodySmall)
+                              else
+                                OutlinedButton.icon(onPressed: () => _listen(true), icon: const Icon(MdiIcons.keyboard), label: Text(t.addShortcut)),
                               if (widget.midi != null)
                                 OutlinedButton.icon(onPressed: () => _listenMidi(true), icon: const Icon(MdiIcons.midi), label: Text(t.addMidi)),
                             ],
@@ -827,7 +772,7 @@ class _ShortcutEditorState extends State<_ShortcutEditor> {
           },
         ),
       ),
-      tools: spec == null
+      tools: spec == null || widget.keysLocked
           ? null
           : TextButton(
               onPressed: () => setState(() {
@@ -914,14 +859,12 @@ class _CommandTextDialogState extends State<_CommandTextDialog> {
   }
 }
 
-/// Asks how a file's `cmd`, `ctrl` and `meta` read on this keyboard, and
-/// whether its shortcuts replace the operator's or join them; returns the
-/// overrides to store.
+/// Asks how a file's `cmd`, `ctrl` and `meta` read on this keyboard;
+/// returns the keys the new set holds.
 class _ImportDialog extends StatefulWidget {
   final KeyBindingsFile file;
-  final KeyBindingOverrides current;
 
-  const _ImportDialog({required this.file, required this.current});
+  const _ImportDialog({required this.file});
 
   @override
   State<_ImportDialog> createState() => _ImportDialogState();
@@ -929,18 +872,10 @@ class _ImportDialog extends StatefulWidget {
 
 class _ImportDialogState extends State<_ImportDialog> {
   late final Map<KeyModifier, KeyModifier?> _translation = suggestedTranslation(widget.file.overrides.platformModifiers, widget.file.platform);
-  bool _replace = false;
 
   ({KeyBindingOverrides overrides, List<KeyChord> refused}) get _translated => widget.file.importable(_translation);
 
-  KeyBindingOverrides get _result {
-    final known = _translated.overrides;
-    // A file carries no MIDI controls — they belong to a controller, not a
-    // keyboard — so replacing keeps the ones this device has.
-    return _replace
-        ? KeyBindingOverrides(commands: known.commands, text: known.text, midi: widget.current.midiKeptWith(known.text))
-        : widget.current.mergedWith(known);
-  }
+  KeyBindingOverrides get _result => _translated.overrides;
 
   String _modifierName(Translations t, KeyModifier m) => switch (m) {
     KeyModifier.cmd => t.keyboardShortcuts.modifier.cmd,
@@ -1007,16 +942,6 @@ class _ImportDialogState extends State<_ImportDialog> {
               ),
           ],
           const SizedBox(height: Space.md),
-          RadioGroup<bool>(
-            groupValue: _replace,
-            onChanged: (value) => setState(() => _replace = value ?? false),
-            child: Column(
-              children: [
-                RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: false, title: Text(t.merge), subtitle: Text(t.mergeHint)),
-                RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: true, title: Text(t.replace), subtitle: Text(t.replaceHint)),
-              ],
-            ),
-          ),
           if (unknown.isNotEmpty) Text(t.unknown(commands: unknown.join(', ')), style: note),
           if (widget.file.unreadable.isNotEmpty) Text(t.unreadableChords(chords: widget.file.unreadable.join(', ')), style: note),
           if (_translated.refused case final refused when refused.isNotEmpty)

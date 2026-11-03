@@ -2221,11 +2221,7 @@ class Translations$keyboardShortcuts$en {
 	/// en: 'Search commands and keys'
 	String get search => 'Search commands and keys';
 
-	/// en: 'Import…'
-	String get import => 'Import…';
-
-	/// en: 'Export…'
-	String get export => 'Export…';
+	late final Translations$keyboardShortcuts$sets$en sets = Translations$keyboardShortcuts$sets$en.internal(_root);
 
 	/// en: 'Reset All'
 	String get resetAll => 'Reset All';
@@ -7425,6 +7421,39 @@ class Translations$settings$gridPrecisionDescription$en {
 	String get eight => '8 digits';
 }
 
+// Path: keyboardShortcuts.sets
+class Translations$keyboardShortcuts$sets$en {
+	Translations$keyboardShortcuts$sets$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Shortcut Set'
+	String get label => 'Shortcut Set';
+
+	/// en: 'Keyboard Shortcut Sets'
+	String get title => 'Keyboard Shortcut Sets';
+
+	/// en: 'Manage Shortcut Sets…'
+	String get manage => 'Manage Shortcut Sets…';
+
+	/// en: 'App Defaults'
+	String get appDefaults => 'App Defaults';
+
+	/// en: 'My Shortcuts'
+	String get carriedName => 'My Shortcuts';
+
+	/// en: 'App Defaults are the app’s own keys. To change them, duplicate App Defaults in Manage Shortcut Sets… and use the copy.'
+	String get appDefaultsLocked => 'App Defaults are the app’s own keys. To change them, duplicate App Defaults in Manage Shortcut Sets… and use the copy.';
+
+	/// en: 'Ham2K keyboard shortcuts'
+	String get fileLabel => 'Ham2K keyboard shortcuts';
+
+	/// en: 'Keyboard Shortcuts'
+	String get fileStem => 'Keyboard Shortcuts';
+}
+
 // Path: keyboardShortcuts.command
 class Translations$keyboardShortcuts$command$en {
 	Translations$keyboardShortcuts$command$en.internal(this._root);
@@ -7604,33 +7633,6 @@ class Translations$keyboardShortcuts$file$en {
 
 	// Translations
 
-	/// en: 'Shortcuts saved to ${location}'
-	String exported({required Object location}) => 'Shortcuts saved to ${location}';
-
-	/// en: 'Couldn’t export the shortcuts: ${error}'
-	String exportFailed({required Object error}) => 'Couldn’t export the shortcuts: ${error}';
-
-	/// en: 'Couldn’t open the file: ${error}'
-	String importPickerFailed({required Object error}) => 'Couldn’t open the file: ${error}';
-
-	/// en: '${filename} isn’t a shortcuts file this app can read: ${problem}'
-	String importUnreadable({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}';
-
-	/// en: 'the text isn’t valid YAML (line ${line})'
-	String problemNotYaml({required Object line}) => 'the text isn’t valid YAML (line ${line})';
-
-	/// en: 'it isn’t a Ham2K keyboard shortcuts file'
-	String get problemNotKeysFile => 'it isn’t a Ham2K keyboard shortcuts file';
-
-	/// en: 'it was written by a newer version of the app'
-	String get problemNewerVersion => 'it was written by a newer version of the app';
-
-	/// en: 'part of it doesn’t follow the shortcuts format'
-	String get problemMalformed => 'part of it doesn’t follow the shortcuts format';
-
-	/// en: 'it is too large'
-	String get problemTooLarge => 'it is too large';
-
 	/// en: 'Import Shortcuts'
 	String get importTitle => 'Import Shortcuts';
 
@@ -7646,18 +7648,6 @@ class Translations$keyboardShortcuts$file$en {
 	/// en: 'Leave those shortcuts out'
 	String get leaveOut => 'Leave those shortcuts out';
 
-	/// en: 'Replace this device’s config'
-	String get replace => 'Replace this device’s config';
-
-	/// en: 'Every shortcut not in the file goes back to its default.'
-	String get replaceHint => 'Every shortcut not in the file goes back to its default.';
-
-	/// en: 'Add to this device’s config'
-	String get merge => 'Add to this device’s config';
-
-	/// en: 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.'
-	String get mergeHint => 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.';
-
 	/// en: 'Not known in this version, so left out: ${commands}'
 	String unknown({required Object commands}) => 'Not known in this version, so left out: ${commands}';
 
@@ -7672,9 +7662,6 @@ class Translations$keyboardShortcuts$file$en {
 
 	/// en: 'Import'
 	String get importAction => 'Import';
-
-	/// en: 'Shortcuts imported'
-	String get imported => 'Shortcuts imported';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -13145,8 +13132,14 @@ extension on Translations {
 			'keyboardShortcuts.title' => 'Keyboard Shortcuts',
 			'keyboardShortcuts.description' => 'Customize key mappings',
 			'keyboardShortcuts.search' => 'Search commands and keys',
-			'keyboardShortcuts.import' => 'Import…',
-			'keyboardShortcuts.export' => 'Export…',
+			'keyboardShortcuts.sets.label' => 'Shortcut Set',
+			'keyboardShortcuts.sets.title' => 'Keyboard Shortcut Sets',
+			'keyboardShortcuts.sets.manage' => 'Manage Shortcut Sets…',
+			'keyboardShortcuts.sets.appDefaults' => 'App Defaults',
+			'keyboardShortcuts.sets.carriedName' => 'My Shortcuts',
+			'keyboardShortcuts.sets.appDefaultsLocked' => 'App Defaults are the app’s own keys. To change them, duplicate App Defaults in Manage Shortcut Sets… and use the copy.',
+			'keyboardShortcuts.sets.fileLabel' => 'Ham2K keyboard shortcuts',
+			'keyboardShortcuts.sets.fileStem' => 'Keyboard Shortcuts',
 			'keyboardShortcuts.resetAll' => 'Reset All',
 			'keyboardShortcuts.resetAllTitle' => 'Reset every shortcut?',
 			'keyboardShortcuts.resetAllBody' => 'Every command goes back to its default keys, and the keys bound to typed commands are removed.',
@@ -13177,14 +13170,14 @@ extension on Translations {
 			'keyboardShortcuts.command.densityAuto' => 'Automatic layout density',
 			'keyboardShortcuts.command.find' => 'Find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
 			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'Log the contact',
 			'keyboardShortcuts.fixed.space' => 'Next field',
 			'keyboardShortcuts.fixed.tab' => 'Next or previous field',
@@ -13216,30 +13209,16 @@ extension on Translations {
 			'keyboardShortcuts.editor.removeCommand' => 'Remove Command',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'No command reads “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'No key yet',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Shortcuts saved to ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Couldn’t export the shortcuts: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Couldn’t open the file: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'the text isn’t valid YAML (line ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'it isn’t a Ham2K keyboard shortcuts file',
-			'keyboardShortcuts.file.problemNewerVersion' => 'it was written by a newer version of the app',
-			'keyboardShortcuts.file.problemMalformed' => 'part of it doesn’t follow the shortcuts format',
-			'keyboardShortcuts.file.problemTooLarge' => 'it is too large',
 			'keyboardShortcuts.file.importTitle' => 'Import Shortcuts',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Written on ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'The file doesn’t say which keyboard it was written on.',
 			'keyboardShortcuts.file.translate' => 'What should each of these keys be on this keyboard?',
 			'keyboardShortcuts.file.leaveOut' => 'Leave those shortcuts out',
-			'keyboardShortcuts.file.replace' => 'Replace this device’s config',
-			'keyboardShortcuts.file.replaceHint' => 'Every shortcut not in the file goes back to its default.',
-			'keyboardShortcuts.file.merge' => 'Add to this device’s config',
-			'keyboardShortcuts.file.mergeHint' => 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Not known in this version, so left out: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Not shortcuts, so left out: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Keys the app keeps for itself, so left out: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Bound to more than one command after the import: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Import',
-			'keyboardShortcuts.file.imported' => 'Shortcuts imported',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',

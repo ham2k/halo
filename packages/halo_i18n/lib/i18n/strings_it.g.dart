@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$it extends Translations$keyboardShortcuts$
 	@override String get title => 'Scorciatoie da Tastiera';
 	@override String get description => 'Personalizza le combinazioni di tasti';
 	@override String get search => 'Cerca comandi e tasti';
-	@override String get import => 'Importa…';
-	@override String get export => 'Esporta…';
 	@override String get resetAll => 'Ripristina Tutto';
 	@override String get resetAllTitle => 'Ripristinare tutte le scorciatoie?';
 	@override String get resetAllBody => 'Ogni comando torna ai suoi tasti predefiniti, e i tasti assegnati ai comandi digitati vengono rimossi.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$it extends Translations$keyboardShort
 	final TranslationsIt _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Scorciatoie salvate in ${location}';
-	@override String exportFailed({required Object error}) => 'Impossibile esportare le scorciatoie: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Impossibile aprire il file: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} non è un file di scorciatoie che questa app possa leggere: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'il testo non è YAML valido (riga ${line})';
-	@override String get problemNotKeysFile => 'non è un file di scorciatoie da tastiera Ham2K';
-	@override String get problemNewerVersion => 'è stato scritto da una versione più recente dell\'app';
-	@override String get problemMalformed => 'una parte non rispetta il formato delle scorciatoie';
-	@override String get problemTooLarge => 'è troppo grande';
 	@override String get importTitle => 'Importa Scorciatoie';
 	@override String writtenOn({required Object platform}) => 'Scritto su ${platform}.';
 	@override String get writtenOnUnknown => 'Il file non dice su quale tastiera è stato scritto.';
 	@override String get translate => 'A cosa deve corrispondere ciascuno di questi tasti su questa tastiera?';
 	@override String get leaveOut => 'Escludi quelle scorciatoie';
-	@override String get replace => 'Sostituisci la configurazione di questo dispositivo';
-	@override String get replaceHint => 'Ogni scorciatoia non presente nel file torna al valore predefinito.';
-	@override String get merge => 'Aggiungi alla configurazione di questo dispositivo';
-	@override String get mergeHint => 'Le scorciatoie del file sostituiscono quelle di questo dispositivo per gli stessi comandi, e le altre restano.';
 	@override String unknown({required Object commands}) => 'Sconosciuti in questa versione, quindi esclusi: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Non sono scorciatoie, quindi esclusi: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Tasti che l\'app riserva a sé, quindi esclusi: ${chords}';
 	@override String conflicts({required Object keys}) => 'Assegnati a più di un comando dopo l\'importazione: ${keys}';
 	@override String get importAction => 'Importa';
-	@override String get imported => 'Scorciatoie importate';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsIt {
 			'keyboardShortcuts.title' => 'Scorciatoie da Tastiera',
 			'keyboardShortcuts.description' => 'Personalizza le combinazioni di tasti',
 			'keyboardShortcuts.search' => 'Cerca comandi e tasti',
-			'keyboardShortcuts.import' => 'Importa…',
-			'keyboardShortcuts.export' => 'Esporta…',
 			'keyboardShortcuts.resetAll' => 'Ripristina Tutto',
 			'keyboardShortcuts.resetAllTitle' => 'Ripristinare tutte le scorciatoie?',
 			'keyboardShortcuts.resetAllBody' => 'Ogni comando torna ai suoi tasti predefiniti, e i tasti assegnati ai comandi digitati vengono rimossi.',
@@ -6899,30 +6881,16 @@ extension on TranslationsIt {
 			'keyboardShortcuts.editor.removeCommand' => 'Rimuovi Comando',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Nessun comando interpreta “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'Ancora nessun tasto',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Scorciatoie salvate in ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Impossibile esportare le scorciatoie: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Impossibile aprire il file: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} non è un file di scorciatoie che questa app possa leggere: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'il testo non è YAML valido (riga ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'non è un file di scorciatoie da tastiera Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'è stato scritto da una versione più recente dell\'app',
-			'keyboardShortcuts.file.problemMalformed' => 'una parte non rispetta il formato delle scorciatoie',
-			'keyboardShortcuts.file.problemTooLarge' => 'è troppo grande',
 			'keyboardShortcuts.file.importTitle' => 'Importa Scorciatoie',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Scritto su ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Il file non dice su quale tastiera è stato scritto.',
 			'keyboardShortcuts.file.translate' => 'A cosa deve corrispondere ciascuno di questi tasti su questa tastiera?',
 			'keyboardShortcuts.file.leaveOut' => 'Escludi quelle scorciatoie',
-			'keyboardShortcuts.file.replace' => 'Sostituisci la configurazione di questo dispositivo',
-			'keyboardShortcuts.file.replaceHint' => 'Ogni scorciatoia non presente nel file torna al valore predefinito.',
-			'keyboardShortcuts.file.merge' => 'Aggiungi alla configurazione di questo dispositivo',
-			'keyboardShortcuts.file.mergeHint' => 'Le scorciatoie del file sostituiscono quelle di questo dispositivo per gli stessi comandi, e le altre restano.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Sconosciuti in questa versione, quindi esclusi: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Non sono scorciatoie, quindi esclusi: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Tasti che l\'app riserva a sé, quindi esclusi: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Assegnati a più di un comando dopo l\'importazione: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importa',
-			'keyboardShortcuts.file.imported' => 'Scorciatoie importate',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsIt {
 			'switchAccounts.enterEmailPrompt' => 'Inserisci l\'indirizzo email dell\'account che vuoi far usare a questo dispositivo.',
 			'switchAccounts.emailAddress' => 'Indirizzo email',
 			'switchAccounts.linkAccount' => 'Collega account',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Codice copiato negli appunti',
 			'switchAccounts.copyCode' => 'Copia codice',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Apri l\'app Ham2K su un dispositivo già collegato con ${email} e inserisci questo codice per approvare la richiesta:',
@@ -7090,6 +7056,8 @@ extension on TranslationsIt {
 			'switchAccounts.noConfirmationCode' => 'Il server di sincronizzazione non ha inviato un codice di conferma. Riprova più tardi.',
 			'switchAccounts.switchNotAccepted' => 'Quell\'account non ha accettato il cambio. Prova invece a collegarlo con un indirizzo email.',
 			'switchAccounts.requestFailed' => 'Qualcosa è andato storto nella comunicazione con il server di sincronizzazione. Riprova più tardi.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} operazione', other: '${count} operazioni', ), 
 			'qsonImport.title' => 'Importa operazione QSON',

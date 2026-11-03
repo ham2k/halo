@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$nl extends Translations$keyboardShortcuts$
 	@override String get title => 'Sneltoetsen';
 	@override String get description => 'Toetscombinaties aanpassen';
 	@override String get search => 'Zoek commando\'s en toetsen';
-	@override String get import => 'Importeren…';
-	@override String get export => 'Exporteren…';
 	@override String get resetAll => 'Alles resetten';
 	@override String get resetAllTitle => 'Elke sneltoets resetten?';
 	@override String get resetAllBody => 'Elk commando krijgt zijn standaardtoetsen terug, en de toetsen die aan getypte commando\'s zijn gekoppeld worden verwijderd.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$nl extends Translations$keyboardShort
 	final TranslationsNl _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Sneltoetsen opgeslagen in ${location}';
-	@override String exportFailed({required Object error}) => 'Kon de sneltoetsen niet exporteren: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Kon het bestand niet openen: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} is geen sneltoetsenbestand dat deze app kan lezen: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})';
-	@override String get problemNotKeysFile => 'het is geen Ham2K-sneltoetsenbestand';
-	@override String get problemNewerVersion => 'het is geschreven door een nieuwere versie van de app';
-	@override String get problemMalformed => 'een deel ervan volgt het sneltoetsenformaat niet';
-	@override String get problemTooLarge => 'het is te groot';
 	@override String get importTitle => 'Sneltoetsen importeren';
 	@override String writtenOn({required Object platform}) => 'Geschreven op ${platform}.';
 	@override String get writtenOnUnknown => 'Het bestand zegt niet op welk toetsenbord het is geschreven.';
 	@override String get translate => 'Wat moet elk van deze toetsen op dit toetsenbord worden?';
 	@override String get leaveOut => 'Die sneltoetsen weglaten';
-	@override String get replace => 'Configuratie van dit apparaat vervangen';
-	@override String get replaceHint => 'Elke sneltoets die niet in het bestand staat, gaat terug naar de standaard.';
-	@override String get merge => 'Toevoegen aan de configuratie van dit apparaat';
-	@override String get mergeHint => 'De sneltoetsen uit het bestand vervangen die van dit apparaat voor dezelfde commando\'s; de rest blijft.';
 	@override String unknown({required Object commands}) => 'Onbekend in deze versie, dus weggelaten: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Geen sneltoetsen, dus weggelaten: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Toetsen die de app voor zichzelf houdt, dus weggelaten: ${chords}';
 	@override String conflicts({required Object keys}) => 'Na de import aan meer dan één commando gekoppeld: ${keys}';
 	@override String get importAction => 'Importeren';
-	@override String get imported => 'Sneltoetsen geïmporteerd';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsNl {
 			'keyboardShortcuts.title' => 'Sneltoetsen',
 			'keyboardShortcuts.description' => 'Toetscombinaties aanpassen',
 			'keyboardShortcuts.search' => 'Zoek commando\'s en toetsen',
-			'keyboardShortcuts.import' => 'Importeren…',
-			'keyboardShortcuts.export' => 'Exporteren…',
 			'keyboardShortcuts.resetAll' => 'Alles resetten',
 			'keyboardShortcuts.resetAllTitle' => 'Elke sneltoets resetten?',
 			'keyboardShortcuts.resetAllBody' => 'Elk commando krijgt zijn standaardtoetsen terug, en de toetsen die aan getypte commando\'s zijn gekoppeld worden verwijderd.',
@@ -6899,30 +6881,16 @@ extension on TranslationsNl {
 			'keyboardShortcuts.editor.removeCommand' => 'Commando verwijderen',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Geen enkel commando heet “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'Nog geen toets',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Sneltoetsen opgeslagen in ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kon de sneltoetsen niet exporteren: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Kon het bestand niet openen: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} is geen sneltoetsenbestand dat deze app kan lezen: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'de tekst is geen geldige YAML (regel ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'het is geen Ham2K-sneltoetsenbestand',
-			'keyboardShortcuts.file.problemNewerVersion' => 'het is geschreven door een nieuwere versie van de app',
-			'keyboardShortcuts.file.problemMalformed' => 'een deel ervan volgt het sneltoetsenformaat niet',
-			'keyboardShortcuts.file.problemTooLarge' => 'het is te groot',
 			'keyboardShortcuts.file.importTitle' => 'Sneltoetsen importeren',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Geschreven op ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Het bestand zegt niet op welk toetsenbord het is geschreven.',
 			'keyboardShortcuts.file.translate' => 'Wat moet elk van deze toetsen op dit toetsenbord worden?',
 			'keyboardShortcuts.file.leaveOut' => 'Die sneltoetsen weglaten',
-			'keyboardShortcuts.file.replace' => 'Configuratie van dit apparaat vervangen',
-			'keyboardShortcuts.file.replaceHint' => 'Elke sneltoets die niet in het bestand staat, gaat terug naar de standaard.',
-			'keyboardShortcuts.file.merge' => 'Toevoegen aan de configuratie van dit apparaat',
-			'keyboardShortcuts.file.mergeHint' => 'De sneltoetsen uit het bestand vervangen die van dit apparaat voor dezelfde commando\'s; de rest blijft.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Onbekend in deze versie, dus weggelaten: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Geen sneltoetsen, dus weggelaten: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Toetsen die de app voor zichzelf houdt, dus weggelaten: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Na de import aan meer dan één commando gekoppeld: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importeren',
-			'keyboardShortcuts.file.imported' => 'Sneltoetsen geïmporteerd',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsNl {
 			'switchAccounts.enterEmailPrompt' => 'Voer het e-mailadres in van het account dat dit apparaat moet gebruiken.',
 			'switchAccounts.emailAddress' => 'E-mailadres',
 			'switchAccounts.linkAccount' => 'Account koppelen',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Code naar klembord gekopieerd',
 			'switchAccounts.copyCode' => 'Code kopiëren',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Open de Ham2K-app op een apparaat dat al gekoppeld is met ${email} en voer deze code in om het verzoek goed te keuren:',
@@ -7090,6 +7056,8 @@ extension on TranslationsNl {
 			'switchAccounts.noConfirmationCode' => 'De synchronisatieserver stuurde geen bevestigingscode. Probeer het later opnieuw.',
 			'switchAccounts.switchNotAccepted' => 'Dat account accepteerde de wissel niet. Probeer het in plaats daarvan te koppelen met een e-mailadres.',
 			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
 			'qsonImport.title' => 'QSON-activatie importeren',

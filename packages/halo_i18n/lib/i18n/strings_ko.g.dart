@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$ko extends Translations$keyboardShortcuts$
 	@override String get title => '키보드 단축키';
 	@override String get description => '키 매핑 사용자 지정';
 	@override String get search => '명령 및 키 검색';
-	@override String get import => '가져오기…';
-	@override String get export => '내보내기…';
 	@override String get resetAll => '모두 초기화';
 	@override String get resetAllTitle => '모든 단축키를 초기화할까요?';
 	@override String get resetAllBody => '모든 명령이 기본 키로 돌아가고, 직접 입력한 명령에 할당된 키는 제거됩니다.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$ko extends Translations$keyboardShort
 	final TranslationsKo _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => '단축키를 ${location}에 저장했습니다';
-	@override String exportFailed({required Object error}) => '단축키를 내보낼 수 없습니다: ${error}';
-	@override String importPickerFailed({required Object error}) => '파일을 열 수 없습니다: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename}은(는) 이 앱이 읽을 수 있는 단축키 파일이 아닙니다: ${problem}';
-	@override String problemNotYaml({required Object line}) => '올바른 YAML이 아님 (${line}행)';
-	@override String get problemNotKeysFile => 'Ham2K 키보드 단축키 파일이 아님';
-	@override String get problemNewerVersion => '더 새로운 버전의 앱에서 작성됨';
-	@override String get problemMalformed => '일부가 단축키 형식에 맞지 않음';
-	@override String get problemTooLarge => '너무 큼';
 	@override String get importTitle => '단축키 가져오기';
 	@override String writtenOn({required Object platform}) => '${platform}에서 작성됨.';
 	@override String get writtenOnUnknown => '이 파일에는 어떤 키보드에서 작성되었는지 적혀 있지 않습니다.';
 	@override String get translate => '이 키보드에서는 다음 키를 각각 어떤 키로 할까요?';
 	@override String get leaveOut => '해당 단축키 제외';
-	@override String get replace => '이 기기의 설정 대체';
-	@override String get replaceHint => '파일에 없는 모든 단축키는 기본값으로 돌아갑니다.';
-	@override String get merge => '이 기기의 설정에 추가';
-	@override String get mergeHint => '같은 명령에 대해서는 파일의 단축키가 이 기기의 단축키를 대체하고, 나머지는 그대로 유지됩니다.';
 	@override String unknown({required Object commands}) => '이 버전에 없는 명령이어서 제외됨: ${commands}';
 	@override String unreadableChords({required Object chords}) => '단축키가 아니어서 제외됨: ${chords}';
 	@override String refusedChords({required Object chords}) => '앱이 직접 쓰는 키여서 제외됨: ${chords}';
 	@override String conflicts({required Object keys}) => '가져온 후 둘 이상의 명령에 할당됨: ${keys}';
 	@override String get importAction => '가져오기';
-	@override String get imported => '단축키를 가져왔습니다';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsKo {
 			'keyboardShortcuts.title' => '키보드 단축키',
 			'keyboardShortcuts.description' => '키 매핑 사용자 지정',
 			'keyboardShortcuts.search' => '명령 및 키 검색',
-			'keyboardShortcuts.import' => '가져오기…',
-			'keyboardShortcuts.export' => '내보내기…',
 			'keyboardShortcuts.resetAll' => '모두 초기화',
 			'keyboardShortcuts.resetAllTitle' => '모든 단축키를 초기화할까요?',
 			'keyboardShortcuts.resetAllBody' => '모든 명령이 기본 키로 돌아가고, 직접 입력한 명령에 할당된 키는 제거됩니다.',
@@ -6899,30 +6881,16 @@ extension on TranslationsKo {
 			'keyboardShortcuts.editor.removeCommand' => '명령 제거',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '“${text}”을(를) 인식하는 명령이 없습니다',
 			'keyboardShortcuts.editor.noShortcuts' => '아직 키 없음',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => '단축키를 ${location}에 저장했습니다',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => '단축키를 내보낼 수 없습니다: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => '파일을 열 수 없습니다: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename}은(는) 이 앱이 읽을 수 있는 단축키 파일이 아닙니다: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => '올바른 YAML이 아님 (${line}행)',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'Ham2K 키보드 단축키 파일이 아님',
-			'keyboardShortcuts.file.problemNewerVersion' => '더 새로운 버전의 앱에서 작성됨',
-			'keyboardShortcuts.file.problemMalformed' => '일부가 단축키 형식에 맞지 않음',
-			'keyboardShortcuts.file.problemTooLarge' => '너무 큼',
 			'keyboardShortcuts.file.importTitle' => '단축키 가져오기',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '${platform}에서 작성됨.',
 			'keyboardShortcuts.file.writtenOnUnknown' => '이 파일에는 어떤 키보드에서 작성되었는지 적혀 있지 않습니다.',
 			'keyboardShortcuts.file.translate' => '이 키보드에서는 다음 키를 각각 어떤 키로 할까요?',
 			'keyboardShortcuts.file.leaveOut' => '해당 단축키 제외',
-			'keyboardShortcuts.file.replace' => '이 기기의 설정 대체',
-			'keyboardShortcuts.file.replaceHint' => '파일에 없는 모든 단축키는 기본값으로 돌아갑니다.',
-			'keyboardShortcuts.file.merge' => '이 기기의 설정에 추가',
-			'keyboardShortcuts.file.mergeHint' => '같은 명령에 대해서는 파일의 단축키가 이 기기의 단축키를 대체하고, 나머지는 그대로 유지됩니다.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => '이 버전에 없는 명령이어서 제외됨: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => '단축키가 아니어서 제외됨: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => '앱이 직접 쓰는 키여서 제외됨: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => '가져온 후 둘 이상의 명령에 할당됨: ${keys}',
 			'keyboardShortcuts.file.importAction' => '가져오기',
-			'keyboardShortcuts.file.imported' => '단축키를 가져왔습니다',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsKo {
 			'switchAccounts.enterEmailPrompt' => '이 기기에서 사용할 계정의 이메일 주소를 입력하세요.',
 			'switchAccounts.emailAddress' => '이메일 주소',
 			'switchAccounts.linkAccount' => '계정 연결',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => '코드를 클립보드에 복사했습니다',
 			'switchAccounts.copyCode' => '코드 복사',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email}과(와) 이미 연결된 기기에서 Ham2K 앱을 열고 이 코드를 입력하여 요청을 승인하세요:',
@@ -7090,6 +7056,8 @@ extension on TranslationsKo {
 			'switchAccounts.noConfirmationCode' => '동기화 서버가 확인 코드를 보내지 않았습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.switchNotAccepted' => '해당 계정이 전환을 받아들이지 않았습니다. 대신 이메일 주소로 연결해 보세요.',
 			'switchAccounts.requestFailed' => '동기화 서버와 통신 중 문제가 발생했습니다. 나중에 다시 시도하세요.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '운용 ${count}개', other: '운용 ${count}개', ), 
 			'qsonImport.title' => 'QSON 운용 가져오기',

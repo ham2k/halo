@@ -2,8 +2,8 @@
 
 *Behind the `kb` experiment (`EXP KB`).* The operator picks the keys for the
 app's commands in **Settings → Keyboard Shortcuts**, binds keys to commands
-typed in the ⌘K dialog, and carries the result to another device as a
-`.h2kkey` file. The keys the logging fields and dialogs own stay fixed
+typed in the ⌘K dialog, keeps several named sets of them to switch between,
+and carries a set to another device as a `.h2kkey` file. The keys the logging fields and dialogs own stay fixed
 ([logging-fields.md](logging-fields.md)).
 
 ## The pieces
@@ -11,7 +11,8 @@ typed in the ⌘K dialog, and carries the result to another device as a
 | Piece | Where |
 |---|---|
 | Chords, the command registry and its defaults, the bindings in force, the legacy matcher | `packages/halo_widgets/lib/src/key_bindings.dart` |
-| The operator's changes, stored, and the bindings they produce | `app/lib/services/key_bindings_service.dart` |
+| The sets, the set in use, and the bindings it produces | `app/lib/services/key_bindings_service.dart` |
+| The sets as the set picker and manager see them | `app/lib/services/sets/keyboard_shortcut_set_category.dart` |
 | Running bound command text | `runCommandText` in `app/lib/views/command_engine.dart` |
 | The file format | `app/lib/services/key_bindings_file.dart` |
 | The settings panel, editor and import dialog | `app/lib/views/settings/keyboard_shortcuts_panel.dart` |
@@ -136,11 +137,30 @@ operator can press. With `kb` on, the defaults hold only the platform's own
 command key: ⌃K and ⌃F go back to text editing on a Mac, and Win+K to
 Windows.
 
+## Sets
+
+The keys come in named sets, picked at the top of the panel and kept in the
+set manager every named set uses ([cat.md § CW keying](cat.md#cw-keying)) —
+duplicate, rename, delete, folders, export and import. One is in use.
+
+**App Defaults** is the app's own keys: always first, never stored, and
+never changed, renamed or deleted. On it the editor shows the keys and
+records none, and Add Command and Reset All are off; a set of the
+operator's own starts as a duplicate of it. A device with no changes starts
+on it. A device that had changes before there were sets reads them as one
+set, "My Shortcuts", in use; the first write of the sets takes them over.
+
+Deleting the set in use puts the one beside it in use — App Defaults where
+it was the last of the operator's.
+
 ## Storage
 
 Per device, never synced: a keyboard belongs to a device. The
-`keyBindings` preference (`KeyBindingsService`) holds only what differs from
-the defaults — `{commands: {id: [chord]}, text: {command: [chord]}, midi: {id: [control]}}`. A command's
+`keyBindingSets` preference (`KeyBindingsService`) holds the sets, the one
+in use and their folders — `{active: id, sets: [{id, name, commands, text}], tree: {…}}`;
+`keyBindings` holds the MIDI controls, `{midi: {id: [control]}}`, which
+belong to no set. Each set holds only what differs from the defaults —
+`commands: {id: [chord]}, text: {command: [chord]}`. A command's
 list replaces its defaults whole; an empty list means no key. A command put
 back to its defaults leaves no entry behind, so a file of changes never pins
 the defaults of the version that wrote it. A list none of whose chords this
@@ -166,9 +186,12 @@ follows the button's, so a held command (PTT on Hold) holds for as long as the b
 and a device unplugged lets go of what it held. With `kb` off nothing reads `midi`, as nothing
 reads a rebound key.
 
-Files carry no `midi`: it belongs to a controller, not a keyboard. Replace and Reset All keep
-the device's own, less any bound to command text they remove — a control left pressing text
-no row shows would act with nothing on screen to say why.
+Files and sets carry no `midi`: it belongs to a controller, not a keyboard, so switching sets
+leaves every control where it was. A control bound to command text the set in use does not hold
+presses nothing — it would act with nothing on screen to say why — and stays bound, for when a
+set that has the text is in use again. Reset All and removing command text drop the controls
+bound to the text the set loses — unless another set still holds that text, whose row still
+shows them.
 
 ## Conflicts
 
@@ -185,6 +208,7 @@ it always has.
 # Ham2K Logger keyboard shortcuts
 ham2k-keys: 1
 platform: macos
+name: Contest
 commands:
   logging.wipe: [F9]
 text:
@@ -192,7 +216,9 @@ text:
 ```
 
 `platform` is the OS the keyboard was on — a browser's host OS, not `web`.
-Exports are named for the profile's callsign — `Keyboard Shortcuts KI2D.h2kkey`; import also takes `.yaml` and
+A file holds one set. `name` is the set's; an export is named for it —
+`Keyboard Shortcuts Contest.h2kkey` — and a file without one is named for
+the file. Import also takes `.yaml` and
 `.yml`. A file is refused with a reason (not YAML, not a shortcuts file,
 written by a newer version, not this shape, too large), with the layout
 files' caps on aliases and nesting (`yaml_reader.dart`).
@@ -207,14 +233,14 @@ all at once, so `cmd`→`ctrl` and `ctrl`→`cmd` trade places. The suggestion:
 - a Mac's file elsewhere: `cmd`→`ctrl`, `ctrl`→`meta`;
 - another's file on a Mac: `ctrl`→`cmd`, `meta`→`ctrl`.
 
-The file then **adds to** this device's config (its commands replace the
-same ones) or **replaces** it. A file is no way round the fixed keys: the
+The file then becomes a **new set**, beside the others and not in use —
+switching to it is the operator's pick, as with any set. A file is no way round the fixed keys: the
 chords the recorder would refuse by the key's name are left out — a file
 carries no keystroke, so what a key types on this keyboard is the recorder's
 to know alone — and a command left with none keeps its defaults. Unknown
 commands, unreadable chords, refused chords,
-command text with no command in it, and the conflicts the result would hold
-are all named before Import.
+command text with no command in it, and the conflicts the new set would
+hold are all named before Import.
 
 ## iOS
 

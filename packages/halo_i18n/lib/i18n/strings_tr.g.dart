@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$tr extends Translations$keyboardShortcuts$
 	@override String get title => 'Klavye Kısayolları';
 	@override String get description => 'Tuş atamalarını özelleştirin';
 	@override String get search => 'Komutlarda ve tuşlarda ara';
-	@override String get import => 'İçe aktar…';
-	@override String get export => 'Dışa aktar…';
 	@override String get resetAll => 'Tümünü Sıfırla';
 	@override String get resetAllTitle => 'Tüm kısayollar sıfırlansın mı?';
 	@override String get resetAllBody => 'Her komut varsayılan tuşlarına döner ve yazılı komutlara atanmış tuşlar kaldırılır.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$tr extends Translations$keyboardShort
 	final TranslationsTr _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Kısayollar ${location} konumuna kaydedildi';
-	@override String exportFailed({required Object error}) => 'Kısayollar dışa aktarılamadı: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Dosya açılamadı: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir kısayol dosyası değil: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'metin geçerli YAML değil (satır ${line})';
-	@override String get problemNotKeysFile => 'bir Ham2K klavye kısayolu dosyası değil';
-	@override String get problemNewerVersion => 'uygulamanın daha yeni bir sürümüyle yazılmış';
-	@override String get problemMalformed => 'bir kısmı kısayol biçimine uymuyor';
-	@override String get problemTooLarge => 'çok büyük';
 	@override String get importTitle => 'Kısayolları İçe Aktar';
 	@override String writtenOn({required Object platform}) => '${platform} üzerinde yazılmış.';
 	@override String get writtenOnUnknown => 'Dosya hangi klavyede yazıldığını belirtmiyor.';
 	@override String get translate => 'Bu tuşların her biri bu klavyede hangi tuş olmalı?';
 	@override String get leaveOut => 'O kısayolları dışarıda bırak';
-	@override String get replace => 'Bu cihazın yapılandırmasının yerine koy';
-	@override String get replaceHint => 'Dosyada olmayan her kısayol varsayılanına döner.';
-	@override String get merge => 'Bu cihazın yapılandırmasına ekle';
-	@override String get mergeHint => 'Aynı komutlar için dosyadaki kısayollar bu cihazdakilerin yerini alır, geri kalanlar olduğu gibi kalır.';
 	@override String unknown({required Object commands}) => 'Bu sürümde bilinmediği için dışarıda bırakıldı: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Kısayol olmadığı için dışarıda bırakıldı: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Uygulamanın kendine ayırdığı tuşlar olduğu için dışarıda bırakıldı: ${chords}';
 	@override String conflicts({required Object keys}) => 'İçe aktarmadan sonra birden fazla komuta atanmış: ${keys}';
 	@override String get importAction => 'İçe Aktar';
-	@override String get imported => 'Kısayollar içe aktarıldı';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsTr {
 			'keyboardShortcuts.title' => 'Klavye Kısayolları',
 			'keyboardShortcuts.description' => 'Tuş atamalarını özelleştirin',
 			'keyboardShortcuts.search' => 'Komutlarda ve tuşlarda ara',
-			'keyboardShortcuts.import' => 'İçe aktar…',
-			'keyboardShortcuts.export' => 'Dışa aktar…',
 			'keyboardShortcuts.resetAll' => 'Tümünü Sıfırla',
 			'keyboardShortcuts.resetAllTitle' => 'Tüm kısayollar sıfırlansın mı?',
 			'keyboardShortcuts.resetAllBody' => 'Her komut varsayılan tuşlarına döner ve yazılı komutlara atanmış tuşlar kaldırılır.',
@@ -6899,30 +6881,16 @@ extension on TranslationsTr {
 			'keyboardShortcuts.editor.removeCommand' => 'Komutu Kaldır',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '“${text}” hiçbir komutla eşleşmiyor',
 			'keyboardShortcuts.editor.noShortcuts' => 'Henüz tuş yok',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Kısayollar ${location} konumuna kaydedildi',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kısayollar dışa aktarılamadı: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Dosya açılamadı: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} bu uygulamanın okuyabildiği bir kısayol dosyası değil: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'metin geçerli YAML değil (satır ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'bir Ham2K klavye kısayolu dosyası değil',
-			'keyboardShortcuts.file.problemNewerVersion' => 'uygulamanın daha yeni bir sürümüyle yazılmış',
-			'keyboardShortcuts.file.problemMalformed' => 'bir kısmı kısayol biçimine uymuyor',
-			'keyboardShortcuts.file.problemTooLarge' => 'çok büyük',
 			'keyboardShortcuts.file.importTitle' => 'Kısayolları İçe Aktar',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '${platform} üzerinde yazılmış.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Dosya hangi klavyede yazıldığını belirtmiyor.',
 			'keyboardShortcuts.file.translate' => 'Bu tuşların her biri bu klavyede hangi tuş olmalı?',
 			'keyboardShortcuts.file.leaveOut' => 'O kısayolları dışarıda bırak',
-			'keyboardShortcuts.file.replace' => 'Bu cihazın yapılandırmasının yerine koy',
-			'keyboardShortcuts.file.replaceHint' => 'Dosyada olmayan her kısayol varsayılanına döner.',
-			'keyboardShortcuts.file.merge' => 'Bu cihazın yapılandırmasına ekle',
-			'keyboardShortcuts.file.mergeHint' => 'Aynı komutlar için dosyadaki kısayollar bu cihazdakilerin yerini alır, geri kalanlar olduğu gibi kalır.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Bu sürümde bilinmediği için dışarıda bırakıldı: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Kısayol olmadığı için dışarıda bırakıldı: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Uygulamanın kendine ayırdığı tuşlar olduğu için dışarıda bırakıldı: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'İçe aktarmadan sonra birden fazla komuta atanmış: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'İçe Aktar',
-			'keyboardShortcuts.file.imported' => 'Kısayollar içe aktarıldı',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsTr {
 			'switchAccounts.enterEmailPrompt' => 'Bu cihazın kullanmasını istediğiniz hesabın e-posta adresini girin.',
 			'switchAccounts.emailAddress' => 'E-posta adresi',
 			'switchAccounts.linkAccount' => 'Hesabı bağla',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Kod panoya kopyalandı',
 			'switchAccounts.copyCode' => 'Kodu kopyala',
 			'switchAccounts.codePrompt' => ({required Object email}) => '${email} ile zaten bağlı bir cihazda Ham2K uygulamasını açın ve isteği onaylamak için bu kodu girin:',
@@ -7090,6 +7056,8 @@ extension on TranslationsTr {
 			'switchAccounts.noConfirmationCode' => 'Senkronizasyon sunucusu bir onay kodu göndermedi. Daha sonra tekrar deneyin.',
 			'switchAccounts.switchNotAccepted' => 'Bu hesap geçişi kabul etmedi. Bunun yerine bir e-posta adresiyle bağlamayı deneyin.',
 			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
 			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',

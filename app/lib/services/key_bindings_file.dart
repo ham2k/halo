@@ -10,6 +10,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:yaml/yaml.dart';
 
 import '../views/command_engine.dart' show commandTextParts;
+import 'sets/set_category.dart' show setFileMarker;
 import '../views/dock_layouts/yaml_reader.dart';
 import '../views/dock_layouts/yaml_writer.dart' as yaml_writer;
 
@@ -23,18 +24,9 @@ const keyBindingsFileVersion = 1;
 /// its own says which app the file is for.
 const keyBindingsFileExtension = 'h2kkey';
 
-/// An export's name before the extension: the profile's callsign after
-/// "Keyboard Shortcuts", so one device's files for several profiles stay
-/// apart — `KI2D/P` as `KI2D-P`, since a file system takes the slash as a
-/// folder.
-String keyBindingsFileStem(String callsign) {
-  final call = callsign.replaceAll(RegExp(r'[\\/:*?"<>|]+'), '-').trim();
-  return call.isEmpty ? 'Keyboard Shortcuts' : 'Keyboard Shortcuts $call';
-}
-
 /// Why a file is not one this version can read — what the operator is told,
 /// in their language.
-enum KeyBindingsFileProblem { notYaml, notKeysFile, newerVersion, malformed, tooLarge }
+enum KeyBindingsFileProblem { notYaml, notKeysFile, otherSetKind, newerVersion, malformed, tooLarge }
 
 class KeyBindingsFileException implements Exception {
   final KeyBindingsFileProblem problem;
@@ -55,12 +47,16 @@ class KeyBindingsFile {
   /// The platform the file was written on — a [platformToken], with a browser
   /// named by the OS it ran on, since that is the keyboard it was pressed on.
   final String? platform;
+
+  /// The set's name; a file without one is named for its file.
+  final String? name;
+
   final KeyBindingOverrides overrides;
 
   /// Chords in the file that do not parse, left out of [overrides].
   final List<String> unreadable;
 
-  const KeyBindingsFile({this.platform, required this.overrides, this.unreadable = const []});
+  const KeyBindingsFile({this.platform, this.name, required this.overrides, this.unreadable = const []});
 
   String toYaml() => '# Ham2K Logger keyboard shortcuts\n${yaml_writer.toYaml(toJson())}';
 
@@ -69,6 +65,7 @@ class KeyBindingsFile {
   Map<String, dynamic> toJson() => {
     keyBindingsFileMarker: keyBindingsFileVersion,
     'platform': ?platform,
+    'name': ?name,
     ...KeyBindingOverrides(commands: overrides.commands, text: overrides.text).toJson(),
   };
 
@@ -136,6 +133,9 @@ class KeyBindingsFile {
     }
     if (document is! Map) throw const KeyBindingsFileException(KeyBindingsFileProblem.notKeysFile, 'the document is not a map');
     final version = document[keyBindingsFileMarker];
+    if (version is! int && document[setFileMarker] is int) {
+      throw KeyBindingsFileException(KeyBindingsFileProblem.otherSetKind, 'kind ${document['kind']}');
+    }
     if (version is! int) throw const KeyBindingsFileException(KeyBindingsFileProblem.notKeysFile, 'no "$keyBindingsFileMarker" version');
     if (version > keyBindingsFileVersion) throw KeyBindingsFileException(KeyBindingsFileProblem.newerVersion, 'format $version');
     for (final section in ['commands', 'text']) {
@@ -156,6 +156,11 @@ class KeyBindingsFile {
     unreadable.addAll(emptyText.map((command) => '"$command"'));
     return KeyBindingsFile(
       platform: document['platform'] is String ? document['platform'] as String : null,
+      name: switch (document['name']) {
+        final String name when name.trim().isNotEmpty => name.trim(),
+        final num name => '$name',
+        _ => null,
+      },
       overrides: emptyText.fold(overrides, (o, command) => o.withoutText(command)),
       unreadable: unreadable,
     );

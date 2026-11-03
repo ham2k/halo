@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$ca extends Translations$keyboardShortcuts$
 	@override String get title => 'Dreceres de teclat';
 	@override String get description => 'Personalitza les assignacions de tecles';
 	@override String get search => 'Cerca ordres i tecles';
-	@override String get import => 'Importa…';
-	@override String get export => 'Exporta…';
 	@override String get resetAll => 'Restableix-ho tot';
 	@override String get resetAllTitle => 'Restablir totes les dreceres?';
 	@override String get resetAllBody => 'Totes les ordres tornen a les seves tecles per defecte, i les tecles assignades a ordres escrites s\'eliminen.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$ca extends Translations$keyboardShort
 	final TranslationsCa _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Dreceres desades a ${location}';
-	@override String exportFailed({required Object error}) => 'No s\'han pogut exportar les dreceres: ${error}';
-	@override String importPickerFailed({required Object error}) => 'No s\'ha pogut obrir el fitxer: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} no és un fitxer de dreceres que aquesta aplicació pugui llegir: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'el text no és YAML vàlid (línia ${line})';
-	@override String get problemNotKeysFile => 'no és un fitxer de dreceres de teclat de Ham2K';
-	@override String get problemNewerVersion => 'l\'ha escrit una versió més nova de l\'aplicació';
-	@override String get problemMalformed => 'una part no segueix el format de dreceres';
-	@override String get problemTooLarge => 'és massa gran';
 	@override String get importTitle => 'Importa les dreceres';
 	@override String writtenOn({required Object platform}) => 'Escrit a ${platform}.';
 	@override String get writtenOnUnknown => 'El fitxer no diu en quin teclat es va escriure.';
 	@override String get translate => 'Què hauria de ser cada una d\'aquestes tecles en aquest teclat?';
 	@override String get leaveOut => 'Deixa fora aquestes dreceres';
-	@override String get replace => 'Substitueix la configuració d\'aquest dispositiu';
-	@override String get replaceHint => 'Totes les dreceres que no són al fitxer tornen al valor per defecte.';
-	@override String get merge => 'Afegeix a la configuració d\'aquest dispositiu';
-	@override String get mergeHint => 'Les dreceres del fitxer substitueixen les d\'aquest dispositiu per a les mateixes ordres, i la resta es mantenen.';
 	@override String unknown({required Object commands}) => 'No es coneixen en aquesta versió, així que s\'han deixat fora: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'No són dreceres, així que s\'han deixat fora: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Tecles que l\'aplicació es reserva, així que s\'han deixat fora: ${chords}';
 	@override String conflicts({required Object keys}) => 'Assignades a més d\'una ordre després de la importació: ${keys}';
 	@override String get importAction => 'Importa';
-	@override String get imported => 'Dreceres importades';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsCa {
 			'keyboardShortcuts.title' => 'Dreceres de teclat',
 			'keyboardShortcuts.description' => 'Personalitza les assignacions de tecles',
 			'keyboardShortcuts.search' => 'Cerca ordres i tecles',
-			'keyboardShortcuts.import' => 'Importa…',
-			'keyboardShortcuts.export' => 'Exporta…',
 			'keyboardShortcuts.resetAll' => 'Restableix-ho tot',
 			'keyboardShortcuts.resetAllTitle' => 'Restablir totes les dreceres?',
 			'keyboardShortcuts.resetAllBody' => 'Totes les ordres tornen a les seves tecles per defecte, i les tecles assignades a ordres escrites s\'eliminen.',
@@ -6899,30 +6881,16 @@ extension on TranslationsCa {
 			'keyboardShortcuts.editor.removeCommand' => 'Elimina l\'ordre',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Cap ordre llegeix “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'Encara sense tecla',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Dreceres desades a ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'No s\'han pogut exportar les dreceres: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'No s\'ha pogut obrir el fitxer: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} no és un fitxer de dreceres que aquesta aplicació pugui llegir: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'el text no és YAML vàlid (línia ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'no és un fitxer de dreceres de teclat de Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'l\'ha escrit una versió més nova de l\'aplicació',
-			'keyboardShortcuts.file.problemMalformed' => 'una part no segueix el format de dreceres',
-			'keyboardShortcuts.file.problemTooLarge' => 'és massa gran',
 			'keyboardShortcuts.file.importTitle' => 'Importa les dreceres',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Escrit a ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'El fitxer no diu en quin teclat es va escriure.',
 			'keyboardShortcuts.file.translate' => 'Què hauria de ser cada una d\'aquestes tecles en aquest teclat?',
 			'keyboardShortcuts.file.leaveOut' => 'Deixa fora aquestes dreceres',
-			'keyboardShortcuts.file.replace' => 'Substitueix la configuració d\'aquest dispositiu',
-			'keyboardShortcuts.file.replaceHint' => 'Totes les dreceres que no són al fitxer tornen al valor per defecte.',
-			'keyboardShortcuts.file.merge' => 'Afegeix a la configuració d\'aquest dispositiu',
-			'keyboardShortcuts.file.mergeHint' => 'Les dreceres del fitxer substitueixen les d\'aquest dispositiu per a les mateixes ordres, i la resta es mantenen.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'No es coneixen en aquesta versió, així que s\'han deixat fora: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'No són dreceres, així que s\'han deixat fora: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Tecles que l\'aplicació es reserva, així que s\'han deixat fora: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Assignades a més d\'una ordre després de la importació: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importa',
-			'keyboardShortcuts.file.imported' => 'Dreceres importades',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsCa {
 			'switchAccounts.enterEmailPrompt' => 'Introdueix l\'adreça de correu electrònic del compte que vols que utilitzi aquest dispositiu.',
 			'switchAccounts.emailAddress' => 'Adreça de correu electrònic',
 			'switchAccounts.linkAccount' => 'Vincula el compte',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'S\'ha copiat el codi al porta-retalls',
 			'switchAccounts.copyCode' => 'Copia el codi',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Obre l\'aplicació de Ham2K en un dispositiu ja vinculat amb ${email} i introdueix aquest codi per aprovar la sol·licitud:',
@@ -7090,6 +7056,8 @@ extension on TranslationsCa {
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronització no ha enviat cap codi de confirmació. Torna-ho a provar més tard.',
 			'switchAccounts.switchNotAccepted' => 'Aquest compte no ha acceptat el canvi. Prova de vincular-lo amb una adreça de correu electrònic.',
 			'switchAccounts.requestFailed' => 'Alguna cosa ha anat malament en comunicar-se amb el servidor de sincronització. Torna-ho a provar més tard.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} operació', other: '${count} operacions', ), 
 			'qsonImport.title' => 'Importa una operació QSON',

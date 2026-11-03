@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$de extends Translations$keyboardShortcuts$
 	@override String get title => 'Tastenkürzel';
 	@override String get description => 'Tastenbelegung anpassen';
 	@override String get search => 'Befehle und Tasten suchen';
-	@override String get import => 'Importieren…';
-	@override String get export => 'Exportieren…';
 	@override String get resetAll => 'Alle zurücksetzen';
 	@override String get resetAllTitle => 'Alle Tastenkürzel zurücksetzen?';
 	@override String get resetAllBody => 'Jeder Befehl erhält wieder seine Standardtasten, und die Tasten für eingetippte Befehle werden entfernt.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$de extends Translations$keyboardShort
 	final TranslationsDe _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Tastenkürzel gespeichert unter ${location}';
-	@override String exportFailed({required Object error}) => 'Tastenkürzel konnten nicht exportiert werden: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Datei konnte nicht geöffnet werden: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} ist keine Tastenkürzel-Datei, die diese App lesen kann: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'der Text ist kein gültiges YAML (Zeile ${line})';
-	@override String get problemNotKeysFile => 'es ist keine Ham2K-Tastenkürzel-Datei';
-	@override String get problemNewerVersion => 'es wurde von einer neueren Version der App geschrieben';
-	@override String get problemMalformed => 'ein Teil davon entspricht nicht dem Tastenkürzel-Format';
-	@override String get problemTooLarge => 'es ist zu groß';
 	@override String get importTitle => 'Tastenkürzel importieren';
 	@override String writtenOn({required Object platform}) => 'Geschrieben unter ${platform}.';
 	@override String get writtenOnUnknown => 'Die Datei sagt nicht, auf welcher Tastatur sie geschrieben wurde.';
 	@override String get translate => 'Was soll jede dieser Tasten auf dieser Tastatur sein?';
 	@override String get leaveOut => 'Diese Kürzel weglassen';
-	@override String get replace => 'Konfiguration dieses Geräts ersetzen';
-	@override String get replaceHint => 'Jedes Kürzel, das nicht in der Datei ist, geht auf seinen Standard zurück.';
-	@override String get merge => 'Zur Konfiguration dieses Geräts hinzufügen';
-	@override String get mergeHint => 'Die Kürzel der Datei ersetzen die dieses Geräts für dieselben Befehle, der Rest bleibt.';
 	@override String unknown({required Object commands}) => 'In dieser Version unbekannt, daher weggelassen: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Keine Tastenkürzel, daher weggelassen: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Tasten, die die App für sich behält, daher weggelassen: ${chords}';
 	@override String conflicts({required Object keys}) => 'Nach dem Import mehr als einem Befehl zugewiesen: ${keys}';
 	@override String get importAction => 'Importieren';
-	@override String get imported => 'Tastenkürzel importiert';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsDe {
 			'keyboardShortcuts.title' => 'Tastenkürzel',
 			'keyboardShortcuts.description' => 'Tastenbelegung anpassen',
 			'keyboardShortcuts.search' => 'Befehle und Tasten suchen',
-			'keyboardShortcuts.import' => 'Importieren…',
-			'keyboardShortcuts.export' => 'Exportieren…',
 			'keyboardShortcuts.resetAll' => 'Alle zurücksetzen',
 			'keyboardShortcuts.resetAllTitle' => 'Alle Tastenkürzel zurücksetzen?',
 			'keyboardShortcuts.resetAllBody' => 'Jeder Befehl erhält wieder seine Standardtasten, und die Tasten für eingetippte Befehle werden entfernt.',
@@ -6899,30 +6881,16 @@ extension on TranslationsDe {
 			'keyboardShortcuts.editor.removeCommand' => 'Befehl entfernen',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Kein Befehl versteht „${text}“',
 			'keyboardShortcuts.editor.noShortcuts' => 'Noch keine Taste',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Tastenkürzel gespeichert unter ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Tastenkürzel konnten nicht exportiert werden: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Datei konnte nicht geöffnet werden: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} ist keine Tastenkürzel-Datei, die diese App lesen kann: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'der Text ist kein gültiges YAML (Zeile ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'es ist keine Ham2K-Tastenkürzel-Datei',
-			'keyboardShortcuts.file.problemNewerVersion' => 'es wurde von einer neueren Version der App geschrieben',
-			'keyboardShortcuts.file.problemMalformed' => 'ein Teil davon entspricht nicht dem Tastenkürzel-Format',
-			'keyboardShortcuts.file.problemTooLarge' => 'es ist zu groß',
 			'keyboardShortcuts.file.importTitle' => 'Tastenkürzel importieren',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Geschrieben unter ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Die Datei sagt nicht, auf welcher Tastatur sie geschrieben wurde.',
 			'keyboardShortcuts.file.translate' => 'Was soll jede dieser Tasten auf dieser Tastatur sein?',
 			'keyboardShortcuts.file.leaveOut' => 'Diese Kürzel weglassen',
-			'keyboardShortcuts.file.replace' => 'Konfiguration dieses Geräts ersetzen',
-			'keyboardShortcuts.file.replaceHint' => 'Jedes Kürzel, das nicht in der Datei ist, geht auf seinen Standard zurück.',
-			'keyboardShortcuts.file.merge' => 'Zur Konfiguration dieses Geräts hinzufügen',
-			'keyboardShortcuts.file.mergeHint' => 'Die Kürzel der Datei ersetzen die dieses Geräts für dieselben Befehle, der Rest bleibt.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'In dieser Version unbekannt, daher weggelassen: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Keine Tastenkürzel, daher weggelassen: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Tasten, die die App für sich behält, daher weggelassen: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Nach dem Import mehr als einem Befehl zugewiesen: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importieren',
-			'keyboardShortcuts.file.imported' => 'Tastenkürzel importiert',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsDe {
 			'switchAccounts.enterEmailPrompt' => 'Gib die E-Mail-Adresse des Kontos ein, das dieses Gerät verwenden soll.',
 			'switchAccounts.emailAddress' => 'E-Mail-Adresse',
 			'switchAccounts.linkAccount' => 'Konto verknüpfen',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Code in die Zwischenablage kopiert',
 			'switchAccounts.copyCode' => 'Code kopieren',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Öffne die Ham2K-App auf einem Gerät, das bereits mit ${email} verknüpft ist, und gib diesen Code ein, um die Anfrage zu bestätigen:',
@@ -7090,6 +7056,8 @@ extension on TranslationsDe {
 			'switchAccounts.noConfirmationCode' => 'Der Sync-Server hat keinen Bestätigungscode gesendet. Versuche es später erneut.',
 			'switchAccounts.switchNotAccepted' => 'Dieses Konto hat den Wechsel nicht angenommen. Versuche stattdessen, es mit einer E-Mail-Adresse zu verknüpfen.',
 			'switchAccounts.requestFailed' => 'Bei der Kommunikation mit dem Sync-Server ist etwas schiefgelaufen. Versuche es später erneut.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Betrieb', other: '${count} Betriebe', ), 
 			'qsonImport.title' => 'QSON-Betrieb importieren',

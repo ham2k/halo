@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$sk extends Translations$keyboardShortcuts$
 	@override String get title => 'Klávesové skratky';
 	@override String get description => 'Prispôsobte si priradenie klávesov';
 	@override String get search => 'Hľadať príkazy a klávesy';
-	@override String get import => 'Importovať…';
-	@override String get export => 'Exportovať…';
 	@override String get resetAll => 'Resetovať všetko';
 	@override String get resetAllTitle => 'Resetovať všetky skratky?';
 	@override String get resetAllBody => 'Každý príkaz sa vráti k svojim predvoleným klávesom a klávesy priradené k zadaným príkazom sa odstránia.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$sk extends Translations$keyboardShort
 	final TranslationsSk _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Skratky uložené do ${location}';
-	@override String exportFailed({required Object error}) => 'Skratky sa nepodarilo exportovať: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} nie je súbor so skratkami, ktorý táto aplikácia dokáže prečítať: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'text nie je platný YAML (riadok ${line})';
-	@override String get problemNotKeysFile => 'nie je to súbor klávesových skratiek Ham2K';
-	@override String get problemNewerVersion => 'zapísala ho novšia verzia aplikácie';
-	@override String get problemMalformed => 'časť z neho nezodpovedá formátu skratiek';
-	@override String get problemTooLarge => 'je príliš veľký';
 	@override String get importTitle => 'Importovať skratky';
 	@override String writtenOn({required Object platform}) => 'Zapísané v systéme ${platform}.';
 	@override String get writtenOnUnknown => 'Súbor neuvádza, na akej klávesnici bol zapísaný.';
 	@override String get translate => 'Čím má byť každý z týchto klávesov na tejto klávesnici?';
 	@override String get leaveOut => 'Tieto skratky vynechať';
-	@override String get replace => 'Nahradiť konfiguráciu tohto zariadenia';
-	@override String get replaceHint => 'Každá skratka, ktorá nie je v súbore, sa vráti k predvolenej.';
-	@override String get merge => 'Pridať ku konfigurácii tohto zariadenia';
-	@override String get mergeHint => 'Skratky zo súboru nahradia skratky tohto zariadenia pre rovnaké príkazy, ostatné zostanú.';
 	@override String unknown({required Object commands}) => 'V tejto verzii neznáme, preto vynechané: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Nie sú to skratky, preto vynechané: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Klávesy, ktoré si aplikácia necháva pre seba, preto vynechané: ${chords}';
 	@override String conflicts({required Object keys}) => 'Po importe priradené k viac ako jednému príkazu: ${keys}';
 	@override String get importAction => 'Importovať';
-	@override String get imported => 'Skratky importované';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsSk {
 			'keyboardShortcuts.title' => 'Klávesové skratky',
 			'keyboardShortcuts.description' => 'Prispôsobte si priradenie klávesov',
 			'keyboardShortcuts.search' => 'Hľadať príkazy a klávesy',
-			'keyboardShortcuts.import' => 'Importovať…',
-			'keyboardShortcuts.export' => 'Exportovať…',
 			'keyboardShortcuts.resetAll' => 'Resetovať všetko',
 			'keyboardShortcuts.resetAllTitle' => 'Resetovať všetky skratky?',
 			'keyboardShortcuts.resetAllBody' => 'Každý príkaz sa vráti k svojim predvoleným klávesom a klávesy priradené k zadaným príkazom sa odstránia.',
@@ -6899,30 +6881,16 @@ extension on TranslationsSk {
 			'keyboardShortcuts.editor.removeCommand' => 'Odstrániť príkaz',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Žiadny príkaz nerozumie „${text}“',
 			'keyboardShortcuts.editor.noShortcuts' => 'Zatiaľ bez klávesu',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Skratky uložené do ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Skratky sa nepodarilo exportovať: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Súbor sa nepodarilo otvoriť: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} nie je súbor so skratkami, ktorý táto aplikácia dokáže prečítať: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'text nie je platný YAML (riadok ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'nie je to súbor klávesových skratiek Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'zapísala ho novšia verzia aplikácie',
-			'keyboardShortcuts.file.problemMalformed' => 'časť z neho nezodpovedá formátu skratiek',
-			'keyboardShortcuts.file.problemTooLarge' => 'je príliš veľký',
 			'keyboardShortcuts.file.importTitle' => 'Importovať skratky',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Zapísané v systéme ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Súbor neuvádza, na akej klávesnici bol zapísaný.',
 			'keyboardShortcuts.file.translate' => 'Čím má byť každý z týchto klávesov na tejto klávesnici?',
 			'keyboardShortcuts.file.leaveOut' => 'Tieto skratky vynechať',
-			'keyboardShortcuts.file.replace' => 'Nahradiť konfiguráciu tohto zariadenia',
-			'keyboardShortcuts.file.replaceHint' => 'Každá skratka, ktorá nie je v súbore, sa vráti k predvolenej.',
-			'keyboardShortcuts.file.merge' => 'Pridať ku konfigurácii tohto zariadenia',
-			'keyboardShortcuts.file.mergeHint' => 'Skratky zo súboru nahradia skratky tohto zariadenia pre rovnaké príkazy, ostatné zostanú.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'V tejto verzii neznáme, preto vynechané: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Nie sú to skratky, preto vynechané: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Klávesy, ktoré si aplikácia necháva pre seba, preto vynechané: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Po importe priradené k viac ako jednému príkazu: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importovať',
-			'keyboardShortcuts.file.imported' => 'Skratky importované',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsSk {
 			'switchAccounts.enterEmailPrompt' => 'Zadajte e-mailovú adresu účtu, ktorý má toto zariadenie používať.',
 			'switchAccounts.emailAddress' => 'E-mailová adresa',
 			'switchAccounts.linkAccount' => 'Prepojiť účet',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Kód skopírovaný do schránky',
 			'switchAccounts.copyCode' => 'Kopírovať kód',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Otvorte aplikáciu Ham2K na zariadení, ktoré je už prepojené s ${email}, a zadajte tento kód na schválenie žiadosti:',
@@ -7090,6 +7056,8 @@ extension on TranslationsSk {
 			'switchAccounts.noConfirmationCode' => 'Synchronizačný server neposlal potvrdzovací kód. Skúste to neskôr.',
 			'switchAccounts.switchNotAccepted' => 'Tento účet prepnutie neprijal. Skúste ho namiesto toho prepojiť pomocou e-mailovej adresy.',
 			'switchAccounts.requestFailed' => 'Pri komunikácii so synchronizačným serverom sa niečo pokazilo. Skúste to neskôr.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} prevádzka', other: '${count} prevádzok', ), 
 			'qsonImport.title' => 'Importovať prevádzku QSON',

@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$es extends Translations$keyboardShortcuts$
 	@override String get title => 'Atajos de teclado';
 	@override String get description => 'Personaliza las combinaciones de teclas';
 	@override String get search => 'Buscar comandos y teclas';
-	@override String get import => 'Importar…';
-	@override String get export => 'Exportar…';
 	@override String get resetAll => 'Restablecer todo';
 	@override String get resetAllTitle => '¿Restablecer todos los atajos?';
 	@override String get resetAllBody => 'Cada comando vuelve a sus teclas por defecto, y se quitan las teclas asignadas a comandos escritos.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$es extends Translations$keyboardShort
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Atajos guardados en ${location}';
-	@override String exportFailed({required Object error}) => 'No se pudieron exportar los atajos: ${error}';
-	@override String importPickerFailed({required Object error}) => 'No se pudo abrir el archivo: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} no es un archivo de atajos que esta app pueda leer: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'el texto no es YAML válido (línea ${line})';
-	@override String get problemNotKeysFile => 'no es un archivo de atajos de teclado de Ham2K';
-	@override String get problemNewerVersion => 'fue escrito por una versión más nueva de la app';
-	@override String get problemMalformed => 'parte de él no sigue el formato de atajos';
-	@override String get problemTooLarge => 'es demasiado grande';
 	@override String get importTitle => 'Importar atajos';
 	@override String writtenOn({required Object platform}) => 'Escrito en ${platform}.';
 	@override String get writtenOnUnknown => 'El archivo no dice en qué teclado fue escrito.';
 	@override String get translate => '¿Qué debería ser cada una de estas teclas en este teclado?';
 	@override String get leaveOut => 'Omitir esos atajos';
-	@override String get replace => 'Reemplazar la configuración de este dispositivo';
-	@override String get replaceHint => 'Cada atajo que no esté en el archivo vuelve a su valor por defecto.';
-	@override String get merge => 'Agregar a la configuración de este dispositivo';
-	@override String get mergeHint => 'Los atajos del archivo reemplazan a los de este dispositivo para los mismos comandos, y el resto se conserva.';
 	@override String unknown({required Object commands}) => 'Desconocidos en esta versión, así que se omiten: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'No son atajos, así que se omiten: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Teclas que la app se reserva, así que se omiten: ${chords}';
 	@override String conflicts({required Object keys}) => 'Asignadas a más de un comando tras la importación: ${keys}';
 	@override String get importAction => 'Importar';
-	@override String get imported => 'Atajos importados';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsEs {
 			'keyboardShortcuts.title' => 'Atajos de teclado',
 			'keyboardShortcuts.description' => 'Personaliza las combinaciones de teclas',
 			'keyboardShortcuts.search' => 'Buscar comandos y teclas',
-			'keyboardShortcuts.import' => 'Importar…',
-			'keyboardShortcuts.export' => 'Exportar…',
 			'keyboardShortcuts.resetAll' => 'Restablecer todo',
 			'keyboardShortcuts.resetAllTitle' => '¿Restablecer todos los atajos?',
 			'keyboardShortcuts.resetAllBody' => 'Cada comando vuelve a sus teclas por defecto, y se quitan las teclas asignadas a comandos escritos.',
@@ -6899,30 +6881,16 @@ extension on TranslationsEs {
 			'keyboardShortcuts.editor.removeCommand' => 'Quitar comando',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Ningún comando lee “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'Sin tecla todavía',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Atajos guardados en ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'No se pudieron exportar los atajos: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'No se pudo abrir el archivo: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} no es un archivo de atajos que esta app pueda leer: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'el texto no es YAML válido (línea ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'no es un archivo de atajos de teclado de Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'fue escrito por una versión más nueva de la app',
-			'keyboardShortcuts.file.problemMalformed' => 'parte de él no sigue el formato de atajos',
-			'keyboardShortcuts.file.problemTooLarge' => 'es demasiado grande',
 			'keyboardShortcuts.file.importTitle' => 'Importar atajos',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Escrito en ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'El archivo no dice en qué teclado fue escrito.',
 			'keyboardShortcuts.file.translate' => '¿Qué debería ser cada una de estas teclas en este teclado?',
 			'keyboardShortcuts.file.leaveOut' => 'Omitir esos atajos',
-			'keyboardShortcuts.file.replace' => 'Reemplazar la configuración de este dispositivo',
-			'keyboardShortcuts.file.replaceHint' => 'Cada atajo que no esté en el archivo vuelve a su valor por defecto.',
-			'keyboardShortcuts.file.merge' => 'Agregar a la configuración de este dispositivo',
-			'keyboardShortcuts.file.mergeHint' => 'Los atajos del archivo reemplazan a los de este dispositivo para los mismos comandos, y el resto se conserva.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Desconocidos en esta versión, así que se omiten: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'No son atajos, así que se omiten: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Teclas que la app se reserva, así que se omiten: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Asignadas a más de un comando tras la importación: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importar',
-			'keyboardShortcuts.file.imported' => 'Atajos importados',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Comando',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsEs {
 			'switchAccounts.enterEmailPrompt' => 'Ingresa la dirección de correo electrónico de la cuenta que quieres usar en este dispositivo.',
 			'switchAccounts.emailAddress' => 'Dirección de correo electrónico',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app de Ham2K en un dispositivo ya vinculado con ${email} e ingresa este código para aprobar la solicitud:',
@@ -7090,6 +7056,8 @@ extension on TranslationsEs {
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronización no envió un código de confirmación. Inténtalo más tarde.',
 			'switchAccounts.switchNotAccepted' => 'Esa cuenta no aceptó el cambio. Prueba a vincularla con una dirección de correo electrónico.',
 			'switchAccounts.requestFailed' => 'Algo salió mal al comunicarse con el servidor de sincronización. Inténtalo más tarde.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'qsonImport.title' => 'Importar operación QSON',

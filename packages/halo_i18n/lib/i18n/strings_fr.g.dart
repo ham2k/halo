@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$fr extends Translations$keyboardShortcuts$
 	@override String get title => 'Raccourcis clavier';
 	@override String get description => 'Personnaliser les touches';
 	@override String get search => 'Rechercher des commandes et des touches';
-	@override String get import => 'Importer…';
-	@override String get export => 'Exporter…';
 	@override String get resetAll => 'Tout réinitialiser';
 	@override String get resetAllTitle => 'Réinitialiser tous les raccourcis ?';
 	@override String get resetAllBody => 'Chaque commande retrouve ses touches par défaut, et les touches associées aux commandes tapées sont supprimées.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$fr extends Translations$keyboardShort
 	final TranslationsFr _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Raccourcis enregistrés dans ${location}';
-	@override String exportFailed({required Object error}) => 'Impossible d\'exporter les raccourcis : ${error}';
-	@override String importPickerFailed({required Object error}) => 'Impossible d\'ouvrir le fichier : ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} n\'est pas un fichier de raccourcis que cette application peut lire : ${problem}';
-	@override String problemNotYaml({required Object line}) => 'le texte n\'est pas du YAML valide (ligne ${line})';
-	@override String get problemNotKeysFile => 'ce n\'est pas un fichier de raccourcis clavier Ham2K';
-	@override String get problemNewerVersion => 'il a été écrit par une version plus récente de l\'application';
-	@override String get problemMalformed => 'une partie ne respecte pas le format des raccourcis';
-	@override String get problemTooLarge => 'il est trop volumineux';
 	@override String get importTitle => 'Importer des raccourcis';
 	@override String writtenOn({required Object platform}) => 'Écrit sur ${platform}.';
 	@override String get writtenOnUnknown => 'Le fichier n\'indique pas sur quel clavier il a été écrit.';
 	@override String get translate => 'À quoi doit correspondre chacune de ces touches sur ce clavier ?';
 	@override String get leaveOut => 'Laisser ces raccourcis de côté';
-	@override String get replace => 'Remplacer la configuration de cet appareil';
-	@override String get replaceHint => 'Chaque raccourci absent du fichier retrouve sa valeur par défaut.';
-	@override String get merge => 'Ajouter à la configuration de cet appareil';
-	@override String get mergeHint => 'Les raccourcis du fichier remplacent ceux de cet appareil pour les mêmes commandes, et les autres restent.';
 	@override String unknown({required Object commands}) => 'Inconnues dans cette version, donc laissées de côté : ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Pas des raccourcis, donc laissés de côté : ${chords}';
 	@override String refusedChords({required Object chords}) => 'Touches que l\'application garde pour elle, donc laissées de côté : ${chords}';
 	@override String conflicts({required Object keys}) => 'Associées à plusieurs commandes après l\'import : ${keys}';
 	@override String get importAction => 'Importer';
-	@override String get imported => 'Raccourcis importés';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsFr {
 			'keyboardShortcuts.title' => 'Raccourcis clavier',
 			'keyboardShortcuts.description' => 'Personnaliser les touches',
 			'keyboardShortcuts.search' => 'Rechercher des commandes et des touches',
-			'keyboardShortcuts.import' => 'Importer…',
-			'keyboardShortcuts.export' => 'Exporter…',
 			'keyboardShortcuts.resetAll' => 'Tout réinitialiser',
 			'keyboardShortcuts.resetAllTitle' => 'Réinitialiser tous les raccourcis ?',
 			'keyboardShortcuts.resetAllBody' => 'Chaque commande retrouve ses touches par défaut, et les touches associées aux commandes tapées sont supprimées.',
@@ -6899,30 +6881,16 @@ extension on TranslationsFr {
 			'keyboardShortcuts.editor.removeCommand' => 'Retirer la commande',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Aucune commande ne comprend « ${text} »',
 			'keyboardShortcuts.editor.noShortcuts' => 'Aucune touche pour l\'instant',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Raccourcis enregistrés dans ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Impossible d\'exporter les raccourcis : ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Impossible d\'ouvrir le fichier : ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} n\'est pas un fichier de raccourcis que cette application peut lire : ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'le texte n\'est pas du YAML valide (ligne ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'ce n\'est pas un fichier de raccourcis clavier Ham2K',
-			'keyboardShortcuts.file.problemNewerVersion' => 'il a été écrit par une version plus récente de l\'application',
-			'keyboardShortcuts.file.problemMalformed' => 'une partie ne respecte pas le format des raccourcis',
-			'keyboardShortcuts.file.problemTooLarge' => 'il est trop volumineux',
 			'keyboardShortcuts.file.importTitle' => 'Importer des raccourcis',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Écrit sur ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Le fichier n\'indique pas sur quel clavier il a été écrit.',
 			'keyboardShortcuts.file.translate' => 'À quoi doit correspondre chacune de ces touches sur ce clavier ?',
 			'keyboardShortcuts.file.leaveOut' => 'Laisser ces raccourcis de côté',
-			'keyboardShortcuts.file.replace' => 'Remplacer la configuration de cet appareil',
-			'keyboardShortcuts.file.replaceHint' => 'Chaque raccourci absent du fichier retrouve sa valeur par défaut.',
-			'keyboardShortcuts.file.merge' => 'Ajouter à la configuration de cet appareil',
-			'keyboardShortcuts.file.mergeHint' => 'Les raccourcis du fichier remplacent ceux de cet appareil pour les mêmes commandes, et les autres restent.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Inconnues dans cette version, donc laissées de côté : ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Pas des raccourcis, donc laissés de côté : ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Touches que l\'application garde pour elle, donc laissées de côté : ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Associées à plusieurs commandes après l\'import : ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importer',
-			'keyboardShortcuts.file.imported' => 'Raccourcis importés',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Commande',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsFr {
 			'switchAccounts.enterEmailPrompt' => 'Saisissez l\'adresse e-mail du compte que cet appareil doit utiliser.',
 			'switchAccounts.emailAddress' => 'Adresse e-mail',
 			'switchAccounts.linkAccount' => 'Lier le compte',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Code copié dans le presse-papiers',
 			'switchAccounts.copyCode' => 'Copier le code',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Ouvrez l\'application Ham2K sur un appareil déjà lié à ${email} et saisissez ce code pour approuver la demande :',
@@ -7090,6 +7056,8 @@ extension on TranslationsFr {
 			'switchAccounts.noConfirmationCode' => 'Le serveur de synchronisation n\'a pas envoyé de code de confirmation. Réessayez plus tard.',
 			'switchAccounts.switchNotAccepted' => 'Ce compte n\'a pas accepté le changement. Essayez plutôt de le lier avec une adresse e-mail.',
 			'switchAccounts.requestFailed' => 'Un problème est survenu en dialoguant avec le serveur de synchronisation. Réessayez plus tard.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} opération', other: '${count} opérations', ), 
 			'qsonImport.title' => 'Importer une opération QSON',

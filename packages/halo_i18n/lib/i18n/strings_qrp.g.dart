@@ -986,8 +986,7 @@ class _Translations$keyboardShortcuts$qrp extends Translations$keyboardShortcuts
 	@override String get title => 'keyboard shortcuts';
 	@override String get description => 'customize key mappings';
 	@override String get search => 'search commands and keys';
-	@override String get import => 'import…';
-	@override String get export => 'export…';
+	@override late final _Translations$keyboardShortcuts$sets$qrp sets = _Translations$keyboardShortcuts$sets$qrp._(_root);
 	@override String get resetAll => 'reset all';
 	@override String get resetAllTitle => 'reset every shortcut?';
 	@override String get resetAllBody => 'every command goes back to its default keys, and the keys bound to typed commands are removed.';
@@ -3289,6 +3288,23 @@ class _Translations$settings$gridPrecisionDescription$qrp extends Translations$s
 	@override String get eight => '8 digits';
 }
 
+// Path: keyboardShortcuts.sets
+class _Translations$keyboardShortcuts$sets$qrp extends Translations$keyboardShortcuts$sets$en {
+	_Translations$keyboardShortcuts$sets$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get label => 'shortcut set';
+	@override String get title => 'keyboard shortcut sets';
+	@override String get manage => 'manage shortcut sets…';
+	@override String get appDefaults => 'app defaults';
+	@override String get carriedName => 'my shortcuts';
+	@override String get appDefaultsLocked => 'app defaults are the app’s own keys. to change them, duplicate app defaults in manage shortcut sets… and use the copy.';
+	@override String get fileLabel => 'ham2k keyboard shortcuts';
+	@override String get fileStem => 'keyboard shortcuts';
+}
+
 // Path: keyboardShortcuts.command
 class _Translations$keyboardShortcuts$command$qrp extends Translations$keyboardShortcuts$command$en {
 	_Translations$keyboardShortcuts$command$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -3371,30 +3387,16 @@ class _Translations$keyboardShortcuts$file$qrp extends Translations$keyboardShor
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'shortcuts saved to ${location}';
-	@override String exportFailed({required Object error}) => 'couldn’t export the shortcuts: ${error}';
-	@override String importPickerFailed({required Object error}) => 'couldn’t open the file: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'the text isn’t valid yaml (line ${line})';
-	@override String get problemNotKeysFile => 'it isn’t a ham2k keyboard shortcuts file';
-	@override String get problemNewerVersion => 'it was written by a newer version of the app';
-	@override String get problemMalformed => 'part of it doesn’t follow the shortcuts format';
-	@override String get problemTooLarge => 'it is too large';
 	@override String get importTitle => 'import shortcuts';
 	@override String writtenOn({required Object platform}) => 'written on ${platform}.';
 	@override String get writtenOnUnknown => 'the file doesn’t say which keyboard it was written on.';
 	@override String get translate => 'what should each of these keys be on this keyboard?';
 	@override String get leaveOut => 'leave those shortcuts out';
-	@override String get replace => 'replace this device’s config';
-	@override String get replaceHint => 'every shortcut not in the file goes back to its default.';
-	@override String get merge => 'add to this device’s config';
-	@override String get mergeHint => 'the file’s shortcuts replace this device’s for the same commands, and the rest stay.';
 	@override String unknown({required Object commands}) => 'not known in this version, so left out: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'not shortcuts, so left out: ${chords}';
 	@override String refusedChords({required Object chords}) => 'keys the app keeps for itself, so left out: ${chords}';
 	@override String conflicts({required Object keys}) => 'bound to more than one command after the import: ${keys}';
 	@override String get importAction => 'import';
-	@override String get imported => 'shortcuts imported';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -7321,8 +7323,14 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.title' => 'keyboard shortcuts',
 			'keyboardShortcuts.description' => 'customize key mappings',
 			'keyboardShortcuts.search' => 'search commands and keys',
-			'keyboardShortcuts.import' => 'import…',
-			'keyboardShortcuts.export' => 'export…',
+			'keyboardShortcuts.sets.label' => 'shortcut set',
+			'keyboardShortcuts.sets.title' => 'keyboard shortcut sets',
+			'keyboardShortcuts.sets.manage' => 'manage shortcut sets…',
+			'keyboardShortcuts.sets.appDefaults' => 'app defaults',
+			'keyboardShortcuts.sets.carriedName' => 'my shortcuts',
+			'keyboardShortcuts.sets.appDefaultsLocked' => 'app defaults are the app’s own keys. to change them, duplicate app defaults in manage shortcut sets… and use the copy.',
+			'keyboardShortcuts.sets.fileLabel' => 'ham2k keyboard shortcuts',
+			'keyboardShortcuts.sets.fileStem' => 'keyboard shortcuts',
 			'keyboardShortcuts.resetAll' => 'reset all',
 			'keyboardShortcuts.resetAllTitle' => 'reset every shortcut?',
 			'keyboardShortcuts.resetAllBody' => 'every command goes back to its default keys, and the keys bound to typed commands are removed.',
@@ -7353,14 +7361,14 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.densityAuto' => 'automatic layout density',
 			'keyboardShortcuts.command.find' => 'find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'send message ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.keyboardMode' => 'keyboard mode on or off',
 			'keyboardShortcuts.command.ptt' => 'push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'so2r: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'clear the contact being logged',
 			'keyboardShortcuts.fixed.callsign' => 'typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'stop sending, back out one step, or close',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.fixed.enter' => 'log the contact',
 			'keyboardShortcuts.fixed.space' => 'next field',
 			'keyboardShortcuts.fixed.tab' => 'next or previous field',
@@ -7392,30 +7400,16 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.editor.removeCommand' => 'remove command',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'no command reads “${text}”',
 			'keyboardShortcuts.editor.noShortcuts' => 'no key yet',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'shortcuts saved to ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'couldn’t export the shortcuts: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'couldn’t open the file: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'the text isn’t valid yaml (line ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'it isn’t a ham2k keyboard shortcuts file',
-			'keyboardShortcuts.file.problemNewerVersion' => 'it was written by a newer version of the app',
-			'keyboardShortcuts.file.problemMalformed' => 'part of it doesn’t follow the shortcuts format',
-			'keyboardShortcuts.file.problemTooLarge' => 'it is too large',
 			'keyboardShortcuts.file.importTitle' => 'import shortcuts',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'written on ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'the file doesn’t say which keyboard it was written on.',
 			'keyboardShortcuts.file.translate' => 'what should each of these keys be on this keyboard?',
 			'keyboardShortcuts.file.leaveOut' => 'leave those shortcuts out',
-			'keyboardShortcuts.file.replace' => 'replace this device’s config',
-			'keyboardShortcuts.file.replaceHint' => 'every shortcut not in the file goes back to its default.',
-			'keyboardShortcuts.file.merge' => 'add to this device’s config',
-			'keyboardShortcuts.file.mergeHint' => 'the file’s shortcuts replace this device’s for the same commands, and the rest stay.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'not known in this version, so left out: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'not shortcuts, so left out: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'keys the app keeps for itself, so left out: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'bound to more than one command after the import: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'import',
-			'keyboardShortcuts.file.imported' => 'shortcuts imported',
 			'keyboardShortcuts.modifier.cmd' => '⌘ command',
 			'keyboardShortcuts.modifier.ctrl' => 'ctrl',
 			'keyboardShortcuts.modifier.meta' => 'windows / super',

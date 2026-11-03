@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$nb extends Translations$keyboardShortcuts$
 	@override String get title => 'Tastatursnarveier';
 	@override String get description => 'Tilpass tastetilordninger';
 	@override String get search => 'Søk i kommandoer og taster';
-	@override String get import => 'Importer…';
-	@override String get export => 'Eksporter…';
 	@override String get resetAll => 'Tilbakestill alle';
 	@override String get resetAllTitle => 'Tilbakestille alle snarveier?';
 	@override String get resetAllBody => 'Alle kommandoer går tilbake til standardtastene sine, og tastene som er knyttet til skrevne kommandoer, fjernes.';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$nb extends Translations$keyboardShort
 	final TranslationsNb _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => 'Snarveier lagret i ${location}';
-	@override String exportFailed({required Object error}) => 'Kunne ikke eksportere snarveiene: ${error}';
-	@override String importPickerFailed({required Object error}) => 'Kunne ikke åpne filen: ${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} er ikke en snarveifil denne appen kan lese: ${problem}';
-	@override String problemNotYaml({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})';
-	@override String get problemNotKeysFile => 'det er ikke en Ham2K-fil med tastatursnarveier';
-	@override String get problemNewerVersion => 'det ble skrevet av en nyere versjon av appen';
-	@override String get problemMalformed => 'deler av det følger ikke snarveiformatet';
-	@override String get problemTooLarge => 'det er for stort';
 	@override String get importTitle => 'Importer snarveier';
 	@override String writtenOn({required Object platform}) => 'Skrevet på ${platform}.';
 	@override String get writtenOnUnknown => 'Filen sier ikke hvilket tastatur den ble skrevet på.';
 	@override String get translate => 'Hva skal hver av disse tastene være på dette tastaturet?';
 	@override String get leaveOut => 'Utelat de snarveiene';
-	@override String get replace => 'Erstatt oppsettet på denne enheten';
-	@override String get replaceHint => 'Alle snarveier som ikke er i filen, går tilbake til standard.';
-	@override String get merge => 'Legg til i oppsettet på denne enheten';
-	@override String get mergeHint => 'Filens snarveier erstatter enhetens for de samme kommandoene, og resten beholdes.';
 	@override String unknown({required Object commands}) => 'Ukjent i denne versjonen, så utelatt: ${commands}';
 	@override String unreadableChords({required Object chords}) => 'Ikke snarveier, så utelatt: ${chords}';
 	@override String refusedChords({required Object chords}) => 'Taster appen holder for seg selv, så utelatt: ${chords}';
 	@override String conflicts({required Object keys}) => 'Knyttet til mer enn én kommando etter importen: ${keys}';
 	@override String get importAction => 'Importer';
-	@override String get imported => 'Snarveier importert';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsNb {
 			'keyboardShortcuts.title' => 'Tastatursnarveier',
 			'keyboardShortcuts.description' => 'Tilpass tastetilordninger',
 			'keyboardShortcuts.search' => 'Søk i kommandoer og taster',
-			'keyboardShortcuts.import' => 'Importer…',
-			'keyboardShortcuts.export' => 'Eksporter…',
 			'keyboardShortcuts.resetAll' => 'Tilbakestill alle',
 			'keyboardShortcuts.resetAllTitle' => 'Tilbakestille alle snarveier?',
 			'keyboardShortcuts.resetAllBody' => 'Alle kommandoer går tilbake til standardtastene sine, og tastene som er knyttet til skrevne kommandoer, fjernes.',
@@ -6899,30 +6881,16 @@ extension on TranslationsNb {
 			'keyboardShortcuts.editor.removeCommand' => 'Fjern kommando',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'Ingen kommando leser «${text}»',
 			'keyboardShortcuts.editor.noShortcuts' => 'Ingen tast ennå',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Snarveier lagret i ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Kunne ikke eksportere snarveiene: ${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Kunne ikke åpne filen: ${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} er ikke en snarveifil denne appen kan lese: ${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'teksten er ikke gyldig YAML (linje ${line})',
-			'keyboardShortcuts.file.problemNotKeysFile' => 'det er ikke en Ham2K-fil med tastatursnarveier',
-			'keyboardShortcuts.file.problemNewerVersion' => 'det ble skrevet av en nyere versjon av appen',
-			'keyboardShortcuts.file.problemMalformed' => 'deler av det følger ikke snarveiformatet',
-			'keyboardShortcuts.file.problemTooLarge' => 'det er for stort',
 			'keyboardShortcuts.file.importTitle' => 'Importer snarveier',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Skrevet på ${platform}.',
 			'keyboardShortcuts.file.writtenOnUnknown' => 'Filen sier ikke hvilket tastatur den ble skrevet på.',
 			'keyboardShortcuts.file.translate' => 'Hva skal hver av disse tastene være på dette tastaturet?',
 			'keyboardShortcuts.file.leaveOut' => 'Utelat de snarveiene',
-			'keyboardShortcuts.file.replace' => 'Erstatt oppsettet på denne enheten',
-			'keyboardShortcuts.file.replaceHint' => 'Alle snarveier som ikke er i filen, går tilbake til standard.',
-			'keyboardShortcuts.file.merge' => 'Legg til i oppsettet på denne enheten',
-			'keyboardShortcuts.file.mergeHint' => 'Filens snarveier erstatter enhetens for de samme kommandoene, og resten beholdes.',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Ukjent i denne versjonen, så utelatt: ${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Ikke snarveier, så utelatt: ${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Taster appen holder for seg selv, så utelatt: ${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Knyttet til mer enn én kommando etter importen: ${keys}',
 			'keyboardShortcuts.file.importAction' => 'Importer',
-			'keyboardShortcuts.file.imported' => 'Snarveier importert',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Kommando',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsNb {
 			'switchAccounts.enterEmailPrompt' => 'Oppgi e-postadressen til kontoen du vil at denne enheten skal bruke.',
 			'switchAccounts.emailAddress' => 'E-postadresse',
 			'switchAccounts.linkAccount' => 'Koble til konto',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Koden er kopiert til utklippstavlen',
 			'switchAccounts.copyCode' => 'Kopier kode',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Åpne Ham2K-appen på en enhet som allerede er koblet til ${email}, og skriv inn denne koden for å godkjenne forespørselen:',
@@ -7090,6 +7056,8 @@ extension on TranslationsNb {
 			'switchAccounts.noConfirmationCode' => 'Synkroniseringsserveren sendte ingen bekreftelseskode. Prøv igjen senere.',
 			'switchAccounts.switchNotAccepted' => 'Den kontoen godtok ikke byttet. Prøv å koble den til med en e-postadresse i stedet.',
 			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO', other: '${count} QSOer', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
 			'qsonImport.title' => 'Importer QSON-operasjon',

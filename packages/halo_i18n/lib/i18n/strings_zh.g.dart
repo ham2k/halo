@@ -908,8 +908,6 @@ class _Translations$keyboardShortcuts$zh extends Translations$keyboardShortcuts$
 	@override String get title => '键盘快捷键';
 	@override String get description => '自定义按键映射';
 	@override String get search => '搜索命令和按键';
-	@override String get import => '导入…';
-	@override String get export => '导出…';
 	@override String get resetAll => '全部重置';
 	@override String get resetAllTitle => '重置所有快捷键？';
 	@override String get resetAllBody => '每个命令都恢复为默认按键，绑定到键入命令的按键会被移除。';
@@ -3238,30 +3236,16 @@ class _Translations$keyboardShortcuts$file$zh extends Translations$keyboardShort
 	final TranslationsZh _root; // ignore: unused_field
 
 	// Translations
-	@override String exported({required Object location}) => '快捷键已保存到 ${location}';
-	@override String exportFailed({required Object error}) => '无法导出快捷键：${error}';
-	@override String importPickerFailed({required Object error}) => '无法打开文件：${error}';
-	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的快捷键文件：${problem}';
-	@override String problemNotYaml({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）';
-	@override String get problemNotKeysFile => '它不是 Ham2K 键盘快捷键文件';
-	@override String get problemNewerVersion => '它由较新版本的应用写入';
-	@override String get problemMalformed => '其中一部分不符合快捷键格式';
-	@override String get problemTooLarge => '它太大了';
 	@override String get importTitle => '导入快捷键';
 	@override String writtenOn({required Object platform}) => '在 ${platform} 上写入。';
 	@override String get writtenOnUnknown => '文件没有说明它是在哪种键盘上写入的。';
 	@override String get translate => '这些按键在此键盘上应各自对应哪个键？';
 	@override String get leaveOut => '不导入这些快捷键';
-	@override String get replace => '替换此设备的配置';
-	@override String get replaceHint => '文件中没有的每个快捷键都恢复为默认。';
-	@override String get merge => '添加到此设备的配置';
-	@override String get mergeHint => '相同命令以文件中的快捷键为准，其余保持不变。';
 	@override String unknown({required Object commands}) => '此版本不认识，因此已略过：${commands}';
 	@override String unreadableChords({required Object chords}) => '不是快捷键，因此已略过：${chords}';
 	@override String refusedChords({required Object chords}) => '应用保留给自己的按键，因此已略过：${chords}';
 	@override String conflicts({required Object keys}) => '导入后绑定到多个命令：${keys}';
 	@override String get importAction => '导入';
-	@override String get imported => '快捷键已导入';
 }
 
 // Path: keyboardShortcuts.modifier
@@ -6841,8 +6825,6 @@ extension on TranslationsZh {
 			'keyboardShortcuts.title' => '键盘快捷键',
 			'keyboardShortcuts.description' => '自定义按键映射',
 			'keyboardShortcuts.search' => '搜索命令和按键',
-			'keyboardShortcuts.import' => '导入…',
-			'keyboardShortcuts.export' => '导出…',
 			'keyboardShortcuts.resetAll' => '全部重置',
 			'keyboardShortcuts.resetAllTitle' => '重置所有快捷键？',
 			'keyboardShortcuts.resetAllBody' => '每个命令都恢复为默认按键，绑定到键入命令的按键会被移除。',
@@ -6899,30 +6881,16 @@ extension on TranslationsZh {
 			'keyboardShortcuts.editor.removeCommand' => '移除命令',
 			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => '没有名为“${text}”的命令',
 			'keyboardShortcuts.editor.noShortcuts' => '尚无按键',
-			'keyboardShortcuts.file.exported' => ({required Object location}) => '快捷键已保存到 ${location}',
-			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => '无法导出快捷键：${error}',
-			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => '无法打开文件：${error}',
-			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} 不是此应用能读取的快捷键文件：${problem}',
-			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => '文本不是有效的 YAML（第 ${line} 行）',
-			'keyboardShortcuts.file.problemNotKeysFile' => '它不是 Ham2K 键盘快捷键文件',
-			'keyboardShortcuts.file.problemNewerVersion' => '它由较新版本的应用写入',
-			'keyboardShortcuts.file.problemMalformed' => '其中一部分不符合快捷键格式',
-			'keyboardShortcuts.file.problemTooLarge' => '它太大了',
 			'keyboardShortcuts.file.importTitle' => '导入快捷键',
 			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => '在 ${platform} 上写入。',
 			'keyboardShortcuts.file.writtenOnUnknown' => '文件没有说明它是在哪种键盘上写入的。',
 			'keyboardShortcuts.file.translate' => '这些按键在此键盘上应各自对应哪个键？',
 			'keyboardShortcuts.file.leaveOut' => '不导入这些快捷键',
-			'keyboardShortcuts.file.replace' => '替换此设备的配置',
-			'keyboardShortcuts.file.replaceHint' => '文件中没有的每个快捷键都恢复为默认。',
-			'keyboardShortcuts.file.merge' => '添加到此设备的配置',
-			'keyboardShortcuts.file.mergeHint' => '相同命令以文件中的快捷键为准，其余保持不变。',
 			'keyboardShortcuts.file.unknown' => ({required Object commands}) => '此版本不认识，因此已略过：${commands}',
 			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => '不是快捷键，因此已略过：${chords}',
 			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => '应用保留给自己的按键，因此已略过：${chords}',
 			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => '导入后绑定到多个命令：${keys}',
 			'keyboardShortcuts.file.importAction' => '导入',
-			'keyboardShortcuts.file.imported' => '快捷键已导入',
 			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
 			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
 			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
@@ -7072,8 +7040,6 @@ extension on TranslationsZh {
 			'switchAccounts.enterEmailPrompt' => '输入您希望此设备使用的账户的电子邮件地址。',
 			'switchAccounts.emailAddress' => '电子邮件地址',
 			'switchAccounts.linkAccount' => '链接账户',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.copiedCode' => '已将代码复制到剪贴板',
 			'switchAccounts.copyCode' => '复制代码',
 			'switchAccounts.codePrompt' => ({required Object email}) => '在已与 ${email} 链接的设备上打开 Ham2K 应用，并输入此代码以批准请求：',
@@ -7090,6 +7056,8 @@ extension on TranslationsZh {
 			'switchAccounts.noConfirmationCode' => '同步服务器没有发送确认代码。请稍后重试。',
 			'switchAccounts.switchNotAccepted' => '该账户不接受切换。请改用电子邮件地址链接。',
 			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个 QSO', other: '${count} 个 QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
 			'qsonImport.title' => '导入 QSON 操作',
