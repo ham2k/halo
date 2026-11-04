@@ -79,6 +79,10 @@ class StatusBarNotice {
   final DateTime createdAt;
   final DateTime? dismissedAt;
 
+  /// The extension that posted it, so its markdown can draw that extension's
+  /// own images, in the history too; null for the app's own notices.
+  final String? extensionKey;
+
   /// Whether this notice survives to disk at all. False for notices whose
   /// actions matter enough that showing a stale, action-less copy of them
   /// after a restart would be worse than not showing them again — e.g. an
@@ -95,6 +99,7 @@ class StatusBarNotice {
     this.actions = const [],
     required this.createdAt,
     this.dismissedAt,
+    this.extensionKey,
     this.persist = true,
   });
 
@@ -106,6 +111,7 @@ class StatusBarNotice {
     actions: actions,
     createdAt: createdAt,
     dismissedAt: dismissedAt ?? this.dismissedAt,
+    extensionKey: extensionKey,
     persist: persist,
   );
 
@@ -116,6 +122,7 @@ class StatusBarNotice {
     'text': text,
     'createdAt': createdAt.toIso8601String(),
     'dismissedAt': dismissedAt?.toIso8601String(),
+    if (extensionKey != null) 'extensionKey': extensionKey,
   };
 
   static StatusBarNotice _fromJson(Map<String, dynamic> json) => StatusBarNotice(
@@ -125,6 +132,7 @@ class StatusBarNotice {
     text: json['text'] as String? ?? '',
     createdAt: DateTime.parse(json['createdAt'] as String),
     dismissedAt: json['dismissedAt'] != null ? DateTime.parse(json['dismissedAt'] as String) : null,
+    extensionKey: json['extensionKey'] as String?,
   );
 }
 
@@ -259,8 +267,25 @@ class StatusBarService extends ChangeNotifier {
     if (keys.isNotEmpty || dismissed) notifyListeners();
   }
 
-  void showNotice({required String key, String? icon, String? title, required String text, List<StatusBarAction> actions = const [], bool persist = true}) {
-    final notice = StatusBarNotice(key: key, icon: icon, title: title, text: text, actions: actions, createdAt: nowLocal(), persist: persist);
+  void showNotice({
+    required String key,
+    String? icon,
+    String? title,
+    required String text,
+    List<StatusBarAction> actions = const [],
+    bool persist = true,
+    String? extensionKey,
+  }) {
+    final notice = StatusBarNotice(
+      key: key,
+      icon: icon,
+      title: title,
+      text: text,
+      actions: actions,
+      createdAt: nowLocal(),
+      persist: persist,
+      extensionKey: extensionKey,
+    );
     _notices.removeWhere((n) => n.key == key);
     _notices.add(notice);
     if (_notices.length > _maxHistory) _notices.removeRange(0, _notices.length - _maxHistory);

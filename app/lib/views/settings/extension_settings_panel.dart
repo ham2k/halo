@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../extension_markdown_images.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
@@ -379,27 +380,32 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       }
     }
 
-    final form = FormRenderer(
-      formDefinition: definition,
-      initialState: const {},
-      sliver: widget.sliver,
-      showActions: false,
-      // Embedded, the heading above the form names it — the form's own
-      // definition title would double it.
-      showTitle: !widget.embedded,
-      developerMode: widget.services.settings.developerMode,
-      settingsList: true,
-      validator: _validate,
-      onChange: _autosave,
-      onAction: (actionKey, method, state) async {
-        final message = await widget.services.extensions.runSettingsAction(hookKey: _hookKey, panelKey: _panelKey, method: method, state: state);
-        return message == null ? null : FormActionResult(message: message);
-      },
-      onManageAccount: _manageAccount,
-      onOpenLink: openExternalUrl,
-      sectionFolds: SettingsSectionFolds(widget.services.settings.prefs, 'extension:$_hookKey/$_panelKey'),
-      onSubmit: (_) {},
-      onCancel: () {},
+    // Its markdown draws the extension's own images, and only those.
+    final form = ExtensionMarkdownImages.owning(
+      widget.services.extensions,
+      widget.descriptor['extensionKey'] as String? ?? _hookKey,
+      child: FormRenderer(
+        formDefinition: definition,
+        initialState: const {},
+        sliver: widget.sliver,
+        showActions: false,
+        // Embedded, the heading above the form names it — the form's own
+        // definition title would double it.
+        showTitle: !widget.embedded,
+        developerMode: widget.services.settings.developerMode,
+        settingsList: true,
+        validator: _validate,
+        onChange: _autosave,
+        onAction: (actionKey, method, state) async {
+          final message = await widget.services.extensions.runSettingsAction(hookKey: _hookKey, panelKey: _panelKey, method: method, state: state);
+          return message == null ? null : FormActionResult(message: message);
+        },
+        onManageAccount: _manageAccount,
+        onOpenLink: openExternalUrl,
+        sectionFolds: SettingsSectionFolds(widget.services.settings.prefs, 'extension:$_hookKey/$_panelKey'),
+        onSubmit: (_) {},
+        onCancel: () {},
+      ),
     );
     // Embedded, this panel is one CATEGORY of the list that hosts it,
     // headed and collapsible exactly as a core group's is

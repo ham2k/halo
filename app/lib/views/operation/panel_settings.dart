@@ -12,6 +12,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import '../extension_markdown_images.dart';
 
 import '../../services/halo_services.dart';
 import '../../services/panel_service.dart';
@@ -51,6 +52,7 @@ Future<void> showPanelSettings(BuildContext context, {required HaLoServices serv
     context,
     formDefinition: {'title': panel.title, 'elements': panel.formFields},
     initialState: current,
+    markdownImages: extensionImagesFor(services.extensions, panel.hookKey),
     developerMode: services.settings.developerMode,
     // A panel's configuration is settings, not a form to fill in — same rows
     // the Settings panels show.

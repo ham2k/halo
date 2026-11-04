@@ -59,6 +59,18 @@ class FileBundleStorage implements BundleStorage {
   }
 
   @override
+  Future<List<int>?> readBytes(String key, String name) async {
+    final file = File(p.join((await _root()).path, key, name));
+    try {
+      return await file.readAsBytes();
+    } on PathNotFoundException {
+      // Absent — or gone between a look and the read, while an update
+      // rewrites the extension's directory: the same answer either way.
+      return null;
+    }
+  }
+
+  @override
   Future<void> write(String key, Map<String, List<int>> files) async {
     final dir = Directory(p.join((await _root()).path, key));
     // Replaced whole rather than merged: a file the new version dropped must

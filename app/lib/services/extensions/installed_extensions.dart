@@ -13,6 +13,7 @@
 // one.
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart' show sha256;
@@ -208,6 +209,15 @@ const kMaxEntries = 2000;
 /// real extension carrying its own libraries (~220 KB packed), and far below
 /// what would hurt to hold in memory.
 const kMaxDownloadBytes = 16 * 1024 * 1024;
+
+/// The most an image an extension's markdown names from its own `assets/`
+/// may weigh to be drawn. Far above a logo or a chart, and a bound on what a
+/// panel showing it holds in memory.
+const kMaxAssetImageBytes = 4 * 1024 * 1024;
+
+/// How many bytes of those images the store keeps read, all extensions
+/// together, before it drops the least recently drawn.
+const kAssetCacheBytes = 32 * 1024 * 1024;
 
 class BundleException implements Exception {
   final BundleRejection reason;
@@ -593,6 +603,7 @@ class InstalledExtensions {
       files[file.name] = bytes;
     }
     await storage.write(bundle.key, files);
+    _forgetAssets(bundle.key);
   }
 
   /// [dir] joined with an archive entry name, or null if the result would
@@ -607,6 +618,105 @@ class InstalledExtensions {
   Future<void> uninstall(String key) async {
     _checkSafeKey(key);
     await storage.remove(key);
+    _forgetAssets(key);
+  }
+
+  /// The bytes of [path] in the installed extension [key]'s own `assets/` —
+  /// an image its markdown names, like `assets/logo.png` — or null when [path]
+  /// names nothing there, anything outside it, or a file too large to draw.
+  ///
+  /// Null rather than a throw for those: the path comes from markdown the
+  /// extension wrote, and the answer to a bad one is its alt text. A store
+  /// that cannot be read at all is not the author's, and fails the future
+  /// — reported once per file, then retried on the next render.
+  ///
+  /// Read once and kept, up to [kAssetCacheBytes], as the same bytes: a panel
+  /// re-renders its markdown on every change, and each render would
+  /// otherwise read, and decode, every image it names again. An install or
+  /// uninstall of [key] drops its own.
+  Future<Uint8List?> readAsset(String key, String path) {
+    final cacheKey = _assetCacheKey(key, path);
+    if (cacheKey == null) return Future.value();
+    final cached = _assets.remove(cacheKey);
+    if (cached != null) return (_assets[cacheKey] = cached).read;
+    final name = cacheKey.substring(key.length + 1);
+    final entry = _AssetEntry(
+      storage.readBytes(key, name).then((bytes) => bytes == null || bytes.length > kMaxAssetImageBytes ? null : Uint8List.fromList(bytes)),
+    );
+    _assets[cacheKey] = entry;
+    entry.read.then(
+      (bytes) {
+        _reportedAssetFailures.remove(cacheKey);
+        entry.bytes = bytes;
+        entry.done = true;
+        _trimAssets();
+      },
+      onError: (Object error, StackTrace stack) {
+        // Not kept, so the next render tries again — unless a newer read of
+        // the same file has taken its place since.
+        if (identical(_assets[cacheKey], entry)) _assets.remove(cacheKey);
+        debugPrint('[extensions] could not read "$name" of "$key": $error');
+        // Once per file until it reads again: every render of a pane that
+        // shows it would otherwise report the same damaged store anew.
+        if (_reportedAssetFailures.add(cacheKey)) ErrorReportingService.report(error, stack, context: 'installed-extensions:asset');
+      },
+    );
+    return entry.read;
+  }
+
+  /// What [readAsset] already holds for [path], without waiting: its bytes,
+  /// or null when it has not finished reading (or found nothing). Lets a
+  /// pane redrawn from scratch show an image it already has at once, rather
+  /// than an empty box for a frame.
+  Uint8List? readAssetNow(String key, String path) {
+    final cacheKey = _assetCacheKey(key, path);
+    return cacheKey == null ? null : _assets[cacheKey]?.bytes;
+  }
+
+  String? _assetCacheKey(String key, String path) {
+    assert(kSafeKeyPattern.hasMatch(key), 'an asset of "$key", which is not an extension key');
+    if (!kSafeKeyPattern.hasMatch(key)) return null;
+    final name = assetEntryName(path);
+    return name == null ? null : '$key/$name';
+  }
+
+  /// Drops the least recently drawn images until what is held fits
+  /// [kAssetCacheBytes]. One still reading weighs nothing yet.
+  void _trimAssets() {
+    var total = 0;
+    for (final entry in _assets.values) {
+      total += entry.bytes?.length ?? 0;
+    }
+    while (total > kAssetCacheBytes && _assets.isNotEmpty) {
+      final oldest = _assets.keys.first;
+      total -= _assets.remove(oldest)!.bytes?.length ?? 0;
+    }
+  }
+
+  /// Most recently drawn last, so the first is the one to drop.
+  final _assets = <String, _AssetEntry>{};
+  final _reportedAssetFailures = <String>{};
+
+  void _forgetAssets(String key) {
+    _assets.removeWhere((cacheKey, _) => cacheKey.startsWith('$key/'));
+    _assetGenerations[key] = assetGeneration(key) + 1;
+  }
+
+  /// Counts the installs and uninstalls of [key] this session: what an image
+  /// drawn from its `assets/` was drawn from, so a pane can tell its images
+  /// are out of date.
+  int assetGeneration(String key) => _assetGenerations[key] ?? 0;
+  final _assetGenerations = <String, int>{};
+
+  /// [path] as the `assets/` entry it names, or null when it names one
+  /// outside `assets/` (or no file at all). `./assets/a.png` and
+  /// `assets/x/../a.png` both name `assets/a.png`; `assets/../index.js` names
+  /// nothing.
+  static String? assetEntryName(String path) {
+    if (path.startsWith('/') || path.contains('\\')) return null;
+    final normalized = p.posix.normalize(path);
+    if (!normalized.startsWith(kAssetsPrefix) || normalized.length == kAssetsPrefix.length) return null;
+    return safeJoin('/probe', normalized) == null ? null : normalized;
   }
 
   /// Refuses anything that could name storage other than that extension's
@@ -705,4 +815,14 @@ class InstalledExtensions {
     _checkSafeKey(key);
     return await storage.readText(key, kBundleEntry) ?? (throw StateError('installed extension "$key" has no $kBundleEntry'));
   }
+}
+
+/// One image [InstalledExtensions.readAsset] holds: the read, and its bytes
+/// once it is [done].
+class _AssetEntry {
+  _AssetEntry(this.read);
+
+  final Future<Uint8List?> read;
+  Uint8List? bytes;
+  bool done = false;
 }

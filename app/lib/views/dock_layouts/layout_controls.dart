@@ -117,27 +117,31 @@ extension LayoutControls<T extends StatefulWidget> on DockHost<T> {
             panelSettingsBuilder:
                 _panelSettingsOverride(context, id) ??
                 (embeddablePanel != null && panelConfig != null
-                    ? (builderContext) => EmbeddedPanelSettingsForm(
-                        fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
-                        initial: panelConfig,
-                        developerMode: dockServices.settings.developerMode,
-                        onFieldChange: (key, value, state) async {
-                          final field = embeddablePanel.formFields.firstWhere((f) => f['key'] == key, orElse: () => const {});
-                          if (sameConfigValue(value, panelConfig[key], field['value'])) return;
-                          await dockServices.extensions.commitSettingsFieldValue(
-                            kind: 'simple',
-                            hookKey: embeddablePanel.hookKey ?? embeddablePanel.id,
-                            panelKey: embeddablePanel.id,
-                            fieldKey: key,
-                            value: value,
-                            state: state,
-                            isSecret: field['fieldType'] == 'secret',
-                          );
-                          // Keeps the no-op check above comparing against what
-                          // was actually last committed.
-                          panelConfig[key] = value;
-                          dockServices.panels.markConfigChanged(embeddablePanel.id);
-                        },
+                    ? (builderContext) => ExtensionMarkdownImages.owning(
+                        dockServices.extensions,
+                        embeddablePanel.hookKey,
+                        child: EmbeddedPanelSettingsForm(
+                          fields: embeddablePanel.formFields.where((field) => field['type'] != 'action').toList(),
+                          initial: panelConfig,
+                          developerMode: dockServices.settings.developerMode,
+                          onFieldChange: (key, value, state) async {
+                            final field = embeddablePanel.formFields.firstWhere((f) => f['key'] == key, orElse: () => const {});
+                            if (sameConfigValue(value, panelConfig[key], field['value'])) return;
+                            await dockServices.extensions.commitSettingsFieldValue(
+                              kind: 'simple',
+                              hookKey: embeddablePanel.hookKey ?? embeddablePanel.id,
+                              panelKey: embeddablePanel.id,
+                              fieldKey: key,
+                              value: value,
+                              state: state,
+                              isSecret: field['fieldType'] == 'secret',
+                            );
+                            // Keeps the no-op check above comparing against what
+                            // was actually last committed.
+                            panelConfig[key] = value;
+                            dockServices.panels.markConfigChanged(embeddablePanel.id);
+                          },
+                        ),
                       )
                     : null),
             onChanged: (next) => _rebuild(() {

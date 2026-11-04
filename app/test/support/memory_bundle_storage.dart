@@ -19,6 +19,9 @@ class MemoryBundleStorage implements BundleStorage {
   Future<String?> readText(String key, String name) async => files[key]?[name] == null ? null : utf8.decode(files[key]![name]!);
 
   @override
+  Future<List<int>?> readBytes(String key, String name) async => files[key]?[name];
+
+  @override
   Future<void> write(String key, Map<String, List<int>> files) async => this.files[key] = files;
 
   @override

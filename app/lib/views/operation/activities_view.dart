@@ -49,6 +49,7 @@ import 'activity_rows.dart';
 import 'activity_search_query.dart';
 import 'activity_search_state.dart';
 import 'operation_location_pin.dart';
+import '../extension_markdown_images.dart';
 
 export 'activity_rows.dart';
 export 'activity_search_query.dart';

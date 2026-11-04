@@ -146,4 +146,69 @@ void main() {
       expect(_sheet(tester).p?.fontFamilyFallback, contains(emojiFontFamily));
     });
   });
+
+  group('images', () {
+    testWidgets('draw as their alt text, and fetch nothing, with no MarkdownImages above', (tester) async {
+      await _pump(tester, data: 'Look: ![a pixel](https://tracker.example/p.png)');
+      expect(find.text('a pixel', findRichText: true), findsOneWidget);
+      expect(find.byType(Image), findsNothing);
+    });
+
+    testWidgets('draw as nothing when they have no alt text', (tester) async {
+      await _pump(tester, data: '![](https://tracker.example/p.png)');
+      expect(find.byType(Image), findsNothing);
+    });
+
+    testWidgets('draw through the MarkdownImages above', (tester) async {
+      final seen = <Uri>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MarkdownImages(
+              builder: (config) {
+                seen.add(config.uri);
+                return const SizedBox(key: Key('drawn'), width: 4, height: 4);
+              },
+              child: const HaloMarkdown(data: '![logo](assets/logo.png#16x8)'),
+            ),
+          ),
+        ),
+      );
+      expect(find.byKey(const Key('drawn')), findsOneWidget);
+      expect(seen.single.path, 'assets/logo.png');
+    });
+
+    testWidgets('draw afresh when the MarkdownImages above changes, the text the same', (tester) async {
+      Widget pane(String drawn) => MaterialApp(
+        home: Scaffold(
+          body: MarkdownImages(
+            builder: (config) => SizedBox(key: Key(drawn)),
+            child: const HaloMarkdown(data: '![logo](assets/logo.png)'),
+          ),
+        ),
+      );
+      await tester.pumpWidget(pane('before'));
+      expect(find.byKey(const Key('before')), findsOneWidget);
+      await tester.pumpWidget(pane('after'));
+      expect(find.byKey(const Key('after')), findsOneWidget);
+    });
+
+    testWidgets("a caller's own builder wins over the MarkdownImages above", (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MarkdownImages(
+              builder: (config) => const SizedBox(key: Key('scope')),
+              child: HaloMarkdown(
+                data: '![logo](assets/logo.png)',
+                sizedImageBuilder: (config) => const SizedBox(key: Key('own')),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.byKey(const Key('own')), findsOneWidget);
+      expect(find.byKey(const Key('scope')), findsNothing);
+    });
+  });
 }

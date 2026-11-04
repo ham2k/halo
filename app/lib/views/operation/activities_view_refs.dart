@@ -72,7 +72,13 @@ mixin _ActivitiesRefs on State<OperationSheet> {
         if (entry.key != 'type') entry.key: entry.value,
     };
 
-    final result = await showFormDialog(context, formDefinition: form, initialState: initialState, developerMode: widget.services.settings.developerMode);
+    final result = await showFormDialog(
+      context,
+      formDefinition: form,
+      initialState: initialState,
+      developerMode: widget.services.settings.developerMode,
+      markdownImages: extensionImagesFor(widget.services.extensions, controlExtensionKey(control)),
+    );
     if (result == null || !mounted) return null;
 
     return refWithFormResult(existing, result, refType: refType);

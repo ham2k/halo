@@ -26,6 +26,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart' show MarkdownSizedImageBuilder;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -123,7 +124,11 @@ class ExtensionPanel extends StatefulWidget {
   /// the radio.
   final SceneSpectrumSource? spectrum;
 
-  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle, this.spectrum});
+  /// How a markdown pane draws its images: the extension's own, from
+  /// `extensionImagesFor`. Null draws each as its alt text.
+  final MarkdownSizedImageBuilder? markdownImages;
+
+  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle, this.spectrum, this.markdownImages});
 
   @override
   State<ExtensionPanel> createState() => _ExtensionPanelState();
@@ -785,7 +790,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       if (_content == null || _content!.kind == 'scene') {
         _captureEnvironment(panelEnvironment(context, _paneSize));
       }
-      return PanelContentView(
+      final view = PanelContentView(
         key: ValueKey('${widget.panel.id}:$_sceneGeneration'),
         content: _content,
         error: _error,
@@ -793,6 +798,8 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         onSceneEvent: _sceneEvent,
         spectrum: widget.spectrum,
       );
+      final images = widget.markdownImages;
+      return images == null ? view : MarkdownImages(builder: images, child: view);
     },
   );
 }

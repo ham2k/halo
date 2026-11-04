@@ -27,6 +27,7 @@ import '../services/file_pick.dart';
 import '../services/halo_services.dart';
 import '../services/link_opener.dart' show openExternalUrl;
 import '../services/extensions/installed_extensions.dart';
+import 'extension_markdown_images.dart';
 import 'extension_screenshots.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 
@@ -749,7 +750,8 @@ enum ExtensionDetailsAction { uninstall, update, followStable }
 /// [update] is the release the catalog offers when that is newer than what is
 /// installed; null means there is nothing to move to. [channel] is the
 /// catalog track the extension follows. [about] is the extension's longer
-/// story in markdown, already in the operator's language, when it has one. The dialog only ever ANSWERS: acting
+/// story in markdown, already in the operator's language, when it has one;
+/// [images] is the store an installed one draws its own images from. The dialog only ever ANSWERS: acting
 /// is the panel's, which owns the applying state and the status bar.
 Future<ExtensionDetailsAction?> showExtensionDetails(
   BuildContext context, {
@@ -761,6 +763,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   CatalogChannel channel = CatalogChannel.stable,
   List<CatalogScreenshot> screenshots = const [],
   String? about,
+  InstalledExtensions? images,
 }) => showHaloDialog<ExtensionDetailsAction>(
   context: context,
   builder: (context) => _DetailsDialog(
@@ -772,6 +775,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
     channel: channel,
     screenshots: screenshots,
     about: about,
+    images: images,
   ),
 );
 
@@ -797,7 +801,12 @@ class _DetailsDialog extends StatelessWidget {
     required this.channel,
     required this.screenshots,
     required this.about,
+    required this.images,
   });
+
+  /// Where an installed extension's `about` draws its own images from; null
+  /// draws none.
+  final InstalledExtensions? images;
 
   @override
   Widget build(BuildContext context) {
@@ -836,7 +845,17 @@ class _DetailsDialog extends StatelessWidget {
             const SizedBox(height: Space.md),
             ExtensionScreenshotStrip(screenshots: screenshots, title: info.nameFor(locale), height: 88),
           ],
-          if (about case final about?) ...[const SizedBox(height: Space.md), ExtensionAbout(markdown: about)],
+          if (about case final about?) ...[
+            const SizedBox(height: Space.md),
+            if (images case final images?)
+              ExtensionMarkdownImages(
+                store: images,
+                extensionKey: info.key,
+                child: ExtensionAbout(markdown: about),
+              )
+            else
+              ExtensionAbout(markdown: about),
+          ],
           const SizedBox(height: Space.xl),
           // Where it came from, in the same words the consent screen used
           // when it arrived. For an extension the app ships there is nothing
@@ -960,11 +979,13 @@ List<String> extensionHookLabels(List<String> hooks, Translations$extensionsPane
 /// capitals, with the hyphens a hook name needs turned back into spaces.
 String _programName(String code) => code.replaceAll('-', ' ').toUpperCase();
 
-/// An extension's `about`: markdown its author wrote, drawn as text and
-/// nothing more. Links leave for the browser, as a panel's do; an image is
-/// its alt text, so opening the details fetches nothing from anywhere the
-/// manifest names — pictures are the catalog's screenshots, which it serves
-/// itself.
+/// An extension's `about`: markdown its author wrote. Links leave for the
+/// browser, as a panel's do. An image is its alt text unless an
+/// [ExtensionMarkdownImages] above draws it — the details of an installed
+/// extension draw its own `assets/` and `data:` images; the install screen,
+/// with nothing installed yet, draws none. Opening either never fetches from
+/// anywhere the manifest names: pictures from elsewhere are the catalog's
+/// screenshots, which it serves itself.
 @visibleForTesting
 class ExtensionAbout extends StatelessWidget {
   final String markdown;
@@ -978,7 +999,6 @@ class ExtensionAbout extends StatelessWidget {
     onTapLink: (text, href, title) {
       if (href != null) openExternalUrl(href);
     },
-    sizedImageBuilder: (config) => config.alt == null || config.alt!.isEmpty ? const SizedBox.shrink() : Text(config.alt!),
   );
 }
 

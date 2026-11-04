@@ -548,6 +548,7 @@ class _ExtensionHostCalls {
         context,
         formDefinition: formDef,
         initialState: state,
+        markdownImages: extensionImagesFor(_service, params['ns'] as String?),
         validator: (fieldKey, value, currentState) async {
           try {
             final res = await _service.host?.invoke(
@@ -605,7 +606,13 @@ class _ExtensionHostCalls {
       if (navigatorKey.currentContext == null) throw StateError('No active navigation context found');
       _service.dialogs.show(
         ns,
-        () => showExtensionMarkdownDialog(title: message.title, text: message.text, actions: message.actions, onOpenAccount: _service.onOpenAccount),
+        () => showExtensionMarkdownDialog(
+          title: message.title,
+          text: message.text,
+          actions: message.actions,
+          onOpenAccount: _service.onOpenAccount,
+          images: extensionImagesFor(_service, ns),
+        ),
       );
     } else {
       _statusBarBounded(params, textChars: statusBarMaxTextChars);
@@ -682,7 +689,8 @@ class _ExtensionHostCalls {
       icon: params['icon'] as String?,
       title: params['title'] as String?,
       text: params['text'] as String? ?? '',
-      actions: noticeActionsFromJson(params['actions'], onOpenAccount: _service.onOpenAccount),
+      actions: noticeActionsFromJson(params['actions'], onOpenAccount: _service.onOpenAccount, images: extensionImagesFor(_service, ns)),
+      extensionKey: ns,
     );
     return null;
   }
@@ -827,7 +835,11 @@ class _ExtensionHostCalls {
     final action = params['action'];
     final onTap = action == null
         ? null
-        : declarativeActionHandler((action as Map<dynamic, dynamic>).cast<String, dynamic>(), onOpenAccount: _service.onOpenAccount);
+        : declarativeActionHandler(
+            (action as Map<dynamic, dynamic>).cast<String, dynamic>(),
+            onOpenAccount: _service.onOpenAccount,
+            images: extensionImagesFor(_service, params['ns'] as String?),
+          );
     if (action != null && onTap == null) throw ExtensionHostException("fyi refused: 'action' is not a link, dialog or account action");
     return FyiMessage(
       key: key,

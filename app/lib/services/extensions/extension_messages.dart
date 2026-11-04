@@ -10,6 +10,7 @@
 // callback back into the extension.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart' show MarkdownSizedImageBuilder;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -50,14 +51,14 @@ void clearGenerationStatus({required StatusBarService? statusBar, required FyiSe
 /// Notice actions from extensions are declarative JSON, not callbacks back
 /// into the extension (matches the `activity` hook's "describe UI as data"
 /// convention) — `link` opens a URL, `dialog` shows a markdown dialog.
-List<StatusBarAction> noticeActionsFromJson(dynamic raw, {required OpenAccount? onOpenAccount}) {
+List<StatusBarAction> noticeActionsFromJson(dynamic raw, {required OpenAccount? onOpenAccount, MarkdownSizedImageBuilder? images}) {
   if (raw is! List) return const [];
   final actions = <StatusBarAction>[];
   for (final entry in raw) {
     if (entry is! Map) continue;
     final map = entry.cast<String, dynamic>();
     final label = map['label'] as String?;
-    final handler = declarativeActionHandler(map, onOpenAccount: onOpenAccount);
+    final handler = declarativeActionHandler(map, onOpenAccount: onOpenAccount, images: images);
     if (label == null || handler == null) continue;
     actions.add(StatusBarAction(label: label, onTap: handler));
   }
@@ -68,7 +69,10 @@ List<StatusBarAction> noticeActionsFromJson(dynamic raw, {required OpenAccount? 
 /// `link` opens a URL, `dialog` shows a markdown dialog, `account` opens that
 /// account's standalone dialog via [onOpenAccount]. Returns null for
 /// malformed or unknown actions, which the caller drops.
-VoidCallback? declarativeActionHandler(Map<String, dynamic> map, {required OpenAccount? onOpenAccount}) {
+///
+/// [images] draws the images of a dialog's markdown: the extension's own,
+/// from `extensionImagesFor`. Null draws each as its alt text.
+VoidCallback? declarativeActionHandler(Map<String, dynamic> map, {required OpenAccount? onOpenAccount, MarkdownSizedImageBuilder? images}) {
   switch (map['type'] as String?) {
     case 'link':
       final url = map['url'] as String?;
@@ -77,7 +81,7 @@ VoidCallback? declarativeActionHandler(Map<String, dynamic> map, {required OpenA
     case 'dialog':
       final text = map['text'] as String? ?? '';
       final title = map['title'] as String?;
-      return () => showExtensionMarkdownDialog(title: title, text: text, onOpenAccount: onOpenAccount);
+      return () => showExtensionMarkdownDialog(title: title, text: text, onOpenAccount: onOpenAccount, images: images);
     case 'account':
       final key = map['key'] as String?;
       if (key == null) return null;
@@ -93,6 +97,7 @@ Future<void> showExtensionMarkdownDialog({
   required String text,
   List<Map<String, dynamic>> actions = const [],
   required OpenAccount? onOpenAccount,
+  MarkdownSizedImageBuilder? images,
 }) async {
   final context = navigatorKey.currentContext;
   if (context == null) return;
@@ -101,15 +106,21 @@ Future<void> showExtensionMarkdownDialog({
     builder: (dialogContext) => HaloDialog(
       wide: true,
       title: title != null ? Text(title) : null,
-      content: HaloMarkdown(data: text),
+      // Inside the route: a MarkdownImages around the caller would not reach it.
+      content: images == null
+          ? HaloMarkdown(data: text)
+          : MarkdownImages(
+              builder: images,
+              child: HaloMarkdown(data: text),
+            ),
       cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       actions: [
         for (final action in actions)
-          if (action['label'] is String && declarativeActionHandler(action, onOpenAccount: onOpenAccount) != null)
+          if (action['label'] is String && declarativeActionHandler(action, onOpenAccount: onOpenAccount, images: images) != null)
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop();
-                declarativeActionHandler(action, onOpenAccount: onOpenAccount)!();
+                declarativeActionHandler(action, onOpenAccount: onOpenAccount, images: images)!();
               },
               child: Text(action['label'] as String),
             ),
@@ -148,10 +159,11 @@ Future<void> presentExtensionResultMessage(
   required WriteResultMessage writeStatus,
   required OpenAccount? onOpenAccount,
   String ns = 'extensions',
+  MarkdownSizedImageBuilder? images,
 }) async {
   final fields = readResultMessage(message);
   if (fields.dialog) {
-    await showExtensionMarkdownDialog(title: fields.title, text: fields.text, actions: fields.actions, onOpenAccount: onOpenAccount);
+    await showExtensionMarkdownDialog(title: fields.title, text: fields.text, actions: fields.actions, onOpenAccount: onOpenAccount, images: images);
   } else {
     writeStatus(ns, icon: fields.icon, title: fields.title, text: fields.text);
   }

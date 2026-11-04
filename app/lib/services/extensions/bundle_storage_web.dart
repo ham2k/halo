@@ -100,6 +100,15 @@ class IndexedDbBundleStorage implements BundleStorage {
   }
 
   @override
+  Future<List<int>?> readBytes(String key, String name) async {
+    late web.IDBRequest request;
+    await _transaction([_bundles], 'readonly', (tx) => request = tx.objectStore(_bundles).get(key.toJS));
+    final record = request.result;
+    if (record == null || record.isUndefined) return null;
+    return (record as JSObject).getProperty<JSUint8Array?>(name.toJS)?.toDart;
+  }
+
+  @override
   Future<void> write(String key, Map<String, List<int>> files) async {
     final record = JSObject();
     for (final MapEntry(key: name, value: bytes) in files.entries) {

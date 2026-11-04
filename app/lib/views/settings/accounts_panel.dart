@@ -18,6 +18,7 @@ import 'package:http/http.dart' as http;
 
 import '../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import '../extension_markdown_images.dart';
 import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import '../../services/deep_link_service.dart';
@@ -283,6 +284,13 @@ class _AccountPaneState extends State<AccountPane> {
     }
     return null;
   }
+
+  /// Markdown the account's extension wrote, drawing its own images.
+  Widget _markdown(String data) => ExtensionMarkdownImages.owning(
+    widget.services.extensions,
+    widget.account['extensionKey'] as String? ?? widget.account['key'] as String?,
+    child: HaloMarkdown(data: data),
+  );
 
   List<Map<String, dynamic>> get _fields => (widget.account['fields'] as List? ?? const []).cast<Map<String, dynamic>>();
 
@@ -683,7 +691,7 @@ class _AccountPaneState extends State<AccountPane> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (preface != null && preface.isNotEmpty) ...[HaloMarkdown(data: preface), const SizedBox(height: Space.md)],
+                  if (preface != null && preface.isNotEmpty) ...[_markdown(preface), const SizedBox(height: Space.md)],
                   if (field['type'] == 'secret')
                     SecretTextField(
                       controller: controller,
@@ -700,7 +708,7 @@ class _AccountPaneState extends State<AccountPane> {
                       decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
                       onChanged: (_) => setState(() {}),
                     ),
-                  if (postface != null && postface.isNotEmpty) ...[const SizedBox(height: Space.md), HaloMarkdown(data: postface)],
+                  if (postface != null && postface.isNotEmpty) ...[const SizedBox(height: Space.md), _markdown(postface)],
                 ],
               ),
             );
@@ -734,7 +742,7 @@ class _AccountPaneState extends State<AccountPane> {
                           height: 20,
                           child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
                         )
-                      : HaloMarkdown(data: _testResult ?? '—'),
+                      : _markdown(_testResult ?? '—'),
                 ),
               ),
               const SizedBox(width: Space.md),

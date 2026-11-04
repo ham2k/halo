@@ -33,6 +33,7 @@ import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
 import '../settings/settings_registry.dart' show SettingsGroup;
 import '../settings/settings_target_dialog.dart';
+import 'extension_markdown_images.dart';
 import 'extensions_panel.dart';
 import 'operation/clock/clock_panel.dart';
 import 'operation/activities_catalog_tier.dart' show CatalogTier, installCatalogExtension;
@@ -1134,6 +1135,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   panels: dockServices.panels,
                   onTitle: (title) => onPanelTitle(id, title),
                   renderContext: panelRenderContext,
+                  markdownImages: extensionImagesFor(dockServices.extensions, dockServices.panels[id]!.hookKey),
                   spectrum: dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
                       ? CatSpectrumSource(
                           dockServices.cat,

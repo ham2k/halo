@@ -199,6 +199,8 @@ mixin _ListFields on State<FormRenderer> {
       var deleted = false;
       final result = await showFormDialog(
         context,
+        // The item's editor is a route of its own: the form's images go along.
+        markdownImages: MarkdownImages.maybeOf(context),
         formDefinition: {
           'title': index != null ? t.formChrome.editItem(label: itemLabel) : t.formChrome.addItem(label: itemLabel),
           'elements': itemFields,

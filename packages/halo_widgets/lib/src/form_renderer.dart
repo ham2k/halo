@@ -1399,6 +1399,12 @@ Future<Map<String, dynamic>?> showFormDialog(
   /// `showFormPane`'s: the dialog closes first, completing with null, and
   /// then the callback runs.
   ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructiveAction,
+
+  /// How the form's markdown draws its images: an extension's form, its own
+  /// (see [MarkdownImages]). Passed in rather than read from above, because
+  /// the dialog's route sits outside the caller's tree. Null draws each as
+  /// its alt text.
+  MarkdownSizedImageBuilder? markdownImages,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -1427,23 +1433,26 @@ Future<Map<String, dynamic>?> showFormDialog(
       list: settingsList,
       contentPadding: settingsList ? null : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
       // Width comes from the shared sizing, and the shell scrolls the body.
-      content: FormRenderer(
-        key: formKey,
-        formDefinition: formDefinition,
-        initialState: initialState,
-        validator: validator,
-        transformer: transformer,
-        onChange: onChange,
-        onAction: onAction,
-        onManageAccount: onManageAccount,
-        onOpenLink: onOpenLink,
-        developerMode: developerMode,
-        settingsList: settingsList,
-        showActions: false,
-        showTitle: false,
-        submittingNotifier: submittingNotifier,
-        onSubmit: (values) => Navigator.of(context).pop(values),
-        onCancel: () => Navigator.of(context).pop(null),
+      content: _withMarkdownImages(
+        markdownImages,
+        FormRenderer(
+          key: formKey,
+          formDefinition: formDefinition,
+          initialState: initialState,
+          validator: validator,
+          transformer: transformer,
+          onChange: onChange,
+          onAction: onAction,
+          onManageAccount: onManageAccount,
+          onOpenLink: onOpenLink,
+          developerMode: developerMode,
+          settingsList: settingsList,
+          showActions: false,
+          showTitle: false,
+          submittingNotifier: submittingNotifier,
+          onSubmit: (values) => Navigator.of(context).pop(values),
+          onCancel: () => Navigator.of(context).pop(null),
+        ),
       ),
       // The shell's footer band supplies the background and padding.
       actions: [
@@ -1472,3 +1481,5 @@ Future<Map<String, dynamic>?> showFormDialog(
     ),
   );
 }
+
+Widget _withMarkdownImages(MarkdownSizedImageBuilder? images, Widget child) => images == null ? child : MarkdownImages(builder: images, child: child);

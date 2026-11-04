@@ -76,8 +76,12 @@ stays as it is. Writing `about` straight into `manifest.json` works too,
 but giving one text both ways fails the build.
 
 The markdown is CommonMark with GitHub's tables, strikethrough and
-autolinks. Links open in the browser. Images are not shown, and neither is
-raw HTML: pictures belong in the [screenshots](publishing.md#screenshots).
+autolinks. Links open in the browser. Raw HTML is not shown. Once the
+extension is installed, its details draw its own images: an `assets/` file
+from its bundle, or a `data:` URI (see [Images in
+markdown](panels.md#images-in-markdown)). The install screen and the catalog
+page show each image's alt text, so pictures of the extension at work belong
+in the [screenshots](publishing.md#screenshots).
 The details already show the extension's name, so start with text or a
 `##` heading rather than a `#` title. At most 10,000 characters in each
 language.

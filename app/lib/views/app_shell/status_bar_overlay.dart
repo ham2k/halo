@@ -33,6 +33,7 @@ import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import 'bottom_chrome_budget.dart';
 import 'home_rail_state.dart';
+import '../extension_markdown_images.dart';
 
 /// Paints the modal barrier over one piece of bottom chrome, and takes its
 /// pointers, while a dimming route is up.
@@ -489,6 +490,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
               text: notice.text,
               actions: [for (final action in notice.actions) StatusBarActionData(label: action.label, onTap: action.onTap, primary: action.primary)],
               createdAt: notice.createdAt,
+              images: extensionImagesFor(widget.services.extensions, notice.extensionKey),
             ),
         ];
 

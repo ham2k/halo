@@ -381,6 +381,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       // By the full tag: `about` is long enough that an author writes a
       // region's own (`ABOUT.pt-BR.md`), which the language alone misses.
       about: info.aboutFor(LocaleSettings.currentLocale.languageTag) ?? listed?.aboutFor(LocaleSettings.currentLocale.languageTag),
+      images: info.isInstalled ? widget.services.extensions.installed : null,
     );
     if (!mounted || action == null) return;
     switch (action) {

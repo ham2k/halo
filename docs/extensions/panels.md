@@ -44,7 +44,8 @@ UI toolkit, by design.
 
 - **`markdown`** is the one to prefer. It renders with the app's own
   typography, theme, font scale and density, costs no web view, and has
-  none of the caveats below.
+  none of the caveats below. Its images are your own: see [Images in
+  markdown](#images-in-markdown).
 - **`svg`** is drawn as a vector image.
 - **`html`** is the escape hatch, and runs sandboxed: **no JavaScript, no
   network for subresources** (inline what you need as `data:` URIs), **no
@@ -71,6 +72,32 @@ is refused), at most **16,384 elements** nested at most **32 deep**. Over any
 of these a document is refused whole: the pane shows a placeholder naming
 the budget and the console says what was sent. A preview over its budget is
 dropped and its row keeps its title. Nothing is trimmed or drawn in part.
+
+### Images in markdown
+
+Markdown your extension writes, in a panel, a dialog, a status-bar notice,
+a scoring summary, a settings or setup form or an account's notes, draws
+only images that fetch nothing:
+
+- **Your own files**: a relative path into your bundle's `assets/`.
+- **`data:` URIs.**
+
+```md
+![Logo](assets/logo.png)
+![Logo, 64 by 32](assets/logo.png#64x32)
+![Dot](data:image/png;base64,…)
+```
+
+PNG, JPEG, GIF, WebP and SVG draw, up to 4 MB each, sized by a `#WxH`
+fragment when there is one. Anything else, an
+`https://` image above all, shows its alt text and is never requested: an
+image tag would otherwise be a request made just by the operator looking,
+outside the `domains` you declared. Extensions the app has built in, and
+bundles served by `h2kext-dev`, have no `assets/` at runtime, so only their
+`data:` images draw.
+
+One-line markdown, a command's reply among it, draws no images at all:
+each shows its alt text.
 
 ### Triggers
 

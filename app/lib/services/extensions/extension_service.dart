@@ -51,6 +51,7 @@ import '../status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/secrets.dart';
+import '../../views/extension_markdown_images.dart' show extensionImagesFor;
 import '../../config/dev_flags.dart';
 import '../../config/experiments.dart';
 import '../../config/dev_fixture.dart';
@@ -874,8 +875,13 @@ class ExtensionService
   /// so a hook result's status message is held in order with the extension's
   /// own, and to this service's account opener.
   @override
-  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) =>
-      presentExtensionResultMessage(message, writeStatus: _hostCalls.writeResultMessage, onOpenAccount: onOpenAccount, ns: ns);
+  Future<void> presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) => presentExtensionResultMessage(
+    message,
+    writeStatus: _hostCalls.writeResultMessage,
+    onOpenAccount: onOpenAccount,
+    ns: ns,
+    images: extensionImagesFor(this, ns),
+  );
 
   /// Set by the app shell: backs the `searchSettings` host call, resolving a
   /// SET/SHOW/HIDE query against the settings catalog

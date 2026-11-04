@@ -349,6 +349,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
               qsos: qsos,
               activityControls: _runtime.loggingControls,
               write: summariesConfigWriter(widget.services, id),
+              extensions: widget.services.extensions,
             ),
         ...sharedDashboardPanes(
           inLayout,

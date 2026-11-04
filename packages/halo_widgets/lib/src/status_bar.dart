@@ -142,7 +142,11 @@ class StatusBarNoticeData {
   final List<StatusBarActionData> actions;
   final DateTime createdAt;
 
-  const StatusBarNoticeData({required this.key, this.icon, this.title, required this.text, this.actions = const [], required this.createdAt});
+  /// How the notice's markdown draws its images: an extension's notice, its
+  /// own (see [MarkdownImages]). Null draws each as its alt text.
+  final MarkdownSizedImageBuilder? images;
+
+  const StatusBarNoticeData({required this.key, this.icon, this.title, required this.text, this.actions = const [], required this.createdAt, this.images});
 }
 
 /// The share of the window either of these may take when no caller supplies a
@@ -1426,7 +1430,7 @@ class NoticeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Space.xs),
-            HaloMarkdown(data: notice.text, style: (base) => _noticeMarkdownStyle(base, theme, onNotice)),
+            HaloMarkdown(data: notice.text, style: (base) => _noticeMarkdownStyle(base, theme, onNotice), sizedImageBuilder: notice.images),
             if (notice.actions.isNotEmpty) ...[
               const SizedBox(height: Space.md),
               Row(

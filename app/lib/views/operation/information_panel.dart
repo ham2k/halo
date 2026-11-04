@@ -13,6 +13,8 @@ import '../../services/halo_services.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
 import 'call_info_panel.dart';
+import '../extension_markdown_images.dart';
+import '../../services/extensions/extension_service.dart' show ExtensionService;
 
 /// The Operation View's "Info" pane on two-pane layouts (see
 /// docs/design/layouts.md): basic operation statistics, then the score
@@ -116,7 +118,7 @@ class InformationPanel extends StatelessWidget {
           for (final summary in chaseSummaries)
             ..._checklistRows(context, summary.tallies, resolveExtensionColor(summary.program.color) ?? theme.colorScheme.onSurfaceVariant),
         ],
-        if (daySections.length > 1) ...summaryDayBlocks(context, daySections),
+        if (daySections.length > 1) ...summaryDayBlocks(context, daySections, extensions: services?.extensions),
         if (scoringWidgets.isNotEmpty) ...[
           const SizedBox(height: Space.xl),
           Text(context.t.loggingPanel.scoring, style: theme.textTheme.titleSmall),
@@ -138,7 +140,8 @@ class InformationPanel extends StatelessWidget {
 
     final iconColor = scorerIconColor(operation, scorerKey, activityControls) ?? theme.colorScheme.onSurfaceVariant;
 
-    return summaryTallyRows(context, summary, iconColor);
+    final images = extensionImagesFor(services?.extensions, scorerKey);
+    return summaryTallyRows(context, summary, iconColor, imagesFor: (_) => images);
   }
 
   /// A chasing program's tallies, each one sentence of body text beside its
@@ -180,7 +183,10 @@ class InformationPanel extends StatelessWidget {
 /// activity's activation progress resets with the day it's scoped to, while
 /// carry-over tallies like DXCC or bands/modes stay in the operation totals
 /// below rather than repeating unchanged under every day.
-List<Widget> summaryDayBlocks(BuildContext context, List<Map<String, dynamic>> daySections) {
+///
+/// A day's tallies are keyed `<scorerKey>.<tallyKey>`, so each draws the
+/// images of the extension behind its scorer, from [extensions].
+List<Widget> summaryDayBlocks(BuildContext context, List<Map<String, dynamic>> daySections, {ExtensionService? extensions}) {
   final theme = Theme.of(context);
   final t = context.t.loggingControls.info;
   // Per-locale, not a bare `DateFormat(...)`: weekday/month names are
@@ -217,9 +223,19 @@ List<Widget> summaryDayBlocks(BuildContext context, List<Map<String, dynamic>> d
         return tally is Map && tally['key'] != 'qsoCount' && tally['for'] == 'day';
       }),
     );
-    widgets.addAll(summaryTallyRows(context, dayTallies, theme.colorScheme.onSurfaceVariant));
+    widgets.addAll(
+      summaryTallyRows(context, dayTallies, theme.colorScheme.onSurfaceVariant, imagesFor: (key) => extensionImagesFor(extensions, scorerKeyOfDayTally(key))),
+    );
   }
   return widgets;
+}
+
+/// The scorer a merged day tally belongs to, from its `<scorerKey>.<tallyKey>`
+/// key: before the first dot, since a scorer's key has none and a tally's
+/// may.
+String scorerKeyOfDayTally(String key) {
+  final dot = key.indexOf('.');
+  return dot < 0 ? key : key.substring(0, dot);
 }
 
 /// The tallies a summary lists: every one with a label but the QSO count,
@@ -238,9 +254,17 @@ Iterable<({String key, Map<dynamic, dynamic> tally})> summaryTallies(Map<String,
 /// `onSurfaceVariant` icons) and every other scorer's (`_scorerSummary`,
 /// tinted with its own accent color). `qsoCount` is always skipped: its
 /// count is already the "N QSOs" line in the stats block above.
-List<Widget> summaryTallyRows(BuildContext context, Map<String, dynamic> summary, Color iconColor) {
+///
+/// [imagesFor] says how a tally's `longSummary` draws its images, by the
+/// tally's key: its scorer's extension's own. Null draws each as alt text.
+List<Widget> summaryTallyRows(
+  BuildContext context,
+  Map<String, dynamic> summary,
+  Color iconColor, {
+  MarkdownSizedImageBuilder? Function(String key)? imagesFor,
+}) {
   final widgets = <Widget>[];
-  for (final (key: _, :tally) in summaryTallies(summary)) {
+  for (final (:key, :tally) in summaryTallies(summary)) {
     final label = tally['label'] as String;
     final detail = tally['longSummary'] as String?;
     // `summary` is a short number restating what `longSummary` already
@@ -252,7 +276,7 @@ List<Widget> summaryTallyRows(BuildContext context, Map<String, dynamic> summary
     widgets.add(summaryHeading(context, title: label, icon: tally['icon'] is String ? tally['icon'] as String : null, iconColor: iconColor, score: score));
 
     if (detail != null && detail.isNotEmpty) {
-      widgets.add(summaryTallyDetail(context, detail, isGrid: tally['grid'] == true));
+      widgets.add(summaryTallyDetail(context, detail, isGrid: tally['grid'] == true, images: imagesFor?.call(key)));
     }
     // Breathing room after the section, not just before the next one's
     // title — otherwise the last section in a list runs straight into
@@ -295,7 +319,10 @@ Widget summaryHeading(BuildContext context, {required String title, String? icon
 /// activity's award grid tomorrow) gets the monospace checklist treatment
 /// instead. Rows are separated by single newlines, which Markdown would
 /// otherwise fold into one run-on paragraph.
-Widget summaryTallyDetail(BuildContext context, String detail, {required bool isGrid}) {
+///
+/// [images] draws its images: the scorer's extension's own. Null draws each
+/// as its alt text.
+Widget summaryTallyDetail(BuildContext context, String detail, {required bool isGrid, MarkdownSizedImageBuilder? images}) {
   final theme = Theme.of(context);
   final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
   MarkdownStyleSheet style(MarkdownStyleSheet base) => base.copyWith(
@@ -325,7 +352,7 @@ Widget summaryTallyDetail(BuildContext context, String detail, {required bool is
   );
   return Padding(
     padding: const EdgeInsets.only(top: Space.xs),
-    child: HaloMarkdown(data: detail, softLineBreak: true, style: style),
+    child: HaloMarkdown(data: detail, softLineBreak: true, style: style, sizedImageBuilder: images),
   );
 }
 

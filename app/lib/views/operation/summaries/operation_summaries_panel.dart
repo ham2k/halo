@@ -21,6 +21,9 @@ import '../../../services/panel_service.dart';
 import '../../../tools/operation_stats.dart';
 import '../../../tools/scoring_summaries.dart';
 import '../information_panel.dart';
+import '../../extension_markdown_images.dart';
+import '../../../services/extensions/extension_service.dart' show ExtensionService;
+import 'package:flutter_markdown/flutter_markdown.dart' show MarkdownSizedImageBuilder;
 
 /// The panel id the view registers this pane under, and matches placements
 /// against.
@@ -105,6 +108,9 @@ List<SummarySection> operationSummarySections(
   required Operation operation,
   required List<Qso> qsos,
   List<Map<String, dynamic>> activityControls = const [],
+
+  /// Where each scorer's extension draws its summaries' images from.
+  ExtensionService? extensions,
 }) {
   final t = context.t;
   // Cached by the scoring service; absent until the first rescore, which
@@ -130,14 +136,18 @@ List<SummarySection> operationSummarySections(
       ],
     ),
     if (days.length > 1)
-      SummarySection(key: SummarySection.daysKey, title: t.operation.layout.panels.summariesDays, body: (context) => summaryDayBlocks(context, days)),
+      SummarySection(
+        key: SummarySection.daysKey,
+        title: t.operation.layout.panels.summariesDays,
+        body: (context) => summaryDayBlocks(context, days, extensions: extensions),
+      ),
     for (final scorerKey in orderedScorerKeys(scoring))
       for (final (:key, :tally) in summaryTallies(operationSummaryFor(scoring, scorerKey)))
-        _tallySection('$scorerKey.$key', tally, scorerIconColor(operation, scorerKey, activityControls)),
+        _tallySection('$scorerKey.$key', tally, scorerIconColor(operation, scorerKey, activityControls), extensionImagesFor(extensions, scorerKey)),
   ];
 }
 
-SummarySection _tallySection(String key, Map<dynamic, dynamic> tally, Color? iconColor) {
+SummarySection _tallySection(String key, Map<dynamic, dynamic> tally, Color? iconColor, MarkdownSizedImageBuilder? images) {
   final detail = tally['longSummary'];
   final score = tally['summary'];
   return SummarySection(
@@ -146,7 +156,7 @@ SummarySection _tallySection(String key, Map<dynamic, dynamic> tally, Color? ico
     icon: tally['icon'] is String ? tally['icon'] as String : null,
     iconColor: iconColor,
     score: score is String && score.isNotEmpty ? score : null,
-    body: detail is String && detail.isNotEmpty ? (context) => [summaryTallyDetail(context, detail, isGrid: tally['grid'] == true)] : null,
+    body: detail is String && detail.isNotEmpty ? (context) => [summaryTallyDetail(context, detail, isGrid: tally['grid'] == true, images: images)] : null,
   );
 }
 
@@ -178,6 +188,9 @@ class OperationSummariesPanel extends StatefulWidget {
   final List<Map<String, dynamic>> activityControls;
   final SummariesConfigWrite write;
 
+  /// Where each scorer's extension draws its summaries' images from.
+  final ExtensionService? extensions;
+
   const OperationSummariesPanel({
     super.key,
     required this.panelId,
@@ -186,6 +199,7 @@ class OperationSummariesPanel extends StatefulWidget {
     required this.qsos,
     required this.write,
     this.activityControls = const [],
+    this.extensions,
   });
 
   @override
@@ -253,7 +267,13 @@ class _OperationSummariesPanelState extends State<OperationSummariesPanel> {
   @override
   Widget build(BuildContext context) {
     final sections = summarySectionsInOrder(
-      operationSummarySections(context, operation: widget.operation, qsos: widget.qsos, activityControls: widget.activityControls),
+      operationSummarySections(
+        context,
+        operation: widget.operation,
+        qsos: widget.qsos,
+        activityControls: widget.activityControls,
+        extensions: widget.extensions,
+      ),
       order: summariesKeyList(_config[summariesOrderKey]),
       hidden: summariesKeyList(_config[summariesHiddenKey]).toSet(),
     );

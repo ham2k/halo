@@ -37,14 +37,17 @@ class HaloMarkdown extends StatelessWidget {
   final bool softLineBreak;
   final MarkdownTapLinkCallback? onTapLink;
 
-  /// What an image is drawn as. Null is flutter_markdown's own, which loads
-  /// it from wherever it says; text that is not the app's own can draw its
-  /// alt text instead, so showing it fetches nothing.
+  /// What an image is drawn as, ahead of any [MarkdownImages] above it. With
+  /// neither, an image is its alt text and showing the markdown fetches
+  /// nothing: most markdown here was written by an extension or a server,
+  /// and an image tag in it would otherwise be a request to any host it
+  /// names, made just by looking.
   final MarkdownSizedImageBuilder? sizedImageBuilder;
 
   @override
   Widget build(BuildContext context) {
     final base = _houseStyleSheet(Theme.of(context));
+    final images = sizedImageBuilder ?? MarkdownImages.maybeOf(context) ?? markdownAltText;
     // A loose width, whatever the parent hands down: MarkdownBody returns a
     // lone block bare, without the start-aligned Column that loosens it, and a
     // Table under a tight width stretches its columns across all of it.
@@ -52,15 +55,40 @@ class HaloMarkdown extends StatelessWidget {
       alignment: AlignmentDirectional.topStart,
       heightFactor: 1,
       child: MarkdownBody(
+        // flutter_markdown builds its images once per parse, and parses again
+        // only for new text or a new style — so a new way of drawing them
+        // (an extension updated, its images with it) starts afresh.
+        key: ValueKey(images),
         data: data,
         styleSheet: _withEmojiFallback(style?.call(base) ?? base),
         selectable: selectable,
         softLineBreak: softLineBreak,
         onTapLink: onTapLink,
-        sizedImageBuilder: sizedImageBuilder,
+        sizedImageBuilder: images,
       ),
     );
   }
+}
+
+/// Says how the [HaloMarkdown] below it draw their images — an extension's
+/// panel, for one, drawing those from its own bundle. Without one an image
+/// is its alt text ([markdownAltText]).
+class MarkdownImages extends InheritedWidget {
+  const MarkdownImages({super.key, required this.builder, required super.child});
+
+  final MarkdownSizedImageBuilder builder;
+
+  static MarkdownSizedImageBuilder? maybeOf(BuildContext context) => context.dependOnInheritedWidgetOfExactType<MarkdownImages>()?.builder;
+
+  @override
+  bool updateShouldNotify(MarkdownImages oldWidget) => builder != oldWidget.builder;
+}
+
+/// An image drawn as its alt text, or as nothing when it has none: what
+/// [HaloMarkdown] shows for an image no [MarkdownImages] draws.
+Widget markdownAltText(MarkdownImageConfig config) {
+  final alt = config.alt;
+  return alt == null || alt.isEmpty ? const SizedBox.shrink() : Text(alt);
 }
 
 MarkdownStyleSheet _houseStyleSheet(ThemeData theme) => MarkdownStyleSheet.fromTheme(theme).copyWith(

@@ -23,6 +23,10 @@ abstract class BundleStorage {
   /// The file [name] under [key] as UTF-8 text, or null when it is not there.
   Future<String?> readText(String key, String name);
 
+  /// The file [name] under [key] as bytes, or null when it is not there —
+  /// an image an extension's markdown names from its own `assets/`.
+  Future<List<int>?> readBytes(String key, String name);
+
   /// Replaces everything under [key] with [files].
   Future<void> write(String key, Map<String, List<int>> files);
 
