@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionBundle, ExtensionHost;
 import 'package:halo_extension_host/src/engine_load.dart';
 
@@ -304,23 +305,48 @@ void main() {
     // End to end: the ping has to cross to the engine's isolate and queue
     // behind the running hook. Answered from anywhere else, a wedged engine
     // would look responsive.
+    //
+    // Held for a span of wall time inside the engine, not a count of iterations
+    // sized against a probe: load that changes between the probe and the run
+    // ends the hold before the second heartbeat, and the stall is never seen.
+    // Two seconds against the 200 ms a stall takes to show is the margin a
+    // starved machine gets. Neither wait is a fixed sleep, and their deadlines
+    // only stop a hang (time.md §7).
+    //
+    // Its own host, not a shared one: the heartbeat is read when the feed's
+    // timer is armed, and a shared host's may already be running at 1 s,
+    // which a stall needs two of — as long as the whole hold.
     final saved = engineHeartbeat;
     engineHeartbeat = const Duration(milliseconds: 100);
     addTearDown(() => engineHeartbeat = saved);
-    final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: const <ExtensionBundle>[]);
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: const [ExtensionBundle(key: 'holder', source: _holder)],
+    );
     addTearDown(host.dispose);
 
-    final probe = Stopwatch()..start();
-    await host.invokeHook('bench', key: 'kernel', method: 'spin', args: {'iterations': 20000000});
-    final iterations = (20000000 * 800 / probe.elapsedMilliseconds.clamp(1, 800)).round();
+    // A stall reports when its ping went out: one sent before the hold, its
+    // pong merely late, would otherwise pass for the stall the hold causes.
+    final sentFrom = realNowUtc().microsecondsSinceEpoch;
+    final hold = host.invokeHook('bench', key: 'holder', method: 'hold', args: {'millis': 2000});
+    // Its error still reaches the await below; this only keeps it from
+    // escaping as an unhandled one after a failure above ends the test early.
+    hold.ignore();
+    // Raced, so a hold that ends first fails here with its own error, if it
+    // has one, rather than as a timeout ten seconds on.
+    final stalled = await Future.any<int>([
+      host.engineLoad.stalls.first,
+      hold.then<int>((_) => throw StateError('the hold returned before any stall was seen')),
+    ]).timeout(const Duration(seconds: 10));
+    expect(stalled, greaterThanOrEqualTo(sentFrom));
+    expect(host.engineLoad.stalledSinceMicros, stalled);
 
-    final spin = host.invokeHook('bench', key: 'kernel', method: 'spin', args: {'iterations': iterations});
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    expect(host.engineLoad.stalledSinceMicros, isNotNull);
-
-    await spin;
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    expect(host.engineLoad.stalledSinceMicros, isNull);
+    await hold;
+    final cleared = Stopwatch()..start();
+    while (host.engineLoad.stalledSinceMicros != null) {
+      if (cleared.elapsed > const Duration(seconds: 10)) fail('still reading as a stall after the hook returned');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
   });
 
   test('a hook busy in the real engine is charged to that hook', () async {
@@ -328,16 +354,48 @@ void main() {
     // timing and the host's stream breaks, the readout sits at 100% idle
     // while the engine is pinned — the one failure this whole measurement
     // exists to rule out.
-    final host = await sharedHost([]);
+    //
+    // Bounded by what each side knows for certain: the hook held the engine for
+    // its whole hold, and the round trip around it took at least as long. A
+    // share of the round trip instead would charge every delay in getting the
+    // answer back against the engine, and a loaded machine adds plenty.
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: const [ExtensionBundle(key: 'holder', source: _holder)],
+    );
+    addTearDown(host.dispose);
+    const holdMillis = 300;
     final watch = Stopwatch()..start();
-    await host.invokeHook('bench', key: 'kernel', method: 'spin', args: {'iterations': 20000000});
-    final spunMicros = watch.elapsedMicroseconds;
-    // Long enough for the last slice to end and its flush timer to fire.
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+    await host.invokeHook('bench', key: 'holder', method: 'hold', args: {'millis': holdMillis});
+    final roundTripMicros = watch.elapsedMicroseconds;
 
-    final charged = host.engineLoad.recent.fold<int>(0, (sum, b) => sum + (b.busyByLabel['bench.spin@kernel'] ?? 0));
-    expect(spunMicros, greaterThan(20 * _ms), reason: 'the spin must be long enough to measure');
-    expect(charged, greaterThan(spunMicros * 0.7));
-    expect(charged, lessThanOrEqualTo(spunMicros));
+    int charged() => host.engineLoad.recent.fold<int>(0, (sum, b) => sum + (b.busyByLabel['bench.hold@holder'] ?? 0));
+    // The hold reads whole milliseconds, so it can end a millisecond short.
+    const floor = (holdMillis - 2) * _ms;
+    // The last slice reaches the host only when its flush timer fires: polled,
+    // since that timer can run late.
+    final flushed = Stopwatch()..start();
+    while (charged() < floor && flushed.elapsed < const Duration(seconds: 10)) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(charged(), greaterThanOrEqualTo(floor));
+    expect(charged(), lessThanOrEqualTo(roundTripMicros));
   });
 }
+
+/// Holds the engine for `millis` of wall time, however fast the machine.
+const _holder = '''
+__halo.defineExtension({
+  key: 'holder',
+  name: 'Holder',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('bench', { key: 'holder', hook: {
+      hold: async function (args) {
+        const until = Date.now() + args.millis
+        while (Date.now() < until) {}
+      },
+    }})
+  },
+})
+''';

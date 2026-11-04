@@ -180,27 +180,33 @@ void main() {
     });
 
     // Closing Manage Extensions reloads the controls before it searches;
-    // without this, a tick's search fires mid-reload with the old scopes.
+    // without this, a tick's search fires mid-reload with the old scopes. On a
+    // fake clock: a real wait that ran no later than a late debounce timer
+    // would see nothing asked whether or not the cancel worked.
     test('a pending search can be dropped without running one', () async {
       final state = await makeState();
-      state.searchSoon('bear');
-      state.cancelPending();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      fakeAsync((async) {
+        state.searchSoon('bear');
+        state.cancelPending();
+        async.elapse(const Duration(milliseconds: 100));
 
-      expect(extensions.asks, isEmpty);
+        expect(extensions.asks, isEmpty);
+      });
     });
 
     // The scope rows and the extension flows search straight away; without
     // the cancel, the keystroke still waiting fires after them and puts the
-    // old, unscoped answer back on screen.
+    // old, unscoped answer back on screen. On a fake clock for the reason above.
     test('a search run now drops the one still waiting to be typed', () async {
       final state = await makeState();
-      state.searchSoon('be');
-      unawaited(state.search('pota: '));
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      fakeAsync((async) {
+        state.searchSoon('be');
+        unawaited(state.search('pota: '));
+        async.elapse(const Duration(milliseconds: 100));
 
-      expect(extensions.asks, hasLength(1));
-      expect(extensions.asks.single.keys, ['pota']);
+        expect(extensions.asks, hasLength(1));
+        expect(extensions.asks.single.keys, ['pota']);
+      });
     });
 
     // The sheet derives its enable and install rows from the same text; told

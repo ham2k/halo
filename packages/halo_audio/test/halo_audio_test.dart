@@ -146,7 +146,7 @@ void main() {
       final clock = Stopwatch()..start();
       final playback = output.play(wav.path);
       expect(playback.isPlaying, isTrue);
-      await playback.done.timeout(const Duration(seconds: 3));
+      await playback.done.timeout(const Duration(seconds: 10));
       expect(clock.elapsedMilliseconds, greaterThanOrEqualTo(250));
       // Kept running into the unkey delay: closing here would drop what the
       // device still holds of the file's end.
@@ -154,15 +154,20 @@ void main() {
     });
 
     test('stop silences it at once and leaves the device open for the next file', () async {
-      final playback = output.play(writeWav(dir, 'long.wav', 5000).path);
-      final clock = Stopwatch()..start();
+      // `done` completes inside stop itself, so what can be slow is the native
+      // stop. Bounded against the file rather than the CPU: a stop that drains
+      // the device blocks for the rest of a ten-second file, and five seconds
+      // is a margin no scheduler eats.
+      final playback = output.play(writeWav(dir, 'long.wav', 10000).path);
+      final stopping = Stopwatch()..start();
       playback.stop();
       playback.stop();
-      await playback.done.timeout(const Duration(milliseconds: 500));
-      expect(clock.elapsedMilliseconds, lessThan(500));
+      expect(stopping.elapsed, lessThan(const Duration(seconds: 5)));
+      expect(playback.isPlaying, isFalse);
+      await playback.done;
       expect(output.isAlive, isTrue);
       final next = output.play(writeWav(dir, 'short.wav', 100).path);
-      await next.done.timeout(const Duration(seconds: 2));
+      await next.done.timeout(const Duration(seconds: 10));
     });
 
     test('a second file replaces the first, which is done', () async {
@@ -176,7 +181,7 @@ void main() {
     test('a file that will not open is refused, and the output plays the next', () async {
       expect(() => output.play('${dir.path}/missing.wav'), throwsA(isA<HaloAudioException>()));
       final next = output.play(writeWav(dir, 'after.wav', 100).path);
-      await next.done.timeout(const Duration(seconds: 2));
+      await next.done.timeout(const Duration(seconds: 10));
     });
 
     test('closing ends what was playing', () async {

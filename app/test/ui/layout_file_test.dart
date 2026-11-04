@@ -179,21 +179,31 @@ void main() {
       for (var i = 1; i <= 10; i++) {
         levels.writeln('a$i: &a$i [${List.filled(10, '*a${i - 1}').join(', ')}]');
       }
-      final watch = Stopwatch()..start();
-      expect(() => LayoutFile.parse('$levels'), throwsA(isA<LayoutFileException>().having((e) => e.problem, 'problem', LayoutFileProblem.tooLarge)));
-      expect(watch.elapsed, lessThan(const Duration(seconds: 5)));
+      // Which guard refused it, not how fast: a time bound is a bet on the
+      // CPU, and the value budget is the only thing that stops the copy early.
+      expect(
+        () => LayoutFile.parse('$levels'),
+        throwsA(
+          isA<LayoutFileException>().having((e) => e.problem, 'problem', LayoutFileProblem.tooLarge).having((e) => e.detail, 'detail', contains('values')),
+        ),
+      );
     });
 
     test('a file nested past any layout is refused before it is parsed', () {
       // The parser's time grows with the square of the depth: this line of
-      // brackets, handed to it, holds the app for about fifteen seconds.
+      // brackets, handed to it, holds the app for about fifteen seconds. Left
+      // unclosed so the order shows without a time bound, which is a bet on the
+      // CPU: the parser, run first, could only call the file broken YAML or
+      // run out of stack, and only the depth count says "nested more than".
       const depth = 100000;
-      final watch = Stopwatch()..start();
       expect(
-        () => LayoutFile.parse('ham2k-layout: 1\nwide: ${'[' * depth}${']' * depth}'),
-        throwsA(isA<LayoutFileException>().having((e) => e.problem, 'problem', LayoutFileProblem.tooLarge)),
+        () => LayoutFile.parse('ham2k-layout: 1\nwide: ${'[' * depth}'),
+        throwsA(
+          isA<LayoutFileException>()
+              .having((e) => e.problem, 'problem', LayoutFileProblem.tooLarge)
+              .having((e) => e.detail, 'detail', contains('nested more than')),
+        ),
       );
-      expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
     });
 
     test('a file nested past what the parser can follow is refused, never a crash', () {

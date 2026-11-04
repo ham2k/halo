@@ -20,6 +20,8 @@ import 'package:fake_async/fake_async.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
+import 'support/fake_clock.dart';
+
 /// The clock is a singleton (deliberately — one clock for every package), so
 /// every test has to hand it back.
 void main() {
@@ -80,16 +82,20 @@ void main() {
   group('speed', () {
     // The anchoring test: were `now` computed from a fixed epoch rather than
     // from the anchor pair, this multiplication would apply to the WHOLE epoch
-    // and land the clock decades away.
+    // and land the clock decades away. On the fake clock because at 1000x every
+    // real millisecond between the reads is a virtual second, and no real-time
+    // tolerance survives a loaded machine.
     test('setting a factor does not move the clock', () {
-      AppClock.instance.travel(delta: const Duration(days: 2));
-      final before = nowUtc();
-      AppClock.instance.travel(speed: 1000);
-      expect(
-        nowUtc().difference(before).abs(),
-        lessThan(const Duration(seconds: 2)),
-        reason: 'a speed change is continuous — it changes the RATE, not the reading',
-      );
+      followFakeClock();
+      fakeAsync((async) {
+        AppClock.instance.travel(delta: const Duration(days: 2));
+        // Time between the two hops, or a factor applied to the OLD anchor reads
+        // the same as one that re-anchors.
+        async.elapse(const Duration(minutes: 1));
+        final before = nowUtc();
+        AppClock.instance.travel(speed: 1000);
+        expect(nowUtc(), before, reason: 'a speed change is continuous — it changes the RATE, not the reading');
+      });
     });
 
     test('virtual time advances faster than real time', () async {
@@ -292,15 +298,19 @@ void main() {
     });
 
     // What the status-bar item shows: the offset it has actually reached, which
-    // for a speed-only hop is the only interesting number about it.
-    test('liveTravelLabel reports the offset the clock has reached', () async {
-      AppClock.instance.travel(speed: AppClock.maxSpeed);
-      expect(AppClock.instance.liveTravelLabel, 'at 1000x', reason: 'no offset yet in the first moment');
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      final label = AppClock.instance.liveTravelLabel!;
-      expect(label, endsWith('at 1000x'));
-      expect(label, startsWith('+'), reason: 'and by now it has travelled a measurable distance');
-      expect(AppClock.instance.travelLabel, 'at 1000x', reason: 'the configured label stays put; only the live one moves');
+    // for a speed-only hop is the only interesting number about it. On the fake
+    // clock because "no offset yet" holds for one real millisecond at 1000x.
+    test('liveTravelLabel reports the offset the clock has reached', () {
+      followFakeClock();
+      fakeAsync((async) {
+        AppClock.instance.travel(speed: AppClock.maxSpeed);
+        expect(AppClock.instance.liveTravelLabel, 'at 1000x', reason: 'no offset yet in the first moment');
+        async.elapse(const Duration(milliseconds: 30));
+        final label = AppClock.instance.liveTravelLabel!;
+        expect(label, endsWith('at 1000x'));
+        expect(label, startsWith('+'), reason: 'and by now it has travelled a measurable distance');
+        expect(AppClock.instance.travelLabel, 'at 1000x', reason: 'the configured label stays put; only the live one moves');
+      });
     });
 
     test('liveTravelLabel names both the offset and the factor', () {
