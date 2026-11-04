@@ -119,8 +119,8 @@ mixin _SpotsList on State<SpotsPanel> {
                         pinned: true,
                         delegate: _SpotsSectionHeaderDelegate(label: section.label, extent: headerExtent),
                       ),
-                      SliverList.list(
-                        children: [
+                      _SpotsSectionList(
+                        delegate: SliverChildListDelegate([
                           for (final (index, spot) in section.spots.indexed)
                             if (_flagsFor(spot) case final flags)
                               if (_workedOverrides.isWorked(spot, scored: flags.worked) case final worked)
@@ -255,7 +255,7 @@ mixin _SpotsList on State<SpotsPanel> {
                                           : _closingFirst(() => widget.onSuggestQso!(suggestedQsoFromSpot(spot))),
                                     ),
                                   ),
-                        ],
+                        ]),
                       ),
                     ],
                   ),
@@ -331,6 +331,57 @@ mixin _SpotsList on State<SpotsPanel> {
     '?' => t.operation.spots.unknownBand,
     _ => key,
   };
+}
+
+/// One section's rows: a [SliverList] that settles its own leading rows when
+/// its top is at or below the top of the viewport — see
+/// [_RenderSpotsSectionList].
+class _SpotsSectionList extends SliverList {
+  const _SpotsSectionList({required super.delegate});
+
+  @override
+  RenderSliverList createRenderObject(BuildContext context) => _RenderSpotsSectionList(childManager: context as SliverMultiBoxAdaptorElement);
+}
+
+/// A [RenderSliverList] that never asks the viewport for a scroll correction
+/// while its scroll offset is zero.
+///
+/// A list keeps the rows it last laid out, at the offsets it measured them at.
+/// When the board changes and the list is next laid out from further up — a
+/// reveal or a scroll back to the top — it rebuilds the rows ahead of the ones
+/// it kept, and if those come out taller than before, its first row would land
+/// above zero. The stock list answers that with a scroll-offset correction and
+/// fixes one leading row per answer. A section entirely below the viewport and
+/// its cache extent is laid out with the same constraints on every retry, so
+/// the framework skips its layout and hands the viewport the same correction
+/// again, until the viewport hits its cycle limit. A release build passes that
+/// limit silently and paints rows that were never laid out — a null-check in
+/// `RenderSliverMultiBoxAdaptor.paint` on that frame and every repaint after.
+///
+/// At scroll offset zero there is nothing of this list above the viewport's
+/// leading edge for a correction to keep in place, so the list lays itself out
+/// again until its first row sits at zero. Each corrected pass brings one more
+/// leading row in, so it takes at most as many passes as the section has rows.
+/// For a section on screen this trades the stock list's choice on purpose: the
+/// section's top stays put and the rows it kept move down by what the rebuilt
+/// ones grew, rather than everything above the section scrolling up to keep
+/// them still.
+///
+/// Exactly zero, not the stock list's own "near the start" test, which also
+/// counts a top inside the cache extent above the viewport: there the content
+/// above the leading edge is real and the correction is right, and a non-zero
+/// offset moves with each correction, so the retry is not skipped.
+class _RenderSpotsSectionList extends RenderSliverList {
+  _RenderSpotsSectionList({required super.childManager});
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (constraints.scrollOffset != 0) return;
+    for (var pass = 0; pass < childManager.childCount && geometry!.scrollOffsetCorrection != null; pass++) {
+      super.performLayout();
+    }
+  }
 }
 
 /// Pins a [_SpotsSectionHeader] to the top of the spots list while its own
