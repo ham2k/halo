@@ -18,6 +18,7 @@ import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'logging_controls_controller.dart';
 import 'logging_controls_esm.dart';
+import 'operation_lifecycle_spec.dart';
 import 'qso_list_walk.dart';
 import 'ref_text_input.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec;
@@ -97,7 +98,11 @@ typedef SendSpot =
 /// the i18n and number/duration formatting; it reads the current time itself,
 /// so the widget's 1 Hz clock ticker keeps a live "since last" figure fresh.
 /// An empty list renders nothing.
-typedef OperationStatsLines = List<String> Function(List<Qso> qsos);
+///
+/// [closed] is set where the panel shows a paused or finished log's read in
+/// place of the entry row — the lock decides it, not the status, since an
+/// operator composing into a closed log has the live info area back.
+typedef OperationStatsLines = List<String> Function(List<Qso> qsos, {bool closed});
 
 /// Formats the call-info panel's line-1 location string from a lookup `guess`
 /// — distance (and bearing, if the setting is on) plus a location label — or
@@ -149,6 +154,7 @@ class LogHooks {
   const LogHooks({
     required this.operation,
     required this.qsosRepository,
+    this.lifecycle,
     this.serialNumbers,
     this.qsos = const [],
     this.onLogged,
@@ -162,6 +168,12 @@ class LogHooks {
 
   final Operation operation;
   final QsosRepository qsosRepository;
+
+  /// The operation's lifecycle: what state it is in and the transitions to
+  /// offer (docs/design/data-model.md §The Log Data). Null leaves the panel
+  /// exactly as it was before the lifecycle existed — the experiment's off
+  /// state, and every test that does not ask for it.
+  final OperationLifecycleSpec? lifecycle;
 
   /// Where a `kind: 'serial'` control gets the number it shows while a
   /// contact is composed (docs/design/contests.md §5.8.1). Null falls back to
@@ -222,6 +234,7 @@ class LogHooks {
   LogHooks copyWith({
     Operation? operation,
     QsosRepository? qsosRepository,
+    OperationLifecycleSpec? lifecycle,
     SerialNumberSource? serialNumbers,
     List<Qso>? qsos,
     void Function(Qso qso)? onLogged,
@@ -234,6 +247,7 @@ class LogHooks {
   }) => LogHooks(
     operation: operation ?? this.operation,
     qsosRepository: qsosRepository ?? this.qsosRepository,
+    lifecycle: lifecycle ?? this.lifecycle,
     serialNumbers: serialNumbers ?? this.serialNumbers,
     qsos: qsos ?? this.qsos,
     onLogged: onLogged ?? this.onLogged,

@@ -552,7 +552,7 @@ position (HALO-279) rather than doing it. Changing it through the `OPER`
 command restamps nothing.
 
 **Creating one.** The `START`/`BREAK`/`STOP`/`ROVERQTH` commands
-(operation-commands → `HaLoServices._markSegment`) are the writers. A row's
+(operation-commands → `markSegment` in `operation_lifecycle_commands.dart`) are the writers. A row's
 override is `segmentOverrideOf` (halo_core `segments.dart`): the station call,
 refs, and the location keys (`grid`, `gridSource`, `lat`, `lon`, `state`,
 `county`), absent ones as explicit nulls, so it is the complete statement the

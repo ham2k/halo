@@ -23,6 +23,8 @@ export 'src/models/chase_verdicts.dart';
 export 'src/models/claims.dart';
 export 'src/models/location_from_refs.dart';
 export 'src/models/location_repair.dart';
+export 'src/models/operation_lifecycle.dart';
+export 'src/repo/operation_lifecycle_sweep.dart';
 export 'src/models/operation_operator.dart';
 export 'src/models/operation_station_calls.dart';
 export 'src/models/operation_title.dart';

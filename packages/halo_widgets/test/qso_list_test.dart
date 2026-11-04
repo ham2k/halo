@@ -765,9 +765,158 @@ void main() {
     );
 
     expect(find.byType(EventRow), findsOneWidget);
-    expect(find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.stopCircle), findsOneWidget);
-    expect(find.text('at FN31pr'), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.stop), findsOneWidget);
+    expect(find.textContaining(t.operation.lifecycle.finished), findsOneWidget);
     expect(find.byType(AnnotationRow), findsNothing);
+  });
+
+  testWidgets('a deleted marker is struck through, the way a deleted contact is', (tester) async {
+    // With "show deleted" on, a pause taken back at once stays in the
+    // timeline. Drawn like a live one, it reads as a pause that happened.
+    final operation = await operations.create(stationCall: 'KI2D');
+    final pause = await qsos.addEvent(operation.uuid, kind: 'pause', atMillis: 1500);
+    await qsos.softDelete(pause);
+    final rows = await qsos.forOperation(operation.uuid, includeDeleted: true);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QsoList(qsos: rows, onSelect: (_) {}),
+        ),
+      ),
+    );
+
+    final label = tester.widget<Text>(find.text(t.operation.lifecycle.paused));
+    expect(label.style?.decoration, TextDecoration.lineThrough);
+  });
+
+  testWidgets('a named marker says what it is, ahead of what it says about the operation', (tester) async {
+    // The start row is the one an operator scrolls to the top of a log to
+    // find, and "at FN31pr" alone does not identify it. Break keeps its
+    // description alone: the icon names that one.
+    final operation = await operations.create(stationCall: 'KI2D');
+    // Stored as the start command writes it: capitalized, to stand alone.
+    await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 500, description: 'At FN31pr');
+    await qsos.addEvent(operation.uuid, kind: 'break', atMillis: 1500, description: 'at FN20aa');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 400,
+            child: QsoList(qsos: await qsos.forOperation(operation.uuid), onSelect: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // One sentence: the name in bold, the description running on from it
+    // lowercase, no separator between them.
+    expect(find.text('${t.operation.lifecycle.started} at FN31pr'), findsOneWidget);
+    final name = tester.widget<Text>(find.text('${t.operation.lifecycle.started} at FN31pr')).textSpan! as TextSpan;
+    expect(name.children!.first.style?.fontWeight, FontWeight.bold);
+    expect(find.text('at FN20aa'), findsOneWidget);
+  });
+
+  testWidgets('the lifecycle markers read as a timeline: each name in bold, what it came to in plain', (tester) async {
+    // A finish is where an operator looks for what the log came to, and the
+    // place it was worked is already on the start: the count and the span
+    // replace the description. Counted over the whole log up to the row, so
+    // a finish read through a Find still tells the whole log's story.
+    final operation = await operations.create(stationCall: 'KI2D');
+    const minute = 60 * 1000;
+    Future<void> contact(int at) => qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': at,
+    });
+    // Written while the extension host was down: no description, only the
+    // square, which after the name reads as the sentence it continues.
+    await qsos.addEvent(operation.uuid, kind: 'start', atMillis: 0, operation: {'grid': 'FN31pr', 'refs': null});
+    await contact(1 * minute);
+    await contact(2 * minute);
+    await contact(180 * minute);
+    await qsos.addEvent(operation.uuid, kind: 'pause', atMillis: 181 * minute);
+    await qsos.addEvent(operation.uuid, kind: 'restart', atMillis: 191 * minute);
+    await contact(200 * minute);
+    await qsos.addEvent(operation.uuid, kind: 'stop', atMillis: 203 * minute, description: 'At FN31pr');
+    final log = await qsos.forOperation(operation.uuid);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 600,
+            child: QsoList(qsos: log, onSelect: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final lifecycle = t.operation.lifecycle;
+    List<(String, FontWeight?)> spans(String text) => [
+      for (final span in (tester.widget<Text>(find.text(text)).textSpan! as TextSpan).children!.cast<TextSpan>()) (span.text!, span.style?.fontWeight),
+    ];
+    expect(spans('${lifecycle.started} at FN31pr'), [(lifecycle.started, FontWeight.bold), (' ', null), ('at FN31pr', null)]);
+    expect(spans(lifecycle.paused), [(lifecycle.paused, FontWeight.bold)]);
+    expect(spans('${lifecycle.restarted} after 10m'), [(lifecycle.restarted, FontWeight.bold), (' after 10m', null)]);
+    expect(spans('${lifecycle.finished}, with 4 QSOs in 3h 23m'), [(lifecycle.finished, FontWeight.bold), (', with 4 QSOs in 3h 23m', null)]);
+  });
+
+  testWidgets('a restart is a timeline marker, not an annotation', (tester) async {
+    // Reopening an operation belongs with the other operation markers.
+    // Rendered as an annotation it would land in the yellow family, among
+    // the notes and to-dos somebody attached to the log.
+    final operation = await operations.create(stationCall: 'KI2D');
+    await qsos.addEvent(operation.uuid, kind: 'restart', atMillis: 500);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: QsoList(qsos: await qsos.forOperation(operation.uuid), onSelect: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(EventRow), findsOneWidget);
+    expect(find.byType(AnnotationRow), findsNothing);
+  });
+
+  testWidgets('a restart in a filtered list measures its gap in the whole log', (tester) async {
+    // Measured among the matches, the gap reaches back to whichever row the
+    // Find left before it: a ten-minute pause reads as hours.
+    final operation = await operations.create(stationCall: 'KI2D');
+    const minute = 60 * 1000;
+    await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 0,
+    });
+    await qsos.addEvent(operation.uuid, kind: 'pause', atMillis: 120 * minute);
+    await qsos.addEvent(operation.uuid, kind: 'restart', atMillis: 130 * minute);
+    final log = await qsos.forOperation(operation.uuid);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 300,
+            child: QsoList(qsos: [log.first, log.last], log: log, onSelect: (_) {}),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(t.operation.lifecycle.restartedAfter(name: t.operation.lifecycle.restarted, time: fmtTimeBetween(0, 10 * minute))), findsOneWidget);
   });
 
   testWidgets('event markers render distinctly and are excluded from QSO numbering', (tester) async {
@@ -796,7 +945,9 @@ void main() {
       ),
     );
 
-    expect(find.text('at FN31pr'), findsOneWidget);
+    // A start row names itself; the break keeps its description alone,
+    // because the icon already names that one.
+    expect(find.text('${t.operation.lifecycle.started} at FN31pr'), findsOneWidget);
     expect(find.text('at FN20aa'), findsOneWidget);
     // Real QSOs still number 1 and 2 — events don't consume a number.
     expect(find.text('1'), findsOneWidget);

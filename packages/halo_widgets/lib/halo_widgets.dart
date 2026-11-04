@@ -42,6 +42,8 @@ export 'src/modal_pane.dart';
 export 'src/pane_divider.dart';
 export 'src/keyboard_accessory.dart';
 export 'src/number_keys.dart';
+export 'src/operation_lifecycle_controls.dart';
+export 'src/operation_lifecycle_spec.dart';
 export 'src/option_matching.dart';
 export 'src/platform_chrome.dart';
 export 'src/platform_view_shield.dart';

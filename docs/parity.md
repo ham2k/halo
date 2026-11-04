@@ -88,7 +88,7 @@ fixes four rules it carries but never awards.
   `POSITION`, `WPM`/`KEYER` are done. `LANG`/`CROWDIN` and the debug
   commands are tracked under Developer tooling in §3.)
 - **Segment creation** ✅ (HALO-108): `START`/`BREAK`/`STOP`(`END`) and
-  `ROVERQTH` (operation-commands → `HaLoServices._markSegment`) write the
+  `ROVERQTH` (operation-commands → `markSegment` in `operation_lifecycle_commands.dart`) write the
   same rows PoLo's commands do, with two deliberate differences: the
   override REPLACES rather than accumulates (contests.md §5.1.3), and a local
   edit of the operation's refs or location restamps the latest segment

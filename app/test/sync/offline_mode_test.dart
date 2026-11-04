@@ -428,8 +428,8 @@ class _RecoveringQsos extends QsosRepository {
   _RecoveringQsos(super.db, {required this.onWrite});
 
   @override
-  Future<void> update(Qso qso, {Qso? basedOn}) async {
+  Future<void> update(Qso qso, {Qso? basedOn, bool operatorEdit = true}) async {
     onWrite();
-    return super.update(qso, basedOn: basedOn);
+    return super.update(qso, basedOn: basedOn, operatorEdit: operatorEdit);
   }
 }

@@ -14,9 +14,19 @@
 /// Shows the two most significant non-zero units; a bare "0s" for a zero (or
 /// negative) span. Always uses the absolute value, so argument order doesn't
 /// matter.
-String fmtTimeBetween(int fromMillis, int toMillis) {
-  var seconds = ((toMillis - fromMillis).abs() / 1000).floor();
-  if (seconds <= 0) return '0s';
+///
+/// [seconds] off rounds down to the minute and never shows a seconds figure,
+/// down to a bare "0m": for a span read at a glance that would otherwise
+/// tick every second beside a figure measured in hours.
+String fmtTimeBetween(int fromMillis, int toMillis, {bool seconds = true}) {
+  var total = ((toMillis - fromMillis).abs() / 1000).floor();
+  if (!seconds) total -= total % 60;
+  if (total <= 0) return seconds ? '0s' : '0m';
+  return _fmtSeconds(total);
+}
+
+String _fmtSeconds(int total) {
+  var seconds = total;
 
   final days = seconds ~/ 86400;
   seconds %= 86400;

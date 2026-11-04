@@ -49,13 +49,20 @@ The core purpose of the app is to register QSOs (amateur radio contacts) between
 
 QSOs are often grouped in Operations, which have their own `refs` and attributes that apply to the entire operation. And they can be broken down into segments, each with their own refs and attributes.
 
-An operation also moves through a lifecycle, recorded as an attribute of the operation itself: new, ready, active, paused, completed, processed and archived. Most of the transitions are explicit — the operator starts, pauses, ends or restarts. Two are inferred by the app, after a long silence or after an operation has been sitting processed for a while, and one, `processed`, is written whenever a log first leaves the app through an export or an upload to a confirmation service. From `paused` onwards the new-QSO entry row is locked and nothing else is; existing contacts stay editable, and reopening an operation returns it to `active`.
+An operation also moves through a lifecycle, recorded as an attribute of the operation itself: new, ready, active, paused, completed, processed and archived. Most of the transitions are explicit — the operator starts, pauses, ends or restarts. Two are inferred by the app, after a long silence or after an operation has been sitting processed for a while, and one, `processed`, is written whenever a log leaves the app through an export or an upload to a confirmation service — each time, so `processedAtMillis` says when it last did. From `paused` onwards the new-QSO entry row is locked and nothing else is; existing contacts stay editable, and reopening an operation returns it to `active`.
 
-On a shared operation, only the owner changes the state. Ownership is an account: the operation records the account it was created under, and a device may only write the status when that matches the account it is signed in to. A device that receives an operation from a peer on another account contributes contacts to it but never starts, pauses, ends or archives it, because it cannot know when the operator whose log it is considers the work done, and a guest's guess would travel back to the owner as if the owner had made it. An operation created by a device signed in to no account has no owner, and any device may change its state.
+On a shared operation, who may change the state follows the member's level ([shared-operations.md](shared-operations.md) §2): a manager starts, pauses and restarts it, and only the owner ends the log or writes a state past that. A member's device leaves the transitions the app makes on its own — the timed ones, and the ones an export or a new contact causes — to the owner's.
 
-*Status: planned — [HALO-460](https://cabo.ham2k.com/halo/c/460). The model
-records no lifecycle or owner yet: `Operation` has no status field, and any
-device may write any operation it holds.*
+*Status: built — [HALO-460](https://cabo.ham2k.com/halo/c/460). The states
+and their rules are `packages/halo_core/lib/src/models/operation_lifecycle.dart`,
+the timed transitions `operation_lifecycle_sweep.dart`, and the status is
+mirrored to the `operations.status` column. What the sweep infers is written
+on each device and not synced — every device infers the same from the same
+log, and a synced write would carry a stale copy out as the newest — and it
+leaves with the operation's next save. The logging panel's controls are
+behind the `cycle` experiment (`EXP CYCLE`); the status is written either way.
+The shared-operation levels are not: until they are, any device may write the
+state of any operation it holds, last-writer-wins like every other field.*
 
 ## Stations
 

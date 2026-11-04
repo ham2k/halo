@@ -35,6 +35,14 @@ class _QsoListMetrics {
   final List<int> dayKeys;
   final List<List<int>> dayGroups;
 
+  /// For each `restart` row, by uuid, the time of the live row before it in
+  /// the whole log — what its "Restarted after" gap is measured from.
+  final Map<String, int> restartedFrom;
+
+  /// For each `stop` or `end` row, by uuid, what the whole log held when it
+  /// closed — what its "Finished, with 141 QSOs in 3h 23m" reads.
+  final Map<String, OperationFinishedWith> finishedWith;
+
   const _QsoListMetrics({
     required this.numbers,
     required this.numberWidth,
@@ -49,6 +57,8 @@ class _QsoListMetrics {
     required this.usesMultipleModes,
     required this.dayKeys,
     required this.dayGroups,
+    required this.restartedFrom,
+    required this.finishedWith,
   });
 }
 
@@ -135,6 +145,28 @@ _QsoListMetrics _computeMetrics({
   // `wholeNumbers` only ever increases, so its last value is its max — no
   // need to fold over it separately.
   final maxNumber = wholeNumbers.isEmpty ? 0 : wholeNumbers.last;
+
+  // Over the whole log too: a Find narrowing the list must not make a gap
+  // reach back to whichever match happens to precede it.
+  final restartedFrom = <String, int>{};
+  final finishedWith = <String, OperationFinishedWith>{};
+  int? liveAt;
+  int? openedAt;
+  var contacts = 0;
+  for (final qso in whole) {
+    if (liveAt != null && qso.isEvent && qso.eventKind == 'restart') restartedFrom[qso.uuid] = liveAt;
+    if (qso.deleted) continue;
+    final at = qso.startAtMillis;
+    liveAt = at ?? liveAt;
+    if (qso.isEvent) {
+      final kind = qso.eventKind;
+      if (kind == 'start' && at != null && (openedAt == null || at < openedAt)) openedAt = at;
+      if ((kind == 'stop' || kind == 'end') && openedAt != null) finishedWith[qso.uuid] = (contacts: contacts, fromMillis: openedAt);
+    } else {
+      contacts++;
+      if (at != null && (openedAt == null || at < openedAt)) openedAt = at;
+    }
+  }
 
   // Column-sizing must cover every QSO that can actually render a row —
   // including deleted ones, which still show (struck-through) whenever the
@@ -306,5 +338,7 @@ _QsoListMetrics _computeMetrics({
     usesMultipleModes: usesMultipleModes,
     dayKeys: dayKeys,
     dayGroups: dayGroups,
+    restartedFrom: restartedFrom,
+    finishedWith: finishedWith,
   );
 }

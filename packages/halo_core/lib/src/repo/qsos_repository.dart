@@ -65,7 +65,10 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// descriptors to `add` instead of this layer going looking for them.
   final SequencesRepository? sequences;
 
-  QsosRepository(this.db, {this.onChange, this.sequences});
+  /// See [LocalContactHook].
+  final LocalContactHook? onLocalContact;
+
+  QsosRepository(this.db, {this.onChange, this.sequences, this.onLocalContact});
 
   /// See [QsoWriteLedger]: what each write touched, for [watchForOperation].
   final _ledger = QsoWriteLedger();
@@ -252,6 +255,7 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     // Structured dev event — real contacts only, not timeline markers.
     if (!qso.isEvent) {
       DevLog.instance.log('qso', {'uuid': qso.uuid, 'op': operationUuid, 'call': (data['their'] as Map?)?['call'], 'band': data['band'], 'mode': data['mode']});
+      await onLocalContact?.call(operationUuid, isNewContact: true);
     }
     return qso;
   }
@@ -342,6 +346,10 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     // chunk, so the intermediate ones pass `false` here and the caller runs
     // [refreshOperationCounters] itself, once, after the final chunk.
     bool refreshCounters = true,
+    // `false` for a write that carries the operation's status with it — a
+    // QSON import restores a log as its source left it, and the contacts
+    // arriving are not news about that log.
+    bool followLifecycle = true,
   }) async {
     if (inserts.isEmpty && updates.isEmpty) return 0;
     // Judged on the operation alone, unlike [add] — a bulk write names one
@@ -515,6 +523,11 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
 
     sequences?.invalidate();
     onChange?.call();
+    // ONCE per batch, not once per record — see [summarizeBatchForLifecycle].
+    final batch = summarizeBatchForLifecycle(inserts, updates);
+    if (followLifecycle && written > 0 && batch != null) {
+      await onLocalContact?.call(operationUuid, isNewContact: batch.inserted, atMillis: batch.newestMillis, bulk: true);
+    }
     return written;
   }
 
@@ -527,14 +540,24 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// whole-record write reverts the concurrent revision — and, restamped
   /// newer, the reversion wins on every device at the next sync. Same
   /// reasoning as [_writeDeleted]'s re-read.
-  Future<void> update(Qso qso, {Qso? basedOn}) async {
+  /// [operatorEdit] false marks a write the OPERATOR did not make — the
+  /// background lookup queue folding a QRZ result into `their.guess` — and
+  /// such a write leaves the operation's lifecycle alone. A cached guess is
+  /// not the log's content, and a background service silently pulling a
+  /// processed operation back to `completed` would be churn nobody can
+  /// account for. Accepted cost: an enrichment landing after an upload does
+  /// make the ADIF stale, and only the per-QSO hash catches that.
+  Future<void> update(Qso qso, {Qso? basedOn, bool operatorEdit = true}) async {
     await _refuseStoredQso(qso.uuid);
     var stamped = _restamped(qso);
+    String? leaving;
+    var wrote = false;
     await db.transaction(() async {
       // Raw, decoded only against a snapshot. The operation is written from
       // the caller's copy, so an edit saved from a snapshot a sync pull has
       // since moved MOVES the row back, and the log it leaves has to hear it.
       final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).getSingleOrNull();
+      leaving = row?.operation;
       if (basedOn != null && row != null) {
         final current = qsoFromRow(row);
         if (current.data['updatedAtMillis'] != basedOn.data['updatedAtMillis']) {
@@ -549,7 +572,8 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
       }
       final rows = await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(_companionFor(stamped, 'qsos:update'));
       await refreshOperationCounters(stamped.operationUuid);
-      if (rows > 0) _touch({stamped.operationUuid, ?row?.operation}, [stamped.uuid]);
+      wrote = rows > 0;
+      if (wrote) _touch({stamped.operationUuid, ?row?.operation}, [stamped.uuid]);
     });
     // An edit can change a serial by hand, and never routes through the
     // allocator — so the memoized high-water mark can no longer be trusted.
@@ -557,6 +581,16 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     // read the pre-edit log and memoize that as current.
     sequences?.invalidate();
     onChange?.call();
+    // Both logs, when the contact moved: the one it left has changed as much
+    // as the one it joined, and an upload of it is just as stale.
+    // Not when nothing was written: a save of a contact sync has already
+    // removed changes no log, and a sent one walked back by it is stale for
+    // nothing.
+    if (wrote && operatorEdit && !stamped.isEvent) {
+      for (final operationUuid in {stamped.operationUuid, ?leaving}) {
+        await onLocalContact?.call(operationUuid, isNewContact: false);
+      }
+    }
   }
 
   /// Marks the QSO carrying [number] on [request]'s sequence as a serial
@@ -577,6 +611,9 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
           deleted: qso.deleted,
           scoreCache: qso.scoreCache,
         ),
+        // Another position's report, not this operator's edit: a sent log
+        // walked back to `completed` by it is a revision nobody here made.
+        operatorEdit: false,
       );
       return;
     }
@@ -618,7 +655,10 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
       _touch([stamped.operationUuid], [stamped.uuid]);
       changed = true;
     });
-    if (changed) onChange?.call();
+    if (!changed) return;
+    onChange?.call();
+    // Deleting a contact changes what the log says, as editing one does.
+    if (!qso.isEvent) await onLocalContact?.call(qso.operationUuid, isNewContact: false);
   }
 
   /// The QSO-side half of `undeleteOperationWithQsos`: restores every
@@ -1081,10 +1121,12 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
   /// Just the operation's event rows (`band = 'event'` — see [Qso.isEvent]),
   /// oldest first. What the segment writers and [restampSegments] read:
   /// decoding a whole 5000-QSO log to find a handful of markers is a cost
-  /// paid on every local operation save.
-  Future<List<Qso>> eventsForOperation(String operationUuid) async {
+  /// paid on every local operation save. [includeDeleted] adds the
+  /// tombstoned ones, for a writer that would rather revive a marker than
+  /// stack a new one beside it.
+  Future<List<Qso>> eventsForOperation(String operationUuid, {bool includeDeleted = false}) async {
     final query = db.select(db.qsos)
-      ..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(false) & q.band.equals('event'))
+      ..where((q) => q.operation.equals(operationUuid) & (includeDeleted ? const Constant(true) : q.deleted.equals(false)) & q.band.equals('event'))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
     return qsosFromRows(await query.get());
   }
@@ -1098,6 +1140,16 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
       ..addColumns([min])
       ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & isContact);
     return (await query.getSingleOrNull())?.read(min);
+  }
+
+  /// When the operation's latest real contact was, or null for a log with
+  /// none — what decides whether a lifecycle marker still ends the log.
+  Future<int?> lastContactMillis(String operationUuid) async {
+    final max = db.qsos.startAtMillis.max();
+    final query = db.selectOnly(db.qsos)
+      ..addColumns([max])
+      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & isContact);
+    return (await query.getSingleOrNull())?.read(max);
   }
 
   SimpleSelectStatement<$QsosTable, QsoRow> _forOperationQuery(String operationUuid, {required bool includeDeleted}) {

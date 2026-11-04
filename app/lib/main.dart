@@ -264,6 +264,7 @@ void _mainBody({
         // Evaluated here so an expired build still nags with no network, and again
         // after each flags refresh once the server-driven signals have arrived.
         services.staleness.start();
+        services.lifecycleSweeper.start();
         // Check for an over-the-air Dart patch on the device's selected track
         // (docs/releases.md §4). Fire-and-forget on purpose: this makes a network
         // call the Shorebird package warns can be slow, so it must NOT gate startup

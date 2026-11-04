@@ -23,6 +23,7 @@ class LoggingInfoFrame extends StatefulWidget {
   const LoggingInfoFrame({
     super.key,
     required this.buttonDiameter,
+    this.actionWidth,
     required this.leftieMode,
     required this.signature,
     this.footer,
@@ -35,6 +36,12 @@ class LoggingInfoFrame extends StatefulWidget {
   /// action button matches it, the area is at least that tall, and both the
   /// content and the strip keep clear of the column it sits in.
   final double buttonDiameter;
+
+  /// How wide [actionButton] is when it is wider than one button — the
+  /// operation lifecycle's labelled START, or its pair of controls. The
+  /// content and the strip keep clear of this much; the area's minimum height
+  /// stays [buttonDiameter]. Null is one button's width.
+  final double? actionWidth;
 
   /// Action button on the left, for a left-handed operator.
   final bool leftieMode;
@@ -85,7 +92,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
 
   @override
   Widget build(BuildContext context) {
-    final reserve = widget.buttonDiameter;
+    final reserve = widget.actionWidth ?? widget.buttonDiameter;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -94,7 +101,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
           verticalDirection: widget.entryRowAbove ? VerticalDirection.up : VerticalDirection.down,
           children: [
             ConstrainedBox(
-              constraints: BoxConstraints(minHeight: reserve),
+              constraints: BoxConstraints(minHeight: widget.buttonDiameter),
               child: SizedBox(
                 width: double.infinity,
                 // Reserves room for the button positioned on top of this box

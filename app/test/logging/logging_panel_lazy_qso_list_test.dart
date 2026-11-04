@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// HALO-258's _LazyQsoList defers a large operation's QSO list behind a
+// HALO-258's LazyQsoList defers a large operation's QSO list behind a
 // spinner until the enclosing route's push transition settles, tied to the
 // transition's own AnimationStatus. That status listener has no path back if
 // the transition's AnimationController is stranded mid-flight — e.g. a
@@ -32,7 +32,7 @@ import 'package:ham2k_logger/views/operation/logging_panel.dart';
 /// AnimationController is genuinely mid-flight. Mounting LoggingPanel on
 /// the very same frame as the push (as a bare `push(...builder: (_) =>
 /// LoggingPanel(...))` would) hits Navigator before it reparents the
-/// route's exposed animation onto that controller, so `_LazyQsoList` would
+/// route's exposed animation onto that controller, so `LazyQsoList` would
 /// see `kAlwaysCompleteAnimation` and conclude there's nothing to wait for
 /// — never a realistic reproduction of the stall. This defers the mount by
 /// one frame via `addPostFrameCallback`, the same way real async data
@@ -61,13 +61,13 @@ class _MountNextFrameState extends State<_MountNextFrame> {
   Widget build(BuildContext context) => _show ? widget.builder(context) : const SizedBox.shrink();
 }
 
-/// Above _lazyQsoListThreshold (200) in logging_panel.dart.
+/// Above lazyQsoListThreshold (200) in lazy_qso_list.dart.
 const _largeQsoCount = 201;
 
 /// Comfortably past a pushed route's default transition (300ms) plus
 /// _settleSlack in logging_panel.dart, with margin for the frames this test
 /// itself spends getting LoggingPanel mounted (_MountNextFrame, then
-/// _LazyQsoList's own post-frame arm) before the deadline even starts
+/// LazyQsoList's own post-frame arm) before the deadline even starts
 /// counting.
 const _settleDeadline = Duration(milliseconds: 800);
 
@@ -183,7 +183,7 @@ void main() {
     );
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
-    // _LazyQsoList keeps the same widget type (and Element) across the
+    // LazyQsoList keeps the same widget type (and Element) across the
     // threshold specifically so an operator logging QSOs mid-session doesn't
     // lose their scroll position — see the call site's comment in
     // logging_panel.dart. That means largeEnough can flip false→true via a

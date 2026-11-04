@@ -427,6 +427,7 @@ class _Translations$operation$cw extends Translations$operation$en {
 	@override String get loggingControlsStale => '·— —·—· — ·· ···— ·· — —·—— / ··—· ·· · ·—·· —·· ··· / —— ·— —·—— / —··· · / ——— ··— — / ——— ··—· / —·· ·— — · / — / ·—· · ——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ·—· · ··—· ·—· · ··· ···· / — ···· · ——';
 	@override String get locationNone => '—· ——— — / ··· · —';
 	@override String get generalOperation => '——· · —· · ·—· ·— ·—·· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override late final _Translations$operation$lifecycle$cw lifecycle = _Translations$operation$lifecycle$cw._(_root);
 	@override String titleFor({required Object value}) => '··—· ——— ·—· / ${value}';
 	@override String titleAt({required Object value}) => '·— — / ${value}';
 	@override String segmentNow({required Object description}) => '—· ——— ·—— / ${description}';
@@ -1767,6 +1768,41 @@ class _Translations$operation$positions$cw extends Translations$operation$positi
 	@override String get panelDescription => '·—— ···· ·— — / · ···— · ·—· —·—— / ——— ·——· · ·—· ·— — ·· —· ——· / ·——· ——— ··· ·· — ·· ——— —· / ··· ···· ·— ·—· ·· —· ——· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ·—·· ——— ——· ——· ·· —· ——· / ·—· ·· ——· ···· — / —· ——— ·—— ·—·—·—';
 }
 
+// Path: operation.lifecycle
+class _Translations$operation$lifecycle$cw extends Translations$operation$lifecycle$en {
+	_Translations$operation$lifecycle$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get paused => '·——· ·— ··— ··· · —··';
+	@override String pausedFor({required Object time}) => '·——· ·— ··— ··· · —·· / ··—· ——— ·—· / ${time}';
+	@override String get completed => '——— ·——· · ·—· ·— — ·· ——— —· / —·—· ——— —— ·——· ·—·· · — · —··';
+	@override String get start => '—— ·— ·—· —·— / — ···· · / ··· — ·— ·—· —';
+	@override String get pause => '·——· ·— ··— ··· ·';
+	@override String get continueOperation => '—·—· ——— —· — ·· —· ··— ·';
+	@override String get restart => '·—· · ··· — ·— ·—· —';
+	@override String get exports => '· —··— ·——· ——— ·—· — ···';
+	@override String get end => '··—· ·· —· ·· ··· ···· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get moveFailed => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ···· ·— —· ——· · / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ·';
+	@override String get started => '··· — ·— ·—· — · —··';
+	@override String get restarted => '·—· · ··· — ·— ·—· — · —··';
+	@override String restartedAfter({required Object name, required Object time}) => '${name} / ·— ··—· — · ·—· / ${time}';
+	@override String get finished => '··—· ·· —· ·· ··· ···· · —··';
+	@override String finishedWith({required Object name, required Object qsos, required Object time}) => '${name} ——··—— / ·—— ·· — ···· / ${qsos} / ·· —· / ${time}';
+	@override String lastExportAgo({required Object time}) => '·—·· ·— ··· — / · —··— ·——· ——— ·—· —\n${time}';
+	@override String lastExportOn({required Object date}) => '·—·· ·— ··· — / · —··— ·——· ——— ·—· — / ——— —·\n${date}';
+	@override String get justNow => '·——— ··— ··· — / —· ——— ·——';
+	@override String minutesAgo({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / —— ·· —· ··— — · / ·— ——· ———',
+		other: '${count} / —— ·· —· ··— — · ··· / ·— ——· ———',
+	);
+	@override String hoursAgo({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ···· ——— ··— ·—· / ·— ——· ———',
+		other: '${count} / ···· ——— ··— ·—· ··· / ·— ——· ———',
+	);
+}
+
 // Path: operation.menu
 class _Translations$operation$menu$cw extends Translations$operation$menu$en {
 	_Translations$operation$menu$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -2106,6 +2142,9 @@ class _Translations$loggingControls$info$cw extends Translations$loggingControls
 	@override String get qsoCountOne => '·———— / ——·— ··· ———';
 	@override String qsoCountOther({required Object count}) => '${count} / ——·— ··· ——— ···';
 	@override String qsosInTime({required Object count, required Object time}) => '${count} / ·· —· / ${time}';
+	@override String ratePerHour({required Object rate}) => '${rate} / ——·— ··· ——— —··—· ····';
+	@override String rateWithSplit({required Object rate, required Object paused, required Object active}) => '${rate} / —·——· ${paused} / ·——· ·— ··— ··· · —·· ——··—— / ${active} / ·— —·—· — ·· ···— · —·——·—';
+	@override String ratePerDay({required Object rate}) => '${rate} / ——·— ··· ——— —··—· —·· ·— —·——';
 	@override String sinceLast({required Object time}) => '${time} / ··· ·· —· —·—· · / ·—·· ·— ··· —';
 	@override String ratePer10({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— —————';
 	@override String ratePer100({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— ————— —————';
@@ -5200,6 +5239,26 @@ extension on TranslationsCw {
 			'operation.loggingControlsStale' => '·— —·—· — ·· ···— ·· — —·—— / ··—· ·· · ·—·· —·· ··· / —— ·— —·—— / —··· · / ——— ··— — / ——— ··—· / —·· ·— — · / — / ·—· · ——— ·——· · —· / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ·—· · ··—· ·—· · ··· ···· / — ···· · ——',
 			'operation.locationNone' => '—· ——— — / ··· · —',
 			'operation.generalOperation' => '——· · —· · ·—· ·— ·—·· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'operation.lifecycle.paused' => '·——· ·— ··— ··· · —··',
+			'operation.lifecycle.pausedFor' => ({required Object time}) => '·——· ·— ··— ··· · —·· / ··—· ——— ·—· / ${time}',
+			'operation.lifecycle.completed' => '——— ·——· · ·—· ·— — ·· ——— —· / —·—· ——— —— ·——· ·—·· · — · —··',
+			'operation.lifecycle.start' => '—— ·— ·—· —·— / — ···· · / ··· — ·— ·—· —',
+			'operation.lifecycle.pause' => '·——· ·— ··— ··· ·',
+			'operation.lifecycle.continueOperation' => '—·—· ——— —· — ·· —· ··— ·',
+			'operation.lifecycle.restart' => '·—· · ··· — ·— ·—· —',
+			'operation.lifecycle.exports' => '· —··— ·——· ——— ·—· — ···',
+			'operation.lifecycle.end' => '··—· ·· —· ·· ··· ···· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'operation.lifecycle.moveFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ···· ·— —· ——· · / — ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ·',
+			'operation.lifecycle.started' => '··· — ·— ·—· — · —··',
+			'operation.lifecycle.restarted' => '·—· · ··· — ·— ·—· — · —··',
+			'operation.lifecycle.restartedAfter' => ({required Object name, required Object time}) => '${name} / ·— ··—· — · ·—· / ${time}',
+			'operation.lifecycle.finished' => '··—· ·· —· ·· ··· ···· · —··',
+			'operation.lifecycle.finishedWith' => ({required Object name, required Object qsos, required Object time}) => '${name} ——··—— / ·—— ·· — ···· / ${qsos} / ·· —· / ${time}',
+			'operation.lifecycle.lastExportAgo' => ({required Object time}) => '·—·· ·— ··· — / · —··— ·——· ——— ·—· —\n${time}',
+			'operation.lifecycle.lastExportOn' => ({required Object date}) => '·—·· ·— ··· — / · —··— ·——· ——— ·—· — / ——— —·\n${date}',
+			'operation.lifecycle.justNow' => '·——— ··— ··· — / —· ——— ·——',
+			'operation.lifecycle.minutesAgo' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —— ·· —· ··— — · / ·— ——· ———', other: '${count} / —— ·· —· ··— — · ··· / ·— ——· ———', ), 
+			'operation.lifecycle.hoursAgo' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ···· ——— ··— ·—· / ·— ——· ———', other: '${count} / ···· ——— ··— ·—· ··· / ·— ——· ———', ), 
 			'operation.titleFor' => ({required Object value}) => '··—· ——— ·—· / ${value}',
 			'operation.titleAt' => ({required Object value}) => '·— — / ${value}',
 			'operation.segmentNow' => ({required Object description}) => '—· ——— ·—— / ${description}',
@@ -5296,6 +5355,8 @@ extension on TranslationsCw {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importNothing' => '—· ——— / ·——· ·— —· · ·—·· / ·——· ·· —·—· —·— · —·· ——··—— / ··· ——— / —· ——— — ···· ·· —· ——· / ·—— ·— ··· / ·· —— ·——· ——— ·—· — · —·· ·—·—·—',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => '·—·· · ··—· — / ——— ··— — ———··· / ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '—·— · ·——· — / ${panels} ———··· / — ···· · / ··· —— ·— ·—·· ·—·· —····— ··· —·—· ·—· · · —· / ·— ·—· ·—· ·— —· ——· · —— · —· — / —·—· ·— —· ’ — / —·· ——— / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
@@ -5316,8 +5377,6 @@ extension on TranslationsCw {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · ·—·· · —— · —· — ···',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / —· · ··· — ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· · ···— · ·—·· ··· / —·· · · ·——·',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ·— ·—· — ·—— ——— ·—· —·— / ·· ··· / —· ——— — / ··· · ·—·· ··—· —····— —·—· ——— —· — ·— ·· —· · —··',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / ·—·· ·— —·—— · ·—· ···',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / —·—· ——— —· — ·—· ——— ·—·· ···',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / —·· ·· ··· ·——· ·—·· ·— —·—— · —·· ———··· / ·——· ·— ·—· — / ——— ··—· / ·· — ··· / ··· —·—· · —· · / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${max} / · —· — ·—· ·· · ···',
@@ -5810,6 +5869,8 @@ extension on TranslationsCw {
 			'loggingControls.operatorField' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·—· ·— ·—·· ·—··', other: '${count} / —·—· ·— ·—·· ·—·· ···', ), 
 			'loggingControls.editStationCalls' => '· —·· ·· — / ·—·· ·· ··· —',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.stationCallsTitle' => '··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'loggingControls.stationCallsHint' => '—·—· ·— ·—·· ·—·· ··· / ·— —·· —·· · —·· / ···· · ·—· · / —·—· ——— ··— —· — / ··—· ·—· ——— —— / — ···· · / —· · —··— — / —·—· ——— —· — ·— —·—· — / ——— —· ·—·—·— / ·— / —·—· ·— ·—·· ·—·· / ·—· · —— ——— ···— · —·· / ···· · ·—· · / —·— · · ·——· ··· / — ···· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—·· ——— ——· ——· · —·· / ··— —· —·· · ·—· / ·· — ·—·—·—',
 			'loggingControls.stationCallsAdd' => '·— —·· —·· / ·— / —·—· ·— ·—·· ·—·· ··· ·· ——· —·',
@@ -5830,8 +5891,6 @@ extension on TranslationsCw {
 			'loggingControls.spottingAutoControl' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·',
 			'loggingControls.spotAutoNext' => ({required Object time}) => '·— ··— — ——— / ·· —· / ${time} ·—·—·— / ··· — ——— ·——· ··——··',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => '·— ··— — ——— / ·· —· / ${minutes} ——',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => '·— ··— — ——— / ·· —· / ${seconds} ···',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => '·— ··— — ——— / ·· —· / ${seconds}',
@@ -5853,6 +5912,9 @@ extension on TranslationsCw {
 			'loggingControls.info.qsoCountOne' => '·———— / ——·— ··· ———',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} / ——·— ··· ——— ···',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} / ·· —· / ${time}',
+			'loggingControls.info.ratePerHour' => ({required Object rate}) => '${rate} / ——·— ··· ——— —··—· ····',
+			'loggingControls.info.rateWithSplit' => ({required Object rate, required Object paused, required Object active}) => '${rate} / —·——· ${paused} / ·——· ·— ··— ··· · —·· ——··—— / ${active} / ·— —·—· — ·· ···— · —·——·—',
+			'loggingControls.info.ratePerDay' => ({required Object rate}) => '${rate} / ——·— ··· ——— —··—· —·· ·— —·——',
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} / ··· ·· —· —·—· · / ·—·· ·— ··· —',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— —————',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} / ——·— —··—· ···· / ··—· ——— ·—· / ·—·· ·— ··· — / ·———— ————— —————',
@@ -6321,6 +6383,8 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.deleteReading' => '—·· · ·—·· · — · / ·—· · —·—· ——— ·—· —·· ·· —· ——·',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => '—·· · ·—·· · — · / — ···· ·· ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ${word} ” ··——··',
 			'settings.radio.voiceWords.recordAll' => '·—· · —·—· ——— ·—· —·· / ·— ·—·· ·—··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.deleteAll' => '—·· · ·—·· · — · / ·— ·—·· ·—··',
 			'settings.radio.voiceWords.deleteAllTitle' => ({required Object call}) => '—·· · ·—·· · — · / · ···— · ·—· —·—— / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ··—· ——— ·—· / ${call} ··——··',
 			'settings.radio.voiceWords.recordAllIntro' => '·—· · ·— —·· / · ·— —·—· ···· / ——— —· · / ·— ··· / —·—— ——— ··— / ·—— ——— ··— ·—·· —·· / ——— —· / — ···· · / ·— ·· ·—· ——··—— / — ···· · —· / ··· — ——— ·——· ·—·—·— / · ·— —·—· ···· / ·—— ——— ·—· —·· / —·—— ——— ··— / ··· ·— ·· —·· / ·——· ·—·· ·— —·—— ··· / —··· ·— —·—· —·— / ——— —· / ·· — ··· / ——— ·—— —· ———··· / — ·— —·— · / ·· — / ·— —· —·· / ——· ——— / ——— —· / — ——— / — ···· · / —· · —··— — ——··—— / ——— ·—· / ·—· · —·—· ——— ·—· —·· / ·· — / ·— ——· ·— ·· —· ·—·—·—',
@@ -6344,8 +6408,6 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} / —— ···',
 			'settings.radio.voiceWords.speed' => '··· ·——· · · —··',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed} ×',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
 			'settings.radio.voiceWords.splitSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ·· —· / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·—',
 			'settings.radio.voiceWords.splitNotThreeTakes' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / — ···· ·—· · · / — ·— —·— · ··· ·—·—·— / ··· ·— —·—— / — ···· · / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
@@ -6835,6 +6897,8 @@ extension on TranslationsCw {
 			'settings.station.notConfigured' => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
 			'settings.station.currentConfiguration' => '—·—· ··— ·—· ·—· · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.station.currentTransceiver' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentTransceivers' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} ———··· / ${name}',
 			'settings.station.so2rQueueMessages' => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·',
@@ -6858,8 +6922,6 @@ extension on TranslationsCw {
 			'settings.station.equipmentInUse' => '— ·—· ·— —· ··· —·—· · ·· ···— · ·—· / —·—· ——— —· — ·—· ——— ·—·· ···',
 			'settings.station.noTransceiver' => '—· ——— —· ·',
 			'settings.station.peerRadioNotAvailable' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => '——— —· / ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
@@ -7349,6 +7411,8 @@ extension on TranslationsCw {
 			'keyboardShortcuts.sets.appDefaults' => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ···',
 			'keyboardShortcuts.sets.carriedName' => '—— —·—— / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.sets.appDefaultsLocked' => '·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·— ·—· · / — ···· · / ·— ·——· ·——· ’ ··· / ——— ·—— —· / —·— · —·—— ··· ·—·—·— / — ——— / —·—· ···· ·— —· ——· · / — ···· · —— ——··—— / —·· ··— ·——· ·—·· ·· —·—· ·— — · / ·— ·——· ·——· / —·· · ··—· ·— ··— ·—·· — ··· / ·· —· / —— ·— —· ·— ——· · / ··· ···· ——— ·—· — —·—· ··— — / ··· · — ··· … / ·— —· —·· / ··— ··· · / — ···· · / —·—· ——— ·——· —·—— ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.sets.fileLabel' => '···· ·— —— ··——— —·— / —·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.sets.fileStem' => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.resetAll' => '·—· · ··· · — / ·— ·—·· ·—··',
@@ -7372,8 +7436,6 @@ extension on TranslationsCw {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => '··— —· —·— —· ——— ·—— —· / —·—· ——— —— —— ·— —· —·· ———··· / ${command}',
 			'keyboardShortcuts.command.commandDialog' => '——— ·——· · —· / — ···· · / —·—· ——— —— —— ·— —· —·· / —·· ·· ·— ·—·· ——— ——·',
 			'keyboardShortcuts.command.toggleTheme' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—·· ·· ——· ···· — / ·— —· —·· / —·· ·— ·—· —·—',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
 			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleDown' => '··· —— ·— ·—·· ·—·· · ·—· / — · —··— —',

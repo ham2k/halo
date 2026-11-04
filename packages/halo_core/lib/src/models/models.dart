@@ -222,6 +222,30 @@ class Operation {
   /// legacy fallback as [createdAtMillis] — this one decides which side of a
   /// sync merge wins, so a null would make a legacy record look revision-less.
   int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'] ?? data['updatedOnMillis'])?.toInt();
+
+  /// The lifecycle status (`operation_lifecycle.dart`), mirrored to the
+  /// `status` column. Null for every operation written by a build without
+  /// the lifecycle and for everything app-polo writes; the sweep derives one on its first pass.
+  String? get status => asQsonString(data['status']);
+
+  /// When [status] was last written — the app clock, since it lines up with
+  /// QSO times. Stands in for "last sign of life" on an operation that was
+  /// started but never logged into.
+  ///
+  /// The edit-reverts rule deliberately does NOT restamp it: the stamp
+  /// records when the operator declared the log done, and an edit
+  /// contradicts that declaration rather than renewing it.
+  int? get statusAtMillis => asQsonNum(data['statusAtMillis'])?.toInt();
+
+  /// When an export or upload last left the app — restamped on every send,
+  /// so a re-export also restarts the week before the sweep archives the
+  /// log. Kept in `data` only — the
+  /// archive sweep's candidate set is `status = 'processed'`, a handful of
+  /// rows, so decoding those blobs is free.
+  ///
+  /// Survives a revert to [OperationStatus.completed], so a later comparison
+  /// can still ask what changed since the log was sent.
+  int? get processedAtMillis => asQsonNum(data['processedAtMillis'])?.toInt();
 }
 
 /// The callsigns in one operation's `stationCall` field — see

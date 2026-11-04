@@ -125,7 +125,7 @@ void main() {
     await t.pumpWidget(
       twoSets(
         qsos: [qso('1', 'A'), qso('2'), qso('3', 'B')],
-        lookups: LookupHooks(operationStatsLines: (qsos) => ['${qsos.length} counted: ${qsos.map((q) => q.uuid).join(',')}']),
+        lookups: LookupHooks(operationStatsLines: (qsos, {closed = false}) => ['${qsos.length} counted: ${qsos.map((q) => q.uuid).join(',')}']),
       ),
     );
     await t.pump();

@@ -63,6 +63,8 @@ import 'logging_controls_time.dart';
 import 'logging_controls_types.dart';
 import 'logging_info_area.dart';
 import 'mdi_icons.g.dart';
+import 'operation_lifecycle_controls.dart';
+import 'operation_lifecycle_spec.dart';
 import 'platform_chrome.dart';
 import 'qso_edit_pane.dart';
 import 'rebuild_between_frames.dart';
@@ -418,17 +420,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _publishEsmFacts();
   }
 
+  /// The operation's lifecycle as this panel shows it — see [OperationLifecycleGate].
+  final _lifecycle = OperationLifecycleGate();
+  bool get _lifecycleLocked => _lifecycle.locks(editing: widget.session.editingQso != null, hasComposedValues: _draft.hasComposedValues);
+
   /// Whether the form is a read-only view: a staged delete, an
-  /// already-deleted QSO awaiting restore (ham2k/halo-dist#59), or an
-  /// operation that may not be written at all. Every input path — fields,
-  /// save, keyboard shortcuts — must consult this, not `_pendingDelete`
-  /// alone.
+  /// already-deleted QSO awaiting restore (ham2k/halo-dist#59), an operation
+  /// that may not be written at all, or one that is no longer being logged
+  /// into. Every input path — fields, save, keyboard shortcuts — must consult
+  /// this, not `_pendingDelete` alone.
   ///
   /// The write policy belongs HERE rather than at the two `qsosRepository`
   /// calls: those throw, which tells the operator after the fact that the
   /// contact they typed did not land. Locking the form means it was never
   /// typeable, which is the difference between a refusal and a lost contact.
-  bool get _fieldsLocked => _pendingDelete || (widget.session.editingQso?.deleted ?? false) || _writeRefusal != null;
+  bool get _fieldsLocked => _pendingDelete || (widget.session.editingQso?.deleted ?? false) || _writeRefusal != null || _lifecycleLocked;
+  List<OperationLifecycleControl> get _lifecycleControls => _lifecycle.controls(
+    locked: _lifecycleLocked,
+    hasComposedValues: _draft.hasComposedValues || _draft.undoSlot.value != null,
+    editing: widget.session.editingQso != null,
+  );
 
   /// The default-focus rule's backstop (docs/design/logging-fields.md
   /// § Which field has focus), which owns the panel's Tab-trapping scope.
@@ -516,6 +527,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _operator.addListener(_onModelChanged);
     _exchange.addListener(_onModelChanged);
     _refs.addListener(_onModelChanged);
+    _lifecycle
+      ..spec = widget.log.lifecycle
+      ..addListener(_onModelChanged);
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
     // constructed with editingQso already set (rather than transitioning
@@ -677,6 +691,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // First, and on every rebuild: the status can move out from under the
+    // panel (an export promoting it), and nothing below may run on a stale one.
+    _lifecycle.follow(widget.log.lifecycle, _callController, _callFocus);
     // In this order, and each on its own: a block that returns early is
     // written as one that says so, so nothing after it runs — or fails to
     // run — by accident.
@@ -892,6 +909,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.session.controller?.detach();
     widget.radio.radioUpdates?.removeListener(_onRadioVfoChanged);
     ClockTravel.instance.removeListener(_onClockTravelChanged);
+    _lifecycle.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _lookup.dispose();
     _command.dispose();
@@ -1107,6 +1125,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // button) or selecting away (ham2k/halo-dist#59).
     final deletedQso = widget.session.editingQso?.deleted ?? false;
     final fieldsLocked = _fieldsLocked;
+    final lifecycleControls = _lifecycleControls;
+    // A closed log reads top-down: what it is and what it holds where the
+    // info area was, and what is left to do with it in place of the entry row.
+    final closedRead = _lifecycleLocked;
     final accentPoloColors = editing ? poloColors.copyWith(tertiaryLight: poloColors.secondaryLight) : poloColors;
     final accentTheme = editing
         ? theme.copyWith(
@@ -1226,15 +1248,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         _radio.band,
                         entryRowAbove: widget.prefs.aboveLog,
                         children: [
-                          LoggingInfoFrame(
-                            buttonDiameter: _editButtonDiameter ?? 44,
-                            leftieMode: widget.prefs.leftieMode,
-                            signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
-                            footer: widget.strip.infoAreaFooter,
-                            actionButton: _buildWipeOrEditButton(accentTheme),
-                            entryRowAbove: widget.prefs.aboveLog,
-                            child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
-                          ),
+                          if (closedRead)
+                            OperationLifecycleRead(
+                              gate: _lifecycle,
+                              accentTheme: accentTheme,
+                              diameter: _editButtonDiameter ?? 44,
+                              summary: widget.lookups.operationStatsLines?.call(widget.log.qsos, closed: true) ?? const [],
+                            )
+                          else
+                            LoggingInfoFrame(
+                              buttonDiameter: _editButtonDiameter ?? 44,
+                              leftieMode: widget.prefs.leftieMode,
+                              signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
+                              footer: widget.strip.infoAreaFooter,
+                              actionWidth: operationLifecycleSlotWidth(context, lifecycleControls, diameter: _editButtonDiameter ?? 44),
+                              actionButton: lifecycleControls.isEmpty
+                                  ? _buildWipeOrEditButton(accentTheme)
+                                  : OperationLifecycleSlot(controls: lifecycleControls, accentTheme: accentTheme, diameter: _editButtonDiameter ?? 44),
+                              entryRowAbove: widget.prefs.aboveLog,
+                              child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
+                            ),
                           const SizedBox(height: Space.md),
                           // A Stack so the `options` suggestion pills can float over
                           // the info area above instead of pushing the fields down
@@ -1242,64 +1275,98 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                           // deliberately painted outside this box, and the row itself
                           // is what gives the Stack its size (the pills are
                           // positioned, so they never enlarge it).
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              LoggingEntryRow(
-                                call: (controller: _callController, focus: _callFocus),
-                                rstFields: _showsRSTFields ? _rstPair : const [],
-                                rstPlaceholder: _rstPlaceholder,
-                                numericKeyboardType: _numbersAndPunctuationOnIOS,
-                                exchange: _exchange,
-                                textControls: _textControls,
-                                state: _showsStateField ? (controller: _stateController, focus: _stateFocus) : null,
-                                stateHint: _guessStateHint,
-                                onStateChanged: (_) {
-                                  _draft.stateTouched = true;
-                                  // Scored on (New State / New Province, and a party's
-                                  // exchange), so a typed state reaches the scorer the
-                                  // way an exchange field's value does.
-                                  _lookup.exchangeEdited();
-                                  _lookup.entriesEdited();
-                                },
-                                grid: _showsGridField ? (controller: _gridController, focus: _gridFocus) : null,
-                                gridHint: _guessGridHint,
-                                onGridChanged: (_) {
-                                  _draft.markGridTouched();
-                                  // A scorer judges the grid (`shortGrid`).
-                                  _lookup.exchangeEdited();
-                                  _lookup.entriesEdited();
-                                },
-                                command: _command,
-                                virtualSpace: _virtualSpace,
-                                commandVirtualSpace: _commandVirtualSpace,
-                                enabled: !fieldsLocked,
-                                leftieMode: widget.prefs.leftieMode,
-                                // The log button is a circle as tall as the row, so the
-                                // height already measured for it is also its width. The
-                                // 44 fallback (first frame, before that measurement
-                                // lands) matches the info area's own above.
-                                buttonWidth: _editButtonDiameter ?? 44,
-                                submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
-                                eventFields: _editingEvent
-                                    ? EventFieldRow(
-                                        editingQso: widget.session.editingQso!,
-                                        textController: _eventTextController,
-                                        textFocus: _eventTextFocus,
-                                        enabled: !fieldsLocked,
-                                        todoDone: _eventTodoDone,
-                                        onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
-                                        onSubmitted: _log,
-                                      )
-                                    : null,
-                                onSubmitted: () => _log(fromEnter: true, asIs: _shiftHeld),
-                                onExchangeSubmitted: _handleEnter,
-                                onCallTyped: widget.session.onCallTyped,
-                                autofocus: widget.so2r?.ownsStrip ?? true,
-                              ),
-                              if (exchangeMenu != null) ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
-                            ],
-                          ),
+                          // Replaced, not dimmed, by a lifecycle lock — see [OperationLifecycleRead].
+                          if (closedRead)
+                            Row(
+                              children: [
+                                OperationLifecycleSlot(controls: lifecycleControls, accentTheme: accentTheme, diameter: _editButtonDiameter ?? 44),
+                                // The note is what gives way on a narrow panel or
+                                // at a raised text scale; the two buttons never do.
+                                Expanded(
+                                  child: switch (_lifecycle.spec) {
+                                    OperationLifecycleSpec(finished: true, lastExportNote: final note?) => Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: Space.md),
+                                      child: OncePerSecond(
+                                        builder: (context, _) => Text(
+                                          note(nowMillis()),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: accentTheme.textTheme.bodySmall?.copyWith(
+                                            color: accentTheme.colorScheme.onTertiaryContainer.withValues(alpha: 0.7),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    _ => const SizedBox.shrink(),
+                                  },
+                                ),
+                                OperationLifecycleReopenButton(
+                                  spec: _lifecycle.spec,
+                                  accentTheme: accentTheme,
+                                  diameter: _editButtonDiameter ?? 44,
+                                  paused: _lifecycle.spec?.presentsPausedAt(nowMillis()) ?? false,
+                                ),
+                              ],
+                            )
+                          else
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                LoggingEntryRow(
+                                  call: (controller: _callController, focus: _callFocus),
+                                  rstFields: _showsRSTFields ? _rstPair : const [],
+                                  rstPlaceholder: _rstPlaceholder,
+                                  numericKeyboardType: _numbersAndPunctuationOnIOS,
+                                  exchange: _exchange,
+                                  textControls: _textControls,
+                                  state: _showsStateField ? (controller: _stateController, focus: _stateFocus) : null,
+                                  stateHint: _guessStateHint,
+                                  onStateChanged: (_) {
+                                    _draft.stateTouched = true;
+                                    // Scored on (New State / New Province, and a party's
+                                    // exchange), so a typed state reaches the scorer the
+                                    // way an exchange field's value does.
+                                    _lookup.exchangeEdited();
+                                    _lookup.entriesEdited();
+                                  },
+                                  grid: _showsGridField ? (controller: _gridController, focus: _gridFocus) : null,
+                                  gridHint: _guessGridHint,
+                                  onGridChanged: (_) {
+                                    _draft.markGridTouched();
+                                    // A scorer judges the grid (`shortGrid`).
+                                    _lookup.exchangeEdited();
+                                    _lookup.entriesEdited();
+                                  },
+                                  command: _command,
+                                  virtualSpace: _virtualSpace,
+                                  commandVirtualSpace: _commandVirtualSpace,
+                                  enabled: !fieldsLocked,
+                                  leftieMode: widget.prefs.leftieMode,
+                                  // The log button is a circle as tall as the row, so the
+                                  // height already measured for it is also its width. The
+                                  // 44 fallback (first frame, before that measurement
+                                  // lands) matches the info area's own above.
+                                  buttonWidth: _editButtonDiameter ?? 44,
+                                  submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
+                                  eventFields: _editingEvent
+                                      ? EventFieldRow(
+                                          editingQso: widget.session.editingQso!,
+                                          textController: _eventTextController,
+                                          textFocus: _eventTextFocus,
+                                          enabled: !fieldsLocked,
+                                          todoDone: _eventTodoDone,
+                                          onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
+                                          onSubmitted: _log,
+                                        )
+                                      : null,
+                                  onSubmitted: () => _log(fromEnter: true, asIs: _shiftHeld),
+                                  onExchangeSubmitted: _handleEnter,
+                                  onCallTyped: widget.session.onCallTyped,
+                                  autofocus: widget.so2r?.ownsStrip ?? true,
+                                ),
+                                if (exchangeMenu != null) ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
+                              ],
+                            ),
                         ],
                       ),
                     ],

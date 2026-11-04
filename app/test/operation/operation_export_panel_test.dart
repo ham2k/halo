@@ -725,6 +725,9 @@ void main() {
 
       expect(find.text('Sent to Ham2K’s File Stash'), findsOneWidget);
       expect(find.textContaining('Free accounts can only keep one stash'), findsOneWidget);
+      // The stash moved the operation to `processed`, an operation write, and
+      // with sync on that arms the push's debounce: let it run out here.
+      await tester.pump(const Duration(seconds: 1));
     });
 
     // Without an email the operator has no way to fetch what they stash, so

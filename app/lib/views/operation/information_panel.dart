@@ -10,11 +10,11 @@ import 'package:intl/intl.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/chase_service.dart' show ChaseSummary;
 import '../../services/halo_services.dart';
-import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
 import 'call_info_panel.dart';
 import '../extension_markdown_images.dart';
 import '../../services/extensions/extension_service.dart' show ExtensionService;
+import 'operation_lifecycle_presentation.dart';
 
 /// The Operation View's "Info" pane on two-pane layouts (see
 /// docs/design/layouts.md): basic operation statistics, then the score
@@ -97,6 +97,13 @@ class InformationPanel extends StatelessWidget {
     final scoringWidgets = [for (final scorerKey in scorerKeys) ..._scorerSummary(context, scorerKey, scoring)];
 
     final theme = Theme.of(context);
+    // The logging panel's reading of the lifecycle, from the record alone.
+    // The panel also counts the contacts it logged itself, so while an old
+    // log is being typed in, this pane can call it quiet a while before the
+    // panel does. None when chasing: that log is no operation of its own, and
+    // has no uuid.
+    final lifecycle = services != null && operation.uuid.isNotEmpty ? operationLifecycleSpec(context, services!, operation) : null;
+    final statsLines = operationStatsLinesFor(context, lifecycle);
     return ListView(
       // Extra inset on every edge that's a divider grab strip or a real
       // device safe area.
@@ -109,7 +116,7 @@ class InformationPanel extends StatelessWidget {
         OncePerSecond(
           builder: (context, _) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium)],
+            children: [for (final line in statsLines(qsos)) Text(line, style: theme.textTheme.bodyMedium)],
           ),
         ),
         if (chaseSummaries.isNotEmpty) ...[

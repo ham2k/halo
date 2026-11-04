@@ -26,7 +26,6 @@ import '../../services/spotting_settings.dart';
 import '../../settings/settings_target_dialog.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/log_find_query.dart';
-import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
 import '../../tools/worked_before_label.dart';
@@ -34,7 +33,9 @@ import '../station_config_dialog.dart';
 import '../fyi_area.dart';
 import '../keyer_area.dart';
 import 'extension_panel.dart' show PanelRenderContext;
+import 'lazy_qso_list.dart';
 import 'log_find_bar.dart';
+import 'operation_lifecycle_presentation.dart';
 
 part 'logging_panel_so2r.dart';
 
@@ -385,6 +386,10 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         _loggingController.wipe();
     }
   }
+
+  /// When this panel last logged a contact — see [operationLifecycleSpec]. Not when a row arrived:
+  /// the first load, sync, show-deleted and lifecycle events all add rows with nobody at the radio.
+  int? _loggedAtMillis;
 
   @override
   void didUpdateWidget(LoggingPanel oldWidget) {
@@ -972,7 +977,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
   /// One set of logging controls — the panel's only one, or under SO2R
   /// [so2r]'s set (docs/design/logging-fields.md § SO2R).
-  Widget _buildControls(BuildContext context, {So2rSet? so2r}) {
+  Widget _buildControls(BuildContext context, OperationLifecycleSpec? lifecycle, {So2rSet? so2r}) {
     final radio = so2r?.radio ?? 'A';
     final editingHere = so2r == null || _editingSet == radio;
     // The set the keyboard is in speaks for the panel: its draft and call
@@ -985,6 +990,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
       log: LogHooks(
         operation: widget.operation,
         qsosRepository: widget.services.qsos,
+        lifecycle: lifecycle,
         qsos: widget.qsos,
         decorateQsoBeforeSave: (qso, seg) {
           final stamped = qsoWithOperator(_withStationInfo(so2r == null ? qso : _withSo2rRadio(qso, so2r.radio), radio: radio), widget.operation, segment: seg);
@@ -1004,7 +1010,13 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
           if (!qso.isEvent) {
             widget.services.track(editingHere && _selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
           }
-          if (editingHere) setState(() => _selectedQso = null);
+          final contact = !qso.isEvent && !(editingHere && _selectedQso != null);
+          if (contact || editingHere) {
+            setState(() {
+              if (contact) _loggedAtMillis = nowMillis();
+              if (editingHere) _selectedQso = null;
+            });
+          }
           widget.onQsoLogged?.call();
         },
         onQsoDeleted: (qso) {
@@ -1088,7 +1100,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         // force: false — unlike the explicit "Lookup all QSOs" action, a SEED
         // batch shouldn't force-refresh a QSO that (somehow) already carries real online lookup data.
         enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
-        operationStatsLines: (qsos) => operationStatsLines(context, qsos),
+        operationStatsLines: operationStatsLinesFor(context, lifecycle),
         callLocationLine: (guess) => _callLocationLine(context, guess),
         // Wrapped rather than torn off, to inject the activities this
         // operation has hunted — an operation that activates nothing names
@@ -1229,6 +1241,11 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         if (mounted) widget.onSelectionChanged?.call(selection);
       });
     }
+    // Built once and read twice — the entry row and the stats line ask the same question, and two
+    // calls could answer it either side of a minute boundary. None when chasing: no operation of its own.
+    final lifecycle = widget.scope == LoggingScope.chase
+        ? null
+        : operationLifecycleSpec(context, widget.services, widget.operation, loggedAtMillis: _loggedAtMillis);
     // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
     final scoring = widget.operation.localData['scoring'] as Map<String, dynamic>?;
@@ -1284,7 +1301,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         focusNode: _lockedWalkFocus,
         skipTraversal: true,
         onKeyEvent: _onLockedWalkKey,
-        child: _LazyQsoList(
+        child: LazyQsoList(
           // Only worth deferring a large log's expensive first build —
           // a short one (including a brand-new, empty operation) is
           // cheap enough that showing it immediately, empty-state
@@ -1295,7 +1312,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
           // changed runtimeType here would discard and remount
           // _QsoListState — silently throwing an operator's scroll
           // position and jumping back to the bottom mid-review.
-          largeEnough: widget.qsos.length >= _lazyQsoListThreshold,
+          largeEnough: widget.qsos.length >= lazyQsoListThreshold,
           child: list,
         ),
       ),
@@ -1327,9 +1344,9 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
       builder: (context, _) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!_so2r) _buildControls(context),
+          if (!_so2r) _buildControls(context, lifecycle),
           if (_so2r)
-            for (final radio in widget.controlsAboveLog ? const ['B', 'A'] : const ['A', 'B']) _buildControls(context, so2r: _so2rSet(radio)),
+            for (final radio in widget.controlsAboveLog ? const ['B', 'A'] : const ['A', 'B']) _buildControls(context, lifecycle, so2r: _so2rSet(radio)),
         ],
       ),
     );
@@ -1354,117 +1371,6 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 /// the rest of `localData`: it describes this operator's session at the
 /// keyboard, not the log.
 const _manualTimeKey = 'manualTimeMillis';
-
-/// Below this QSO count, [QsoList]'s first build is cheap enough that
-/// [_LazyQsoList]'s spinner isn't worth showing at all — see its call site.
-const _lazyQsoListThreshold = 200;
-
-/// Defers [child]'s first build behind a spinner until the enclosing route's
-/// own push transition finishes — [QsoList]'s first inflation on a large
-/// operation is expensive enough (HALO-258) to stutter if it lands on the
-/// same frames as that transition. Tied to the transition's actual
-/// [AnimationStatus] first, rather than a guessed duration alone: a fixed
-/// timer close to the transition's own length would land the swap
-/// mid-animation as often as after it. Only defers once: [child]'s
-/// underlying QSO stream already updates in place above this widget
-/// regardless of readiness, so later emissions rebuild [child] without
-/// resetting it.
-class _LazyQsoList extends StatefulWidget {
-  final Widget child;
-  final bool largeEnough;
-
-  const _LazyQsoList({required this.child, required this.largeEnough});
-
-  @override
-  State<_LazyQsoList> createState() => _LazyQsoListState();
-}
-
-/// Slack past the transition's own length before [_LazyQsoListState] gives
-/// up on the status listener and forces readiness — see its settle timer.
-const _settleSlack = Duration(milliseconds: 100);
-
-class _LazyQsoListState extends State<_LazyQsoList> {
-  bool _ready = false;
-  Animation<double>? _routeAnimation;
-  Timer? _settleTimer;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _maybeArm();
-  }
-
-  @override
-  void didUpdateWidget(_LazyQsoList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Logging past the threshold while the panel is already open (the call
-    // site keeps this the same widget type specifically to allow that — see
-    // its comment) only changes `largeEnough`, which doesn't dirty
-    // dependencies — without this, arming would never happen and the
-    // spinner this build shows from here on would never clear.
-    _maybeArm();
-  }
-
-  void _maybeArm() {
-    if (_ready || _routeAnimation != null || !widget.largeEnough) return;
-    final route = ModalRoute.of(context);
-    final animation = route?.animation;
-    if (animation == null || animation.isCompleted) {
-      // No enclosing route transition (or it already finished before this
-      // widget mounted, e.g. reached other than by a fresh push) — nothing
-      // to wait for.
-      _ready = true;
-      return;
-    }
-    _routeAnimation = animation..addStatusListener(_onRouteAnimationStatus);
-    // The status listener is the fast path, but the transition's own
-    // AnimationController is driven by a Ticker that a backgrounded/occluded
-    // desktop window can stop delivering frames to — stranding the
-    // controller mid-flight with no forward or reverse status ever firing
-    // again. A wall-clock deadline, comfortably past the transition's own
-    // length, is the only way off that path that doesn't depend on the
-    // ticker resuming on its own. Armed a frame late (post-frame callback,
-    // not here) so the deadline is measured from an actual rendered frame —
-    // arming mid-build would count time this build itself hasn't spent yet.
-    // ModalRoute always extends TransitionRoute, and `route` is non-null
-    // here (its animation isn't) — see ModalRoute's declaration. The longer
-    // of the two directions: _onRouteAnimationStatus treats a pop
-    // (dismissed) as equally valid as a completed push, so the deadline
-    // has to cover whichever transition is actually playing.
-    final forward = route!.transitionDuration;
-    final reverse = route.reverseTransitionDuration;
-    final transitionDuration = (forward > reverse ? forward : reverse) + _settleSlack;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _ready) return;
-      _settleTimer = Timer(transitionDuration, () {
-        if (!mounted || _ready) return;
-        _routeAnimation?.removeStatusListener(_onRouteAnimationStatus);
-        setState(() => _ready = true);
-      });
-    });
-  }
-
-  void _onRouteAnimationStatus(AnimationStatus status) {
-    // completed: the ordinary forward-push case this exists for. dismissed:
-    // the transition unwound instead of finishing (e.g. this widget mounted
-    // mid-pop, or a push got cancelled) — settling back to nothing playing
-    // out is just as much "stop waiting" as finishing forward is.
-    if (status != AnimationStatus.completed && status != AnimationStatus.dismissed) return;
-    _routeAnimation?.removeStatusListener(_onRouteAnimationStatus);
-    _settleTimer?.cancel();
-    if (mounted) setState(() => _ready = true);
-  }
-
-  @override
-  void dispose() {
-    _routeAnimation?.removeStatusListener(_onRouteAnimationStatus);
-    _settleTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
-}
 
 /// What the logging panel's QSO list shows under a find — see
 /// `_LoggingPanelState._shown`.

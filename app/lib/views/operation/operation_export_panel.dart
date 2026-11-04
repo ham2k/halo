@@ -461,6 +461,31 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+    // Sending the log out is the operator saying it is worth sending, so the
+    // app takes the log as done rather than asking — the one implicit path to
+    // a done-like state, legitimate because the operator initiated it
+    // (docs/design/data-model.md §The Log Data). `outcome` is the test for "it actually happened": a
+    // cancelled save picker and a dismissed share sheet both leave it null.
+    //
+    // Promotes from `active` and `paused` as well as from `completed` (never an
+    // unstarted log — see `markExported`), and so
+    // LOCKS the entry row mid-activation for an operator who uploads partway
+    // through and keeps calling CQ. That is only acceptable while Restart sits
+    // beside the read that replaces the row, and typing a call reopens it too.
+    //
+    // OUTSIDE the export's own try, and with its own guard: this write can be
+    // refused (a travelled clock, WritePolicy) and the files are already on
+    // disk or in the share sheet by now. Shown as the export's failure, it would
+    // retract a fact that has already happened — the trap `adif_import_flow`
+    // documents. A status that did not move is worth nothing next to an
+    // export that did.
+    if (outcome != null) {
+      try {
+        await widget.services.operations.markExported(widget.operation.uuid);
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'export:markExported');
+      }
+    }
     final report = failure != null
         ? (title: failureTitle ?? t.operation.export.resultFailedTitle, body: failure)
         : outcome != null

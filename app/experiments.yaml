@@ -160,3 +160,24 @@ experiments:
     name: MIDI Controllers
     description: Tune, key and adjust the radios from a MIDI controller.
     private: true
+
+  # The operation lifecycle in the logging panel (docs/design/data-model.md
+  # §The Log Data): the state read
+  # that replaces the entry row once a log is paused, finished, sent or
+  # archived, and the controls beside and below it — Mark the start, Reopen,
+  # Done, Exports.
+  #
+  # The gate is on the PRESENTATION only. The status itself is written
+  # unconditionally — it is what an export promotes, what a contact reopens,
+  # and what the sweep derives for every operation that predates it — because
+  # a state that only exists while an experiment is on would be missing from
+  # exactly the logs an operator turned it on to look at.
+  #
+  # It goes on the spec the panel is handed, not on each control: with no
+  # spec the panel is the panel it was before the lifecycle existed, entry row
+  # and all. Gating only the buttons would leave the row locked with nothing
+  # on screen to reopen it.
+  - key: cycle
+    name: Operation Lifecycle
+    description: Start, pause and finish an operation, and see its state where the entry row sits.
+    aliases: [lifecycle]

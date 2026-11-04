@@ -345,11 +345,18 @@ class QsoLogFollower {
   /// rows [fresh] no longer holds dropped. The digest and the unstamped
   /// count follow the same moves: a replaced or dropped row leaves them, a
   /// fresh row joins.
+  ///
+  /// The summary, once something reads one, is carried forward the same way
+  /// when it can be: kept through a row replaced with the same facts,
+  /// extended by rows that land at the end — a contact logged just now — and
+  /// otherwise left to be folded again on demand.
   static QsoLog _patched(QsoLog current, Set<String> touched, List<Qso> fresh) {
     final placing = {for (final qso in fresh) qso.uuid: qso};
     final next = <Qso>[];
     var digest = current.digest;
     var unstamped = current.unstamped;
+    var summary = current.knownSummary;
+    final appended = <Qso>[];
     void leaves(Qso qso) {
       if (qso.deleted) return;
       digest -= qsoDigestTerm(qso);
@@ -373,6 +380,9 @@ class QsoLogFollower {
         next.add(replacement);
         placing.remove(qso.uuid);
         joins(replacement);
+        if (!QsoLogSummary.sameFacts(qso, replacement)) summary = null;
+      } else {
+        summary = null;
       }
     }
     // The same order as the query's `ORDER BY startAtMillis`: nulls first,
@@ -383,10 +393,15 @@ class QsoLogFollower {
       while (at > 0 && _startsAfter(next[at - 1], qso)) {
         at--;
       }
+      if (at == next.length) {
+        appended.add(qso);
+      } else {
+        summary = null;
+      }
       next.insert(at, qso);
       joins(qso);
     }
-    return QsoLog(next, digest: digest, unstamped: unstamped);
+    return QsoLog(next, digest: digest, unstamped: unstamped, summary: summary?.extendedBy(appended));
   }
 
   static bool _startsAfter(Qso a, Qso b) {

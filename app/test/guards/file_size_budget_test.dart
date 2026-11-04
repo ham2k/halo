@@ -41,8 +41,7 @@ const _slack = 100;
 /// the file shrinks. Raising one is the maintainer's call and carries a
 /// comment saying so, per the note at the top of this file.
 const _ceilings = <String, int>{
-  '../packages/halo_widgets/lib/src/qso_list.dart': 1608,
-  'lib/services/halo_services.dart': 1900,
+  'lib/services/halo_services.dart': 1795,
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
   'lib/services/settings_service.dart': 1608,
 };

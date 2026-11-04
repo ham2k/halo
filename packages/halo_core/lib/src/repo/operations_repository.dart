@@ -12,9 +12,11 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
+import '../dev_log.dart';
 import '../models/location_from_refs.dart';
 import '../models/location_repair.dart';
 import '../models/models.dart';
+import '../models/operation_lifecycle.dart';
 import '../models/operation_operator.dart';
 import '../models/qson_values.dart';
 import '../uuid.dart';
@@ -48,8 +50,8 @@ class OperationsRepository {
   /// engine's type.
   final void Function()? onChange;
 
-  /// Runs after every LOCAL data write ([saveData]) with the stored row as
-  /// it was and the operation as saved. The segments model needs it: a
+  /// Runs after every LOCAL data write ([saveData]) but a status move, with
+  /// the stored row as it was and the operation as saved. The segments model needs it: a
   /// `break`/`start` override replaces the base rather than tracking it, so
   /// an edit to what the latest segment restates (refs, location) has to be
   /// written onto that segment too, or the current stretch keeps the values
@@ -66,6 +68,63 @@ class OperationsRepository {
   /// them, so `QsosRepository.changes` never names them; what follows the
   /// whole log hears it here (docs/design/claims.md §6).
   Stream<String> get deletions => _deletions.stream;
+
+  /// The `status` column mirrors the same key inside `data`, so every write
+  /// path has to restate it — a row whose column disagrees with its blob
+  /// would make the sweep and the operation list answer differently about the
+  /// same operation. Written as an explicit null: a record arriving from
+  /// app-polo or an older build carries no status, and leaving the column at
+  /// whatever it held would keep one the sender has no idea about.
+  static Value<String?> _mirroredStatus(Map<String, dynamic> data) => Value(asQsonString(data['status']));
+
+  /// Puts the lifecycle keys an INBOUND record does not carry back into it,
+  /// from the row it is replacing.
+  ///
+  /// A merge replaces the blob wholesale, and app-polo — plus any halo build
+  /// older than the lifecycle — round-trips an operation without these keys
+  /// at all. Left alone, a polo user renaming an operation would erase the
+  /// operator's `completed` on every device, and the sweep would re-derive a
+  /// `paused` in its place — quietly walking back a declaration nothing else
+  /// is allowed to make.
+  ///
+  /// The presence of `status` is the whole test, and the three keys move as
+  /// ONE: a record that carries a status is a device that knows about the
+  /// lifecycle stating it, and its stamps are that status's — restoring an
+  /// older `statusAtMillis` underneath a newer status would date a
+  /// declaration the operator never made.
+  /// Returns [data] ITSELF when there is nothing to restore — both merge
+  /// paths tell a repair from a plain copy with `identical`, and a fresh map
+  /// returned here would mark every inbound record dirty.
+  Map<String, dynamic> _keepingLifecycleKeys(Map<String, dynamic> data, OperationRow? existing) {
+    if (existing == null || data.containsKey('status')) return data;
+    // Decoded here rather than through `_operationFromRow`, which hard-casts
+    // and normalizes: this runs inside the merge transaction, for every
+    // inbound record that carries no status — which is every app-polo record,
+    // forever. A blob that will not decode simply loses its lifecycle keys to
+    // the incoming record, the way `_keepingOwnSeatOperator` treats its own
+    // unreadable input. Throwing would roll back the whole batch and wedge
+    // sync on one bad row instead of letting the row heal.
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(existing.data);
+    } catch (_) {
+      return data;
+    }
+    if (decoded is! Map) return data;
+    final stored = decoded;
+    final restored = {
+      for (final key in _lifecycleKeys)
+        if (stored.containsKey(key)) key: stored[key],
+    };
+    if (restored.isEmpty) return data;
+    // Silent, deliberately — NOT a repair the way a defended seat operator
+    // is. Marking the row dirty would push it, and on the first pull after
+    // an upgrade EVERY inbound record lacks a status, so a whole account's
+    // operations would go back out at once. The status reaches the server
+    // through the write that set it; this only stops a sender that knows
+    // nothing about the lifecycle from erasing it on the way past.
+    return {...restored, ...data};
+  }
 
   /// Creating is never refused while the clock is travelled — the station call
   /// is marked instead, by [markedForTravel]. A refusal here would be
@@ -85,6 +144,12 @@ class OperationsRepository {
       data: {
         ...data,
         'stationCall': markedForTravel((asQsonString(data['stationCall']) ?? '').toUpperCase()),
+        // A new operation starts the lifecycle; one read from a file keeps the
+        // state it was exported in, and the sweep takes it from there. The
+        // log-domain clock, so the thresholds line up with QSO times
+        // (docs/design/time.md §1).
+        'status': asQsonString(data['status']) ?? OperationStatus.fresh,
+        'statusAtMillis': asQsonNum(data['statusAtMillis'])?.toInt() ?? nowMillis(),
         // The creation DATE is what the operator reads, so it travels; the
         // revision stamp is what another device compares against, so it does
         // not (realNowMillis's doc comment, docs/design/time.md §1).
@@ -101,6 +166,7 @@ class OperationsRepository {
             // The column mirrors the revision stamp inside `data`, so it reads
             // the same real clock.
             updatedAtMillis: Value(asQsonNum(operation.data['updatedAtMillis'])!.toInt()),
+            status: _mirroredStatus(operation.data),
           ),
         );
     onChange?.call();
@@ -155,45 +221,334 @@ class OperationsRepository {
   /// already ran the rule on every edit of its own draft passes that, because
   /// re-deciding against the stored row would undo what the operator did
   /// between those edits — a location they cleared would come back.
-  Future<void> saveData(Operation operation, {bool followRefs = true}) async {
+  ///
+  /// [lifecycleOnly] is for a save that moves nothing but the status and its
+  /// stamps ([setStatus]): it skips [onLocalSave], whose segment pass reads
+  /// none of them. That save is the one the operator waits on to log again,
+  /// and on a segmented log the pass costs an extension round trip per row.
+  ///
+  /// Every OTHER save keeps the stored status and its stamps, whatever
+  /// [operation] carries: a caller holds its copy across a screen the
+  /// operator fills in, and a Finish synced in from another device meanwhile
+  /// would otherwise be written back over with the state the copy was read in.
+  Future<void> saveData(Operation operation, {bool followRefs = true, bool lifecycleOnly = false}) async {
     final now = realNowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
     // Read before anything is written, and judged on the STORED row: an edit
     // that adds /TEST to a real operation must not be the thing that lets
-    // itself through.
-    final existing = await get(operation.uuid);
-    if (followRefs) locationFollowsRefs(existing?.data, data);
-    final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
-    if (refusal != null) throw refusal;
-    var companion = OperationsCompanion(data: Value(encodeOperationData(data, 'operations:saveData')), synced: const Value(false), updatedAtMillis: Value(now));
-    // A pending purge only makes sense while the operation still reads as a
-    // Test Operation. If the station call was just edited away from /T or
-    // /TEST — fixing a misclassification, or received an update via sync
-    // that no longer flags it — cancel the purge rather than let a now-real
-    // operation's QSOs get hard-deleted out from under the edit. Checked
-    // against the row rather than the in-memory [operation] snapshot: this
-    // must key off whatever `purged` state the DATABASE currently holds.
-    //
-    // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
-    // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
-    // `watchOperation` doesn't filter on `deleted` — an operation view left
-    // open on this uuid can still reach this save. Leaving `deleted: true`
-    // here would "fix" the misclassification while still losing the
-    // operation from every list that DOES filter on it, with no path back.
-    if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
-      companion = companion.copyWith(deleted: const Value(false), purged: const Value(false), purgedLocally: const Value(false));
-    }
-    await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
+    // itself through. One transaction with the write: a status set between
+    // the two would be written back over with the one read here.
+    final existing = await db.transaction(() async {
+      final existing = await get(operation.uuid);
+      if (existing != null && !lifecycleOnly) {
+        for (final key in _lifecycleKeys) {
+          if (existing.data.containsKey(key)) {
+            data[key] = existing.data[key];
+          } else {
+            data.remove(key);
+          }
+        }
+      }
+      if (followRefs) locationFollowsRefs(existing?.data, data);
+      final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
+      if (refusal != null) throw refusal;
+      var companion = OperationsCompanion(
+        data: Value(encodeOperationData(data, 'operations:saveData')),
+        synced: const Value(false),
+        updatedAtMillis: Value(now),
+        status: _mirroredStatus(data),
+      );
+      // A pending purge only makes sense while the operation still reads as a
+      // Test Operation. If the station call was just edited away from /T or
+      // /TEST — fixing a misclassification, or received an update via sync
+      // that no longer flags it — cancel the purge rather than let a now-real
+      // operation's QSOs get hard-deleted out from under the edit. Checked
+      // against the row rather than the in-memory [operation] snapshot: this
+      // must key off whatever `purged` state the DATABASE currently holds.
+      //
+      // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
+      // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
+      // `watchOperation` doesn't filter on `deleted` — an operation view left
+      // open on this uuid can still reach this save. Leaving `deleted: true`
+      // here would "fix" the misclassification while still losing the
+      // operation from every list that DOES filter on it, with no path back.
+      if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
+        companion = companion.copyWith(deleted: const Value(false), purged: const Value(false), purgedLocally: const Value(false));
+      }
+      await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
+      return existing;
+    });
     // The row is already committed, so the change HAS to be announced —
     // without this, a throw out of the callback leaves the edit saved and
     // both the sync engine and the peer outbox unaware of it until some
     // later, unrelated write happens to wake them.
     try {
-      await onLocalSave?.call(existing, Operation(uuid: operation.uuid, data: data));
+      if (!lifecycleOnly) await onLocalSave?.call(existing, Operation(uuid: operation.uuid, data: data));
     } finally {
       onChange?.call();
     }
   }
+
+  /// Moves [uuid] to [status].
+  ///
+  /// Returns the saved operation, or null when nothing was written: the
+  /// operation is gone, or its status already stands.
+  ///
+  /// [atMillis] is when the state being written became true, defaulting to
+  /// now. An import states its own: a log of contacts from last year becomes
+  /// `active` as of its newest contact, not as of the moment it was read off
+  /// disk, so the sweep pauses it on the next pass instead of calling a
+  /// finished log live for the next twelve hours.
+  ///
+  /// [restamp] false is for the edit-reverts rule alone: an edit to a
+  /// processed log contradicts the operator's "I am done" rather than
+  /// renewing it, and moving the stamp to now would make the edited QSO's
+  /// own revision compare equal to it — hiding the very edit that caused the
+  /// revert from anything asking what changed since.
+  ///
+  /// [evenIfUnchanged] restamps a status that is already what it is being set
+  /// to, and so does nothing at all without [restamp] — the stamp is the only
+  /// thing such a write has to say. It is for an EXPLICIT transition, and
+  /// only for one. An
+  /// operator tapping RESTART on an operation the panel shows as quiet is
+  /// declaring "I am back" about a record that already says `active`, and
+  /// the stamp is the only thing that carries that declaration — without it
+  /// the panel measures the same silence a moment later and locks the row
+  /// again, with the operator's one control doing nothing. Every inferred
+  /// transition leaves this false, so a settled sweep still writes nothing.
+  ///
+  /// Throws [WriteRefused] under a travelled clock, like any other write
+  /// ([WritePolicy]); the sweep tolerates that rather than wedging on it.
+  ///
+  /// Read and written in one transaction: the save writes the whole record
+  /// from this read, and an operator's save landing between the two would be
+  /// lost under it.
+  Future<Operation?> setStatus(String uuid, String status, {bool restamp = true, bool evenIfUnchanged = false, int? atMillis}) => db.transaction(() async {
+    final operation = await get(uuid);
+    if (operation == null) return null;
+    if (operation.status == status && !(evenIfUnchanged && restamp)) return null;
+
+    final updated = Operation(
+      uuid: uuid,
+      data: _withStatus(operation.data, status, restamp: restamp, atMillis: atMillis),
+    );
+    await saveData(updated, lifecycleOnly: true);
+    return updated;
+  });
+
+  /// A status the lifecycle INFERS — the sweep's transitions, and the status
+  /// it derives for a log that carries none — written for this device alone.
+  ///
+  /// [decide] is handed the STORED operation, inside the write's transaction,
+  /// and returns the move, or null for none. Decided from an earlier read, a
+  /// pass working through a backlog would pause a log the operator finished,
+  /// or lock one they just continued, while it was getting to it.
+  ///
+  /// Neither queued for sync nor restamped: every device infers the same from
+  /// the same log and clock, so there is nothing to send — and sent, the write
+  /// would carry this device's whole copy out as the newest revision, with
+  /// nobody having touched it. From a device behind on sync, or one first
+  /// seeing a record app-polo stripped of its status, that copy reverts every
+  /// edit made elsewhere, the operator's own Finish among them.
+  ///
+  /// The status does leave with the operation's next real save, which keeps
+  /// it ([saveData]). That save writes this device's whole copy anyway, last
+  /// writer winning like every other field, so it carries no stale status the
+  /// rest of its copy would not carry with it.
+  ///
+  /// Where no move is due, the `status` column is brought into line with the
+  /// blob if it is not. A blob can carry a status the column never received:
+  /// one synced in while this device ran a build that kept the key without
+  /// mirroring it. Left unmirrored, the edits that should revert a sent log
+  /// read the column, find nothing, and let it archive as though untouched.
+  ///
+  /// Throws [WriteRefused] under a travelled clock, like [setStatus].
+  Future<Operation?> inferStatus(String uuid, ({String status, int? atMillis})? Function(Operation operation) decide) => db.transaction(() async {
+    final row = await (db.select(db.operations)..where((op) => op.uuid.equals(uuid))).getSingleOrNull();
+    if (row == null) return null;
+    final operation = _operationFromRow(row);
+    final next = decide(operation);
+    if (next == null || next.status == operation.status) {
+      final mirrored = _mirroredStatus(operation.data);
+      if (row.status != mirrored.value) {
+        await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(status: mirrored));
+      }
+      return null;
+    }
+    final refusal = WritePolicy.forOperation(operation);
+    if (refusal != null) throw refusal;
+    final data = _withStatus(operation.data, next.status, atMillis: next.atMillis);
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
+      OperationsCompanion(data: Value(encodeOperationData(data, 'operations:inferStatus')), status: _mirroredStatus(data)),
+    );
+    return Operation(uuid: uuid, data: data);
+  });
+
+  /// [data] moved to [status], stamped [atMillis] or now.
+  static Map<String, dynamic> _withStatus(Map<String, dynamic> data, String status, {bool restamp = true, int? atMillis}) => {
+    ...data,
+    'status': status,
+    if (restamp) 'statusAtMillis': atMillis ?? nowMillis(),
+    // Set on the way IN and never cleared: a revert to `completed` leaves
+    // it, so what has been sent stays answerable after the log changes.
+    if (status == OperationStatus.processed) 'processedAtMillis': atMillis ?? nowMillis(),
+  };
+
+  /// The lifecycle's answer to the log changing under it.
+  ///
+  /// A contact the operator LOGS reopens a closed operation: logging into a
+  /// paused or completed log is the operator saying they are back at the
+  /// radio, and it is what makes the 12-hour pause cheap. It also settles a
+  /// race between devices: one uploads mid-activation while another keeps
+  /// logging into the same operation, and the second device's next contact
+  /// pulls it back to `active`. Stamped NOW, whatever time the contact
+  /// carries: the operator entering this morning's paper log is at the radio
+  /// now, and dated from the contacts the log would read as long silent, the
+  /// panel locking the row and the sweep pausing it under them. An `active`
+  /// log is NOT restamped per contact: that write would move the operation's
+  /// revision and cost every logged contact a full rescore. The logging panel
+  /// remembers its own last entry instead.
+  ///
+  /// A [bulk] insert is an import or a paste, which says nothing about
+  /// anyone being at the radio. It brings a log not yet started to `active`,
+  /// stamped from its newest contact so a year-old import pauses at the next
+  /// sweep; a log already closed it only edits.
+  ///
+  /// LOCAL writes only — a contact that arrives by sync or from a peer never
+  /// reaches this. shared-operations.md §6.2 moves this write off a member's
+  /// device onto the owner's, which then has to follow the contacts it
+  /// RECEIVES as well; nothing does that yet.
+  ///
+  /// An EDIT to a `processed` or `archived` operation reverts it to
+  /// `completed`, and no further: the state is a claim about the log's
+  /// content, so the client that changes the content owes the correction.
+  /// This is the whole of the uploaders' cheap staleness signal —
+  /// `processed → completed` IS the notification that uploads went stale, at
+  /// operation granularity, with nothing computed. It does not say WHICH
+  /// contacts changed, so an ADIF hash still does the precision work, and it
+  /// is best-effort besides: app-polo and older builds edit freely and know
+  /// nothing about status.
+  ///
+  /// Reopening is not an edit. An operation already back on `active` is left
+  /// there — the revert never drags one UP out of active, and never fires
+  /// twice.
+  Future<void> followContact(String operationUuid, {required bool isNewContact, int? atMillis, bool bulk = false}) async {
+    if (operationUuid.isEmpty) return;
+    // The mirrored columns, not the blob: this runs on every contact added,
+    // edited or deleted, and the overwhelmingly common answer is "nothing to
+    // do". Decoding and normalizing a whole operation to reach that answer
+    // would put it on the logging hot path.
+    final row =
+        await (db.selectOnly(db.operations)
+              ..addColumns([db.operations.status, db.operations.startAtMillisMax])
+              ..where(db.operations.uuid.equals(operationUuid)))
+            .getSingleOrNull();
+    if (row == null) return;
+    final status = row.read(db.operations.status);
+    // A status a newer build wrote means something this one cannot evaluate,
+    // and the sweep leaves it alone for that reason ([sweptStatusFor]).
+    // Replaced by a contact here, that build's decision is undone on every
+    // device the next sync reaches.
+    if (status != null && status.isNotEmpty && !statusIsKnown(status)) return;
+
+    if (isNewContact && !bulk) {
+      if (status != OperationStatus.active) await setStatus(operationUuid, OperationStatus.active);
+      return;
+    }
+    if (isNewContact && !_closedStatuses.contains(status)) {
+      if (status != OperationStatus.active) {
+        // Stamped from the contacts, not the clock: stamped `now`, last
+        // year's log would read as active for the next twelve hours. The
+        // caller's time wins over the column: a chunked import has not
+        // refreshed the counters yet.
+        await setStatus(operationUuid, OperationStatus.active, atMillis: atMillis ?? row.read(db.operations.startAtMillisMax));
+      }
+      return;
+    }
+    if (status == OperationStatus.processed || status == OperationStatus.archived) {
+      await setStatus(operationUuid, OperationStatus.completed, restamp: false);
+    }
+  }
+
+  /// The operations a lifecycle sweep might have something to say about:
+  /// those with no status yet (everything written by a build without the
+  /// lifecycle, and
+  /// everything app-polo writes), the two states that age out, and a `new`
+  /// or `ready` operation that has contacts in it — which is how a log
+  /// filled by a bulk import, or one derived while its own QSOs were still
+  /// on their way down from the server, gets picked back up.
+  ///
+  /// Selected on the COLUMNS so the common case reads no blobs at all: a
+  /// device with hundreds of settled operations matches none of them.
+  ///
+  /// A status this build does not recognise is deliberately NOT selected —
+  /// see [sweptStatusFor]. Deleted operations are left out: a tombstone has
+  /// no lifecycle.
+  ///
+  /// Uuids only: the sweep decides from the row it reads inside each write
+  /// ([inferStatus]), never from this one.
+  Future<List<String>> lifecycleSweepCandidates() async {
+    final op = db.operations;
+    final query = db.selectOnly(op)
+      ..addColumns([op.uuid])
+      ..where(
+        op.deleted.equals(false) &
+            // `isNull() | equals('')`: `sweptStatusFor` derives for BOTH, and a
+            // candidate query that matched only one would leave a blob carrying
+            // an empty status unswept for good.
+            (op.status.isNull() |
+                op.status.equals('') |
+                op.status.isIn([OperationStatus.active, OperationStatus.processed]) |
+                (op.status.isIn([OperationStatus.fresh, OperationStatus.ready]) & op.qsoCount.isBiggerThanValue(0))),
+      );
+    return [for (final row in await query.get()) row.read(op.uuid)!];
+  }
+
+  /// [saveData] for the Operation Setup sheet being accepted: the save, and
+  /// the lifecycle step that acceptance means.
+  ///
+  /// Setup accepted is what `ready` is — references and callsigns assigned —
+  /// and the sheet is the only thing that can say so, which is why the rule
+  /// lives here rather than there: the sheet's job is to collect the answers,
+  /// not to know what accepting them does to the operation's state.
+  ///
+  /// Only from `new`. Reopening Setup on a log already being written, or one
+  /// that was finished, says nothing about its lifecycle, and [setStatus]
+  /// would happily walk it backwards.
+  ///
+  /// A refusal of the status write is caught on its own: the save above it is
+  /// already committed, and this one re-runs [WritePolicy] and can refuse.
+  /// Thrown from here it would take the caller's own "and now close the
+  /// sheet" with it, stranding a sheet open over a save that succeeded. Any
+  /// other failure is the database's, and the save would have met it first.
+  Future<void> saveAcceptedSetup(Operation operation, {bool followRefs = true}) async {
+    await saveData(operation, followRefs: followRefs);
+    try {
+      // The STORED status, in one transaction with the write: a contact
+      // logged while the sheet sat open, or between the two, has moved the
+      // log on, and walking it back to `ready` would offer START over a log
+      // with contacts in it.
+      await db.transaction(() async {
+        if ((await get(operation.uuid))?.status == OperationStatus.fresh) await setStatus(operation.uuid, OperationStatus.ready);
+      });
+    } on WriteRefused catch (e) {
+      DevLog.instance.log('lifecycle', {'ready': 'refused', 'operation': operation.uuid, 'error': e.toString()});
+    }
+  }
+
+  /// [uuid] sent out of the app: `processed`, restamped on every send — the
+  /// panel's "Last export" note reads `processedAtMillis`.
+  ///
+  /// Only a log that has been started. Exporting an empty or unstarted one is
+  /// no "I am done": marked sent, it would lose its START and be archived a
+  /// week later with nothing in it. Judged on the STORED status, in one
+  /// transaction with the write, because the caller's copy can predate the
+  /// first contact.
+  Future<Operation?> markExported(String uuid) => db.transaction(() async {
+    final status = (await get(uuid))?.status;
+    if (status != OperationStatus.active && !_closedStatuses.contains(status)) return null;
+    return setStatus(uuid, OperationStatus.processed, evenIfUnchanged: true);
+  });
 
   Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
 
@@ -617,8 +972,12 @@ class OperationsRepository {
         // device's own newer revision instead, which is what the stamp bump
         // says (a revision stamp reads the real clock — time.md §1).
         if ((existing?.deleted ?? false) != deleted) deletionsChanged.add(uuid);
-        final merged = _keepingOwnSeatOperator(data, existing);
-        final defended = !identical(merged, data);
+        final kept = _keepingLifecycleKeys(data, existing);
+        final merged = _keepingOwnSeatOperator(kept, existing);
+        // Against `kept`, not `data`: a lifecycle key restored above is not a
+        // change this device is asserting, and must not turn an ordinary
+        // inbound record into an outbound push.
+        final defended = !identical(merged, kept);
         if (defended) merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
         repaired = repaired || defended;
         await db
@@ -629,6 +988,7 @@ class OperationsRepository {
                 data: Value(encodeOperationData(merged, 'operations:mergeFromSync')),
                 deleted: Value(deleted),
                 purged: Value(purged),
+                status: _mirroredStatus(merged),
                 synced: Value(!defended),
                 updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
               ),
@@ -693,8 +1053,12 @@ class OperationsRepository {
         // device's version compares equal everywhere it lands, and
         // `inboundIsStale` (>=) drops it — the repair would never leave here.
         if ((existing?.deleted ?? false) != deleted) deletionsChanged.add(uuid);
-        final merged = _keepingOwnSeatOperator(data, existing);
-        if (!identical(merged, data)) {
+        final kept = _keepingLifecycleKeys(data, existing);
+        final merged = _keepingOwnSeatOperator(kept, existing);
+        // See `mergeFromSync`: only a DEFENDED seat earns a new stamp, and a
+        // restored lifecycle key is not one — so this compares against the
+        // restore's own output rather than the record as it arrived.
+        if (!identical(merged, kept)) {
           merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
         }
         await db
@@ -705,6 +1069,7 @@ class OperationsRepository {
                 data: Value(encodeOperationData(merged, 'operations:mergeFromPeer')),
                 deleted: Value(deleted),
                 purged: Value(purged),
+                status: _mirroredStatus(merged),
                 synced: const Value(false),
                 updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
               ),
@@ -799,3 +1164,9 @@ class OperationsRepository {
     });
   }
 }
+
+/// The statuses a [OperationsRepository.followContact] bulk insert does not reopen.
+const _closedStatuses = {OperationStatus.paused, OperationStatus.completed, OperationStatus.processed, OperationStatus.archived};
+
+/// The keys only [OperationsRepository.setStatus] writes.
+const _lifecycleKeys = ['status', 'statusAtMillis', 'processedAtMillis'];

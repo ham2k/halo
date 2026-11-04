@@ -775,8 +775,14 @@ void main() {
       // The other station's last QSO goes — from another device, say — and
       // All becomes K1ABC alone. Nothing the operator did asked the editor
       // to close.
-      await tester.runAsync(() => h.services.qsos.softDelete(lone));
+      // In this zone and pumped, never under `runAsync`: the table's drift
+      // streams were opened here, so their re-queries after the commit wait
+      // on these pumps, and a delete that reads again once committed (the
+      // operation lifecycle following the log) queues behind them — under
+      // `runAsync`, which holds the pumps back, that never finishes.
+      final deleting = h.services.qsos.softDelete(lone);
       await settleFrames(tester, frames: 6);
+      await deleting;
 
       expect(find.text('Unsaved changes'), findsNothing);
       expect(_editing(tester), 'W1AW');
@@ -901,8 +907,10 @@ void main() {
       await settleFrames(tester, frames: 2);
       expect(find.text('Unsaved changes'), findsOneWidget);
       // K2AA, the row ↓ was headed for, is deleted from elsewhere meanwhile.
-      await tester.runAsync(() => h.services.qsos.softDelete(qsos['K2AA']!));
+      // Pumped in this zone, not under `runAsync` — see the narrowing test above.
+      final deleting = h.services.qsos.softDelete(qsos['K2AA']!);
       await settleFrames(tester, frames: 2);
+      await deleting;
       await tester.tap(find.text('Save'));
       await settleFrames(tester, frames: 6);
 

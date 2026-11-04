@@ -121,7 +121,7 @@ void main() {
             body: LoggingControls(
               log: baseLog(),
               radio: baseRadio(),
-              lookups: LookupHooks(operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10']),
+              lookups: LookupHooks(operationStatsLines: (_, {closed = false}) => ['12 QSOs in 1h 5m', '48 Q/h for last 10']),
             ),
           ),
         ),
@@ -142,7 +142,7 @@ void main() {
               lookups: LookupHooks(
                 lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
                 callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
-                operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+                operationStatsLines: (_, {closed = false}) => ['stats-line-should-be-hidden'],
               ),
             ),
           ),
@@ -173,7 +173,7 @@ void main() {
             body: LoggingControls(
               log: baseLog(),
               radio: baseRadio(),
-              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_) => ['stats-line']),
+              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_, {closed = false}) => ['stats-line']),
               prefs: LoggingPreferences(showGridField: true),
             ),
           ),
@@ -268,7 +268,7 @@ void main() {
             body: LoggingControls(
               log: baseLog(),
               radio: baseRadio(),
-              lookups: LookupHooks(callLocationLine: (guess) => null, operationStatsLines: (_) => ['stats-line']),
+              lookups: LookupHooks(callLocationLine: (guess) => null, operationStatsLines: (_, {closed = false}) => ['stats-line']),
               prefs: LoggingPreferences(showGridField: true),
             ),
           ),
@@ -291,7 +291,7 @@ void main() {
             body: LoggingControls(
               log: LogHooks(operation: running(['arrl-vhf-tests']), qsosRepository: qsos),
               radio: baseRadio(),
-              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_) => ['stats-line']),
+              lookups: LookupHooks(callLocationLine: (guess) => '${guess['grid']} is 42 km away', operationStatsLines: (_, {closed = false}) => ['stats-line']),
               activities: ActivityHooks(
                 activityControls: const [
                   {

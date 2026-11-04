@@ -16,6 +16,7 @@ import 'package:halo_core/halo_core.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/operation_lifecycle_commands.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -84,8 +85,275 @@ void main() {
     expect(outcome?.failed, isTrue);
   });
 
+  test('START on a finished log is refused too, rather than reopening it with no restart', () async {
+    // Let through, the log goes live with the finish still the last row of
+    // its timeline, and nothing to show where it came back.
+    await mark('start');
+    await mark('stop');
+    final outcome = await mark('start');
+    expect(outcome?.failed, isTrue);
+    expect((await services.operations.get(operation.uuid))!.status, OperationStatus.completed);
+  });
+
+  test('START on a paused log with no start row is refused, rather than reopening it with no restart', () async {
+    // A log filled without pressing START has no `start` row to refuse on,
+    // and the sweep pauses such logs; let through, START would back-date a
+    // start and run the log on from a timeline that ends on its pause.
+    await services.operations.setStatus(operation.uuid, OperationStatus.paused);
+    final outcome = await mark('start');
+    expect(outcome?.failed, isTrue);
+    expect(eventRows(await rows()), isEmpty);
+    expect((await services.operations.get(operation.uuid))!.status, OperationStatus.paused);
+  });
+
+  test('START on an active log missing its marker gets one', () async {
+    // The contacts made it active; START still owes the timeline its start.
+    await services.operations.setStatus(operation.uuid, OperationStatus.active);
+    expect(await mark('start'), isNull);
+    expect(segmentRows(await rows()).map((q) => q.eventKind), ['start']);
+  });
+
+  test('STOP on a sent log writes its stop and leaves it sent', () async {
+    // Moved back to completed, the log would tell an uploader its uploads
+    // went stale when no contact changed, and its archive clock would stop.
+    await mark('start');
+    await services.operations.setStatus(operation.uuid, OperationStatus.processed);
+    expect(await mark('stop'), isNull);
+    expect(eventRows(await rows()).map((q) => q.eventKind), ['start', 'stop']);
+    expect((await services.operations.get(operation.uuid))!.status, OperationStatus.processed);
+  });
+
+  test('PAUSE writes a pause row of its own kind, which opens no segment', () async {
+    // Written as a `break`, it would be a boundary: every contact after the
+    // operator came back would resolve to whatever that break restated, or —
+    // carrying nothing — the scorers would read a new segment out of a lunch
+    // stop.
+    await mark('start');
+    expect(await mark('pause'), isNull);
+    final all = await rows();
+    expect(eventRows(all).map((q) => q.eventKind), ['start', 'pause']);
+    expect(segmentRows(all).map((q) => q.eventKind), ['start']);
+    expect((await services.operations.get(operation.uuid))!.status, OperationStatus.paused);
+  });
+
+  group('lifecycle rows collapse at the end of the log', () {
+    // Each move the operator makes with nothing logged in between is a
+    // correction of the last one, not a new fact. Stacked, a quiet hour of
+    // stepping away leaves a ladder of markers, and every one of them is a
+    // "Restarted after" row and a slice of paused time the stats count.
+    // A test call: the travelled clock writes to nothing else.
+    setUp(() async {
+      addTearDown(AppClock.instance.reset);
+      operation = Operation(uuid: operation.uuid, data: {...operation.data, 'stationCall': 'N0DEV/T'});
+      await services.operations.saveData(operation);
+    });
+    Future<List<String?>> kinds() async => eventRows(await rows()).map((q) => q.eventKind).toList();
+    Future<Qso> only(String kind) async => eventRows(await rows()).singleWhere((q) => q.eventKind == kind);
+
+    test('a restart inside a minute takes the pause back outright', () async {
+      await mark('start');
+      await mark('pause');
+      AppClock.instance.travel(delta: const Duration(seconds: 50));
+      await mark('restart');
+      expect(await kinds(), ['start']);
+      expect((await services.operations.get(operation.uuid))!.status, OperationStatus.active);
+    });
+
+    test('pausing again with nothing logged folds back into the first pause', () async {
+      await mark('start');
+      await mark('pause');
+      final pause = await only('pause');
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('restart');
+      expect(await kinds(), ['start', 'pause', 'restart']);
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('pause');
+      expect(await kinds(), ['start', 'pause']);
+      expect((await only('pause')).uuid, pause.uuid);
+      final stored = (await services.operations.get(operation.uuid))!;
+      expect(stored.status, OperationStatus.paused);
+      // Stamped now, the panel would read "Paused for 0m" over a pause ten
+      // minutes old, and count those minutes as active.
+      expect(stored.statusAtMillis, pause.startAtMillis);
+    });
+
+    test('a contact in between keeps both pauses', () async {
+      await mark('start');
+      await mark('pause');
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('restart');
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K1AB'},
+        'band': '3cm',
+        'startAtMillis': nowMillis(),
+      });
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('pause');
+      expect(await kinds(), ['start', 'pause', 'restart', 'pause']);
+    });
+
+    test('finishing a paused log turns the pause into the finish, at the pause', () async {
+      await mark('start');
+      await mark('pause');
+      final pause = await only('pause');
+      AppClock.instance.travel(delta: const Duration(hours: 2));
+      await mark('stop');
+      expect(await kinds(), ['start', 'stop']);
+      final stop = await only('stop');
+      // The same row, not a delete and a fresh write: what a peer already
+      // holds is changed, not tombstoned beside a new one.
+      expect(stop.uuid, pause.uuid);
+      expect(stop.startAtMillis, pause.startAtMillis);
+    });
+
+    test('Finish on a log the panel shows as quiet dates the finish to where the silence began', () async {
+      // With no pause row to fold into, a finish stamped at the press counts
+      // every idle hour since the last contact as time spent on the air.
+      await mark('start');
+      final contactAt = nowMillis();
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K1AB'},
+        'band': '3cm',
+        'startAtMillis': contactAt,
+      });
+      AppClock.instance.travel(delta: const Duration(hours: 2));
+      await services.moveOperationLifecycle(operation.uuid, 'stop');
+      expect((await only('stop')).startAtMillis, contactAt);
+
+      // Inside the panel's quiet window the operator is still at the radio,
+      // and the finish is when they said so.
+      await mark('restart');
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K2CD'},
+        'band': '3cm',
+        'startAtMillis': nowMillis(),
+      });
+      AppClock.instance.travel(delta: const Duration(minutes: 10));
+      final pressedAt = nowMillis();
+      await services.moveOperationLifecycle(operation.uuid, 'stop');
+      expect((await only('stop')).startAtMillis, greaterThanOrEqualTo(pressedAt));
+    });
+
+    test('a typed STOP stops at now, however quiet the log has been', () async {
+      // The panel's Finish dates from a pause it was showing; a typed STOP
+      // was shown none, and back-dated it would move the log's end to a time
+      // the operator never named. The row's time is theirs to edit.
+      await mark('start');
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K1AB'},
+        'band': '3cm',
+        'startAtMillis': nowMillis(),
+      });
+      AppClock.instance.travel(delta: const Duration(hours: 2));
+      final typedAt = nowMillis();
+      await mark('stop');
+      expect((await only('stop')).startAtMillis, greaterThanOrEqualTo(typedAt));
+    });
+
+    test('a finish counts the activity the panel saw, not only the record\'s', () async {
+      // An old log being typed in leaves contacts dated hours back and no
+      // write per entry. Dated from the record alone, finishing after an hour
+      // of typing would put the finish at the first old contact.
+      await mark('start');
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K1AB'},
+        'band': '3cm',
+        'startAtMillis': nowMillis() - 5 * 60 * 60 * 1000,
+      });
+      AppClock.instance.travel(delta: const Duration(hours: 1));
+      final pressedAt = nowMillis();
+      await services.moveOperationLifecycle(operation.uuid, 'stop', lastActivityMillis: pressedAt - 60 * 1000);
+      expect((await only('stop')).startAtMillis, greaterThanOrEqualTo(pressedAt));
+    });
+
+    test('a move that fails for any other reason tells the operator, rather than leaving a button that did nothing', () async {
+      // Caught for refusals alone, a database error escapes the unawaited
+      // call as an unhandled one and the operator hears nothing.
+      await services.db.close();
+      await services.moveOperationLifecycle(operation.uuid, 'pause');
+      expect(services.statusBar.activeNotices.map((notice) => notice.key), contains('operation-lifecycle'));
+    });
+
+    test('a double-tap on Continue reopens the log once', () async {
+      // Both taps read the timeline before either has written: each sees no
+      // restart yet, and the log gains two.
+      await mark('start');
+      await mark('pause');
+      AppClock.instance.travel(delta: const Duration(minutes: 30));
+      await Future.wait([services.moveOperationLifecycle(operation.uuid, 'restart'), services.moveOperationLifecycle(operation.uuid, 'restart')]);
+      expect(await kinds(), ['start', 'pause', 'restart']);
+    });
+
+    test('restarting a finished log turns the finish into a pause, or takes it back inside a minute', () async {
+      await mark('start');
+      await mark('stop');
+      await mark('restart');
+      expect(await kinds(), ['start']);
+
+      await mark('stop');
+      final stop = await only('stop');
+      AppClock.instance.travel(delta: const Duration(minutes: 30));
+      await mark('restart');
+      // A `stop` left behind would still close a segment in a log that runs on.
+      expect(await kinds(), ['start', 'pause', 'restart']);
+      final pause = await only('pause');
+      expect(pause.uuid, stop.uuid);
+      expect(pause.startAtMillis, stop.startAtMillis);
+      expect(pause.event?['operation'], isNull);
+    });
+
+    test('pause, finish, restart, pause leaves one pause, the first row throughout', () async {
+      await mark('start');
+      await mark('pause');
+      final pause = await only('pause');
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('stop');
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('restart');
+      AppClock.instance.travel(delta: const Duration(minutes: 5));
+      await mark('pause');
+      expect(await kinds(), ['start', 'pause']);
+      expect((await only('pause')).uuid, pause.uuid);
+    });
+
+    test('a restart taken back by a pause comes back as the same row, leaving no tombstone', () async {
+      await mark('start');
+      await mark('pause');
+      await mark('stop');
+      AppClock.instance.travel(delta: const Duration(minutes: 25));
+      await mark('restart');
+      final restart = await only('restart');
+      await mark('pause');
+      await mark('stop');
+      AppClock.instance.travel(delta: const Duration(minutes: 3));
+      await mark('restart');
+      expect(await kinds(), ['start', 'pause', 'restart']);
+      expect((await only('restart')).uuid, restart.uuid);
+      final all = await services.qsos.forOperation(operation.uuid, includeDeleted: true);
+      expect(all.where((q) => q.deleted), isEmpty);
+    });
+
+    test('a pause taken back at once is deleted, and the contact after it follows as usual', () async {
+      await mark('start');
+      await mark('pause');
+      final pause = await only('pause');
+      await mark('restart');
+      await services.qsos.add(operation.uuid, {
+        'their': {'call': 'K1AB'},
+        'band': '3cm',
+        'startAtMillis': nowMillis(),
+      });
+      expect(await kinds(), ['start']);
+      final withDeleted = await services.qsos.forOperation(operation.uuid, includeDeleted: true);
+      expect(withDeleted.singleWhere((q) => q.uuid == pause.uuid).deleted, isTrue);
+      expect((await services.operations.get(operation.uuid))!.status, OperationStatus.active);
+    });
+  });
+
   test('an unrecognized kind names the real fault instead of borrowing the no-operation message', () async {
-    final outcome = await services.handleCommandAction('markSegment', {'kind': 'pause', 'uuid': operation.uuid});
+    // A word no kind will ever be: an example that later becomes a real kind
+    // turns this red for a reason that has nothing to do with what it guards.
+    final outcome = await services.handleCommandAction('markSegment', {'kind': 'zzz', 'uuid': operation.uuid});
     expect(outcome?.failed, isTrue);
     expect(outcome!.text, isNot(t.commands.noOperationOpen));
   });

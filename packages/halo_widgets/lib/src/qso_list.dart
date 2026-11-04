@@ -24,6 +24,7 @@ import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
+import 'operation_lifecycle_controls.dart';
 import 'platform_chrome.dart' show condenseToFit;
 import 'qso_row_badges.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -33,6 +34,7 @@ import 'theme.dart';
 import 'ui_scale.dart' show isHandheldPlatform, platformBaseUiScale;
 
 part 'qso_list_headers.dart';
+part 'qso_list_event_rows.dart';
 part 'qso_list_metrics.dart';
 
 /// Horizontal gap between the row's fields (Number/Time/Frequency/Mode/
@@ -908,9 +910,18 @@ class _QsoListState extends State<QsoList> {
         // commands, ham2k/halo-dist#64) renders as a yellow annotation
         // row in the timeline, following app-polo's QSOList dispatch.
         final kind = qso.eventKind;
-        if (kind == 'start' || kind == 'break' || kind == 'end' || kind == 'stop') {
+        // `pause` and `restart` belong here with the rest of them: stepping
+        // away from an operation and reopening it are markers in its
+        // timeline, not annotations somebody attached to it, and rendering
+        // them yellow would put them in the wrong family of rows entirely.
+        if (kind == 'start' || kind == 'break' || kind == 'end' || kind == 'stop' || kind == 'pause' || kind == 'restart') {
           return EventRow(
             qso: qso,
+            label: operationMarkerLabel(
+              qso,
+              previousAtMillis: (other ? otherMetrics! : metrics).restartedFrom[qso.uuid],
+              finished: (other ? otherMetrics! : metrics).finishedWith[qso.uuid],
+            ),
             selected: qso.uuid == selectedUuid,
             onTap: () => (onSelectEvent ?? onSelect)(qso),
             leadingWidth: plan.showNumbers ? numberWidth + _columnGap : 0,
@@ -1448,204 +1459,6 @@ class _RowDivider extends StatelessWidget {
         border: Border(bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? Theme.of(context).dividerColor)),
       ),
       child: child,
-    );
-  }
-}
-
-/// A start/break/end marker row in [QsoList], visually distinct from a QSO
-/// row (centered label instead of data columns) since it isn't a contact —
-/// tapping it loads `LoggingControls`' inline event editor, same as an
-/// [AnnotationRow] (`Qso.isEvent`), just with a centered summary here
-/// instead of the timeline layout below.
-class EventRow extends StatelessWidget {
-  final Qso qso;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// Width of the (optional) QSO-number column plus its gap, so the time
-  /// column lines up with the QSO rows around it — same as [AnnotationRow].
-  final double leadingWidth;
-
-  const EventRow({super.key, required this.qso, required this.onTap, this.selected = false, this.leadingWidth = 0});
-
-  static const _icons = {'start': MdiIcons.playBox, 'break': MdiIcons.slashForwardBox, 'end': MdiIcons.stopCircle, 'stop': MdiIcons.stopCircle};
-
-  /// The rule the top border takes out of the row's vertical padding, so the
-  /// row keeps [QsoList]'s fixed per-row height (HALO-258).
-  static const _topBorder = 2.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final kind = qso.eventKind;
-    final timeLabel = _utcTimeLabel(qso.startAt);
-    // The row reads as a timeline entry, like polo's: the time in the QSO
-    // rows' column, the segment's mark, then what the segment says about
-    // the operation ("for ARRL 10G Sep • at FN20rm"), stored on the row by
-    // whatever wrote it (naming a reference needs an async extension hook,
-    // which a list row can't make — polo recomposes per frame instead).
-    //
-    // Without one — an older row, or one written while the extension host
-    // was down — the override's own square is still on the row and says
-    // more than nothing. Bare, since this package has no locale to put an
-    // "at" in. A segment with neither shows its mark alone: naming the kind
-    // ("Break") would say nothing the icon doesn't.
-    final stored = (qso.event?['description'] as String?)?.trim() ?? '';
-    final override = qso.event?['operation'];
-    final description = stored.isNotEmpty ? stored : (override is Map ? (override['grid'] as String?)?.trim() ?? '' : '');
-    final ink = selected ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant;
-    // polo's `primaryLighter` segment row: a wash of the primary over the
-    // surface, so a blue theme reads blue-gray, and the dark theme gets the
-    // same wash rather than a full-strength container. The rule along the
-    // top is the same wash, deeper.
-    final isDark = theme.brightness == Brightness.dark;
-    Color wash(double alpha) => Color.alphaBlend(theme.colorScheme.primary.withValues(alpha: alpha), theme.colorScheme.surface);
-    final background = selected ? theme.colorScheme.secondaryContainer : wash(isDark ? 0.22 : 0.14);
-    final rule = wash(isDark ? 0.5 : 0.35);
-    // Matches the ordinary QSO row's own padding exactly (not a hardcoded
-    // value) — [QsoList] forces every row into the same fixed
-    // [_rowHeight] box (HALO-258, avoids a per-row layout
-    // walk on `jumpTo`), so a row whose natural height doesn't match that
-    // box overflows or leaves a gap. The border comes out of the top
-    // padding for the same reason.
-    final padding = PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: _rowPaddingV(LayoutDensity.metricsOf(context)));
-
-    // The border is part of the row's height, so it comes OUT of the
-    // padding — off the top first, and off the bottom for whatever the top
-    // couldn't give. At the densest layout the vertical padding is 1px
-    // against a 2px rule, and a bare clamp at the top would leave the row a
-    // pixel taller than the box [QsoList] forces it into.
-    final borderTop = padding.top.clamp(0.0, _topBorder);
-    return Material(
-      color: background,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: SystemMouseCursors.click,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: rule, width: _topBorder),
-            ),
-          ),
-          padding: padding.copyWith(top: padding.top - borderTop, bottom: (padding.bottom - (_topBorder - borderTop)).clamp(0.0, double.infinity)),
-          child: Row(
-            children: [
-              SizedBox(width: leadingWidth),
-              Text(
-                timeLabel,
-                style: haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink),
-              ),
-              const SizedBox(width: _columnGap),
-              Icon(_icons[kind] ?? MdiIcons.timelapse, size: 16, color: ink),
-              const SizedBox(width: _columnGap),
-              Expanded(
-                child: Text(
-                  description,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: ink),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A note/todo/solar/weather annotation row in [QsoList] — an event
-/// pseudo-QSO added by the annotation commands (ham2k/halo-dist#64,
-/// `extensions/core/annotation-commands`). Unlike [EventRow]'s centered
-/// segment markers, annotations are timeline entries: they keep the QSO
-/// rows' time column (left-aligned, [leadingWidth] preserving the Number
-/// column's indent), followed by the event's icon and its text. The yellow
-/// "sticky note" treatment is ported from app-polo's QSOList `eventRow`/
-/// `eventContent` styles.
-class AnnotationRow extends StatelessWidget {
-  final Qso qso;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// Width of the (optional) QSO-number column plus its gap, so the time
-  /// column lines up with the QSO rows around it.
-  final double leadingWidth;
-
-  const AnnotationRow({super.key, required this.qso, required this.onTap, this.selected = false, this.leadingWidth = 0});
-
-  /// app-polo's `eventRow` background, `rgb(252, 244, 167)` — blended over
-  /// the surface at app-polo's row opacity (0.85 light / 0.65 dark) so the
-  /// dark theme gets the same muted yellow instead of a full-brightness slab.
-  static const _yellow = Color(0xFFFCF4A7);
-
-  /// app-polo's `eventContent` text color, `rgb(21, 20, 10)` — near-black
-  /// ink that stays readable on the yellow in both themes.
-  static const _ink = Color(0xFF15140A);
-
-  /// A to-do's icon tracks its state (same logic as app-polo's
-  /// EventNoteItem): done shows a check, deleted hollows out. Everything
-  /// else uses the icon the command stored on the event. The done flag is
-  /// read from `data.done` with a fallback to a bare `done` — app-polo
-  /// reads both, and synced logs contain the older bare shape.
-  String get _iconName {
-    final event = qso.event;
-    if (qso.eventKind == 'todo') {
-      if (qso.deleted) return 'sticker-outline';
-      return eventTodoDone(event) ? 'sticker-check-outline' : 'sticker';
-    }
-    return asQsonString(event?['icon']) ?? 'information';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final event = qso.event;
-    final timeLabel = _utcTimeLabel(qso.startAt);
-    final text = asQsonString(event?['description']) ?? asQsonString(event?['note']) ?? qso.eventKind?.toUpperCase() ?? 'Event';
-
-    final background = selected
-        ? theme.colorScheme.secondaryContainer
-        : Color.alphaBlend(_yellow.withValues(alpha: isDark ? 0.65 : 0.85), theme.colorScheme.surface);
-    var ink = selected ? theme.colorScheme.onSecondaryContainer : _ink;
-    // SOLAR/WEATHER descriptions mix emoji into the text, so the style
-    // needs the bundled color-emoji font as an explicit fallback — the web
-    // renderer never falls back to an OS emoji font on its own (see
-    // theme.dart's `emojiFontFamily`).
-    var textStyle = theme.textTheme.bodyMedium?.copyWith(color: ink, fontFamilyFallback: const [emojiFontFamily]);
-    var timeStyle = haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink);
-    // Deleted annotations follow the QSO rows' "show deleted" treatment:
-    // struck-through and faded, still in the timeline.
-    if (qso.deleted) {
-      ink = ink.withValues(alpha: 0.5);
-      textStyle = textStyle?.copyWith(color: ink, decoration: TextDecoration.lineThrough);
-      timeStyle = timeStyle.copyWith(color: ink, decoration: TextDecoration.lineThrough);
-    }
-
-    return Material(
-      color: background,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: SystemMouseCursors.click,
-        child: Padding(
-          // See EventRow's identical note: matches the ordinary row's own
-          // padding so this row's natural height fits [QsoList]'s fixed
-          // per-row box exactly (HALO-258).
-          padding: PaneSafeArea.symmetricOf(context, horizontal: 12, vertical: _rowPaddingV(LayoutDensity.metricsOf(context))),
-          child: Row(
-            children: [
-              SizedBox(width: leadingWidth),
-              Text(timeLabel, style: timeStyle),
-              const SizedBox(width: _columnGap),
-              Icon(resolveIconName(_iconName), size: 16, color: ink),
-              const SizedBox(width: _columnGap),
-              Expanded(
-                child: Text(text, style: textStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

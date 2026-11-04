@@ -427,6 +427,7 @@ class _Translations$operation$qrp extends Translations$operation$en {
 	@override String get loggingControlsStale => 'activity fields may be out of date — reopen the operation to refresh them';
 	@override String get locationNone => 'not set';
 	@override String get generalOperation => 'general operation';
+	@override late final _Translations$operation$lifecycle$qrp lifecycle = _Translations$operation$lifecycle$qrp._(_root);
 	@override String titleFor({required Object value}) => 'for ${value}';
 	@override String titleAt({required Object value}) => 'at ${value}';
 	@override String segmentNow({required Object description}) => 'now ${description}';
@@ -1767,6 +1768,41 @@ class _Translations$operation$positions$qrp extends Translations$operation$posit
 	@override String get panelDescription => 'what every operating position sharing this operation is logging right now.';
 }
 
+// Path: operation.lifecycle
+class _Translations$operation$lifecycle$qrp extends Translations$operation$lifecycle$en {
+	_Translations$operation$lifecycle$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get paused => 'paused';
+	@override String pausedFor({required Object time}) => 'paused for ${time}';
+	@override String get completed => 'operation completed';
+	@override String get start => 'mark the start';
+	@override String get pause => 'pause';
+	@override String get continueOperation => 'continue';
+	@override String get restart => 'restart';
+	@override String get exports => 'exports';
+	@override String get end => 'finish operation';
+	@override String get moveFailed => 'could not change the operation\'s state';
+	@override String get started => 'started';
+	@override String get restarted => 'restarted';
+	@override String restartedAfter({required Object name, required Object time}) => '${name} after ${time}';
+	@override String get finished => 'finished';
+	@override String finishedWith({required Object name, required Object qsos, required Object time}) => '${name}, with ${qsos} in ${time}';
+	@override String lastExportAgo({required Object time}) => 'last export\n${time}';
+	@override String lastExportOn({required Object date}) => 'last export on\n${date}';
+	@override String get justNow => 'just now';
+	@override String minutesAgo({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} minute ago',
+		other: '${count} minutes ago',
+	);
+	@override String hoursAgo({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} hour ago',
+		other: '${count} hours ago',
+	);
+}
+
 // Path: operation.menu
 class _Translations$operation$menu$qrp extends Translations$operation$menu$en {
 	_Translations$operation$menu$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -2106,6 +2142,9 @@ class _Translations$loggingControls$info$qrp extends Translations$loggingControl
 	@override String get qsoCountOne => '1 qso';
 	@override String qsoCountOther({required Object count}) => '${count} qsos';
 	@override String qsosInTime({required Object count, required Object time}) => '${count} in ${time}';
+	@override String ratePerHour({required Object rate}) => '${rate} qso/h';
+	@override String rateWithSplit({required Object rate, required Object paused, required Object active}) => '${rate} (${paused} paused, ${active} active)';
+	@override String ratePerDay({required Object rate}) => '${rate} qso/day';
 	@override String sinceLast({required Object time}) => '${time} since last';
 	@override String ratePer10({required Object rate}) => '${rate} q/h for last 10';
 	@override String ratePer100({required Object rate}) => '${rate} q/h for last 100';
@@ -5200,6 +5239,26 @@ extension on TranslationsQrp {
 			'operation.loggingControlsStale' => 'activity fields may be out of date — reopen the operation to refresh them',
 			'operation.locationNone' => 'not set',
 			'operation.generalOperation' => 'general operation',
+			'operation.lifecycle.paused' => 'paused',
+			'operation.lifecycle.pausedFor' => ({required Object time}) => 'paused for ${time}',
+			'operation.lifecycle.completed' => 'operation completed',
+			'operation.lifecycle.start' => 'mark the start',
+			'operation.lifecycle.pause' => 'pause',
+			'operation.lifecycle.continueOperation' => 'continue',
+			'operation.lifecycle.restart' => 'restart',
+			'operation.lifecycle.exports' => 'exports',
+			'operation.lifecycle.end' => 'finish operation',
+			'operation.lifecycle.moveFailed' => 'could not change the operation\'s state',
+			'operation.lifecycle.started' => 'started',
+			'operation.lifecycle.restarted' => 'restarted',
+			'operation.lifecycle.restartedAfter' => ({required Object name, required Object time}) => '${name} after ${time}',
+			'operation.lifecycle.finished' => 'finished',
+			'operation.lifecycle.finishedWith' => ({required Object name, required Object qsos, required Object time}) => '${name}, with ${qsos} in ${time}',
+			'operation.lifecycle.lastExportAgo' => ({required Object time}) => 'last export\n${time}',
+			'operation.lifecycle.lastExportOn' => ({required Object date}) => 'last export on\n${date}',
+			'operation.lifecycle.justNow' => 'just now',
+			'operation.lifecycle.minutesAgo' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} minute ago', other: '${count} minutes ago', ), 
+			'operation.lifecycle.hoursAgo' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} hour ago', other: '${count} hours ago', ), 
 			'operation.titleFor' => ({required Object value}) => 'for ${value}',
 			'operation.titleAt' => ({required Object value}) => 'at ${value}',
 			'operation.segmentNow' => ({required Object description}) => 'now ${description}',
@@ -5296,6 +5355,8 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importNothing' => 'no panel picked, so nothing was imported.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'left out: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'kept ${panels}: the small-screen arrangement can’t do without it.',
@@ -5316,8 +5377,6 @@ extension on TranslationsQrp {
 			'operation.layout.panelOverElements' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork has more than ${max} elements',
 			'operation.layout.panelOverDepth' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its artwork nests more than ${max} levels deep',
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} could not be displayed: its artwork is not self-contained',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} layers',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} could not be displayed: its scene has more than ${max} controls',
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} could not be displayed: part of its scene has more than ${max} entries',
@@ -5810,6 +5869,8 @@ extension on TranslationsQrp {
 			'loggingControls.operatorField' => 'operator',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} call', other: '${count} calls', ), 
 			'loggingControls.editStationCalls' => 'edit list',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.stationCallsTitle' => 'station callsigns',
 			'loggingControls.stationCallsHint' => 'calls added here count from the next contact on. a call removed here keeps the contacts already logged under it.',
 			'loggingControls.stationCallsAdd' => 'add a callsign',
@@ -5830,8 +5891,6 @@ extension on TranslationsQrp {
 			'loggingControls.spottingAutoControl' => 'auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 're-spot every ${minutes} min',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'auto in ${time}. stop?',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'auto in ${minutes}m',
 			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'auto in ${seconds}s',
 			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'auto in ${seconds}',
@@ -5853,6 +5912,9 @@ extension on TranslationsQrp {
 			'loggingControls.info.qsoCountOne' => '1 qso',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} qsos',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
+			'loggingControls.info.ratePerHour' => ({required Object rate}) => '${rate} qso/h',
+			'loggingControls.info.rateWithSplit' => ({required Object rate, required Object paused, required Object active}) => '${rate} (${paused} paused, ${active} active)',
+			'loggingControls.info.ratePerDay' => ({required Object rate}) => '${rate} qso/day',
 			'loggingControls.info.sinceLast' => ({required Object time}) => '${time} since last',
 			'loggingControls.info.ratePer10' => ({required Object rate}) => '${rate} q/h for last 10',
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} q/h for last 100',
@@ -6321,6 +6383,8 @@ extension on TranslationsQrp {
 			'settings.radio.voiceWords.deleteReading' => 'delete recording',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'delete this recording of “${word}”?',
 			'settings.radio.voiceWords.recordAll' => 'record all',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.deleteAll' => 'delete all',
 			'settings.radio.voiceWords.deleteAllTitle' => ({required Object call}) => 'delete every recording for ${call}?',
 			'settings.radio.voiceWords.recordAllIntro' => 'read each one as you would on the air, then stop. each word you said plays back on its own: take it and go on to the next, or record it again.',
@@ -6344,8 +6408,6 @@ extension on TranslationsQrp {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
 			'settings.radio.voiceWords.speed' => 'speed',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.advancedSettings' => 'advanced settings',
 			'settings.radio.voiceWords.splitSilent' => 'nothing was heard in the recording.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'couldn\'t find three takes. say the word three times, run together, and try again.',
@@ -6835,6 +6897,8 @@ extension on TranslationsQrp {
 			'settings.station.notConfigured' => 'not configured',
 			'settings.station.currentConfiguration' => 'current configuration',
 			'settings.station.currentTransceiver' => 'current transceiver',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentTransceivers' => 'current transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'messages queued instead of interrupting',
@@ -6858,8 +6922,6 @@ extension on TranslationsQrp {
 			'settings.station.equipmentInUse' => 'transceiver controls',
 			'settings.station.noTransceiver' => 'none',
 			'settings.station.peerRadioNotAvailable' => 'not available',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'on ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
@@ -7349,6 +7411,8 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.sets.appDefaults' => 'app defaults',
 			'keyboardShortcuts.sets.carriedName' => 'my shortcuts',
 			'keyboardShortcuts.sets.appDefaultsLocked' => 'app defaults are the app’s own keys. to change them, duplicate app defaults in manage shortcut sets… and use the copy.',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.sets.fileLabel' => 'ham2k keyboard shortcuts',
 			'keyboardShortcuts.sets.fileStem' => 'keyboard shortcuts',
 			'keyboardShortcuts.resetAll' => 'reset all',
@@ -7372,8 +7436,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'unknown command: ${command}',
 			'keyboardShortcuts.command.commandDialog' => 'open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'switch between light and dark',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
 			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'smaller text',

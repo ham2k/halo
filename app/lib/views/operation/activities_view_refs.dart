@@ -351,15 +351,20 @@ mixin _ActivitiesRefs on State<OperationSheet> {
   /// those while the extension host is slow asks it for the title again,
   /// writes again, and holds its caller for that whole second wait. A failed
   /// save clears the memo, so the operator can retry.
-  Future<void> saveAndClose() => _closing ??= _saveAndCloseOnce();
+  ///
+  /// [accept] is OK's alone: it declares the setup accepted, which moves a
+  /// `new` operation to `ready` ([OperationsRepository.saveAcceptedSetup]).
+  /// Every other way out saves what was typed and declares nothing — backing
+  /// out of a sheet with nothing assigned is no acceptance.
+  Future<void> saveAndClose({bool accept = false}) => _closing ??= _saveAndCloseOnce(accept: accept);
 
   Future<void>? _closing;
   bool _isClosing = false;
 
-  Future<void> _saveAndCloseOnce() async {
+  Future<void> _saveAndCloseOnce({required bool accept}) async {
     _setClosing(true);
     try {
-      await _saveAndClose();
+      await _saveAndClose(accept: accept);
     } catch (_) {
       _closing = null;
       _setClosing(false);
@@ -387,27 +392,26 @@ mixin _ActivitiesRefs on State<OperationSheet> {
     }
   }
 
-  Future<void> _saveAndClose() async {
+  Future<void> _saveAndClose({required bool accept}) async {
     // One snapshot for the title and the row: the sheet still takes keyboard
     // input during the wait, and an edit landing between the two reads would
     // store a title that does not describe the refs beside it.
     final operation = _operation;
     final fragments = await widget.services.operationTitles.suggestFragments(operation);
     final data = fragments == null ? operation.data : {...operation.data, 'title': buildGeneratedTitle(t, fragments)};
-    await widget.services.operations.saveData(
-      Operation(
-        uuid: operation.uuid,
-        data: data,
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: operation.localData,
-      ),
-      // Every refs edit already ran the rule on the draft. Run again against
-      // the stored row, it would put back a location the operator cleared on
-      // the Location screen after adding the park.
-      followRefs: false,
+    final saved = Operation(
+      uuid: operation.uuid,
+      data: data,
+      qsoCount: operation.qsoCount,
+      startAtMillisMin: operation.startAtMillisMin,
+      startAtMillisMax: operation.startAtMillisMax,
+      localData: operation.localData,
     );
+    // `followRefs: false`: every refs edit already ran the rule on the draft.
+    // Run again against the stored row, it would put back a location the
+    // operator cleared on the Location screen after adding the park.
+    final operations = widget.services.operations;
+    await (accept ? operations.saveAcceptedSetup(saved, followRefs: false) : operations.saveData(saved, followRefs: false));
     if (!mounted) return;
     // Closes this sheet's own route, whatever is around it. A navigation past
     // it during the wait (the command dialog's Go home) has already removed

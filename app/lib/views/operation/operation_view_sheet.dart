@@ -545,7 +545,7 @@ Widget _sheetOkButton(BuildContext context, GlobalKey<OperationSheetState> sheet
         disabledBackgroundColor: fabAccentColor,
         disabledForegroundColor: onPrimary,
       ),
-      onPressed: isClosing ? null : () => sheetKey.currentState?.saveAndClose(),
+      onPressed: isClosing ? null : () => sheetKey.currentState?.saveAndClose(accept: true),
     ),
   );
 }

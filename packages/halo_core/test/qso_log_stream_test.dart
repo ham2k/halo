@@ -234,6 +234,57 @@ void main() {
     expect(reads.log, 1 + checks, reason: 'every step was a patch; the log reads are the checks above');
   });
 
+  test('a summary once read rides the patches, and matches a fresh fold at every step', () async {
+    // Folded again per emission, the stats would walk a six-figure log on
+    // every contact; carried wrong, they would drift from the log for good.
+    final op = await operations.create(stationCall: 'KI2D');
+    final a = await qsos.add(op.uuid, contact('A1A', 1000));
+    await qsos.add(op.uuid, contact('B1B', 2000));
+    final emissions = await follow(op.uuid);
+    String facts(QsoLogSummary s) => '${s.contacts} ${s.firstContactAtMillis} ${s.lastContactAtMillis} ${s.pausedMillis} ${s.recentContactMillis}';
+    Future<void> agrees(String step) async {
+      final log = emissions.last as QsoLog;
+      expect(facts(log.summary), facts(QsoLogSummary.of(await qsos.forOperation(op.uuid))), reason: step);
+    }
+
+    (emissions.last as QsoLog).summary;
+    await qsos.add(op.uuid, contact('C1C', 3000));
+    await settled(emissions, 2);
+    expect((emissions.last as QsoLog).knownSummary, isNotNull, reason: 'a contact logged now extends it');
+    await agrees('appended');
+
+    await qsos.update(Qso(uuid: a.uuid, operationUuid: op.uuid, data: {...a.data, 'notes': 'edited'}));
+    await settled(emissions, 3);
+    expect((emissions.last as QsoLog).knownSummary, isNotNull, reason: 'an edit of nothing it counts keeps it');
+    await agrees('edited');
+
+    await qsos.update(Qso(uuid: a.uuid, operationUuid: op.uuid, data: {...a.data, 'startAtMillis': 4000}));
+    await settled(emissions, 4);
+    await agrees('moved');
+
+    await qsos.add(op.uuid, contact('D1D', 5000));
+    await settled(emissions, 5);
+    await agrees('appended after a fold');
+
+    (emissions.last as QsoLog).summary;
+    await qsos.add(op.uuid, contact('E1E', 1500));
+    await settled(emissions, 6);
+    await agrees('a contact typed in from earlier');
+  });
+
+  test('a soft delete a stream keeps in place is not an edit the summary can keep', () async {
+    // The row stays where it was, flagged; carried unchanged, the summary
+    // would still count it.
+    final op = await operations.create(stationCall: 'KI2D');
+    final a = await qsos.add(op.uuid, contact('A1A', 1000));
+    await qsos.add(op.uuid, contact('B1B', 2000));
+    final emissions = await follow(op.uuid, includeDeleted: true);
+    (emissions.last as QsoLog).summary;
+    await qsos.softDelete(a);
+    await settled(emissions, 2);
+    expect((emissions.last as QsoLog).summary.contacts, 1);
+  });
+
   test('a stream that shows deleted rows keeps a soft-deleted one, flagged', () async {
     final op = await operations.create(stationCall: 'KI2D');
     final qso = await qsos.add(op.uuid, contact('W1AW', 1000));

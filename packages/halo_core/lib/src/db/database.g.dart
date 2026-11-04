@@ -140,6 +140,15 @@ class $OperationsTable extends Operations
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     uuid,
@@ -153,6 +162,7 @@ class $OperationsTable extends Operations
     purged,
     purgedLocally,
     updatedAtMillis,
+    status,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -246,6 +256,12 @@ class $OperationsTable extends Operations
         ),
       );
     }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
     return context;
   }
 
@@ -299,6 +315,10 @@ class $OperationsTable extends Operations
         DriftSqlType.int,
         data['${effectivePrefix}updated_at_millis'],
       ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      ),
     );
   }
 
@@ -348,6 +368,13 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
   /// `markSynced` only flips rows whose stamp still matches what was sent,
   /// and `mergeFromSync` skips inbound records older than the local row.
   final int? updatedAtMillis;
+
+  /// Mirrors `data.status` — the lifecycle state
+  /// (`operation_lifecycle.dart`). A column so the sweep can select its
+  /// candidates, and the operation list can filter, without decoding every
+  /// blob. Null for every operation written before the lifecycle existed and
+  /// for everything app-polo writes; the sweep derives one on its first pass.
+  final String? status;
   const OperationRow({
     required this.uuid,
     required this.data,
@@ -360,6 +387,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     required this.purged,
     required this.purgedLocally,
     this.updatedAtMillis,
+    this.status,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -382,6 +410,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     map['purged_locally'] = Variable<bool>(purgedLocally);
     if (!nullToAbsent || updatedAtMillis != null) {
       map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
+    if (!nullToAbsent || status != null) {
+      map['status'] = Variable<String>(status);
     }
     return map;
   }
@@ -407,6 +438,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       updatedAtMillis: updatedAtMillis == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAtMillis),
+      status: status == null && nullToAbsent
+          ? const Value.absent()
+          : Value(status),
     );
   }
 
@@ -427,6 +461,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       purged: serializer.fromJson<bool>(json['purged']),
       purgedLocally: serializer.fromJson<bool>(json['purgedLocally']),
       updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
+      status: serializer.fromJson<String?>(json['status']),
     );
   }
   @override
@@ -444,6 +479,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       'purged': serializer.toJson<bool>(purged),
       'purgedLocally': serializer.toJson<bool>(purgedLocally),
       'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
+      'status': serializer.toJson<String?>(status),
     };
   }
 
@@ -459,6 +495,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     bool? purged,
     bool? purgedLocally,
     Value<int?> updatedAtMillis = const Value.absent(),
+    Value<String?> status = const Value.absent(),
   }) => OperationRow(
     uuid: uuid ?? this.uuid,
     data: data ?? this.data,
@@ -477,6 +514,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     updatedAtMillis: updatedAtMillis.present
         ? updatedAtMillis.value
         : this.updatedAtMillis,
+    status: status.present ? status.value : this.status,
   );
   OperationRow copyWithCompanion(OperationsCompanion data) {
     return OperationRow(
@@ -499,6 +537,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
       updatedAtMillis: data.updatedAtMillis.present
           ? data.updatedAtMillis.value
           : this.updatedAtMillis,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
@@ -515,7 +554,8 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           ..write('synced: $synced, ')
           ..write('purged: $purged, ')
           ..write('purgedLocally: $purgedLocally, ')
-          ..write('updatedAtMillis: $updatedAtMillis')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
@@ -533,6 +573,7 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
     purged,
     purgedLocally,
     updatedAtMillis,
+    status,
   );
   @override
   bool operator ==(Object other) =>
@@ -548,7 +589,8 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
           other.synced == this.synced &&
           other.purged == this.purged &&
           other.purgedLocally == this.purgedLocally &&
-          other.updatedAtMillis == this.updatedAtMillis);
+          other.updatedAtMillis == this.updatedAtMillis &&
+          other.status == this.status);
 }
 
 class OperationsCompanion extends UpdateCompanion<OperationRow> {
@@ -563,6 +605,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
   final Value<bool> purged;
   final Value<bool> purgedLocally;
   final Value<int?> updatedAtMillis;
+  final Value<String?> status;
   final Value<int> rowid;
   const OperationsCompanion({
     this.uuid = const Value.absent(),
@@ -576,6 +619,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.purged = const Value.absent(),
     this.purgedLocally = const Value.absent(),
     this.updatedAtMillis = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OperationsCompanion.insert({
@@ -590,6 +634,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     this.purged = const Value.absent(),
     this.purgedLocally = const Value.absent(),
     this.updatedAtMillis = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : uuid = Value(uuid);
   static Insertable<OperationRow> custom({
@@ -604,6 +649,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Expression<bool>? purged,
     Expression<bool>? purgedLocally,
     Expression<int>? updatedAtMillis,
+    Expression<String>? status,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -618,6 +664,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       if (purged != null) 'purged': purged,
       if (purgedLocally != null) 'purged_locally': purgedLocally,
       if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
+      if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -634,6 +681,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     Value<bool>? purged,
     Value<bool>? purgedLocally,
     Value<int?>? updatedAtMillis,
+    Value<String?>? status,
     Value<int>? rowid,
   }) {
     return OperationsCompanion(
@@ -648,6 +696,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
       purged: purged ?? this.purged,
       purgedLocally: purgedLocally ?? this.purgedLocally,
       updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+      status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -688,6 +737,9 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
     if (updatedAtMillis.present) {
       map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
     }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -708,6 +760,7 @@ class OperationsCompanion extends UpdateCompanion<OperationRow> {
           ..write('purged: $purged, ')
           ..write('purgedLocally: $purgedLocally, ')
           ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5970,6 +6023,7 @@ typedef $$OperationsTableCreateCompanionBuilder =
       Value<bool> purged,
       Value<bool> purgedLocally,
       Value<int?> updatedAtMillis,
+      Value<String?> status,
       Value<int> rowid,
     });
 typedef $$OperationsTableUpdateCompanionBuilder =
@@ -5985,6 +6039,7 @@ typedef $$OperationsTableUpdateCompanionBuilder =
       Value<bool> purged,
       Value<bool> purgedLocally,
       Value<int?> updatedAtMillis,
+      Value<String?> status,
       Value<int> rowid,
     });
 
@@ -6049,6 +6104,11 @@ class $$OperationsTableFilterComposer
 
   ColumnFilters<int> get updatedAtMillis => $composableBuilder(
     column: $table.updatedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6116,6 +6176,11 @@ class $$OperationsTableOrderingComposer
     column: $table.updatedAtMillis,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OperationsTableAnnotationComposer
@@ -6167,6 +6232,9 @@ class $$OperationsTableAnnotationComposer
     column: $table.updatedAtMillis,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 }
 
 class $$OperationsTableTableManager
@@ -6211,6 +6279,7 @@ class $$OperationsTableTableManager
                 Value<bool> purged = const Value.absent(),
                 Value<bool> purgedLocally = const Value.absent(),
                 Value<int?> updatedAtMillis = const Value.absent(),
+                Value<String?> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion(
                 uuid: uuid,
@@ -6224,6 +6293,7 @@ class $$OperationsTableTableManager
                 purged: purged,
                 purgedLocally: purgedLocally,
                 updatedAtMillis: updatedAtMillis,
+                status: status,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6239,6 +6309,7 @@ class $$OperationsTableTableManager
                 Value<bool> purged = const Value.absent(),
                 Value<bool> purgedLocally = const Value.absent(),
                 Value<int?> updatedAtMillis = const Value.absent(),
+                Value<String?> status = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OperationsCompanion.insert(
                 uuid: uuid,
@@ -6252,6 +6323,7 @@ class $$OperationsTableTableManager
                 purged: purged,
                 purgedLocally: purgedLocally,
                 updatedAtMillis: updatedAtMillis,
+                status: status,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

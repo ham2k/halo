@@ -329,19 +329,41 @@ Two consequences worth knowing before changing any of this:
 
 Everything below assumes the form accepts input. It does not always: the entry
 row locks whole, fields and save and keyboard shortcuts alike, and the reason
-appears where the call-info area normally sits. Three things lock it —
+appears where the call-info area normally sits. Four things lock it —
 
 - a **staged delete**, where Delete has been tapped and not yet saved;
 - an **already-deleted QSO** loaded for restore;
 - an **operation this device may not write to** — a travelled clock over a
   non-test operation today (`WritePolicy`, [time.md §4](time.md)), and a
-  shared operation this device only reads once that exists.
+  shared operation this device only reads once that exists;
+- an **operation no longer being logged into** — one the operator paused or
+  ended, one whose log has been sent, or one that has simply had nothing
+  logged for half an hour ([data-model.md](data-model.md) §The Log Data).
+  Only behind the `cycle` experiment; without it, the lifecycle locks
+  nothing.
 
 Locked means locked *before* the focus rules apply, not instead of them: no
 field takes focus, so none of the movement below has anywhere to go. That is
 deliberate for the third case in particular — a refusal raised when the
 operator presses Enter would tell them a contact they had already typed did
 not land, which is the thing this prevents.
+
+The **lifecycle case is the one exception**, and it is deliberate on both
+counts. It replaces the entry row outright with a two-line read of the
+operation's state rather than dimming the fields — a disabled row reads as
+"you may type here in a moment", which is what a finished log does not mean —
+and that read *is* focusable. A printable character typed at it reopens the
+operation and lands in the callsign field the reopening brings back, so an
+operator who just starts typing a call never has to find a button first.
+Nothing else about the lock is relaxed: Enter, the shortcuts and the
+secondary controls stay inert until the operation is live again.
+
+The lifecycle lock applies **only while composing a new contact, and only
+before anything is composed**. An existing QSO stays editable and deletable in
+a finished operation: locking says "you are not sitting at the radio any
+more", not "this log is frozen". A half-typed contact keeps the row live
+through a pause, a finish or an export, for the same reason: locked, it would
+take what the operator typed out of reach.
 
 ## Which field has focus
 

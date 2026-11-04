@@ -61,6 +61,12 @@ bool segmentOverrideDiffers(Map<String, dynamic> before, Map<String, dynamic> af
 /// the operation's end; `end` in older rows) closes the operation, so any
 /// override it carries is ignored here — treating a stop as a boundary would
 /// strand every QSO logged after it with no refs at all.
+///
+/// `pause` and `restart` are absent for the same reason and must stay absent:
+/// stepping away and reopening a paused or completed operation resume the
+/// stretch that was already running, and making either a boundary would
+/// reset the log to the base operation every time the operator came back to
+/// the radio.
 bool eventKindOpensSegment(String? kind) => kind == 'break' || kind == 'start';
 
 /// One stretch of a log, and the operation that was true for it.

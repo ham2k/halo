@@ -80,6 +80,32 @@ void main() {
     expect(copy.createdAtMillis, original.createdAtMillis, reason: 'a copy was created when its original was');
   });
 
+  test("the file's status survives its own contacts arriving", () async {
+    // Written with the lifecycle wired, as the app writes: the contacts are
+    // the file's, not news about it, and read as new they would reopen the
+    // log its source had finished.
+    qsos = QsosRepository(
+      db,
+      onLocalContact: (uuid, {required isNewContact, int? atMillis, bool bulk = false}) =>
+          operations.followContact(uuid, isNewContact: isNewContact, atMillis: atMillis, bulk: bulk),
+    );
+    final copy = await import({
+      'operation': {'uuid': 'src', 'stationCall': 'N0DEV', 'status': OperationStatus.processed, 'statusAtMillis': 1000, 'processedAtMillis': 1000},
+      'qsos': [
+        {
+          'uuid': 'q1',
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+          'startAtMillis': 500,
+        },
+      ],
+    });
+    // Even `processed`: an edit would report the upload stale, and these
+    // contacts are the very ones that were sent.
+    expect(copy.status, OperationStatus.processed);
+  });
+
   test('tombstones in the file stay out of the copy', () async {
     final copy = await import({
       'operation': {'uuid': 'a', 'stationCall': 'N0DEV'},

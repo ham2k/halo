@@ -498,5 +498,5 @@ class _FailingOperations extends OperationsRepository {
   _FailingOperations(super.db);
 
   @override
-  Future<void> saveData(Operation operation, {bool followRefs = true}) => Future.error(StateError('disk full'));
+  Future<void> saveData(Operation operation, {bool followRefs = true, bool lifecycleOnly = false}) => Future.error(StateError('disk full'));
 }

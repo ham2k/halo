@@ -17,6 +17,7 @@ import 'dart:isolate';
 
 import 'package:meta/meta.dart';
 
+import '../app_clock.dart';
 import '../db/database.dart';
 import '../models/models.dart';
 import '../models/qson_values.dart';
@@ -219,4 +220,68 @@ Future<List<Qso>> qsosFromRows(List<QsoRow> rows) async {
     // doesn't change what a bad row does, only where a healthy one runs.
     return _reportedQsos(_decodeQsos(rows));
   }
+}
+
+/// Runs after a local write that changes what an operation's log SAYS — a
+/// contact added, edited or deleted. The lifecycle follows the log through it
+/// (`OperationsRepository.followContact`); a null hook simply leaves the
+/// status alone, which is what every test and non-app host wants. Sync- and
+/// peer-received revisions never reach it: they carry their own status.
+///
+/// Event rows are excluded at every call site — a `start` or `stop` marker IS
+/// a lifecycle transition being written, and feeding it back in would have the
+/// transition fight itself.
+///
+/// [bulk] marks contacts written by [QsosRepository.writeBatch] — an import or
+/// a paste, not the operator logging at the radio — with [atMillis] the
+/// newest of their own times.
+typedef LocalContactHook = Future<void> Function(String operationUuid, {required bool isNewContact, int? atMillis, bool bulk});
+
+/// What a [QsosRepository.writeBatch] has to tell the lifecycle about itself:
+/// whether it added a contact, and the newest contact time it wrote.
+///
+/// Called ONCE per batch, not once per record: an import of three thousand
+/// contacts owes the lifecycle one transition, and the hook's own work is per
+/// operation anyway. Without it the whole bulk path — ADIF import, paste, bulk
+/// edits, a segment's station-call restamp — is invisible to the lifecycle: an
+/// operation filled entirely by an import would sit at `new` with three
+/// thousand contacts in it, and a re-import over a processed log would never
+/// report that the upload went stale. An insert anywhere in the batch makes it
+/// a new contact; a batch of pure updates is an edit, and the mix cannot
+/// happen the other way round — adding contacts is what reopens a log, and it
+/// outranks a revert made in the same breath.
+///
+/// Null when the batch touched no contact at all — a batch of `break` markers
+/// is not a contact, and treating one as an edit would revert a processed
+/// operation on a write that changed no contact. Event rows are excluded here
+/// as they are at every other call site.
+///
+/// The time comes from the RECORDS, not from the operation's counters: a large
+/// import chunks itself and passes `refreshCounters: false` until the last
+/// chunk, so the column still holds whatever it held before the import while
+/// the first chunks are landing. Reading it there would stamp a year-old log
+/// as active right now.
+({bool inserted, int newestMillis})? summarizeBatchForLifecycle(List<Map<String, dynamic>> inserts, List<Qso> updates) {
+  var sawContact = false;
+  var inserted = false;
+  var newest = 0;
+  void note(Map<String, dynamic> data, {required bool isInsert}) {
+    if (asQsonString(data['band']) == 'event') return; // Qso.isEvent
+    sawContact = true;
+    if (isInsert) inserted = true;
+    // The same fallback the stored row takes: a record with no time of its own
+    // is written at `now`, so that is what it contributes here. Reading the
+    // absence as "nothing to report" would let a batch of them leave the stamp
+    // on whatever the column happened to hold.
+    final at = asQsonNum(data['startAtMillis'])?.toInt() ?? nowMillis();
+    if (at > newest) newest = at;
+  }
+
+  for (final data in inserts) {
+    note(data, isInsert: true);
+  }
+  for (final qso in updates) {
+    note(qso.data, isInsert: false);
+  }
+  return sawContact ? (inserted: inserted, newestMillis: newest) : null;
 }

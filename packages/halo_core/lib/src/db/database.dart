@@ -61,6 +61,13 @@ class Operations extends Table {
   /// and `mergeFromSync` skips inbound records older than the local row.
   IntColumn get updatedAtMillis => integer().nullable()();
 
+  /// Mirrors `data.status` — the lifecycle state
+  /// (`operation_lifecycle.dart`). A column so the sweep can select its
+  /// candidates, and the operation list can filter, without decoding every
+  /// blob. Null for every operation written before the lifecycle existed and
+  /// for everything app-polo writes; the sweep derives one on its first pass.
+  TextColumn get status => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {uuid};
 }
@@ -375,7 +382,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -466,6 +473,15 @@ class HaLoDatabase extends _$HaLoDatabase {
         if (from < 17) {
           await m.createIndex(qsosOperationCounters);
           await m.createIndex(qsosSyncedStart);
+        }
+        // No backfill: every row comes out with a null status, which is
+        // exactly what the sweep selects. Deriving a status is its job, not a
+        // migration's — it needs the app clock, which a migration has no
+        // business reading — and so is mirroring one a blob already carries,
+        // synced in from a device that had the lifecycle before this one
+        // did (`OperationsRepository.inferStatus`).
+        if (from < 18) {
+          await m.addColumn(operations, operations.status);
         }
       });
     },

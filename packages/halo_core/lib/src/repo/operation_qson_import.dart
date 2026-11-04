@@ -112,7 +112,9 @@ Future<Operation> importQsonOperation({
 
   return db.transaction(() async {
     final created = await operations.createFromData(data);
-    await qsos.writeBatch(operationUuid: created.uuid, inserts: inserts);
+    // The file's own status stands: `createFromData` kept it, and reading
+    // these contacts as new would reopen a log its source had finished.
+    await qsos.writeBatch(operationUuid: created.uuid, inserts: inserts, followLifecycle: false);
     return (await operations.get(created.uuid))!;
   });
 }
