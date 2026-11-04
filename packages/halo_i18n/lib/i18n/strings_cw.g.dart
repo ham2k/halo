@@ -1070,6 +1070,8 @@ class _Translations$spotting$cw extends Translations$spotting$en {
 	@override String get notSent => '··· ·——· ——— — / —· ——— — / ··· · —· — ·—·—·—';
 	@override String get allSkipped => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / · ···— · ·—· —·—— / ··· ·——· ——— — / ··· ——— ··— ·—· —·—· · / ··· —·— ·· ·——· ·——· · —·· / ·· — ·—·—·—';
 	@override String get notRefreshedOffline => '—· ——— / —·—· ——— —· —· · —·—· — ·· ——— —· / — / ··· ·——· ——— — ··· / ·—— · ·—· · / —· ——— — / ·—· · ··—· ·—· · ··· ···· · —··';
+	@override String get noDestination => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / —· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·· — / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—';
+	@override String get noAutoDestination => '—· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ··· / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—';
 }
 
 // Path: dataFiles
@@ -2370,6 +2372,11 @@ class _Translations$settings$spotting$cw extends Translations$settings$spotting$
 	@override String get pulseBeforeRespot => '·——· ··— ·—·· ··· · / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —';
 	@override String pulseBeforeRespotOn({required Object seconds}) => '— ···· · / ··· ·——· ——— — — ·· —· ——· / —·—· ···· ·· ·——· / ·——· ··— ·—·· ··· · ··· / —··· ·—·· ··— · / ··—· ——— ·—· / — ···· · / ${seconds} / ··· · —·—· ——— —· —·· ··· / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·—· · —····— ··· ·——· ——— —';
 	@override String get pulseBeforeRespotOff => '—· ——— / ·——· ··— ·—·· ··· ·· —· ——· / —··· · ··—· ——— ·—· · / ·— —· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —';
+	@override String get destinations => '—·· · ··· — ·· —· ·— — ·· ——— —· ···';
+	@override String get destinationAll => '·— ·—·· ·—·· / ··· ·——· ——— — ···';
+	@override String get destinationQrvQrt => '——— —· ·—·· —·—— / ——·— ·—· ···— / ·— —· —·· / ——·— ·—· —';
+	@override String get destinationExceptAuto => '·— —· —·—— / · —··— —·—· · ·——· — / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ···';
+	@override String get destinationNone => '—·· ——— —· ·————· — / ··· · —· —·· / ··· ·——· ——— — ···';
 }
 
 // Path: settings.radio
@@ -6115,6 +6122,11 @@ extension on TranslationsCw {
 			'settings.spotting.pulseBeforeRespot' => '·——· ··— ·—·· ··· · / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
 			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => '— ···· · / ··· ·——· ——— — — ·· —· ——· / —·—· ···· ·· ·——· / ·——· ··— ·—·· ··· · ··· / —··· ·—·· ··— · / ··—· ——— ·—· / — ···· · / ${seconds} / ··· · —·—· ——— —· —·· ··· / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·—· · —····— ··· ·——· ——— —',
 			'settings.spotting.pulseBeforeRespotOff' => '—· ——— / ·——· ··— ·—·· ··· ·· —· ——· / —··· · ··—· ——— ·—· · / ·— —· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
+			'settings.spotting.destinations' => '—·· · ··· — ·· —· ·— — ·· ——— —· ···',
+			'settings.spotting.destinationAll' => '·— ·—·· ·—·· / ··· ·——· ——— — ···',
+			'settings.spotting.destinationQrvQrt' => '——— —· ·—·· —·—— / ——·— ·—· ···— / ·— —· —·· / ——·— ·—· —',
+			'settings.spotting.destinationExceptAuto' => '·— —· —·—— / · —··— —·—· · ·——· — / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ···',
+			'settings.spotting.destinationNone' => '—·· ——— —· ·————· — / ··· · —· —·· / ··· ·——· ——— — ···',
 			'settings.radio.title' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
 			'settings.radio.loggingAndCat' => '·—·· ——— ——· ——· ·· —· ——· / ·—··· / —·—· ·— —',
 			'settings.radio.tuningSection' => '— ··— —· ·· —· ——·',
@@ -6330,13 +6342,13 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.speed' => '··· ·——· · · —··',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed} ×',
 			'settings.radio.voiceWords.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.splitSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ·· —· / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·—',
 			'settings.radio.voiceWords.splitNotThreeTakes' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / — ···· ·—· · · / — ·— —·— · ··· ·—·—·— / ··· ·— —·—— / — ···· · / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.radio.voiceWords.splitLineCount' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / · ···— · ·—· —·—— / ·—— ——— ·—· —·· / ·· —· / — ···· · / ·—· · ·— —·· ·· —· ——· ·—·—·— / ·—· · ·— —·· / · ·— —·—· ···· / ——— —· · / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
 			'settings.radio.voiceWords.splitLinesTooClose' => '—·—· ——— ··— ·—·· —·· —· ·————· — / — · ·—·· ·—·· / — ···· · / ·—— ——— ·—· —·· ··· / ·— ·——· ·— ·—· — ·—·—·— / ·—·· · ·— ···— · / ·— / ·—·· ——— —· ——· · ·—· / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
 			'settings.radio.avoidZeroBeat.title' => '·— ···— ——— ·· —·· / ——·· · ·—· ——— —····— —··· · ·— — ·· —· ——· / ——— —· / ··· ·——· ——— — ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.avoidZeroBeat.descriptionOn' => '·—— ·· — ···· / ·— / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — · —·· ——··—— / — ··— —· ·· —· ——· / ·— / ··—· · ·—— / ···· ——·· / ——— ··—· ··—· / ·— / —·—· ·—— / ··· ·——· ——— — ——··—— / ··· ——— / · ···— · ·—· —·—— ——— —· · / ·— —· ··· ·—— · ·—· ·· —· ——· / ·· — / ·· ··· —· ’ — / —·—· ·— ·—·· ·—·· ·· —· ——· / ——— —· / — ···· · / ··· ·— —— · / —· ——— — · ·—·—·—',
 			'settings.radio.avoidZeroBeat.descriptionOff' => '— ··— —· ·· —· ——· / · —··— ·— —·—· — ·—·· —·—— / — ——— / — ···· · / ··· ·——· ——— — — · —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— ·—·—·—',
 			'settings.radio.zeroBeatRange.title' => '——·· · ·—· ——— —····— —··· · ·— — ———··· / ·— ···— ——— ·· —·· ·— —· —·—· · / ·—· ·— —· ——· ·',
@@ -6844,13 +6856,13 @@ extension on TranslationsCw {
 			'settings.station.noTransceiver' => '—· ——— —· ·',
 			'settings.station.peerRadioNotAvailable' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => '——— —· / ${device}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
 			'settings.station.keyInUse' => '—·—· ·—— / —·— · —·—— ·· —· ——·',
 			'settings.station.phoneKeying' => '·——· ···· ——— —· · / —·— · —·—— ·· —· ——·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingNone' => '—· ——— —· ·',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => '—— · —— ——— ·—· ·· · ··· / ·· —· / ${radio}',
 			'settings.station.phoneKeyingComputer' => '·— ··— —·· ·· ——— / ·· —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—·',
@@ -7358,13 +7370,13 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.toggleTheme' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—·· ·· ——· ···· — / ·— —· —·· / —·· ·— ·—· —·—',
 			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
 			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.fontScaleDown' => '··· —— ·— ·—·· ·—·· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleReset' => '—· ——— ·—· —— ·— ·—·· / — · —··— — / ··· ·· ——·· ·',
 			'keyboardShortcuts.command.densityLooser' => '·—· ——— ——— —— ·· · ·—· / ·—·· ·— —·—— ——— ··— —',
 			'keyboardShortcuts.command.densityDenser' => '—·· · —· ··· · ·—· / ·—·· ·— —·—— ——— ··— —',
 			'keyboardShortcuts.command.densityAuto' => '·— ··— — ——— —— ·— — ·· —·—· / ·—·· ·— —·—— ——— ··— — / —·· · —· ··· ·· — —·——',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.find' => '··—· ·· —· —·· / ·· —· / — ···· · / ·—·· ——— ——·',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
 			'keyboardShortcuts.command.keyboardMode' => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·',
@@ -7451,6 +7463,8 @@ extension on TranslationsCw {
 			'spotting.notSent' => '··· ·——· ——— — / —· ——— — / ··· · —· — ·—·—·—',
 			'spotting.allSkipped' => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / · ···— · ·—· —·—— / ··· ·——· ——— — / ··· ——— ··— ·—· —·—· · / ··· —·— ·· ·——· ·——· · —·· / ·· — ·—·—·—',
 			'spotting.notRefreshedOffline' => '—· ——— / —·—· ——— —· —· · —·—· — ·· ——— —· / — / ··· ·——· ——— — ··· / ·—— · ·—· · / —· ——— — / ·—· · ··—· ·—· · ··· ···· · —··',
+			'spotting.noDestination' => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / —· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·· — / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
+			'spotting.noAutoDestination' => '—· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ··· / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'dataFiles.downloading' => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
 			'dataFiles.downloadFailedWebHint' => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',

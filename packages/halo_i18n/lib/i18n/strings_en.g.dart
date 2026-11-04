@@ -2406,6 +2406,12 @@ class Translations$spotting$en {
 
 	/// en: 'No connection — spots were not refreshed'
 	String get notRefreshedOffline => 'No connection — spots were not refreshed';
+
+	/// en: 'Spot not sent: no destination takes it — see Destinations in the Spotting settings.'
+	String get noDestination => 'Spot not sent: no destination takes it — see Destinations in the Spotting settings.';
+
+	/// en: 'No destination takes auto re-spots — see Destinations in the Spotting settings.'
+	String get noAutoDestination => 'No destination takes auto re-spots — see Destinations in the Spotting settings.';
 }
 
 // Path: dataFiles
@@ -5114,6 +5120,21 @@ class Translations$settings$spotting$en {
 
 	/// en: 'No pulsing before an auto re-spot'
 	String get pulseBeforeRespotOff => 'No pulsing before an auto re-spot';
+
+	/// en: 'Destinations'
+	String get destinations => 'Destinations';
+
+	/// en: 'All spots'
+	String get destinationAll => 'All spots';
+
+	/// en: 'Only QRV and QRT'
+	String get destinationQrvQrt => 'Only QRV and QRT';
+
+	/// en: 'Any except auto re-spots'
+	String get destinationExceptAuto => 'Any except auto re-spots';
+
+	/// en: 'Don't send spots'
+	String get destinationNone => 'Don\'t send spots';
 }
 
 // Path: settings.radio
@@ -11928,6 +11949,11 @@ extension on Translations {
 			'settings.spotting.pulseBeforeRespot' => 'Pulse before each auto re-spot',
 			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'The Spotting chip pulses blue for the ${seconds} seconds before each re-spot',
 			'settings.spotting.pulseBeforeRespotOff' => 'No pulsing before an auto re-spot',
+			'settings.spotting.destinations' => 'Destinations',
+			'settings.spotting.destinationAll' => 'All spots',
+			'settings.spotting.destinationQrvQrt' => 'Only QRV and QRT',
+			'settings.spotting.destinationExceptAuto' => 'Any except auto re-spots',
+			'settings.spotting.destinationNone' => 'Don\'t send spots',
 			'settings.radio.title' => 'CAT Control',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
@@ -12143,13 +12169,13 @@ extension on Translations {
 			'settings.radio.voiceWords.speed' => 'Speed',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
 			'settings.radio.voiceWords.advancedSettings' => 'Advanced Settings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.splitSilent' => 'Nothing was heard in the recording.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'Couldn\'t find three takes. Say the word three times, run together, and try again.',
 			'settings.radio.voiceWords.splitLineCount' => 'Couldn\'t find every word in the reading. Read each one three times, with a breath between words.',
 			'settings.radio.voiceWords.splitLinesTooClose' => 'Couldn\'t tell the words apart. Leave a longer breath between words.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
@@ -12657,13 +12683,13 @@ extension on Translations {
 			'settings.station.noTransceiver' => 'None',
 			'settings.station.peerRadioNotAvailable' => 'Not available',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'CW Keying',
 			'settings.station.phoneKeying' => 'Phone Keying',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingNone' => 'None',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'Memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'Audio in this computer',
@@ -13171,13 +13197,13 @@ extension on Translations {
 			'keyboardShortcuts.command.toggleTheme' => 'Switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
 			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.fontScaleDown' => 'Smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'Normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',
 			'keyboardShortcuts.command.densityDenser' => 'Denser layout',
 			'keyboardShortcuts.command.densityAuto' => 'Automatic layout density',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.find' => 'Find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
@@ -13264,6 +13290,8 @@ extension on Translations {
 			'spotting.notSent' => 'Spot not sent.',
 			'spotting.allSkipped' => 'Spot not sent: every spot source skipped it.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
+			'spotting.noDestination' => 'Spot not sent: no destination takes it — see Destinations in the Spotting settings.',
+			'spotting.noAutoDestination' => 'No destination takes auto re-spots — see Destinations in the Spotting settings.',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',

@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/src/logging_controls_spotting.dart';
+import 'package:halo_widgets/src/logging_controls_types.dart' show SpotDestinationPolicy;
 import 'package:halo_widgets/src/icon_resolver.dart';
 import 'package:halo_widgets/src/mdi_icons.g.dart';
 import 'package:halo_widgets/src/secondary_control_row.dart' show SecondaryControlSpec;
@@ -65,6 +66,7 @@ class _Harness {
   Duration respotInterval = _every;
   bool autoRespotByDefault = false;
   bool pulseBeforeRespot = true;
+  Map<String, SpotDestinationPolicy> destinations = {};
 
   /// How far a test has pumped the clock since the spot, for tests that step
   /// to set points.
@@ -97,6 +99,7 @@ class _Harness {
       respotInterval: respotInterval,
       autoRespotByDefault: autoRespotByDefault,
       pulseBeforeRespot: pulseBeforeRespot,
+      destinations: destinations,
       onOpenSettings: null,
     ),
   )..addListener(() => notifications++);
@@ -1747,6 +1750,309 @@ void main() {
       expect(h.sent, isEmpty);
       expect(h.model.autoRespotting, isFalse);
       h.model.dispose();
+    });
+  });
+
+  group('destinations', () {
+    setUp(followFakeClock);
+
+    List<String> keysOf(Map<String, dynamic> sent) => [for (final source in sent['sources'] as List) (source as Map)['hookKey'] as String];
+    List<String> shown(_Harness h) => [for (final source in h.model.sources) source['hookKey'] as String];
+
+    _Harness onAir(Map<String, SpotDestinationPolicy> destinations) => _Harness()
+      ..vfo = const Vfo(freq: 14285, mode: 'SSB')
+      ..destinations = destinations
+      ..answer = {
+        'pota': {'ok': true},
+        'sota': {'ok': true},
+      };
+
+    Future<void> spot(_Harness h, String comment) async {
+      h.model.commentController.text = comment;
+      await h.model.send();
+    }
+
+    // QSY and QRX are left out on purpose: "Only QRV and QRT" names exactly
+    // the two codes, and a destination set that way hears nothing else.
+    test('a self-spot reaches a QRV-and-QRT destination only when it leads with QRV or QRT', () async {
+      final h = onAir({'sota': SpotDestinationPolicy.qrvQrt});
+      for (final (comment, keys) in [
+        ('CQ POTA', ['pota']),
+        ('QRV 20m', ['pota', 'sota']),
+        ('qrt, 73', ['pota', 'sota']),
+        ('QSY 40m', ['pota']),
+        ('QRX 5', ['pota']),
+        ('', ['pota']),
+      ]) {
+        h.sent.clear();
+        await spot(h, comment);
+        expect(keysOf(h.sent.single), keys, reason: comment);
+      }
+      h.model.dispose();
+    });
+
+    testWidgets('an auto re-spot skips the destinations that take none, and goes on to the rest', (tester) async {
+      final h = onAir({'sota': SpotDestinationPolicy.exceptAuto});
+      await spot(h, 'CQ POTA');
+      expect(keysOf(h.sent.single), ['pota', 'sota'], reason: 'a spot by hand reaches it');
+      await h.model.press();
+      expect(h.model.autoRespotting, isTrue);
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.sent, hasLength(2));
+      expect(keysOf(h.sent.last), ['pota']);
+      expect(h.model.autoRespotting, isTrue);
+      h.model.dispose();
+    });
+
+    // Offered or started, it would run until its first round and stop
+    // there, minutes later, having repeated nothing.
+    testWidgets('with no destination taking auto re-spots, none is offered or started, and RESPOT says why', (tester) async {
+      final h = onAir({'pota': SpotDestinationPolicy.exceptAuto, 'sota': SpotDestinationPolicy.qrvQrt});
+      await spot(h, 'CQ POTA');
+      expect(keysOf(h.sent.single), ['pota']);
+      expect(h.model.state.buttonLabel, startsWith('Self-spot at'), reason: 'no re-spot is offered');
+      expect(await h.model.respotEvery(), t.spotting.noAutoDestination);
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.sent, hasLength(1), reason: 'RESPOT sends no spot to find out it cannot start');
+
+      h.autoRespotByDefault = true;
+      await spot(h, 'CQ POTA');
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices.last, t.spotting.noAutoDestination, reason: 'the setting promised it would start');
+      h.model.dispose();
+    });
+
+    testWidgets('a running auto re-spot stops, and says why, once no destination takes it', (tester) async {
+      final h = onAir({});
+      await spot(h, 'CQ POTA');
+      await h.model.press();
+      h.destinations = {'pota': SpotDestinationPolicy.exceptAuto, 'sota': SpotDestinationPolicy.none};
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.sent, hasLength(1));
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices.single, t.spotting.noAutoDestination);
+      h.model.dispose();
+    });
+
+    // Found out only at its first round, the run would count down for up
+    // to an hour under a chip saying "Auto re-spot", sending nothing.
+    testWidgets('a change to the setting that leaves no auto destination stops a run, refuses RESPOT, and withdraws the offer, at once', (tester) async {
+      final h = onAir({});
+      await h.model.refreshSources();
+      await spot(h, 'CQ POTA');
+      await h.model.press();
+      expect(h.model.autoRespotting, isTrue);
+      h.destinations = {'pota': SpotDestinationPolicy.exceptAuto, 'sota': SpotDestinationPolicy.exceptAuto};
+      h.model.followDestinations();
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices.single, t.spotting.noAutoDestination);
+
+      expect(await h.model.respotEvery(), t.spotting.noAutoDestination, reason: 'the spot it would repeat is still recorded');
+      expect(h.model.autoRespotting, isFalse);
+
+      h.destinations = {};
+      await spot(h, 'CQ POTA');
+      expect(h.model.state.buttonLabel, 'Re-spot every 10 min');
+      h.destinations = {'pota': SpotDestinationPolicy.exceptAuto, 'sota': SpotDestinationPolicy.none};
+      await h.model.press();
+      expect(h.model.autoRespotting, isFalse, reason: 'accepting the offer starts nothing');
+      expect(h.notices.last, t.spotting.noAutoDestination);
+      h.model.dispose();
+    });
+
+    // The command bar shows the failure SPOT forwards; the stop's own notice
+    // already said it, and a second copy reads as a second problem.
+    testWidgets('a typed SPOT that leaves a run with no auto destination says so once', (tester) async {
+      final h = onAir({})..autoRespotByDefault = true;
+      await spot(h, 'CQ POTA');
+      expect(h.model.autoRespotting, isTrue);
+      h.destinations = {'pota': SpotDestinationPolicy.exceptAuto, 'sota': SpotDestinationPolicy.exceptAuto};
+      final forwarded = <Map<String, dynamic>?>[];
+      await h.model.runCommandAction(
+        {
+          'sendSpots': {'comment': 'CQ POTA'},
+        },
+        qsos: const [],
+        forward: (action, [params]) async => forwarded.add(params),
+      );
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices, [t.spotting.noAutoDestination]);
+      expect(forwarded.single, {'target': 'self'});
+      h.model.dispose();
+    });
+
+    test('a spot no destination takes is not sent, and says why', () async {
+      final h = onAir({'pota': SpotDestinationPolicy.none, 'sota': SpotDestinationPolicy.qrvQrt});
+      await spot(h, 'CQ POTA');
+      expect(h.sent, isEmpty);
+      expect(h.notices.single, t.spotting.noDestination);
+      h.model.dispose();
+    });
+
+    test('a spot naming a source reaches it whatever its setting', () async {
+      final h = onAir({'sota': SpotDestinationPolicy.none});
+      final forwarded = <Map<String, dynamic>?>[];
+      await h.model.runCommandAction(
+        {
+          'sendSpots': {'source': 'sota'},
+        },
+        qsos: const [],
+        forward: (action, [params]) async => forwarded.add(params),
+      );
+      expect(keysOf(h.sent.single), ['sota']);
+      expect(forwarded.single, {'target': 'self'});
+      h.model.dispose();
+    });
+
+    // The self-spot choices say which of the operator's own announcements a
+    // destination hears; spotting someone else is none of them.
+    test('spotting another station skips only the destinations that take no spots', () async {
+      final h = onAir({'pota': SpotDestinationPolicy.none, 'sota': SpotDestinationPolicy.qrvQrt});
+      h.editingQso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': nowMillis() - 60 * 1000,
+          'freq': 7200,
+        },
+      );
+      await h.model.refreshSources();
+      expect(shown(h), ['sota']);
+      await spot(h, 'tnx');
+      expect(keysOf(h.sent.single), ['sota']);
+
+      h.sent.clear();
+      h.destinations = {'pota': SpotDestinationPolicy.none, 'sota': SpotDestinationPolicy.none};
+      await spot(h, 'tnx');
+      expect(h.sent, isEmpty);
+      expect(h.notices.single, t.spotting.noDestination);
+      h.model.dispose();
+    });
+
+    test("the row shows the destinations the button's next spot reaches, following the comment as typed", () async {
+      final h = onAir({'sota': SpotDestinationPolicy.qrvQrt});
+      await h.model.refreshSources();
+      expect(shown(h), ['pota']);
+      h.model.commentController.text = 'QRV 20m';
+      expect(shown(h), ['pota', 'sota']);
+      h.model.commentController.text = 'QRV 20m, 5W';
+      expect(shown(h), ['pota', 'sota']);
+      h.model.commentController.text = 'CQ';
+      expect(shown(h), ['pota']);
+      h.model.dispose();
+    });
+
+    testWidgets('the row shows the auto re-spot destinations while one runs, once the answers are cleared', (tester) async {
+      final h = onAir({'sota': SpotDestinationPolicy.exceptAuto});
+      await h.model.refreshSources();
+      await spot(h, 'CQ POTA');
+      await h.model.press();
+      expect(shown(h), ['pota', 'sota'], reason: "the last spot's answers are still showing");
+      await tester.pump(SpottingControlModel.resultShownFor + const Duration(seconds: 1));
+      expect(h.model.autoRespotting, isTrue);
+      expect(shown(h), ['pota']);
+      h.model.dispose();
+    });
+
+    // The comment clears as the answers land; a QRV-only destination leaving
+    // the row with it would take along the red that is the only sign a
+    // button spot failed there.
+    test("a destination's answer stays in the row after the comment that reached it clears", () async {
+      final h = onAir({'sota': SpotDestinationPolicy.qrvQrt})
+        ..answer = {
+          'pota': {'ok': true},
+          'sota': {'ok': false, 'error': 'refused'},
+        };
+      await h.model.refreshSources();
+      await spot(h, 'QRV 20m');
+      expect(h.model.commentController.text, isEmpty);
+      expect(shown(h), ['pota', 'sota']);
+      expect(h.model.statusOf('sota'), isFalse);
+      h.model.dispose();
+    });
+
+    // The CQ spot never went to SOTAwatch: its green from the QRV spot, lit
+    // beside POTA's fresh answer, would say it had.
+    test("a destination the next spot skips does not keep an earlier answer lit beside that spot's", () async {
+      final h = onAir({'sota': SpotDestinationPolicy.qrvQrt});
+      await h.model.refreshSources();
+      await spot(h, 'QRV 20m');
+      expect(h.model.statusOf('sota'), isTrue);
+      await spot(h, 'CQ POTA');
+      expect(keysOf(h.sent.last), ['pota']);
+      expect(h.model.statusOf('sota'), isNull);
+      expect(shown(h), ['pota']);
+      h.model.dispose();
+    });
+
+    // Its repeats would go to POTA alone, which took it: SOTAwatch refusing
+    // it says nothing about them. The refusal is still told where a typed
+    // command is answered.
+    testWidgets('a refusal from a destination taking no auto re-spots neither withholds the offer nor stops RESPOT or a typed SPOT starting one', (
+      tester,
+    ) async {
+      Map<String, Map<String, dynamic>> refusedBySota() => {
+        'pota': {'ok': true},
+        'sota': {'ok': false, 'message': 'no summit'},
+      };
+      final refused = t.spotting.spotFailed(source: 'sota', message: 'no summit');
+
+      final offered = onAir({'sota': SpotDestinationPolicy.exceptAuto})..answer = refusedBySota();
+      await spot(offered, 'CQ POTA');
+      expect(offered.model.state.buttonLabel, 'Re-spot every 10 min');
+      offered.model.dispose();
+
+      final respot = onAir({'sota': SpotDestinationPolicy.exceptAuto})..answer = refusedBySota();
+      expect(await respot.model.respotEvery(), refused);
+      expect(respot.model.autoRespotting, isTrue);
+      respot.model.dispose();
+
+      final typed = onAir({'sota': SpotDestinationPolicy.exceptAuto})
+        ..answer = refusedBySota()
+        ..autoRespotByDefault = true;
+      final forwarded = <Map<String, dynamic>?>[];
+      await typed.model.runCommandAction(
+        {
+          'sendSpots': {'comment': 'CQ POTA'},
+        },
+        qsos: const [],
+        forward: (action, [params]) async => forwarded.add(params),
+      );
+      expect(typed.model.autoRespotting, isTrue);
+      expect(forwarded.single, {'target': 'self', 'failure': refused});
+      typed.model.dispose();
+    });
+
+    // Accepting the offer waits on the extensions: an offer that ran out,
+    // or a comment typed for a new spot, meanwhile is what the operator
+    // last saw, and a run they no longer asked for must not start.
+    testWidgets('a press on the offer starts nothing once the offer runs out or a comment is typed while the extensions answer', (tester) async {
+      final h = onAir({});
+      await spot(h, 'CQ POTA');
+      h.holdSources = Completer<void>();
+      var pressed = h.model.press();
+      await tester.pump(SpottingControlModel.respotOfferWindow + const Duration(seconds: 1));
+      h.holdSources!.complete();
+      await pressed;
+      expect(h.model.autoRespotting, isFalse);
+
+      h.holdSources = null;
+      await spot(h, 'CQ POTA');
+      expect(h.model.state.buttonLabel, 'Re-spot every 10 min');
+      h.holdSources = Completer<void>();
+      pressed = h.model.press();
+      h.model.commentController.text = 'QRT';
+      h.holdSources!.complete();
+      await pressed;
+      expect(h.model.autoRespotting, isFalse);
+      h.model.dispose();
+    });
+
+    test('a stored value this build does not know sends every spot', () {
+      expect(SpotDestinationPolicy.parse('somethingNewer'), SpotDestinationPolicy.all);
+      expect(SpotDestinationPolicy.parse(null), SpotDestinationPolicy.all);
+      expect(SpotDestinationPolicy.parse('none'), SpotDestinationPolicy.none);
     });
   });
 

@@ -1580,7 +1580,12 @@
       "autoRespotByDefaultOff": "REQUIRE USER ACTION TO ENABLE AUTO RE-SPOTTING",
       "pulseBeforeRespot": "PULSE BEFORE EACH AUTO RE-SPOT",
       "pulseBeforeRespotOn": "THE SPOTTING CHIP PULSES BLUE FOR THE ${seconds} SECONDS BEFORE EACH RE-SPOT",
-      "pulseBeforeRespotOff": "NO PULSING BEFORE AN AUTO RE-SPOT"
+      "pulseBeforeRespotOff": "NO PULSING BEFORE AN AUTO RE-SPOT",
+      "destinations": "DESTINATIONS",
+      "destinationAll": "ALL SPOTS",
+      "destinationQrvQrt": "ONLY QRV AND QRT",
+      "destinationExceptAuto": "ANY EXCEPT AUTO RE-SPOTS",
+      "destinationNone": "DON'T SEND SPOTS"
     },
     "radio": {
       "title": "CAT CONTROL",
@@ -3078,7 +3083,9 @@
     "unknownError": "UNKNOWN ERROR",
     "notSent": "SPOT NOT SENT.",
     "allSkipped": "SPOT NOT SENT: EVERY SPOT SOURCE SKIPPED IT.",
-    "notRefreshedOffline": "NO CONNECTION — SPOTS WERE NOT REFRESHED"
+    "notRefreshedOffline": "NO CONNECTION — SPOTS WERE NOT REFRESHED",
+    "noDestination": "SPOT NOT SENT: NO DESTINATION TAKES IT — SEE DESTINATIONS IN THE SPOTTING SETTINGS.",
+    "noAutoDestination": "NO DESTINATION TAKES AUTO RE-SPOTS — SEE DESTINATIONS IN THE SPOTTING SETTINGS."
   },
   "dataFiles": {
     "downloading": "DOWNLOADING…",

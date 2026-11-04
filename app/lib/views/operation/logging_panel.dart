@@ -847,7 +847,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
       });
     }
     final spotting = SpottingSettings.read(s);
-    if (spotting != _spottingSettings) setState(() => _spottingSettings = spotting);
+    if (!SpottingSettings.same(spotting, _spottingSettings)) setState(() => _spottingSettings = spotting);
     final increment = s.manualTimeIncrement;
     if (increment != _manualTimeIncrement) setState(() => _manualTimeIncrement = increment);
   }
@@ -1166,7 +1166,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         ],
         onControlsSettingsChanged: _handleControlsSettingsChanged,
       ),
-      spotting: SpottingHooks(
+      spotting: SpottingSettings.hooks(
+        _spottingSettings,
         suggestSpotSources: widget.services.extensions.suggestSpotSources,
         // The profile's operator as the spotter, for a QSO with no call of
         // its own to spot from (POTA's `our.call ?? spotterCall`).
@@ -1179,9 +1180,6 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
           comment: comment,
           spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
         ),
-        respotInterval: _spottingSettings.respotInterval,
-        autoRespotByDefault: _spottingSettings.autoRespotByDefault,
-        pulseBeforeRespot: _spottingSettings.pulseBeforeRespot,
         onOpenSettings: () => showSettingsForTarget(context, services: widget.services, target: 'spotting', title: t.settings.spotting.title),
       ),
       prefs: LoggingPreferences(

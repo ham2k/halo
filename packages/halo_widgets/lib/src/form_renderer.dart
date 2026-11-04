@@ -45,6 +45,12 @@ typedef FormManageAccount = void Function(String accountKey, String? subkey);
 typedef FormOpenLink = void Function(String url);
 typedef FormOpenPanel = void Function(String panelKey);
 
+/// An element's `tone`, as the color its icon (an icon action) or its value
+/// (a `select` row's description) takes on the form's surface: `connected`
+/// is [connectedGreen]; `good`, `partial` and `bad` are [Tone]'s.
+Color? _toneColor(Map<String, dynamic> el, ThemeData theme) =>
+    el['tone'] == 'connected' ? connectedGreen(theme) : Tone.values.asNameMap()[el['tone']]?.color(onDarkerFill: theme.brightness == Brightness.dark);
+
 /// Where a form's section folds outlast the form: the host keeps, per
 /// section, whether the operator last left it open. A section is named by
 /// its header's `key`, else by its title.

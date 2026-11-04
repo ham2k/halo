@@ -47,6 +47,7 @@ typedef SpottingConfig = ({
   Duration respotInterval,
   bool autoRespotByDefault,
   bool pulseBeforeRespot,
+  Map<String, SpotDestinationPolicy> destinations,
   VoidCallback? onOpenSettings,
 });
 
@@ -63,9 +64,12 @@ typedef SpottingState = ({String summary, String buttonLabel, bool enabled, bool
 typedef _SelfSpot = ({double freq, String? comment, String operationUuid, int atRealMillis});
 
 /// How a self-spot went ([SpottingControlModel._spotSelf]): why it did not go
-/// through, or the spot it recorded; [skipped] when every source skipped it,
-/// which no source icon shows.
-typedef _Spotted = ({String? failure, _SelfSpot? spot, bool skipped});
+/// through or what refused it, and the spot it recorded, if any — both when
+/// only a destination taking no repeats refused it; [skipped] when every
+/// source skipped it, which no source icon shows; [autoless] when it went out
+/// but no destination takes auto re-spots, so there is nothing to repeat it
+/// to.
+typedef _Spotted = ({String? failure, _SelfSpot? spot, bool skipped, bool autoless});
 
 /// The Spotting control's state. See the file comment.
 class SpottingControlModel extends ChangeNotifier with PanelModel {
@@ -164,7 +168,62 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// Which `spots` hooks currently offer self- or other-spotting, for the
   /// control's icon row — shown before sending, not just after.
   List<Map<String, dynamic>> _sources = const [];
-  List<Map<String, dynamic>> get sources => _sources;
+
+  /// The sources on offer that the button's next spot reaches, by the
+  /// operator's Destinations setting: spotting the QSO being edited, an auto
+  /// re-spot while one runs or is on offer with no comment typed, or else a
+  /// self-spot with the comment as typed — so the row follows the comment.
+  ///
+  /// A source whose last answer is still showing ([statusOf]) stays,
+  /// whatever the next spot would reach: the comment clears as the answers
+  /// land, and a QRV-only destination dropping out with it would take its
+  /// green or red along — the only place a button spot's failure shows.
+  List<Map<String, dynamic>> get sources {
+    final typed = commentController.text.trim();
+    final comment = typed.isEmpty ? null : typed;
+    final reached = config().editingQso != null
+        ? _otherSpotTargets(_sources)
+        : _selfSpotTargets(_sources, comment, auto: _autoRespotting || (_offeringRespot && comment == null));
+    return [
+      for (final source in _sources)
+        if (reached.contains(source) || _status.containsKey(_hookKey(source))) source,
+    ];
+  }
+
+  /// Whether a source on offer takes auto re-spots, asked before RESPOT or
+  /// an accepted offer starts them: started without one, auto-respotting
+  /// counts down to a first round that finds nothing to send and stops, up
+  /// to an hour on. Nothing on offer is left to the send to report.
+  Future<bool> _anyTakesAuto() async {
+    final suggest = config().suggestSpotSources;
+    if (suggest == null) return true;
+    final offered = await suggest(operation: config().operation.data, qso: null);
+    return offered.isEmpty || _selfSpotTargets(offered, null, auto: true).isNotEmpty;
+  }
+
+  /// The operator's Destinations setting changed: a running auto-respot, or
+  /// an offer to start one, that no source on offer takes any more stops
+  /// now, rather than at a round that finds nothing to send.
+  void followDestinations() {
+    // Editing a logged QSO, the sources on offer are the other-spot ones,
+    // which say nothing about self-spots; a run left going stops at its round.
+    if (config().editingQso != null || _sources.isEmpty || _selfSpotTargets(_sources, null, auto: true).isNotEmpty) return notify();
+    if (_offeringRespot) _withdrawOffer();
+    if (_autoRespotting) return _stopWith(t.spotting.noAutoDestination);
+    notify();
+  }
+
+  SpotDestinationPolicy _policyOf(Map<String, dynamic> source) => config().destinations[_hookKey(source)] ?? SpotDestinationPolicy.all;
+
+  List<Map<String, dynamic>> _selfSpotTargets(List<Map<String, dynamic>> offered, String? comment, {bool auto = false}) => [
+    for (final source in offered)
+      if (_policyOf(source).takesSelfSpot(comment, auto: auto)) source,
+  ];
+
+  List<Map<String, dynamic>> _otherSpotTargets(List<Map<String, dynamic>> offered) => [
+    for (final source in offered)
+      if (_policyOf(source).takesOtherSpot) source,
+  ];
 
   /// hookKey → ok / failed / neutral (null), for the last send.
   final Map<String, bool?> _status = {};
@@ -448,8 +507,12 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final source = params['source'] as String?;
     if (params['target'] != 'last') {
       final freq = config().radioService?.vfoA.freq;
+      // A run going already is re-timed by the spot, or stopped by it with
+      // its own notice: nothing is promised to start.
+      final wasRespotting = _autoRespotting;
       final spotted = await _spotSelf(comment, source: source);
-      final failure = spotted.failure ?? (source == null ? _autoStartAfter(spotted, comment, freq) : null);
+      final notStarted = source == null && !wasRespotting ? _autoStartAfter(spotted, comment, freq) : null;
+      final failure = spotted.failure ?? notStarted;
       return _reportRan('sendSpots', {'target': 'self', 'failure': ?failure}, forward);
     }
     final qso = qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
@@ -470,8 +533,10 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final offered = await suggest(operation: cfg.operation.data, qso: qso.data);
     if (isDisposed) return null;
     if (offered.isEmpty) return t.spotting.nothingToSpot;
-    final sources = _named(offered, source);
-    if (sources.isEmpty) return _notOfferedText(offered, source!);
+    final named = _named(offered, source);
+    if (named.isEmpty) return _notOfferedText(offered, source!);
+    final sources = source == null ? _otherSpotTargets(named) : named;
+    if (sources.isEmpty) return t.spotting.noDestination;
     final results = await _post(sources: sources, qso: qso.data, comment: comment);
     if (isDisposed) return null;
     if (results == null) return t.loggingControls.spotBusy;
@@ -497,15 +562,26 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (_autoRespotting) return stopAutoRespotting();
       // A comment typed while it is on offer is a new spot, not a yes to
       // repeating the last one.
-      if (_offeringRespot && commentController.text.trim().isEmpty) return _repeatSelfSpot(_interval);
+      if (_offeringRespot && commentController.text.trim().isEmpty) {
+        final takesAuto = await _anyTakesAuto();
+        // Asked again: while the extensions answered, the offer can run out,
+        // a comment be typed, or a second press take it.
+        if (isDisposed || !_offeringRespot || commentController.text.trim().isNotEmpty) return;
+        if (!takesAuto) {
+          _withdrawOffer();
+          notify();
+          return _notice(t.spotting.noAutoDestination);
+        }
+        return _repeatSelfSpot(_interval);
+      }
     }
     await send();
   }
 
-  /// Posts the spot. A self-spot every source took is offered for
-  /// auto-respotting for [respotOfferWindow] — or, with the operator's
-  /// auto-respot-by-default setting, starts it — unless it announces a
-  /// one-off change ([oneOffQCode]).
+  /// Posts the spot. A self-spot every source its repeats go to took is
+  /// offered for auto-respotting for [respotOfferWindow] — or, with the
+  /// operator's auto-respot-by-default setting, starts it — unless it
+  /// announces a one-off change ([oneOffQCode]).
   Future<void> send() async {
     final cfg = config();
     if (cfg.sendSpot == null || _sending) return;
@@ -535,7 +611,9 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     // [sources] as they are now: the panel can reset and repopulate them (the
     // user switches to editing a different QSO) while this send is in flight,
     // and the status icons must key off what was actually sent.
-    await _post(sources: _sources, qso: editingQso.data, comment: comment.isEmpty ? null : comment, onAnswered: commentController.clear);
+    final sources = _otherSpotTargets(_sources);
+    if (sources.isEmpty && _sources.isNotEmpty) return _notice(t.spotting.noDestination);
+    await _post(sources: sources, qso: editingQso.data, comment: comment.isEmpty ? null : comment, onAnswered: commentController.clear);
   }
 
   /// Sends a self-spot at the VFO — the button's, a typed one's, RESPOT's —
@@ -543,12 +621,19 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   ///
   /// A one-off announcement ([oneOffQCode]) ends auto-respotting whether or
   /// not it goes through: the operator is leaving or pausing either way. Any
-  /// other that every source took, with the VFO still on its frequency,
-  /// becomes what auto-respotting repeats — an arrival ([arrivalQCode])
-  /// without its comment — a running one re-timed from it. One sent to the
+  /// other that every destination taking auto re-spots took, with the VFO
+  /// still on its frequency, becomes what auto-respotting repeats — an
+  /// arrival ([arrivalQCode]) without its comment — a running one re-timed
+  /// from it. One sent to the
   /// sources [source] names is neither: repeated, it would tell the rest
-  /// something said to a few.
-  /// Returns why it did not go through, or the spot it recorded.
+  /// something said to a few. Nor is one when no destination takes auto
+  /// re-spots: there is nothing to repeat it to.
+  ///
+  /// Without a [source], it goes only to the destinations the operator's
+  /// Destinations setting sends it ([SpotDestinationPolicy]).
+  /// Returns the spot it recorded, if any, and why it did not go through
+  /// or what refused it — a destination taking no repeats can refuse a spot
+  /// recorded all the same.
   Future<_Spotted> _spotSelf(String? comment, {VoidCallback? onAnswered, String? source}) async {
     // An offer standing from an earlier spot would repeat that one, or —
     // after a one-off — nothing at all. A spot narrowed to a source leaves
@@ -559,29 +644,52 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (_autoRespotting) stopAutoRespotting();
     }
     final cfg = config();
-    if (!cfg.operation.selfSpotting) return (failure: t.loggingControls.selfSpotDisabled, spot: null, skipped: false);
+    _Spotted notSpotted(String? failure, {bool skipped = false, bool autoless = false}) => (failure: failure, spot: null, skipped: skipped, autoless: autoless);
+    if (!cfg.operation.selfSpotting) return notSpotted(t.loggingControls.selfSpotDisabled);
     final vfo = cfg.radioService?.vfoA;
     final freq = vfo?.freq;
-    if (freq == null) return (failure: t.spotting.setFrequencyFirst, spot: null, skipped: false);
+    if (freq == null) return notSpotted(t.spotting.setFrequencyFirst);
     final suggest = cfg.suggestSpotSources;
-    if (cfg.sendSpot == null || suggest == null) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
+    if (cfg.sendSpot == null || suggest == null) return notSpotted(t.spotting.nothingToSpot);
     final offered = await suggest(operation: cfg.operation.data, qso: null);
-    if (isDisposed) return (failure: null, spot: null, skipped: false);
-    if (offered.isEmpty) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
-    final sources = _named(offered, source);
-    if (sources.isEmpty) return (failure: _notOfferedText(offered, source!), spot: null, skipped: false);
-    final results = await _post(sources: sources, freq: freq, mode: vfo?.mode, comment: comment, onAnswered: onAnswered);
-    if (isDisposed) return (failure: null, spot: null, skipped: false);
-    if (results == null) return (failure: t.loggingControls.spotBusy, spot: null, skipped: false);
+    if (isDisposed) return notSpotted(null);
+    if (offered.isEmpty) return notSpotted(t.spotting.nothingToSpot);
+    final named = _named(offered, source);
+    if (named.isEmpty) return notSpotted(_notOfferedText(offered, source!));
+    final sources = source == null ? _selfSpotTargets(named, comment) : named;
+    // Every destination held back by the setting is a spot every one
+    // skipped: nothing went out, and the operator is told why.
+    if (sources.isEmpty) return notSpotted(t.spotting.noDestination, skipped: true);
+    final results = await _post(
+      sources: sources,
+      heldBack: [
+        for (final candidate in named)
+          if (!sources.contains(candidate)) candidate,
+      ],
+      freq: freq,
+      mode: vfo?.mode,
+      comment: comment,
+      onAnswered: onAnswered,
+    );
+    if (isDisposed) return notSpotted(null);
+    if (results == null) return notSpotted(t.loggingControls.spotBusy);
     final outcome = _outcomeOf(sources, results);
     _showOutcome(outcome);
     // Recorded, a spot nothing sent would be what auto-respotting repeats,
     // sending nothing every round under a chip saying "Auto re-spot".
-    if (outcome == null) return (failure: _spotSkippedText(sources, results), spot: null, skipped: true);
+    if (outcome == null) return notSpotted(_spotSkippedText(sources, results), skipped: true);
     final failure = spotFailureText(sources, results);
-    if (failure != null || source != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
-      return (failure: failure, spot: null, skipped: false);
+    if (source != null || _isOneOff(comment) || !_onFrequency(freq)) return notSpotted(failure);
+    // Its repeats go only to the destinations taking auto re-spots, so only
+    // their answers decide whether it is one to repeat: another refusing it
+    // is told, and says nothing about them.
+    final repeatedTo = _selfSpotTargets(sources, null, auto: true);
+    if (repeatedTo.isEmpty && failure == null) {
+      _selfSpot = null;
+      if (_autoRespotting) _stopWith(t.spotting.noAutoDestination);
+      return notSpotted(null, autoless: true);
     }
+    if (repeatedTo.isEmpty || _refusedBy(repeatedTo, results).isNotEmpty) return notSpotted(failure);
     final spot = (freq: freq, comment: _isArrival(comment) ? null : comment, operationUuid: cfg.operation.uuid, atRealMillis: realNowMillis());
     _selfSpot = spot;
     if (_autoRespotting) {
@@ -590,7 +698,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       _scheduleNext();
       notify();
     }
-    return (failure: null, spot: spot, skipped: false);
+    return (failure: failure, spot: spot, skipped: false, autoless: false);
   }
 
   /// With the auto-respot-by-default setting, starts auto-respotting on the
@@ -604,6 +712,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       _repeatSelfSpot(_interval);
       return null;
     }
+    if (spotted.autoless) return t.spotting.noAutoDestination;
     return freq != null && !_onFrequency(freq) ? t.loggingControls.spotAutoMoved : t.loggingControls.spotAutoNotStarted;
   }
 
@@ -618,15 +727,28 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     if (!config().operation.selfSpotting) return t.loggingControls.selfSpotDisabled;
     final freq = config().radioService?.vfoA.freq;
     if (freq == null) return t.spotting.setFrequencyFirst;
+    // Asked first: a spot sent to find out would go out under a RESPOT that
+    // then says it could not start, and again on every retry.
+    if (!await _anyTakesAuto()) {
+      if (isDisposed) return null;
+      if (_autoRespotting) stopAutoRespotting();
+      return t.spotting.noAutoDestination;
+    }
     final spot = _ownSelfSpot;
+    String? refused;
     if (spot == null || !_onFrequency(spot.freq)) {
       final spotted = await _spotSelf(null);
       if (isDisposed) return null;
-      if (spotted.failure != null) return spotted.failure;
-      if (spotted.spot == null) return _onFrequency(freq) ? t.loggingControls.spotAutoNotStarted : t.loggingControls.spotAutoMoved;
+      if (spotted.spot == null) {
+        if (spotted.failure != null) return spotted.failure;
+        if (spotted.autoless) return t.spotting.noAutoDestination;
+        return _onFrequency(freq) ? t.loggingControls.spotAutoNotStarted : t.loggingControls.spotAutoMoved;
+      }
+      // Started all the same: what refused it takes no auto re-spots.
+      refused = spotted.failure;
     }
     _repeatSelfSpot(every, chosen: minutes != null);
-    return null;
+    return refused;
   }
 
   /// Turns auto-respotting on for [_selfSpot], the first round falling
@@ -817,9 +939,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     try {
       // Asked afresh, with no QSO: the panel's own [sources] are another
       // spot's while a QSO is open for editing.
-      final sources = await suggest(operation: cfg.operation.data, qso: null);
+      final offered = await suggest(operation: cfg.operation.data, qso: null);
       if (isDisposed || !_autoRespotting) return;
-      if (sources.isEmpty) return _stopWith(t.spotting.nothingToSpot);
+      if (offered.isEmpty) return _stopWith(t.spotting.nothingToSpot);
+      final sources = _selfSpotTargets(offered, spot.comment, auto: true);
+      if (sources.isEmpty) return _stopWith(t.spotting.noAutoDestination);
       final retrying = _retry.isNotEmpty;
       final targets = retrying
           ? [
@@ -830,7 +954,17 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (!retrying) _roundAtRealMillis = realNowMillis();
       _retry.clear();
       if (targets.isNotEmpty) {
-        final results = await _post(sources: targets, freq: spot.freq, mode: cfg.radioService?.vfoA.mode, comment: spot.comment);
+        final results = await _post(
+          sources: targets,
+          heldBack: [
+            if (!retrying)
+              for (final candidate in offered)
+                if (!sources.contains(candidate)) candidate,
+          ],
+          freq: spot.freq,
+          mode: cfg.radioService?.vfoA.mode,
+          comment: spot.comment,
+        );
         // A manual send got in first: its sources are owed the round.
         if (results == null) {
           _retry.addAll(targets.map(_hookKey));
@@ -909,6 +1043,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// to land would re-enable the button.
   Future<Map<String, Map<String, dynamic>>?> _post({
     required List<Map<String, dynamic>> sources,
+    List<Map<String, dynamic>> heldBack = const [],
     Map<String, dynamic>? qso,
     double? freq,
     String? mode,
@@ -922,11 +1057,13 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     // results while the send is in flight — back to neutral gray first. Only
     // the sources this one goes to: a spot narrowed to a source, or a retry
     // of the ones that refused, says nothing about the rest, whose last
-    // answers still stand.
+    // answers still stand. The Destinations setting's [heldBack] ones are
+    // cleared too: beside this spot's answers, an earlier answer of theirs
+    // would read as one to this spot.
     bool paints() => qso != null || config().editingQso == null;
     _sending = true;
     if (paints()) {
-      for (final source in sources) {
+      for (final source in [...sources, ...heldBack]) {
         _status.remove(_hookKey(source));
       }
     }
@@ -1027,7 +1164,6 @@ class SpottingControlFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sources = model.sources;
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1092,32 +1228,45 @@ class SpottingControlFields extends StatelessWidget {
           label: model.autoRespotting ? OncePerSecond(builder: (_, _) => Text(model.state.buttonLabel)) : Text(state.buttonLabel),
         ),
         // Two source-status icons per column, wrapping into another column
-        // to the right once a column fills up.
-        for (var i = 0; i < sources.length; i += 2)
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final source in sources.skip(i).take(2))
-                Padding(
-                  padding: const EdgeInsets.only(left: Space.xs, top: Space.xxs, bottom: Space.xxs),
-                  child: HoverLabel(
-                    label: source['name'] as String? ?? source['hookKey'] as String? ?? '',
-                    child: Icon(
-                      resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
-                      size: 16,
-                      // The open chip's colors: this row is painted on its
-                      // fill, and they are the ones chosen to read on it.
-                      color: switch (model.statusOf(source['hookKey'] as String? ?? '')) {
-                        true => spotOutcomeColor(theme, SpotOutcome.allTook, selected: true),
-                        false => spotOutcomeColor(theme, SpotOutcome.noneTook, selected: true),
-                        null => theme.colorScheme.onTertiaryContainer,
-                      },
-                      shadows: glyphGlow(theme),
-                    ),
+        // to the right once a column fills up. Rebuilt as the comment is
+        // typed: whether it leads with QRV or QRT changes which destinations
+        // the spot reaches ([SpottingControlModel.sources]).
+        ListenableBuilder(
+          listenable: model.commentController,
+          builder: (context, _) {
+            final sources = model.sources;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < sources.length; i += 2)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final source in sources.skip(i).take(2))
+                        Padding(
+                          padding: const EdgeInsets.only(left: Space.xs, top: Space.xxs, bottom: Space.xxs),
+                          child: HoverLabel(
+                            label: source['name'] as String? ?? source['hookKey'] as String? ?? '',
+                            child: Icon(
+                              resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
+                              size: 16,
+                              // The open chip's colors: this row is painted on its
+                              // fill, and they are the ones chosen to read on it.
+                              color: switch (model.statusOf(source['hookKey'] as String? ?? '')) {
+                                true => spotOutcomeColor(theme, SpotOutcome.allTook, selected: true),
+                                false => spotOutcomeColor(theme, SpotOutcome.noneTook, selected: true),
+                                null => theme.colorScheme.onTertiaryContainer,
+                              },
+                              shadows: glyphGlow(theme),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-            ],
-          ),
+              ],
+            );
+          },
+        ),
         if (model.config().onOpenSettings case final onOpenSettings?) ...[
           const SizedBox(width: Space.sm),
           Semantics(
@@ -1153,22 +1302,12 @@ class SpottingControlFields extends StatelessWidget {
 /// paints on — the amber pair, and the blue pair editing a logged QSO swaps
 /// in. No single yellow does on all of them, and the Radio chip's own pairs
 /// fall under 3:1 on some.
-Color spotOutcomeColor(ThemeData theme, SpotOutcome outcome, {required bool selected}) {
-  if ((theme.brightness == Brightness.dark) != selected) {
-    // light+selected or dark+unselected: the darker fills — light pastels.
-    return switch (outcome) {
-      SpotOutcome.allTook => const Color(0xFF81C784),
-      SpotOutcome.someTook => const Color(0xFFFFD54F),
-      SpotOutcome.noneTook => const Color(0xFFFF9E9E),
-    };
-  }
-  // dark+selected or light+unselected: the lighter fills — dark, saturated.
-  return switch (outcome) {
-    SpotOutcome.allTook => const Color(0xFF005000),
-    SpotOutcome.someTook => const Color(0xFF553F00),
-    SpotOutcome.noneTook => const Color(0xFF900000),
-  };
-}
+Color spotOutcomeColor(ThemeData theme, SpotOutcome outcome, {required bool selected}) => switch (outcome) {
+  SpotOutcome.allTook => Tone.good,
+  SpotOutcome.someTook => Tone.partial,
+  SpotOutcome.noneTook => Tone.bad,
+  // light+selected or dark+unselected are the darker fills.
+}.color(onDarkerFill: (theme.brightness == Brightness.dark) != selected);
 
 /// The color the Spotting chip's icon and label pulse toward in the last
 /// [SpottingControlModel.respotSoonLead] before an auto-respot: an electric blue on the darker fills, a deep vivid

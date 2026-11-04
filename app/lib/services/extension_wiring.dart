@@ -37,6 +37,9 @@ void wireExtensions(HaLoServices services) {
   extensions.location = services.location;
   extensions.radioCalls.radio = services.panelRadio;
   _wireCluster(services);
+  (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup)
+    ..destinations = extensions.getSpotDestinations
+    ..destinationChanges = extensions.runtimeGeneration;
   extensions.spots = services.spots;
   extensions.catalog = services.catalog;
   extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(services, key, subkey: subkey));

@@ -500,6 +500,30 @@ Color haloSheetListBackground(BuildContext context) => Theme.of(context).brightn
 
 Color haloSheetRowColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xFF212426) : Colors.white;
 
+/// All, some or none of something, in green, amber or red: a self-spot every
+/// source took, a spot destination sent every spot. One palette, so the
+/// Spotting chip and the settings that steer it say "some" in one color.
+enum Tone {
+  good,
+  partial,
+  bad;
+
+  /// As text or a glyph: light pastels on a darker fill ([onDarkerFill] —
+  /// dark mode's surface, or the Spotting chip's darker fills), dark
+  /// saturated tones on a lighter one.
+  Color color({required bool onDarkerFill}) => onDarkerFill
+      ? switch (this) {
+          good => const Color(0xFF81C784),
+          partial => const Color(0xFFFFD54F),
+          bad => const Color(0xFFFF9E9E),
+        }
+      : switch (this) {
+          good => const Color(0xFF005000),
+          partial => const Color(0xFF553F00),
+          bad => const Color(0xFF900000),
+        };
+}
+
 /// A vivid cyan-leaning version of colorScheme.primary (#006783, same hue,
 /// lightness pushed up) — the fill for the app's standout action buttons
 /// (the home screen's New Operation FAB, the operation sheet's accept

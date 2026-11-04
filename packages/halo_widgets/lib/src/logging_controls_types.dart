@@ -901,6 +901,7 @@ class SpottingHooks {
     this.respotInterval = defaultRespotInterval,
     this.autoRespotByDefault = false,
     this.pulseBeforeRespot = true,
+    this.destinations = const {},
     this.onOpenSettings,
   });
 
@@ -922,9 +923,50 @@ class SpottingHooks {
   /// settings default to it too.
   static const defaultRespotInterval = Duration(minutes: 10);
 
+  /// Which spots each destination is sent, by spot source `hookKey`; a
+  /// source absent from it is sent them all.
+  final Map<String, SpotDestinationPolicy> destinations;
+
   /// Opens those settings — the tune button at the end of the control's
   /// row, shown only when this is set.
   final VoidCallback? onOpenSettings;
+}
+
+/// Which of the operator's self-spots a spot destination is sent (Settings ›
+/// Spotting › Destinations); a spot of another station reaches every one but
+/// [none]. A spot command naming a source (`SPOT pota: …`) reaches it
+/// whatever this says: naming it is the operator choosing it for that one
+/// spot.
+enum SpotDestinationPolicy {
+  all,
+
+  /// Self-spots announcing arrival or departure — a comment led by QRV or
+  /// QRT — and no other self-spot, auto re-spots included.
+  qrvQrt,
+
+  /// Every self-spot the operator sends by hand; no auto re-spot.
+  exceptAuto,
+
+  /// No spot at all, of the operator or of anyone else.
+  none;
+
+  /// [raw] as stored, or [all] for anything else — a value from a newer
+  /// build sends everything rather than nothing.
+  static SpotDestinationPolicy parse(Object? raw) => values.asNameMap()[raw] ?? all;
+
+  static final RegExp _qrvQrt = RegExp(r'^(QRV|QRT)\b', caseSensitive: false);
+
+  /// Whether a self-spot with [comment] goes to this destination; [auto] for
+  /// an auto re-spot's round.
+  bool takesSelfSpot(String? comment, {bool auto = false}) => switch (this) {
+    all => true,
+    exceptAuto => !auto,
+    qrvQrt => !auto && comment != null && _qrvQrt.hasMatch(comment.trim()),
+    none => false,
+  };
+
+  /// Whether a spot of another station goes to this destination.
+  bool get takesOtherSpot => this != none;
 }
 
 /// Manual time entry (docs/design/logging-fields.md § Manual time entry): the

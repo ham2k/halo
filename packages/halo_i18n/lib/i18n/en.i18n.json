@@ -1580,7 +1580,12 @@
       "autoRespotByDefaultOff": "Require user action to enable auto re-spotting",
       "pulseBeforeRespot": "Pulse before each auto re-spot",
       "pulseBeforeRespotOn": "The Spotting chip pulses blue for the ${seconds} seconds before each re-spot",
-      "pulseBeforeRespotOff": "No pulsing before an auto re-spot"
+      "pulseBeforeRespotOff": "No pulsing before an auto re-spot",
+      "destinations": "Destinations",
+      "destinationAll": "All spots",
+      "destinationQrvQrt": "Only QRV and QRT",
+      "destinationExceptAuto": "Any except auto re-spots",
+      "destinationNone": "Don't send spots"
     },
     "radio": {
       "title": "CAT Control",
@@ -3078,7 +3083,9 @@
     "unknownError": "unknown error",
     "notSent": "Spot not sent.",
     "allSkipped": "Spot not sent: every spot source skipped it.",
-    "notRefreshedOffline": "No connection — spots were not refreshed"
+    "notRefreshedOffline": "No connection — spots were not refreshed",
+    "noDestination": "Spot not sent: no destination takes it — see Destinations in the Spotting settings.",
+    "noAutoDestination": "No destination takes auto re-spots — see Destinations in the Spotting settings."
   },
   "dataFiles": {
     "downloading": "Downloading…",

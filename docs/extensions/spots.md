@@ -63,6 +63,14 @@ logged.
   `isSelfSpotEnabled` and no self-spot is posted. Spotting somebody else is
   allowed under both. Both come from the operator's switches or from a
   reference's rules ([Activities](activities.md#what-a-reference-forbids)).
+- **The operator picks which self-spots each source is sent**, under
+  Settings › Spotting › Destinations: all of them, only those whose comment
+  leads with QRV or QRT, all but auto re-spots, or none. `postSelfSpot` is
+  not called for a spot the source is held back from, and a source set to
+  none is not sent spots of other stations either. A spot command that names
+  the source reaches it whatever the setting. A source is listed there when
+  its hook object has `postSelfSpot` or `postOtherSpot` as a method of its
+  own, as an object literal does.
 - Identify the app to the service with `ctx.appName`, never a hard-coded
   name.
 

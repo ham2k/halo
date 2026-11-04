@@ -14,6 +14,7 @@ upcoming:
     - "Improved Cloud Sync: contacts logged on your other devices arrive sooner (tell us how quickly)"
     - "New Operator control: the guest operator, or which station calls are on the air"
     - "New: an extension can tell you more about itself, in its details and on its install screen"
+    - "New Spotting setting: choose which spots each destination gets (QRV/QRT only, no auto re-spots, none)"
 
 "186":
   changes:

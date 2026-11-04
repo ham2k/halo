@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Spotting section: what it stores, what the logging panel reads back,
-// that the Spotting control's tune button finds its fields, and the DX
-// Cluster section it carries below them.
+// that the Spotting control's tune button finds its fields, and the
+// Destinations and DX Cluster sections it carries below them.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart' show ExtensionIconTile, SpotDestinationPolicy;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/cluster/cluster_settings.dart';
 import 'package:ham2k_logger/services/extensions/extension_info.dart';
@@ -92,6 +93,110 @@ void main() {
     expect(elements.map((e) => e['target']), everyElement('spotting'));
     final options = elements.firstWhere((e) => e['key'] == 'respotIntervalMinutes')['options'] as List;
     expect([for (final o in options) (o as Map)['value']], [for (final m in SpottingSettings.respotIntervalOptions) '$m']);
+  });
+
+  group('Destinations section', () {
+    SpottingSettingsGroup withDestinations(SettingsService settings) => SpottingSettingsGroup(settings)
+      ..destinations = () async => {
+        'ham2k-sota': (name: 'SOTAwatch', icon: 'image-filter-hdr', accentColor: '#8D6E63', postsSelfSpots: true),
+        'ham2k-pota': (name: 'POTA.app', icon: 'pine-tree', accentColor: '#2E7D32', postsSelfSpots: true),
+      };
+
+    // Every row carries the target, the header and the section's close
+    // included: the tune dialog keeps only what does, and the section is
+    // what the operator opens it for.
+    test('one row per destination, by name, under a header of its own, in the tune dialog', () async {
+      final elements = await withDestinations(await fresh()).buildElements();
+      expect(
+        [for (final e in elements) e['key'] ?? e['type']],
+        ['respotIntervalMinutes', 'autoRespotByDefault', 'pulseBeforeRespot', 'destinations', 'destination-ham2k-pota', 'destination-ham2k-sota', 'sectionEnd'],
+      );
+      expect(elements.map((e) => e['target']), everyElement('spotting'));
+      final pota = elements.firstWhere((e) => e['key'] == 'destination-ham2k-pota');
+      expect(pota['label'], 'POTA.app');
+      expect(pota['value'], 'all');
+      expect([for (final o in pota['options'] as List) (o as Map)['label']], ['All spots', 'Only QRV and QRT', 'Any except auto re-spots', "Don't send spots"]);
+      final tile = pota['leading'] as ExtensionIconTile;
+      expect((tile.icon, tile.accentColor), ('pine-tree', '#2E7D32'));
+    });
+
+    // The value's color is how much the destination gets at a glance: a
+    // policy mapped to the wrong tone reads as sending what it holds back.
+    test('the value shows green for all spots, yellow for some, red for none', () async {
+      final settings = await fresh();
+      final group = withDestinations(settings);
+      Future<Object?> toneFor(SpotDestinationPolicy policy) async {
+        await SpottingSettings.setDestination(settings, 'ham2k-pota', policy);
+        return (await group.buildElements()).firstWhere((e) => e['key'] == 'destination-ham2k-pota')['tone'];
+      }
+
+      expect(await toneFor(SpotDestinationPolicy.all), 'good');
+      expect(await toneFor(SpotDestinationPolicy.qrvQrt), 'partial');
+      expect(await toneFor(SpotDestinationPolicy.exceptAuto), 'partial');
+      expect(await toneFor(SpotDestinationPolicy.none), 'bad');
+    });
+
+    // The two choices about self-spots change nothing for a destination
+    // that is sent none: picked, its row would turn yellow while it goes on
+    // getting every spot it ever got.
+    test('a destination that only spots other stations offers all or none', () async {
+      final group = SpottingSettingsGroup(await fresh())
+        ..destinations = () async => {'ham2k-hunter': (name: 'Hunter', icon: null, accentColor: null, postsSelfSpots: false)};
+      final hunter = (await group.buildElements()).firstWhere((e) => e['key'] == 'destination-ham2k-hunter');
+      expect([for (final o in hunter['options'] as List) (o as Map)['value']], ['all', 'none']);
+    });
+
+    test('no section while no extension posts spots', () async {
+      final group = SpottingSettingsGroup(await fresh())..destinations = () async => const {};
+      expect(await group.buildElements(), hasLength(3));
+    });
+
+    // Only what is held back is stored: a destination installed later, or
+    // one the operator set back, is sent every spot.
+    test('what a row commits is what the panel reads back, and All drops the entry', () async {
+      final settings = await fresh();
+      final group = withDestinations(settings);
+      await group.commit('destination-ham2k-pota', 'qrvQrt');
+      await group.commit('destination-ham2k-sota', 'none');
+      expect(SpottingSettings.read(settings).destinations, {'ham2k-pota': SpotDestinationPolicy.qrvQrt, 'ham2k-sota': SpotDestinationPolicy.none});
+      final pota = (await group.buildElements()).firstWhere((e) => e['key'] == 'destination-ham2k-pota');
+      expect(pota['value'], 'qrvQrt');
+
+      await group.commit('destination-ham2k-pota', 'all');
+      await group.commit('destination-ham2k-sota', 'sometimes');
+      expect(settings.settingsGroup(SpottingSettings.group)[SpottingSettings.destinationsKey], {'ham2k-sota': 'none'});
+    });
+
+    // The panel rebuilds its controls only when a value changes; a record
+    // compared with `==` holds a fresh map every read and never matches, and
+    // one that skipped the destinations would leave the control sending
+    // where the operator just said not to.
+    test('two reads of the same store are the same values, and a changed destination is not', () async {
+      final settings = await fresh({'settings.spotting': '{"destinations": {"ham2k-pota": "exceptAuto"}}'});
+      final before = SpottingSettings.read(settings);
+      expect(SpottingSettings.same(before, SpottingSettings.read(settings)), isTrue);
+      await SpottingSettings.setDestination(settings, 'ham2k-pota', SpotDestinationPolicy.none);
+      expect(SpottingSettings.same(before, SpottingSettings.read(settings)), isFalse);
+    });
+
+    // The setting goes on holding the destination back whether or not the
+    // listing names it; without a row there is nothing to undo it with.
+    test('a destination held back keeps a row when the listing leaves it out', () async {
+      final settings = await fresh({'settings.spotting': '{"destinations": {"ham2k-sota": "none"}}'});
+      final group = SpottingSettingsGroup(settings)
+        ..destinations = () async => {'ham2k-pota': (name: 'POTA.app', icon: 'pine-tree', accentColor: '#2E7D32', postsSelfSpots: true)};
+      final rows = [
+        for (final e in await group.buildElements())
+          if (e['fieldType'] == 'select' && e['key'] != 'respotIntervalMinutes') e,
+      ];
+      expect(
+        [for (final e in rows) (e['key'], e['label'], e['value'])],
+        [('destination-ham2k-sota', 'ham2k-sota', 'none'), ('destination-ham2k-pota', 'POTA.app', 'all')],
+      );
+
+      final nothingListed = SpottingSettingsGroup(settings)..destinations = () async => const {};
+      expect([for (final e in await nothingListed.buildElements()) e['key']], contains('destination-ham2k-sota'));
+    });
   });
 
   group('DX Cluster section', () {

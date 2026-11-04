@@ -310,6 +310,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       respotInterval: widget.spotting.respotInterval,
       autoRespotByDefault: widget.spotting.autoRespotByDefault,
       pulseBeforeRespot: widget.spotting.pulseBeforeRespot,
+      destinations: widget.spotting.destinations,
       onOpenSettings: widget.spotting.onOpenSettings,
     ),
   );
@@ -685,6 +686,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncHostOpenRequests(oldWidget.strip.hostControls);
     _closeDisabledControl();
     if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
+    if (!const MapEquality<String, SpotDestinationPolicy>().equals(widget.spotting.destinations, oldWidget.spotting.destinations)) {
+      _spotting.followDestinations();
+    }
     // An edit opening or closing, or a contest's exchange fields arriving —
     // none of them touches a field this hears otherwise.
     _publishEsmFacts();

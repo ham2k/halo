@@ -315,7 +315,7 @@ mixin _Elements on State<FormRenderer> {
   };
 
   /// An icon-only action, as the station rows draw their connection toggle.
-  /// `tone: 'connected'` draws the icon in [connectedGreen]; `busy: true`
+  /// `tone` colors the icon ([_toneColor]); `busy: true`
   /// shows the spinner the row does while a connection is changing, where
   /// a tap could only queue a second change behind the first.
   Widget _iconActionButton(Map<String, dynamic> el) {
@@ -328,7 +328,7 @@ mixin _Elements on State<FormRenderer> {
         // The app has no hover tooltips, so the accessible name is the only
         // place this control is named.
         semanticLabel: el['label'] as String?,
-        color: _devModeColor(el) ?? (el['tone'] == 'connected' ? connectedGreen(theme) : theme.colorScheme.onSurfaceVariant),
+        color: _devModeColor(el) ?? _toneColor(el, theme) ?? theme.colorScheme.onSurfaceVariant,
       ),
       onPressed: widget.onAction == null || el['disabled'] == true ? null : () => _runAction(actionKey, el['method'] as String? ?? ''),
     );

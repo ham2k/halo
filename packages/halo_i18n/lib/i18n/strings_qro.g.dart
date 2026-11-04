@@ -1070,6 +1070,8 @@ class _Translations$spotting$qro extends Translations$spotting$en {
 	@override String get notSent => 'SPOT NOT SENT.';
 	@override String get allSkipped => 'SPOT NOT SENT: EVERY SPOT SOURCE SKIPPED IT.';
 	@override String get notRefreshedOffline => 'NO CONNECTION — SPOTS WERE NOT REFRESHED';
+	@override String get noDestination => 'SPOT NOT SENT: NO DESTINATION TAKES IT — SEE DESTINATIONS IN THE SPOTTING SETTINGS.';
+	@override String get noAutoDestination => 'NO DESTINATION TAKES AUTO RE-SPOTS — SEE DESTINATIONS IN THE SPOTTING SETTINGS.';
 }
 
 // Path: dataFiles
@@ -2370,6 +2372,11 @@ class _Translations$settings$spotting$qro extends Translations$settings$spotting
 	@override String get pulseBeforeRespot => 'PULSE BEFORE EACH AUTO RE-SPOT';
 	@override String pulseBeforeRespotOn({required Object seconds}) => 'THE SPOTTING CHIP PULSES BLUE FOR THE ${seconds} SECONDS BEFORE EACH RE-SPOT';
 	@override String get pulseBeforeRespotOff => 'NO PULSING BEFORE AN AUTO RE-SPOT';
+	@override String get destinations => 'DESTINATIONS';
+	@override String get destinationAll => 'ALL SPOTS';
+	@override String get destinationQrvQrt => 'ONLY QRV AND QRT';
+	@override String get destinationExceptAuto => 'ANY EXCEPT AUTO RE-SPOTS';
+	@override String get destinationNone => 'DON\'T SEND SPOTS';
 }
 
 // Path: settings.radio
@@ -6115,6 +6122,11 @@ extension on TranslationsQro {
 			'settings.spotting.pulseBeforeRespot' => 'PULSE BEFORE EACH AUTO RE-SPOT',
 			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'THE SPOTTING CHIP PULSES BLUE FOR THE ${seconds} SECONDS BEFORE EACH RE-SPOT',
 			'settings.spotting.pulseBeforeRespotOff' => 'NO PULSING BEFORE AN AUTO RE-SPOT',
+			'settings.spotting.destinations' => 'DESTINATIONS',
+			'settings.spotting.destinationAll' => 'ALL SPOTS',
+			'settings.spotting.destinationQrvQrt' => 'ONLY QRV AND QRT',
+			'settings.spotting.destinationExceptAuto' => 'ANY EXCEPT AUTO RE-SPOTS',
+			'settings.spotting.destinationNone' => 'DON\'T SEND SPOTS',
 			'settings.radio.title' => 'CAT CONTROL',
 			'settings.radio.loggingAndCat' => 'LOGGING & CAT',
 			'settings.radio.tuningSection' => 'TUNING',
@@ -6330,13 +6342,13 @@ extension on TranslationsQro {
 			'settings.radio.voiceWords.speed' => 'SPEED',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
 			'settings.radio.voiceWords.advancedSettings' => 'ADVANCED SETTINGS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.splitSilent' => 'NOTHING WAS HEARD IN THE RECORDING.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'COULDN\'T FIND THREE TAKES. SAY THE WORD THREE TIMES, RUN TOGETHER, AND TRY AGAIN.',
 			'settings.radio.voiceWords.splitLineCount' => 'COULDN\'T FIND EVERY WORD IN THE READING. READ EACH ONE THREE TIMES, WITH A BREATH BETWEEN WORDS.',
 			'settings.radio.voiceWords.splitLinesTooClose' => 'COULDN\'T TELL THE WORDS APART. LEAVE A LONGER BREATH BETWEEN WORDS.',
 			'settings.radio.avoidZeroBeat.title' => 'AVOID ZERO-BEATING ON SPOTS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'WITH A RADIO CONNECTED, TUNING A FEW HZ OFF A CW SPOT, SO EVERYONE ANSWERING IT ISN’T CALLING ON THE SAME NOTE.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'TUNING EXACTLY TO THE SPOTTED FREQUENCY.',
 			'settings.radio.zeroBeatRange.title' => 'ZERO-BEAT: AVOIDANCE RANGE',
@@ -6844,13 +6856,13 @@ extension on TranslationsQro {
 			'settings.station.noTransceiver' => 'NONE',
 			'settings.station.peerRadioNotAvailable' => 'NOT AVAILABLE',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'ON ${device}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} IS ON ANOTHER DEVICE',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.',
 			'settings.station.antennaInUse' => 'ANTENNA IN USE',
 			'settings.station.keyInUse' => 'CW KEYING',
 			'settings.station.phoneKeying' => 'PHONE KEYING',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingNone' => 'NONE',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'MEMORIES IN ${radio}',
 			'settings.station.phoneKeyingComputer' => 'AUDIO IN THIS COMPUTER',
@@ -7358,13 +7370,13 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.toggleTheme' => 'SWITCH BETWEEN LIGHT AND DARK',
 			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
 			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.fontScaleDown' => 'SMALLER TEXT',
 			'keyboardShortcuts.command.fontScaleReset' => 'NORMAL TEXT SIZE',
 			'keyboardShortcuts.command.densityLooser' => 'ROOMIER LAYOUT',
 			'keyboardShortcuts.command.densityDenser' => 'DENSER LAYOUT',
 			'keyboardShortcuts.command.densityAuto' => 'AUTOMATIC LAYOUT DENSITY',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
@@ -7451,6 +7463,8 @@ extension on TranslationsQro {
 			'spotting.notSent' => 'SPOT NOT SENT.',
 			'spotting.allSkipped' => 'SPOT NOT SENT: EVERY SPOT SOURCE SKIPPED IT.',
 			'spotting.notRefreshedOffline' => 'NO CONNECTION — SPOTS WERE NOT REFRESHED',
+			'spotting.noDestination' => 'SPOT NOT SENT: NO DESTINATION TAKES IT — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
+			'spotting.noAutoDestination' => 'NO DESTINATION TAKES AUTO RE-SPOTS — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
 			'dataFiles.downloading' => 'DOWNLOADING…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
 			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',

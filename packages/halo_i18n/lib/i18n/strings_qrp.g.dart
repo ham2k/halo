@@ -1070,6 +1070,8 @@ class _Translations$spotting$qrp extends Translations$spotting$en {
 	@override String get notSent => 'spot not sent.';
 	@override String get allSkipped => 'spot not sent: every spot source skipped it.';
 	@override String get notRefreshedOffline => 'no connection — spots were not refreshed';
+	@override String get noDestination => 'spot not sent: no destination takes it — see destinations in the spotting settings.';
+	@override String get noAutoDestination => 'no destination takes auto re-spots — see destinations in the spotting settings.';
 }
 
 // Path: dataFiles
@@ -2370,6 +2372,11 @@ class _Translations$settings$spotting$qrp extends Translations$settings$spotting
 	@override String get pulseBeforeRespot => 'pulse before each auto re-spot';
 	@override String pulseBeforeRespotOn({required Object seconds}) => 'the spotting chip pulses blue for the ${seconds} seconds before each re-spot';
 	@override String get pulseBeforeRespotOff => 'no pulsing before an auto re-spot';
+	@override String get destinations => 'destinations';
+	@override String get destinationAll => 'all spots';
+	@override String get destinationQrvQrt => 'only qrv and qrt';
+	@override String get destinationExceptAuto => 'any except auto re-spots';
+	@override String get destinationNone => 'don\'t send spots';
 }
 
 // Path: settings.radio
@@ -6115,6 +6122,11 @@ extension on TranslationsQrp {
 			'settings.spotting.pulseBeforeRespot' => 'pulse before each auto re-spot',
 			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'the spotting chip pulses blue for the ${seconds} seconds before each re-spot',
 			'settings.spotting.pulseBeforeRespotOff' => 'no pulsing before an auto re-spot',
+			'settings.spotting.destinations' => 'destinations',
+			'settings.spotting.destinationAll' => 'all spots',
+			'settings.spotting.destinationQrvQrt' => 'only qrv and qrt',
+			'settings.spotting.destinationExceptAuto' => 'any except auto re-spots',
+			'settings.spotting.destinationNone' => 'don\'t send spots',
 			'settings.radio.title' => 'cat control',
 			'settings.radio.loggingAndCat' => 'logging & cat',
 			'settings.radio.tuningSection' => 'tuning',
@@ -6330,13 +6342,13 @@ extension on TranslationsQrp {
 			'settings.radio.voiceWords.speed' => 'speed',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
 			'settings.radio.voiceWords.advancedSettings' => 'advanced settings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.splitSilent' => 'nothing was heard in the recording.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'couldn\'t find three takes. say the word three times, run together, and try again.',
 			'settings.radio.voiceWords.splitLineCount' => 'couldn\'t find every word in the reading. read each one three times, with a breath between words.',
 			'settings.radio.voiceWords.splitLinesTooClose' => 'couldn\'t tell the words apart. leave a longer breath between words.',
 			'settings.radio.avoidZeroBeat.title' => 'avoid zero-beating on spots',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'with a radio connected, tuning a few hz off a cw spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'zero-beat: avoidance range',
@@ -6844,13 +6856,13 @@ extension on TranslationsQrp {
 			'settings.station.noTransceiver' => 'none',
 			'settings.station.peerRadioNotAvailable' => 'not available',
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'on ${device}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'antenna in use',
 			'settings.station.keyInUse' => 'cw keying',
 			'settings.station.phoneKeying' => 'phone keying',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.phoneKeyingNone' => 'none',
 			'settings.station.phoneKeyingRadio' => ({required Object radio}) => 'memories in ${radio}',
 			'settings.station.phoneKeyingComputer' => 'audio in this computer',
@@ -7358,13 +7370,13 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.toggleTheme' => 'switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
 			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.command.fontScaleDown' => 'smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'roomier layout',
 			'keyboardShortcuts.command.densityDenser' => 'denser layout',
 			'keyboardShortcuts.command.densityAuto' => 'automatic layout density',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.command.find' => 'find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'keyboard mode on or off',
@@ -7451,6 +7463,8 @@ extension on TranslationsQrp {
 			'spotting.notSent' => 'spot not sent.',
 			'spotting.allSkipped' => 'spot not sent: every spot source skipped it.',
 			'spotting.notRefreshedOffline' => 'no connection — spots were not refreshed',
+			'spotting.noDestination' => 'spot not sent: no destination takes it — see destinations in the spotting settings.',
+			'spotting.noAutoDestination' => 'no destination takes auto re-spots — see destinations in the spotting settings.',
 			'dataFiles.downloading' => 'downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'this could be a network issue, or this link\'s host may not support direct downloads from a web browser. try the desktop or mobile app, or a different hosting location.',

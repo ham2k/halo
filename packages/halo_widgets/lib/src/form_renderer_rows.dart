@@ -96,7 +96,7 @@ mixin _RowFields on State<FormRenderer> {
     if (errorText != null) {
       subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
     } else if (desc.isNotEmpty) {
-      subtitle = Text(desc, style: TextStyle(color: devModeColor));
+      subtitle = Text(desc, style: TextStyle(color: devModeColor ?? _toneColor(el, theme)));
     } else {
       // A field whose value IS its own explanation — a time zone, a callsign
       // — has no description to write, and a row with neither says nothing
@@ -110,7 +110,9 @@ mixin _RowFields on State<FormRenderer> {
 
     return ListTile(
       contentPadding: _rowContentPadding,
-      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
+      // `leading` is a host-only widget (an extension's icon tile, say); no
+      // extension's JSON form can hold one.
+      leading: el['leading'] is Widget ? el['leading'] as Widget : (icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null),
       title: Text(
         label,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),

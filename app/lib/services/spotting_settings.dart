@@ -1,18 +1,24 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:halo_widgets/halo_widgets.dart' show SpottingHooks;
+import 'package:flutter/foundation.dart' show VoidCallback, mapEquals;
+import 'package:halo_widgets/halo_widgets.dart' show SendSpot, SpotDestinationPolicy, SpottingHooks, SuggestSpotSources;
 
 import 'settings_service.dart';
 
 /// Where the Spotting section's settings live, in their own group: how often
 /// auto-respotting repeats a self-spot, whether it starts without offering,
-/// and whether the chip pulses before each one.
+/// whether the chip pulses before each one, and which spots each destination
+/// is sent.
 abstract final class SpottingSettings {
   static const group = 'spotting';
   static const respotIntervalKey = 'respotIntervalMinutes';
   static const autoRespotByDefaultKey = 'autoRespotByDefault';
   static const pulseBeforeRespotKey = 'pulseBeforeRespot';
+
+  /// `{hookKey: SpotDestinationPolicy.name}`, one entry per destination the
+  /// operator set; one with none is sent every spot.
+  static const destinationsKey = 'destinations';
 
   /// The intervals offered, in minutes. RESPOT with a number of its own may
   /// go as long as an hour; this is the everyday range.
@@ -20,14 +26,58 @@ abstract final class SpottingSettings {
 
   /// Every value at once, from one read of the group: the logging panel
   /// re-reads them on each settings change, and those come often.
-  static ({Duration respotInterval, bool autoRespotByDefault, bool pulseBeforeRespot}) read(SettingsService settings) {
+  static SpottingValues read(SettingsService settings) {
     final stored = settings.settingsGroup(group);
     return (
       respotInterval: _snapInterval(stored[respotIntervalKey]),
       autoRespotByDefault: stored[autoRespotByDefaultKey] as bool? ?? false,
       pulseBeforeRespot: stored[pulseBeforeRespotKey] as bool? ?? true,
+      destinations: _destinations(stored[destinationsKey]),
     );
   }
+
+  /// The Spotting control's hooks, carrying [values]; the rest are the
+  /// panel's. Built here rather than at the logging panel, which sits at its
+  /// file-size budget: each setting passed there by hand is a line it lacks.
+  static SpottingHooks hooks(SpottingValues values, {SuggestSpotSources? suggestSpotSources, SendSpot? sendSpot, VoidCallback? onOpenSettings}) =>
+      SpottingHooks(
+        suggestSpotSources: suggestSpotSources,
+        sendSpot: sendSpot,
+        respotInterval: values.respotInterval,
+        autoRespotByDefault: values.autoRespotByDefault,
+        pulseBeforeRespot: values.pulseBeforeRespot,
+        destinations: values.destinations,
+        onOpenSettings: onOpenSettings,
+      );
+
+  /// Whether [a] and [b] hold the same values: a record's own `==` compares
+  /// [SpottingValues.destinations] by identity, and every [read] builds a new
+  /// map.
+  static bool same(SpottingValues a, SpottingValues b) =>
+      a.respotInterval == b.respotInterval &&
+      a.autoRespotByDefault == b.autoRespotByDefault &&
+      a.pulseBeforeRespot == b.pulseBeforeRespot &&
+      mapEquals(a.destinations, b.destinations);
+
+  /// Stores [policy] for the destination under [hookKey]; [SpotDestinationPolicy.all]
+  /// drops its entry, so the store holds only the destinations held back.
+  static Future<void> setDestination(SettingsService settings, String hookKey, SpotDestinationPolicy policy) async {
+    final stored = settings.settingsGroup(group)[destinationsKey];
+    final next = {
+      if (stored is Map)
+        for (final entry in stored.entries)
+          if (entry.key is String && entry.key != hookKey) entry.key as String: entry.value,
+      if (policy != SpotDestinationPolicy.all) hookKey: policy.name,
+    };
+    await settings.setSettingValue(group, destinationsKey, next);
+  }
+
+  static Map<String, SpotDestinationPolicy> _destinations(Object? raw) => raw is Map
+      ? {
+          for (final entry in raw.entries)
+            if (entry.key is String) entry.key as String: SpotDestinationPolicy.parse(entry.value),
+        }
+      : const {};
 
   /// How often auto-respotting repeats a self-spot: the button's offer and a
   /// bare RESPOT both use it. A stored value the picker does not offer — an
@@ -50,3 +100,5 @@ abstract final class SpottingSettings {
     return Duration(minutes: minutes);
   }
 }
+
+typedef SpottingValues = ({Duration respotInterval, bool autoRespotByDefault, bool pulseBeforeRespot, Map<String, SpotDestinationPolicy> destinations});

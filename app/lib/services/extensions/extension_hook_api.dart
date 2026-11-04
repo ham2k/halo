@@ -20,6 +20,13 @@ const HookPartition emptyHookPartition = (
   failed: <({String key, String? error})>[],
 );
 
+/// A spot destination as Settings › Spotting lists it
+/// ([_ExtensionHookApi.getSpotDestinations]): the source's name, and the
+/// manifest `icon` and `accentColor` of the extension that registers it,
+/// and whether it posts self-spots ([postsSelfSpots]) or only spots of other
+/// stations.
+typedef SpotDestination = ({String name, String? icon, String? accentColor, bool postsSelfSpots});
+
 /// A spot from [hookKey] whose `their`/`freq`/`refs`/`spot` field — or
 /// `their.call`/a `refs` entry, one level inside an otherwise right-typed
 /// container — is the wrong type for spots_panel.dart's and
@@ -456,6 +463,61 @@ mixin _ExtensionHookApi {
       };
     } catch (e) {
       debugPrint('[extensions] getSpotSourceNames failed: $e');
+      return const {};
+    }
+  }
+
+  /// Every `spots` hook that posts spots, by `hookKey`, with its source's
+  /// name and the icon and accent of the extension it comes from — the
+  /// destinations Settings › Spotting lists. Read from the runtime's own
+  /// roster of registered methods, never by calling a posting method: one
+  /// called to find out would post.
+  ///
+  /// Kept for the runtime's generation, as [spotSourceNames] are: Settings
+  /// rebuilds the list on every change to any setting.
+  Future<Map<String, SpotDestination>> getSpotDestinations() async {
+    final kept = _spotDestinations;
+    if (kept != null && _spotDestinationsGeneration == runtimeGeneration.value) return kept;
+    final listed = await _listSpotDestinations();
+    if (!activationIncomplete && listed.isNotEmpty) {
+      _spotDestinations = listed;
+      _spotDestinationsGeneration = runtimeGeneration.value;
+    }
+    return listed;
+  }
+
+  Map<String, SpotDestination>? _spotDestinations;
+  int _spotDestinationsGeneration = -1;
+
+  Future<Map<String, SpotDestination>> _listSpotDestinations() async {
+    final host = this.host;
+    if (host == null) return const {};
+    try {
+      final hooks = await host.invoke(Hooks.runtimeListHooks, key: 'kernel', timeout: const Duration(seconds: 5));
+      final posting = <String, ({String? extensionKey, bool postsSelfSpots})>{
+        if (hooks is List)
+          for (final hook in hooks)
+            if (hook is Map && hook['category'] == Hooks.spotsPostSelfSpot.category && hook['key'] is String && hook['methods'] is List)
+              if ((hook['methods'] as List).contains(Hooks.spotsPostSelfSpot.method) || (hook['methods'] as List).contains(Hooks.spotsPostOtherSpot.method))
+                hook['key'] as String: (
+                  extensionKey: hook['extensionKey'] as String?,
+                  postsSelfSpots: (hook['methods'] as List).contains(Hooks.spotsPostSelfSpot.method),
+                ),
+      };
+      if (posting.isEmpty) return const {};
+      final names = await spotSourceNames();
+      final infos = {for (final info in availableExtensions) info.key: info};
+      return {
+        for (final MapEntry(key: hookKey, value: (:extensionKey, :postsSelfSpots)) in posting.entries)
+          hookKey: (
+            name: names[hookKey] ?? hookKey,
+            icon: infos[extensionKey]?.icon,
+            accentColor: infos[extensionKey]?.accentColor,
+            postsSelfSpots: postsSelfSpots,
+          ),
+      };
+    } catch (e) {
+      debugPrint('[extensions] getSpotDestinations failed: $e');
       return const {};
     }
   }
