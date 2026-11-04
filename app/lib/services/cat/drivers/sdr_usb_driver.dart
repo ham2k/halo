@@ -247,7 +247,7 @@ class SdrUsbSession implements SpectrumSession, SdrTuner {
     _starts++;
     _poll?.cancel();
     _poll = null;
-    if (!_dead) _device?.stop();
+    if (!_dead) unawaited(_device?.stop());
     _spectrum?.stop();
   }
 

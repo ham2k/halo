@@ -248,20 +248,20 @@ class _FfiDevice implements SdrUsbDevice {
 
   bool get _closed => _handle == nullptr;
 
-  void _send(List<Object?> request) {
-    if (_closed) return;
+  Future<void> _send(List<Object?> request) {
+    if (_closed) return Future.value();
     _pending++;
-    unawaited(_ask(_port, request).whenComplete(() => _pending--));
+    return _ask(_port, request).whenComplete(() => _pending--);
   }
 
   @override
-  void setSampleRate(int rate) => _send(['rate', rate]);
+  void setSampleRate(int rate) => unawaited(_send(['rate', rate]));
 
   @override
-  void setFrequency(int hz) => _send(['frequency', hz]);
+  void setFrequency(int hz) => unawaited(_send(['frequency', hz]));
 
   @override
-  void setGain(int? step) => _send(['gain', step ?? -1]);
+  void setGain(int? step) => unawaited(_send(['gain', step ?? -1]));
 
   @override
   Future<bool> start() async {
@@ -276,9 +276,9 @@ class _FfiDevice implements SdrUsbDevice {
   }
 
   @override
-  void stop() {
+  Future<void> stop() {
     _wantStreaming = false;
-    _send(['stop']);
+    return _send(['stop']);
   }
 
   @override

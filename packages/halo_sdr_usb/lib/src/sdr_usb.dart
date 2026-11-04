@@ -58,7 +58,10 @@ abstract interface class SdrUsbDevice {
 
   /// True once it is streaming; false when it would not start.
   Future<bool> start();
-  void stop();
+
+  /// Done once the stop has run off the calling isolate: whatever was
+  /// streaming then has stopped, until a later [start].
+  Future<void> stop();
 
   /// While a command is still on its way, what was last asked for — a rate
   /// change restarts an Airspy's stream, and that is not the receiver going.

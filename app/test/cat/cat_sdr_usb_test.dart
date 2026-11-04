@@ -71,7 +71,7 @@ class _Receiver implements SdrUsbDevice {
   }
 
   @override
-  void stop() => started = false;
+  Future<void> stop() async => started = false;
 
   @override
   SdrUsbStreaming get streaming => failed ?? (started ? SdrUsbStreaming.streaming : SdrUsbStreaming.stopped);

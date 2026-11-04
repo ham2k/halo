@@ -80,8 +80,10 @@ void main() {
     addTearDown(device.close);
     expect(await device.start(), isTrue);
     await until(() => device.written > 1000);
-    device.stop();
-    await until(() => device.streaming == SdrUsbStreaming.stopped);
+    // Awaited, not polled: while the stop is queued, streaming already reads
+    // stopped, and the tone writes on until the worker reaches it.
+    await device.stop();
+    expect(device.streaming, SdrUsbStreaming.stopped);
     final written = device.written;
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(device.written, written);
