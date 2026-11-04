@@ -777,6 +777,15 @@ Code pushes must be **pure Dart**. Anything touching plugins, the engine, native
 assets, or new permissions requires a full binary release (§3). Discipline here is
 essential — keep new native surface for the monthly cut.
 
+**Bundled assets never ride a code push either**: a patched install keeps every
+asset exactly as its release shipped it. That covers everything app/pubspec.yaml
+bundles: the built-in extensions (built from `extensions/`), the pre-loaded
+extensions, the CAT driver info files, `experiments.yaml`, images and fonts. A
+fix that changes one of them needs a binary release. The exception is the notes
+files (§2.7): a patch release always adds its release notes, and leaving them
+out only means a patched install shows no "what's new" for the patch until the
+next binary brings the notes.
+
 ### 4.3 Tracks
 
 Shorebird supports unlimited arbitrarily-named tracks plus percentage-based
@@ -913,10 +922,13 @@ pushes a per-commit `code-push-<edition>-<sha>` tag, which fans out to that edit
 iOS/macOS/Android code-push workflows (each `triggering:` on the `code-push-<edition>-*`
 pattern). A fresh tag per commit means every code push is a tag creation, so
 Codemagic triggers reliably. Before pushing, it diffs the edition's latest release tag →
-HEAD and **hard-blocks** when any change falls outside the pure-Dart/asset
-surface (native dirs, `pubspec.*`) — `--force` overrides that local pre-flight.
-It's only a heuristic; Shorebird's build-time diff of the compiled artifact is
-the authoritative gate. Old trigger tags are swept by **`halo-ops
+HEAD and **hard-blocks** when a change touches native code or dependencies
+(native dirs, `pubspec.*`) or a bundled asset other than the notes files (§4.2).
+`--force` overrides that local pre-flight. For native code it's only a
+heuristic; Shorebird's build-time diff of the compiled artifact is the
+authoritative gate. For assets it is the only gate: the code-push builds pass
+`--allow-asset-diffs`, since Shorebird refuses any asset change in a
+non-interactive build, release notes included. Old trigger tags are swept by **`halo-ops
 prune-code-pushes`** (anything older than two months by default) — they only trigger
 builds, so deleting them never touches a published code push.
 
