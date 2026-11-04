@@ -47,6 +47,8 @@ Scratch*
 # running two sandboxes side by side is the point, and the second one is
 # named by whoever starts it.
 /.halo-dev-data*/
+# A halo-dev run's log, stdin pipe and VM-service address (scripts/halo-dev.mjs).
+/.halo-run/
 # Any HALO_DEV_DATA sandbox, whatever it is named: a run of the app writes its
 # whole world here — prefs with a callsign and a device id, the log database,
 # downloaded data files — and this repo mirrors publicly.

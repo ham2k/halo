@@ -66,9 +66,32 @@ mixin _ExtensionInstalls {
   /// One extension's JS, from wherever that extension came from.
   Future<String> _sourceFor(ExtensionInfo info) async {
     final dev = _devBundles[info.key];
-    if (dev != null) return dev.source;
-    if (info.isInstalled) return _requireInstalledStore().sourceFor(info.key);
-    return rootBundle.loadString('assets/extensions/${info.file}');
+    final (origin, source) = dev != null
+        ? ('devServer', dev.source)
+        : info.isInstalled
+        ? ('installed', await _requireInstalledStore().sourceFor(info.key))
+        : ('asset', await rootBundle.loadString('assets/extensions/${info.file}'));
+    _noteBundle(_readBundles, info.key, info.file, origin, source);
+    return source;
+  }
+
+  /// What the running runtime loaded, by bundle (the kernel's too): where
+  /// the source came from (`asset`, `installed`, `devServer`), its file, and
+  /// the SHA-256 of the source — so the dev bridge can tell a bundle rebuilt
+  /// on disk since launch from the one actually running. Filled only once a
+  /// runtime is up with them, and empty after a start that failed: a bundle
+  /// read for a runtime that never ran is not running. Recorded only while
+  /// the dev bridge is installed; a release build hashes nothing.
+  Map<String, Map<String, String>> get loadedBundles => Map.unmodifiable(_loadedBundles);
+  final Map<String, Map<String, String>> _loadedBundles = {};
+
+  /// The bundles read for the runtime being started, until it is up.
+  final Map<String, Map<String, String>> _readBundles = {};
+
+  void _noteBundle(Map<String, Map<String, String>> into, String key, String file, String origin, String source) {
+    if (DevBridge.instance.installed) {
+      into[key] = {'origin': origin, 'file': file, 'sha256': sha256.convert(utf8.encode(source)).toString()};
+    }
   }
 
   /// Reads the list again — after anything that changes what is installed.
@@ -477,6 +500,7 @@ mixin _ExtensionInstalls {
       ExtensionBundle(key: key, source: source, api: info.runtimeApi),
       domains: info.domains,
     );
+    _noteBundle(_loadedBundles, key, info.file, 'devServer', source);
     // Panels, settings panels and the command catalog are all cached against
     // this counter; the reloaded extension may contribute a different set.
     // The metadata is read back first: settings panels are placed by their

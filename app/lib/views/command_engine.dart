@@ -971,14 +971,22 @@ List<String> commandTextParts(String text) => [
 /// A command still waiting for its text (NOTE) runs nothing and ends the
 /// chain with [CommandTextOutcome.needsParams] and that command as [text]:
 /// the caller's to open somewhere it can be typed.
-Future<({CommandTextOutcome outcome, String text})> runCommandText(
+///
+/// [message] is the last line it put on the status bar, or null when it put
+/// none there.
+Future<({CommandTextOutcome outcome, String text, String? message})> runCommandText(
   HaLoServices services,
   String text,
   Future<void> Function(String action, Map<String, dynamic>? params) runAction,
 ) async {
   const messageKey = 'keyBinding:command';
   final confirmations = <String>[];
-  void say(String message) => services.statusBar.setMessage(key: messageKey, icon: 'keyboard', text: message, dismissAfter: _boundCommandMessageTime);
+  String? said;
+  void say(String message) {
+    said = message;
+    services.statusBar.setMessage(key: messageKey, icon: 'keyboard', text: message, dismissAfter: _boundCommandMessageTime);
+  }
+
   // A failure partway names what already ran ahead of it: the chain stops,
   // but the commands before it did their part.
   CommandTextOutcome fail(String message) {
@@ -986,18 +994,20 @@ Future<({CommandTextOutcome outcome, String text})> runCommandText(
     return CommandTextOutcome.failed;
   }
 
+  ({CommandTextOutcome outcome, String text, String? message}) end(CommandTextOutcome outcome, String text) => (outcome: outcome, text: text, message: said);
+
   final parts = commandTextParts(text);
-  if (parts.isEmpty) return (outcome: fail(t.keyboardShortcuts.unknownCommand(command: text)), text: text);
+  if (parts.isEmpty) return end(fail(t.keyboardShortcuts.unknownCommand(command: text)), text);
   for (final command in parts) {
     final operation = services.currentOperationContext;
     final preview = await services.extensions.interpretCommand(command, operation);
-    if (preview == null) return (outcome: fail(t.keyboardShortcuts.unknownCommand(command: command)), text: command);
-    if (preview['error'] case final String error) return (outcome: fail(error), text: command);
-    if (preview['expectsParams'] == true) return (outcome: CommandTextOutcome.needsParams, text: command);
+    if (preview == null) return end(fail(t.keyboardShortcuts.unknownCommand(command: command)), command);
+    if (preview['error'] case final String error) return end(fail(error), command);
+    if (preview['expectsParams'] == true) return end(CommandTextOutcome.needsParams, command);
     final executable = await services.extensions.interpretCommand(command, operation, null, true);
     // The preview read it, so a null now is the hook failing as it ran.
-    if (executable == null) return (outcome: fail(t.extensionService.commandFailed), text: command);
-    if (executable['error'] case final String error) return (outcome: fail(error), text: command);
+    if (executable == null) return end(fail(t.extensionService.commandFailed), command);
+    if (executable['error'] case final String error) return end(fail(error), command);
     if (executable['confirm'] case final String confirm when confirm.isNotEmpty) {
       confirmations.add(confirm);
       say(confirmations.join(' · '));
@@ -1006,7 +1016,7 @@ Future<({CommandTextOutcome outcome, String text})> runCommandText(
       await dispatchCommandActions(services, commands, runAction, skipOnlineLookup: executable['skipOnlineLookup'] == true);
     }
   }
-  return (outcome: CommandTextOutcome.ran, text: text);
+  return end(CommandTextOutcome.ran, text);
 }
 
 /// As long as the ⌘K dialog keeps a response up.

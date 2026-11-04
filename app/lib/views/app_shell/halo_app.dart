@@ -75,6 +75,7 @@ class _HaLoAppState extends State<HaLoApp> {
     if (DevBridge.instance.installed) {
       DevBridge.instance.openCommandBarHandler = _openCommandDialog;
       DevBridge.instance.closeCommandBarHandler = _closeCommandDialog;
+      DevBridge.instance.runCommandHandler = _devRunCommand;
     }
   }
 
@@ -90,6 +91,7 @@ class _HaLoAppState extends State<HaLoApp> {
     if (DevBridge.instance.openCommandBarHandler == _openCommandDialog) {
       DevBridge.instance.openCommandBarHandler = null;
       DevBridge.instance.closeCommandBarHandler = null;
+      DevBridge.instance.runCommandHandler = null;
     }
     super.dispose();
   }
@@ -297,12 +299,26 @@ class _HaLoAppState extends State<HaLoApp> {
   /// its text opens the command dialog with that command typed.
   Future<void> _runCommandText(String text) async {
     final services = widget.services;
-    final (:outcome, text: stoppedAt) = await runCommandText(
+    final (:outcome, text: stoppedAt, message: _) = await runCommandText(
       services,
       text,
       (action, params) => runCommandAction(services, action, params, navigatorKey.currentContext),
     );
     if (outcome == CommandTextOutcome.needsParams && mounted) _openCommandDialog(initialText: '$stoppedAt ');
+  }
+
+  /// The dev bridge's `runCommand`: command text run as a bound key runs
+  /// it, answering with how it ended and the line it left on the status bar
+  /// (an error, or the confirmations of what ran). A command still waiting
+  /// for its text opens nothing — no one is at the keyboard to type it.
+  Future<Map<String, dynamic>> _devRunCommand(String text) async {
+    final services = widget.services;
+    final (:outcome, text: stoppedAt, :message) = await runCommandText(
+      services,
+      text,
+      (action, params) => runCommandAction(services, action, params, navigatorKey.currentContext),
+    );
+    return {'outcome': outcome.name, if (outcome != CommandTextOutcome.ran) 'stoppedAt': stoppedAt, 'message': ?message};
   }
 
   /// The template editors' sample preview. A method, not a closure in

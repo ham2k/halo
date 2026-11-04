@@ -2751,6 +2751,8 @@
       "systemInformation": "SYSTEM INFORMATION",
       "appVersion": "APP VERSION",
       "dataFolder": "DATA FOLDER",
+      "worktree": "WORKTREE",
+      "launchedAt": "STARTED",
       "loading": "(LOADING…)",
       "panelLoadFailed": "COULD NOT LOAD THIS SETTINGS PANEL.",
       "extDevServer": "EXTENSION DEV SERVER",

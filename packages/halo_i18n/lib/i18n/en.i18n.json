@@ -2751,6 +2751,8 @@
       "systemInformation": "System Information",
       "appVersion": "App Version",
       "dataFolder": "Data Folder",
+      "worktree": "Worktree",
+      "launchedAt": "Started",
       "loading": "(loading…)",
       "panelLoadFailed": "Could not load this settings panel.",
       "extDevServer": "Extension Dev Server",

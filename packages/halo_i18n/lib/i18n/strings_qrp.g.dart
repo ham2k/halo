@@ -3206,6 +3206,8 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 	@override String get systemInformation => 'system information';
 	@override String get appVersion => 'app version';
 	@override String get dataFolder => 'data folder';
+	@override String get worktree => 'worktree';
+	@override String get launchedAt => 'started';
 	@override String get loading => '(loading…)';
 	@override String get panelLoadFailed => 'could not load this settings panel.';
 	@override String get extDevServer => 'extension dev server';
@@ -7180,6 +7182,8 @@ extension on TranslationsQrp {
 			'settings.developer.systemInformation' => 'system information',
 			'settings.developer.appVersion' => 'app version',
 			'settings.developer.dataFolder' => 'data folder',
+			'settings.developer.worktree' => 'worktree',
+			'settings.developer.launchedAt' => 'started',
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'could not load this settings panel.',
 			'settings.developer.extDevServer' => 'extension dev server',
@@ -7368,10 +7372,10 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'unknown command: ${command}',
 			'keyboardShortcuts.command.commandDialog' => 'open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'switch between light and dark',
-			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
-			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
+			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'roomier layout',

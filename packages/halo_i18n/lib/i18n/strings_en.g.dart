@@ -7264,6 +7264,12 @@ class Translations$settings$developer$en {
 	/// en: 'Data Folder'
 	String get dataFolder => 'Data Folder';
 
+	/// en: 'Worktree'
+	String get worktree => 'Worktree';
+
+	/// en: 'Started'
+	String get launchedAt => 'Started';
+
 	/// en: '(loading…)'
 	String get loading => '(loading…)';
 
@@ -13007,6 +13013,8 @@ extension on Translations {
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
+			'settings.developer.worktree' => 'Worktree',
+			'settings.developer.launchedAt' => 'Started',
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
@@ -13195,10 +13203,10 @@ extension on Translations {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Unknown command: ${command}',
 			'keyboardShortcuts.command.commandDialog' => 'Open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'Switch between light and dark',
-			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
-			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
+			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'Smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'Normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',

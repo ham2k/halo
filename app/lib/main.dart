@@ -185,17 +185,17 @@ void _mainBody({
   // nothing before the first right-click depends on that having happened
   // yet.
   if (kIsWeb) unawaited(BrowserContextMenu.disableContextMenu());
-  // Web-only, non-release-only: exposes window.__halo for agent inspection
-  // (no-op on native and in production release). See config/dev_bridge.dart.
+  // Non-release only: exposes window.__halo on web and ext.halo.* on the VM
+  // service elsewhere, for agent inspection. See config/dev_bridge.dart.
   installDevBridge();
-  // Same dev/web condition (the bridge sets `installed`): force Flutter web's
+  // Same dev condition (the bridge sets `installed`), web only: force Flutter web's
   // accessibility DOM on. It's normally opt-in behind the "Enable
   // accessibility" button, which leaves generic browser tools (read_page /
   // find / computer) staring at a blank canvas — with it on they see labeled,
   // Semantics(identifier:)-targetable nodes. The handle is intentionally left
   // undisposed so semantics stay on for the app's lifetime. Native already has
   // real accessibility; production is untouched.
-  if (DevBridge.instance.installed) {
+  if (kIsWeb && DevBridge.instance.installed) {
     SemanticsBinding.instance.ensureSemantics();
   }
   // Kicked off before runApp (not awaited here) so the splash screen paints
@@ -305,10 +305,11 @@ void _mainBody({
         final bundleArg = launchArguments.where((a) => a.toLowerCase().endsWith('.h2kext')).firstOrNull;
         if (bundleArg != null) openInstallExtension(services, Uri.file(bundleArg));
 
-        // Wire window.__halo.resetFixture() to a real reset now that services
-        // exist — only in dev/web where the bridge is installed.
+        // Wire the bridge's fixture reset and bundle list to services now that they
+        // exist — only in dev builds, where the bridge is installed.
         if (DevBridge.instance.installed) {
           DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
+          DevBridge.instance.extensionBundlesProvider = () => services.extensions.loadedBundles;
         }
 
         // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.

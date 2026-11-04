@@ -242,7 +242,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
   /// The QSO list's box, for [_pageRows] to measure.
   final _listBoxKey = GlobalKey();
   // Imperative handle into LoggingControls, used to drive the dev bridge
-  // (window.__halo setField/tap) when it's installed (dev/preview web).
+  // (setField/tap) when it's installed (any non-release build).
   @override
   final _loggingController = LoggingControlsController();
   late List<String> _controlOrder = widget.services.settings.secondaryControlsOrderFor(widget.scope);
@@ -369,8 +369,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     // whatever colour it had when the link dropped.
     widget.services.peerRemoteRadios.addListener(_onCatChanged);
     // Route the dev bridge's actions to this panel's LoggingControls — only
-    // when the bridge is installed (dev/preview web), so nothing runs in
-    // production or on native.
+    // when the bridge is installed (any non-release build), so nothing runs
+    // in a release.
     if (DevBridge.instance.installed) {
       DevBridge.instance.setFieldHandler = _loggingController.setField;
       DevBridge.instance.actionHandler = _devAction;

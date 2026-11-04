@@ -99,8 +99,8 @@ or missing bundle otherwise loads silently; `android` and `run-ios` do not.
 
 | Target | Command |
 |---|---|
-| macOS | `mise run mac` (rebuilds extensions first) — or `cd app && flutter run -d macos` |
-| Web | `mise run web` (`-d web-server` on :8765) — or `cd app && flutter run -d chrome` |
+| macOS | `mise run mac "<label>"` (sandboxed, see [`halo-dev`](#halo-dev)) — or `cd app && flutter run -d macos` |
+| Web | `mise run web "<label>"` (`-d web-server` on a free port from 8767, see [`halo-dev`](#halo-dev)) — or `cd app && flutter run -d chrome` |
 | iOS | `mise run run-ios` (opens Simulator, then `flutter run -d iphone`) |
 | Android | `mise run android` — or `cd app && flutter run -d android` |
 | Windows | `mise run windows` — or `cd app && flutter run -d windows` |
@@ -319,7 +319,11 @@ the front is the other checkout's code.
 
 To start a sandbox from an installed build's data instead of an empty log —
 its operations, settings and configured equipment — copy them in before the
-first launch. On macOS each edition keeps them in its container,
+first launch. On macOS, `mise run dev sandbox --from next` (or `dev`, `prod`)
+does all of the below into `.halo-dev-data`; `--to <dir>` names another
+sandbox, and `--force` sets an existing one aside (renamed, never deleted).
+macOS may first ask to let the terminal read another app's data. By hand:
+each edition keeps them in its container,
 `~/Library/Containers/<bundle id>/Data` (`com.ham2k.logger.dev`, `.next` or
 `.prod`):
 
@@ -338,15 +342,18 @@ prefs = plistlib.load(open(sys.argv[1], 'rb'))
 out = {k: v for k, v in prefs.items() if k.startswith('flutter.') and not isinstance(v, (bytes, datetime.datetime))}
 out['flutter.syncEnabled'] = False
 out['flutter.peerSyncEnabled'] = False
+out['flutter.listenForOtherAppsEnabled'] = False
 json.dump(out, open(sys.argv[2], 'w'))
 PY
 cd app && HALO_DEV_DATA="$DEST" flutter run -d macos --dart-define=DEV_LABEL="my task"
 ```
 
-The two sync switches are forced off because copied settings carry them
+The three switches are forced off because copied settings carry them
 **on**: the copy would then sync to your real account under the Dev
 keychain's identity and dial your LAN peers, pushing its edits as though they
-were the original's. Secrets stay behind — they live in the keychain, keyed
+were the original's, and listen for other apps on the ports the installed
+build listens on — where WSJT-X's default unicast datagram reaches only one
+of the two, so the sandbox silently takes the installed app's contacts. Secrets stay behind — they live in the keychain, keyed
 by bundle id — so equipment that needs a password asks for it again.
 
 Sandbox the data whenever a branch changes `schemaVersion`. Drift migrations
@@ -378,6 +385,17 @@ registers:
 | `DEVFYIALERT`, `DEVFYIWARN`, `DEVFYIINFO` | Post an alert, a warning or an info message to the FYI area under the call info, with the text given or a sample one. Posts stack; `DEVFYIALERT!` posts at high priority (the pill). |
 | `DEVSPLASH` | Re-show the startup release-notes overlay (bypasses the once-per-version gate). |
 | `DEVONBOARD` | Re-show the first-run onboarding overlay (bypasses its gate; completing it really writes settings). |
+| `DEVTESTER` | Re-show the tester-notes overlay. |
+| `DEVHAMMER` | Churn the status bar the way a data-file sync does, to provoke the web engine's focus loss. `DEVHAMMER 20` = 20 seconds. |
+| `DEVPOPUP` | Reopen the app in a standalone, phone-sized popup window (web only). |
+| `DEVSENTRY` | Push a synthetic error through error reporting; says whether it uploaded. `DEVSENTRY <message>` sets its text. |
+| `DEVBENCH` | Log a synthetic contest into a throwaway Test Operation and report what each phase cost. `DEVBENCH 5000` = 5000 QSOs (up to 20000). Developer mode only. |
+| `DEVLOGCAT` | Record every byte to and from the equipment, or stop and send the recording. |
+| `DEVMAPINFO` | Show or hide the maps' zoom and viewport size. |
+| `DEVIDLE` | Show or hide the extension engine's idle metrics in the status bar. |
+| `DEVTT` (or `DEVTIMETRAVEL`) | Move the app clock ([time.md](docs/design/time.md)): `DEVTT +3h`, `DEVTT -1d`, `DEVTT 2x`, `DEVTT +1d 10x`; offsets add up; bare `DEVTT` goes back to real time. Developer mode only, and never in the palette: it can only be typed. |
+| `EXP <name>` | Toggle an experiment from `app/experiments.yaml`. |
+| `LANG <code>` | Switch the language, including the hidden CW, QRP and QRO; `LANG SYSTEM` follows the device again. |
 | `RELOAD` | Force data-file re-sync, ignoring the 30-day staleness check. `RELOAD POTA` / `RELOAD SOTA` by category; `RELOAD ALL` / `RELOADALL` / `RELOAD!` for everything. |
 | `SEED` | Fill the current operation with generated QSOs. `SEED` = 10, `SEED 20` = 20, `SEED 15 3H` = 15 spread over 3 hours. Needs an open operation. |
 
@@ -434,12 +452,14 @@ Developer Settings**. It unlocks:
 
 ## Driving the app from a browser / agent
 
-Dev **web** builds (`flutter run -d web-server` — i.e. any non-release build)
-expose a small control + inspection surface so agents and scripts can drive and
-read the app deterministically instead of pixel-hunting the Flutter canvas.
-**None of it ships to production**: the bridge only installs on non-release web,
-the accessibility DOM + structured logging are gated the same way, and the
-stub/fixture hooks are read through `debugEnvFlag` (empty in release).
+Every non-release build exposes a small control + inspection surface so agents
+and scripts can drive and read the app deterministically instead of
+pixel-hunting the Flutter canvas: as `window.__halo` on web, and as
+`ext.halo.*` VM-service extensions everywhere else, which
+[`halo-dev`](#halo-dev) calls. **None of it ships to production**: the bridge
+only installs in non-release builds, the accessibility DOM + structured
+logging are gated the same way, and the stub/fixture hooks are read through
+`debugEnvFlag` (empty in release).
 
 ### `window.__halo`
 
@@ -451,8 +471,12 @@ Source: [`app/lib/config/dev_bridge.dart`](app/lib/config/dev_bridge.dart).
 |---|---|
 | `getState()` | Snapshot of the current screen: `{view, operation:{uuid, stationCall, title, qsoCount}, call, editing, guess, vfo}`. `view` is `operation` on the logging screen, else `none`. |
 | `getGuess()` | Just the current callsign guess (`{name, grid, state, entityName, …}`), or null. |
-| `setField('call', 'W1AW')` | Sets the call field as if typed — fires the debounced lookup/scoring. |
-| `tap('log')` / `tap('wipe')` | Logs the current QSO / wipes the compose fields. |
+| `setField('call', 'W1AW')` | Sets the call field as if typed — fires the debounced lookup/scoring. Answers `{set}`, or `{error}` for any other field or with no logging screen open. |
+| `tap('log')` / `tap('wipe')` | Logs the current QSO / wipes the compose fields. With no logging screen open, `{error}`. |
+| `tap(target)` | Taps any control on screen through the semantics tree: by its stable identifier (`action.log`, `qso.row.W1AW`), else by its label — exact first, then containing it, case-insensitive. A target matching several controls taps none and answers `{error, matches}`. A Promise. |
+| `targets()` | Every control `tap` can reach right now, as `{identifier?, label}` — not a control clipped out of view, built ahead in a scroll cache, or squeezed to no size. A Promise. |
+| `runCommand('SEED 20')` | Runs command text as a bound key does, against the operation in front — the one-call alternative to driving the ⌘K dialog. `;` chains commands. Answers `{outcome: ran\|failed\|needsParams, stoppedAt?, message?}`; `message` is the line it left on the status bar. A Promise. |
+| `build()` | Which build this is: `{sha, edition, label, worktree, dataDirectory, platform, mode, launchedAt, extensions}`, `extensions` being each loaded bundle's `{origin, file, sha256}`. |
 | `ready` | A Promise that resolves once bootstrap **and** the home screen's first data load are done. `await window.__halo.ready` instead of sleeping after a page load. |
 | `recentLog()` | The buffered structured events (see below), oldest-first. |
 | `resetFixture()` | Backs up then clears all operations + QSOs, restores font scale / distance units to defaults, seeds a fresh "HALO Fixture" operation, and navigates into it. Returns `{uuid, stationCall, qsoCount, backupId}`; the pre-reset data is recoverable from the `OperationsBackup`/`QsosBackup` tables under `backupId`. `await ready` first. |
@@ -499,6 +523,55 @@ Add your own with `DevLog.instance.log('tag', {…})`
 ([`packages/halo_core/lib/src/dev_log.dart`](packages/halo_core/lib/src/dev_log.dart));
 it's a no-op in release.
 
+### `halo-dev`
+
+[`scripts/halo-dev.mjs`](scripts/halo-dev.mjs) runs this checkout's build and
+drives it. `mise run web` and `mise run mac` are its launchers, `mise run dev
+<command>` the rest (or call the script directly).
+
+```sh
+mise run web "header work"                 # web-server on a free port from 8767
+mise run mac "header work" --first-op      # macOS, always sandboxed in .halo-dev-data
+mise run dev status                        # what this checkout has running
+mise run dev reload                        # hot reload; says whether it took
+mise run dev stop                          # quits the app as well as flutter run
+```
+
+A launch needs a label (it becomes `DEV_LABEL`) and passes `HALO_GIT_SHA` and
+`HALO_DEV_WORKTREE`. `--onboard N0DEV,pota` and `--first-op` set `ONBOARD_AS`
+and `POLO_OPEN_FIRST_OP`; `--profile`, `--port N`, `--data DIR` (mac),
+`--no-bundle`; anything after `--` goes to `flutter run` (through `mise run`,
+which takes the first `--` for itself, write `-- --`). From a terminal
+it runs in the foreground with flutter's own keys; from a script (or with
+`--bg`) it runs in the background, waits until the build is up — or fails
+loudly on a bind, compile or launch error instead of leaving an old server
+answering — and takes `reload`, `restart` and `stop` through a pipe. A
+background run's output is in `.halo-run/<target>/log`; `mise run dev log
+--errors` shows only the lines ErrorPolicy keeps away from the operator.
+`reload` and `restart` report `Reloaded …` or the rejection, because a
+rejected reload keeps the old code running with nothing on screen to say so.
+`stop` refuses a run in a terminal of its own, and says "stopped" only once
+nothing of the run is left; it also clears what a run that ended on its own
+left behind, including a macOS app from this checkout still running.
+
+The bridge calls reach a native build (`--target mac` when several runs are
+up); a web build answers them as `window.__halo` in its tab instead:
+
+| Command | Does |
+|---|---|
+| `state`, `guess`, `events`, `targets` | `getState()`, `getGuess()`, `recentLog()`, `targets()` |
+| `run "SEED 20"` | `runCommand()` |
+| `tap action.log`, `tap "General Operation"` | `tap()` |
+| `field call W1AW` | `setField()` |
+| `fixture` | `resetFixture()` |
+| `ready` | Waits up to a minute for `ready`. |
+| `build` | `build()`, checked against the checkout: another worktree's build, a commit behind `HEAD`, and extension bundles rebuilt on disk since they loaded (a restart loads them) are each called out. |
+
+A call that did not do its job exits non-zero — a `tap` with no match, a
+`run` that stopped short, a `field` that set nothing, `ready` timing out — so
+a script chaining them stops at the first. A call gets 30 seconds to answer
+(`run`, two minutes).
+
 ---
 
 ## Handy `mise` tasks
@@ -508,7 +581,8 @@ Defined in [`mise.toml`](mise.toml):
 | Task | What it does |
 |---|---|
 | `mise run bundle` | Build the extension JS/TS bundles. |
-| `mise run mac` | Build extensions, then run the macOS app. |
+| `mise run mac "<label>"` / `mise run web "<label>"` | Build extensions, then run the macOS app (sandboxed) or the web server ([`halo-dev`](#halo-dev)). |
+| `mise run dev <command>` | [`halo-dev`](#halo-dev): `status`, `reload`, `stop`, `build`, `run`, `tap`, `sandbox --from next`, … |
 | `mise run android` / `mise run run-ios` | Run on Android / iOS simulator. |
 | `mise run test` | Full verification (extensions + every Dart package + app). |
 | `mise run deploy-web` | Build extensions + web app and deploy to Cloudflare Pages. |

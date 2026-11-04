@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:collection/collection.dart' show mergeSort;
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter/foundation.dart' show setEquals, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -52,6 +53,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/secrets.dart';
 import '../../views/extension_markdown_images.dart' show extensionImagesFor;
+import '../../config/dev_bridge.dart' show DevBridge;
 import '../../config/dev_flags.dart';
 import '../../config/experiments.dart';
 import '../../config/dev_fixture.dart';
@@ -446,6 +448,8 @@ class ExtensionService
       final extensionSecrets = <String, Map<String, String>>{};
       final userAgentOverrides = <String>{};
       final loaded = <String>{};
+      _readBundles.clear();
+      _noteBundle(_readBundles, 'kernel', '${index['kernel']}', 'asset', kernelSource);
       for (final info in available) {
         // Disabled (or experiment-gated) extensions are simply never
         // loaded — their hooks, settings panels, and commands are absent
@@ -519,6 +523,9 @@ class ExtensionService
       }
       _host = host;
       _loadedExtensionKeys = loaded;
+      _loadedBundles
+        ..clear()
+        ..addAll(_readBundles);
       engineLoad.attach(host);
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       _host!.interpretationUpdates.listen(_interpretationUpdates.add);
@@ -597,6 +604,7 @@ class ExtensionService
       await _refreshAccountSynchronizable();
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
+      _loadedBundles.clear();
       // Kept, not just reported: `EngineRuntime.load` evaluates each bundle
       // under its own key, so this message names the one that took the
       // generation down — which is the only way an upgrade can put it aside

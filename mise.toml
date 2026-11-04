@@ -53,12 +53,16 @@ android = {
   description = "Run the app on an Android device or emulator"
 }
 mac = {
-  run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d macos --dart-define=HALO_GIT_SHA=\"$sha\")",
-  description = "Build & run macOS app"
+  run = "node scripts/halo-dev.mjs mac",
+  description = "Build & run the macOS app, sandboxed: `mise run mac \"<label>\"` (scripts/halo-dev.mjs)"
 }
 web = {
-  run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d web-server --web-port 8765 --dart-define=HALO_GIT_SHA=\"$sha\")",
-  description = "Run the app as a web server on :8765"
+  run = "node scripts/halo-dev.mjs web",
+  description = "Run the app as a web server on a free port: `mise run web \"<label>\"` (scripts/halo-dev.mjs)"
+}
+dev = {
+  run = "node scripts/halo-dev.mjs",
+  description = "halo-dev: drive a running build — `mise run dev status | reload | build | run \"SEED 20\" | tap action.log | sandbox --from next`"
 }
 windows = {
   run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d windows --dart-define=HALO_GIT_SHA=\"$sha\")",

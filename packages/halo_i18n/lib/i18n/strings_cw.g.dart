@@ -3206,6 +3206,8 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 	@override String get systemInformation => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·';
 	@override String get appVersion => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·';
 	@override String get dataFolder => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·';
+	@override String get worktree => '·—— ——— ·—· —·— — ·—· · ·';
+	@override String get launchedAt => '··· — ·— ·—· — · —··';
 	@override String get loading => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—';
 	@override String get panelLoadFailed => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—';
 	@override String get extDevServer => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·';
@@ -7180,6 +7182,8 @@ extension on TranslationsCw {
 			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.developer.appVersion' => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·',
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
+			'settings.developer.worktree' => '·—— ——— ·—· —·— — ·—· · ·',
+			'settings.developer.launchedAt' => '··· — ·— ·—· — · —··',
 			'settings.developer.loading' => '—·——· ·—·· ——— ·— —·· ·· —· ——· … —·——·—',
 			'settings.developer.panelLoadFailed' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—·· ——— ·— —·· / — ···· ·· ··· / ··· · — — ·· —· ——· ··· / ·——· ·— —· · ·—·· ·—·—·—',
 			'settings.developer.extDevServer' => '· —··— — · —· ··· ·· ——— —· / —·· · ···— / ··· · ·—· ···— · ·—·',
@@ -7368,10 +7372,10 @@ extension on TranslationsCw {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => '··— —· —·— —· ——— ·—— —· / —·—· ——— —— —— ·— —· —·· ———··· / ${command}',
 			'keyboardShortcuts.command.commandDialog' => '——— ·——· · —· / — ···· · / —·—· ——— —— —— ·— —· —·· / —·· ·· ·— ·—·· ——— ——·',
 			'keyboardShortcuts.command.toggleTheme' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—·· ·· ——· ···· — / ·— —· —·· / —·· ·— ·—· —·—',
-			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
-			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
+			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleDown' => '··· —— ·— ·—·· ·—·· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleReset' => '—· ——— ·—· —— ·— ·—·· / — · —··— — / ··· ·· ——·· ·',
 			'keyboardShortcuts.command.densityLooser' => '·—· ——— ——— —— ·· · ·—· / ·—·· ·— —·—— ——— ··— —',

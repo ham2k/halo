@@ -22,11 +22,12 @@ void main() {
     DevBridge.instance.stateProvider = null; // don't leak into other tests
   });
 
-  test('setField/action delegate to the logging handlers, no-op when unset', () {
+  test('setField/action delegate to the logging handlers, and setField says when it set nothing', () {
     DevBridge.instance.setFieldHandler = null;
     DevBridge.instance.actionHandler = null;
-    // No logging screen active — never throw.
-    expect(() => DevBridge.instance.setField('call', 'W1AW'), returnsNormally);
+    // No logging screen active: a script must hear that nothing was set,
+    // not carry on as if the field held its value.
+    expect(DevBridge.instance.setField('call', 'W1AW'), contains('error'));
     expect(() => DevBridge.instance.action('log'), returnsNormally);
 
     String? field;
@@ -38,9 +39,14 @@ void main() {
     };
     DevBridge.instance.actionHandler = (a) => action = a;
 
-    DevBridge.instance.setField('call', 'W1AW');
+    expect(DevBridge.instance.setField('call', 'W1AW'), {'set': 'call'});
     expect(field, 'call');
     expect(value, 'W1AW');
+    // The logging controls set only the call; any other field would vanish
+    // there without a word.
+    field = null;
+    expect(DevBridge.instance.setField('rst', '59'), contains('error'));
+    expect(field, isNull);
     DevBridge.instance.action('log');
     expect(action, 'log');
 

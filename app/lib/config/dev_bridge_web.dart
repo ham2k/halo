@@ -9,8 +9,8 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'dev_bridge.dart';
 
 /// Installs `window.__halo` with the inspection API (`getState()`, `getGuess()`,
-/// `recentLog()`), the control actions (`setField()`, `tap()`), and the `ready`
-/// promise — the getters return plain JS objects agents parse via
+/// `recentLog()`, `build()`, `targets()`), the control actions (`setField()`,
+/// `tap()`, `runCommand()`), and the `ready` promise — the getters return plain JS objects agents parse via
 /// javascript_tool.
 ///
 /// Gated to non-release (debug/profile) builds — where agents run the web app
@@ -22,8 +22,13 @@ void installDevBridge() {
   final bridge = JSObject();
   bridge['getState'] = (() => DevBridge.instance.state().jsify()).toJS;
   bridge['getGuess'] = (() => DevBridge.instance.guess().jsify()).toJS;
-  bridge['setField'] = ((JSString field, JSString value) => DevBridge.instance.setField(field.toDart, value.toDart)).toJS;
-  bridge['tap'] = ((JSString action) => DevBridge.instance.action(action.toDart)).toJS;
+  bridge['setField'] = ((JSString field, JSString value) => DevBridge.instance.setField(field.toDart, value.toDart).jsify()).toJS;
+  // Promises: a tap may first have to wait a frame for the semantics tree,
+  // and a command runs as long as its hooks do.
+  bridge['tap'] = ((JSString target) => DevBridge.instance.tap(target.toDart).then((r) => r.jsify()).toJS).toJS;
+  bridge['targets'] = (() => DevBridge.instance.targets().then((r) => r.jsify()).toJS).toJS;
+  bridge['runCommand'] = ((JSString text) => DevBridge.instance.runCommand(text.toDart).then((r) => r.jsify()).toJS).toJS;
+  bridge['build'] = (() => DevBridge.instance.build().jsify()).toJS;
   // A single stable promise (resolves when signalReady() fires) — `await
   // window.__halo.ready` replaces sleeping after a page load.
   bridge['ready'] = DevBridge.instance.ready.toJS;

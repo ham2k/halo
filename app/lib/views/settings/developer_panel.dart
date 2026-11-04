@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../../config/dev_bridge.dart';
 import '../../config/experiments.dart';
 import '../../config/version.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -235,6 +236,13 @@ class DeveloperPanel extends StatelessWidget {
               // (see app_storage.dart), so it's worth being able to read it back
               // from a running build rather than guessing.
               if (!kIsWeb) _infoRowWidget(context, context.t.settings.developer.dataFolder, const _DataFolderValue()),
+              // Which checkout a dev build came from, and since when it has
+              // run: with several worktrees' builds open at once, the version
+              // alone does not say whose code is on screen, nor whether it
+              // has been restarted since a change.
+              if (DevBridge.worktree.isNotEmpty) _infoRow(context, context.t.settings.developer.worktree, DevBridge.worktree),
+              if (DevBridge.instance.installed)
+                _infoRow(context, context.t.settings.developer.launchedAt, DevBridge.instance.launchedAt.toLocal().toString().substring(0, 19)),
             ]),
           ],
         );

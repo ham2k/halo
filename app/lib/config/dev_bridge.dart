@@ -1,30 +1,36 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A dev/preview-only bridge for inspecting and driving the running app from
-// outside it — so agents and scripts can query app state deterministically
-// instead of pixel-hunting the Flutter canvas. The web installer
-// (dev_bridge_installer.dart) surfaces it as `window.__halo`.
+// A dev-only bridge for inspecting and driving the running app from outside
+// it — so agents and scripts can query app state deterministically instead of
+// pixel-hunting the Flutter canvas. The installer (dev_bridge_installer.dart)
+// surfaces it as `window.__halo` on web and as `ext.halo.*` VM-service
+// extensions on every other platform, which `scripts/halo-dev.mjs` calls.
 //
-// Pure Dart with no web import, so it's inert off web and in production: nothing
-// installs the JS entry point there, so [stateProvider] is simply never invoked.
+// No platform import here, so it is inert in production: nothing installs an
+// entry point in a release build, so [stateProvider] is simply never invoked.
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:halo_core/halo_core.dart' show DevLog;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode, kIsWeb, kProfileMode, visibleForTesting;
+import 'package:halo_core/halo_core.dart' show DevLog, realNowUtc;
+
+import 'dev_bridge_semantics.dart' as semantics;
+import 'dev_flags.dart' show devDataDirectory;
+import 'dev_label.dart';
+import 'version.dart';
 
 /// The single bridge instance. The active screen registers a [stateProvider];
-/// the web installer reads it.
+/// the installer reads it.
 class DevBridge {
   DevBridge._();
   static final DevBridge instance = DevBridge._();
 
-  /// Whether the web entry point was actually installed (dev/preview build on
-  /// web) — set by the installer. Screens gate their [stateProvider]
-  /// registration on this, so nothing dev-only runs when the bridge is absent
-  /// (native, or a production release), and the gate lives in ONE place: extend
-  /// the installer's condition and registration follows automatically.
+  /// Whether an entry point was actually installed (a non-release build) — set
+  /// by the installer. Screens gate their [stateProvider] registration on
+  /// this, so nothing dev-only runs when the bridge is absent (a production
+  /// release), and the gate lives in ONE place: extend the installer's
+  /// condition and registration follows automatically.
   bool installed = false;
 
   /// Supplies the current-state snapshot — set by the active screen
@@ -50,8 +56,60 @@ class DevBridge {
   /// Performs a compose action (`log`, `wipe`).
   void Function(String action)? actionHandler;
 
-  void setField(String field, String value) => setFieldHandler?.call(field, value);
+  /// The fields [setFieldHandler] sets: the ones LoggingControls' dev
+  /// setter (`_devSetField` in halo_widgets) handles. Any other is refused
+  /// here rather than dropped there.
+  static const settableFields = {'call'};
+
+  /// Sets [field] through [setFieldHandler], answering `{set: field}`, or an
+  /// error when no logging screen is open or the field is not settable.
+  Map<String, dynamic> setField(String field, String value) {
+    final handler = setFieldHandler;
+    if (handler == null) return {'error': 'no logging screen is open'};
+    if (!settableFields.contains(field)) return {'error': 'only ${settableFields.join(', ')} can be set, not "$field"'};
+    handler(field, value);
+    return {'set': field};
+  }
+
   void action(String id) => actionHandler?.call(id);
+
+  /// The compose actions [actionHandler] performs directly, without going
+  /// through the semantics tree.
+  static const composeActions = {'log', 'wipe'};
+
+  /// Taps [target]: a compose action ([composeActions]) through the logging
+  /// screen, anything else through the semantics tree — by its stable
+  /// identifier (`action.log`, `qso.row.W1AW`), else its label, exact before
+  /// contained. A target that matches several controls taps none and lists
+  /// them, so a script never presses a button it did not mean — which is
+  /// also why a compose action with no logging screen open is refused, not
+  /// matched against whatever label happens to contain "log".
+  Future<Map<String, dynamic>> tap(String target) async {
+    if (composeActions.contains(target)) {
+      final handler = actionHandler;
+      if (handler == null) return {'error': 'no logging screen is open for "$target"'};
+      handler(target);
+      return {'tapped': target};
+    }
+    return semantics.tapTarget(target);
+  }
+
+  /// Every control [tap] can reach on screen right now, as
+  /// `{identifier?, label}`.
+  Future<List<Map<String, dynamic>>> targets() => semantics.tapTargets();
+
+  // ── Command text ──────────────────────────────────────────────────────────
+
+  /// Runs command text the way a bound key does — wired by `HaLoApp`, which
+  /// owns that path. Null before the app shell mounts.
+  Future<Map<String, dynamic>> Function(String text)? runCommandHandler;
+
+  /// Runs [text] (`SEED 20`, `DEVTT +3h`, `20M; CW`) in one call, against the
+  /// operation in front. Driving the ⌘K dialog for the same thing takes four
+  /// calls with waits between them, and its first open after a cold boot can
+  /// outlast the wait [openCommandBar] allows.
+  Future<Map<String, dynamic>> runCommand(String text) =>
+      runCommandHandler?.call(text) ?? Future.value(<String, dynamic>{'error': 'the app shell has not mounted yet'});
 
   // ── Command dialog (⌘K) ───────────────────────────────────────────────────
   // The shortcut itself cannot be driven from outside: synthetic modifier
@@ -136,7 +194,7 @@ class DevBridge {
   Future<Map<String, dynamic>> Function()? resetFixtureHandler;
 
   /// Backs `window.__halo.resetFixture()`. A no-op summary when no handler is
-  /// registered (native / production, or before boot completes — see above).
+  /// registered (production, or before boot completes — see above).
   Future<Map<String, dynamic>> resetFixture() => resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
 
   // ── Structured log ────────────────────────────────────────────────────────
@@ -146,14 +204,43 @@ class DevBridge {
   /// builds). See [DevLog].
   List<Map<String, Object?>> recentLog() => DevLog.instance.recent();
 
+  // ── Build identity ────────────────────────────────────────────────────────
+
+  /// The checkout the launcher built this from (`HALO_DEV_WORKTREE`), empty
+  /// for a build started some other way.
+  static const worktree = String.fromEnvironment('HALO_DEV_WORKTREE');
+
+  /// When this launch started (real time, not the travelled clock: it says
+  /// when the process began, which time travel does not change).
+  final DateTime launchedAt = realNowUtc();
+
+  /// The extension bundles the running runtime loaded, keyed by extension:
+  /// `{origin, file, sha256}`. Wired in `main()` once services exist.
+  Map<String, Map<String, String>> Function()? extensionBundlesProvider;
+
+  /// Which build this is and what it is running — what a script compares
+  /// against the checkout to tell a stale build from a fresh one.
+  Map<String, dynamic> build() => {
+    'sha': kGitSha,
+    'edition': kEdition.name,
+    'label': devLabel,
+    'worktree': worktree,
+    'dataDirectory': devDataDirectory,
+    'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+    'mode': kDebugMode ? 'debug' : (kProfileMode ? 'profile' : 'release'),
+    'launchedAt': launchedAt.toIso8601String(),
+    'extensions': extensionBundlesProvider?.call() ?? const <String, Map<String, String>>{},
+  };
+
   // ── Readiness ─────────────────────────────────────────────────────────────
 
   Completer<void> _ready = Completer<void>();
 
   /// Resolves once the app has bootstrapped and the home screen's first data
   /// load (the operations list) has arrived — so agents can `await
-  /// window.__halo.ready` instead of sleeping a guessed interval. On native /
-  /// production nothing signals or awaits it, so it simply never completes.
+  /// window.__halo.ready` (or `halo-dev ready`) instead of sleeping a guessed
+  /// interval. In production nothing signals or awaits it, so it simply never
+  /// completes.
   Future<void> get ready => _ready.future;
 
   /// Marks the app ready. Called once by [HomeView] when its operations stream
@@ -167,7 +254,7 @@ class DevBridge {
   /// bridge is a lifetime singleton, so its completer would otherwise stay
   /// completed across tests.
   ///
-  /// Tests only, and only before the web installer runs: it captures the
+  /// Tests only, and only before the installer runs: it captures the
   /// promise from [ready] once (`installDevBridge`), so resetting after that
   /// would leave `window.__halo.ready` bound to the old completer while [ready]
   /// returns a new one.

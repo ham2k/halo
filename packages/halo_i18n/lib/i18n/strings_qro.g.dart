@@ -3206,6 +3206,8 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 	@override String get systemInformation => 'SYSTEM INFORMATION';
 	@override String get appVersion => 'APP VERSION';
 	@override String get dataFolder => 'DATA FOLDER';
+	@override String get worktree => 'WORKTREE';
+	@override String get launchedAt => 'STARTED';
 	@override String get loading => '(LOADING…)';
 	@override String get panelLoadFailed => 'COULD NOT LOAD THIS SETTINGS PANEL.';
 	@override String get extDevServer => 'EXTENSION DEV SERVER';
@@ -7180,6 +7182,8 @@ extension on TranslationsQro {
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
 			'settings.developer.appVersion' => 'APP VERSION',
 			'settings.developer.dataFolder' => 'DATA FOLDER',
+			'settings.developer.worktree' => 'WORKTREE',
+			'settings.developer.launchedAt' => 'STARTED',
 			'settings.developer.loading' => '(LOADING…)',
 			'settings.developer.panelLoadFailed' => 'COULD NOT LOAD THIS SETTINGS PANEL.',
 			'settings.developer.extDevServer' => 'EXTENSION DEV SERVER',
@@ -7368,10 +7372,10 @@ extension on TranslationsQro {
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'UNKNOWN COMMAND: ${command}',
 			'keyboardShortcuts.command.commandDialog' => 'OPEN THE COMMAND DIALOG',
 			'keyboardShortcuts.command.toggleTheme' => 'SWITCH BETWEEN LIGHT AND DARK',
-			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
-			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
+			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			'keyboardShortcuts.command.fontScaleDown' => 'SMALLER TEXT',
 			'keyboardShortcuts.command.fontScaleReset' => 'NORMAL TEXT SIZE',
 			'keyboardShortcuts.command.densityLooser' => 'ROOMIER LAYOUT',
