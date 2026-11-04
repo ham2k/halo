@@ -3201,6 +3201,8 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 	@override String get registerUrlSchemesDescription => 'LET COM.HAM2K:// LINKS OPEN THIS COPY OF THE APP';
 	@override String get registerUrlSchemesDone => 'THIS COPY NOW OPENS COM.HAM2K:// LINKS';
 	@override String registerUrlSchemesFailed({required Object error}) => 'COULD NOT REGISTER: ${error}';
+	@override String get diagnostics => 'DIAGNOSTICS';
+	@override String get importExport => 'IMPORT / EXPORT';
 	@override String get systemInformation => 'SYSTEM INFORMATION';
 	@override String get appVersion => 'APP VERSION';
 	@override String get dataFolder => 'DATA FOLDER';
@@ -3226,9 +3228,6 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 		other: '${count} EXTENSIONS FAILING TO BUILD',
 	);
 	@override String get catalog => 'EXTENSION CATALOG';
-	@override String get catalogDescription => 'READ THE CATALOG FROM ANOTHER SERVER — A LOCAL ONE WHILE WORKING ON THE CATALOG ITSELF. EMPTY MEANS CATALOG.HAM2K.NET.';
-	@override String get catalogAddress => 'CATALOG ADDRESS';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'CATALOG SEARCH TRACKS';
 	@override String get catalogSearchStable => 'ONLY STABLE';
 	@override String get catalogSearchUnstable => 'UNSTABLE OR BETTER';
@@ -7176,6 +7175,8 @@ extension on TranslationsQro {
 			'settings.developer.registerUrlSchemesDescription' => 'LET COM.HAM2K:// LINKS OPEN THIS COPY OF THE APP',
 			'settings.developer.registerUrlSchemesDone' => 'THIS COPY NOW OPENS COM.HAM2K:// LINKS',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'COULD NOT REGISTER: ${error}',
+			'settings.developer.diagnostics' => 'DIAGNOSTICS',
+			'settings.developer.importExport' => 'IMPORT / EXPORT',
 			'settings.developer.systemInformation' => 'SYSTEM INFORMATION',
 			'settings.developer.appVersion' => 'APP VERSION',
 			'settings.developer.dataFolder' => 'DATA FOLDER',
@@ -7195,9 +7196,6 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
-			'settings.developer.catalogDescription' => 'READ THE CATALOG FROM ANOTHER SERVER — A LOCAL ONE WHILE WORKING ON THE CATALOG ITSELF. EMPTY MEANS CATALOG.HAM2K.NET.',
-			'settings.developer.catalogAddress' => 'CATALOG ADDRESS',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
 			'settings.developer.catalogSearchUnstable' => 'UNSTABLE OR BETTER',
@@ -7371,9 +7369,9 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.commandDialog' => 'OPEN THE COMMAND DIALOG',
 			'keyboardShortcuts.command.toggleTheme' => 'SWITCH BETWEEN LIGHT AND DARK',
 			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
+			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			_ => null,
 		} ?? switch (path) {
-			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			'keyboardShortcuts.command.fontScaleDown' => 'SMALLER TEXT',
 			'keyboardShortcuts.command.fontScaleReset' => 'NORMAL TEXT SIZE',
 			'keyboardShortcuts.command.densityLooser' => 'ROOMIER LAYOUT',

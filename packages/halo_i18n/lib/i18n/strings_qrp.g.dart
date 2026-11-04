@@ -3201,6 +3201,8 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 	@override String get registerUrlSchemesDescription => 'let com.ham2k:// links open this copy of the app';
 	@override String get registerUrlSchemesDone => 'this copy now opens com.ham2k:// links';
 	@override String registerUrlSchemesFailed({required Object error}) => 'could not register: ${error}';
+	@override String get diagnostics => 'diagnostics';
+	@override String get importExport => 'import / export';
 	@override String get systemInformation => 'system information';
 	@override String get appVersion => 'app version';
 	@override String get dataFolder => 'data folder';
@@ -3226,9 +3228,6 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 		other: '${count} extensions failing to build',
 	);
 	@override String get catalog => 'extension catalog';
-	@override String get catalogDescription => 'read the catalog from another server — a local one while working on the catalog itself. empty means catalog.ham2k.net.';
-	@override String get catalogAddress => 'catalog address';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'catalog search tracks';
 	@override String get catalogSearchStable => 'only stable';
 	@override String get catalogSearchUnstable => 'unstable or better';
@@ -7176,6 +7175,8 @@ extension on TranslationsQrp {
 			'settings.developer.registerUrlSchemesDescription' => 'let com.ham2k:// links open this copy of the app',
 			'settings.developer.registerUrlSchemesDone' => 'this copy now opens com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'could not register: ${error}',
+			'settings.developer.diagnostics' => 'diagnostics',
+			'settings.developer.importExport' => 'import / export',
 			'settings.developer.systemInformation' => 'system information',
 			'settings.developer.appVersion' => 'app version',
 			'settings.developer.dataFolder' => 'data folder',
@@ -7195,9 +7196,6 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'extension catalog',
-			'settings.developer.catalogDescription' => 'read the catalog from another server — a local one while working on the catalog itself. empty means catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'catalog address',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'catalog search tracks',
 			'settings.developer.catalogSearchStable' => 'only stable',
 			'settings.developer.catalogSearchUnstable' => 'unstable or better',
@@ -7371,9 +7369,9 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.commandDialog' => 'open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
+			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			_ => null,
 		} ?? switch (path) {
-			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'roomier layout',

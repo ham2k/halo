@@ -2596,9 +2596,6 @@
         "other": "${count} Erweiterungen lassen sich nicht bauen"
       },
       "catalog": "Erweiterungskatalog",
-      "catalogDescription": "Den Katalog von einem anderen Server lesen — einem lokalen, während am Katalog selbst gearbeitet wird. Leer bedeutet catalog.ham2k.net.",
-      "catalogAddress": "Katalogadresse",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Zweige für Katalogsuche",
       "catalogSearchStable": "Nur stabil",
       "catalogSearchUnstable": "Instabil oder besser",

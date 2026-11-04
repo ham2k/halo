@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$tr extends Translations$settings$develope
 		other: '${count} uzantı derlenemiyor',
 	);
 	@override String get catalog => 'Uzantı Kataloğu';
-	@override String get catalogDescription => 'Kataloğu başka bir sunucudan okuyun — katalog üzerinde çalışırken yerel bir sunucudan. Boş bırakılırsa catalog.ham2k.net kullanılır.';
-	@override String get catalogAddress => 'Katalog adresi';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Katalog Arama Kanalları';
 	@override String get catalogSearchStable => 'Yalnızca Kararlı';
 	@override String get catalogSearchUnstable => 'Kararsız veya daha iyisi';
@@ -6721,9 +6718,6 @@ extension on TranslationsTr {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Son yeniden yükleme: ${key}, ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} uzantı derlenemiyor', other: '${count} uzantı derlenemiyor', ), 
 			'settings.developer.catalog' => 'Uzantı Kataloğu',
-			'settings.developer.catalogDescription' => 'Kataloğu başka bir sunucudan okuyun — katalog üzerinde çalışırken yerel bir sunucudan. Boş bırakılırsa catalog.ham2k.net kullanılır.',
-			'settings.developer.catalogAddress' => 'Katalog adresi',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Katalog Arama Kanalları',
 			'settings.developer.catalogSearchStable' => 'Yalnızca Kararlı',
 			'settings.developer.catalogSearchUnstable' => 'Kararsız veya daha iyisi',
@@ -7057,11 +7051,11 @@ extension on TranslationsTr {
 			'switchAccounts.noLinkCode' => 'Senkronizasyon sunucusu bir bağlantı kodu döndürmedi. Daha sonra tekrar deneyin.',
 			'switchAccounts.noConfirmationCode' => 'Senkronizasyon sunucusu bir onay kodu göndermedi. Daha sonra tekrar deneyin.',
 			'switchAccounts.switchNotAccepted' => 'Bu hesap geçişi kabul etmedi. Bunun yerine bir e-posta adresiyle bağlamayı deneyin.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',
 			'qsonImport.description' => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.',
 			'qsonImport.dropHint' => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın',

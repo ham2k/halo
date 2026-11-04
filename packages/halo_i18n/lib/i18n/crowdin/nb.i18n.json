@@ -2596,9 +2596,6 @@
         "other": "${count} utvidelser feiler under bygging"
       },
       "catalog": "Utvidelseskatalog",
-      "catalogDescription": "Les katalogen fra en annen server — en lokal en mens du jobber med selve katalogen. Tomt betyr catalog.ham2k.net.",
-      "catalogAddress": "Katalogadresse",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Spor for katalogsøk",
       "catalogSearchStable": "Bare stabile",
       "catalogSearchUnstable": "Ustabile eller bedre",

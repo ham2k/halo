@@ -479,34 +479,17 @@ class CatalogService {
     return record != null && record.isTrackOf(host) ? record.channel : CatalogChannel.stable;
   }
 
-  /// Whether the developer override is in force — developer mode on AND an
-  /// address typed. The two together, not the address alone: developer mode
-  /// going off must return the app to the real catalog with nothing else
-  /// touched, the same way the dev server drops out.
-  bool get _overrideActive {
-    final settings = _settings;
-    return settings != null && settings.developerMode && settings.catalogBaseUrl.isNotEmpty;
-  }
-
-  /// The catalog in force: the developer override under developer mode,
-  /// otherwise the built-in address.
-  String get baseUrl => _overrideActive ? _settings!.catalogBaseUrl : kCatalogBaseUrl;
+  /// The catalog every request goes to.
+  String get baseUrl => kCatalogBaseUrl;
 
   /// The host bundles are attributed to — on the consent screen, and in the
   /// provenance record that waives the `ham2k-` refusal ONLY when it is
-  /// [kCatalogHost]. A local catalog under the override is named as itself.
-  String get host => Uri.parse(baseUrl).host;
+  /// [kCatalogHost].
+  String get host => kCatalogHost;
 
-  /// Whether [url] is on the catalog in force — the built-in one, or the
-  /// override's origin while that is on. What routes a deep link through
-  /// the hash-verified path instead of the plain download. The ACTIVE
-  /// catalog only: under an override, a production link would otherwise be
-  /// resolved against the override's listings, which never served it.
-  bool isCatalogUrl(Uri url) {
-    if (url.scheme != 'https' && url.scheme != 'http') return false;
-    final active = Uri.tryParse(baseUrl);
-    return active != null && active.host.isNotEmpty && url.origin == active.origin;
-  }
+  /// Whether [url] is on the catalog. What routes a deep link through the
+  /// hash-verified path instead of the plain download.
+  bool isCatalogUrl(Uri url) => url.scheme == 'https' && url.origin == kCatalogBaseUrl;
 
   static final _bundlePath = RegExp(r'^/api/v1/extensions/([a-z0-9][a-z0-9-]*)/versions/([^/]+)/bundle$');
   static final _pagePath = RegExp(r'^/extensions/([a-z0-9][a-z0-9-]*)/?$');
@@ -661,16 +644,8 @@ class CatalogService {
   Future<List<int>> download(CatalogRelease release, {void Function(double? fraction)? onProgress}) =>
       downloadBundle(release.bundleUrl, sha256: release.sha256, onProgress: onProgress);
 
-  /// Whether a bundle may be fetched from [url]. https, always — with the one
-  /// exception of a loopback address while the developer override is in
-  /// force, so the catalog's own dev loop can be exercised from the panel.
-  /// Loopback only: an `http://` catalog on the LAN is exactly the rewrite
-  /// https exists to rule out.
-  bool _allowsBundleUrl(Uri url) {
-    if (url.scheme == 'https') return true;
-    if (!_overrideActive || url.scheme != 'http') return false;
-    return url.host == 'localhost' || url.host == '127.0.0.1';
-  }
+  /// Whether a bundle may be fetched from [url]: https only.
+  bool _allowsBundleUrl(Uri url) => url.scheme == 'https';
 
   /// Fetches a bundle from [source], refusing anything implausibly large
   /// before it is held in memory — the link naming it is not one this app

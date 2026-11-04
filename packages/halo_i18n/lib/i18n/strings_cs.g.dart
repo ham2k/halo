@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$cs extends Translations$settings$develope
 		other: '${count} rozšíření se nedaří sestavit',
 	);
 	@override String get catalog => 'Katalog rozšíření';
-	@override String get catalogDescription => 'Číst katalog z jiného serveru — místního při práci na samotném katalogu. Prázdné znamená catalog.ham2k.net.';
-	@override String get catalogAddress => 'Adresa katalogu';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Větve hledání v katalogu';
 	@override String get catalogSearchStable => 'Pouze stabilní';
 	@override String get catalogSearchUnstable => 'Nestabilní nebo lepší';
@@ -6721,9 +6718,6 @@ extension on TranslationsCs {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Poslední načtení: ${key} v ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} rozšíření se nedaří sestavit', other: '${count} rozšíření se nedaří sestavit', ), 
 			'settings.developer.catalog' => 'Katalog rozšíření',
-			'settings.developer.catalogDescription' => 'Číst katalog z jiného serveru — místního při práci na samotném katalogu. Prázdné znamená catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Adresa katalogu',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Větve hledání v katalogu',
 			'settings.developer.catalogSearchStable' => 'Pouze stabilní',
 			'settings.developer.catalogSearchUnstable' => 'Nestabilní nebo lepší',
@@ -7057,11 +7051,11 @@ extension on TranslationsCs {
 			'switchAccounts.noLinkCode' => 'Synchronizační server nevrátil kód pro propojení. Zkuste to později.',
 			'switchAccounts.noConfirmationCode' => 'Synchronizační server neposlal potvrzovací kód. Zkuste to později.',
 			'switchAccounts.switchNotAccepted' => 'Tento účet přepnutí nepřijal. Zkuste ho místo toho propojit pomocí e-mailové adresy.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Při komunikaci se synchronizačním serverem se něco pokazilo. Zkuste to později.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} aktivita', other: '${count} aktivit', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importovat aktivitu QSON',
 			'qsonImport.description' => 'Vytvořte novou aktivitu ze souboru QSON, jaký exportuje Režim vývojáře zde nebo v PoLo.',
 			'qsonImport.dropHint' => 'Přetáhněte sem soubor QSON a importujte ho jako novou aktivitu',

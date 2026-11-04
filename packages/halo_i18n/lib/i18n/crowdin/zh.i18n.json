@@ -2596,9 +2596,6 @@
         "other": "${count} 个扩展构建失败"
       },
       "catalog": "扩展目录",
-      "catalogDescription": "从其他服务器读取目录——例如在开发目录本身时使用的本地服务器。留空表示 catalog.ham2k.net。",
-      "catalogAddress": "目录地址",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "目录搜索轨道",
       "catalogSearchStable": "仅稳定版",
       "catalogSearchUnstable": "不稳定版及以上",

@@ -2746,6 +2746,8 @@
       "registerUrlSchemesDescription": "Let com.ham2k:// links open this copy of the app",
       "registerUrlSchemesDone": "This copy now opens com.ham2k:// links",
       "registerUrlSchemesFailed": "Could not register: $error",
+      "diagnostics": "Diagnostics",
+      "importExport": "Import / Export",
       "systemInformation": "System Information",
       "appVersion": "App Version",
       "dataFolder": "Data Folder",
@@ -2771,9 +2773,6 @@
         "other": "${count} extensions failing to build"
       },
       "catalog": "Extension Catalog",
-      "catalogDescription": "Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.",
-      "catalogAddress": "Catalog address",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Catalog Search Tracks",
       "catalogSearchStable": "Only Stable",
       "catalogSearchUnstable": "Unstable or better",

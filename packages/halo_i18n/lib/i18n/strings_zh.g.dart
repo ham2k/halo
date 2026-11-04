@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$zh extends Translations$settings$develope
 		other: '${count} 个扩展构建失败',
 	);
 	@override String get catalog => '扩展目录';
-	@override String get catalogDescription => '从其他服务器读取目录——例如在开发目录本身时使用的本地服务器。留空表示 catalog.ham2k.net。';
-	@override String get catalogAddress => '目录地址';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => '目录搜索轨道';
 	@override String get catalogSearchStable => '仅稳定版';
 	@override String get catalogSearchUnstable => '不稳定版及以上';
@@ -6721,9 +6718,6 @@ extension on TranslationsZh {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '上次重新加载：${key}，于 ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个扩展构建失败', other: '${count} 个扩展构建失败', ), 
 			'settings.developer.catalog' => '扩展目录',
-			'settings.developer.catalogDescription' => '从其他服务器读取目录——例如在开发目录本身时使用的本地服务器。留空表示 catalog.ham2k.net。',
-			'settings.developer.catalogAddress' => '目录地址',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => '目录搜索轨道',
 			'settings.developer.catalogSearchStable' => '仅稳定版',
 			'settings.developer.catalogSearchUnstable' => '不稳定版及以上',
@@ -7057,11 +7051,11 @@ extension on TranslationsZh {
 			'switchAccounts.noLinkCode' => '同步服务器没有返回链接代码。请稍后重试。',
 			'switchAccounts.noConfirmationCode' => '同步服务器没有发送确认代码。请稍后重试。',
 			'switchAccounts.switchNotAccepted' => '该账户不接受切换。请改用电子邮件地址链接。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个 QSO', other: '${count} 个 QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => '导入 QSON 操作',
 			'qsonImport.description' => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。',
 			'qsonImport.dropHint' => '拖放 QSON 文件以导入为新操作',

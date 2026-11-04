@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$nl extends Translations$settings$develope
 		other: '${count} extensies bouwen niet',
 	);
 	@override String get catalog => 'Extensiecatalogus';
-	@override String get catalogDescription => 'De catalogus van een andere server lezen — een lokale tijdens het werken aan de catalogus zelf. Leeg betekent catalog.ham2k.net.';
-	@override String get catalogAddress => 'Catalogusadres';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Zoekkanalen catalogus';
 	@override String get catalogSearchStable => 'Alleen stabiel';
 	@override String get catalogSearchUnstable => 'Onstabiel of beter';
@@ -6721,9 +6718,6 @@ extension on TranslationsNl {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Laatst herladen: ${key} om ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} extensie bouwt niet', other: '${count} extensies bouwen niet', ), 
 			'settings.developer.catalog' => 'Extensiecatalogus',
-			'settings.developer.catalogDescription' => 'De catalogus van een andere server lezen — een lokale tijdens het werken aan de catalogus zelf. Leeg betekent catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Catalogusadres',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Zoekkanalen catalogus',
 			'settings.developer.catalogSearchStable' => 'Alleen stabiel',
 			'settings.developer.catalogSearchUnstable' => 'Onstabiel of beter',
@@ -7057,11 +7051,11 @@ extension on TranslationsNl {
 			'switchAccounts.noLinkCode' => 'De synchronisatieserver gaf geen koppelcode terug. Probeer het later opnieuw.',
 			'switchAccounts.noConfirmationCode' => 'De synchronisatieserver stuurde geen bevestigingscode. Probeer het later opnieuw.',
 			'switchAccounts.switchNotAccepted' => 'Dat account accepteerde de wissel niet. Probeer het in plaats daarvan te koppelen met een e-mailadres.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'QSON-activatie importeren',
 			'qsonImport.description' => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.',
 			'qsonImport.dropHint' => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren',

@@ -2596,9 +2596,6 @@
         "other": "${count} extensions en échec de compilation"
       },
       "catalog": "Catalogue d'extensions",
-      "catalogDescription": "Lire le catalogue depuis un autre serveur — un serveur local pour travailler sur le catalogue lui-même. Vide signifie catalog.ham2k.net.",
-      "catalogAddress": "Adresse du catalogue",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Pistes de recherche du catalogue",
       "catalogSearchStable": "Stable uniquement",
       "catalogSearchUnstable": "Instable ou mieux",

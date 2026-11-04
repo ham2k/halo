@@ -2596,9 +2596,6 @@
         "other": "${count} rozšírení sa nedá zostaviť"
       },
       "catalog": "Katalóg rozšírení",
-      "catalogDescription": "Čítať katalóg z iného servera — lokálneho pri práci na samotnom katalógu. Prázdne znamená catalog.ham2k.net.",
-      "catalogAddress": "Adresa katalógu",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Vetvy pri hľadaní v katalógu",
       "catalogSearchStable": "Iba stabilné",
       "catalogSearchUnstable": "Nestabilné alebo lepšie",

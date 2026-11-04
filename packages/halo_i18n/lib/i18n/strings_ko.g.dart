@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$ko extends Translations$settings$develope
 		other: '확장 기능 ${count}개 빌드 실패',
 	);
 	@override String get catalog => '확장 기능 카탈로그';
-	@override String get catalogDescription => '다른 서버에서 카탈로그를 읽습니다. 카탈로그 자체를 작업할 때는 로컬 서버를 사용하세요. 비워 두면 catalog.ham2k.net을 사용합니다.';
-	@override String get catalogAddress => '카탈로그 주소';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => '카탈로그 검색 트랙';
 	@override String get catalogSearchStable => '안정만';
 	@override String get catalogSearchUnstable => '불안정 이상';
@@ -6721,9 +6718,6 @@ extension on TranslationsKo {
 			'settings.developer.extDevServerLastReload' => ({required Object time, required Object key}) => '마지막 다시 불러오기: ${time}에 ${key}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '확장 기능 ${count}개 빌드 실패', other: '확장 기능 ${count}개 빌드 실패', ), 
 			'settings.developer.catalog' => '확장 기능 카탈로그',
-			'settings.developer.catalogDescription' => '다른 서버에서 카탈로그를 읽습니다. 카탈로그 자체를 작업할 때는 로컬 서버를 사용하세요. 비워 두면 catalog.ham2k.net을 사용합니다.',
-			'settings.developer.catalogAddress' => '카탈로그 주소',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => '카탈로그 검색 트랙',
 			'settings.developer.catalogSearchStable' => '안정만',
 			'settings.developer.catalogSearchUnstable' => '불안정 이상',
@@ -7057,11 +7051,11 @@ extension on TranslationsKo {
 			'switchAccounts.noLinkCode' => '동기화 서버가 연결 코드를 반환하지 않았습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.noConfirmationCode' => '동기화 서버가 확인 코드를 보내지 않았습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.switchNotAccepted' => '해당 계정이 전환을 받아들이지 않았습니다. 대신 이메일 주소로 연결해 보세요.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => '동기화 서버와 통신 중 문제가 발생했습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '운용 ${count}개', other: '운용 ${count}개', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'QSON 운용 가져오기',
 			'qsonImport.description' => '이 앱이나 PoLo의 개발자 모드에서 내보낸 QSON 파일로 새 운용을 만듭니다.',
 			'qsonImport.dropHint' => 'QSON 파일을 끌어다 놓아 새 운용으로 가져오세요',

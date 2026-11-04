@@ -44,12 +44,17 @@ class DeveloperPanel extends StatelessWidget {
           // stopped their backgrounds short of the pane's edges.
           padding: const EdgeInsets.only(bottom: Space.xl),
           children: [
-            SwitchListTile(
-              title: Text(context.t.settings.developerMode),
-              subtitle: Text(context.t.settings.developer.developerModeDescription),
-              value: settings.developerMode,
-              onChanged: (enabled) => settings.setDeveloperMode(enabled),
-            ),
+            _settingsRows([
+              {
+                'type': 'field',
+                'fieldType': 'checkbox',
+                'key': 'developerMode',
+                'label': context.t.settings.developerMode,
+                'description': context.t.settings.developer.developerModeDescription,
+                'icon': 'code-tags',
+                'value': settings.developerMode,
+              },
+            ], onChange: (_, value) => settings.setDeveloperMode(value == true)),
             // Reads live — the whole panel rebuilds under the
             // ListenableBuilder(settings) above, so a flip inside the pane
             // updates the count immediately.
@@ -65,15 +70,21 @@ class DeveloperPanel extends StatelessWidget {
                   for (final d in definitions)
                     if (!d.private || settings.experimentEverEnabled(d.key)) d.key,
                 ]);
-                return ListTile(
-                  leading: const Icon(MdiIcons.flaskOutline),
-                  title: Text(context.t.settings.developer.experiments),
-                  subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
-                  mouseCursor: SystemMouseCursors.click,
+                return _settingsRows(
+                  [
+                    {
+                      'type': 'action',
+                      'style': 'row',
+                      'key': 'experiments',
+                      'label': context.t.settings.developer.experiments,
+                      'description': context.t.settings.developer.experimentsEnabled(count: enabledCount),
+                      'icon': 'flask-outline',
+                    },
+                  ],
                   // The pane loads the catalog itself — capturing this
                   // builder's `definitions` would freeze a still-loading
                   // (empty) snapshot into the pane for its whole lifetime.
-                  onTap: () => showModalPane<void>(
+                  onAction: (_) => showModalPane<void>(
                     context,
                     title: context.t.settings.developer.experiments,
                     closeLabel: context.t.common.close,
@@ -82,30 +93,62 @@ class DeveloperPanel extends StatelessWidget {
                 );
               },
             ),
-            if (settings.developerMode)
-              SwitchListTile(
-                secondary: const Icon(MdiIcons.speedometer),
-                title: Text(context.t.settings.developer.showIdleMetrics),
-                subtitle: Text(context.t.settings.developer.showIdleMetricsDescription),
-                value: settings.showIdleMetrics,
-                onChanged: settings.setShowIdleMetrics,
-              ),
-            if (settings.developerMode)
-              ListTile(
-                leading: const Icon(MdiIcons.fileImportOutline),
-                title: Text(context.t.qsonImport.title),
-                subtitle: Text(context.t.qsonImport.description),
-                mouseCursor: SystemMouseCursors.click,
-                onTap: () => runQsonImport(context, services),
-              ),
+            if (settings.developerMode) ...[
+              SectionHeader(context.t.settings.developer.diagnostics),
+              _settingsRows([
+                {
+                  'type': 'field',
+                  'fieldType': 'checkbox',
+                  'key': 'showIdleMetrics',
+                  'label': context.t.settings.developer.showIdleMetrics,
+                  'description': context.t.settings.developer.showIdleMetricsDescription,
+                  'icon': 'speedometer',
+                  'value': settings.showIdleMetrics,
+                },
+              ], onChange: (_, value) => settings.setShowIdleMetrics(value == true)),
+              SectionHeader(context.t.settings.developer.importExport),
+              _settingsRows([
+                {
+                  'type': 'action',
+                  'style': 'row',
+                  'key': 'qsonImport',
+                  'label': context.t.qsonImport.title,
+                  'description': context.t.qsonImport.description,
+                  'icon': 'file-import-outline',
+                },
+              ], onAction: (_) => runQsonImport(context, services)),
+            ],
             // The extension dev loop (docs/extensions/in-repo.md#the-dev-server). Below
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
             // more often.
-            if (settings.developerMode) SectionedSlivers(slivers: [_ExtensionDevServerSection(services: services)]),
-            // Developer mode gates it: pointing the app at a local catalog
-            // is how the catalog itself is worked on.
-            if (settings.developerMode) SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
+            if (settings.developerMode) ...[SectionHeader(context.t.settings.developer.extDevServer), _ExtensionDevServerRow(services: services)],
+            // What the Extensions panel's listing asks the catalog for. Every
+            // install keeps the track it arrived on whatever this says.
+            if (settings.developerMode) ...[
+              SectionHeader(context.t.settings.developer.catalog),
+              _settingsRows(
+                [
+                  {
+                    'type': 'field',
+                    'fieldType': 'select',
+                    'key': 'catalogSearchChannel',
+                    'label': context.t.settings.developer.catalogSearchTracks,
+                    'icon': 'store-search-outline',
+                    'value': settings.catalogSearchChannel.name,
+                    'options': [
+                      {'label': context.t.settings.developer.catalogSearchStable, 'value': CatalogChannel.stable.name},
+                      {'label': context.t.settings.developer.catalogSearchUnstable, 'value': CatalogChannel.unstable.name},
+                      {'label': context.t.settings.developer.catalogSearchBleeding, 'value': CatalogChannel.bleeding.name},
+                    ],
+                  },
+                ],
+                onChange: (_, value) async {
+                  final channel = CatalogChannel.tryParse(value as String?);
+                  if (channel != null) await settings.setCatalogSearchChannel(channel);
+                },
+              ),
+            ],
             // What extensions contribute here — their `target: 'developer'`
             // fields (docs/extensions/settings.md's "Settings targets"), such
             // as POTA's switch to its test servers. No band while none do.
@@ -255,6 +298,36 @@ Widget _sectionBody(BuildContext context, List<Widget> children) => Padding(
   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
 );
 
+/// [elements] as settings rows, the same rows every declared settings panel
+/// renders: a checkbox is a switch row, a select opens its picker dialog, and
+/// an action row runs [onAction] with its key. [onChange] stores what the
+/// operator set.
+Widget _settingsRows(
+  List<Map<String, dynamic>> elements, {
+  Future<void> Function(String key, Object? value)? onChange,
+  Future<void> Function(String key)? onAction,
+}) => FormRenderer(
+  formDefinition: {'elements': elements},
+  initialState: const {},
+  settingsList: true,
+  showActions: false,
+  showTitle: false,
+  onChange: onChange == null
+      ? null
+      : (key, value, _) async {
+          await onChange(key, value);
+          return null;
+        },
+  onAction: onAction == null
+      ? null
+      : (key, _, _) async {
+          await onAction(key);
+          return null;
+        },
+  onSubmit: (_) {},
+  onCancel: () {},
+);
+
 /// Where the log database and the data-file cache live. Platform-dependent,
 /// and relocated out of Documents on Windows and Linux (see app_storage.dart),
 /// so it's worth being able to read it back from a running build rather than
@@ -283,26 +356,68 @@ class _DataFolderValueState extends State<_DataFolderValue> {
   }
 }
 
-/// Settings → Developer → Extension Dev Server: connect the app to a running
-/// `npm run dev`, and see whether the loop is alive
-/// (docs/extensions/in-repo.md#the-dev-server).
-///
-/// Stateful only for the text field's controller — everything shown comes from
-/// the client, which is a ChangeNotifier.
-class _ExtensionDevServerSection extends StatefulWidget {
+/// Settings → Developer → Extension Dev Server: whether the app is loading
+/// extensions from a running `npm run dev`
+/// (docs/extensions/in-repo.md#the-dev-server). A settings row showing the
+/// address and how the loop is doing; a tap opens [_ExtensionDevServerDialog]
+/// to change the address and connect.
+class _ExtensionDevServerRow extends StatelessWidget {
   final HaLoServices services;
 
-  const _ExtensionDevServerSection({required this.services});
+  const _ExtensionDevServerRow({required this.services});
 
   @override
-  State<_ExtensionDevServerSection> createState() => _ExtensionDevServerSectionState();
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([services.extensionDev, services.settings]),
+      builder: (context, _) {
+        final address = services.settings.extensionDevServerUrl;
+        return _settingsRows(
+          [
+            {
+              'type': 'action',
+              'style': 'row',
+              'key': 'extensionDevServer',
+              'label': context.t.settings.developer.extDevServerAddress,
+              'description': [if (address.isNotEmpty) address, ..._devServerStatusLines(context, services.extensionDev)].join('\n'),
+              'icon': 'lan-connect',
+            },
+          ],
+          onAction: (_) => showHaloDialog<void>(
+            context: context,
+            builder: (_) => _ExtensionDevServerDialog(services: services),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> {
+/// The dev server's address, the Connect or Disconnect that acts on it, and
+/// the loop's status as it changes — the dialog stays open through a connect,
+/// so the author sees it take or fail.
+///
+/// A widget of its own for the address field's controller, which has to
+/// outlive the dialog's pop animation (the field rebuilds all the way
+/// through it).
+class _ExtensionDevServerDialog extends StatefulWidget {
+  final HaLoServices services;
+
+  const _ExtensionDevServerDialog({required this.services});
+
+  @override
+  State<_ExtensionDevServerDialog> createState() => _ExtensionDevServerDialogState();
+}
+
+class _ExtensionDevServerDialogState extends State<_ExtensionDevServerDialog> {
   late final TextEditingController _url = TextEditingController(text: widget.services.settings.extensionDevServerUrl);
 
   @override
   void dispose() {
+    // Kept however the dialog closes — Done, Escape or a tap outside: an
+    // address typed and not yet connected to is still the one to come back
+    // to.
+    unawaited(widget.services.settings.setExtensionDevServerUrl(_url.text));
     _url.dispose();
     super.dispose();
   }
@@ -313,7 +428,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
     // Remembered before the attempt, not after it succeeds: an author whose
     // server is briefly down still wants the address kept.
     await settings.setExtensionDevServerEnabled(true);
-    await widget.services.extensionDev.connect(_url.text);
+    await widget.services.extensionDev.connect(settings.extensionDevServerUrl);
   }
 
   Future<void> _disconnect() async {
@@ -327,25 +442,26 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
     final t = context.t.settings.developer;
 
     return ListenableBuilder(
-      listenable: widget.services.extensionDev,
+      listenable: Listenable.merge([widget.services.extensionDev, _url]),
       builder: (context, _) {
         final client = widget.services.extensionDev;
         final busy = client.state == DevServerState.connecting;
         final connected = client.state == DevServerState.connected;
+        final canConnect = !busy && !connected && _url.text.trim().isNotEmpty;
 
-        // Its own section: the panel's list sees one child, so a band left
-        // inside it would name the rows of the section above.
-        return SliverMainAxisGroup(
-          slivers: sectionSlivers(context, [
-            SectionHeader(t.extDevServer),
-            _sectionBody(context, [
-              Padding(
-                padding: const EdgeInsets.only(bottom: Space.md),
-                child: Text(t.extDevServerDescription, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-              ),
+        return HaloDialog(
+          title: Text(t.extDevServer),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(t.extDevServerDescription, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: Space.lg),
               TextField(
                 controller: _url,
+                // The address in use stays put while the client holds it.
                 enabled: !connected && !busy,
+                autofocus: !connected,
                 autocorrect: false,
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
@@ -357,162 +473,55 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
                   border: const OutlineInputBorder(),
                   isDense: true,
                 ),
-                onSubmitted: busy || connected ? null : (_) => _connect(),
+                onSubmitted: canConnect ? (_) => _connect() : null,
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: Space.md),
-                child: Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: busy ? null : (connected ? _disconnect : _connect),
-                      child: Text(connected ? t.extDevServerDisconnect : t.extDevServerConnect),
-                    ),
-                    const SizedBox(width: Space.md),
-                    Expanded(child: _status(context, client)),
-                  ],
-                ),
-              ),
-            ]),
-          ]),
+              const SizedBox(height: Space.md),
+              _devServerStatus(context, client),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: connected ? _disconnect : (canConnect ? _connect : null),
+              child: Text(connected ? t.extDevServerDisconnect : t.extDevServerConnect),
+            ),
+          ],
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
         );
       },
     );
   }
+}
 
-  Widget _status(BuildContext context, ExtensionDevClient client) {
-    final theme = Theme.of(context);
-    final t = context.t.settings.developer;
-    final subdued = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
-
-    final error = client.lastError;
-    if (error != null) {
-      return Text(error, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error));
-    }
-    switch (client.state) {
-      case DevServerState.connecting:
-        return Text(t.extDevServerConnecting, style: subdued);
-      case DevServerState.disconnected:
-      case DevServerState.failed:
-        return Text(t.extDevServerDisconnected, style: subdued);
-      case DevServerState.connected:
-        final reload = client.lastReload;
-        final failing = client.buildErrors.length;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              t.extDevServerConnected(count: client.servedKeys.length, keys: client.servedKeys.join(', ')),
-              style: subdued,
-            ),
-            if (reload != null)
-              Text(
-                t.extDevServerLastReload(key: reload.key, time: TimeOfDay.fromDateTime(reload.at).format(context)),
-                style: subdued,
-              ),
-            if (failing > 0)
-              Text(
-                t.extDevServerBuildErrors(count: failing),
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-              ),
-          ],
-        );
-    }
+/// How the dev loop is doing, a line per fact: the settings row's
+/// description, and under the dialog's address.
+List<String> _devServerStatusLines(BuildContext context, ExtensionDevClient client) {
+  final t = context.t.settings.developer;
+  final error = client.lastError;
+  if (error != null) return [error];
+  switch (client.state) {
+    case DevServerState.connecting:
+      return [t.extDevServerConnecting];
+    case DevServerState.disconnected:
+    case DevServerState.failed:
+      return [t.extDevServerDisconnected];
+    case DevServerState.connected:
+      final reload = client.lastReload;
+      final failing = client.buildErrors.length;
+      return [
+        t.extDevServerConnected(count: client.servedKeys.length, keys: client.servedKeys.join(', ')),
+        if (reload != null) t.extDevServerLastReload(key: reload.key, time: TimeOfDay.fromDateTime(reload.at).format(context)),
+        if (failing > 0) t.extDevServerBuildErrors(count: failing),
+      ];
   }
 }
 
-/// Settings → Developer → Extension Catalog: read the catalog from another
-/// address — a local one, for working on the catalog itself. Only the
-/// address is typed here; CatalogService honours it under developer mode
-/// alone, and an empty field is the real catalog.
-class _CatalogOverrideSection extends StatefulWidget {
-  final HaLoServices services;
-
-  const _CatalogOverrideSection({required this.services});
-
-  @override
-  State<_CatalogOverrideSection> createState() => _CatalogOverrideSectionState();
-}
-
-class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
-  late final TextEditingController _url = TextEditingController(text: widget.services.settings.catalogBaseUrl);
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    // Saved on leaving the field as well as on Enter: a developer who types
-    // an address and clicks straight into the Extensions panel expects it
-    // to be in force there.
-    _focus.addListener(() {
-      if (!_focus.hasFocus) unawaited(_save());
-    });
-  }
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    _url.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final settings = widget.services.settings;
-    if (_url.text.trim() == settings.catalogBaseUrl) return;
-    await settings.setCatalogBaseUrl(_url.text);
-    // The cached listings belong to the previous catalog.
-    widget.services.catalog.invalidate();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = context.t.settings.developer;
-    // Its own section — see [_ExtensionDevServerSection].
-    return SliverMainAxisGroup(
-      slivers: sectionSlivers(context, [
-        SectionHeader(t.catalog),
-        _sectionBody(context, [
-          Padding(
-            padding: const EdgeInsets.only(bottom: Space.md),
-            child: Text(t.catalogDescription, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ),
-          TextField(
-            controller: _url,
-            focusNode: _focus,
-            autocorrect: false,
-            keyboardType: TextInputType.url,
-            decoration: InputDecoration(
-              labelText: t.catalogAddress,
-              hintText: t.catalogHint,
-              // Hand-built decorations render their hint at full opacity
-              // without this, which reads as a filled-in value.
-              hintStyle: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-            onSubmitted: (_) => unawaited(_save()),
-          ),
-          const SizedBox(height: Space.lg),
-          // What the panel's listing shows, not what installs follow: each
-          // install keeps the track it arrived on whatever this says.
-          ListenableBuilder(
-            listenable: widget.services.settings,
-            builder: (context, _) => RowSelectField(
-              label: t.catalogSearchTracks,
-              value: widget.services.settings.catalogSearchChannel,
-              rows: [
-                SelectRow(value: CatalogChannel.stable, name: t.catalogSearchStable),
-                SelectRow(value: CatalogChannel.unstable, name: t.catalogSearchUnstable),
-                SelectRow(value: CatalogChannel.bleeding, name: t.catalogSearchBleeding),
-              ],
-              onChanged: (value) {
-                if (value is CatalogChannel) unawaited(widget.services.settings.setCatalogSearchChannel(value));
-              },
-            ),
-          ),
-        ]),
-      ]),
-    );
-  }
+/// [_devServerStatusLines] for the dialog, in the error colour when the
+/// client has one to say or extensions are failing to build.
+Widget _devServerStatus(BuildContext context, ExtensionDevClient client) {
+  final theme = Theme.of(context);
+  final failing = client.lastError != null || (client.state == DevServerState.connected && client.buildErrors.isNotEmpty);
+  return Text(
+    _devServerStatusLines(context, client).join('\n'),
+    style: theme.textTheme.bodySmall?.copyWith(color: failing ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant),
+  );
 }

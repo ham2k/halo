@@ -3201,6 +3201,8 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 	@override String get registerUrlSchemesDescription => '·—·· · — / —·—· ——— —— ·—·—·— ···· ·— —— ··——— —·— ———··· —··—· —··—· / ·—·· ·· —· —·— ··· / ——— ·——· · —· / — ···· ·· ··· / —·—· ——— ·——· —·—— / ——— ··—· / — ···· · / ·— ·——· ·——·';
 	@override String get registerUrlSchemesDone => '— ···· ·· ··· / —·—· ——— ·——· —·—— / —· ——— ·—— / ——— ·——· · —· ··· / —·—· ——— —— ·—·—·— ···· ·— —— ··——— —·— ———··· —··—· —··—· / ·—·· ·· —· —·— ···';
 	@override String registerUrlSchemesFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ——· ·· ··· — · ·—· ———··· / ${error}';
+	@override String get diagnostics => '—·· ·· ·— ——· —· ——— ··· — ·· —·—· ···';
+	@override String get importExport => '·· —— ·——· ——— ·—· — / —··—· / · —··— ·——· ——— ·—· —';
 	@override String get systemInformation => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·';
 	@override String get appVersion => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·';
 	@override String get dataFolder => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·';
@@ -3226,9 +3228,6 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 		other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··',
 	);
 	@override String get catalog => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·';
-	@override String get catalogDescription => '·—· · ·— —·· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ··· · ·—· ···— · ·—· / — / ·— / ·—·· ——— —·—· ·— ·—·· / ——— —· · / ·—— ···· ·· ·—·· · / ·—— ——— ·—· —·— ·· —· ——· / ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·· — ··· · ·—·· ··—· ·—·—·— / · —— ·——· — —·—— / —— · ·— —· ··· / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — ·—·—·—';
-	@override String get catalogAddress => '—·—· ·— — ·— ·—·· ——— ——· / ·— —·· —·· ·—· · ··· ···';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···';
 	@override String get catalogSearchStable => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·';
 	@override String get catalogSearchUnstable => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·';
@@ -7176,6 +7175,8 @@ extension on TranslationsCw {
 			'settings.developer.registerUrlSchemesDescription' => '·—·· · — / —·—· ——— —— ·—·—·— ···· ·— —— ··——— —·— ———··· —··—· —··—· / ·—·· ·· —· —·— ··· / ——— ·——· · —· / — ···· ·· ··· / —·—· ——— ·——· —·—— / ——— ··—· / — ···· · / ·— ·——· ·——·',
 			'settings.developer.registerUrlSchemesDone' => '— ···· ·· ··· / —·—· ——— ·——· —·—— / —· ——— ·—— / ——— ·——· · —· ··· / —·—· ——— —— ·—·—·— ···· ·— —— ··——— —·— ———··· —··—· —··—· / ·—·· ·· —· —·— ···',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ——· ·· ··· — · ·—· ———··· / ${error}',
+			'settings.developer.diagnostics' => '—·· ·· ·— ——· —· ——— ··· — ·· —·—· ···',
+			'settings.developer.importExport' => '·· —— ·——· ——— ·—· — / —··—· / · —··— ·——· ——— ·—· —',
 			'settings.developer.systemInformation' => '··· —·—— ··· — · —— / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
 			'settings.developer.appVersion' => '·— ·——· ·——· / ···— · ·—· ··· ·· ——— —·',
 			'settings.developer.dataFolder' => '—·· ·— — ·— / ··—· ——— ·—·· —·· · ·—·',
@@ -7195,9 +7196,6 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
-			'settings.developer.catalogDescription' => '·—· · ·— —·· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ··· · ·—· ···— · ·—· / — / ·— / ·—·· ——— —·—· ·— ·—·· / ——— —· · / ·—— ···· ·· ·—·· · / ·—— ——— ·—· —·— ·· —· ——· / ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·· — ··· · ·—·· ··—· ·—·—·— / · —— ·——· — —·—— / —— · ·— —· ··· / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — ·—·—·—',
-			'settings.developer.catalogAddress' => '—·—· ·— — ·— ·—·· ——— ——· / ·— —·· —·· ·—· · ··· ···',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
 			'settings.developer.catalogSearchUnstable' => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·',
@@ -7371,9 +7369,9 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.commandDialog' => '——— ·——· · —· / — ···· · / —·—· ——— —— —— ·— —· —·· / —·· ·· ·— ·—·· ——— ——·',
 			'keyboardShortcuts.command.toggleTheme' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—·· ·· ——· ···· — / ·— —· —·· / —·· ·— ·—· —·—',
 			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
+			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			_ => null,
 		} ?? switch (path) {
-			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleDown' => '··· —— ·— ·—·· ·—·· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleReset' => '—· ——— ·—· —— ·— ·—·· / — · —··— — / ··· ·· ——·· ·',
 			'keyboardShortcuts.command.densityLooser' => '·—· ——— ——— —— ·· · ·—· / ·—·· ·— —·—— ——— ··— —',

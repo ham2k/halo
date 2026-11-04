@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$nb extends Translations$settings$develope
 		other: '${count} utvidelser feiler under bygging',
 	);
 	@override String get catalog => 'Utvidelseskatalog';
-	@override String get catalogDescription => 'Les katalogen fra en annen server — en lokal en mens du jobber med selve katalogen. Tomt betyr catalog.ham2k.net.';
-	@override String get catalogAddress => 'Katalogadresse';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Spor for katalogsøk';
 	@override String get catalogSearchStable => 'Bare stabile';
 	@override String get catalogSearchUnstable => 'Ustabile eller bedre';
@@ -6721,9 +6718,6 @@ extension on TranslationsNb {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Sist lastet inn på nytt: ${key} kl. ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} utvidelse feiler under bygging', other: '${count} utvidelser feiler under bygging', ), 
 			'settings.developer.catalog' => 'Utvidelseskatalog',
-			'settings.developer.catalogDescription' => 'Les katalogen fra en annen server — en lokal en mens du jobber med selve katalogen. Tomt betyr catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Katalogadresse',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Spor for katalogsøk',
 			'settings.developer.catalogSearchStable' => 'Bare stabile',
 			'settings.developer.catalogSearchUnstable' => 'Ustabile eller bedre',
@@ -7057,11 +7051,11 @@ extension on TranslationsNb {
 			'switchAccounts.noLinkCode' => 'Synkroniseringsserveren returnerte ingen tilkoblingskode. Prøv igjen senere.',
 			'switchAccounts.noConfirmationCode' => 'Synkroniseringsserveren sendte ingen bekreftelseskode. Prøv igjen senere.',
 			'switchAccounts.switchNotAccepted' => 'Den kontoen godtok ikke byttet. Prøv å koble den til med en e-postadresse i stedet.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO', other: '${count} QSOer', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importer QSON-operasjon',
 			'qsonImport.description' => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.',
 			'qsonImport.dropHint' => 'Slipp en QSON-fil her for å importere den som en ny operasjon',

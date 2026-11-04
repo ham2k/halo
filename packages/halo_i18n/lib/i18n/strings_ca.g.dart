@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$ca extends Translations$settings$develope
 		other: '${count} extensions no es poden compilar',
 	);
 	@override String get catalog => 'Catàleg d\'extensions';
-	@override String get catalogDescription => 'Llegeix el catàleg des d\'un altre servidor — un de local mentre es treballa en el mateix catàleg. Buit vol dir catalog.ham2k.net.';
-	@override String get catalogAddress => 'Adreça del catàleg';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Branques de cerca del catàleg';
 	@override String get catalogSearchStable => 'Només estables';
 	@override String get catalogSearchUnstable => 'Inestables o millors';
@@ -6721,9 +6718,6 @@ extension on TranslationsCa {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Última recàrrega: ${key} a les ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} extensió no es pot compilar', other: '${count} extensions no es poden compilar', ), 
 			'settings.developer.catalog' => 'Catàleg d\'extensions',
-			'settings.developer.catalogDescription' => 'Llegeix el catàleg des d\'un altre servidor — un de local mentre es treballa en el mateix catàleg. Buit vol dir catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Adreça del catàleg',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Branques de cerca del catàleg',
 			'settings.developer.catalogSearchStable' => 'Només estables',
 			'settings.developer.catalogSearchUnstable' => 'Inestables o millors',
@@ -7057,11 +7051,11 @@ extension on TranslationsCa {
 			'switchAccounts.noLinkCode' => 'El servidor de sincronització no ha retornat cap codi de vinculació. Torna-ho a provar més tard.',
 			'switchAccounts.noConfirmationCode' => 'El servidor de sincronització no ha enviat cap codi de confirmació. Torna-ho a provar més tard.',
 			'switchAccounts.switchNotAccepted' => 'Aquest compte no ha acceptat el canvi. Prova de vincular-lo amb una adreça de correu electrònic.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Alguna cosa ha anat malament en comunicar-se amb el servidor de sincronització. Torna-ho a provar més tard.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} operació', other: '${count} operacions', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importa una operació QSON',
 			'qsonImport.description' => 'Crea una operació nova a partir d\'un fitxer QSON, com el que exporta el Mode de desenvolupador aquí o a PoLo.',
 			'qsonImport.dropHint' => 'Deixa anar un fitxer QSON per importar-lo com a operació nova',

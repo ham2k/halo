@@ -2596,9 +2596,6 @@
         "other": "확장 기능 ${count}개 빌드 실패"
       },
       "catalog": "확장 기능 카탈로그",
-      "catalogDescription": "다른 서버에서 카탈로그를 읽습니다. 카탈로그 자체를 작업할 때는 로컬 서버를 사용하세요. 비워 두면 catalog.ham2k.net을 사용합니다.",
-      "catalogAddress": "카탈로그 주소",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "카탈로그 검색 트랙",
       "catalogSearchStable": "안정만",
       "catalogSearchUnstable": "불안정 이상",

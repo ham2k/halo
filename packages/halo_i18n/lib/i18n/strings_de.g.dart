@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$de extends Translations$settings$develope
 		other: '${count} Erweiterungen lassen sich nicht bauen',
 	);
 	@override String get catalog => 'Erweiterungskatalog';
-	@override String get catalogDescription => 'Den Katalog von einem anderen Server lesen — einem lokalen, während am Katalog selbst gearbeitet wird. Leer bedeutet catalog.ham2k.net.';
-	@override String get catalogAddress => 'Katalogadresse';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Zweige für Katalogsuche';
 	@override String get catalogSearchStable => 'Nur stabil';
 	@override String get catalogSearchUnstable => 'Instabil oder besser';
@@ -6721,9 +6718,6 @@ extension on TranslationsDe {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Zuletzt neu geladen: ${key} um ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Erweiterung lässt sich nicht bauen', other: '${count} Erweiterungen lassen sich nicht bauen', ), 
 			'settings.developer.catalog' => 'Erweiterungskatalog',
-			'settings.developer.catalogDescription' => 'Den Katalog von einem anderen Server lesen — einem lokalen, während am Katalog selbst gearbeitet wird. Leer bedeutet catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Katalogadresse',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Zweige für Katalogsuche',
 			'settings.developer.catalogSearchStable' => 'Nur stabil',
 			'settings.developer.catalogSearchUnstable' => 'Instabil oder besser',
@@ -7057,11 +7051,11 @@ extension on TranslationsDe {
 			'switchAccounts.noLinkCode' => 'Der Sync-Server hat keinen Verknüpfungscode geliefert. Versuche es später erneut.',
 			'switchAccounts.noConfirmationCode' => 'Der Sync-Server hat keinen Bestätigungscode gesendet. Versuche es später erneut.',
 			'switchAccounts.switchNotAccepted' => 'Dieses Konto hat den Wechsel nicht angenommen. Versuche stattdessen, es mit einer E-Mail-Adresse zu verknüpfen.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Bei der Kommunikation mit dem Sync-Server ist etwas schiefgelaufen. Versuche es später erneut.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Betrieb', other: '${count} Betriebe', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'QSON-Betrieb importieren',
 			'qsonImport.description' => 'Einen neuen Betrieb aus einer QSON-Datei erstellen, wie sie der Entwicklermodus hier oder in PoLo exportiert.',
 			'qsonImport.dropHint' => 'Lege eine QSON-Datei hier ab, um sie als neuen Betrieb zu importieren',

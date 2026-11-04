@@ -2596,9 +2596,6 @@
         "other": "${count} extensões com falha na compilação"
       },
       "catalog": "Catálogo de Extensões",
-      "catalogDescription": "Ler o catálogo a partir de outro servidor — um local, enquanto trabalha no próprio catálogo. Vazio significa catalog.ham2k.net.",
-      "catalogAddress": "Endereço do catálogo",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Canais de Pesquisa do Catálogo",
       "catalogSearchStable": "Só Estável",
       "catalogSearchUnstable": "Instável ou melhor",

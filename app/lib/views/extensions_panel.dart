@@ -440,11 +440,9 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   /// The bundle a link typed or pasted into the search field would install,
   /// or null when the field holds anything else. An `install_extension` link
   /// as the catalog's button makes it is unwrapped, and then the address must
-  /// be one an install can use: on the catalog in force, a bundle or an
-  /// extension's page; anywhere else, an https `.h2kext`. Anything looser
-  /// offers an install for a home page, which can only end in a refusal.
-  /// Plain http only on the catalog in force, which is a loopback developer
-  /// catalog or nothing ([CatalogService.downloadBundle] has the rule).
+  /// be one an install can use: on the catalog, a bundle or an extension's
+  /// page; anywhere else, an https `.h2kext`. Anything looser offers an
+  /// install for a home page, which can only end in a refusal.
   Uri? _installLinkIn(String text) {
     if (text.contains(RegExp(r'\s'))) return null;
     var uri = Uri.tryParse(text);

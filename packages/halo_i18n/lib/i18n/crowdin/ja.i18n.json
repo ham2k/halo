@@ -2596,9 +2596,6 @@
         "other": "${count}件の拡張機能のビルドに失敗"
       },
       "catalog": "拡張機能カタログ",
-      "catalogDescription": "別のサーバー（カタログ自体の開発中はローカルサーバー）からカタログを読み込みます。空欄の場合はcatalog.ham2k.netです。",
-      "catalogAddress": "カタログのアドレス",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "カタログ検索のトラック",
       "catalogSearchStable": "安定版のみ",
       "catalogSearchUnstable": "不安定版以上",

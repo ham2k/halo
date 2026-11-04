@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$ro extends Translations$settings$develope
 		other: '${count} extensii nu se compilează',
 	);
 	@override String get catalog => 'Catalog de extensii';
-	@override String get catalogDescription => 'Citește catalogul de pe alt server — unul local în timp ce lucrați la catalogul însuși. Gol înseamnă catalog.ham2k.net.';
-	@override String get catalogAddress => 'Adresa catalogului';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Canale de căutare în catalog';
 	@override String get catalogSearchStable => 'Doar stabile';
 	@override String get catalogSearchUnstable => 'Instabile sau mai bune';
@@ -6721,9 +6718,6 @@ extension on TranslationsRo {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Ultima reîncărcare: ${key} la ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} extensie nu se compilează', other: '${count} extensii nu se compilează', ), 
 			'settings.developer.catalog' => 'Catalog de extensii',
-			'settings.developer.catalogDescription' => 'Citește catalogul de pe alt server — unul local în timp ce lucrați la catalogul însuși. Gol înseamnă catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Adresa catalogului',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Canale de căutare în catalog',
 			'settings.developer.catalogSearchStable' => 'Doar stabile',
 			'settings.developer.catalogSearchUnstable' => 'Instabile sau mai bune',
@@ -7057,11 +7051,11 @@ extension on TranslationsRo {
 			'switchAccounts.noLinkCode' => 'Serverul de sincronizare nu a returnat un cod de conectare. Încercați din nou mai târziu.',
 			'switchAccounts.noConfirmationCode' => 'Serverul de sincronizare nu a trimis un cod de confirmare. Încercați din nou mai târziu.',
 			'switchAccounts.switchNotAccepted' => 'Acel cont nu a acceptat schimbarea. Încercați în schimb conectarea cu o adresă de e-mail.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Ceva n-a mers bine în comunicarea cu serverul de sincronizare. Încercați din nou mai târziu.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO', other: '${count} QSO-uri', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} operațiune', other: '${count} operațiuni', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importă operațiune QSON',
 			'qsonImport.description' => 'Creează o operațiune nouă dintr-un fișier QSON, așa cum exportă Modul dezvoltator aici sau în PoLo.',
 			'qsonImport.dropHint' => 'Plasați aici un fișier QSON pentru a-l importa ca operațiune nouă',

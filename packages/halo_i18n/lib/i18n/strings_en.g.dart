@@ -7249,6 +7249,12 @@ class Translations$settings$developer$en {
 	/// en: 'Could not register: $error'
 	String registerUrlSchemesFailed({required Object error}) => 'Could not register: ${error}';
 
+	/// en: 'Diagnostics'
+	String get diagnostics => 'Diagnostics';
+
+	/// en: 'Import / Export'
+	String get importExport => 'Import / Export';
+
 	/// en: 'System Information'
 	String get systemInformation => 'System Information';
 
@@ -7311,15 +7317,6 @@ class Translations$settings$developer$en {
 
 	/// en: 'Extension Catalog'
 	String get catalog => 'Extension Catalog';
-
-	/// en: 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.'
-	String get catalogDescription => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.';
-
-	/// en: 'Catalog address'
-	String get catalogAddress => 'Catalog address';
-
-	/// en: 'http://localhost:8787'
-	String get catalogHint => 'http://localhost:8787';
 
 	/// en: 'Catalog Search Tracks'
 	String get catalogSearchTracks => 'Catalog Search Tracks';
@@ -13005,6 +13002,8 @@ extension on Translations {
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
 			'settings.developer.registerUrlSchemesDone' => 'This copy now opens com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
+			'settings.developer.diagnostics' => 'Diagnostics',
+			'settings.developer.importExport' => 'Import / Export',
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
@@ -13024,9 +13023,6 @@ extension on Translations {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'Extension Catalog',
-			'settings.developer.catalogDescription' => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Catalog address',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
 			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
@@ -13200,9 +13196,9 @@ extension on Translations {
 			'keyboardShortcuts.command.commandDialog' => 'Open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'Switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
+			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			_ => null,
 		} ?? switch (path) {
-			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'Smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'Normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',

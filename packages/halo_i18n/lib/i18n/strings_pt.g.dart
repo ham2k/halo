@@ -3093,9 +3093,6 @@ class Translations$settings$developer$pt extends Translations$settings$developer
 		other: '${count} extensões com falha na compilação',
 	);
 	@override String get catalog => 'Catálogo de Extensões';
-	@override String get catalogDescription => 'Ler o catálogo a partir de outro servidor — um local, enquanto trabalha no próprio catálogo. Vazio significa catalog.ham2k.net.';
-	@override String get catalogAddress => 'Endereço do catálogo';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Canais de Pesquisa do Catálogo';
 	@override String get catalogSearchStable => 'Só Estável';
 	@override String get catalogSearchUnstable => 'Instável ou melhor';
@@ -6721,9 +6718,6 @@ extension on TranslationsPt {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Último recarregamento: ${key} às ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} extensão com falha na compilação', other: '${count} extensões com falha na compilação', ), 
 			'settings.developer.catalog' => 'Catálogo de Extensões',
-			'settings.developer.catalogDescription' => 'Ler o catálogo a partir de outro servidor — um local, enquanto trabalha no próprio catálogo. Vazio significa catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Endereço do catálogo',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Canais de Pesquisa do Catálogo',
 			'settings.developer.catalogSearchStable' => 'Só Estável',
 			'settings.developer.catalogSearchUnstable' => 'Instável ou melhor',
@@ -7057,11 +7051,11 @@ extension on TranslationsPt {
 			'switchAccounts.noLinkCode' => 'O servidor de sincronização não devolveu um código de ligação. Tente novamente mais tarde.',
 			'switchAccounts.noConfirmationCode' => 'O servidor de sincronização não enviou um código de confirmação. Tente novamente mais tarde.',
 			'switchAccounts.switchNotAccepted' => 'Essa conta não aceitou a mudança. Tente antes vinculá-la com um endereço de email.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Algo correu mal na comunicação com o servidor de sincronização. Tente novamente mais tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} operação', other: '${count} operações', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importar Operação QSON',
 			'qsonImport.description' => 'Criar uma nova operação a partir de um ficheiro QSON, como o Modo de Desenvolvedor exporta aqui ou no PoLo.',
 			'qsonImport.dropHint' => 'Largue um ficheiro QSON para o importar como nova operação',

@@ -2596,9 +2596,6 @@
         "other": "${count} estensioni con errori di build"
       },
       "catalog": "Catalogo Estensioni",
-      "catalogDescription": "Leggi il catalogo da un altro server — uno locale mentre lavori sul catalogo stesso. Vuoto significa catalog.ham2k.net.",
-      "catalogAddress": "Indirizzo del catalogo",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Canali di ricerca del catalogo",
       "catalogSearchStable": "Solo Stabile",
       "catalogSearchUnstable": "Instabile o superiore",

@@ -74,9 +74,7 @@ enum CatalogChannel {
 }
 
 /// The catalog every install talks to, derived from [kCatalogHost] so the two
-/// cannot drift: the only other address the app will read is the developer
-/// override (`SettingsService.catalogBaseUrl`), typed by hand under developer
-/// mode.
+/// cannot drift.
 const kCatalogBaseUrl = 'https://$kCatalogHost';
 
 /// Where a bundle's bytes came from, when that was the extension catalog and

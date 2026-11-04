@@ -2596,9 +2596,6 @@
         "other": "${count} rozšíření se nedaří sestavit"
       },
       "catalog": "Katalog rozšíření",
-      "catalogDescription": "Číst katalog z jiného serveru — místního při práci na samotném katalogu. Prázdné znamená catalog.ham2k.net.",
-      "catalogAddress": "Adresa katalogu",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Větve hledání v katalogu",
       "catalogSearchStable": "Pouze stabilní",
       "catalogSearchUnstable": "Nestabilní nebo lepší",

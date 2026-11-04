@@ -2596,9 +2596,6 @@
         "other": "${count} extensies bouwen niet"
       },
       "catalog": "Extensiecatalogus",
-      "catalogDescription": "De catalogus van een andere server lezen — een lokale tijdens het werken aan de catalogus zelf. Leeg betekent catalog.ham2k.net.",
-      "catalogAddress": "Catalogusadres",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Zoekkanalen catalogus",
       "catalogSearchStable": "Alleen stabiel",
       "catalogSearchUnstable": "Onstabiel of beter",

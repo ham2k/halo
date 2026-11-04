@@ -2596,9 +2596,6 @@
         "other": "${count} extensions no es poden compilar"
       },
       "catalog": "Catàleg d'extensions",
-      "catalogDescription": "Llegeix el catàleg des d'un altre servidor — un de local mentre es treballa en el mateix catàleg. Buit vol dir catalog.ham2k.net.",
-      "catalogAddress": "Adreça del catàleg",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Branques de cerca del catàleg",
       "catalogSearchStable": "Només estables",
       "catalogSearchUnstable": "Inestables o millors",

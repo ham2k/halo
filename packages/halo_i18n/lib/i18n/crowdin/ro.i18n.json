@@ -2596,9 +2596,6 @@
         "other": "${count} extensii nu se compilează"
       },
       "catalog": "Catalog de extensii",
-      "catalogDescription": "Citește catalogul de pe alt server — unul local în timp ce lucrați la catalogul însuși. Gol înseamnă catalog.ham2k.net.",
-      "catalogAddress": "Adresa catalogului",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Canale de căutare în catalog",
       "catalogSearchStable": "Doar stabile",
       "catalogSearchUnstable": "Instabile sau mai bune",

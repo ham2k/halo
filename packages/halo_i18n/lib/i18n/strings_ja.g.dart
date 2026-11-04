@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$ja extends Translations$settings$develope
 		other: '${count}件の拡張機能のビルドに失敗',
 	);
 	@override String get catalog => '拡張機能カタログ';
-	@override String get catalogDescription => '別のサーバー（カタログ自体の開発中はローカルサーバー）からカタログを読み込みます。空欄の場合はcatalog.ham2k.netです。';
-	@override String get catalogAddress => 'カタログのアドレス';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'カタログ検索のトラック';
 	@override String get catalogSearchStable => '安定版のみ';
 	@override String get catalogSearchUnstable => '不安定版以上';
@@ -6721,9 +6718,6 @@ extension on TranslationsJa {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '最終再読み込み：${key}（${time}）',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の拡張機能のビルドに失敗', other: '${count}件の拡張機能のビルドに失敗', ), 
 			'settings.developer.catalog' => '拡張機能カタログ',
-			'settings.developer.catalogDescription' => '別のサーバー（カタログ自体の開発中はローカルサーバー）からカタログを読み込みます。空欄の場合はcatalog.ham2k.netです。',
-			'settings.developer.catalogAddress' => 'カタログのアドレス',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'カタログ検索のトラック',
 			'settings.developer.catalogSearchStable' => '安定版のみ',
 			'settings.developer.catalogSearchUnstable' => '不安定版以上',
@@ -7057,11 +7051,11 @@ extension on TranslationsJa {
 			'switchAccounts.noLinkCode' => '同期サーバーがリンクコードを返しませんでした。後で再試行してください。',
 			'switchAccounts.noConfirmationCode' => '同期サーバーが確認コードを送信しませんでした。後で再試行してください。',
 			'switchAccounts.switchNotAccepted' => 'そのアカウントは切り替えを受け付けませんでした。代わりにメールアドレスでリンクしてみてください。',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のQSO', other: '${count}件のQSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'QSONオペレーションをインポート',
 			'qsonImport.description' => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。',
 			'qsonImport.dropHint' => 'QSONファイルをドロップして新しいオペレーションとしてインポート',

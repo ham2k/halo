@@ -5,7 +5,7 @@
 // the quiet ones: a callsign leaking into a query, one broken entry costing
 // the operator the whole list, a dead catalog turning into an operator
 // notice, bytes that do not match the listing reaching the zip decoder, an
-// `http://` bundle sneaking through under the developer override, and a
+// `http://` bundle, or a redirect onto one, reaching the download, and a
 // stamp or a cache following developer time travel.
 
 import 'dart:async';
@@ -600,6 +600,28 @@ void main() {
       }, backend: backend);
     });
 
+    test('an http bundle is refused before anything is fetched, and said as such', () async {
+      // The last guard for any caller that skips its own check: the deep-link
+      // parser and the paste field both refuse http first, so only this test
+      // fails when the guard goes.
+      var requests = 0;
+      final catalog = service((request) async {
+        requests++;
+        return http.Response('abc', 200);
+      });
+      for (final url in ['http://catalog.ham2k.net/api/v1/extensions/a/versions/1.0.0/bundle', 'http://localhost:8787/a.h2kext']) {
+        await expectLater(
+          catalog.downloadBundle(Uri.parse(url)),
+          throwsA(
+            isA<BundleException>()
+                .having((e) => e.reason, 'reason', BundleRejection.notAnArchive)
+                .having((e) => e.message, 'message', t.extensionsPanel.downloadNotHttps),
+          ),
+        );
+      }
+      expect(requests, 0);
+    });
+
     test('a redirect off https is refused, whatever it leads to', () async {
       // The rule the deep-link router's plain download shared: a client following
       // redirects itself walks https into http and hands the result back as
@@ -615,55 +637,16 @@ void main() {
         throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.notAnArchive)),
       );
     });
-
-    test('the developer override allows http only for loopback, and only while developer mode is on', () async {
-      Future<void> expectRefused(CatalogService catalog, String url) =>
-          expectLater(catalog.downloadBundle(Uri.parse(url)), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.notAnArchive)));
-      Future<http.Response> serve(http.Request request) async => http.Response('abc', 200);
-
-      // Typed with a trailing slash, as addresses are pasted: kept, it
-      // would put `//api/v1/...` on every request.
-      final dev = await settingsWith({'developerMode': true, 'catalogBaseUrl': 'http://localhost:8787/'});
-      final overridden = service(serve, settings: dev);
-      expect(overridden.baseUrl, 'http://localhost:8787');
-      expect(overridden.host, 'localhost');
-      expect(overridden.bundleUrlFor('a', '1.0.0').path, '/api/v1/extensions/a/versions/1.0.0/bundle');
-      expect(await overridden.downloadBundle(Uri.parse('http://localhost:8787/b')), utf8.encode('abc'));
-      expect(await overridden.downloadBundle(Uri.parse('http://127.0.0.1:8787/b')), utf8.encode('abc'));
-      // A LAN address over http is exactly the rewrite https rules out — and
-      // it is said as such, not as a redirect that never happened.
-      await expectRefused(overridden, 'http://192.168.1.20:8787/b');
-      await expectLater(
-        overridden.downloadBundle(Uri.parse('http://192.168.1.20:8787/b')),
-        throwsA(isA<BundleException>().having((e) => e.message, 'message', t.extensionsPanel.downloadNotHttps)),
-      );
-      await expectRefused(overridden, 'http://catalog.ham2k.net/b');
-
-      // The address alone is not enough: developer mode off returns the app
-      // to the real catalog, and loopback over http with it.
-      final notDev = await settingsWith({'developerMode': false, 'catalogBaseUrl': 'http://localhost:8787'});
-      final plain = service(serve, settings: notDev);
-      expect(plain.baseUrl, kCatalogBaseUrl);
-      await expectRefused(plain, 'http://localhost:8787/b');
-    });
   });
 
   group('catalog URLs', () {
-    test('a catalog link is one on the catalog in force — the override displaces the built-in host', () async {
+    test('a catalog link is one on the catalog, over https', () async {
       final plain = service((_) async => http.Response('', 404));
       expect(plain.isCatalogUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/a/versions/1.0.0/bundle')), isTrue);
       expect(plain.isCatalogUrl(Uri.parse('https://example.org/a.h2kext')), isFalse);
+      expect(plain.isCatalogUrl(Uri.parse('http://catalog.ham2k.net/api/v1/extensions/a/versions/1.0.0/bundle')), isFalse);
       expect(plain.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')), isFalse);
       expect(plain.isCatalogUrl(Uri.parse('file:///tmp/a.h2kext')), isFalse);
-
-      // Under the override, a production link is NOT a catalog link: routed
-      // through the verified path it would be resolved against the local
-      // catalog's listings, which never served it. It takes the plain path,
-      // where the https rule judges it like any other host.
-      final dev = await settingsWith({'developerMode': true, 'catalogBaseUrl': 'http://localhost:8787'});
-      final overridden = service((_) async => http.Response('', 404), settings: dev);
-      expect(overridden.isCatalogUrl(Uri.parse('http://localhost:8787/api/v1/extensions/a/versions/1.0.0/bundle')), isTrue);
-      expect(overridden.isCatalogUrl(Uri.parse('https://catalog.ham2k.net/x')), isFalse);
     });
 
     test('a bundle path names its key and version, and nothing else parses', () {

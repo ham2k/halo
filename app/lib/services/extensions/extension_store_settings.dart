@@ -282,29 +282,11 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   Future<void> setCatalogUpdateCheckedAt(int millis) => prefs.setInt(_catalogUpdateCheckedAtKey, millis);
 
-  /// An extension catalog other than `catalog.ham2k.net` — a local one, for
-  /// working on the catalog itself. Honoured by CatalogService only under
-  /// `developerMode`, the same gate as `extensionDevServerUrl` and for the
-  /// same reason: bundles are code the app will run, and the trusted host is
-  /// baked in. Empty means the real catalog. Never ends in a slash, on the
-  /// way in or out: the paths joined onto it start with one, and
-  /// `//api/v1/...` is a request the catalog answers 404.
-  static const _catalogBaseUrlKey = 'catalogBaseUrl';
-
-  String get catalogBaseUrl => _normalizeCatalogBaseUrl(prefs.getString(_catalogBaseUrlKey) ?? '');
-
-  Future<void> setCatalogBaseUrl(String url) async {
-    await prefs.setString(_catalogBaseUrlKey, _normalizeCatalogBaseUrl(url));
-    notifyListeners();
-  }
-
-  static String _normalizeCatalogBaseUrl(String url) => url.trim().replaceAll(RegExp(r'/+$'), '');
-
   /// The roughest channel the catalog listing is asked for — Settings →
   /// Developer → Extension Catalog's "Catalog Search Tracks". Honoured by
-  /// CatalogService only under `developerMode`, like [catalogBaseUrl]: turning
-  /// developer mode off returns the panel to stable releases, while every
-  /// install already on a rougher track keeps following it.
+  /// CatalogService only under `developerMode`: turning developer mode off
+  /// returns the panel to stable releases, while every install already on a
+  /// rougher track keeps following it.
   static const _catalogSearchChannelKey = 'catalogSearchChannel';
 
   CatalogChannel get catalogSearchChannel => CatalogChannel.tryParse(prefs.getString(_catalogSearchChannelKey)) ?? CatalogChannel.stable;

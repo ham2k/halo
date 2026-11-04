@@ -2596,9 +2596,6 @@
         "other": "${count} uzantı derlenemiyor"
       },
       "catalog": "Uzantı Kataloğu",
-      "catalogDescription": "Kataloğu başka bir sunucudan okuyun — katalog üzerinde çalışırken yerel bir sunucudan. Boş bırakılırsa catalog.ham2k.net kullanılır.",
-      "catalogAddress": "Katalog adresi",
-      "catalogHint": "http://localhost:8787",
       "catalogSearchTracks": "Katalog Arama Kanalları",
       "catalogSearchStable": "Yalnızca Kararlı",
       "catalogSearchUnstable": "Kararsız veya daha iyisi",

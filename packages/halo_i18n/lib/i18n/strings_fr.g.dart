@@ -3093,9 +3093,6 @@ class _Translations$settings$developer$fr extends Translations$settings$develope
 		other: '${count} extensions en échec de compilation',
 	);
 	@override String get catalog => 'Catalogue d\'extensions';
-	@override String get catalogDescription => 'Lire le catalogue depuis un autre serveur — un serveur local pour travailler sur le catalogue lui-même. Vide signifie catalog.ham2k.net.';
-	@override String get catalogAddress => 'Adresse du catalogue';
-	@override String get catalogHint => 'http://localhost:8787';
 	@override String get catalogSearchTracks => 'Pistes de recherche du catalogue';
 	@override String get catalogSearchStable => 'Stable uniquement';
 	@override String get catalogSearchUnstable => 'Instable ou mieux';
@@ -6721,9 +6718,6 @@ extension on TranslationsFr {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Dernier rechargement : ${key} à ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} extension en échec de compilation', other: '${count} extensions en échec de compilation', ), 
 			'settings.developer.catalog' => 'Catalogue d\'extensions',
-			'settings.developer.catalogDescription' => 'Lire le catalogue depuis un autre serveur — un serveur local pour travailler sur le catalogue lui-même. Vide signifie catalog.ham2k.net.',
-			'settings.developer.catalogAddress' => 'Adresse du catalogue',
-			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Pistes de recherche du catalogue',
 			'settings.developer.catalogSearchStable' => 'Stable uniquement',
 			'settings.developer.catalogSearchUnstable' => 'Instable ou mieux',
@@ -7057,11 +7051,11 @@ extension on TranslationsFr {
 			'switchAccounts.noLinkCode' => 'Le serveur de synchronisation n\'a pas renvoyé de code de liaison. Réessayez plus tard.',
 			'switchAccounts.noConfirmationCode' => 'Le serveur de synchronisation n\'a pas envoyé de code de confirmation. Réessayez plus tard.',
 			'switchAccounts.switchNotAccepted' => 'Ce compte n\'a pas accepté le changement. Essayez plutôt de le lier avec une adresse e-mail.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.requestFailed' => 'Un problème est survenu en dialoguant avec le serveur de synchronisation. Réessayez plus tard.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('fr'))(count, one: '${count} opération', other: '${count} opérations', ), 
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.title' => 'Importer une opération QSON',
 			'qsonImport.description' => 'Créer une nouvelle opération à partir d\'un fichier QSON, tel que le mode développeur en exporte ici ou dans PoLo.',
 			'qsonImport.dropHint' => 'Déposez un fichier QSON pour l\'importer comme nouvelle opération',
