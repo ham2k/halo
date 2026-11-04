@@ -255,6 +255,31 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
+  /// The mode half of [vfoIsUnset], as the log-time refusal and the
+  /// `No Mode` alert read it: no mode has reached the VFO and none is on its
+  /// way. Two pushes carrying one are on their way without having landed: a
+  /// frequency being typed into the control holds its push in a five-second
+  /// debounce, so the alert would stand for five seconds after the operator
+  /// answered; and a spot's push waits for the end of the frame, which a
+  /// slid-to-log spot is logged inside of, so its own mode would be refused.
+  bool get modeIsUnset {
+    final vfo = config().radio.radioService?.vfoA;
+    return vfo != null && vfo.mode == null && _vfoDebounce?.isActive != true && !_pushAfterFrame;
+  }
+
+  bool _pushAfterFrame = false;
+
+  /// [pushVfo] once the current frame is done, for a caller inside the build
+  /// phase, where `setVfo`'s synchronous listeners would set state mid-build.
+  /// Until it lands, [modeIsUnset] counts the mode it carries as stated.
+  void pushVfoAfterFrame() {
+    _pushAfterFrame = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pushAfterFrame = false;
+      if (!isDisposed) pushVfo();
+    });
+  }
+
   /// The Radio chip's summary as plain text, for the `summary` every spec must
   /// carry. Built from [summaryParts] so the two cannot disagree.
   String get summary => summaryParts().map((p) => p.text).join();
@@ -929,9 +954,14 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   void commitModeText() {
     if (isDisposed) return;
     final text = modeController.text.trim();
-    if (text.isNotEmpty && text != displayedMode) {
-      final match = _firstMatch(modeOptions(), text);
-      if (match != null && match != displayedMode) setMode(match);
+    if (text.isNotEmpty) {
+      final match = text == displayedMode ? displayedMode : _firstMatch(modeOptions(), text);
+      // Keeping the mode shown is an answer too while nobody has stated one
+      // (logging-fields.md § A contact needs a band or a frequency): skipped
+      // as a no-op, it leaves the VFO without a mode and the next Enter is
+      // refused over the very mode the operator just kept.
+      final stating = modeIsUnset && config().editingQso == null;
+      if (match != null && (match != displayedMode || stating)) setMode(match);
     }
     _modeFilter = '';
     modeController.text = displayedMode;

@@ -204,9 +204,11 @@ extension _CallInfo on _LoggingControlsState {
   /// lost by staying quiet.
   MissingRadioState get _missingRadioState {
     if (_editingEvent || _fieldsLocked) return (band: false, mode: false);
-    // The same condition [_log] refuses a submit on, so the two can never
-    // name different things as missing.
-    return (band: _radio.freq == null && _radio.band == null, mode: _radio.mode.trim().isEmpty);
+    // The conditions [_log] refuses a submit on, so the alert never misses
+    // what a refusal would name; plus a mode a command emptied, which no
+    // refusal checks.
+    final composing = widget.session.editingQso == null;
+    return (band: _radio.freq == null && _radio.band == null, mode: _radio.mode.trim().isEmpty || (composing && _radio.modeIsUnset));
   }
 
   /// Pushes [_missingRadioState] up to the host when it changes (deduped —

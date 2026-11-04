@@ -1467,6 +1467,9 @@ class Translations$loggingControls$en {
 	/// en: 'Set a frequency or band before logging'
 	String get bandOrFreqRequired => 'Set a frequency or band before logging';
 
+	/// en: 'Pick a mode before logging'
+	String get modeRequired => 'Pick a mode before logging';
+
 	/// en: 'Fill in ${fields}, or put a ? where you didn't copy'
 	String incompleteExchange({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy';
 
@@ -11667,6 +11670,7 @@ extension on Translations {
 			'loggingControls.spotAutoNoFreq' => 'Auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'Another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
+			'loggingControls.modeRequired' => 'Pick a mode before logging',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy. Shift+Enter logs it as is',
 			'loggingControls.missingBand' => 'No Band',
@@ -12168,9 +12172,9 @@ extension on Translations {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
 			'settings.radio.voiceWords.speed' => 'Speed',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
-			'settings.radio.voiceWords.advancedSettings' => 'Advanced Settings',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.advancedSettings' => 'Advanced Settings',
 			'settings.radio.voiceWords.splitSilent' => 'Nothing was heard in the recording.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'Couldn\'t find three takes. Say the word three times, run together, and try again.',
 			'settings.radio.voiceWords.splitLineCount' => 'Couldn\'t find every word in the reading. Read each one three times, with a breath between words.',
@@ -12682,9 +12686,9 @@ extension on Translations {
 			'settings.station.equipmentInUse' => 'Transceiver Controls',
 			'settings.station.noTransceiver' => 'None',
 			'settings.station.peerRadioNotAvailable' => 'Not available',
-			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'Antenna in Use',
@@ -13196,9 +13200,9 @@ extension on Translations {
 			'keyboardShortcuts.command.commandDialog' => 'Open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'Switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
-			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'Smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'Normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',

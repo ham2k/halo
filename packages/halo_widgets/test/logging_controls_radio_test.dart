@@ -261,12 +261,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    /// An unset VFO pops the Radio control open on mount (asserted below), and
-    /// Enter inside an open control closes it instead of logging. So every
-    /// test of the *log-time* guard has to collapse it first — otherwise the
-    /// submit is swallowed by the control, no contact is written for a reason
-    /// that has nothing to do with the guard, and the test passes against
-    /// code with the guard removed.
+    /// An unset VFO pops the Radio control open on mount (asserted below). So
+    /// every test of the *log-time* guard collapses it first: left open, a
+    /// Frequency field after the submit proves nothing about whether the
+    /// refusal opened the control.
     Future<void> dismissRadioControl(WidgetTester tester) async {
       // The auto-open runs in a post-frame callback, so it takes one more
       // frame than `pumpWidget` alone gives it. The label is read through `t`
@@ -285,6 +283,22 @@ void main() {
 
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
     });
+
+    // Opening it by itself must not move the keyboard. A move from the call
+    // field to Frequency in the frame that builds Frequency is the one web
+    // turns into a caret in Call that ignores every keystroke, and this host
+    // has no browser to show that — only where the focus is asked to go.
+    testWidgets('the Radio control opening by itself leaves the keyboard in the call field', (tester) async {
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget, reason: 'the control opened');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode?.hasFocus, isFalse);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode?.hasFocus, isTrue);
+      // Desktop: on a phone with no keyboard the call field takes no focus at
+      // mount, so there would be nothing to keep.
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets('a VFO that already has a band and mode is left alone', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
@@ -364,6 +378,126 @@ void main() {
       expect(logged, hasLength(1));
       expect(logged.single.band, '40m');
       expect(logged.single.freq, isNull);
+    });
+
+    // The mode half: the field's 'SSB' on a station that never stated a mode
+    // is a default, not an answer, and logging it writes a mode nobody chose.
+    testWidgets('a mode nobody chose refuses the contact until one is stated', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m');
+      final messages = <String?>[];
+      await tester.pumpWidget(
+        host(
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+          commands: CommandHooks(onCommandMessageChanged: messages.add),
+        ),
+      );
+      await dismissRadioControl(tester);
+
+      await submit(tester, 'W1AW');
+
+      expect(await qsosAfterWaiting(tester), isEmpty, reason: 'the default mode is not an answer');
+      expect(messages.last, 'Pick a mode before logging');
+      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget, reason: 'the refusal opens the control the answer is in');
+
+      fakeRadio.setVfo('vfoA', mode: 'CW');
+      await tester.pump();
+      await submit(tester, 'W1AW');
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.mode, 'CW');
+    });
+
+    // A frequency typed into the control is an answer to the mode as well:
+    // the push it makes carries the mode guessed from it, so the operator who
+    // did what the control asked is not then refused over the mode.
+    testWidgets('a frequency typed into the control answers the mode too', (tester) async {
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14074');
+      await tester.pump();
+
+      await submit(tester, 'W1AW');
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.freq, 14074);
+      expect(logged.single.mode, 'FT8');
+    });
+
+    // The station's VFO says nothing about a contact already in the log,
+    // which carries its own recorded mode.
+    testWidgets('an edit is not refused over the station\'s missing mode', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m');
+      final existingQso = (await tester.runAsync(
+        () => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'CW',
+          'startAtMillis': 1000000,
+        }),
+      ))!;
+      await tester.pumpWidget(
+        host(
+          session: LoggingSession(editingQso: existingQso),
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+        ),
+      );
+      await tester.pump();
+
+      await submit(tester, 'W1AWX');
+
+      final logged = await qsosAfterWaiting(tester, watchFor: 2);
+      expect(logged.single.theirCall, 'W1AWX', reason: 'the edit is saved');
+      expect(logged.single.mode, 'CW');
+    });
+
+    // The shown mode is a choice once the operator goes through the field
+    // and keeps it. Skipped as a no-op, the VFO stays without a mode and the
+    // next Enter is refused over the mode they just kept.
+    testWidgets('keeping the shown mode from the keyboard answers it', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m');
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
+      await tester.pump();
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).focusNode!.requestFocus();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab); // to Mode
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab); // past it
+      await tester.pump();
+
+      expect(fakeRadio.vfoA.mode, isNotNull, reason: 'the kept mode reached the VFO');
+      await submit(tester, 'W1AW');
+      expect(await waitForQsos(tester, 1), hasLength(1));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+    // A slid-to-log spot's push to the VFO waits for the end of a frame. Over
+    // a part-typed entry the spot is applied and logged after the overwrite
+    // prompt, outside any frame, so the mode it carries has not reached the
+    // VFO when the refusal looks, and must not be refused.
+    testWidgets('a slid-to-log spot answers it with its own mode', (tester) async {
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
+      await tester.pump();
+      await tester.pumpWidget(
+        host(
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+          session: LoggingSession(
+            logRequest: (
+              serial: 1,
+              qso: const {
+                'their': {'call': 'K1ABC'},
+                'band': '20m',
+                'mode': 'CW',
+              },
+            ),
+            confirmLogOverwrite: ({required bool editing}) async => true,
+          ),
+        ),
+      );
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirCall, 'K1ABC');
+      expect(logged.single.mode, 'CW');
     });
 
     // The guard sits above the stacked-call branch, which commits a QSO of
@@ -477,7 +611,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(reports.last, (band: true, mode: false));
+      expect(reports.last, (band: true, mode: true));
     });
 
     // A warning about the RADIO, not about the station in the field, so it
@@ -495,7 +629,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump();
 
-      expect(reports.last, (band: true, mode: false));
+      expect(reports.last, (band: true, mode: true));
     });
 
     // The host posts each report to a service that remembers a dismissal; a
@@ -566,6 +700,21 @@ void main() {
       expect(reports.last, (band: false, mode: false));
     });
 
+    // The same mode rule the refusal reads: a station that stated a band but
+    // never a mode is shown the mode as missing, not only told at log time.
+    testWidgets('a mode nobody chose is called out', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m');
+      await tester.pumpWidget(
+        host(
+          radio: baseRadio().copyWith(radioService: fakeRadio),
+          lookups: reporting(),
+        ),
+      );
+      await tester.pump();
+
+      expect(reports.last, (band: false, mode: true));
+    });
+
     // The mode half. Nothing the operator can do in the panel empties the
     // mode — it starts on a hardcoded 'SSB' and every path that moves it
     // writes a real emission — so a command is the one thing that can, and an
@@ -615,8 +764,8 @@ void main() {
         ),
       );
       await tester.pump();
-      // The unset VFO opens the Radio control on mount; collapse it, or Enter
-      // closes it instead of reaching the log path.
+      // The unset VFO opens the Radio control on mount; collapse it, so the
+      // refusal is the one that opens it.
       await openControl(tester, MdiIcons.radio);
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 200));
@@ -625,7 +774,7 @@ void main() {
       // The area cross-fades into the message state; let the outgoing copy go.
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.textContaining('Set a frequency or band'), findsOneWidget, reason: 'the refusal stands');
-      expect(reports.last, (band: true, mode: false), reason: 'and so does the report it is about');
+      expect(reports.last.band, isTrue, reason: 'and so does the report it is about');
 
       // The operator does what the refusal asked, in the control it opened.
       await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');

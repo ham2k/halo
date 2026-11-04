@@ -645,6 +645,7 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String get spotAutoNoFreq => 'AUTO RE-SPOT STOPPED: THE RADIO REPORTS NO FREQUENCY';
 	@override String get spotBusy => 'ANOTHER SPOT IS STILL BEING SENT';
 	@override String get bandOrFreqRequired => 'SET A FREQUENCY OR BAND BEFORE LOGGING';
+	@override String get modeRequired => 'PICK A MODE BEFORE LOGGING';
 	@override String incompleteExchange({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY';
 	@override String incompleteExchangeShift({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS';
 	@override String get missingBand => 'NO BAND';
@@ -5840,6 +5841,7 @@ extension on TranslationsQro {
 			'loggingControls.spotAutoNoFreq' => 'AUTO RE-SPOT STOPPED: THE RADIO REPORTS NO FREQUENCY',
 			'loggingControls.spotBusy' => 'ANOTHER SPOT IS STILL BEING SENT',
 			'loggingControls.bandOrFreqRequired' => 'SET A FREQUENCY OR BAND BEFORE LOGGING',
+			'loggingControls.modeRequired' => 'PICK A MODE BEFORE LOGGING',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN\'T COPY. SHIFT+ENTER LOGS IT AS IS',
 			'loggingControls.missingBand' => 'NO BAND',
@@ -6341,9 +6343,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} MS',
 			'settings.radio.voiceWords.speed' => 'SPEED',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
-			'settings.radio.voiceWords.advancedSettings' => 'ADVANCED SETTINGS',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.advancedSettings' => 'ADVANCED SETTINGS',
 			'settings.radio.voiceWords.splitSilent' => 'NOTHING WAS HEARD IN THE RECORDING.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'COULDN\'T FIND THREE TAKES. SAY THE WORD THREE TIMES, RUN TOGETHER, AND TRY AGAIN.',
 			'settings.radio.voiceWords.splitLineCount' => 'COULDN\'T FIND EVERY WORD IN THE READING. READ EACH ONE THREE TIMES, WITH A BREATH BETWEEN WORDS.',
@@ -6855,9 +6857,9 @@ extension on TranslationsQro {
 			'settings.station.equipmentInUse' => 'TRANSCEIVER CONTROLS',
 			'settings.station.noTransceiver' => 'NONE',
 			'settings.station.peerRadioNotAvailable' => 'NOT AVAILABLE',
-			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'ON ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'ON ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} IS ON ANOTHER DEVICE',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'THIS RADIO IS CONNECTED TO ${device}. ITS CONNECTION AND SETTINGS ARE CONFIGURED ON THAT DEVICE.',
 			'settings.station.antennaInUse' => 'ANTENNA IN USE',
@@ -7369,9 +7371,9 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.commandDialog' => 'OPEN THE COMMAND DIALOG',
 			'keyboardShortcuts.command.toggleTheme' => 'SWITCH BETWEEN LIGHT AND DARK',
 			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
-			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
 			'keyboardShortcuts.command.fontScaleDown' => 'SMALLER TEXT',
 			'keyboardShortcuts.command.fontScaleReset' => 'NORMAL TEXT SIZE',
 			'keyboardShortcuts.command.densityLooser' => 'ROOMIER LAYOUT',

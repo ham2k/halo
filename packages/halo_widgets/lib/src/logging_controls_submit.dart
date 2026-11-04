@@ -385,6 +385,17 @@ extension _Submit on _LoggingControlsState {
       return;
     }
 
+    // Nor a mode nobody chose (logging-fields.md § Asked up front): the
+    // field always shows one, but on a station that never stated one it is
+    // the hardcoded default, and logging it would write a mode the operator
+    // was never asked about. Only while composing: an existing contact
+    // carries its own recorded mode, and the VFO says nothing about it.
+    if (_canLog && editingQso == null && _radio.modeIsUnset) {
+      _command.showError(t.loggingControls.modeRequired);
+      _onSelectControl('radio');
+      return;
+    }
+
     // Enter Sends Messages, after every gate a plain Enter would stop at —
     // so a thanks is never keyed for a contact the band check or the
     // scorers then refuse — and only while composing: an edit is a

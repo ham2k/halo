@@ -250,6 +250,9 @@ void main() {
   // A staged delete disables every field in LoggingControls, so nothing in
   // there holds the keyboard and its own chord handler never sees the key.
   // Drop the panel-level forwarder and this undo is reachable by mouse only.
+  // Desktop: the chord needs the keyboard somewhere in the panel, which the
+  // call field's focus at mount gives it, and a phone with no keyboard has
+  // neither.
   testWidgets('Cmd+Z takes back a staged delete, though no compose field can hold focus', (tester) async {
     // A record the form loads and reads back unchanged. The shared `qso` is
     // not one: selecting it offers Revert, and there is no Delete to stage.
@@ -276,7 +279,7 @@ void main() {
 
     expect(infoRowButton('Delete'), findsOneWidget, reason: 'back to an unmodified QSO being edited');
     await drainLookupQueueTimer(tester);
-  });
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
 
 /// Selecting a QSO for editing now enqueues it for a background lookup

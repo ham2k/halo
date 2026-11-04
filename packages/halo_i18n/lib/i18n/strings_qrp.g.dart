@@ -645,6 +645,7 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String get spotAutoNoFreq => 'auto re-spot stopped: the radio reports no frequency';
 	@override String get spotBusy => 'another spot is still being sent';
 	@override String get bandOrFreqRequired => 'set a frequency or band before logging';
+	@override String get modeRequired => 'pick a mode before logging';
 	@override String incompleteExchange({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy';
 	@override String incompleteExchangeShift({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy. shift+enter logs it as is';
 	@override String get missingBand => 'no band';
@@ -5840,6 +5841,7 @@ extension on TranslationsQrp {
 			'loggingControls.spotAutoNoFreq' => 'auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'set a frequency or band before logging',
+			'loggingControls.modeRequired' => 'pick a mode before logging',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'fill in ${fields}, or put a ? where you didn\'t copy. shift+enter logs it as is',
 			'loggingControls.missingBand' => 'no band',
@@ -6341,9 +6343,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} ms',
 			'settings.radio.voiceWords.speed' => 'speed',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed}×',
-			'settings.radio.voiceWords.advancedSettings' => 'advanced settings',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.advancedSettings' => 'advanced settings',
 			'settings.radio.voiceWords.splitSilent' => 'nothing was heard in the recording.',
 			'settings.radio.voiceWords.splitNotThreeTakes' => 'couldn\'t find three takes. say the word three times, run together, and try again.',
 			'settings.radio.voiceWords.splitLineCount' => 'couldn\'t find every word in the reading. read each one three times, with a breath between words.',
@@ -6855,9 +6857,9 @@ extension on TranslationsQrp {
 			'settings.station.equipmentInUse' => 'transceiver controls',
 			'settings.station.noTransceiver' => 'none',
 			'settings.station.peerRadioNotAvailable' => 'not available',
-			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'on ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'on ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
 			'settings.station.antennaInUse' => 'antenna in use',
@@ -7369,9 +7371,9 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.commandDialog' => 'open the command dialog',
 			'keyboardShortcuts.command.toggleTheme' => 'switch between light and dark',
 			'keyboardShortcuts.command.toggleLanguage' => 'switch between english and spanish',
-			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.fontScaleUp' => 'larger text',
 			'keyboardShortcuts.command.fontScaleDown' => 'smaller text',
 			'keyboardShortcuts.command.fontScaleReset' => 'normal text size',
 			'keyboardShortcuts.command.densityLooser' => 'roomier layout',

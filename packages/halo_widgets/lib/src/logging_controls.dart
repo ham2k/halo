@@ -655,7 +655,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // written (HALO-24). Only while composing — an existing QSO carries its
     // own recorded band and mode — and only once per mount, so an operator who
     // closes it isn't fought by the next rebuild. Post-frame because
-    // `_onSelectControl` calls setState, which initState cannot.
+    // `_showControl` calls setState, which initState cannot.
+    //
+    // Shown, not focused: the keyboard stays in the callsign field
+    // (logging-fields.md § Asked up front). Opening would move focus from
+    // the call field to Frequency in the frame that builds it, and on web
+    // the browser hands focus straight back to the call field's input,
+    // which ends with a caret in Call that ignores every keystroke.
     if (widget.session.editingQso == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // `_radio.vfoIsUnset` is read here rather than above, because a
@@ -663,7 +669,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // freq/mode to the store from its own post-frame callback, registered
         // just before this one. Popping the control open over a frequency the
         // operator was handed a moment ago would be pure noise.
-        if (mounted && _selectedControlKey == null && _radio.vfoIsUnset) _onSelectControl('radio');
+        if (mounted && _selectedControlKey == null && _radio.vfoIsUnset) _showControl('radio');
       });
     }
   }

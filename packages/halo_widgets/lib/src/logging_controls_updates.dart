@@ -547,9 +547,7 @@ extension _WidgetUpdates on _LoggingControlsState {
       // widgets"). ErrorPolicy classes that as logOnly, so it costs the
       // operator nothing visible and would have gone unnoticed — but the
       // panel can silently miss its rebuild for that frame.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _radio.pushVfo();
-      });
+      _radio.pushVfoAfterFrame();
     }
   }
 

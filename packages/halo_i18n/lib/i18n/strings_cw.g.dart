@@ -645,6 +645,7 @@ class _Translations$loggingControls$cw extends Translations$loggingControls$en {
 	@override String get spotAutoNoFreq => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——';
 	@override String get spotBusy => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —';
 	@override String get bandOrFreqRequired => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·';
+	@override String get modeRequired => '·——· ·· —·—· —·— / ·— / —— ——— —·· · / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·';
 	@override String incompleteExchange({required Object fields}) => '··—· ·· ·—·· ·—·· / ·· —· / ${fields} ——··—— / ——— ·—· / ·——· ··— — / ·— / ··——·· / ·—— ···· · ·—· · / —·—— ——— ··— / —·· ·· —·· —· ·————· — / —·—· ——— ·——· —·——';
 	@override String incompleteExchangeShift({required Object fields}) => '··—· ·· ·—·· ·—·· / ·· —· / ${fields} ——··—— / ——— ·—· / ·——· ··— — / ·— / ··——·· / ·—— ···· · ·—· · / —·—— ——— ··— / —·· ·· —·· —· ·————· — / —·—· ——— ·——· —·—— ·—·—·— / ··· ···· ·· ··—· — ·—·—· · —· — · ·—· / ·—·· ——— ——· ··· / ·· — / ·— ··· / ·· ···';
 	@override String get missingBand => '—· ——— / —··· ·— —· —··';
@@ -5840,6 +5841,7 @@ extension on TranslationsCw {
 			'loggingControls.spotAutoNoFreq' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——',
 			'loggingControls.spotBusy' => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —',
 			'loggingControls.bandOrFreqRequired' => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·',
+			'loggingControls.modeRequired' => '·——· ·· —·—· —·— / ·— / —— ——— —·· · / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => '··—· ·· ·—·· ·—·· / ·· —· / ${fields} ——··—— / ——— ·—· / ·——· ··— — / ·— / ··——·· / ·—— ···· · ·—· · / —·—— ——— ··— / —·· ·· —·· —· ·————· — / —·—· ——— ·——· —·——',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => '··—· ·· ·—·· ·—·· / ·· —· / ${fields} ——··—— / ——— ·—· / ·——· ··— — / ·— / ··——·· / ·—— ···· · ·—· · / —·—— ——— ··— / —·· ·· —·· —· ·————· — / —·—· ——— ·——· —·—— ·—·—·— / ··· ···· ·· ··—· — ·—·—· · —· — · ·—· / ·—·· ——— ——· ··· / ·· — / ·— ··· / ·· ···',
 			'loggingControls.missingBand' => '—· ——— / —··· ·— —· —··',
@@ -6341,9 +6343,9 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.pauseValue' => ({required Object ms}) => '${ms} / —— ···',
 			'settings.radio.voiceWords.speed' => '··· ·——· · · —··',
 			'settings.radio.voiceWords.speedValue' => ({required Object speed}) => '${speed} ×',
-			'settings.radio.voiceWords.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.advancedSettings' => '·— —·· ···— ·— —· —·—· · —·· / ··· · — — ·· —· ——· ···',
 			'settings.radio.voiceWords.splitSilent' => '—· ——— — ···· ·· —· ——· / ·—— ·— ··· / ···· · ·— ·—· —·· / ·· —· / — ···· · / ·—· · —·—· ——— ·—· —·· ·· —· ——· ·—·—·—',
 			'settings.radio.voiceWords.splitNotThreeTakes' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / — ···· ·—· · · / — ·— —·— · ··· ·—·—·— / ··· ·— —·—— / — ···· · / ·—— ——— ·—· —·· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· ——··—— / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.radio.voiceWords.splitLineCount' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ··—· ·· —· —·· / · ···— · ·—· —·—— / ·—— ——— ·—· —·· / ·· —· / — ···· · / ·—· · ·— —·· ·· —· ——· ·—·—·— / ·—· · ·— —·· / · ·— —·—· ···· / ——— —· · / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—— ·· — ···· / ·— / —··· ·—· · ·— — ···· / —··· · — ·—— · · —· / ·—— ——— ·—· —·· ··· ·—·—·—',
@@ -6855,9 +6857,9 @@ extension on TranslationsCw {
 			'settings.station.equipmentInUse' => '— ·—· ·— —· ··· —·—· · ·· ···— · ·—· / —·—· ——— —· — ·—· ——— ·—·· ···',
 			'settings.station.noTransceiver' => '—· ——— —· ·',
 			'settings.station.peerRadioNotAvailable' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-			'settings.station.peerRadioOnDevice' => ({required Object device}) => '——— —· / ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => '——— —· / ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
@@ -7369,9 +7371,9 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.commandDialog' => '——— ·——· · —· / — ···· · / —·—· ——— —— —— ·— —· —·· / —·· ·· ·— ·—·· ——— ——·',
 			'keyboardShortcuts.command.toggleTheme' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—·· ·· ——· ···· — / ·— —· —·· / —·· ·— ·—· —·—',
 			'keyboardShortcuts.command.toggleLanguage' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / · —· ——· ·—·· ·· ··· ···· / ·— —· —·· / ··· ·——· ·— —· ·· ··· ····',
-			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			_ => null,
 		} ?? switch (path) {
+			'keyboardShortcuts.command.fontScaleUp' => '·—·· ·— ·—· ——· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleDown' => '··· —— ·— ·—·· ·—·· · ·—· / — · —··— —',
 			'keyboardShortcuts.command.fontScaleReset' => '—· ——— ·—· —— ·— ·—·· / — · —··— — / ··· ·· ——·· ·',
 			'keyboardShortcuts.command.densityLooser' => '·—· ——— ——— —— ·· · ·—· / ·—·· ·— —·—— ——— ··— —',

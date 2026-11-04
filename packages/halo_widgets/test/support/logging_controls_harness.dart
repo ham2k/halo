@@ -94,7 +94,8 @@ void installLoggingHarness() {
     addTearDown(keyboardAccessory.dispose);
     // A mode as well as a frequency: a station on the air has both, and an
     // unset mode is one of the things that pops the Radio control open on
-    // mount (see `RadioControlModel.vfoIsUnset`), which would steal focus in every test here.
+    // mount (see `RadioControlModel.vfoIsUnset`), where it takes the first Escape, and
+    // refuses to log a mode nobody chose.
     tunedRadio = FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
     addTearDown(tunedRadio.dispose);
   });

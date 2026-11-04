@@ -676,6 +676,21 @@ to repair one of those records. It does **not** block deleting one: the check
 sits below the delete branch, so a contact you want gone doesn't have to be
 fixed first.
 
+**Nor with a mode nobody chose.** The Mode field always shows a value, but on
+a station that never stated one it is a hardcoded `SSB`, and the record would
+claim a mode the operator was never asked about. So a new contact is refused
+the same way, with its own message, until a mode has reached the stored VFO.
+A push of the radio state carries the mode the panel holds, so most answers
+to the band answer it too, the default included: a typed frequency (with the
+mode the band plan guesses for it, or the default where it guesses none), a
+`40M` command, clearing Frequency, a tapped or slid-to-log spot. So do a mode
+picked in the Mode field or kept there from the keyboard (Enter in it, or
+Tab past it), a mode command, and a rig's reading. A band picked from the
+Band dropdown writes the band alone, and does not. A push still on its way
+counts: a frequency waiting out its debounce, or a spot's push waiting for
+the end of the frame. An edit is not refused for it, because the contact
+carries its own recorded mode.
+
 **Asked up front, not only at log time.** When the stored VFO holds nothing —
 no band *and* no frequency, or no mode — the Radio control opens by itself
 once, on mount, so the operator is looking at the fields that need answering
@@ -685,6 +700,15 @@ though the mode field always shows a value: it falls back to a hardcoded
 "confirmed". The VFO is persisted device-wide, so this happens once per
 install, not once per operation.
 
+It opens without taking the keyboard, which stays in the callsign field per
+§ Which field has focus; the operator reaches it with a tap on one of its
+fields, or Up and across the strip like any other control (Up lands on the
+pill the keyboard was last on, not on the one that opened by itself).
+Moving focus to Frequency here would also move it from the call field in the
+very frame that builds Frequency, and on web the browser hands it straight
+back to the call field's input, leaving a caret there that ignores every
+keystroke.
+
 Only while composing, and only once per mount — an operator who closes the
 control isn't fought by the next rebuild. It's also skipped when a
 `suggestedQso` supplied the radio state (tapping a spot, or a deeplinked cold
@@ -692,23 +716,26 @@ start): the condition is evaluated in a post-frame callback, after the
 suggestion's own push to the VFO, so the control doesn't pop open over a
 frequency the operator was just handed.
 
-The log-time refusal above remains the backstop for the operator who closes
-the control without answering. Note the two interact: while the control is
-open, Enter closes it rather than logging, per the ladder below.
+The log-time refusals above are what answers an Enter from the callsign
+field while the control stands open unanswered: with the keyboard in Call,
+Enter logs, or is refused, exactly as it would with the control closed. Enter
+closes the control instead only from inside it, per the ladder below.
 
 **And said out loud for as long as it's true.** A red `No Band` pill stands
 in the set's FYI area (§ The FYI area) whenever the contact in hand would be
-logged with neither, and a `No Mode` pill whenever it would carry no mode —
+logged with neither, and a `No Mode` pill whenever it would carry no mode,
+or a new contact a mode nobody chose —
 the controls report the condition (`LookupHooks.onMissingRadioState`), the
 panel posts it for that set's radio, so under SO2R each radio is nagged
 about its own band alone. Unlike the auto-open, which fires once per
 install, and the refusal, which speaks only after a station has been worked,
 the alert is on screen the whole time the condition holds — before a
 callsign is typed, beside the call-info line once one is, and over a
-grid-with-no-call. No tap puts it away (it is not `dismissible`): the band
-pick does, and a tap on the pill opens the Radio control that pick is in.
-It reads the same band-OR-frequency condition the refusal does, so the two
-can never disagree about what is missing.
+grid-with-no-call. No tap puts it away (it is not `dismissible`): the answer
+does, a band for one and a mode for the other, and a tap on the pill opens
+the Radio control the answer is in. It reads the conditions the refusals
+read, so it never misses what they would refuse; it also stands for a mode
+a command emptied, which no refusal checks.
 
 It outlives a command's message, refusal included. That message is the
 information area's and only a call-field keystroke clears it, not the band

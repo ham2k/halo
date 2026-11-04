@@ -618,7 +618,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(FocusManager.instance.primaryFocus, same(field));
     await unmount(tester);
-  });
+    // Desktop: on a phone with no keyboard the call field takes no focus at
+    // mount, so there is nothing to hand back.
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('a panel placed once keeps its settings unless asked, and even then only on Save', (tester) async {
     final services = await servicesWith(tester);

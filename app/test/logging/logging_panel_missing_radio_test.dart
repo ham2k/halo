@@ -49,13 +49,14 @@ void main() {
     expect(band.text, t.loggingControls.missingBand);
     expect(band.dismissible, isFalse, reason: 'a condition the band pick answers; no tap puts it away');
     expect(band.onTap, isNotNull, reason: 'the tap opens the Radio control instead');
-    expect(services.fyi.messageFor('mode:A'), isNull, reason: 'the panel starts with a mode');
+    expect(services.fyi.messageFor('mode:A'), isNotNull, reason: 'the field\'s SSB is a default nobody chose, which logging refuses too');
 
     services.radio.setVfo('vfoA', freq: 14285, mode: 'SSB');
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump();
 
     expect(services.fyi.messageFor('band:A'), isNull);
+    expect(services.fyi.messageFor('mode:A'), isNull);
 
     await tester.pumpWidget(wrap(const SizedBox()));
     await tester.pump(const Duration(seconds: 5)); // drain the controls' debounce/clock timers

@@ -1225,6 +1225,7 @@
     "spotAutoNoFreq": "AUTO RE-SPOT STOPPED: THE RADIO REPORTS NO FREQUENCY",
     "spotBusy": "ANOTHER SPOT IS STILL BEING SENT",
     "bandOrFreqRequired": "SET A FREQUENCY OR BAND BEFORE LOGGING",
+    "modeRequired": "PICK A MODE BEFORE LOGGING",
     "incompleteExchange": "FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN'T COPY",
     "incompleteExchangeShift": "FILL IN ${fields}, OR PUT A ? WHERE YOU DIDN'T COPY. SHIFT+ENTER LOGS IT AS IS",
     "missingBand": "NO BAND",
