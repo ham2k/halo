@@ -1062,8 +1062,8 @@ the select does not even offer back. The Logs view's own editor guards the same 
 
 Where the display's error color goes, `alert` must not: the chip's alert condition and the coloured
 run's are written to match. A frequency in a gap between bands alerts (no band) and still has an
-expected sideband, so neither half implies the other, and error text on the chip's own error ground
-is faint at best and invisible on a selected one.
+expected sideband, so neither half implies the other, and error text on the chip's own red alert
+fill is invisible.
 
 The one place the two sides meet is the ADIF export (`extensions/core/adif`). ADIF spells voice SSB
 as `MODE=SSB` with `SUBMODE=USB`/`LSB`, and the submode is dropped **only on a positive match** with

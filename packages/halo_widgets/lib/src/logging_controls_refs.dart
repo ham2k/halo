@@ -457,10 +457,10 @@ SecondaryControlSpec activityControlSpec(
     // "✓ POTA" like any other — and the field's own tint is gone the moment
     // the control is shut, which is how it spends most of a QSO and all of
     // the instant the contact is logged. So the chip carries the mark too, in
-    // the error pair the Radio chip wears with no band to log on and for the
+    // the alert red the Radio chip wears with no band to log on and for the
     // same reason: what is wrong is only cheap to fix while the station is
     // still there. It outranks the extension's accent, which has no
-    // guaranteed contrast against the error fill.
+    // guaranteed contrast against the alert fill.
     alert: anyRefFailsPattern(refs, (control['input'] as Map?)?['pattern'] as String?),
     expandedBuilder: (context) => SizedBox(
       width: 160,

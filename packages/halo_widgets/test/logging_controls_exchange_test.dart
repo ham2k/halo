@@ -981,7 +981,7 @@ void main() {
   // the expanded field — and the field is shut for most of a QSO, and shut
   // again the moment the contact is logged. Without the chip's own mark the
   // operator is left a check mark over the one reference needing attention.
-  testWidgets('the activity chip wears the error pair while a reference fails its pattern', (tester) async {
+  testWidgets('the activity chip fills with the alert red while a reference fails its pattern', (tester) async {
     const controls = [
       {
         'key': 'pota/hunter',
@@ -1007,18 +1007,20 @@ void main() {
 
     ChoiceChip potaChip() => tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first);
 
-    final scheme = Theme.of(tester.element(find.byType(LoggingControls))).colorScheme;
+    final theme = Theme.of(tester.element(find.byType(LoggingControls)));
+    final alert = HaLoColors.fromTheme(theme).alert;
 
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'NOT-A-PARK');
     await tester.pump();
-    expect(potaChip().selectedColor, scheme.error, reason: 'open chip alerts');
+    // An open chip paints selectedColor, so that is where its red has to be.
+    expect(HSVColor.fromColor(potaChip().selectedColor!).hue, closeTo(HSVColor.fromColor(alert).hue, 2), reason: 'open chip alerts');
 
     // Shut, which is how the chip spends most of a QSO — the state in which it
     // is the ONLY thing that can report this.
     await openControl(tester, MdiIcons.pineTree);
     expect(
       tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first).backgroundColor,
-      scheme.errorContainer,
+      alert,
       reason: 'closed chip alerts',
     );
 
@@ -1027,7 +1029,8 @@ void main() {
     await openControl(tester, MdiIcons.pineTree);
     await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
     await tester.pump();
-    expect(potaChip().selectedColor, isNot(scheme.error));
+    expect(potaChip().selectedColor, theme.colorScheme.tertiary);
+    expect(potaChip().backgroundColor, isNot(alert));
   });
 
   testWidgets("activity control's chip icon accents to the extension's color once a reference is entered (issue #187)", (tester) async {

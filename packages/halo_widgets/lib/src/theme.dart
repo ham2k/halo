@@ -129,10 +129,11 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
 
   /// The red that says danger — an alert's icon, the FYI area's pill, the
   /// Radio control's dot while the rig transmits — and what reads on it as a
-  /// fill. Light mode's is `colorScheme.error` itself. Dark mode's is NOT:
-  /// Material's dark error (#F79797) is a pale pink that reads as decoration
-  /// where a warning is meant, so this stays a saturated red there, dark
-  /// enough to carry white text and bright enough to be seen as red.
+  /// fill. Both modes use light mode's `colorScheme.error`. Dark mode's own
+  /// error (#F79797) is a pale pink that reads as decoration where a warning
+  /// is meant; this red still carries white text (3.9:1) and stands out
+  /// against the dark theme's brown logging-control row, where a duller red
+  /// does not.
   final Color alert;
   final Color onAlert;
 
@@ -183,7 +184,7 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
     onSurfaceAccent: Color(0xFF00A8D6), // same hue/saturation as primary, lightened
     spotMultiplier: Color(0xFFFF8A4C), // 10m's hue, lightened to 7.3:1 on the dark surface
     listBackground: Color(0xFF1E2224), // the same one-step-off-surface relationship, inverted
-    alert: Color(0xFFE53935), // a saturated red where colorScheme.error is a pale pink; 4.1:1 on the dark surface
+    alert: Color(0xFFFF1A1A), // light's red, where colorScheme.error is a pale pink; 4.4:1 on the dark surface
     onAlert: Color(0xFFFFFFFF),
     bands: _bandColors,
   );

@@ -299,10 +299,9 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     //
     // [displayMode]'s rule, in the error color — suppressed wherever the chip
     // itself alerts, whose condition this must MATCH (see its `alert:`): error
-    // text on the errorContainer ground is faint, and on a selected chip's
-    // solid error fill invisible. A frequency in a gap between bands alerts
-    // (no band) and still has an expected sideband, so neither half implies
-    // the other.
+    // text on the chip's solid red alert fill is invisible. A frequency in a
+    // gap between bands alerts (no band) and still has an expected sideband,
+    // so neither half implies the other.
     final unexpected = !outOfBand && band != null && isUnexpectedSideband(mode, freqKHz: freq, band: band);
     return [
       (text: head, color: null),

@@ -124,16 +124,17 @@ class SecondaryControlSpec {
   /// doesn't change between editing a contact and an event.
   final bool enabled;
 
-  /// Paints the chip in the theme's error pair instead of the tertiary one,
-  /// for something wrong with the value the chip is summarizing that is only
-  /// cheap to fix while the station is still on the air. The Radio control
+  /// Paints the chip as a [fill] of [HaLoColors.alert] instead of the
+  /// tertiary pair, for something wrong with the value the chip is
+  /// summarizing that is only cheap to fix while the station is still on the
+  /// air. The Radio control
   /// sets it when there is no band to log on — nothing tuned, or a frequency
   /// outside every ham band; an activity control sets it for a reference its
   /// own pattern rejects, which is kept and logged either way.
   ///
   /// Both are conditions the operator cannot see once the control is shut, and
   /// a chip is shut for most of a QSO. It outranks [iconColor]: an arbitrary
-  /// accent has no guaranteed contrast against the error fill.
+  /// accent has no guaranteed contrast against the alert fill.
   final bool alert;
 
   /// Paints the chip's ground in this color, open or shut, with white
@@ -922,14 +923,10 @@ class _ControlChip extends StatelessWidget {
     var foreground = selected ? theme.colorScheme.onTertiary : theme.colorScheme.onTertiaryContainer;
     var background = poloColors.tertiaryLight;
     var selectedColor = theme.colorScheme.tertiary;
-    // The error pair keeps the same selected/unselected contrast the
-    // tertiary one has — container fill closed, solid fill open — so an
-    // alerting chip still reads as open or shut.
-    if (control.alert) {
-      foreground = selected ? theme.colorScheme.onError : theme.colorScheme.onErrorContainer;
-      background = theme.colorScheme.errorContainer;
-      selectedColor = theme.colorScheme.error;
-    } else if (control.fill case final fill?) {
+    // An alert is a fill in the same red as the logging panel's No Band / No
+    // Mode badges: a pale error container beside the tertiaryLight pills
+    // reads as just another chip.
+    if (control.alert ? poloColors.alert : control.fill case final fill?) {
       foreground = Colors.white;
       background = fill;
       selectedColor = Color.lerp(fill, Colors.black, 0.35)!;

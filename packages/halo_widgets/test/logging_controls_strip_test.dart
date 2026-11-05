@@ -1018,10 +1018,9 @@ void main() {
     });
 
     // A pill that looks exactly like every other one is how a contact gets
-    // logged with no band at all. The error pair keeps the same
-    // closed/open contrast the tertiary pair has, so the alert can't be
-    // mistaken for the chip being expanded.
-    testWidgets('the Radio chip fills with the error pair when there is no band', (tester) async {
+    // logged with no band at all. The open chip is a darker red than the
+    // shut one, so the alert can't be mistaken for the chip being expanded.
+    testWidgets('the Radio chip fills with the alert red when there is no band', (tester) async {
       final untuned = FakeVfoStore()..setVfo('vfoA', mode: 'SSB');
       final theme = buildHaLoTheme(Brightness.light);
       await tester.pumpWidget(
@@ -1037,8 +1036,12 @@ void main() {
       );
 
       final chip = tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
-      expect(chip.backgroundColor, theme.colorScheme.errorContainer);
-      expect(chip.selectedColor, theme.colorScheme.error);
+      final alert = HaLoColors.light.alert;
+      expect(chip.backgroundColor, alert);
+      // A selectedColor left at tertiary paints the open chip tan; one left
+      // at the alert itself reads as shut.
+      expect(HSVColor.fromColor(chip.selectedColor!).hue, closeTo(HSVColor.fromColor(alert).hue, 2));
+      expect(chip.selectedColor!.computeLuminance(), lessThan(alert.computeLuminance()));
     });
 
     testWidgets('a frequency outside every ham band alerts the Radio chip too', (tester) async {
@@ -1061,7 +1064,7 @@ void main() {
       );
 
       final chip = tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
-      expect(chip.backgroundColor, theme.colorScheme.errorContainer);
+      expect(chip.backgroundColor, HaLoColors.light.alert);
     });
 
     testWidgets('a frequency the operator\'s own region does not allocate alerts and reads OOB', (tester) async {
@@ -1085,7 +1088,7 @@ void main() {
       ChoiceChip radioChip() => tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.radio), matching: find.byType(ChoiceChip)));
 
       await tester.pumpWidget(panel(1));
-      expect(radioChip().backgroundColor, theme.colorScheme.errorContainer);
+      expect(radioChip().backgroundColor, HaLoColors.light.alert);
       expect(find.text('${fmtFreq(7250)} • OOB'), findsOneWidget);
 
       // The same frequency for a Region 2 operator is an ordinary phone

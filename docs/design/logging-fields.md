@@ -231,9 +231,9 @@ the line fill with real messages; a `!` on the command posts it at high
 priority.
 
 Default colours by category: alerts in the app's alert red
-(`HaLoColors.alert` — the theme's error red in light mode, and in dark mode
-a saturated red in place of Material's pale pink error, which the Radio
-control's on-the-air dot shares), warnings in an amber apart from the
+(`HaLoColors.alert` — the light theme's error red in both modes, where
+Material's dark error is a pale pink; an alerting logging-control pill fills
+with it and the Radio control's on-the-air dot shares it), warnings in an amber apart from the
 theme's tertiary, operational items in the tertiary (the keyer's colour),
 info in a muted `onSurface`. A message may name its own icon and text
 colours instead.
