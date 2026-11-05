@@ -7,11 +7,14 @@
 // and a centre the operator did not ask for is a wrong bearing to every
 // station on the map.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/views/operation/rotator/rotator_map.dart';
 import 'package:ham2k_logger/views/operation/rotator/rotator_panel.dart';
@@ -44,75 +47,88 @@ void main() {
 
   group('the pane over a connected rotator', () {
     late FakeGs232Line line;
-    late CatService cat;
+    CatService? cat;
     late HaLoServices services;
     late String uuid;
 
+    /// Connected on the test's own clock, the rotator's poll and its
+    /// silence watch are fake timers that [WidgetTester.pump] moves: on
+    /// real ones, a loaded machine stretches the wait for a reading past
+    /// the watch, and the pane never sees the node live. Disposed inside
+    /// the body, since the harness checks for a pending timer before any
+    /// tearDown runs; the teardown that stops the poll resumes from a
+    /// subscription cancel that completes on the real event loop.
+    void paneTest(String description, Future<void> Function(WidgetTester tester) body) => testWidgets(description, (tester) async {
+      cat = null;
+      try {
+        await body(tester);
+      } finally {
+        // Only a service this test built: disposing another, or none, would
+        // throw here and replace whatever failed in the body.
+        if (cat case final built?) {
+          built.dispose();
+          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          await tester.pump();
+        }
+      }
+    });
+
     Future<void> pumpPane(WidgetTester tester) async {
       line = FakeGs232Line();
-      final harness = await makeHaLoServices(cat: (settings) => cat = line.catService(settings, staleAfter: const Duration(milliseconds: 300)));
+      late final CatService built;
+      final harness = await makeHaLoServices(cat: (settings) => cat = built = line.catService(settings));
       services = harness.services;
-      addTearDown(cat.dispose);
-      // Real time for the CAT layer's own awaits, which the test's fake clock
-      // never runs.
-      await tester.runAsync(() async {
-        uuid = (await cat.addNode(typeKey: fakeGs232TypeKey, name: 'Tower')).uuid;
-        await cat.connect(uuid);
-      });
-      await tester.runAsync(
-        () => tester.pumpWidget(
-          TranslationProvider(
-            child: MaterialApp(
-              home: Scaffold(
-                body: SizedBox(
-                  width: 400,
-                  height: 400,
-                  child: RotatorPanel(panelId: 'rotator#1', services: services, operationLocation: home),
-                ),
+      uuid = (await built.addNode(typeKey: fakeGs232TypeKey, name: 'Tower')).uuid;
+      unawaited(built.connect(uuid));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 400,
+                child: RotatorPanel(panelId: 'rotator#1', services: services, operationLocation: home),
               ),
             ),
           ),
         ),
       );
+      expect(built.stateFor(uuid).status, EquipmentStatus.connected);
     }
 
-    Future<void> settle(WidgetTester tester, {int ms = 50}) async {
-      await tester.runAsync(() => Future<void>.delayed(Duration(milliseconds: ms)));
+    /// The controller's answer, and the pane redrawn with it.
+    Future<void> hear(WidgetTester tester, String text) async {
+      line.say(text);
       await tester.pump();
-    }
-
-    /// A fixed wait for the controller's line to reach the pane is too short
-    /// on a loaded machine, and one long enough would outlast the 300 ms
-    /// silence watch the first test needs it inside.
-    Future<void> settleUntilShown(WidgetTester tester, Finder finder) async {
-      for (var tries = 0; tries < 50 && finder.evaluate().isEmpty; tries++) {
-        await settle(tester, ms: 5);
-      }
+      await tester.pump();
     }
 
     // The silence watch marks the node stale, and nothing ever drops a
     // rotator that went quiet: shown as live, the last heading stays on the
     // map for good, and a tap sends a turn to a controller not answering.
-    testWidgets('a rotator that stops answering is not responding, and a tap turns nothing', (tester) async {
+    paneTest('a rotator that stops answering is not responding, and a tap turns nothing', (tester) async {
       await pumpPane(tester);
-      line.say('+0123\r\n');
-      await settleUntilShown(tester, find.text('123°'));
+      await hear(tester, '+0123\r\n');
       expect(find.text('123°'), findsOneWidget);
+      expect(find.text(p.rotatorNotResponding), findsNothing);
+      final east = tester.getCenter(find.byType(RotatorMap)) + const Offset(80, 0);
+      line.sent.clear();
+      await tester.tapAt(east);
+      expect(line.sent.where((command) => command.startsWith('M')), isNotEmpty, reason: 'live, the same tap turns the rotator');
 
-      await settle(tester, ms: 400);
+      await tester.pump(catStaleAfter + const Duration(seconds: 1));
       expect(find.text(p.rotatorNotResponding), findsOneWidget);
       expect(find.text('123°'), findsNothing);
       line.sent.clear();
-      await tester.tapAt(tester.getCenter(find.byType(RotatorMap)) + const Offset(80, 0));
+      await tester.tapAt(east);
       expect(line.sent.where((command) => command.startsWith('M')), isEmpty);
     });
 
     // The driver's refusal problem names the cause — the controller is in
     // another mode — and is the only thing that does.
-    testWidgets('a controller refusing every poll says why on the pane', (tester) async {
+    paneTest('a controller refusing every poll says why on the pane', (tester) async {
       await pumpPane(tester);
-      line.say('?>\r\n');
-      await settleUntilShown(tester, find.text(t.settings.station.rotatorRefused));
+      await hear(tester, '?>\r\n');
       expect(find.text(t.settings.station.rotatorRefused), findsOneWidget);
     });
   });

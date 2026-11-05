@@ -72,8 +72,8 @@ class FakeGs232Line {
     transports: {_transport.key: _transport},
   );
 
-  /// A CatService over this line, marking a node stale after [staleAfter].
-  CatService catService(SettingsService settings, {Duration staleAfter = catStaleAfter}) => CatService(settings, registry: registry, staleAfter: staleAfter);
+  /// A CatService over this line.
+  CatService catService(SettingsService settings) => CatService(settings, registry: registry);
 
   /// The controller says [text] — `+0123\r\n`, or `?>\r\n` to refuse.
   void say(String text) => _connection!._data.add(Uint8List.fromList(ascii.encode(text)));

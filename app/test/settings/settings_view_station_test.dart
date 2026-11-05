@@ -5,6 +5,7 @@
 // experiment, that it sits between Application Preferences and Cloud Sync, and
 // that it lists configured equipment with its live status.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -813,10 +815,33 @@ void main() {
 
   group('a connected rotator in its editor', () {
     late FakeGs232Line line;
-    late CatService cat;
+    CatService? cat;
+
+    /// Connected on the test's own clock, the rotator's poll and its
+    /// silence watch are fake timers that [WidgetTester.pump] moves: on
+    /// real ones, a loaded machine stretches the wait for a reading past
+    /// the watch, and the editor never sees the node live. Disposed inside
+    /// the body, since the harness checks for a pending timer before any
+    /// tearDown runs; the teardown that stops the poll resumes from a
+    /// subscription cancel that completes on the real event loop.
+    void towerTest(String description, Future<void> Function(WidgetTester tester) body) => testWidgets(description, (tester) async {
+      cat = null;
+      try {
+        await body(tester);
+      } finally {
+        // Only a service this test built: disposing another, or none, would
+        // throw here and replace whatever failed in the body.
+        if (cat case final built?) {
+          built.dispose();
+          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          await tester.pump();
+        }
+      }
+    });
 
     Future<void> openConnectedTower(WidgetTester tester, {Map<String, dynamic> config = const {}}) async {
       line = FakeGs232Line();
+      late final CatService built;
       final services = await pumpSettings(
         tester,
         equipment: {
@@ -825,12 +850,12 @@ void main() {
             'tower': {'typeKey': fakeGs232TypeKey, 'name': 'Tower', 'config': config},
           },
         },
-        cat: (settings) => cat = line.catService(settings, staleAfter: const Duration(milliseconds: 300)),
+        cat: (settings) => cat = built = line.catService(settings),
       );
-      addTearDown(cat.dispose);
       await services.settings.setExperimentEnabled('rotator', true);
-      await tester.runAsync(() => cat.connect('tower'));
+      unawaited(built.connect('tower'));
       await tester.pumpAndSettle();
+      expect(built.stateFor('tower').status, EquipmentStatus.connected);
       await tester.tap(find.text('Station Configuration'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('1 other device'));
@@ -842,7 +867,6 @@ void main() {
     /// The controller's answer, and the editor's next readout refresh.
     Future<void> hear(WidgetTester tester, String text) async {
       line.say(text);
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await tester.pump(const Duration(seconds: 2));
     }
 
@@ -851,7 +875,7 @@ void main() {
     // Past its limits a turn goes to the nearer one, and the box still says
     // what was typed: unsaid, the operator believes the antenna is headed
     // somewhere it will never reach.
-    testWidgets('a turn past the limits says where it is going instead', (tester) async {
+    towerTest('a turn past the limits says where it is going instead', (tester) async {
       await openConnectedTower(tester, config: {'azimuthMax': 180});
       await hear(tester, '+0090\r\n');
       await tester.enterText(find.widgetWithText(TextField, st.rotatorTargetAzimuth).hitTestable(), '200');
@@ -861,31 +885,32 @@ void main() {
       expect(find.text(st.rotatorHeldAtLimit(heading: st.rotatorAzimuthReading(degrees: 180))), findsOneWidget);
     });
 
-    testWidgets('a turn within the limits says nothing', (tester) async {
+    towerTest('a turn within the limits says nothing', (tester) async {
       await openConnectedTower(tester, config: {'azimuthMax': 180});
       await hear(tester, '+0090\r\n');
       await tester.enterText(find.widgetWithText(TextField, st.rotatorTargetAzimuth).hitTestable(), '150');
       await tester.tap(find.text(st.rotatorTurn).hitTestable());
       await tester.pump();
       expect(line.sent, contains('M150\r'));
-      expect(find.textContaining(st.rotatorHeldAtLimit(heading: '')), findsNothing);
+      for (final heading in [150, 180]) {
+        expect(find.text(st.rotatorHeldAtLimit(heading: st.rotatorAzimuthReading(degrees: heading))), findsNothing);
+      }
     });
 
     // A controller refusing every poll still answers, so nothing else is
     // wrong: without its problem the pane waits for a position forever.
-    testWidgets('a controller refusing every poll says why, not that it is waiting', (tester) async {
+    towerTest('a controller refusing every poll says why, not that it is waiting', (tester) async {
       await openConnectedTower(tester);
       await hear(tester, '?>\r\n');
       expect(find.text(st.rotatorRefused).hitTestable(), findsOneWidget);
       expect(find.text(st.rotatorNoReading).hitTestable(), findsNothing);
     });
 
-    testWidgets('a rotator gone quiet reads not responding, and Turn waits for it', (tester) async {
+    towerTest('a rotator gone quiet reads not responding, and Turn waits for it', (tester) async {
       await openConnectedTower(tester);
       await hear(tester, '+0090\r\n');
       expect(find.text(st.rotatorCurrentStateHeader(position: st.rotatorAzimuthReading(degrees: 90))), findsOneWidget);
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 400)));
-      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(catStaleAfter + const Duration(seconds: 2));
       expect(find.text(st.rotatorCurrentStateHeader(position: st.rotatorNotResponding)), findsOneWidget);
       final turn = tester.widget<OutlinedButton>(find.ancestor(of: find.text(st.rotatorTurn).hitTestable(), matching: find.byType(OutlinedButton)));
       expect(turn.onPressed, isNull);
