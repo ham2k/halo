@@ -667,6 +667,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     final (shape, style, count) = (_shape, _style, _pageCount);
     _run('save', () async {
       final t = context.t.map.postcard;
+      final saveLabel = context.t.common.save;
       final all = await _allPictures(shape, style, count);
       final pngs = all.pngs;
       final names = _fileNames(count).sublist(count - pngs.length);
@@ -730,8 +731,9 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
       // A folder rather than a save dialog each: a sandboxed app may write
       // only the file a save dialog names, and none beside it. A postcard
       // saved there before under the same names is replaced, as a save
-      // dialog's own would be.
-      final directory = await getDirectoryPath();
+      // dialog's own would be. Asked as a destination, not a folder to open:
+      // macOS's folder panel otherwise says "Open" and offers no New Folder.
+      final directory = await getDirectoryPath(confirmButtonText: saveLabel, canCreateDirectories: true);
       if (directory == null) return null;
       for (var page = 0; page < pngs.length; page++) {
         try {

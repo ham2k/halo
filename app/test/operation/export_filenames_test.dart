@@ -209,6 +209,17 @@ void main() {
       }
     });
 
+    test('several files ask for a folder to save into, not one to open', () async {
+      // Unlabelled, macOS's folder panel confirms with "Open" — the wording of
+      // reading a folder, on a dialog that is about to write into one.
+      await exports.saveToDisk([
+        {'filename': 'a.adi', 'content': 'one'},
+        {'filename': 'b.adi', 'content': 'two'},
+      ]);
+      final ask = asked.singleWhere((call) => call.method == 'getDirectoryPath');
+      expect((ask.arguments as Map)['confirmButtonText'], 'Save');
+    });
+
     test('a single file is offered to the save dialog under its bare name', () async {
       final saved = await exports.saveToDisk([
         {'filename': '../../evil.plist', 'content': 'one'},

@@ -672,7 +672,9 @@ class ExportService {
       return (location: location.path, count: 1, namesFiles: false);
     }
 
-    final directory = await getDirectoryPath();
+    // Asked as a destination, not a folder to open: macOS's folder panel
+    // otherwise says "Open" and offers no New Folder.
+    final directory = await getDirectoryPath(confirmButtonText: t.common.save, canCreateDirectories: true);
     if (directory == null) return null;
     final filenames = uniqueExportFilenames(files);
     final written = <String>[];
