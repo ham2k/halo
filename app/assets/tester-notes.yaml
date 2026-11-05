@@ -7,12 +7,12 @@
 upcoming:
   changes:
     - "New Band Scope panel: click or scroll to tune, drag to zoom and pan"
-    - "Improved translations: every language is complete again and uses PoLo's vocabulary (tell us what reads wrong)"
+    - "Improved translations: every language is complete again and uses PoLo's vocabulary"
     - "New: spot commands can name one spot source (`QRV pota: hunters first`, `SPOT discord: hey`)"
-    - "New FYI area under the call info: the No Band warning, the radio's SWR and the keyer line in one place (tell us how it reads)"
+    - "New FYI area under the call info: the No Band warning and the radio's SWR in one place"
     - "Contests hold a contact until its exchange is in; a ? or Shift+Enter logs it anyway"
     - "Improved phone layout: larger text, tighter spacing, wider dialogs (feedback welcome)"
-    - "Improved Cloud Sync: contacts logged on your other devices arrive sooner (tell us how quickly)"
+    - "Improved Cloud Sync: contacts logged on your other devices arrive sooner"
     - "New Operator control: the guest operator, or which station calls are on the air"
     - "New: an extension can tell you more about itself, in its details and on its install screen"
     - "New Spotting setting: choose which spots each destination gets (QRV/QRT only, no auto re-spots, none)"
