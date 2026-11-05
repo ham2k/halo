@@ -291,7 +291,13 @@ test("declaring a shared library in the manifest rebuilds with it taken from the
     // rebuild under it would refuse i18next again. Declaring it has to reach
     // the build, not only the reload's manifest entry.
     await edit(join(dir, "manifest.json"), JSON.stringify(manifestFor(), null, 2))
-    const reload = await stream.next()
+    // A rebuild that reads the manifest while it is being written still builds
+    // under the old one and reports the refusal again; only that may come first.
+    let reload = await stream.next()
+    for (let repeats = 0; reload.type === "buildError" && repeats < 5; repeats++) {
+      assert.match(String(reload.message), /i18next/)
+      reload = await stream.next()
+    }
     assert.equal(reload.type, "reload")
     assert.equal(dev.buildError, null)
     const bundle = await (await fetch(`${dev.url}/${KEY}.js`)).text()
