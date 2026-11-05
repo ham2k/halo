@@ -158,6 +158,8 @@ void main() {
       session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0x27, ..._capturedSweep, 0xFD]));
       expect(sink.frames.single.lowHz, 143925000);
       expect(sink.frames.single.levels, hasLength(_capturedSweep.length - 16));
+      // The screen's floor is the radio's, but a scene placing things above the noise needs the noise.
+      expect(sink.frames.single.noiseDb, isNotNull);
     });
 
     test('a sweep never answers a scope read, so it cannot free the wire for a burst', () {

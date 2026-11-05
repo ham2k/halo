@@ -55,7 +55,7 @@ void main() {
     await settle(tester);
     expect(panels.renders, ['initial'], reason: 'the meters moved, the dial did not');
 
-    radio.tune(7030000);
+    radio.retune(7030000);
     await settle(tester);
     expect(panels.renders, ['initial', 'radio']);
   });
@@ -65,7 +65,7 @@ void main() {
     addTearDown(radio.dispose);
     await tester.pumpWidget(harness(panels, panel(['spots']), radio));
     await settle(tester);
-    radio.tune(7030000);
+    radio.retune(7030000);
     await settle(tester);
     expect(panels.renders, ['initial']);
   });
@@ -94,7 +94,7 @@ void main() {
     await settle(tester);
     await tester.pumpWidget(harness(panels, panel(['spots', 'radio']), radio));
     await settle(tester);
-    radio.tune(7030000);
+    radio.retune(7030000);
     await settle(tester);
     expect(panels.renders, ['initial', 'radio']);
   });
@@ -106,7 +106,7 @@ void main() {
     addTearDown(radio.dispose);
     await tester.pumpWidget(harness(panels, panel(const []), radio));
     await settle(tester);
-    radio.tune(7030000);
+    radio.retune(7030000);
     await settle(tester);
     expect(panels.renders, ['initial', 'radio']);
   });
@@ -117,8 +117,8 @@ void main() {
     await tester.pumpWidget(harness(panels, panel(['radio']), radio));
     await settle(tester);
     await tester.pumpWidget(harness(panels, panel(['radio']), radio, visible: false));
-    radio.tune(7030000);
-    radio.tune(7031000);
+    radio.retune(7030000);
+    radio.retune(7031000);
     await settle(tester);
     expect(panels.renders, ['initial']);
 
@@ -129,10 +129,20 @@ void main() {
 }
 
 class _Radio extends ChangeNotifier implements SceneSpectrumSource {
+  @override
+  bool nativeGestures = true;
+  @override
+  int? maxWidthHz(String uuid) => null;
+  @override
+  bool canTune(String uuid) => false;
+  @override
+  bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
+  @override
+  bool widen(String uuid, int widthHz) => false;
   int _hz = 14074000;
   double _dbm = -70;
 
-  void tune(int hz) {
+  void retune(int hz) {
     _hz = hz;
     notifyListeners();
   }

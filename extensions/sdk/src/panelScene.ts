@@ -181,10 +181,11 @@ export interface PanelSceneLayer {
  * - `nativeSwitch`, `nativeCheckbox`: a number, 1 or 0. Shows `label` beside it.
  * - `nativeChip`: with `value`, a toggle (1 or 0); without, an action that sends `activate`.
  * - `nativeText`: shows `label`, or its bound value. Sends nothing.
- * - `spectrum`: the radio's panadapter and waterfall, drawn by the host from sweeps that never
- *   reach the extension. Needs `requiresRadioRead`; a host without the feature, or a radio
- *   without a scope, shows why instead. A click sends `commit` with the frequency as `value`.
- *   Takes no `value`; see `PanelSceneSpectrum` for the rest. Extension API 6: declare `"api": 6`.
+ * - `bandScope`: a band scope — the radio's spectrum and waterfall, drawn by the host from sweeps
+ *   that never reach the extension. Needs `requiresRadioRead`; a host without the feature, or a
+ *   radio without a scope, shows why instead. A click sends `commit` with the frequency as `value`.
+ *   Takes no `value`; see `PanelSceneSpectrum` for the rest. Extension API 17; before it the same
+ *   control is `spectrum` (extension API 6), which still reads the same.
  * - `zoom`: a strip of a scene with `scroll`, drawn by nothing, where a drag along the scroll zooms
  *   about the pane's middle — away from it in, toward it out, by the ratio of the distances. While
  *   the drag lasts the app moves each layer and control to where the zoom puts its middle, at its
@@ -208,6 +209,7 @@ export type PanelSceneControlKind =
   | "nativeSegmented"
   | "nativeChip"
   | "nativeText"
+  | "bandScope"
   | "spectrum"
   | "zoom"
 
@@ -215,18 +217,18 @@ export type PanelSceneControlKind =
 export type PanelSceneSpectrumNumber = number | string
 
 /**
- * A `spectrum` control's display. All of it happens on the host after the sweep arrives, so it
- * means the same on every radio; the radio's own scope (span, reference level, sweep speed) is
- * `host.setRadioSpectrum`'s. Colors are `#RRGGBB`, or `#AARRGGBB` with transparency. Defaults
- * follow the app's theme.
+ * A band scope's display (`bandScope`, or `spectrum` before extension API 17). All of it happens
+ * on the host after the sweep arrives, so it means the same on every radio; the radio's own scope
+ * (span, reference level, sweep speed) is `host.setRadioSpectrum`'s. Colors are `#RRGGBB`, or
+ * `#AARRGGBB` with transparency. Defaults follow the app's theme.
  */
 export interface PanelSceneSpectrum {
   /** A radio's id from `listRadios`. Omitted, the designated radio. */
   radio?: string
-  /** Default `both`. */
-  display?: "both" | "pan" | "waterfall"
+  /** Default `both`. `pan` is `spectrum`'s name before extension API 17. */
+  display?: "both" | "spectrum" | "pan" | "waterfall"
   /**
-   * Which way the waterfall moves; the panadapter sits on the side it comes from. Frequency rises
+   * Which way the waterfall moves; the spectrum sits on the side it comes from. Frequency rises
    * as `rising` says: by default left to right for `down` (the default) and `up`, bottom to top for
    * `right` and top to bottom for `left` — `down` turned a quarter either way. Text stays upright;
    * offsets and `corner`s are measured as if flowing down.
@@ -239,22 +241,29 @@ export interface PanelSceneSpectrum {
    * Extension API 12; before it, `left` rose bottom to top as `right` does.
    */
   rising?: "right" | "left" | "down" | "up"
-  /** The panadapter's share of the height with `both`, 0.1–0.9. Default 0.4. */
+  /** The spectrum's share of the height with `both`, 0.1–0.9. Default 0.4. */
   split?: number
   /** dB added to the radio's own floor. */
   floor?: PanelSceneSpectrumNumber
-  /** The panadapter's height in dB. Omitted, the radio's. */
+  /** The spectrum's height in dB. Omitted, the radio's. */
   range?: PanelSceneSpectrumNumber
   /** Written as the pointer moves: the frequency and level under it. */
   hoverHz?: string
   hoverDb?: string
+  /**
+   * Written by the app as they change, in Hz: the width shown, what a click rounds to, and this
+   * control's radio's tuned frequency. Extension API 17.
+   */
+  widthHz?: string
+  stepHz?: string
+  vfoHz?: string
   /** 0–99: the share of the trace each sweep keeps from the last. Default 40. The waterfall stays raw. */
   average?: PanelSceneSpectrumNumber
-  /** The most times a second the panadapter redraws, 1–60. Default 15. The waterfall keeps its own pace. */
+  /** The most times a second the spectrum redraws, 1–60. Default 15. The waterfall keeps its own pace. */
   fps?: PanelSceneSpectrumNumber
   /** Waterfall rows a second, 0.1–60; each row keeps the loudest reading since the last. Omitted, one per sweep. */
   waterfallSpeed?: PanelSceneSpectrumNumber
-  /** The waterfall's own dB window, like `floor` and `range`. Omitted, the panadapter's. */
+  /** The waterfall's own dB window, like `floor` and `range`. Omitted, the spectrum's. */
   waterfallFloor?: PanelSceneSpectrumNumber
   waterfallRange?: PanelSceneSpectrumNumber
   /** Default `classic`. */
@@ -264,11 +273,26 @@ export interface PanelSceneSpectrum {
   traceColor?: string
   /** 0.25–8. Default 1. */
   traceWidth?: PanelSceneSpectrumNumber
-  /** Under the trace. With `fillColorBottom`, a gradient from the top of the panadapter to its bottom. */
+  /** Under the trace. With `fillColorBottom`, a gradient from the top of the spectrum to its bottom. */
   fillColor?: string
   fillColorBottom?: string
+  /**
+   * The trace's colors by level, 2 to 8 stops lowest first: colors spread evenly from the spectrum's
+   * bottom to its top, or stops each at its own level, so a level keeps its color as the floor and
+   * range move. In place of `traceColor`. API 17.
+   */
+  traceColors?: string[] | PanelSceneSpectrumStop[]
+  /** The fill's colors by level, as `traceColors`. In place of `fillColor` and `fillColorBottom`. API 17. */
+  fillColors?: string[] | PanelSceneSpectrumStop[]
+  /** The trace in dashes. API 17. */
+  traceDashed?: boolean
+  /**
+   * 0–20: the trace averaged across this many pixels of frequency and drawn as a curve. The
+   * waterfall, the hover level and the noise stay raw. API 17.
+   */
+  traceSmooth?: PanelSceneSpectrumNumber
   backgroundColor?: string
-  /** The panadapter's dB and frequency lines. */
+  /** The spectrum's dB and frequency lines. */
   gridColor?: string
   /** The frequency lines carried down through the waterfall. Omitted, none. */
   waterfallGridColor?: string
@@ -287,29 +311,214 @@ export interface PanelSceneSpectrum {
    * Extension API 7; `autoSpan` 12.
    */
   span?: PanelSceneSpectrumNumber
-  /** A click tunes to the nearest multiple of this many Hz. Omitted, wherever it lands. */
+  /**
+   * A click tunes to the nearest multiple of this many Hz, the wheel moves by it and a dragged line
+   * lands on it. Omitted, steps that follow the zoom along 1, 2, 5, 10, 20, 50… Hz from the smallest
+   * covering a pixel: a fine step one above it, which a dragged line lands on, a medium one and a coarse two above that
+   * (no coarser than 1 kHz unless the fine one is). Within 5 s of the last tune, a click within 1 kHz
+   * of the dial is fine and within 3 kHz medium; any other coarse. The wheel is fine a notch at a
+   * time, medium briskly, coarse spun. Before extension API 17, omitted, a click went out where it
+   * landed.
+   */
   tuneStep?: PanelSceneSpectrumNumber
-  /** Dashes the panadapter's grid lines. */
+  /** Dashes the spectrum's grid lines. */
   gridDashed?: boolean
-  /** The gap between the panadapter and the waterfall, with frequency labels and ticks. `true` takes the defaults. */
+  /**
+   * The gap between the spectrum and the waterfall, with frequency labels and ticks — the axis a
+   * drag zooms on. `true` takes the defaults; omitted, so does the app from extension API 17 (with
+   * ticks), and before it there was none; `false` is none, and no axis to zoom on.
+   */
   scale?: boolean | PanelSceneSpectrumScale
+  /**
+   * The tuned frequency at the top of its line, over the passband the scene draws (its first area
+   * anchored to the dial). `false` hides it; an object says how it is drawn. Extension API 17.
+   */
+  vfoLabel?: boolean | PanelSceneSpectrumVfoLabel
+  /**
+   * A strip along the flow: dB along the spectrum (no unit) and the waterfall's age in seconds.
+   * Omitted, the app draws one at the end; `false` is none. A drag along it changes the waterfall's
+   * speed, the spectrum's floor (the third by its base) or its range (beyond), as
+   * `gestures.levels` says; a double click puts the scene's own back. Its background, labels and
+   * ticks are the frequency axis's (`scale`'s) where it names none. Extension API 17.
+   */
+  levelScale?:
+    | boolean
+    | {
+        /**
+         * Which end of the frequency's way across the screen: the right (`end`, the default) or left
+         * of a band scope flowing `down` or `up`, the bottom or top of one flowing `right` or `left`.
+         */
+        side?: "start" | "end"
+        /** Over the picture on a see-through background (the default), or `false`, beside it. */
+        over?: boolean
+        /** How deep it is. Default 40 upright, 24 sideways. */
+        width?: PanelSceneSpectrumNumber
+        background?: string
+        labels?: { fontFamily?: string; size?: PanelSceneSpectrumNumber; weight?: PanelSceneSpectrumNumber; italic?: boolean; color?: string }
+        ticks?: { color?: string; width?: PanelSceneSpectrumNumber; length?: PanelSceneSpectrumNumber }
+      }
+  /**
+   * Who handles each gesture: `native`, the app; `event`, the extension, sent the control's event;
+   * `off`, nobody. `tune` is a click, a scroll that tunes (see `scroll`), or a drag of
+   * the tuned frequency's line — native, the app tunes the radio itself, where the
+   * panel declares `requiresRadioWrite` (elsewhere the click is the event); as an event, a `commit`
+   * with the frequency. `zoom` is a drag along the axis, a pinch, or a trackpad pinch; `pan` a drag
+   * along the frequency over the spectrum or waterfall, or a scroll that pans; `split` a drag across
+   * the axis, moving it between the spectrum and the waterfall — as events, `change` while it moves
+   * and `commit` when it ends, with `gesture` naming which and `value` the width or the middle in Hz,
+   * or the spectrum's share of the height; `levels` a drag on the level strip, sent as `floor`,
+   * `range` or `speed`. Native, the `commit` still comes when the gesture ends, for a panel that keeps
+   * the operator's choice (a saved width back as `span`, a share as `split`); a double click on the
+   * axis sends a zoom of `0`, the scene's own width again. Omitted, each is `native`, except a bundle
+   * declaring an extension API before 17, whose `tune` is `event` and whose wheel scrolls the scene as
+   * it did. Extension API 17.
+   */
+  gestures?: {
+    tune?: "native" | "event" | "off"
+    zoom?: "native" | "event" | "off"
+    pan?: "native" | "event" | "off"
+    split?: "native" | "event" | "off"
+    levels?: "native" | "event" | "off"
+    /**
+     * What scrolling up and down, and sideways, does — the wheel or a trackpad's swipe — whichever
+     * way the band scope lies. Default: up and down tune, sideways pans. Along the frequency on
+     * screen it moves the dial or the window the way it goes; across it, up and right are higher.
+     */
+    scroll?: { vertical?: "tune" | "pan" | "off"; horizontal?: "tune" | "pan" | "off" }
+  }
   /** The tuned-frequency line, styled per part; a part it leaves out has none. Omitted, the theme's on both. */
-  center?: { pan?: PanelSceneSpectrumStyle; waterfall?: PanelSceneSpectrumStyle }
+  center?: { spectrum?: PanelSceneSpectrumStyle; pan?: PanelSceneSpectrumStyle; waterfall?: PanelSceneSpectrumStyle }
   /** Up to 16 lines and areas at Hz offsets — a passband, a CW offset. */
   overlays?: PanelSceneSpectrumOverlay[]
   /** Up to 64 pieces of text at frequencies — a spot, a net, a beacon. */
   annotations?: PanelSceneSpectrumAnnotation[]
+  /**
+   * Up to 128 rectangles, lines, text and artwork placed by frequency, over the picture under the
+   * annotations, moving with every zoom and pan. Extension API 17.
+   */
+  layers?: PanelSceneSpectrumLayer[]
 }
 
 /**
- * The gap sits between the panadapter and the waterfall — above the waterfall with no panadapter,
- * below the panadapter with no waterfall. Labels and ticks are drawn over the whole control, so an
- * `offset` can place them anywhere: it is pixels from the base of the panadapter (the top of the
- * waterfall where there is none), negative rising into the panadapter.
+ * Along the frequency: `freq:` and a number of Hz or a scene value, or `vfo` (this control's tuned
+ * frequency), then any of `±<n>hz` (moving with the zoom) and `±<n>px` (not) — `freq:14074000`,
+ * `vfo-1500hz`, `freq:spotHz+4px`. With no frequency, or as a number, pixels from the window's low
+ * edge.
  */
+export type PanelSceneSpectrumAlong = string | number
+
+/**
+ * Across the frequency: `spectrum`, `axis` or `waterfall` for that part's top edge (`:bottom` for
+ * its bottom), then any of `±<n>%` (a share of that part's height), `±<n>s` (on the waterfall,
+ * seconds of its history) and `±<n>px` — `spectrum+30%`, `waterfall+5s`, `spectrum:bottom-12px`. Or
+ * `noise` (the spectrum's noise as the app estimates it), then `±<n>db` above it, `±<n>%` of the
+ * spectrum's height and `±<n>px` — `noise+20db`, which stays that far above the noise as the floor and range change. With neither,
+ * or as a number, from the control's top edge, a share being of the control's height. A part not
+ * shown draws nothing on it, nor the noise with no spectrum.
+ */
+export type PanelSceneSpectrumAcross = string | number
+
+/**
+ * Drawn where its coordinates put it: `x` and `x2` along the frequency, `y` and `y2` across it,
+ * whichever way the control is turned. A `rect` or an `svg` fills the box between the corners, a
+ * `line` runs from one to the other, and `text` sits at the first, upright.
+ */
+export interface PanelSceneSpectrumLayer {
+  /** Unique within the control. */
+  id: string
+  kind: "rect" | "line" | "text" | "svg"
+  x: PanelSceneSpectrumAlong
+  /** Needed by a `rect` and an `svg`; a `line` defaults to `x`. */
+  x2?: PanelSceneSpectrumAlong
+  /** Default the control's top. */
+  y?: PanelSceneSpectrumAcross
+  /** Default the control's bottom. */
+  y2?: PanelSceneSpectrumAcross
+  /** A rect's outline, a line's color, or the text's. */
+  color?: string
+  /** A rect's inside. A rect needs this or `color`. */
+  fill?: string
+  /** The outline's or the line's width. Default 1. */
+  width?: PanelSceneSpectrumNumber
+  /** A line drawn in dashes. */
+  dashed?: boolean
+  /**
+   * Drawn behind the spectrum's grid, areas and trace rather than over the picture, and so hidden
+   * under the waterfall. A click reaches it only where no layer over the picture takes it.
+   */
+  behind?: boolean
+  /** A rect's corners, or the text's background. */
+  radius?: PanelSceneSpectrumNumber
+  /** Text as given (at most 256 characters), or `value`. */
+  text?: string
+  /** A scene value shown with `decimals` (0 to 6), between `prefix` and `suffix`. */
+  value?: string
+  decimals?: number
+  prefix?: string
+  suffix?: string
+  /** Which end of the text is at `x`. Default `start`. */
+  align?: "start" | "center" | "end"
+  /** Which edge of the text is at `y`. Default `top`. */
+  valign?: "top" | "center" | "bottom"
+  fontFamily?: string
+  size?: PanelSceneSpectrumNumber
+  weight?: PanelSceneSpectrumNumber
+  italic?: boolean
+  background?: string
+  /** Around the text. Default 2 with a background, else 0. */
+  padding?: PanelSceneSpectrumNumber
+  /** Artwork for an `svg` layer, stretched to its box. */
+  svg?: string
+  /**
+   * Sent as `activate`, with the frequency clicked as `value`, the `id` as `layer` and where it
+   * was clicked as `at`; the click tunes nothing.
+   */
+  event?: string
+  /** Opened where it is clicked, in place of an `event`; the item picked is sent the same way. */
+  menu?: { label: string; event: string }[]
+}
+
+/**
+ * The gap sits between the spectrum and the waterfall — above the waterfall with no spectrum,
+ * below the spectrum with no waterfall. Labels and ticks are drawn over the whole control, so an
+ * `offset` can place them anywhere: it is pixels from the base of the spectrum (the top of the
+ * waterfall where there is none), negative rising into the spectrum.
+ */
+/** How the tuned frequency's label is drawn. Extension API 17. */
+export interface PanelSceneSpectrumVfoLabel {
+  /**
+   * The text of its MHz, its kHz and its Hz. Each part takes what it does not name from the one
+   * before it, the MHz from the label's own (the line's color), except that the MHz is bold where
+   * the kHz is light (`weight` 300) and the Hz is four fifths the kHz's size.
+   */
+  mhz?: PanelSceneSpectrumVfoLabelPart
+  khz?: PanelSceneSpectrumVfoLabelPart
+  hz?: PanelSceneSpectrumVfoLabelPart
+  /**
+   * Hz digits always shown, 0 to 3, cut rather than rounded. `auto` (the default): as many as the
+   * frequency has, each sliding in or out as the dial needs it, and kept while the dial moves.
+   */
+  hzDigits?: 0 | 1 | 2 | 3 | "auto"
+}
+
+/** The text of one part of the tuned frequency's label. */
+export interface PanelSceneSpectrumVfoLabelPart {
+  fontFamily?: string
+  size?: PanelSceneSpectrumNumber
+  weight?: PanelSceneSpectrumNumber
+  italic?: boolean
+  color?: string
+}
+
 export interface PanelSceneSpectrumScale {
   /** Pixels, 0–200. Default 20. */
   gap?: PanelSceneSpectrumNumber
+  /**
+   * Over the picture on a see-through `background`, taking no height of its own: `waterfall` (or
+   * `true`) across the waterfall's head, `spectrum` across the spectrum's foot. Omitted or `false`,
+   * in a gap between the parts. Extension API 17.
+   */
+  over?: boolean | "spectrum" | "waterfall"
   background?: string
   borderTop?: { color?: string; width?: PanelSceneSpectrumNumber }
   borderBottom?: { color?: string; width?: PanelSceneSpectrumNumber }
@@ -319,7 +528,7 @@ export interface PanelSceneSpectrumScale {
     | {
         /** Hz between labels. Omitted, the gridlines' step. */
         interval?: PanelSceneSpectrumNumber
-        /** Decimals of MHz every label shows, 0–6. Omitted, as many as tell one label from the next. Extension API 7. */
+        /** Decimals of MHz every label shows, 0–6. Omitted, every kHz digit and as many Hz as tell one label from the next. Extension API 7. */
         decimals?: number
         fontFamily?: string
         size?: PanelSceneSpectrumNumber
@@ -330,7 +539,11 @@ export interface PanelSceneSpectrumScale {
         /** To the top of the text. Omitted, centered in the gap. */
         offset?: PanelSceneSpectrumNumber
       }
-  /** Off by default. */
+  /**
+   * Off by default. From extension API 17 a label's tick is taller and heavier, with half-length ones
+   * between: every 100 Hz once labels are 1 kHz apart or closer and those are 4 pixels apart, else
+   * every 1 kHz where those are.
+   */
   ticks?:
     | boolean
     | {
@@ -347,8 +560,9 @@ export interface PanelSceneSpectrumScale {
 
 /**
  * Text at a frequency, drawn by the host. With an `event`, a click sends `activate` with the
- * frequency as `value` and this `id` as `annotation`, and does not tune; without one, a click
- * on it tunes like anywhere else.
+ * frequency as `value`, this `id` as `annotation` and where it was clicked as `at`, and does not
+ * tune; with a `menu`, it opens there and the item picked is sent the same way; with neither, a
+ * click on it tunes like anywhere else.
  */
 export interface PanelSceneSpectrumAnnotation {
   /** Unique within the control. */
@@ -359,16 +573,16 @@ export interface PanelSceneSpectrumAnnotation {
   hz: PanelSceneSpectrumNumber
   /** Default `absolute`. */
   anchor?: "vfo" | "center" | "absolute"
-  /** Default `pan`. */
-  part?: "pan" | "waterfall"
-  /** Pixels from the panadapter's bottom up to the text's, or from the waterfall's top down to the text's. Default 4. */
+  /** Default `spectrum`; `pan` is its name before extension API 17. */
+  part?: "spectrum" | "pan" | "waterfall"
+  /** Pixels from the spectrum's bottom up to the text's, or from the waterfall's top down to the text's. Default 4. */
   offset?: PanelSceneSpectrumNumber
   /** Which end of the text sits at `hz`. Default `center`. */
   align?: "start" | "center" | "end"
   /**
    * The point the box makes at `hz`: a drawn-out corner for `start`/`end`, a notch for `center`.
    * With the default `corner`, its tip sits at `offset`; turned the other way, the box's edge
-   * does. Shown by default (size 4, pointing toward the panadapter's bottom
+   * does. Shown by default (size 4, pointing toward the spectrum's bottom
    * or the waterfall's top); `false` or `show: false` hides it.
    */
   pointer?: boolean | { show?: boolean; size?: PanelSceneSpectrumNumber; corner?: "top" | "bottom" }
@@ -385,6 +599,8 @@ export interface PanelSceneSpectrumAnnotation {
   /** Default 2. */
   radius?: PanelSceneSpectrumNumber
   event?: string
+  /** Opened where it is clicked, in place of an `event`. Extension API 17. */
+  menu?: { label: string; event: string }[]
 }
 
 /** `color` and `width` draw a line, or an area's edges; `fill` fills an area. */
@@ -397,7 +613,7 @@ export interface PanelSceneSpectrumStyle {
 /**
  * A line at `at`, or an area between `from` and `to`, in Hz from the tuned frequency — from the
  * middle of the sweep with `anchor: "center"` (a Flex's panadapter is not centered on its slice),
- * or as frequencies with `anchor: "absolute"` (a band edge, a segment). On the panadapter an area
+ * or as frequencies with `anchor: "absolute"` (a band edge, a segment). On the spectrum an area
  * draws behind the trace and a line in front of it unless `behind` — which absolute ones default to.
  * On the waterfall all of it draws over the rows. A part with no style is not drawn on.
  */
@@ -407,8 +623,38 @@ export interface PanelSceneSpectrumOverlay {
   to?: PanelSceneSpectrumNumber
   anchor?: "vfo" | "center" | "absolute"
   behind?: boolean
+  /** The spectrum's style; `pan` is its name before extension API 17. */
+  spectrum?: PanelSceneSpectrumStyle
   pan?: PanelSceneSpectrumStyle
   waterfall?: PanelSceneSpectrumStyle
+  /**
+   * An area's look for the trace and its fill over its frequencies; what it leaves out is the
+   * control's, and a later area's covers an earlier one's. Not on a line. Extension API 17.
+   */
+  trace?: PanelSceneSpectrumTrace
+}
+
+/**
+ * A color at a level on the spectrum: `noise` and dB above it (`noise+3db`), or the spectrum's
+ * edges and a share of its height (`spectrum:bottom+40%`). Placed by the noise, a stop waits for
+ * the app's estimate, the stops spread evenly meanwhile.
+ */
+export interface PanelSceneSpectrumStop {
+  color: string
+  at: PanelSceneSpectrumAcross
+}
+
+/** The trace's look over an overlay's area; `colors` and `fillColors` by level, as the control's. */
+export interface PanelSceneSpectrumTrace {
+  color?: string
+  /** 0.25–8. */
+  width?: PanelSceneSpectrumNumber
+  dashed?: boolean
+  /** In place of `color`. */
+  colors?: string[] | PanelSceneSpectrumStop[]
+  fill?: string
+  /** In place of `fill`. */
+  fillColors?: string[] | PanelSceneSpectrumStop[]
 }
 
 export interface PanelSceneControl extends PanelSceneSpectrum {
@@ -526,8 +772,39 @@ export interface PanelSceneEvent {
   value?: number
   /** The control's string, for a control bound to `strings`. */
   text?: string
-  /** The `id` of the spectrum annotation clicked; `value` is its frequency. */
+  /** The `id` of the band scope annotation clicked; `value` is its frequency. */
   annotation?: string
+  /** The `id` of the band scope layer clicked; `value` is the frequency clicked. Extension API 17. */
+  layer?: string
+  /**
+   * A band scope's zoom (`value` the width in Hz), pan (`value` its middle), split (`value` the
+   * spectrum's share of the height), or a drag on its level strip: `floor` (dB added to the radio's
+   * floor), `range` (the spectrum's height in dB) or `speed` (waterfall rows a second). API 17.
+   */
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"
+  /** Where a band scope annotation or layer was clicked. Extension API 17. */
+  at?: PanelSceneSpectrumClick
+}
+
+/** Where a click on a band scope landed. */
+export interface PanelSceneSpectrumClick {
+  /** Pixels in the control, the ones a layer's `px` measures. */
+  x: number
+  y: number
+  /** In scene units, for a band scope placed by a rect over the artwork. */
+  sceneX?: number
+  sceneY?: number
+  part?: "spectrum" | "axis" | "waterfall"
+  /** The frequency clicked. */
+  hz?: number
+  /** On the spectrum, the level clicked: dB on the radio's own scale, not calibrated dBm. */
+  db?: number
+  /** On the spectrum, dB above the noise as the app estimates it. */
+  aboveNoiseDb?: number
+  /** On the waterfall, how old the row clicked is. */
+  ageSeconds?: number
+  /** On the waterfall, when the row clicked was taken, on the app's clock. */
+  atMillis?: number
 }
 
 /** Patch only named scene values and strings. The host ignores stale responses. */

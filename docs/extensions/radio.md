@@ -221,7 +221,7 @@ counted against the app's own reads.
 
 ## The scope
 
-`readRadio()` carries `spectrum` (absent on an app without a panadapter):
+`readRadio()` carries `spectrum` (absent on an app without a band scope):
 `null` for a radio without a scope, otherwise its settings as the radio
 reports them (`mode`, `spanHz`, `lowHz`/`highHz`, `refLevelDb`, `speed`),
 what it accepts (`spansHz`, `refMinDb` … `refStepDb`, `modes`, `speeds`) and
@@ -241,9 +241,8 @@ is queued for later.
 
 ## Example
 
-`k2hrc-panafall` in the SDK's samples runs a radio's scope in a scene.
 `ki2d-radio-panel` in [ham2k/extensions](https://github.com/ham2k/extensions)
-is a full front panel: it samples state once a second while visible, keeps
+is a published scene panel, a full front panel: it samples state once a second while visible, keeps
 knob motion and readout updates local, sends tuning continuously during a
 drag paced by the app, and shows the requested value at once while the
 confirmation status tells pending from reported.

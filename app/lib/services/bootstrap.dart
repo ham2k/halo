@@ -10,7 +10,7 @@
 import 'dart:async';
 
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode, kIsWeb, visibleForTesting, TargetPlatform;
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb, visibleForTesting, TargetPlatform;
 // Prefixed separately from the AppExitResponse import above: some import in
 // this file's graph makes the bare name `TextDirection` resolve to something
 // without an `.ltr` getter, so the real dart:ui one needs this to be reached
@@ -30,6 +30,7 @@ import 'database_snapshot_service.dart';
 import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
+import 'extensions/extension_dev_client.dart' show DevServerState;
 import 'extensions/extension_force_disable.dart' show forceDisabledBeforeStart, keepForceDisabledFromBoot;
 import 'extensions/extension_service.dart';
 import 'flags_service.dart' show fetchFlagsDefaultsBeforeStart;
@@ -44,6 +45,7 @@ import 'update_service.dart';
 import 'shorebird_update_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
+import '../config/dev_flags.dart';
 import '../config/device_identity.dart';
 import '../config/navigation.dart';
 import 'app_exit.dart';
@@ -339,13 +341,25 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
           // which the sync behind it fetches a 304, finds nothing to import, and the
           // session simply runs without that data (HALO-429). Sequenced here so
           // there is one runtime swap and then one load, against the runtime that
-          // will actually serve it. Only ever with developer mode on AND the toggle
-          // set — no address is ever discovered, only typed.
-          if (settings.developerMode && settings.extensionDevServerEnabled && settings.extensionDevServerUrl.isNotEmpty) {
+          // will actually serve it. From the saved setting only with developer mode on
+          // AND the toggle set — no address is ever discovered, only typed. A launch
+          // flag outranks it and needs no developer mode: it was typed for this
+          // launch alone.
+          final devServer = devExtensionServer.isNotEmpty
+              ? devExtensionServer
+              : settings.developerMode && settings.extensionDevServerEnabled
+              ? settings.extensionDevServerUrl
+              : '';
+          if (devServer.isNotEmpty) {
             // Never throws — the client records a failed connection as status
             // rather than an error, so a dev server that has since been stopped
             // costs a restarting app nothing but a line in Developer settings.
-            await services.extensionDev.connect(settings.extensionDevServerUrl);
+            await services.extensionDev.connect(devServer);
+            // The settings that would show a failure need developer mode, which the flag does not:
+            // without this line a mistyped address runs the shipped bundles, silently.
+            if (devExtensionServer.isNotEmpty && services.extensionDev.state != DevServerState.connected) {
+              debugPrint('[boot] HALO_EXT_DEV_SERVER $devServer: ${services.extensionDev.state.name} ${services.extensionDev.lastError ?? ''}');
+            }
           }
           await services.dataFiles.loadRawDataFiles();
           // Unattended (no user action prompted this): a persistent failure notice

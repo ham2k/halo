@@ -26,6 +26,10 @@ mixin _CivScope implements SpectrumSession {
   bool _scopeTurnedOn = false;
 
   final _scopeAssembler = CivScopeAssembler();
+
+  /// Only for the noise a scene places things by: the screen's floor and
+  /// ceiling are the radio's.
+  final _scopeNoise = NoiseFloor();
   SpectrumSettings _scopeSettings = const SpectrumSettings();
   String? _scopeProblem;
 
@@ -131,15 +135,17 @@ mixin _CivScope implements SpectrumSession {
         // let the display go stale.
         if (sweep.outOfRange) return _reportScopeProblem(t.settings.station.spectrumOutOfRange);
         _reportScopeProblem(null);
+        // Each step is half a dB of the radio's screen — a scale, not a
+        // calibration: what the bottom of the screen means moves with REF.
+        final levels = Float32List.fromList([for (final a in sweep.amplitudes) a / 2]);
         _spectrumSink?.reportSpectrum(
           SpectrumFrame(
             lowHz: sweep.lowHz,
             highHz: sweep.highHz,
-            // Each step is half a dB of the radio's screen — a scale, not a
-            // calibration: what the bottom of the screen means moves with REF.
-            levels: Float32List.fromList([for (final a in sweep.amplitudes) a / 2]),
+            levels: levels,
             floorDb: 0,
             ceilingDb: civScopeAmplitudeMax / 2,
+            noiseDb: levels.isEmpty ? null : _scopeNoise.update(levels, centerHz: (sweep.lowHz + sweep.highHz) ~/ 2)?.noise,
             atMillis: nowMillis(),
           ),
         );

@@ -314,6 +314,10 @@ void _mainBody({
           DevBridge.instance.extensionBundlesProvider = () => services.extensions.loadedBundles;
           DevBridge.instance.settingsProvider = devSettings;
           DevBridge.instance.sqlHandler = (query) => devSql(services.db, query);
+          DevBridge.instance.devServerHandler = (url) async {
+            await (url == null ? services.extensionDev.disconnect() : services.extensionDev.connect(url));
+            return {'state': services.extensionDev.state.name, 'error': services.extensionDev.lastError};
+          };
         }
 
         // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.

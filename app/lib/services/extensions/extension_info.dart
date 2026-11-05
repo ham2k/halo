@@ -329,10 +329,11 @@ class ExtensionInfo with ExtensionSearchable {
   /// `ExtensionBundle.api`), null when it declares none.
   final int? api;
 
-  /// The level the runtime holds this extension to. A built-in is always at
-  /// the app's own (null); any other that declares none is the oldest, 0 —
-  /// as the install check reads it, so nothing installed as API 0 is then
-  /// handed what only a newer one was promised, such as frozen QSOs.
+  /// The level the runtime holds this extension to. A core extension is
+  /// always at the app's own (null); any other that declares none is the
+  /// oldest, 0 — as the install check reads it, so nothing installed as API 0
+  /// is then handed what only a newer one was promised, such as frozen QSOs.
+  /// A built-in with a `category` is not core, so it declares its level too.
   int? get runtimeApi => core ? null : (api ?? 0);
 
   @override

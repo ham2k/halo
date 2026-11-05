@@ -22,6 +22,18 @@ const _mainRadio = 'radio-1';
 const _subRadio = 'radio-sub';
 
 class _Source extends ChangeNotifier implements SceneSpectrumSource {
+  /// A bundle from before API 17 unless a test says otherwise: these tests
+  /// are about drawing, and a click there is the control's event.
+  @override
+  bool nativeGestures = false;
+  @override
+  int? maxWidthHz(String uuid) => null;
+  @override
+  bool canTune(String uuid) => false;
+  @override
+  bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
+  @override
+  bool widen(String uuid, int widthHz) => false;
   int listening = 0;
   int subListening = 0;
   String? problemText;
@@ -136,6 +148,12 @@ Future<void> _show(
 
 Finder _spectrum(String id) => find.byWidgetPredicate((widget) => widget is SceneSpectrumView && widget.control.id == id);
 
+/// The panadapter's painter: its `sweep()` is the bins the trace draws.
+dynamic _trace(WidgetTester tester, String id) => tester
+    .widgetList<CustomPaint>(find.descendant(of: _spectrum(id), matching: find.byType(CustomPaint)))
+    .map((paint) => paint.painter)
+    .firstWhere((painter) => painter.runtimeType.toString() == '_PanPainter');
+
 dynamic _waterfall(WidgetTester tester, String id) => tester
     .widgetList<CustomPaint>(find.descendant(of: _spectrum(id), matching: find.byType(CustomPaint)))
     .map((widget) => widget.painter)
@@ -186,7 +204,7 @@ Map<String, dynamic> _dualDoc(String view) {
   return document;
 }
 
-// Panafall's compact Both toolbar. Its TypeScript contract tests keep the
+// The band scope panel's compact Both toolbar. Its TypeScript contract tests keep the
 // controls and dimensions in sync; this exercises their native Flutter layout.
 Map<String, dynamic> _compactBothDoc() => {
   'version': 1,
@@ -316,7 +334,7 @@ void main() {
           },
         ),
       ).controlsById['pan']!.spectrum!;
-      expect(spec.traceColor, const Color(0x80FF0000));
+      expect(spec.trace.color, const Color(0x80FF0000));
       expect(() => PanelScene(_doc(spectrum: {'fillColor': 'red'})), throwsFormatException);
       expect(
         () => PanelScene(
@@ -552,8 +570,8 @@ void main() {
     source.controller.add(_frame(40));
     await tester.pump();
     await _waitForRows(tester, 'main-pan', 2);
-    expect((_waterfall(tester, 'main-pan').frame() as SpectrumFrame).levels.first, 32);
-    expect((_waterfall(tester, 'sub-pan').frame() as SpectrumFrame).levels.first, 72);
+    expect((_trace(tester, 'main-pan').sweep() as SpectrumFrame).levels.first, 32);
+    expect((_trace(tester, 'sub-pan').sweep() as SpectrumFrame).levels.first, 72);
     expect((_waterfall(tester, 'main-pan').frame() as SpectrumFrame).lowHz, 14000000);
     expect((_waterfall(tester, 'sub-pan').frame() as SpectrumFrame).lowHz, 7000000);
 
@@ -613,7 +631,7 @@ void main() {
     source.subController.add(_frame(60));
     await tester.pump();
     await _waitForRows(tester, 'pan', 1);
-    expect((_waterfall(tester, 'pan').frame() as SpectrumFrame).levels.first, 60);
+    expect((_trace(tester, 'pan').sweep() as SpectrumFrame).levels.first, 60);
 
     await _show(tester, source: source, spectrum: {'radio': 'radio-2'});
     expect(_waterfall(tester, 'pan').rows, isEmpty);
@@ -669,8 +687,8 @@ void main() {
     await tester.pump();
     expect(source.recenteredRadios, [_mainRadio, _subRadio]);
     expect(source.recentered, [14109000, 7109000]);
-    expect(_waterfall(tester, 'main-pan').marks.vfoHz, 14074000);
-    expect(_waterfall(tester, 'sub-pan').marks.vfoHz, 7074000);
+    expect(_waterfall(tester, 'main-pan').marks.vfoHz(), 14074000);
+    expect(_waterfall(tester, 'sub-pan').marks.vfoHz(), 7074000);
     for (final receiver in ['main', 'sub']) {
       await tester.tapAt(tester.getRect(_spectrum('$receiver-pan')).center);
       await tester.pump();
@@ -700,6 +718,38 @@ void main() {
     expect(events.single['value'] as double, closeTo(14025000, 500));
   });
 
+  testWidgets('the control writes the width it shows, a click\'s step and the dial for text layers, as they change', (tester) async {
+    final source = _Source()..nativeGestures = true;
+    var calls = 0;
+    Future<void> show(Map<String, dynamic> spectrum) async {
+      await _show(
+        tester,
+        source: source,
+        spectrum: {'hoverHz': null, 'hoverDb': null, ...spectrum},
+        onEvent: (e) async {
+          calls++;
+          return {};
+        },
+      );
+      source.controller.add(_frame());
+      await tester.pump();
+      // The sweep is drawn on the first; the values it wrote, on the next.
+      await tester.pump();
+    }
+
+    await show(const {'widthHz': 'hz', 'stepHz': 'db'});
+    // The whole sweep before any zoom, 250 Hz a pixel across 400: a click lands on twice the 500 that covers one.
+    expect(find.text('100000'), findsOneWidget);
+    expect(find.text('1000.0 dB'), findsOneWidget);
+    // A narrower span is a narrower window: the readouts follow what is drawn, not what the radio sweeps.
+    await show(const {'widthHz': 'hz', 'stepHz': 'db', 'span': 50000});
+    expect(find.text('50000'), findsOneWidget);
+    expect(find.text('500.0 dB'), findsOneWidget);
+    await show(const {'vfoHz': 'hz'});
+    expect(find.text('14074000'), findsOneWidget);
+    expect(calls, 0);
+  });
+
   testWidgets('the pointer writes the frequency under it for a text layer, without the extension', (tester) async {
     final source = _Source();
     var calls = 0;
@@ -723,13 +773,178 @@ void main() {
     await mouse.removePointer();
   });
 
-  test('a display width crops each sweep about its middle, and never widens one', () {
+  test('a display width shows the middle of each sweep, and never widens one the app cannot move', () {
     // A radio's scope comes in a few widths; the display shows any narrower.
     final sweep = _frame(20, 14000000);
-    final cropped = cropSpectrumFrame(sweep, 50000);
-    expect((cropped.lowHz, cropped.highHz, cropped.levels.length), (14025000, 14075000, 50));
-    expect(identical(cropSpectrumFrame(sweep, 200000), sweep), isTrue);
-    expect(identical(cropSpectrumFrame(sweep, null), sweep), isTrue);
+    expect(spectrumWindow(sweep, 50000), (14025000, 14075000));
+    expect(spectrumWindow(sweep, 200000), (14000000, 14100000));
+    expect(spectrumWindow(sweep, null), (14000000, 14100000));
+    // Not whole bins: a window that moved by a bin at a time would pan in steps.
+    expect(spectrumWindow(sweep, 50000, centerHz: 14050333), (14025333, 14075333));
+    // Held at the edge of a scope that stays put; past it where the scope follows.
+    expect(spectrumWindow(sweep, 50000, centerHz: 14090000), (14050000, 14100000));
+    expect(spectrumWindow(sweep, 50000, centerHz: 14090000, held: false), (14065000, 14115000));
+  });
+
+  test('short ticks mark every 1 kHz on a wide window and every 100 Hz once labels are a kHz apart, never a solid bar', () {
+    // 100 kHz on 400 pixels, labels every 10 kHz: 1 kHz is 4 pixels, 100 Hz under one.
+    expect(spectrumMinorTick(100000, 400, 10000), 1000);
+    // 10 kHz on 400, labels every 1 kHz: 100 Hz is 4 pixels.
+    expect(spectrumMinorTick(10000, 400, 1000), 100);
+    // 10 kHz on 800 but labelled every 2 kHz: 100 Hz would fit, but waits for kHz labels.
+    expect(spectrumMinorTick(10000, 800, 2000), 1000);
+    // 200 kHz on 400: even the kHz is 2 pixels.
+    expect(spectrumMinorTick(200000, 400, 20000), isNull);
+    // Labelled every 100 Hz already: nothing finer to add.
+    expect(spectrumMinorTick(2000, 400, 100), isNull);
+  });
+
+  test('the dial is labelled with the Hz it has, over the passband the scene draws', () {
+    expect(spectrumVfoLabel(14074000), '14.074');
+    expect(spectrumVfoLabel(14074500), '14.0745');
+    expect(spectrumVfoLabel(14074250), '14.07425');
+    // Zeros where more are asked for; fewer cut, not rounded: 14.0743 would be a frequency the dial is not on.
+    expect(spectrumVfoLabel(14074000, 2), '14.07400');
+    expect(spectrumVfoLabel(14074250, 1), '14.0742');
+    expect(spectrumVfoLabel(7074000), '7.074');
+    expect(spectrumVfoLabel(144174000, 1), '144.1740');
+    expect([14074000, 14074500, 14074250, 14074255].map((hz) => spectrumVfoDigits(hz.toDouble())), [0, 1, 2, 3]);
+    double? number(SceneNumber? n) => n?.literal;
+    int side(List<Map<String, dynamic>> overlays) => spectrumPassbandSide(
+      SceneSpectrumSpec({
+        'overlays': [
+          for (final o in overlays)
+            {
+              ...o,
+              'pan': const {'fill': '#40FFFFFF'},
+            },
+        ],
+      }),
+      number,
+    );
+    expect(
+      side([
+        {'from': 100, 'to': 2800},
+      ]),
+      1,
+      reason: 'upper sideband: the label goes on the high side of the line, over the passband',
+    );
+    expect(
+      side([
+        {'from': -2800, 'to': -100},
+      ]),
+      -1,
+    );
+    expect(
+      side([
+        {'from': -250, 'to': 250},
+      ]),
+      0,
+      reason: 'CW straddles the dial: centred',
+    );
+    expect(
+      side([
+        {'from': 14000000, 'to': 14150000, 'anchor': 'absolute'},
+      ]),
+      0,
+      reason: 'a band edge is not a passband',
+    );
+  });
+
+  test('axis labels read like every other frequency in the app: MHz bold, kHz plain, Hz smaller', () {
+    const style = TextStyle(fontSize: 10);
+    List<(String, FontWeight?, double?)> parts(String mhz) => [
+      for (final span in (spectrumAxisLabel(mhz, style) as TextSpan).children!.cast<TextSpan>()) (span.text!, span.style?.fontWeight, span.style?.fontSize),
+    ];
+    expect(parts('14.0505'), [('14', FontWeight.w700, 10), ('.050', null, null), ('.', null, null), ('5', null, 8)]);
+    expect(parts('14.050'), [('14', FontWeight.w700, 10), ('.050', null, null)]);
+    // Below 1 MHz the kHz is the reading, as on the radio panel: no bold 0.
+    expect(parts('0.472'), [('472', FontWeight.w700, 10)]);
+  });
+
+  test('the dial\'s label is bold MHz and light kHz and Hz by default, each part styled from the one before', () {
+    double? number(SceneNumber? n) => n?.literal;
+    const base = TextStyle(fontSize: 20, color: Color(0xFFFF0000));
+    (FontWeight?, double?, Color?, FontStyle?, String?) look(TextStyle s) => (s.fontWeight, s.fontSize, s.color, s.fontStyle, s.fontFamily);
+    var (mhz, khz, hz) = spectrumVfoLabelStyles(base, SceneSpectrumSpec(const {}).vfoLabel, number);
+    expect(
+      [look(mhz), look(khz), look(hz)],
+      [
+        (FontWeight.w700, 20, const Color(0xFFFF0000), null, null),
+        (FontWeight.w300, 20, const Color(0xFFFF0000), null, null),
+        (FontWeight.w300, 16, const Color(0xFFFF0000), null, null),
+      ],
+    );
+    // Named once, on the MHz, a size or a font is the whole label's; the weight is the one thing
+    // the kHz does not take from it, or naming a bold MHz would turn the kHz bold too.
+    (mhz, khz, hz) = spectrumVfoLabelStyles(
+      base,
+      SceneSpectrumSpec(const {
+        'vfoLabel': {
+          'mhz': {'size': 30, 'weight': 900, 'fontFamily': 'RobotoMono', 'italic': true},
+          'khz': {'weight': 500},
+          'hz': {'color': '#00FF00', 'italic': false},
+        },
+      }).vfoLabel,
+      number,
+    );
+    expect(
+      [look(mhz), look(khz), look(hz)],
+      [
+        (FontWeight.w900, 30, const Color(0xFFFF0000), FontStyle.italic, 'RobotoMono'),
+        (FontWeight.w500, 30, const Color(0xFFFF0000), FontStyle.italic, 'RobotoMono'),
+        (FontWeight.w500, 24, const Color(0xFF00FF00), FontStyle.normal, 'RobotoMono'),
+      ],
+    );
+  });
+
+  test('the dial\'s label sets its MHz, kHz and Hz in their own styles', () {
+    const mhz = TextStyle(fontSize: 1), khz = TextStyle(fontSize: 2), hz = TextStyle(fontSize: 3);
+    List<(String, double?)> parts(String label) => [
+      for (final span in (spectrumVfoLabelSpan(label, mhz, khz, hz) as TextSpan).children!.cast<TextSpan>()) (span.text!, span.style?.fontSize),
+    ];
+    // The marks have no style of their own: the kHz's, the label's root.
+    expect((spectrumVfoLabelSpan('14.074', mhz, khz, hz) as TextSpan).style, khz);
+    expect(parts('14.07425'), [('14', 1), ('.074', null), ('.', null), ('25', 3)]);
+    expect(parts('14.074'), [('14', 1), ('.074', null)]);
+    expect(parts('0.47250'), [('472', 1), ('.', null), ('50', 3)]);
+  });
+
+  test('a scene\'s vfoLabel settings are checked as it loads', () {
+    SceneSpectrumVfoLabel label(Object? raw) => SceneSpectrumSpec({'vfoLabel': raw}).vfoLabel;
+    expect(label(null).hzDigits, isNull);
+    expect(label(const {'hzDigits': 'auto'}).hzDigits, isNull);
+    expect(label(const {'hzDigits': 0}).hzDigits, 0);
+    expect(label(const {'hzDigits': 3}).hzDigits, 3);
+    expect(SceneSpectrumSpec(const {'vfoLabel': false}).noVfoLabel, isTrue);
+    for (final bad in [
+      {'hzDigits': 4},
+      {'hzDigits': 1.5},
+      {'hzDigits': 'some'},
+      {'mhz': 'bold'},
+      {
+        'khz': {'weight': 1000},
+      },
+      {
+        'hz': {'italic': 'yes'},
+      },
+    ]) {
+      expect(() => label(bad), throwsFormatException, reason: '$bad');
+    }
+    expect(() => label('big'), throwsFormatException);
+    // A named size is a scene value like any other, and one the scene lacks is refused.
+    expect(
+      () => PanelScene(
+        _doc(
+          spectrum: {
+            'vfoLabel': {
+              'mhz': {'size': 'missing'},
+            },
+          },
+        ),
+      ),
+      throwsFormatException,
+    );
   });
 
   test('waterfall history stays on its frequencies as the window moves or widens', () {
@@ -769,8 +984,12 @@ void main() {
     source.controller.add(_frame(20, 14080000));
     await tester.pump();
     expect(source.recentered, hasLength(1));
-    // Past the right margin (14.074 at 89% of 13.985–14.085): it sits at 85%.
+    // The radio gets there: the window, held where the scope was sent while the picture glided, is
+    // the sweeps' again — so when the radio's scope moves on its own (to 13.985–14.085, the dial at
+    // 89%), follow brings the dial back to 85% rather than keeping a window the radio has left.
     await tester.pump(const Duration(milliseconds: 300));
+    source.controller.add(_frame(20, 14059000));
+    await tester.pump();
     source.controller.add(_frame(20, 13985000));
     await tester.pump();
     expect(source.recentered.last, 14039000);

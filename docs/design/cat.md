@@ -3680,8 +3680,8 @@ Web cannot listen, so the section is hidden there and the socket stub throws.
 
 ## Spectrum
 
-A radio's panadapter and waterfall, drawn in an extension's scene panel
-([panel-scenes.md § Spectrum](panel-scenes.md#spectrum)).
+A radio's band scope — its spectrum and waterfall — drawn in an extension's scene panel
+([panel-scenes.md § Band scope](panel-scenes.md#band-scope)).
 
 **The sweeps never cross the extension bridge.** A sweep arrives up to thirty
 times a second with hundreds of points; pushed through `render` as artwork,
@@ -3728,8 +3728,21 @@ packets to the corresponding receiver presenter without an additional
 spectrum-channel API.
 
 Levels are dB on the radio's own scale — not calibrated dBm — with a drawing
-floor and ceiling reported by the radio or estimated locally. A display maps
+floor and ceiling reported by the radio or estimated locally, and the noise
+estimated on every radio, which a scene places things above. A display maps
 that range to its height and an operator's contrast moves from there.
+
+An estimated floor (`NoiseFloor`) tracks the noise on every sweep but moves
+only once it has stood more than 3 dB away for 3 seconds. Following every
+sweep, the trace, the waterfall's colors and a scene's level labels all
+shimmer together, and a static crash — a band-wide burst well under a
+second — lifts and drops the whole picture. The reference level is the
+operator's, not noise, and shows at once. A sweep from another band starts
+the estimate over, so a QSY between a quiet band and a noisy one is scaled
+right from its first sweep rather than after the settling time. For the
+settling time after starting over, a move past 3 dB shows without waiting:
+the first sweep may be partly the old band's, or the radio's retune
+transient, and held it would mis-scale the new band just the same.
 
 ### Elecraft K4 (LAN TCP 9201)
 

@@ -25,6 +25,7 @@ import '../../error_reporting_service.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../spectrum.dart';
+import '../spectrum_fft.dart' show NoiseFloor;
 import '../telemetry_poller.dart';
 import '../transport.dart' show TransmitAudioConnection;
 import '../transports/config_field_helpers.dart';

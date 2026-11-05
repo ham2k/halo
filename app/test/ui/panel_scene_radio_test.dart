@@ -14,6 +14,16 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_spectrum.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 
 class _Radio extends ChangeNotifier implements SceneSpectrumSource {
+  @override
+  bool nativeGestures = true;
+  @override
+  int? maxWidthHz(String uuid) => null;
+  @override
+  bool canTune(String uuid) => false;
+  @override
+  bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
+  @override
+  bool widen(String uuid, int widthHz) => false;
   Map<String, num> live = {};
   Map<String, String> words = {};
   final named = <String?>[];

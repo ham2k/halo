@@ -53,6 +53,14 @@ String debugEnvFlag(String defineValue, String name) {
 /// profile build's data and then terminate its second instance.
 String get devDataDirectory => debugDataDirectoryOverride ?? (kDebugMode ? debugEnvFlag('', 'HALO_DEV_DATA') : '');
 
+/// The extension dev server this launch connects to, named on the command
+/// line — `HALO_EXT_DEV_SERVER=http://localhost:8787` — so an agent can point
+/// a build at the extension it is serving without driving Developer
+/// settings. For this launch only: nothing is saved, and the setting the
+/// operator typed is neither read nor changed. Typed by whoever starts the
+/// app, like that setting, never discovered. Empty in release builds.
+String get devExtensionServer => debugEnvFlag(const String.fromEnvironment('HALO_EXT_DEV_SERVER'), 'HALO_EXT_DEV_SERVER');
+
 /// Stands in for the environment variable in tests, which cannot set one for
 /// their own process — so without this the branches that depend on being
 /// sandboxed have no way to be exercised at all.

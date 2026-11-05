@@ -119,11 +119,10 @@ estimator. These are display controls, not claims about calibrated dBm or
 the K4's REF/SCALE settings. No spectrum CAT setters are sent.
 
 Verification covers the captured wire fixtures, crop coordinates, cancellation,
-reconnect and a stalled Main stream. The panadapter
-and waterfall are available in radio panels. The `k2hrc-panafall` sample can
-also be packaged and installed; see its README for installation steps. Its
-local span choices track the stream's available width, and its reference
-control adjusts HaLo's display range.
+reconnect and a stalled Main stream. The band scope
+is available in radio panels, the app's own Band Scope (`band-scope`) among
+them. Its reference
+control adjusts HaLo's display range; the width is the operator's zoom.
 
 The separate [secure network pairing](k4-remote.md) exposes Main and Sub as
 logical radios with receiver-aware controls and independent spectra. Physical

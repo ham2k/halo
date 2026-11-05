@@ -1141,6 +1141,13 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                           dockServices.cat,
                           settings: dockServices.settings,
                           canCommand: dockServices.extensions.radioCalls.canWrite(dockServices.panels[id]!.hookKey),
+                          radios: dockServices.panelRadio,
+                          // Core's API is the app's own (null); a bundle that cannot be looked up keeps
+                          // the older behaviour, whose clicks are its own to tune by.
+                          nativeGestures: switch (dockServices.extensions.extensionInfo(dockServices.panels[id]!.hookKey ?? '')) {
+                            final info? => (info.runtimeApi ?? 17) >= 17,
+                            null => false,
+                          },
                         )
                       : null,
                 )

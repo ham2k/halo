@@ -193,6 +193,14 @@ class DevBridge {
   /// path below.
   Future<Map<String, dynamic>> Function()? resetFixtureHandler;
 
+  /// Wired in `main()` with [resetFixtureHandler]: connects this session to
+  /// an extension dev server, or with null disconnects it. Nothing is saved,
+  /// as with the `HALO_EXT_DEV_SERVER` launch flag. Answers the client's state.
+  Future<Map<String, dynamic>> Function(String? url)? devServerHandler;
+
+  /// Backs `window.__halo.connectDevServer(url)` and `disconnectDevServer()`.
+  Future<Map<String, dynamic>> devServer(String? url) => devServerHandler?.call(url) ?? Future.value(<String, dynamic>{'error': 'no dev server handler'});
+
   /// Backs `window.__halo.resetFixture()`. A no-op summary when no handler is
   /// registered (production, or before boot completes — see above).
   Future<Map<String, dynamic>> resetFixture() => resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});

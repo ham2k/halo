@@ -190,6 +190,7 @@ void main() {
       spectrum.packet(_packet(0x20000000, p == 2 ? List.filled(1024, double.nan) : _tone(p * 512, 512, 6000)));
     }
     expect(sink.frames.last.floorDb.isFinite, isTrue);
+    expect(sink.frames.last.noiseDb!.isFinite, isTrue);
   });
 
   test('a recentre places the sweeps at once, and back where they were if the radio refuses it', () {

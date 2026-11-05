@@ -141,8 +141,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     // one: it only shows its value, so it follows the document.
     final local = {
       ...widget.scene.controls.where((c) => c.event == null && !c.isAction && c.kind != 'nativeText').map((c) => c.value),
-      // Written by the pointer, never by the extension.
-      for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb],
+      // Written by the control — the pointer, the width shown — never by the extension.
+      for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb, ?c.spectrum?.widthHz, ?c.spectrum?.stepHz, ?c.spectrum?.vfoHz],
       // A hover value is the pointer's only while it is over the control; otherwise a render's.
       ..._hovering,
     };
@@ -205,7 +205,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
 
   /// [value] stands in for the control's bound value — the frequency a
   /// spectrum was clicked at, which no scene value holds.
-  void _sendControl(SceneControl control, String phase, {String? action, double? value, String? annotation}) {
+  void _sendControl(SceneControl control, String phase, {String? action, double? value, String? annotation, String? layer, String? gesture, Object? at}) {
     // Touch never blurs a field by tapping a button, and a Material button
     // takes no focus: without this, Spot goes out before its callsign.
     if (phase == 'activate') {
@@ -223,6 +223,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       'phase': phase,
       'sequence': ++_sequence,
       'annotation': ?annotation,
+      'layer': ?layer,
+      'gesture': ?gesture,
+      'at': ?at,
       if (value != null)
         'value': value
       // A `tapAt` button's value is where it was clicked: activated by a key, it has none.
@@ -238,6 +241,11 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     // waterfall clicked to tune, are two things the extension must hear.
     final key = annotation != null
         ? '${control.id}\u0000$annotation'
+        : layer != null
+        ? '${control.id}\u0000layer:$layer'
+        // A spectrum's zoom and pan are values of their own, apart from its tune.
+        : gesture != null
+        ? '${control.id}\u0000gesture:$gesture'
         // A knob's two axes are two values the extension must both hear.
         : control.isYAxis
         ? '${control.id}\u0000y'
@@ -374,17 +382,23 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
               if (spec.hoverHz case final key?) _values[key] = hz;
               if (spec.hoverDb case final key?) _values[key] = db;
             }),
+      onReadout: spec.widthHz == null && spec.stepHz == null && spec.vfoHz == null ? null : (name, hz) => setState(() => _values[name] = hz),
       // Shown but inert, like every disabled control: no tune, no annotation
       // click. Hover still reads, since it acts on nothing.
+      disabled: control.disabled,
       onAnnotation: control.disabled
           ? null
-          : (annotation, hz) => _sendControl(control, 'activate', action: annotation.event, value: hz, annotation: annotation.id),
-      onTune: control.event == null || control.disabled
+          : (annotation, action, hz, at) => _sendControl(control, 'activate', action: action, value: hz, annotation: annotation.id, at: at),
+      onLayer: control.disabled ? null : (layer, action, hz, at) => _sendControl(control, 'activate', action: action, value: hz, layer: layer.id, at: at),
+      onTune: control.event == null || control.disabled ? null : (hz) => _sendControl(control, 'commit', value: hz),
+      scrollAxis: control.fixed
           ? null
-          : (hz) {
-              final step = spec.tuneStep?.resolve(_values);
-              _sendControl(control, 'commit', value: step == null || step <= 0 ? hz : (hz / step).round() * step);
+          : switch (widget.scene.scroll?.axis) {
+              'x' => Axis.horizontal,
+              'y' => Axis.vertical,
+              _ => null,
             },
+      onGesture: control.event == null || control.disabled ? null : (gesture, phase, value) => _sendControl(control, phase, value: value, gesture: gesture),
     );
   }
 
@@ -587,8 +601,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         _zoom = 1;
       });
     return vertical
-        ? {VerticalZoomDrag: GestureRecognizerFactoryWithHandlers<VerticalZoomDrag>(() => VerticalZoomDrag(allowedAt), handlers)}
-        : {HorizontalZoomDrag: GestureRecognizerFactoryWithHandlers<HorizontalZoomDrag>(() => HorizontalZoomDrag(allowedAt), handlers)};
+        ? {VerticalRegionDrag: GestureRecognizerFactoryWithHandlers<VerticalRegionDrag>(() => VerticalRegionDrag(allowedAt), handlers)}
+        : {HorizontalRegionDrag: GestureRecognizerFactoryWithHandlers<HorizontalRegionDrag>(() => HorizontalRegionDrag(allowedAt), handlers)};
   }
 
   /// The strip a trackpad gesture began on: it zooms only once it pinches, a swipe being a scroll.
@@ -634,8 +648,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   /// Whether a zoom's event is queued or in flight: the render that answers it is still to come.
   bool get _zoomWaiting => _zoomEvent(_inFlight) || _queue.values.any(_zoomEvent);
 
-  /// A scroll's settle event, or a zoom's: news of the view, not of a value an action acts on.
-  bool _viewEvent(Map<String, dynamic> event) => event['controlId'] == '' || _zoomEvent(event);
+  /// A scroll's settle event, a zoom's, or a spectrum's zoom or pan: news of the view, not of a value an action acts on.
+  bool _viewEvent(Map<String, dynamic> event) => event['controlId'] == '' || _zoomEvent(event) || event['gesture'] != null;
 
   /// Whether any layer or control is bound to the scroll's value.
   bool get _boundToScroll {

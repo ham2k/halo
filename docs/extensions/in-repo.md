@@ -33,10 +33,13 @@ alias straight at `sdk/src/index.ts`; esbuild compiles the TypeScript on the
 way past. `sdk/build.mjs` exists only to produce the npm package for
 authors with none of this.
 
-**Only the core is built in.** The app's own extensions, the ones that are
-the app itself (`adif`, `scoring`, `lookups`, `templates`, the command sets,
-`ham2k-lofi` sync), live under `extensions/core/` and are listed in
-`bundles` in `build-config.mjs`. Every other extension, Ham2K's own
+**Only the core is built in**, with one listed beside it. The app's own
+extensions, the ones that are the app itself (`adif`, `scoring`, `lookups`,
+`templates`, the command sets, `ham2k-lofi` sync), live under
+`extensions/core/` and are listed in `bundles` in `build-config.mjs`. So does
+`band-scope`, the Band Scope panel: built in because it moves with the
+app's own band scope, but with a `category`, so the operator can switch it
+off. Every other extension, Ham2K's own
 included, is a catalog bundle in [ham2k/extensions](https://github.com/ham2k/extensions),
 reaching the app from the catalog or as a pre-load. A new core extension is
 an entry in `bundles`; a new program is a catalog extension. The build fails if a

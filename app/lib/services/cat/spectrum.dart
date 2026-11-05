@@ -28,6 +28,10 @@ class SpectrumFrame {
   final double floorDb;
   final double ceilingDb;
 
+  /// The noise, on the levels' scale, settled as [NoiseFloor] settles it so
+  /// what is placed by it holds still. Null where the source does not say.
+  final double? noiseDb;
+
   /// App-clock millis ([nowMillis], never `DateTime.now()` — docs/design/time.md).
   final int atMillis;
 
@@ -37,6 +41,7 @@ class SpectrumFrame {
     required this.levels,
     required this.floorDb,
     required this.ceilingDb,
+    this.noiseDb,
     required this.atMillis,
   });
 }

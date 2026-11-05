@@ -104,6 +104,9 @@ export function parseArgs(argv) {
       case "--dir":
         options.dir = resolve(value())
         break
+      case "--force-name":
+        options.forceName = true
+        break
       case "--help":
       case "-h":
         options.help = true
@@ -115,7 +118,7 @@ export function parseArgs(argv) {
   return options
 }
 
-export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>]
+export const USAGE = `usage: h2kext-dev [--port <n>] [--host <address>] [--entry <file>] [--inline <pkg,…>] [--dir <path>] [--force-name]
 
 Serves the extension in the current directory to the app's Extension Dev
 Server (Settings → Developer), rebuilding it as you save and printing what it
@@ -125,7 +128,8 @@ logs. Point the app at one of the addresses it prints.
   --host    the address to bind (default 0.0.0.0, so a phone on the LAN can connect)
   --entry   the entry point (default src/index.ts); pass what build.mjs passes
   --inline  shared libraries to bundle rather than take from the app; pass what build.mjs passes
-  --dir     the extension directory (default the current directory)`
+  --dir     the extension directory (default the current directory)
+  --force-name  Ham2K's own extensions: waives the key convention, as h2kext-pack's does`
 
 /// The author's own esbuild, resolved from their project rather than from
 /// wherever this file is installed: the preset is written to use the caller's
@@ -164,6 +168,7 @@ export async function createDevServer({
   port = DEFAULT_PORT,
   entry = "src/index.ts",
   inline = [],
+  forceName = false,
   log = console.log,
   warn = console.error,
 }) {
@@ -227,7 +232,7 @@ export async function createDevServer({
     // text compared for "unchanged" is the folded one: an edit to ABOUT.md
     // alone is a reload too.
     parsed = await withAboutFiles(parsed, dir)
-    const problems = validateManifest(parsed)
+    const problems = validateManifest(parsed, { forceName })
     if (problems.length) throw new Error(problems.join("\n"))
     if (parsed.key !== key) throw new Error(`${MANIFEST_ENTRY}: 'key' changed from ${key} to ${parsed.key}; restart h2kext-dev to serve it`)
     return { parsed, text: JSON.stringify(parsed) }

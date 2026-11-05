@@ -11,7 +11,8 @@ half (the format, the packer, what the operator sees) is in
 ## What the app builds in, and what it pre-loads
 
 The app builds in only its **core** extensions: `adif`, `scoring`,
-`lookups`, `templates`, the command sets and `ham2k-lofi` sync. Every other
+`lookups`, `templates`, the command sets and `ham2k-lofi` sync, and the Band
+Scope panel (`band-scope`), which is listed and starts switched on. Every other
 extension is a catalog bundle. Some ship already packaged under
 `app/assets/preloaded-extensions/`, and the app installs the ones the
 operator has switched on into the ordinary store, after which they are

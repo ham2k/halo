@@ -161,11 +161,11 @@ anything.
 
 ## Examples
 
-Eight worked samples ship inside `@ham2k/extension-sdk`, under `samples/`
+Seven worked samples ship inside `@ham2k/extension-sdk`, under `samples/`
 once it is installed, and in the repository under
 [`extensions/samples`](../../extensions/samples): the smallest panel, a
 lookup behind an account, an award program, a contest, a chasing program, an
-HTML panel, every scene control, and a panadapter. Each builds, each packs,
+HTML panel, and every scene control. Each builds, each packs,
 and the header comment in each `src/index.ts` says what it leaves out.
 
 Every extension Ham2K publishes lives in
@@ -179,7 +179,7 @@ it.
 The extension API is a number. Each level adds calls, hook methods or
 manifest fields, and a bundle declares in its manifest the lowest level that
 has what it uses, so every app that can run it is offered it. The SDK and the
-tools follow the same numbering: SDK 1.16 describes API 16 and exports it as
+tools follow the same numbering: SDK 1.17 describes API 17 and exports it as
 `API_VERSION`. [Packaging](packaging.md#api-levels) lists what each level
 added.
 

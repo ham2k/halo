@@ -52,6 +52,9 @@ void installDevBridge() {
   // it, `sql('SELECT …')` for one read-only statement.
   bridge['settings'] = (([JSString? match]) => DevBridge.instance.settings(match?.toDart ?? '').then((r) => r.jsify()).toJS).toJS;
   bridge['sql'] = ((JSString query) => DevBridge.instance.sql(query.toDart).then((r) => r.jsify()).toJS).toJS;
+  // Point this session at an extension dev server, or away from it; a Promise of `{state, error}`.
+  bridge['connectDevServer'] = ((JSString url) => DevBridge.instance.devServer(url.toDart).then((r) => r.jsify()).toJS).toJS;
+  bridge['disconnectDevServer'] = (() => DevBridge.instance.devServer(null).then((r) => r.jsify()).toJS).toJS;
   globalContext['__halo'] = bridge;
   DevBridge.instance.installed = true;
 }

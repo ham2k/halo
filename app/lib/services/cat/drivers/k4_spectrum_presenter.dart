@@ -108,10 +108,18 @@ class K4SpectrumPresenter {
     _lastEmitMillis = now;
     final crop = _crop();
     final shown = Float32List.sublistView(levels, crop.first, crop.end);
-    final range = _noise.update(shown, refLevelDb: _refLevelDb);
+    final range = _noise.update(shown, refLevelDb: _refLevelDb, centerHz: centerHz);
     if (range == null) return;
     sink?.reportSpectrum(
-      SpectrumFrame(lowHz: crop.lowHz, highHz: crop.highHz, levels: shown, floorDb: range.floor, ceilingDb: range.ceiling, atMillis: nowMillis()),
+      SpectrumFrame(
+        lowHz: crop.lowHz,
+        highHz: crop.highHz,
+        levels: shown,
+        floorDb: range.floor,
+        ceilingDb: range.ceiling,
+        noiseDb: range.noise,
+        atMillis: nowMillis(),
+      ),
     );
   }
 

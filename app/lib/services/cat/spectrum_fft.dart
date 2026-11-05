@@ -7,6 +7,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart' show bandForFrequency, realNowMillis;
 
 /// A windowed FFT over the newest [size] complex samples, emitted every
 /// [hop] samples. Not thread-hopping: at 48 kHz and twenty sweeps a second a
@@ -120,22 +121,67 @@ Float32List poolPeaks(Float32List levels, int maxPoints) {
 /// Where a computed sweep's display range sits: the noise, followed slowly so
 /// one loud signal does not drag the floor up, and a range the shape of a
 /// radio's own panadapter at its default levels.
+///
+/// The noise is tracked on every sweep, but the floor shown moves only once
+/// it has stood more than [driftDb] away for [settleMillis]: a floor that
+/// followed every sweep would shimmer the trace, the waterfall's colors and
+/// the level labels together, and a static crash — a band-wide burst well
+/// under a second — would lift and drop the whole picture. A move to another
+/// band starts over: its noise has nothing to do with the last band's, and
+/// waiting it out would leave the new band mis-scaled for the settling time.
+/// For the settling time after starting over the floor follows a move past
+/// [driftDb] without waiting: the first sweep may be partly the old band's,
+/// or the radio's retune transient, and held it would mis-scale the new
+/// band just the same.
 class NoiseFloor {
   /// How far below the noise the display starts, and how tall it is.
   static const belowNoiseDb = 10.0;
   static const rangeDb = 80.0;
 
-  double? _noise;
+  /// How far, and for how long, the noise must move before the floor does.
+  static const driftDb = 3.0;
+  static const settleMillis = 3000;
 
-  /// Folds [levels] in; null when they hold no usable reading.
-  ({double floor, double ceiling})? update(Float32List levels, {double refLevelDb = 0}) {
+  double? _noise, _shown;
+  int? _driftingSince, _eagerUntil;
+  String? _band;
+
+  /// Folds [levels] in, at [atMillis] (the real clock: a settling time is a
+  /// duration, not a moment); null when they hold no usable reading. A
+  /// changed [refLevelDb] shows at once — it is the operator's, not noise.
+  /// [centerHz] is where the sweep was taken; outside the amateur bands it
+  /// counts as one band of its own. [noise] is the settled noise itself,
+  /// which the reference level does not move.
+  ({double floor, double ceiling, double noise})? update(Float32List levels, {double refLevelDb = 0, int? centerHz, int? atMillis}) {
+    if (centerHz != null) {
+      final band = bandForFrequency(centerHz / 1000);
+      if (band != _band) reset();
+      _band = band;
+    }
     final sorted = Float32List.fromList(levels)..sort();
     final noise = sorted[sorted.length ~/ 5];
     if (!noise.isFinite) return null;
-    _noise = _noise == null ? noise : _noise! * 0.9 + noise * 0.1;
-    final floor = _noise! - belowNoiseDb - refLevelDb;
-    return (floor: floor, ceiling: floor + rangeDb);
+    final tracked = _noise = _noise == null ? noise : _noise! * 0.9 + noise * 0.1;
+    final shown = _shown;
+    final now = atMillis ?? realNowMillis();
+    if (shown == null) {
+      _shown = tracked;
+      _eagerUntil = now + settleMillis;
+    } else if ((tracked - shown).abs() <= driftDb) {
+      _driftingSince = null;
+    } else {
+      final since = _driftingSince ??= now;
+      if (now < _eagerUntil! || now - since >= settleMillis) {
+        _shown = tracked;
+        _driftingSince = null;
+      }
+    }
+    final floor = _shown! - belowNoiseDb - refLevelDb;
+    return (floor: floor, ceiling: floor + rangeDb, noise: _shown!);
   }
 
-  void reset() => _noise = null;
+  void reset() {
+    _noise = _shown = null;
+    _driftingSince = _eagerUntil = null;
+  }
 }

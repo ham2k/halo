@@ -356,4 +356,7 @@ test("the command line refuses a port it cannot listen on, and an option it does
   assert.equal(options.host, "127.0.0.1")
   assert.deepEqual(options.inline, ["liquidjs", "i18next"])
   assert.equal(parseArgs([]).port, 8787)
+  // Without it, Ham2K's own extensions could be packed but never dev-served.
+  assert.equal(parseArgs(["--force-name"]).forceName, true)
+  assert.equal(parseArgs([]).forceName, undefined)
 })

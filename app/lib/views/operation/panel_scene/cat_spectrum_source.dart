@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:halo_i18n/halo_i18n.dart';
@@ -30,7 +32,14 @@ class CatSpectrumSource implements SceneSpectrumSource {
   /// move its scope.
   final bool canCommand;
 
-  const CatSpectrumSource(this.cat, {this.settings, this.canCommand = false});
+  /// Where a native tune goes: the same paced queue a panel's `setRadio`
+  /// joins, so a click and an extension's command never race to the radio.
+  final PanelRadioService? radios;
+
+  @override
+  final bool nativeGestures;
+
+  const CatSpectrumSource(this.cat, {this.settings, this.canCommand = false, this.radios, this.nativeGestures = true});
 
   /// The node whose sweeps a control draws: the radio's linked SDR when it
   /// has one, otherwise the radio. Everything about the radio itself — its
@@ -159,6 +168,37 @@ class CatSpectrumSource implements SceneSpectrumSource {
   void showWidth(String uuid, Object owner, int? widthHz) => cat.wantSpectrumWidth(uuid, owner, widthHz);
 
   @override
+  int? maxWidthHz(String uuid) {
+    final caps = cat.spectrumCapabilitiesFor(uuid);
+    if (caps == null || caps.spansHz.isEmpty || !(caps.autoSpan || canCommand)) return null;
+    return 2 * caps.spansHz.last;
+  }
+
+  @override
+  bool canTune(String uuid) => canCommand && radios != null && _radioOf(uuid) != null;
+
+  @override
+  bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) {
+    final radio = _radioOf(uuid), radios = this.radios;
+    if (!canCommand || radio == null || radios == null) return false;
+    // A refusal is an answer, not an error: `set` throws only for what ErrorPolicy should see.
+    unawaited(
+      radios.set({'selection': radio, 'id': radio, 'frequencyHz': hz.round(), if (dial) 'dial': true}).then((result) {
+        if (result['accepted'] == false) refused?.call();
+      }),
+    );
+    return true;
+  }
+
+  @override
+  bool widen(String uuid, int widthHz) {
+    final caps = cat.spectrumCapabilitiesFor(uuid);
+    if (!canCommand || caps == null || caps.autoSpan || caps.spansHz.isEmpty) return false;
+    final half = caps.spansHz.firstWhere((h) => 2 * h >= widthHz, orElse: () => caps.spansHz.last);
+    return cat.setSpectrum(uuid, SpectrumRequest(spanHz: half));
+  }
+
+  @override
   String get noRadio => t.settings.station.spectrumNoRadio;
 
   @override
@@ -166,8 +206,13 @@ class CatSpectrumSource implements SceneSpectrumSource {
 
   @override
   bool operator ==(Object other) =>
-      other is CatSpectrumSource && identical(other.cat, cat) && identical(other.settings, settings) && other.canCommand == canCommand;
+      other is CatSpectrumSource &&
+      identical(other.cat, cat) &&
+      identical(other.settings, settings) &&
+      identical(other.radios, radios) &&
+      other.canCommand == canCommand &&
+      other.nativeGestures == nativeGestures;
 
   @override
-  int get hashCode => Object.hash(identityHashCode(cat), identityHashCode(settings), canCommand);
+  int get hashCode => Object.hash(identityHashCode(cat), identityHashCode(settings), identityHashCode(radios), canCommand, nativeGestures);
 }

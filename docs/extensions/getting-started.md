@@ -176,6 +176,7 @@ the port: `10.0.0.5:8787`, not `10.0.0.5`.
 | `--entry <file>` | The entry point; default `src/index.ts` |
 | `--inline <pkg,…>` | Shared libraries to bundle rather than take from the app, comma-separated |
 | `--dir <path>` | The extension directory; default the current one |
+| `--force-name` | Ham2K's own extensions; waives the key convention, as `h2kext-pack`'s does |
 
 `--entry` and `--inline` take what your `build.mjs` passes to `buildExtension`.
 Pass the same values, or the build you watch is not the build you ship.
@@ -218,7 +219,7 @@ The samples are in `node_modules/@ham2k/extension-sdk/samples/`:
 | Building | Sample | Then read |
 | --- | --- | --- |
 | A dashboard panel | `k2hrc-hello-world`, `k2hrc-radio` (HTML) | [Panels](panels.md) |
-| An interactive panel or a radio front panel | `k2hrc-panel-scenes`, `k2hrc-panafall` | [Panel scenes](scenes.md), [Radio control](radio.md) |
+| An interactive panel or a radio front panel | `k2hrc-panel-scenes` | [Panel scenes](scenes.md), [Radio control](radio.md) |
 | A callsign lookup, with a login | `k2hrc-hamqth` | [Lookups](lookups.md), [Accounts & sync](accounts.md) |
 | An award program with references | `k2hrc-llota` | [Activities](activities.md), [Import & export](import-export.md) |
 | A contest | `k2hrc-cqww` | [Activities](activities.md), [Scoring & chasing](scoring.md) |

@@ -26,10 +26,11 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | Level | Adds |
 | --- | --- |
 | 5 | `scene` itself: native controls, `strings`, `layout`, `after`, control `opacity` |
-| 6 | the `spectrum` control and `host.setRadioSpectrum` |
-| 7 | the `radio` block and its values, `scaleX`/`scaleY` bindings, text `glow`, a knob's `menu` and second axis, the spectrum's `follow`, `span` and label `decimals` |
-| 12 | up to 512 layers and 256 controls, `icon` layers, `scroll` and the `zoom` strip, `hoverSet`, `tapAt`, `scrollThrough`, `invertDrag`, the spectrum's `rising` and `autoSpan` |
+| 6 | the band scope control (`spectrum`) and `host.setRadioSpectrum` |
+| 7 | the `radio` block and its values, `scaleX`/`scaleY` bindings, text `glow`, a knob's `menu` and second axis, the band scope's `follow`, `span` and label `decimals` |
+| 12 | up to 512 layers and 256 controls, `icon` layers, `scroll` and the `zoom` strip, `hoverSet`, `tapAt`, `scrollThrough`, `invertDrag`, the band scope's `rising` and `autoSpan` |
 | 13 | the radio's dial in the values (`radio.frequencyHz` and the rest marked so below), `radio.mode`, `radio.tuner` and `radio.status` in `strings`, and `when` on layers and controls |
+| 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -104,7 +105,7 @@ and never reaches the extension. `value` names what it shows and sets.
 | `nativeSwitch`, `nativeCheckbox` | number, 1 or 0 | `commit` | shows `label` beside it |
 | `nativeChip` | number, 1 or 0, or none | `commit`; `activate` without a value | `icon`; needs `event` without a value |
 | `nativeText` | number, string, or none | | `style` (a typography role), `align` |
-| `spectrum` | | `commit` with the frequency clicked; `activate` from an annotation | below |
+| `bandScope` | | `commit` with the frequency clicked, where the scene hears its tunes; `activate` from an annotation or a layer; `change` and `commit` for a zoom, pan, split or level drag it hears | below |
 | `zoom` | | `commit` with the factor, on release | `min`, `max` (the factors allowed); needs `event`; only with `scroll`; API 12; below |
 
 The three drawn kinds are invisible hit areas over artwork you paint; the
@@ -247,7 +248,17 @@ event: {
   sequence: number                  // increases with every event from this pane
   value?: number                    // for a control bound to `values`
   text?: string                     // for a control bound to `strings`
-  annotation?: string               // a spectrum annotation's id
+  annotation?: string               // a band scope annotation's id
+  layer?: string                    // a band scope layer's id; API 17
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"  // a band scope gesture; API 17
+  at?: {                            // where a band scope annotation or layer was clicked; API 17
+    x: number, y: number            // pixels in the control, the ones a layer's `px` measures
+    sceneX?: number, sceneY?: number  // scene units, for a band scope placed by a rect
+    part?: "spectrum" | "axis" | "waterfall"
+    hz?: number                     // the frequency clicked
+    db?: number, aboveNoiseDb?: number  // on the spectrum: the level clicked, on the radio's scale and above the noise
+    ageSeconds?: number, atMillis?: number  // on the waterfall: the row's age, and when it was taken
+  }
 }
 ```
 
@@ -345,17 +356,18 @@ moves (so does the sandbox's `Date`); `realNowMillis` is for network retries
 and cache budgets. Both `environment` and `clock` are optional in the SDK,
 for detecting an older host.
 
-## Spectrum
+## Band scope
 
-A `spectrum` control is a radio's panadapter and waterfall, drawn by the app
-from sweeps that never reach the extension. API 6, with
-`host.setRadioSpectrum` ([Radio control](radio.md#the-scope)). It needs
-`requiresRadioRead`; without it, or on a host or radio without a spectrum,
-the control says why instead. Placed like a native control, it takes:
+A `bandScope` control is a band scope: a radio's spectrum and, under it, its
+waterfall, drawn by the app from sweeps that never reach the extension. API 6,
+with `host.setRadioSpectrum` ([Radio control](radio.md#the-scope)); before
+API 17 its kind is `spectrum` and its spectrum `pan`, names it still reads the
+same. It needs `requiresRadioRead`; without it, or on a host or radio without
+a scope, the control says why instead. Placed like a native control, it takes:
 
 - `radio` (an id from `listRadios`; omitted, the designated radio),
-  `display` (`both`, `pan`, `waterfall`), `split`, and `flow`, which way the
-  waterfall moves (`down`, `up`, `right`, `left`), the panadapter on the
+  `display` (`both`, `spectrum`, `waterfall`), `split`, and `flow`, which way
+  the waterfall moves (`down`, `up`, `right`, `left`), the spectrum on the
   side it comes from.
 - `rising` (API 12): which way frequency increases across the flow: `right`
   or `left` for `down` and `up`, `down` or `up` for `right` and `left`; one
@@ -369,13 +381,64 @@ the control says why instead. Placed like a native control, it takes:
 - Colors (`#RRGGBB` or `#AARRGGBB`): `palette` or `waterfallColors`,
   `traceColor`/`traceWidth`, `fillColor`/`fillColorBottom`,
   `backgroundColor`, `gridColor`/`gridDashed`, `waterfallGridColor`.
-- `center`: the tuned-frequency line, styled per part; `overlays`: up to 16
-  lines (`at`) and areas (`from`, `to`) in Hz from the tuned frequency, the
-  sweep's middle, or absolute, each styled per part; `scale`: the gap
-  between panadapter and waterfall, its fill and borders, and frequency
-  `labels` and `ticks`, with `labels.decimals` (0 to 6) fixing the decimals
-  of MHz every label shows (omitted, as many as tell one label from the
-  next).
+- The trace (API 17): `traceColors` and `fillColors`, 2 to 8 stops lowest
+  level first, color the trace and the fill under it by level, so a level
+  keeps its color as the floor and range move — in place of `traceColor`,
+  and of `fillColor` and `fillColorBottom`, which neither may be given
+  beside. Plain colors spread evenly from the spectrum's bottom to its top;
+  `{ color, at }` stops (all or none) each sit at a level, `at` measured as
+  a layer's `y` is but on the spectrum alone: `noise` and dB above it, or the
+  spectrum's edges and a share — `[{ color: '#FFFFFF', at: 'noise' },
+  { color: '#FF3D9A', at: 'noise+3db' }]` turns the fill pink from just over
+  the noise. Until the app has estimated the noise, the stops spread evenly. `traceDashed` draws
+  the trace in dashes. `traceSmooth` (0 to 20) averages it across that many
+  pixels of frequency and draws it as a curve; the waterfall, the hover
+  level and the noise stay raw.
+- `center`: the tuned-frequency line, styled per part (`spectrum`,
+  `waterfall`); `overlays`: up to 16 lines (`at`) and areas (`from`, `to`) in
+  Hz from the tuned frequency, the sweep's middle, or absolute, each styled
+  per part. An area may also take a `trace` (API 17): `color`, `width`,
+  `dashed`, `colors`, `fill` and `fillColors`, the trace's and its fill's
+  look over its frequencies, each it leaves out the control's, a later
+  area's over an earlier one's; `scale`: the gap
+  between spectrum and waterfall, its fill and borders, and frequency
+  `labels` and `ticks` — the axis a drag zooms on; omitted, the app draws its
+  own (API 17; before it, none), and `false` is none. With `over` (API 17)
+  it lies over the picture on a see-through background, taking no height
+  of its own: `waterfall` (or `true`) across the waterfall's head,
+  `spectrum` across the spectrum's foot. Labels read like every
+  frequency in the app: MHz in bold, kHz at the labels' `weight`, Hz smaller.
+  `labels: false` draws none; `labels.decimals` (0 to 6) fixes the decimals
+  of MHz every label shows (omitted, every kHz digit and as many Hz as tell
+  one label from the next). From API 17 a label's tick is taller and heavier,
+  with half-length ones between: every 100 Hz once labels are 1 kHz apart or
+  closer and those are 4 pixels apart, else every 1 kHz where those are.
+  A click on the axis tunes as one on the picture once no second click
+  follows; a double click resets the zoom and tunes nothing.
+- `vfoLabel` (API 17): the tuned frequency at the top of its line, larger
+  than the axis's labels, over the passband the scene draws (its first
+  area anchored to the dial), in the line's color over a see-through box of
+  the spectrum's. `false` hides it. An object `{ mhz, khz, hz, hzDigits }`
+  says how it is drawn: each part `{ fontFamily, size, weight, italic, color }`
+  takes what it does not name from the part before it (the MHz from the
+  label's own), except that the MHz is bold where the kHz is light (weight
+  300) and the Hz is four fifths the kHz's size. `hzDigits` (0 to 3) always
+  shows that many Hz digits, cut rather than rounded; `auto`, the default,
+  shows as many as the frequency has, each sliding in or out as the dial
+  needs it and kept while the dial moves.
+- `levelScale` (API 17): a strip along the flow, `{ side, over, width,
+  background, labels, ticks }`: dB along the spectrum, with no unit, and
+  the waterfall's age in seconds along it, with theirs. `side` is `end`
+  (the default) or `start` of the frequency's way across the screen: the
+  right or left of a band scope flowing `down` or `up`, the bottom or top
+  of one flowing `right` or `left`, its labels upright either way. `over`
+  lays it over the picture on a see-through background (the default),
+  `false` beside it. `width` is how deep it is, 40 by default upright and
+  24 sideways. Its background, label text (`size`, `weight`, `color`,
+  `fontFamily`, `italic`) and ticks (`color`, `width`, `length`) are the
+  frequency axis's where it names none. Omitted, the app draws one;
+  `false` is none. A double click on it puts the scene's own floor, range
+  and speed back.
 - `span`: Hz shown across the control, from the middle of each sweep, a
   number or a scene value. A wider sweep is cropped to it, so a radio whose
   scope comes in a few fixed widths can be shown at any narrower one; set the
@@ -385,16 +448,137 @@ the control says why instead. Placed like a native control, it takes:
   covering the widest `span` on screen, so a panel there names its width
   here and leaves `setRadioSpectrum`'s `spanHz` alone.
 - `follow` (0 to 0.45): keeps the tuned frequency at least this share of the
-  width from either edge by moving the radio's scope just far enough, so the
-  picture scrolls with the dial rather than jumping to center it. Only where
+  width from either edge by moving the window just far enough — within the
+  sweep a crop, past it the radio's scope — gliding there once the dial
+  rests, so the picture scrolls with the dial rather than jumping to center
+  it. Only where
   the radio lets the app place its scope and the panel declares
   `requiresRadioWrite`; elsewhere it changes nothing.
 - `annotations`: up to 64 pieces of text at frequencies, each with a pointer.
   One with an `event` sends `activate` when clicked, its frequency as
-  `value` and its `id` as `annotation`, and does not tune.
+  `value`, its `id` as `annotation` and where it was clicked as `at`, and
+  does not tune. One with a `menu` (API 17, `[{ label, event }]` like a
+  button's, and no `event` beside it) opens it where it was clicked, and
+  sends the item picked the same way.
+- `layers` (API 17): up to 128 rectangles, lines, text and artwork placed by
+  frequency, drawn over the picture under the annotations and moving with
+  every zoom, pan and glide. Each has an `id` and a `kind` — `rect`, `line`,
+  `text` or `svg` — and corners `x`, `y` and `x2`, `y2`: a rect or an svg
+  fills the box between them, a line runs from one to the other, and text
+  sits at the first, upright. `x` and `x2` run along the frequency, whichever
+  way the control is turned: `freq:` and a number of Hz or a scene value, or
+  `vfo` for this control's tuned frequency, then any of `±<n>hz`, which moves
+  with the zoom, and `±<n>px`, which does not — `freq:14074000`,
+  `vfo-1500hz`, `freq:spotHz+4px`. So `x: 'freq:14060000', x2:
+  'freq:14060000+40px'` is a tag forty pixels wide at any zoom, and `x2:
+  'freq:14150000'` a box covering the range. With no frequency, or as a
+  number, `x` is pixels from the window's low edge. `y` and `y2` run across
+  it: `spectrum`, `axis` or `waterfall` for that part's top (`:bottom` for
+  its bottom), then any of `±<n>%`, a share of that part's height,
+  `±<n>s` on the waterfall, seconds of its history, and `±<n>px` —
+  `spectrum+30%`, `waterfall+5s`, `spectrum:bottom-12px`. Or `noise`, the
+  noise on the spectrum as the app estimates it, then `±<n>db` above it,
+  `±<n>%` of the spectrum's height and `±<n>px` — `noise+20db`. An item on a part stays on it, at the same share
+  or age, as the operator moves the split or the waterfall's speed, and one
+  above the noise stays that far above it as the floor and range change;
+  with neither, or as a number, it is measured from the control's top, a
+  share being of the control's height. Omitted, `y` is the control's top and
+  `y2` its bottom; a part not shown draws nothing on it, nor the noise with
+  no spectrum. Levels are dB on the radio's own scale, not calibrated dBm,
+  so dB above the noise is the one level that means the same on every radio. A rect takes `fill` and an outline `color` and
+  `width`, and `radius`; a line `color`, `width` and `dashed`; text either
+  `text` or a scene `value` with `decimals`, `prefix` and `suffix`, and
+  `align` (which end is at `x`), `valign` (which edge at `y`), `color`,
+  `size`, `weight`, `fontFamily`, `italic`, `background` and `padding`; an
+  svg its `svg`, stretched to its box. They are drawn in order over the
+  picture, under the annotations; one with `behind: true` is drawn behind the
+  spectrum's grid, areas and trace instead, and so hidden under the
+  waterfall. One with an `event` sends `activate` when clicked — the topmost
+  there, one behind only where none over the picture is — with the
+  frequency clicked as `value`, its `id` as `layer` and where it was
+  clicked as `at`, and does not tune; one with a `menu` opens it there
+  instead, as an annotation does. `at.atMillis` is on the app's clock, and
+  `at.db` on the radio's own scale, so it is no dBm.
 - `hoverHz`, `hoverDb`: scene values the pointer writes, for a text layer.
-- `tuneStep`: a click elsewhere sends `commit` with the frequency under it,
-  rounded to this many Hz. The extension decides whether to tune.
+- `widthHz`, `stepHz`, `vfoHz` (API 17): scene values the app writes, in Hz,
+  as they change: the width shown, what a click rounds to (it follows the
+  zoom), and this control's radio's tuned frequency. `vfoHz` is per control,
+  so a scene showing two receivers reads each one's, which the scene's
+  single `radio` block cannot.
+- `tuneStep`: what a click rounds to, the wheel steps by and a dragged line
+  lands on, in Hz. Omitted (API 17), steps that follow the zoom, along 1, 2,
+  5, 10, 20, 50… Hz from the smallest covering a pixel. The fine step is the
+  next one up, which a dragged line moving smoothly with the pointer reads
+  on its label and lands on when let go; the medium one above that and
+  the coarse two above, those no coarser than 1 kHz unless the fine one is.
+  Within 5 seconds of the last tune a click within 1 kHz of the dial is on
+  the fine step and one within 3 kHz on the medium; any other is on the
+  coarse. The wheel is fine a notch at a time, medium turned briskly and
+  coarse spun. The `stepHz` value is the fine step.
+- `gestures` (API 17): `{ tune, zoom, pan, split, levels, scroll }`, the
+  first five each `native` (the app does it), `event` (the extension hears
+  it) or `off`. Omitted, each is `native`.
+  - `scroll` is `{ vertical, horizontal }`: what scrolling up and down, and
+    sideways, does — the wheel, or a trackpad's two-finger swipe — each
+    `tune`, `pan` or `off`, whichever way the band scope lies. Omitted, up
+    and down tune and sideways pans. A scroll along the frequency on screen
+    moves the dial or the window the way it goes, so on a band scope
+    whose frequency runs down the screen a scroll down tunes up; across
+    it, up and right are higher. Each then goes as `tune` or `pan` says:
+    natively, as the extension's event, or nowhere where it is `off`.
+  - `tune` is a click, a scroll that tunes, or a drag of the tuned
+    frequency's line (or within a finger's width of it); in a scene that
+    scrolls, a trackpad swipe along its axis scrolls it, while a mouse wheel
+    over the band scope still does what `scroll` says.
+    Native, the app draws the dial where the
+    operator put it at once, ahead of the radio's report; once clicks come
+    to rest, one in the outer 15% of the window glides the window just far
+    enough to bring it 15% in, where the window can move; and the app tunes the
+    radio itself where the panel declares `requiresRadioWrite`, and the click
+    is the event elsewhere; as an event, `commit` with the frequency.
+    Natively, a drag of the line with Alt held draws it like a bow's string:
+    let go once it leans past 30°, the dial shoots the other way, further
+    by how far it was drawn and how wide the window — up to 300 kHz — and
+    never past the band's edge; the line
+    flies off as the arrow, and the window chases it there to watch it land.
+  - `zoom` is a drag along the axis — away from the middle narrows the
+    window, toward it widens it, and the frequency pressed on follows the
+    pointer — or a pinch, by touch or on a trackpad, about the fingers.
+    Zooming past the sweep asks for a wider scope: the app's own where the
+    radio's `spectrum` says `autoSpan`, the radio's next span where the panel
+    may command it, and no further elsewhere. A double click on the axis puts
+    the window back, about the dial.
+  - `pan` is a drag along the frequency over the spectrum or the waterfall,
+    or a scroll that pans, unless the scene scrolls that way, whose scroll
+    takes it. Within the sweep it only moves the window;
+    past it, it moves the radio's scope where the radio lets the app place it,
+    and stops at the edge where not. After a pan, `follow` leaves the window
+    alone until the dial moves.
+  - `split` is a drag across the axis, which moves it between the
+    spectrum and the waterfall, between a tenth and nine tenths of their
+    height. Natively the operator's share holds until the scene changes its
+    own `split`.
+  - `levels` is a drag along the level strip. On the waterfall it changes
+    the speed, the age taken hold of staying under the pointer. On the
+    third of the spectrum by its base it moves `floor`, the trace following
+    the pointer; above it, it changes `range` as a drag along the axis changes
+    the width — away from the middle narrows — the level taken hold of
+    staying under the pointer. Natively each holds until the scene changes
+    its own.
+
+  As events, a zoom, pan, split or level drag sends `change` while it moves
+  and `commit` when it ends, with `gesture` naming it — `zoom`, `pan`,
+  `split`, `floor`, `range` or `speed` — and `value` the width or the
+  middle in Hz, the spectrum's share, the floor offset or range in dB, or
+  waterfall rows a second; what is drawn stays the scene's. Native, the app
+  still sends that `commit` once the gesture ends, where the control has an
+  `event`, so a panel can keep the operator's choice: give each back as
+  `span`, `split`, `floor`, `range` or `waterfallSpeed`. A double click on
+  the axis sends a zoom of `0`, the scene's own width again, and one on the
+  level strip a `floor`, `range` and `speed` of `0`. A drag across
+  the frequency anywhere but the axis is left to a scene that scrolls. A bundle declaring an API before 17 keeps its clicks
+  as its event, where they land, its wheel scrolling the scene, and no axis
+  it did not ask for; its zoom and pan are the app's.
 
 Each waterfall row stays at the frequencies it was taken on: when the radio
 retunes its scope the history slides sideways, and when the span changes it
@@ -443,7 +627,7 @@ a transmission, so a hold or a fade bound to it ends on time.
 ## Examples
 
 `k2hrc-panel-scenes` in the SDK's samples has every control, a control faded
-in over artwork and a click-through layer; `k2hrc-panafall` is a panadapter
-and waterfall. `ki2d-radio-panel`, `ki2d-weather-panel` and `ki2d-band-map`
-in [ham2k/extensions](https://github.com/ham2k/extensions) are published
-scene panels.
+in over artwork and a click-through layer. `ki2d-radio-panel`,
+`ki2d-weather-panel` and `ki2d-band-map` in
+[ham2k/extensions](https://github.com/ham2k/extensions) are published scene
+panels.

@@ -96,7 +96,7 @@ in plain functions you can test with the project's own runner.
 
 | Doing this | Read |
 | --- | --- |
-| Anything, before the reference: a whole worked extension of that shape | `samples/`: `k2hrc-hello-world` (the smallest panel), `k2hrc-hamqth` (lookup + login), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-dxcc` (award checklist), `k2hrc-radio` (HTML panel), `k2hrc-panel-scenes` (every scene control), `k2hrc-panafall` (panadapter) |
+| Anything, before the reference: a whole worked extension of that shape | `samples/`: `k2hrc-hello-world` (the smallest panel), `k2hrc-hamqth` (lookup + login), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-dxcc` (award checklist), `k2hrc-radio` (HTML panel), `k2hrc-panel-scenes` (every scene control) |
 | The model: sandbox, activation, hooks, host, budgets, API levels | `docs/concepts.md` |
 | A manifest field, a grant, relevance, what the packer refuses | `docs/manifest.md` |
 | Any `host.*` call, the hook context (`ctx`), calling other extensions | `docs/host.md` |

@@ -154,6 +154,7 @@ void main() {
       // A stretched or reversed crop would put a click beside this carrier.
       expect(peakHz, closeTo(14051000, 0.5));
       expect((frame.floorDb, frame.ceilingDb), (-130, -50));
+      expect(frame.noiseDb, -120, reason: 'the noise the floor is drawn below, for a scene to place things by');
       expect(sink.settings.last.mode, SpectrumMode.fixed);
       expect(sink.settings.last.spanHz, 10000);
       expect(spectrum.capabilities.modes, {SpectrumMode.fixed});

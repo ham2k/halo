@@ -405,7 +405,7 @@ class SdrSpectrum {
     }
     final pooled = poolPeaks(shown, _maxPoints);
     if (config.tuning == SdrTuning.ifTap && config.ifInverted) _reverse(pooled);
-    final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0);
+    final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0, centerHz: labelCenter);
     if (range == null) return;
     sink?.reportSpectrum(
       SpectrumFrame(
@@ -414,6 +414,7 @@ class SdrSpectrum {
         levels: pooled,
         floorDb: range.floor,
         ceilingDb: range.ceiling,
+        noiseDb: range.noise,
         atMillis: nowMillis(),
       ),
     );

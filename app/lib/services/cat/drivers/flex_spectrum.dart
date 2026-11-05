@@ -415,9 +415,9 @@ class FlexDaxSpectrum {
     if (centerMhz == null) return;
     final trim = (levels.length * flexDaxIqTrim).round();
     final pooled = poolPeaks(Float32List.sublistView(levels, trim, levels.length - trim), _maxPoints);
-    final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0);
-    if (range == null) return;
     final center = (centerMhz * 1e6).round();
+    final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0, centerHz: center);
+    if (range == null) return;
     // The pan stays put when the slice retunes inside it: a panel lining
     // its own picture up with the sweeps needs its edges, not the dial's.
     _report(_settings.copyWith(lowHz: center - _visibleHalfWidth(_rate), highHz: center + _visibleHalfWidth(_rate)));
@@ -428,6 +428,7 @@ class FlexDaxSpectrum {
         levels: pooled,
         floorDb: range.floor,
         ceilingDb: range.ceiling,
+        noiseDb: range.noise,
         atMillis: nowMillis(),
       ),
     );
