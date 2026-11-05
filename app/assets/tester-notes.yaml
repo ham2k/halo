@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"190":
   changes:
     - "New Band Scope panel: click or scroll to tune, drag to zoom and pan"
     - "Improved translations: every language is complete again and uses PoLo's vocabulary"
