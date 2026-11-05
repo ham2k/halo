@@ -479,6 +479,8 @@ Source: [`app/lib/config/dev_bridge.dart`](app/lib/config/dev_bridge.dart).
 | `build()` | Which build this is: `{sha, edition, label, worktree, dataDirectory, platform, mode, launchedAt, extensions}`, `extensions` being each loaded bundle's `{origin, file, sha256}`. |
 | `ready` | A Promise that resolves once bootstrap **and** the home screen's first data load are done. `await window.__halo.ready` instead of sleeping after a page load. |
 | `recentLog()` | The buffered structured events (see below), oldest-first. |
+| `settings('sync')` | The stored preferences whose key contains the text (all of them with none), as `{settings}`; a value stored as JSON comes back decoded. A Promise. |
+| `sql('SELECT …')` | One statement against the app's database, as `{columns, rows, rowCount, truncated}`, or `{error}`. Read-only: a write fails with SQLite's "readonly database", and a PRAGMA that sets something (`= …` or `(…)`) is refused, since it would stay set on the app's connection — read one as `PRAGMA name`, or `SELECT * FROM pragma_table_info('qsos')`. Two columns sharing a name both come back, the second as `name:1`. At most 1000 rows, `truncated` saying when there were more. A Promise. |
 | `resetFixture()` | Backs up then clears all operations + QSOs, restores font scale / distance units to defaults, seeds a fresh "HALO Fixture" operation, and navigates into it. Returns `{uuid, stationCall, qsoCount, backupId}`; the pre-reset data is recoverable from the `OperationsBackup`/`QsosBackup` tables under `backupId`. `await ready` first. |
 
 Example — an agent driving the core logging loop from a clean, deterministic state:
@@ -564,11 +566,14 @@ up); a web build answers them as `window.__halo` in its tab instead:
 | `tap action.log`, `tap "General Operation"` | `tap()` |
 | `field call W1AW` | `setField()` |
 | `fixture` | `resetFixture()` |
+| `settings`, `settings sync` | `settings()`. Listing every setting shortens a long value to its length; naming its key shows it whole. |
+| `sql "SELECT their_call, band FROM qsos LIMIT 5"` | `sql()`, printed as tab-separated rows under a header, a tab or newline in a value escaped as `\t` / `\n`. |
 | `ready` | Waits up to a minute for `ready`. |
 | `build` | `build()`, checked against the checkout: another worktree's build, a commit behind `HEAD`, and extension bundles rebuilt on disk since they loaded (a restart loads them) are each called out. |
 
 A call that did not do its job exits non-zero — a `tap` with no match, a
-`run` that stopped short, a `field` that set nothing, `ready` timing out — so
+`run` that stopped short, a `field` that set nothing, a `sql` SQLite refused, `ready`
+timing out — so
 a script chaining them stops at the first. A call gets 30 seconds to answer
 (`run`, two minutes).
 
@@ -582,7 +587,7 @@ Defined in [`mise.toml`](mise.toml):
 |---|---|
 | `mise run bundle` | Build the extension JS/TS bundles. |
 | `mise run mac "<label>"` / `mise run web "<label>"` | Build extensions, then run the macOS app (sandboxed) or the web server ([`halo-dev`](#halo-dev)). |
-| `mise run dev <command>` | [`halo-dev`](#halo-dev): `status`, `reload`, `stop`, `build`, `run`, `tap`, `sandbox --from next`, … |
+| `mise run dev <command>` | [`halo-dev`](#halo-dev): `status`, `reload`, `stop`, `build`, `run`, `tap`, `settings`, `sql`, `sandbox --from next`, … |
 | `mise run android` / `mise run run-ios` | Run on Android / iOS simulator. |
 | `mise run test` | Full verification (extensions + every Dart package + app). |
 | `mise run deploy-web` | Build extensions + web app and deploy to Cloudflare Pages. |

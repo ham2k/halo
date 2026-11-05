@@ -9,6 +9,7 @@
 //   halo-dev status | reload | restart | stop | log [-n N] [--errors]       [--target web|mac]
 //   halo-dev state | guess | build | targets | events | fixture            (native builds)
 //   halo-dev run "<command text>" | tap <target> | field <name> <value>    (native builds)
+//   halo-dev settings [match] | sql "<query>"                              (native builds)
 //   halo-dev sandbox --from dev|next|prod [--to DIR] [--force]             (macOS)
 //
 // A run's state lives in <checkout>/.halo-run/<target>/: run.json, the run's
@@ -560,6 +561,38 @@ function sha256File(file) {
   }
 }
 
+// A value longer than this is elided when every setting is listed: the
+// account's sync state alone runs to pages, and naming its key shows it.
+const SETTING_PREVIEW = 160
+
+/** The running app's stored preferences, whole when [match] names some. */
+async function settings(flags, match) {
+  const result = await callBridge(flags, 'settings', { match })
+  if (result?.error) fail(result.error)
+  const found = result.settings
+  if (Object.keys(found).length === 0) fail(`no setting's key contains "${match}"`)
+  if (match) return print(found)
+  const listed = {}
+  for (const [key, value] of Object.entries(found)) {
+    const text = JSON.stringify(value)
+    listed[key] = text.length > SETTING_PREVIEW ? `… ${text.length} characters: \`halo-dev settings ${key}\` shows it` : value
+  }
+  print(listed)
+}
+
+/** One read-only statement against the running app's database, as a table. */
+async function sql(flags, query) {
+  const result = await callBridge(flags, 'sql', { query })
+  if (result?.error) fail(result.error)
+  // Escaped, so a note or a JSON column holding a tab or a newline stays
+  // in its own cell and row.
+  const escape = (text) => text.replace(/\\/g, '\\\\').replace(/\t/g, '\\t').replace(/\n/g, '\\n').replace(/\r/g, '\\r')
+  const cell = (value) => (value === null ? 'NULL' : escape(typeof value === 'object' ? JSON.stringify(value) : String(value)))
+  console.log(result.columns.join('\t'))
+  for (const row of result.rows) console.log(row.map(cell).join('\t'))
+  console.error(result.truncated ? `(first ${result.rows.length} of ${result.rowCount} rows; narrow it with WHERE or LIMIT)` : `(${result.rowCount} rows)`)
+}
+
 /** What the build says it is, against what this checkout holds now. */
 async function build(flags) {
   const info = await callBridge(flags, 'build')
@@ -748,6 +781,13 @@ switch (command) {
       const result = await callBridge(flags, 'setField', { field: positional[0], value: positional.slice(1).join(' ') })
       answer(result, result?.error)
     }
+    break
+  case 'settings':
+    await settings(flags, positional.join(' '))
+    break
+  case 'sql':
+    if (!positional.length) fail('sql "<query>"')
+    await sql(flags, positional.join(' '))
     break
   case 'sandbox':
     sandbox(flags)

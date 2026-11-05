@@ -46,6 +46,8 @@ void installDevBridge() {
   register('runCommand', (params) => bridge.runCommand(params['text'] ?? ''));
   register('commandBarState', (_) => bridge.commandBarState());
   register('resetFixture', (_) => bridge.resetFixture());
+  register('settings', (params) => bridge.settings(params['match'] ?? ''));
+  register('sql', (params) => bridge.sql(params['query'] ?? ''));
   // Answers false rather than holding the call open past the caller's own
   // timeout, after which nothing would read the answer.
   register('ready', (params) async {

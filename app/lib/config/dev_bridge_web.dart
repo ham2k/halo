@@ -10,7 +10,7 @@ import 'dev_bridge.dart';
 
 /// Installs `window.__halo` with the inspection API (`getState()`, `getGuess()`,
 /// `recentLog()`, `build()`, `targets()`), the control actions (`setField()`,
-/// `tap()`, `runCommand()`), and the `ready` promise — the getters return plain JS objects agents parse via
+/// `tap()`, `runCommand()`), the stored-data reads (`settings()`, `sql()`), and the `ready` promise — the getters return plain JS objects agents parse via
 /// javascript_tool.
 ///
 /// Gated to non-release (debug/profile) builds — where agents run the web app
@@ -48,6 +48,10 @@ void installDevBridge() {
   // Reset to a known fixture (wipe + seed + known settings), returning a
   // Promise of the summary.
   bridge['resetFixture'] = (() => DevBridge.instance.resetFixture().then((r) => r.jsify()).toJS).toJS;
+  // Stored data: `settings('sync')` for the preferences whose key contains
+  // it, `sql('SELECT …')` for one read-only statement.
+  bridge['settings'] = (([JSString? match]) => DevBridge.instance.settings(match?.toDart ?? '').then((r) => r.jsify()).toJS).toJS;
+  bridge['sql'] = ((JSString query) => DevBridge.instance.sql(query.toDart).then((r) => r.jsify()).toJS).toJS;
   globalContext['__halo'] = bridge;
   DevBridge.instance.installed = true;
 }

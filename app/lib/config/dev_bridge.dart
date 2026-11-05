@@ -197,6 +197,22 @@ class DevBridge {
   /// registered (production, or before boot completes — see above).
   Future<Map<String, dynamic>> resetFixture() => resetFixtureHandler?.call() ?? Future.value(<String, dynamic>{'error': 'no fixture handler'});
 
+  // ── Stored data ───────────────────────────────────────────────────────────
+
+  static const _servicesNotUp = "the app's services are not up: still starting, or the boot failed (halo-dev log --errors)";
+
+  /// Wired in `main()` once services exist (`devSettings`, `devSql`); null
+  /// before then.
+  Future<Map<String, Object?>> Function(String match)? settingsProvider;
+  Future<Map<String, Object?>> Function(String query)? sqlHandler;
+
+  /// The stored preferences whose key contains [match], as `{settings}`.
+  Future<Map<String, Object?>> settings(String match) => settingsProvider?.call(match) ?? Future.value({'error': _servicesNotUp});
+
+  /// One read-only SQL statement against the app's database, as `{columns,
+  /// rows, rowCount, truncated}`, or `{error}`.
+  Future<Map<String, Object?>> sql(String query) => sqlHandler?.call(query) ?? Future.value({'error': _servicesNotUp});
+
   // ── Structured log ────────────────────────────────────────────────────────
 
   /// Recent structured dev-log events (`[qso]`, `[lookup]`, …), oldest-first —

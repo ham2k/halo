@@ -52,6 +52,7 @@ import 'config/navigation.dart';
 import 'services/bootstrap.dart';
 import 'services/deep_link_router.dart';
 import 'services/dev_fixture_reset.dart';
+import 'services/dev_bridge_queries.dart';
 import 'views/app_shell/boot_gate.dart';
 
 export 'config/navigation.dart';
@@ -311,6 +312,8 @@ void _mainBody({
         if (DevBridge.instance.installed) {
           DevBridge.instance.resetFixtureHandler = () => resetDevFixture(services);
           DevBridge.instance.extensionBundlesProvider = () => services.extensions.loadedBundles;
+          DevBridge.instance.settingsProvider = devSettings;
+          DevBridge.instance.sqlHandler = (query) => devSql(services.db, query);
         }
 
         // Dev nicety: launch with POLO_OPEN_FIRST_OP=1 in the environment (e.g.
