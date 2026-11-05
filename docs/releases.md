@@ -796,14 +796,18 @@ bleeding-edge  →  unstable  →  stable
    (earliest testers)   (wider testing)   (all users)
 ```
 
-- Publish to `bleeding-edge`, verify, `shorebird patches promote` upward.
+- Publish to `bleeding-edge`, verify, `halo-ops code-push-promote` upward.
 - Within `stable`, use **percentage rollout** for a graduated release even after
   a code push reaches the stable track.
 - **Next** has its **own Shorebird app** (Shorebird keys per app identity), so it
   carries its own `bleeding-edge`/`unstable`/`stable` tracks independently.
 
 **Mechanics.** CI publishes every code push to **`bleeding-edge`**; moving it upward
-is a deliberate, separate act:
+is a deliberate, separate act. `halo-ops code-push-promote --edition <edition>
+[--build <n>] [--track unstable|stable]` does it for a whole release at once: it
+lists the release's patches (one per platform), shows which move, and on
+confirmation moves each — never a rolled-back one, and never one already at or
+above the target. By hand, per patch:
 
 ```
 shorebird patches set-track --release <ver> --patch <n> --track unstable [--flavor <edition>]
