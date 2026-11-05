@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
+
+import 'local_spots.dart';
 
 /// One fan-out across every spot source: the spots that came back, the hook
 /// keys of the sources that answered at all, the keys of the sources nothing
@@ -83,9 +86,62 @@ class SpotsService extends ChangeNotifier {
   /// between fetches.
   bool _disposed = false;
 
+  /// The spots this device made itself ([putLocalSpot]), by their key.
+  /// Apart from [_bySource]: no fetch answers for them, so none may replace
+  /// or retain them.
+  final Map<String, Map<String, dynamic>> _local = {};
+
+  /// [_bySource] with the local spots under [localSpotSource]. Rebuilt on
+  /// every change.
+  Map<String, List<Map<String, dynamic>>> _board = const {};
+
   /// Spots grouped by the `hookKey` of the source that offered them — what
-  /// the Spots Panel filters and groups on.
-  Map<String, List<Map<String, dynamic>>> get spotsBySource => Map.unmodifiable(_bySource);
+  /// the Spots Panel filters and groups on. Every spot held, those a local
+  /// spot replaces too: that is decided on the board, after the operator's
+  /// source filter ([withoutReplacedSpots]).
+  Map<String, List<Map<String, dynamic>>> get spotsBySource => _board;
+
+  /// Puts the local spot under [key] on the board, or moves it there.
+  ///
+  /// One that differs only in when it was posted is taken without a word to
+  /// the listeners: a draft changes at every keystroke in its other fields,
+  /// and each notice repaints the board and judges it again for a spot that
+  /// says what it said.
+  void putLocalSpot(String key, Map<String, dynamic> spot) {
+    if (_disposed) return;
+    final unchanged = _sameButPosted(_local[key], spot);
+    _local[key] = spot;
+    _rebuildBoard();
+    if (!unchanged) notifyListeners();
+  }
+
+  static bool _sameButPosted(Map<String, dynamic>? held, Map<String, dynamic> spot) {
+    if (held == null) return false;
+    Map<String, dynamic> unposted(Map<String, dynamic> s) => {
+      ...s,
+      'spot': {...(s['spot'] as Map), 'timeInMillis': null},
+    };
+    return const DeepCollectionEquality().equals(unposted(held), unposted(spot));
+  }
+
+  /// Takes the local spot under [key] off the board, if it is there.
+  void removeLocalSpot(String key) {
+    if (_disposed || _local.remove(key) == null) return;
+    _rebuildBoard();
+    notifyListeners();
+  }
+
+  /// Takes every local spot off the board — the operator turned them off.
+  void clearLocalSpots() {
+    if (_disposed || _local.isEmpty) return;
+    _local.clear();
+    _rebuildBoard();
+    notifyListeners();
+  }
+
+  void _rebuildBoard() {
+    _board = Map.unmodifiable({..._bySource, if (_local.isNotEmpty) localSpotSource: List<Map<String, dynamic>>.unmodifiable(_local.values)});
+  }
 
   /// False until the first fetch settles, so the panel can tell "no spots
   /// yet" from "no spots".
@@ -245,6 +301,8 @@ class SpotsService extends ChangeNotifier {
         });
         return list.isEmpty;
       });
+      _local.removeWhere((_, spot) => (timeOfSpot(spot) ?? 0) < cutoff);
+      _rebuildBoard();
 
       // Rebuilt from the merged map, not from the fetch: retained spots have
       // to stay findable by [spotsForCall], which is the whole point of

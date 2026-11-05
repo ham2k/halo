@@ -13,6 +13,7 @@ import 'package:collection/collection.dart' show mergeSort;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart' show controlForRef, refCodeOf;
 
+import 'local_spots.dart' show withoutReplacedSpots;
 import 'settings_service.dart';
 import 'spots_service.dart';
 
@@ -445,19 +446,24 @@ class SpotBoardFilters {
   }
 }
 
-/// Every held spot from a source the operator has not switched off, combined
-/// by both merge passes — the board before any band/mode/age narrowing.
-/// [entityOf] resolves a single callsign to its DXCC entity prefix, as
-/// `SpotBoardService.callInfo` holds it.
+/// Every held spot from a source the operator has not switched off, less
+/// what a local spot replaces, combined by both merge passes — the board
+/// before any band/mode/age narrowing. [entityOf] resolves a single callsign
+/// to its DXCC entity prefix, as `SpotBoardService.callInfo` holds it.
+///
+/// Replaced after the source filter, never before: with the local spots
+/// switched off, what they replaced is the board.
 List<Map<String, dynamic>> mergedSpotBoard(
   Map<String, List<Map<String, dynamic>>> spotsBySource,
   Set<String> disabledSources, {
   required String? Function(String call) entityOf,
 }) => mergeSpotsByFreqAndRefs(
-  mergeSpotsByCallAndFreq([
-    for (final entry in spotsBySource.entries)
-      if (!disabledSources.contains(entry.key)) ...entry.value,
-  ]),
+  mergeSpotsByCallAndFreq(
+    withoutReplacedSpots([
+      for (final entry in spotsBySource.entries)
+        if (!disabledSources.contains(entry.key)) ...entry.value,
+    ]),
+  ),
   entityOf: entityOf,
 );
 

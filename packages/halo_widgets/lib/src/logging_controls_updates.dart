@@ -445,6 +445,7 @@ extension _WidgetUpdates on _LoggingControlsState {
     // cannot drift apart: provenance outliving the draft it belongs to is
     // the shape of the bug this whole pairing exists to prevent.
     _undoGuesses = null;
+    _undoSpotKey = null;
     _time.forgetWipe();
     _draft.resetSession();
   }

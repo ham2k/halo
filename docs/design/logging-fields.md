@@ -34,7 +34,8 @@ the log (`logging_controls_submit.dart`), what a widget update brings — an edi
 request (`logging_controls_updates.dart`), Escape, the chords, wipe, undo and the second button
 (`logging_controls_wipe.dart`), Space and the numbers row (`logging_controls_keys.dart`), the strip
 and the More pane (`logging_controls_strip.dart`), the call-info and what the host hears
-(`logging_controls_call_info.dart`), and a command's actions (`logging_controls_dispatch.dart`).
+(`logging_controls_call_info.dart`), a command's actions (`logging_controls_dispatch.dart`), and
+the local spot the entry makes (`logging_controls_draft_spot.dart`).
 
 ## The three parts
 
@@ -1110,6 +1111,47 @@ next contact typing the same key gets its expansion. It is deliberately *not*
 reset on a keystroke, which would forget the expansion the operator had just
 undone. A whole-field `//KEY` consults none of this — there the `//` is
 explicit.
+
+## Local spots
+
+The station being worked goes on the operator's own Spots list, so the board
+says who is on each frequency as the operator works the band, not only what
+the networks last heard. **Leaving the call field with a call in it** —
+Space, Tab, an arrow, a tap anywhere else — makes the entry a spot
+(`LoggingSession.onDraftSpot`), stamped now, at the entry's frequency, band
+and mode, with its references (a park, a summit) and a contest's received
+exchange as its label. **Logging a new contact** makes one too, from the
+record as logged, so a call entered and logged straight from the call field
+is on the board as well. Only a new contact at the live time makes one: an
+earlier contact being edited is a record, not a station on the air, and so is
+one under manual time entry or with a start time of its own.
+
+From then on the spot follows the entry under one key: an exchange typed, a
+reference added, a busted call corrected on the way back out of the field.
+Nothing is sent while the call field has focus, since a call being retyped is
+half a callsign at every keystroke. Which wipes take it back follows what each
+says about the station. **The operator's wipe** (the button, Alt+W) means a
+wrong call or a station gone, so the spot goes too, and the wipe's undo puts
+it back, taking down the spot of any entry it replaces. **Logging the contact** sends it once more, as logged, then ends the
+follow, as **a QSY wipe** does too, and either leaves the spot standing, since
+the station really was there. The next contact
+starts a spot of its own. An entry moved to the other SO2R set, or a panel
+closed, ends the follow the same way.
+
+The app holds these spots beside the fetched ones, under the `local` source
+(`app/lib/services/local_spots.dart`, `SpotsService.putLocalSpot`), on this
+device only. They age out with the rest of the board. A local spot
+**replaces** every spot posted no later than it on the same band and in the
+same family of modes, when it is either the same call, anywhere there, or
+within 100 Hz in phone or 20 Hz in CW, older local spots included. Replacing
+hides; it deletes nothing. It happens on the board (`mergedSpotBoard`), after
+the operator's source filter, so switching the local source off, or taking a
+local spot back, brings back what it replaced, and an extension asking for
+one source's spots gets all of them. A spot posted after the local one is news the local one
+cannot speak for, and stays. Digital modes make no local spots: every station
+in the passband shares one dial frequency, so a frequency says nothing about
+who is on it. Settings › Spotting turns the whole thing off, and takes down
+the local spots already up.
 
 ## Focus and the secondary controls
 

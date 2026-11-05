@@ -966,7 +966,8 @@
         "groupCallsWithNotes": "GROUP CALLS WITH NOTES",
         "alertingOnly": "ONLY SPOTS WITH ALERTS",
         "sourceNoReply": "NO REPLY",
-        "sourceError": "ERROR"
+        "sourceError": "ERROR",
+        "sourceLocal": "ENTERED HERE"
       },
       "unavailableTitle": "SPOTS UNAVAILABLE",
       "unavailableText": "${sources} DID NOT RESPOND.",
@@ -1613,6 +1614,9 @@
       "pulseBeforeRespot": "PULSE BEFORE EACH AUTO RE-SPOT",
       "pulseBeforeRespotOn": "THE SPOTTING CHIP PULSES BLUE FOR THE ${seconds} SECONDS BEFORE EACH RE-SPOT",
       "pulseBeforeRespotOff": "NO PULSING BEFORE AN AUTO RE-SPOT",
+      "localSpots": "SPOT THE STATIONS YOU WORK",
+      "localSpotsOn": "A CALL YOU ENTER GOES ON YOUR SPOTS LIST AT THE RADIO'S FREQUENCY",
+      "localSpotsOff": "CALLS YOU ENTER STAY OFF YOUR SPOTS LIST",
       "destinations": "DESTINATIONS",
       "destinationAll": "ALL SPOTS",
       "destinationQrvQrt": "ONLY QRV AND QRT",

@@ -21,6 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/chase_service.dart';
 import '../../services/hook_payloads.dart';
+import '../../services/local_spots.dart' show localSpotSource;
 import '../../services/radio_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/halo_services.dart';
@@ -840,7 +841,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
           unavailable: _spots.unavailableSources,
           failed: _spots.failedSources,
         ),
-        sourceNames: _sourceNames,
+        sourceNames: {..._sourceNames, localSpotSource: t.operation.spots.filters.sourceLocal},
         sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
         unavailableSources: _spots.unavailableSources.toSet(),
         failedSources: _spots.failedSources.toSet(),

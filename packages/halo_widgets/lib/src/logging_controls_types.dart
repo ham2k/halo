@@ -130,6 +130,11 @@ typedef CallInfoChanged = void Function(CallInfoData? info);
 /// that would be logged if the operator hit Enter.
 typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
 
+/// The local spot for the station being worked: [key] names it for as long
+/// as the panel follows it, and [qso] is the draft it is made from, or null
+/// to take the spot back — see [LoggingSession.onDraftSpot].
+typedef DraftSpotChanged = void Function(String key, Map<String, dynamic>? qso);
+
 /// One main logging field, as a peer's panel renders it: what it is called,
 /// what the operator typed, and the suggestion standing in while they have
 /// not. An empty [value] beside a [hint] is the app's answer; a non-empty
@@ -282,6 +287,7 @@ class LoggingSession {
     this.onEsmFacts,
     this.onQsoChanged,
     this.onPeerDraftChanged,
+    this.onDraftSpot,
     this.controller,
   });
 
@@ -447,6 +453,18 @@ class LoggingSession {
   ///
   /// Null-gated like [onQsoChanged], and for the same reason.
   final PeerDraftChanged? onPeerDraftChanged;
+
+  /// The station being worked, as a spot the host puts on its board
+  /// (docs/design/logging-fields.md § Local spots). A new contact's call
+  /// left behind in the call field starts one under a fresh key; from then
+  /// on every change to the draft is sent under that key while the call
+  /// field does not have focus, and an emptied call sends null. The
+  /// operator's wipe sends null, and its undo sends the entry again under
+  /// the same key. Logging a new contact sends the record as logged — under
+  /// the followed key, or a fresh one when the call field was never left —
+  /// and ends the follow, as any other wipe does: the key is never sent
+  /// again, and the host keeps what it last had.
+  final DraftSpotChanged? onDraftSpot;
 
   /// Optional imperative handle for driving the controls from outside (set the
   /// call, log, wipe) — used by the app's dev bridge. Attached on mount.

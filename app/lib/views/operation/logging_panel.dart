@@ -18,6 +18,7 @@ import '../../services/cat/cat_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/fyi_service.dart';
 import '../../services/link_opener.dart';
+import '../../services/local_spots.dart';
 import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
 import '../../services/manual_time_settings.dart';
@@ -1061,6 +1062,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         onWalkQsoList: _walkFromField,
         onQsoChanged: active ? widget.onQsoChanged : null,
         onPeerDraftChanged: active ? widget.onPeerDraftChanged : null,
+        // Every set's: each works its own station.
+        onDraftSpot: (key, qso) => updateLocalSpot(widget.services.spots, key, qso, enabled: SpottingSettings.localSpots(widget.services.settings)),
       ),
       radio: radio == 'B'
           ? _radioBHookup(context)

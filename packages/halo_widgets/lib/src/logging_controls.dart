@@ -78,6 +78,7 @@ import 'wall_clock.dart';
 
 part 'logging_controls_call_info.dart';
 part 'logging_controls_dispatch.dart';
+part 'logging_controls_draft_spot.dart';
 part 'logging_controls_fields.dart';
 part 'logging_controls_keys.dart';
 part 'logging_controls_strip.dart';
@@ -620,6 +621,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (identical(focus, _radio.freqFocus)) _radio.onFreqFocusChanged(hasFocus: true);
         } else if (identical(focus, _radio.freqFocus)) {
           _radio.onFreqFocusChanged(hasFocus: false);
+        } else if (identical(focus, _callFocus)) {
+          _onCallFieldLeft();
         } else if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
           // Show the operator what their shorthand became, at the moment they
           // are done with the field — the save expands it either way
@@ -1099,6 +1102,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _notifyMissingRadio();
       });
     }
+    if (_spotKey != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _followDraftSpot();
+      });
+    }
     if (!publishing) {
       // Not publishing — under SO2R, the set the keyboard is not in. What it
       // published before is forgotten, so its draft is published afresh when
@@ -1437,4 +1445,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Map<String, dynamic>? _lastPublishedQso;
   List<PeerDraftField>? _lastPublishedFields;
   TemplateCalls? _lastPublishedCalls;
+
+  /// The local spot this entry is following, and what it last sent
+  /// ([LoggingSession.onDraftSpot]); [_undoSpotKey] is the wiped entry's,
+  /// held while its undo is on offer.
+  String? _spotKey;
+  String? _undoSpotKey;
+  Map<String, dynamic>? _lastSpotQso;
 }

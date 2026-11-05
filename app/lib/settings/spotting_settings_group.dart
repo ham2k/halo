@@ -74,6 +74,7 @@ class SpottingSettingsGroup extends SettingsGroup {
       for (final hookKey in policies.keys)
         if (!listed.containsKey(hookKey)) hookKey: (name: hookKey, icon: null, accentColor: null, postsSelfSpots: true),
     }.entries.toList()..sort((a, b) => a.value.name.toLowerCase().compareTo(b.value.name.toLowerCase()));
+    final localSpots = SpottingSettings.localSpots(settings);
     return [
       {
         'type': 'field',
@@ -106,6 +107,16 @@ class SpottingSettingsGroup extends SettingsGroup {
         'icon': 'pulse',
         'description': pulseBeforeRespot ? labels.pulseBeforeRespotOn(seconds: SpottingControlModel.respotSoonLead.inSeconds) : labels.pulseBeforeRespotOff,
         'value': pulseBeforeRespot,
+        'target': 'spotting',
+      },
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': SpottingSettings.localSpotsKey,
+        'label': labels.localSpots,
+        'icon': 'map-marker-radius-outline',
+        'description': localSpots ? labels.localSpotsOn : labels.localSpotsOff,
+        'value': localSpots,
         'target': 'spotting',
       },
       if (named.isNotEmpty)
@@ -162,7 +173,7 @@ class SpottingSettingsGroup extends SettingsGroup {
     }
     final fits = switch (fieldKey) {
       SpottingSettings.respotIntervalKey => value is String,
-      SpottingSettings.autoRespotByDefaultKey || SpottingSettings.pulseBeforeRespotKey => value is bool,
+      SpottingSettings.autoRespotByDefaultKey || SpottingSettings.pulseBeforeRespotKey || SpottingSettings.localSpotsKey => value is bool,
       _ => null,
     };
     if (fits == null) return cluster?.commit(fieldKey, value);

@@ -663,6 +663,7 @@ extension _Submit on _LoggingControlsState {
           widget.lookups.enqueueLookup?.call(qso);
         }
         _time.advancePast(baseStartAtMillis);
+        _spotLogged(added);
         _wipe(focusCall: focusCall);
         // The un-logged rest of the stack goes straight back into the
         // now-empty field — whole, so its pills are not held as being typed.

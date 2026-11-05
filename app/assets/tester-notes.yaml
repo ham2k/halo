@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New: calls you enter and contacts you log go on your Spots list"
+
 "190":
   changes:
     - "New Band Scope panel: click or scroll to tune, drag to zoom and pan"

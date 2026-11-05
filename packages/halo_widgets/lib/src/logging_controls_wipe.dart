@@ -77,6 +77,9 @@ extension _WipeAndUndo on _LoggingControlsState {
         if (_draft.hasComposedValues) {
           _handleWipeTap();
         } else {
+          // A call erased in the field stays spotted until the field is
+          // left, and this wipe is the operator saying it is gone.
+          _retractDraftSpot();
           _time.leaveForWipe();
           _wipe();
         }
@@ -130,6 +133,7 @@ extension _WipeAndUndo on _LoggingControlsState {
     _refs.clear();
     _exchange.clear();
     _notesController.clear();
+    _releaseDraftSpot();
     _time.manualStartAtMillis = null;
     _reseedOpenTime();
     _radio.clearPowerEntry();
@@ -148,6 +152,7 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
+    _retractDraftSpot();
     _stashForUndo(_draft.toData(pending: false));
     _time.leaveForWipe();
     _wipe();
@@ -184,10 +189,12 @@ extension _WipeAndUndo on _LoggingControlsState {
     // and not which of them a lookup proposed, and the wipe after this is
     // what forgets that.
     _undoGuesses = _refs.takeGuessSnapshot();
+    _undoSpotKey = _spotKey;
     _draft.undoSlot.set(
       data,
       onExpire: () {
         _undoGuesses = null;
+        _undoSpotKey = null;
         _time.forgetWipe();
         if (mounted) _setStateFromPart(() {});
       },
@@ -198,9 +205,12 @@ extension _WipeAndUndo on _LoggingControlsState {
     final data = _draft.undoSlot.take();
     if (data == null) return;
     final guesses = _undoGuesses;
+    final spotKey = _undoSpotKey;
     _undoGuesses = null;
+    _undoSpotKey = null;
     _time.undoWipe();
     _restoreDraft(data, guesses: guesses);
+    _restoreDraftSpot(spotKey);
     // The entry's frequency, band and mode come back with it, and the radio
     // is tuned back to them: an entry is for the station where it was
     // started, and one restored onto another frequency would be logged there.

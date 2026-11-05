@@ -40,11 +40,12 @@ void main() {
     return SettingsService(await SharedPreferences.getInstance());
   }
 
-  test('defaults to every ten minutes, offering rather than starting, and pulsing', () async {
+  test('defaults to every ten minutes, offering rather than starting, pulsing, and spotting what is worked', () async {
     final settings = await fresh();
     expect(SpottingSettings.respotInterval(settings), const Duration(minutes: 10));
     expect(SpottingSettings.autoRespotByDefault(settings), isFalse);
     expect(SpottingSettings.pulseBeforeRespot(settings), isTrue);
+    expect(SpottingSettings.localSpots(settings), isTrue);
   });
 
   test('what the section commits is what the panel reads back', () async {
@@ -53,6 +54,8 @@ void main() {
     await group.commit('respotIntervalMinutes', '20');
     await group.commit('autoRespotByDefault', true);
     await group.commit('pulseBeforeRespot', false);
+    await group.commit('localSpots', false);
+    expect(SpottingSettings.localSpots(settings), isFalse);
     expect(SpottingSettings.respotInterval(settings), const Duration(minutes: 20));
     expect(SpottingSettings.autoRespotByDefault(settings), isTrue);
     expect(SpottingSettings.pulseBeforeRespot(settings), isFalse);
@@ -89,7 +92,7 @@ void main() {
   // in All settings and missing from the dialog.
   test('every field is in the tune dialog', () async {
     final elements = await SpottingSettingsGroup(await fresh()).buildElements();
-    expect(elements, hasLength(3));
+    expect(elements, hasLength(4));
     expect(elements.map((e) => e['target']), everyElement('spotting'));
     final options = elements.firstWhere((e) => e['key'] == 'respotIntervalMinutes')['options'] as List;
     expect([for (final o in options) (o as Map)['value']], [for (final m in SpottingSettings.respotIntervalOptions) '$m']);
@@ -109,7 +112,16 @@ void main() {
       final elements = await withDestinations(await fresh()).buildElements();
       expect(
         [for (final e in elements) e['key'] ?? e['type']],
-        ['respotIntervalMinutes', 'autoRespotByDefault', 'pulseBeforeRespot', 'destinations', 'destination-ham2k-pota', 'destination-ham2k-sota', 'sectionEnd'],
+        [
+          'respotIntervalMinutes',
+          'autoRespotByDefault',
+          'pulseBeforeRespot',
+          'localSpots',
+          'destinations',
+          'destination-ham2k-pota',
+          'destination-ham2k-sota',
+          'sectionEnd',
+        ],
       );
       expect(elements.map((e) => e['target']), everyElement('spotting'));
       final pota = elements.firstWhere((e) => e['key'] == 'destination-ham2k-pota');
@@ -148,7 +160,7 @@ void main() {
 
     test('no section while no extension posts spots', () async {
       final group = SpottingSettingsGroup(await fresh())..destinations = () async => const {};
-      expect(await group.buildElements(), hasLength(3));
+      expect(await group.buildElements(), hasLength(4));
     });
 
     // Only what is held back is stored: a destination installed later, or
@@ -211,17 +223,17 @@ void main() {
       final elements = await group.buildElements();
       expect(
         [for (final e in elements) e['key'] ?? e['type']],
-        ['respotIntervalMinutes', 'autoRespotByDefault', 'pulseBeforeRespot', 'cluster', 'connect', 'sectionEnd'],
+        ['respotIntervalMinutes', 'autoRespotByDefault', 'pulseBeforeRespot', 'localSpots', 'cluster', 'connect', 'sectionEnd'],
         reason: 'the section ends with the cluster: an extension row placed in Spotting is not one of its rows',
       );
-      expect(elements[3], {'type': 'header', 'style': 'section', 'key': 'cluster', 'title': 'DX Cluster'});
-      expect(elements.where((e) => e['target'] == 'spotting'), hasLength(3));
+      expect(elements[4], {'type': 'header', 'style': 'section', 'key': 'cluster', 'title': 'DX Cluster'});
+      expect(elements.where((e) => e['target'] == 'spotting'), hasLength(4));
     });
 
     // A header over nothing, where no extension uses the cluster.
     test('no section while the cluster offers no rows', () async {
       final group = SpottingSettingsGroup(await fresh())..cluster = _FakeCluster(const []);
-      expect(await group.buildElements(), hasLength(3));
+      expect(await group.buildElements(), hasLength(4));
     });
 
     // The Settings panel and SET commit through the group that shows the

@@ -96,6 +96,7 @@ import 'key_bindings_service.dart';
 import 'settings_service.dart';
 import 'spot_board_service.dart';
 import 'spots_service.dart';
+import 'spotting_settings.dart';
 import 'fyi_service.dart';
 import 'status_bar_service.dart';
 import 'web_popup.dart';
@@ -547,11 +548,20 @@ class HaLoServices with _Realtime, _TimeTravel {
 
   /// Spots fetched once and shared by the Spots Panel and the `spot-history`
   /// lookup hook. Idle until something subscribes (see SpotsService).
-  late final SpotsService spots = SpotsService(
-    fetchSpots: extensions.getSpots,
-    isOffline: () => ConnectivityService.isOffline,
-    offlineChanges: ConnectivityService.offlineChanges,
-  );
+  ///
+  /// Turning Local Spots off takes the ones up down, however it is turned
+  /// off: left standing they would hide what they replace for hours.
+  late final SpotsService spots = () {
+    final spots = SpotsService(
+      fetchSpots: extensions.getSpots,
+      isOffline: () => ConnectivityService.isOffline,
+      offlineChanges: ConnectivityService.offlineChanges,
+    );
+    settings.addListener(() {
+      if (!SpottingSettings.localSpots(settings)) spots.clearLocalSpots();
+    });
+    return spots;
+  }();
 
   /// The open operation's verdicts and the spotted calls' info, shared by the
   /// Spots Panel and `getSpots` (see SpotBoardService).

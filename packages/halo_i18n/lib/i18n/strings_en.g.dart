@@ -5210,6 +5210,15 @@ class Translations$settings$spotting$en {
 	/// en: 'No pulsing before an auto re-spot'
 	String get pulseBeforeRespotOff => 'No pulsing before an auto re-spot';
 
+	/// en: 'Spot the stations you work'
+	String get localSpots => 'Spot the stations you work';
+
+	/// en: 'A call you enter goes on your Spots list at the radio's frequency'
+	String get localSpotsOn => 'A call you enter goes on your Spots list at the radio\'s frequency';
+
+	/// en: 'Calls you enter stay off your Spots list'
+	String get localSpotsOff => 'Calls you enter stay off your Spots list';
+
 	/// en: 'Destinations'
 	String get destinations => 'Destinations';
 
@@ -8794,6 +8803,9 @@ class Translations$operation$spots$filters$en {
 
 	/// en: 'Error'
 	String get sourceError => 'Error';
+
+	/// en: 'Entered here'
+	String get sourceLocal => 'Entered here';
 }
 
 // Path: operation.spots.logConflict
@@ -11521,6 +11533,7 @@ extension on Translations {
 			'operation.spots.filters.alertingOnly' => 'Only Spots with Alerts',
 			'operation.spots.filters.sourceNoReply' => 'No reply',
 			'operation.spots.filters.sourceError' => 'Error',
+			'operation.spots.filters.sourceLocal' => 'Entered here',
 			'operation.spots.unavailableTitle' => 'Spots unavailable',
 			'operation.spots.unavailableText' => ({required Object sources}) => '${sources} did not respond.',
 			'operation.spots.failedTitle' => 'Spot source error',
@@ -11746,9 +11759,9 @@ extension on Translations {
 			'loggingControls.operatorControl' => 'Operator',
 			'loggingControls.operatorField' => 'Operator',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
-			'loggingControls.editStationCalls' => 'Edit list',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.editStationCalls' => 'Edit list',
 			'loggingControls.stationCallsTitle' => 'Station Callsigns',
 			'loggingControls.stationCallsHint' => 'Calls added here count from the next contact on. A call removed here keeps the contacts already logged under it.',
 			'loggingControls.stationCallsAdd' => 'Add a callsign',
@@ -12065,6 +12078,9 @@ extension on Translations {
 			'settings.spotting.pulseBeforeRespot' => 'Pulse before each auto re-spot',
 			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'The Spotting chip pulses blue for the ${seconds} seconds before each re-spot',
 			'settings.spotting.pulseBeforeRespotOff' => 'No pulsing before an auto re-spot',
+			'settings.spotting.localSpots' => 'Spot the stations you work',
+			'settings.spotting.localSpotsOn' => 'A call you enter goes on your Spots list at the radio\'s frequency',
+			'settings.spotting.localSpotsOff' => 'Calls you enter stay off your Spots list',
 			'settings.spotting.destinations' => 'Destinations',
 			'settings.spotting.destinationAll' => 'All spots',
 			'settings.spotting.destinationQrvQrt' => 'Only QRV and QRT',
@@ -12257,12 +12273,12 @@ extension on Translations {
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'Recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'First take ${n}',
 			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'Middle take ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'Last take ${n}',
 			'settings.radio.voiceWords.deleteReading' => 'Delete recording',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'Delete this recording of “${word}”?',
 			'settings.radio.voiceWords.recordAll' => 'Record All',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.deleteAll' => 'Delete All',
 			'settings.radio.voiceWords.deleteAllTitle' => ({required Object call}) => 'Delete every recording for ${call}?',
 			'settings.radio.voiceWords.recordAllIntro' => 'Read each one as you would on the air, then stop. Each word you said plays back on its own: take it and go on to the next, or record it again.',
@@ -12771,12 +12787,12 @@ extension on Translations {
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the radio\'s CAT menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they respond at all.\n- **Kenwood radios wait for RTS**: their CAT port uses it as a handshake, so Hold RTS high (under Advanced Settings) must be on. A connection set up before it was on by default may have it off. On a Digirig or another cable that keys PTT from RTS, turn it off, or the radio transmits.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs are listed separately, under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusLost' => 'Disconnected',
 			'settings.station.notConfigured' => 'Not configured',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.currentTransceiver' => 'Current Transceiver',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.currentTransceivers' => 'Current Transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
 			'settings.station.so2rQueueMessages' => 'Messages queued instead of interrupting',
@@ -13285,12 +13301,12 @@ extension on Translations {
 			'keyboardShortcuts.search' => 'Search commands and keys',
 			'keyboardShortcuts.sets.label' => 'Shortcut Set',
 			'keyboardShortcuts.sets.title' => 'Keyboard Shortcut Sets',
+			_ => null,
+		} ?? switch (path) {
 			'keyboardShortcuts.sets.manage' => 'Manage Shortcut Sets…',
 			'keyboardShortcuts.sets.appDefaults' => 'App Defaults',
 			'keyboardShortcuts.sets.carriedName' => 'My Shortcuts',
 			'keyboardShortcuts.sets.appDefaultsLocked' => 'App Defaults are the app’s own keys. To change them, duplicate App Defaults in Manage Shortcut Sets… and use the copy.',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.sets.fileLabel' => 'Ham2K keyboard shortcuts',
 			'keyboardShortcuts.sets.fileStem' => 'Keyboard Shortcuts',
 			'keyboardShortcuts.resetAll' => 'Reset All',

@@ -15,6 +15,7 @@ abstract final class SpottingSettings {
   static const respotIntervalKey = 'respotIntervalMinutes';
   static const autoRespotByDefaultKey = 'autoRespotByDefault';
   static const pulseBeforeRespotKey = 'pulseBeforeRespot';
+  static const localSpotsKey = 'localSpots';
 
   /// `{hookKey: SpotDestinationPolicy.name}`, one entry per destination the
   /// operator set; one with none is sent every spot.
@@ -90,6 +91,11 @@ abstract final class SpottingSettings {
 
   /// Whether the Spotting chip pulses in the seconds before each auto-respot.
   static bool pulseBeforeRespot(SettingsService settings) => read(settings).pulseBeforeRespot;
+
+  /// Whether a call entered in the logging panel goes on the board as a local
+  /// spot (docs/design/logging-fields.md § Local spots). Not one of
+  /// [SpottingValues]: it is the board's, not the Spotting control's.
+  static bool localSpots(SettingsService settings) => settings.settingsGroup(group)[localSpotsKey] as bool? ?? true;
 
   /// The default is the Spotting control's own, so a host without these
   /// settings re-spots at the same pace.

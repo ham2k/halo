@@ -966,7 +966,8 @@
         "groupCallsWithNotes": "group calls with notes",
         "alertingOnly": "only spots with alerts",
         "sourceNoReply": "no reply",
-        "sourceError": "error"
+        "sourceError": "error",
+        "sourceLocal": "entered here"
       },
       "unavailableTitle": "spots unavailable",
       "unavailableText": "${sources} did not respond.",
@@ -1613,6 +1614,9 @@
       "pulseBeforeRespot": "pulse before each auto re-spot",
       "pulseBeforeRespotOn": "the spotting chip pulses blue for the ${seconds} seconds before each re-spot",
       "pulseBeforeRespotOff": "no pulsing before an auto re-spot",
+      "localSpots": "spot the stations you work",
+      "localSpotsOn": "a call you enter goes on your spots list at the radio's frequency",
+      "localSpotsOff": "calls you enter stay off your spots list",
       "destinations": "destinations",
       "destinationAll": "all spots",
       "destinationQrvQrt": "only qrv and qrt",
