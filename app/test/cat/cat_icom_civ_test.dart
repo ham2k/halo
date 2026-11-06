@@ -1368,7 +1368,8 @@ void main() {
             expect(sink.sent.last, readWidth);
             session.setFrequency(14074);
             async.elapse(_pastAnswerTimeout * 2);
-            feed(_fromRadio([0x04, 0x01, 0x01]));
+            // RTTY: no width, and no DATA submode to ask after either.
+            feed(_fromRadio([0x04, 0x04, 0x01]));
           }
           expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);
           feed(cw);
@@ -1406,20 +1407,110 @@ void main() {
       });
 
       test('a NAK to the DATA read is not a width refusal, though both are 0x1A', () {
-        // A transceive mode announcement asks after the width and then the
-        // DATA submode; a radio without DATA refuses the second.
-        final announceCw = [0xFE, 0xFE, 0x00, ic705, 0x01, 0x03, 0x01, 0xFD];
-        for (final filter in [0x01, 0x02]) {
-          feed([...announceCw.sublist(0, 6), filter, 0xFD]);
+        // CW asks after the width, USB after the DATA submode; a radio
+        // without DATA refuses the second, and that gives up DATA alone.
+        List<int> announce(int mode) => [0xFE, 0xFE, 0x00, ic705, 0x01, mode, 0x01, 0xFD];
+        for (var i = 0; i < 2; i++) {
+          feed(announce(0x03));
           expect(sink.sent.last, readWidth);
           feed(_fromRadio([0xFB]));
+          feed(announce(0x01));
           expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0xFD]);
           feed(_fromRadio([0xFA]));
         }
         expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);
-        feed([...announceCw.sublist(0, 6), 0x03, 0xFD]);
+        expect(sink.diagnostics.where((d) => d!.contains('DATA submode')), hasLength(1));
+        feed(announce(0x03));
         expect(sink.sent.last, readWidth, reason: 'still asked');
       });
+
+      test('the DATA read is asked only in a mode that has the submode', () {
+        // hamlib asks it in USB, LSB, AM and FM alone; a radio refusing it in
+        // CW would otherwise lose DATA for the session before FT8 begins.
+        final readData = [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0xFD];
+        fakeAsync((async) {
+          session.startUpdates();
+          feed(cw);
+          for (var i = 0; i < 10; i++) {
+            feed(_fromRadio([0xFB]));
+          }
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 5));
+          for (var i = 0; i < 10; i++) {
+            feed(_fromRadio([0xFB]));
+          }
+          expect(sink.sent.where((f) => listEquals(f, readData)), isEmpty, reason: 'CW has no DATA submode');
+          feed(_fromRadio([0x04, 0x01, 0x01]));
+          expect(sink.sent.last, readData, reason: 'asked as soon as the radio moves to USB');
+          session.teardown();
+        });
+      });
+    });
+  });
+
+  // hamlib: the IC-7200 keeps its filter width on 0x1A 0x02 and its DATA
+  // submode on 0x1A 0x04, where the rest of the line has 0x03 and 0x06; its
+  // 0x03 is its menu (VOX delay is 1A 03 55).
+  group('on an IC-7200, whose 0x1A table runs one behind the line', () {
+    const ic7200 = 0x76;
+    List<int> fromRadio(List<int> payload) => [0xFE, 0xFE, us, ic7200, ...payload, 0xFD];
+
+    setUp(() {
+      session = IcomCivSession(sink, radioAddress: ic7200, controllerAddress: us, config: ic7200Model.variants.first.overrides);
+      sink.answer = session.handleData;
+    });
+
+    test('the width is read and set on 0x02', () {
+      feed(fromRadio([0x04, 0x03, 0x01]));
+      expect(sink.sent.last, [0xFE, 0xFE, ic7200, us, 0x1A, 0x02, 0xFD]);
+      feed(fromRadio([0x1A, 0x02, 0x15]));
+      expect(sink.passbands.last, const Passband(-550, 550));
+      sink.sent.clear();
+      session.setPassband(const Passband(-260, 260));
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic7200, us, 0x1A, 0x02, 0x09, 0xFD],
+        [0xFE, 0xFE, ic7200, us, 0x1A, 0x02, 0xFD],
+      ]);
+    });
+
+    test("an answer on the line's 0x03 is not a width", () {
+      feed(fromRadio([0x04, 0x03, 0x01]));
+      feed(fromRadio([0x1A, 0x03, 0x15]));
+      expect(sink.passbands.last, isNull);
+    });
+
+    test('DATA is set and read on 0x04, and an answer on 0x06 is not DATA', () {
+      feed(fromRadio([0x04, 0x01, 0x02]));
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic7200, us, 0x06, 0x01, 0xFD],
+        [0xFE, 0xFE, ic7200, us, 0x1A, 0x04, 0x01, 0x02, 0xFD],
+      ]);
+      feed(fromRadio([0x1A, 0x04, 0x00, 0x00]));
+      expect(sink.readings.last, const VfoReading(mode: 'USB'));
+      feed(fromRadio([0x1A, 0x06, 0x01, 0x01]));
+      expect(sink.readings.last, const VfoReading(mode: 'USB'));
+    });
+
+    test("the poll asks 0x02 and 0x04, never the line's 0x03 or 0x06", () {
+      fakeAsync((async) {
+        session.startUpdates();
+        feed(fromRadio([0x04, 0x03, 0x01]));
+        async.elapse(const Duration(seconds: 6));
+        final settings = sink.sent.where((f) => f.length > 5 && f[4] == 0x1A).map((f) => f[5]).toSet();
+        expect(settings, {0x02, 0x04});
+        session.teardown();
+      });
+    });
+
+    test('offers its own modes: no FM, and no CW keying or voice memories', () {
+      const driver = IcomCivDriver();
+      final config = ic7200Model.variants.first.overrides;
+      expect(driver.settableModes(config), isNot(contains('FM')));
+      expect(driver.settableModes(config), containsAll(['DATA-USB', 'DATA-LSB', 'RTTY']));
+      expect(driver.canKeyCwWith(config), isFalse);
+      expect(driver.voiceMemoryCountWith(config), 0);
     });
   });
 

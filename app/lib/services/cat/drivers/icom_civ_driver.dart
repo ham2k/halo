@@ -83,17 +83,16 @@ const _civExchangeBytes = 16;
 /// does nothing.
 const civModeWithFilterConfigKey = 'civModeWithFilter';
 
-/// Pinned `false` by an entry whose radio has no DATA submode (`0x1A 0x06`),
-/// which would refuse the read on every poll. Every other entry reads and
-/// sets it: without it an FT8 request puts the rig in plain USB, and a rig
-/// in USB-D reports itself as USB. Never a field: it is a fact about the
-/// model.
+/// Pinned `false` by an entry whose radio has no DATA submode (`0x1A 0x06`,
+/// or [civDataModeSubConfigKey]), which would refuse the read on every poll.
+/// Every other entry reads and sets it: without it an FT8 request puts the
+/// rig in plain USB, and a rig in USB-D reports itself as USB. Never a field.
 const civDataModeConfigKey = 'civDataMode';
 
 /// Pinned `false` by an entry whose radio has no filter-width command
-/// (`0x1A 0x03`) — the Xiegu G90 and X6100, per hamlib's `x1ax03_supported`.
-/// Unpinned, the session asks until the radio refuses or ignores it. Never a
-/// field: it is a fact about the model.
+/// (`0x1A 0x03`, or [civFilterWidthSubConfigKey]) — the Xiegu G90 and X6100,
+/// per hamlib's `x1ax03_supported`. Unpinned, the session asks until the
+/// radio refuses or ignores it. Never a field: it is a fact about the model.
 const civFilterWidthConfigKey = 'civFilterWidth';
 
 /// The modes a model has, as a list of the app's names for them — pinned in
@@ -231,6 +230,8 @@ class IcomCivDriver extends EquipmentDriver {
     civModeWithFilterConfigKey,
     civDataModeConfigKey,
     civFilterWidthConfigKey,
+    civDataModeSubConfigKey,
+    civFilterWidthSubConfigKey,
     civRadioModesConfigKey,
     cwKeyerConfigKey,
     voiceMemoriesConfigKey,
@@ -419,6 +420,8 @@ class IcomCivSession
     this._meterInfoKey,
   }) : _config = config,
        _modeWithFilter = config[civModeWithFilterConfigKey] == true,
+       _dataModeSub = (config[civDataModeSubConfigKey] as num?)?.toInt() ?? civSettingDataMode,
+       _filterWidthSub = (config[civFilterWidthSubConfigKey] as num?)?.toInt() ?? civSettingFilterWidth,
        _scopeSupported = config[civScopeConfigKey] == true,
        _antennaPorts = (config[civAntennaPortsConfigKey] as num?)?.toInt().clamp(0, 4) ?? 0,
        _bandMaxWatts = civBandMaxWattsFrom(config[civBandMaxWattsConfigKey]),
@@ -426,6 +429,10 @@ class IcomCivSession
 
   /// See [civModeWithFilterConfigKey].
   final bool _modeWithFilter;
+
+  /// See [civDataModeSubConfigKey] and [civFilterWidthSubConfigKey].
+  final int _dataModeSub;
+  final int _filterWidthSub;
 
   /// See [civBandMaxWattsConfigKey].
   final List<(int, num)> _bandMaxWatts;
@@ -456,7 +463,7 @@ class IcomCivSession
   /// DATA-USB for a rig in plain USB for good.
   late final _dataModeSupport = OptionalRead(
     _sink,
-    'radio does not answer the DATA submode read (0x1A 0x06); data modes set plain USB',
+    'radio does not answer the DATA submode read (${civSettingName(_dataModeSub)}); data modes set plain USB',
     onGiveUp: () {
       _dataOn = false;
       _reportMode();
@@ -464,9 +471,13 @@ class IcomCivSession
     asked: _config[civDataModeConfigKey] != false,
   );
 
-  late final List<int> _dataModeRead = buildReadDataModeFrame(to: radioAddress, from: controllerAddress);
+  late final List<int> _dataModeRead = buildReadDataModeFrame(to: radioAddress, from: controllerAddress, sub: _dataModeSub);
 
-  void _readDataMode() => _poll(_dataModeRead);
+  /// Only in a base mode with a DATA submode or before one is known, as
+  /// hamlib: a radio refusing it in CW must not have it given up.
+  void _readDataMode() {
+    if (_baseMode == null || dataModeBases.containsValue(_baseMode)) _poll(_dataModeRead);
+  }
 
   /// The base mode the radio last reported, and whether its DATA submode was
   /// on — two answers to two questions, reported as one app mode by
@@ -846,19 +857,19 @@ class IcomCivSession
           _reportPassband();
           _readFilterWidth();
         }
-        // A mode announced on its own may have brought its DATA submode with
-        // it — a band recall does — and the announcement does not say.
-        if (frame.command == CivCommand.transceiveMode && _dataModeSupport.available) _readDataMode();
+        // A new mode may have brought its DATA submode with it — a band
+        // recall does — and the flag was not asked in a mode without one.
+        if ((frame.command == CivCommand.transceiveMode || modeMoved) && _dataModeSupport.available) _readDataMode();
 
       case CivCommand.settings:
         if (_lanMod?.heard(frame.data, answering: answeringFrame) ?? false) return;
-        if (parseFilterWidthData(frame.data) case final index?) {
+        if (parseFilterWidthData(frame.data, sub: _filterWidthSub) case final index?) {
           _filterWidthSupport.reset();
           _filterWidthIndex = index;
           _reportPassband();
           return;
         }
-        final data = parseDataModeData(frame.data);
+        final data = parseDataModeData(frame.data, sub: _dataModeSub);
         if (data == null) return;
         _dataModeSupport.reset();
         if (data == _dataOn) return;
@@ -1010,7 +1021,7 @@ class IcomCivSession
     // mode leaves DATA as it was on some radios, so plain USB after FT8
     // would otherwise stay USB-D.
     if (_dataModeSupport.available && dataModeBases.containsValue(base.toUpperCase())) {
-      _send(buildSetDataModeFrame(to: radioAddress, from: controllerAddress, on: dataBase != null, filter: radioFilter));
+      _send(buildSetDataModeFrame(to: radioAddress, from: controllerAddress, on: dataBase != null, filter: radioFilter, sub: _dataModeSub));
       // Taken as set: the next mode answer would otherwise be reported
       // against the flag from before, putting the old mode in the log until
       // the DATA read lands. A refused set is corrected by that read.
@@ -1259,12 +1270,12 @@ class IcomCivSession
   /// ([civFilterWidthConfigKey]).
   late final _filterWidthSupport = OptionalRead(
     _sink,
-    'radio does not read its filter width (0x1A 0x03 refused or unanswered); not asked again',
+    'radio does not read its filter width (${civSettingName(_filterWidthSub)} refused or unanswered); not asked again',
     onGiveUp: _reportPassband,
     asked: _config[civFilterWidthConfigKey] != false,
   );
 
-  late final List<int> _filterWidthRead = buildReadFilterWidthFrame(to: radioAddress, from: controllerAddress);
+  late final List<int> _filterWidthRead = buildReadFilterWidthFrame(to: radioAddress, from: controllerAddress, sub: _filterWidthSub);
 
   /// What the radio last said its width is, for the mode and filter now in
   /// use; null until it says, again after either moves.
@@ -1327,7 +1338,7 @@ class IcomCivSession
   void setPassband(Passband passband) {
     final widths = _widthsFor(_baseMode);
     if (!_filterWidthSupport.available || widths == null) return;
-    _send(buildSetFilterWidthFrame(to: radioAddress, from: controllerAddress, index: civFilterWidthIndex(widths, passband.widthHz)));
+    _send(buildSetFilterWidthFrame(to: radioAddress, from: controllerAddress, index: civFilterWidthIndex(widths, passband.widthHz), sub: _filterWidthSub));
     _send(_filterWidthRead);
   }
 

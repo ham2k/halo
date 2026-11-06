@@ -12,7 +12,8 @@ import 'drivers/meter_calibration.dart';
 import 'drivers/icom_civ_driver.dart';
 import 'drivers/icom_lan_audio.dart' show civLanModConfigKey;
 import 'drivers/civ_power.dart' show civBandMaxWattsConfigKey;
-import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
+import 'drivers/civ_codec.dart'
+    show civDataModeSubConfigKey, civFilterWidthSubConfigKey, civSettingDataModeIc7200, civSettingFilterWidthIc7200, civVoiceMemoryCount;
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
@@ -27,6 +28,7 @@ const _ic7300SerialKey = 'ic7300-serial';
 const _ic7300mk2SerialKey = 'ic7300mk2-serial';
 const _ic706mkiigSerialKey = 'ic706mkiig-serial';
 const _ic7100SerialKey = 'ic7100-serial';
+const _ic7200SerialKey = 'ic7200-serial';
 const _ic7610SerialKey = 'ic7610-serial';
 const _ic7760SerialKey = 'ic7760-serial';
 const _x6100SerialKey = 'x6100-serial';
@@ -54,6 +56,8 @@ const _civHfModes = ['LSB', 'USB', 'AM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'FM'];
 const _civDataModes = ['DATA-LSB', 'DATA-USB', 'DATA-FM'];
 const _ic705Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
 const _ic7100Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
+// No FM on the IC-7200, so no DATA-FM either.
+const _ic7200Modes = ['LSB', 'USB', 'AM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'DATA-LSB', 'DATA-USB'];
 // DD on the IC-9700's 1200 MHz band, and ATV on the IC-905's, have no
 // mode name in civModeCodes, so neither is offered.
 const _civVuDvModes = [..._civHfModes, 'DV', ..._civDataModes];
@@ -349,6 +353,40 @@ const ic7100Model = EquipmentModel(
 );
 
 String _ic7100Name() => t.settings.station.models.ic7100;
+
+/// Icom IC-7200 over its built-in USB CI-V port — one port, so it claims
+/// none of them ([_icomCatPort]).
+///
+/// From hamlib's ic7200.c and icom.c: address 76; CI-V up to 19200 baud;
+/// LSB/USB, CW, RTTY and AM with their reverses, and USB-D/LSB-D, but no
+/// FM. Its `0x1A` table runs one sub-command behind the line's — the width
+/// on 0x02, DATA on 0x04, its menu on 0x03 — so both are pinned. No 0x17 CW
+/// (hamlib gives it no send_morse) and no voice memories; 100 W, and the
+/// line's meter scales.
+const ic7200Model = EquipmentModel(
+  key: 'ic7200',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic7200Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7200SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '76', 'baudRate': 19200},
+      overrides: {
+        civRadioModesConfigKey: _ic7200Modes,
+        civDataModeSubConfigKey: civSettingDataModeIc7200,
+        civFilterWidthSubConfigKey: civSettingFilterWidthIc7200,
+        cwKeyerConfigKey: false,
+        voiceMemoriesConfigKey: 0,
+      },
+      notes: _civSerialNotes,
+    ),
+  ],
+);
+
+String _ic7200Name() => t.settings.station.models.ic7200;
 
 /// The address note plus the family's two-port one: this radio presents both
 /// ports and now has one of them marked, so the operator gets the reason for

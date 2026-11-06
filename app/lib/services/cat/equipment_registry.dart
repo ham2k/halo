@@ -548,6 +548,7 @@ const _defaultModels = [
   ic7300mk2Model,
   ic706mkiigModel,
   ic7100Model,
+  ic7200Model,
   ic7610Model,
   ic7760Model,
   ic9700Model,

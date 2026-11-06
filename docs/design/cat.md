@@ -313,7 +313,12 @@ what the user configured; everything about a connection is rebuilt at runtime.
   than USB. An Icom without the submode on the generic entry, which cannot pin it, stops being
   asked as any read the radio may lack does (§ Tuner, passband and the radio's own antenna ports),
   and a diagnostic says so. An entry whose radio has no submode (`civDataMode: false` on the IC-706MKIIG and G90; any Kenwood
-  without `dataMode`) is put in the base mode. It then reports USB, so the log says USB.
+  without `dataMode`) is put in the base mode. It then reports USB, so the log says USB. The
+  IC-7200 has the submode on `0x1A 0x04`, and its filter width on `0x1A 0x02` rather than the
+  line's `0x03` (hamlib's `RIG_IS_IC7200` cases); its entry pins both (`civDataModeSub`,
+  `civFilterWidthSub`), since its `0x03` is its menu (hamlib's VOX delay is `1A 03 55`). The
+  submode is asked only where the base mode has one, as hamlib asks it, so a radio that refuses it
+  in CW keeps it for USB.
 - **A Kenwood-protocol radio can have its own `MD` table**, pinned per entry as `modeDialect`. Lab599's
   TX-500 and TX-500MP have no RTTY, and in their LAB599 CAT protocol `MD6` is DIG — so `6` reads and
   sets as DATA-USB there, and RTTY is not offered. The same radios also offer the TS-2000 protocol,
@@ -1703,7 +1708,8 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
 
 - **Icom CI-V** has the plain command: `0x17 <text>` keys it, `0x17 0xFF` aborts what is keying,
   `0x14 0x0C` reads and sets the speed (0-255 over 6-48 WPM; the linear conversion is within one
-  step of hamlib's table for the same command).
+  step of hamlib's table for the same command). Not on every radio: the IC-706MKIIG and IC-7200
+  (no `send_morse` in hamlib) pin `cwKeyer: false`.
 - **FlexRadio SmartSDR** has CWX, a text buffer on the radio: `cwx send "<text>"` (spaces as
   0x7F, the API's rule) queues a whole message, `cwx clear` empties it — a real stop — and `cw wpm`
   sets the speed the `cwx wpm=` status (`sub cwx all`) reports back on its own. The queue still
@@ -2127,8 +2133,8 @@ that implement it for rigs that have no voice keyer at all, which is what a `voi
 zero is for — a QMX on the Kenwood driver is not a voice keyer, and the catalogue entry, not the
 driver, says so (`voiceDialect`/`voiceMemories` overrides, the way `ifModeOffset` is pinned). The
 TS-590SG and TS-480 pin zero too: their memories need an optional voice unit the app cannot detect.
-The Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100, X6100 and G90
-pin zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
+The Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100, IC-7200, X6100
+and G90 pin zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
 a generic asks. rigctld is the same, with `voiceMemories` absent meaning none: Hamlib's
 `\send_voice_mem N` and `\stop_voice_mem`, plain and with no VFO argument even on a `--vfo` daemon
 (the `+` form there waits for an argument it never gets), on the entries that pin a count — the
@@ -2173,8 +2179,8 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   a second later, and NOT on the NAK: CI-V's ACK/NAK names no command and sends are not awaited, so
   a NAK in flight from a meter read would end a memory that is on the air. Nothing in CI-V records
   a memory: `canRecordVoice` is false, and the dialog says to use the front panel. Every named entry
-  pins its `voiceMemories` (eight on the modern line, zero on the IC-706, the IC-7100, the X6100
-  and the G90); an absent key is a generic entry's node and means none.
+  pins its `voiceMemories` (eight on the modern line, zero on the IC-706, the IC-7100, the IC-7200,
+  the X6100 and the G90); an absent key is a generic entry's node and means none.
 - **Yaesu** (FT-891, FT-710, FT-991A, FTDX10/101 — hamlib lists both commands valid on all of them):
   `PB0n;` plays, `PB00;` stops — but `PB` only starts the DVS, it does NOT key the transmitter, so
   a play is `TX1;` first (an unkeyed radio plays the memory into the monitor and nothing reaches

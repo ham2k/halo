@@ -75,8 +75,9 @@ class CivCommand {
   /// is the antenna tuner — see [civTunerStatus].
   static const transmitStatus = 0x1C;
 
-  /// "Various settings" — a sub-command byte selects which. Only
-  /// [civSettingDataMode] is used here.
+  /// "Various settings" — a sub-command byte selects which: the menu
+  /// ([civSettingMenu]), the DATA submode ([civSettingDataMode]) and the
+  /// filter width ([civSettingFilterWidth]).
   static const settings = 0x1A;
 
   /// Sub-command 0x00 with one data byte: 0x01-0x08 transmits voice memory
@@ -260,16 +261,30 @@ const civSettingMenu = 0x05;
 /// set carries the same two bytes, the filter 0x00 when data is off.
 const civSettingDataMode = 0x06;
 
-List<int> buildReadDataModeFrame({required int to, int from = civDefaultControllerAddress}) =>
-    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: const [civSettingDataMode]);
+/// The IC-7200's [civSettingDataMode]: the same bytes on 0x04, per hamlib
+/// (`RIG_IS_IC7200 ? 0x04 : S_MEM_DATA_MODE`). Its 0x06 is something else.
+const civSettingDataModeIc7200 = 0x04;
+
+/// Pinned by an entry whose radio keeps its DATA submode on another
+/// sub-command than [civSettingDataMode] — the IC-7200's
+/// [civSettingDataModeIc7200]. Never a field: it is a fact about the model.
+const civDataModeSubConfigKey = 'civDataModeSub';
+
+/// `0x1A 0x06` and the like, for a diagnostic naming the read a radio lacks.
+String civSettingName(int sub) => '0x1A 0x${sub.toRadixString(16).padLeft(2, '0').toUpperCase()}';
+
+/// [sub] is the radio's DATA sub-command — [civSettingDataMode] but on an
+/// IC-7200 — here and in the set and parse below.
+List<int> buildReadDataModeFrame({required int to, int from = civDefaultControllerAddress, int sub = civSettingDataMode}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [sub]);
 
 /// D1 when [on], with [filter] (FIL1-FIL3); off sends the filter byte as 0x00.
-List<int> buildSetDataModeFrame({required int to, int from = civDefaultControllerAddress, required bool on, int filter = 0x01}) =>
-    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [civSettingDataMode, on ? 0x01 : 0x00, on ? filter : 0x00]);
+List<int> buildSetDataModeFrame({required int to, int from = civDefaultControllerAddress, required bool on, int filter = 0x01, int sub = civSettingDataMode}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [sub, on ? 0x01 : 0x00, on ? filter : 0x00]);
 
 /// `frame.data` of a 0x1A reply: whether the DATA submode is on, or null for
 /// a reply to another sub-command.
-bool? parseDataModeData(List<int> data) => data.length < 2 || data[0] != civSettingDataMode ? null : data[1] != 0x00;
+bool? parseDataModeData(List<int> data, {int sub = civSettingDataMode}) => data.length < 2 || data[0] != sub ? null : data[1] != 0x00;
 
 List<int> buildReadFrequencyFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.readFrequency);
@@ -386,9 +401,21 @@ int? parseTunerData(List<int> data) {
 /// [CivCommand.settings] sub-command: the IF filter width — of the filter in
 /// use (FIL1-FIL3), which it never changes. One BCD byte, read and set
 /// alike, indexing a table that depends on the mode: [civFilterWidthsSsbCw],
-/// [civFilterWidthsAm]. The IC-7200 puts this on sub-command 0x02 instead,
-/// and hamlib never asks it of the Xiegu G90, X108G or X5105.
+/// [civFilterWidthsAm]. The IC-7200 puts this on sub-command 0x02 instead
+/// ([civSettingFilterWidthIc7200]), and hamlib never asks it of the Xiegu
+/// G90, X108G or X5105.
 const civSettingFilterWidth = 0x03;
+
+/// The IC-7200's [civSettingFilterWidth], on 0x02 with the same tables, per
+/// hamlib (`RIG_IS_IC7200 ? 0x02 : S_MEM_FILT_WDTH`). Its 0x03 is its menu
+/// (hamlib reads VOX delay as `1A 03 55`), so the line's width read there
+/// would be refused at best — and with it the passband given up.
+const civSettingFilterWidthIc7200 = 0x02;
+
+/// Pinned by an entry whose radio keeps its filter width on another
+/// sub-command than [civSettingFilterWidth] — the IC-7200's
+/// [civSettingFilterWidthIc7200]. Never a field: it is a fact about the model.
+const civFilterWidthSubConfigKey = 'civFilterWidthSub';
 
 /// Hz for each [civSettingFilterWidth] index in SSB and CW, from Icom's
 /// IC-7300MK2 CI-V reference guide: 50 Hz steps from 50 Hz to 500 Hz (00-09),
@@ -409,16 +436,18 @@ int civFilterWidthIndex(List<int> widths, int widthHz) {
   return best;
 }
 
-List<int> buildReadFilterWidthFrame({required int to, int from = civDefaultControllerAddress}) =>
-    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: const [civSettingFilterWidth]);
+/// [sub] is the radio's width sub-command — [civSettingFilterWidth] but on
+/// an IC-7200 — here and in the set and parse below.
+List<int> buildReadFilterWidthFrame({required int to, int from = civDefaultControllerAddress, int sub = civSettingFilterWidth}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [sub]);
 
-List<int> buildSetFilterWidthFrame({required int to, int from = civDefaultControllerAddress, required int index}) =>
-    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [civSettingFilterWidth, ((index ~/ 10) << 4) | (index % 10)]);
+List<int> buildSetFilterWidthFrame({required int to, int from = civDefaultControllerAddress, required int index, int sub = civSettingFilterWidth}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [sub, ((index ~/ 10) << 4) | (index % 10)]);
 
 /// `frame.data` of a 0x1A reply: the filter width index, or null for another
 /// sub-command, a short reply, or a byte that is not BCD.
-int? parseFilterWidthData(List<int> data) {
-  if (data.length < 2 || data[0] != civSettingFilterWidth) return null;
+int? parseFilterWidthData(List<int> data, {int sub = civSettingFilterWidth}) {
+  if (data.length < 2 || data[0] != sub) return null;
   final tens = data[1] >> 4, ones = data[1] & 0x0F;
   return tens > 9 || ones > 9 ? null : tens * 10 + ones;
 }

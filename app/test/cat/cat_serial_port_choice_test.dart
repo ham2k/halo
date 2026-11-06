@@ -562,7 +562,7 @@ void main() {
     // brand string, re-keyed variant — and a guard that shrinks to nothing
     // still passes.
     const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7300mk2-serial', 'ic7610-serial', 'ic7760-serial', 'ic9700-serial', 'ic905-serial'};
-    const noPortOfItsOwn = {'ic7300-serial', 'ic706mkiig-serial', 'ic7100-serial', 'ic7850-serial', 'ic7851-serial'};
+    const noPortOfItsOwn = {'ic7300-serial', 'ic706mkiig-serial', 'ic7100-serial', 'ic7200-serial', 'ic7850-serial', 'ic7851-serial'};
 
     test('the Icoms with two USB ports of their own claim the first', () {
       for (final key in claimsPortA) {
@@ -577,7 +577,7 @@ void main() {
 
     test('a radio whose ports are the operator\'s cable claims nothing', () {
       // The IC-706MKIIG reaches CI-V through a level converter, and the
-      // original IC-7300 and the IC-7100 present one port each, so the only
+      // original IC-7300, the IC-7100 and the IC-7200 present one port each, so the only
       // ports these could ever rank belong to somebody else's bridge — whose second channel is
       // usually PTT, which picks and then answers nothing. Icom's Port A
       // convention is about Icom's own USB and says nothing about that. The
