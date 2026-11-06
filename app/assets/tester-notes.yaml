@@ -6,18 +6,13 @@
 
 upcoming:
   changes:
-    - "Added Icom IC-7200 to the radio list"
+    - "Added Icom IC-7200, Apache Labs ANAN (Thetis) and Expert Electronics SunSDR (ExpertSDR3) to the radio list"
     - "New: calls you enter and contacts you log go on your Spots list"
-    - "Cut-off status bar messages open in full when tapped"
-    - "Added Apache Labs ANAN (Thetis) to the radio list"
-    - "Added Expert Electronics SunSDR (ExpertSDR3) to the radio list"
-    - "Improved ARRL Sweepstakes: type or paste the whole exchange in one go (feedback welcome)"
+    - "Improved ARRL Sweepstakes: type or paste the whole exchange in one go"
     - "New Auto-advance Fields setting replaces RST jump, now covering contest exchanges too"
     - "New Backspace move: an empty logging field steps back to the previous one"
     - "New band tags: type QRM! or NET! and Enter to mark the frequency"
-    - "New: Run/S&P on each contact, a Run pill to tap; ⌥U, `RUN`, `SNP` switch it"
-    - "New: spots on the Band Scope, click one to work it"
-    - "New: Band Scope shows the band plan, with modes and license limits"
+    - "New: Band Scope shows spots to click and work, and the band plan with modes and license limits"
 
 "190":
   changes:
