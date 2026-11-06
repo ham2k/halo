@@ -30,7 +30,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   double vfo = 14050000;
   final tunes = <(double, bool)>[];
   final recentered = <int>[];
-  final widened = <int>[];
+  final fitted = <int>[];
   final widths = <int?>[];
   final controller = StreamController<SpectrumFrame>.broadcast();
 
@@ -83,8 +83,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool widen(String uuid, int widthHz) {
-    if (commands) widened.add(widthHz);
+  bool fitSpan(String uuid, int widthHz) {
+    if (commands) fitted.add(widthHz);
     return commands;
   }
 }
@@ -531,14 +531,42 @@ void main() {
     await tester.dragFrom(_onAxis(tester, .5), const Offset(300, 0));
     await tester.pump();
     expect(radio.widths.last, 400000);
-    expect(radio.widened.last, 400000);
+    expect(radio.fitted.last, 400000);
 
     final narrow = _Radio(commands: false);
     await _show(tester, narrow);
     await tester.dragFrom(_onAxis(tester, .5), const Offset(300, 0));
     await tester.pump();
     expect(narrow.widths.last, 100000, reason: 'a scope the panel cannot widen bounds the zoom at the sweep');
-    expect(narrow.widened, isEmpty);
+    expect(narrow.fitted, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('a zoom in narrows the radio\'s own scope once it ends, to cover the window where it sits', (tester) async {
+    // Cropped and never narrowed, a zoom in on a radio's widest span draws a handful of its points.
+    final radio = _Radio(maxWidth: 400000);
+    await _show(tester, radio);
+    final drag = await tester.startGesture(_onAxis(tester, .5));
+    for (var i = 0; i < 5; i++) {
+      await drag.moveBy(const Offset(-30, 0));
+      await tester.pump();
+    }
+    expect(radio.fitted, isEmpty, reason: 'narrowed on the way in, the radio would step through every span');
+    await drag.up();
+    await tester.pump();
+    // The window's middle sits .375 of its width off the sweep's, which the dial centres.
+    expect(radio.fitted.single, closeTo(36788 * 1.75, 50));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(_onAxis(tester, .9));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(radio.fitted.last, 100000, reason: 'left narrow, the reset would only crop the narrowed sweep');
+
+    final narrow = _Radio(commands: false);
+    await _show(tester, narrow);
+    await _zoomIn(tester);
+    expect(narrow.fitted, isEmpty);
     await tester.pump(const Duration(seconds: 1));
   });
 
@@ -995,7 +1023,7 @@ void main() {
     await tester.tapAt(_onAxis(tester, .9));
     await tester.pump(const Duration(milliseconds: 400));
     expect(radio.tunes, hasLength(1), reason: 'a double click is the reset, not a tune');
-    expect(radio.widths.last, isNull, reason: 'the zoom handed back: the scene names no width of its own');
+    expect(radio.widths.last, 0, reason: 'the zoom handed back: the scene names no width, so it draws the whole sweep');
     // On the picture a click is not held back: there is no double click to wait for.
     await tester.tapAt(_onPan(tester, .3));
     await tester.pump(const Duration(milliseconds: 16));

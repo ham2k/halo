@@ -58,7 +58,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool widen(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz) => false;
 }
 
 /// One spectrum over a 400 by 300 pane with no axis or level strip: its spectrum the top 120 pixels.

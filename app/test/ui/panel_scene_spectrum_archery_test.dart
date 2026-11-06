@@ -74,7 +74,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool widen(String uuid, int widthHz) => true;
+  bool fitSpan(String uuid, int widthHz) => true;
 }
 
 /// 14.000–14.100 MHz across a spectrum 400 wide and 300 deep, the dial at

@@ -19,12 +19,13 @@ extension CatServiceSpectrum on CatService {
   }
 
   /// [owner], a display drawing [uuid]'s sweeps, shows [widthHz] of them —
-  /// null once it no longer draws them. Where the span is the app's to
-  /// choose ([SpectrumCapabilities.autoSpan]), the scope runs at the narrowest
-  /// span that covers the widest display, or the widest it has; a display
-  /// that names no width asks for none, so with no display naming one the
-  /// span stays where it was until the scope stops. Elsewhere the span stays
-  /// the radio's.
+  /// 0 where it names no width and draws the whole sweep, null once it no
+  /// longer draws them. Where the span is the app's to choose
+  /// ([SpectrumCapabilities.autoSpan]), the scope runs at the narrowest span
+  /// that covers the widest display, or the widest it has; a display that
+  /// names no width asks for none, so with no display naming one the span
+  /// stays where it was until the scope stops. Elsewhere the span stays the
+  /// radio's, and a zoom fits it ([spectrumWidthsFor]).
   void wantSpectrumWidth(String uuid, Object owner, int? widthHz) {
     // A display closing after its radio was removed has nothing to take back.
     final runtime = widthHz == null ? _runtimes[uuid] : _runtimeFor(uuid);
@@ -36,6 +37,9 @@ extension CatServiceSpectrum on CatService {
     }
     _scheduleSpectrumDemand(runtime);
   }
+
+  /// What each display drawing [uuid]'s scope shows of it, as [wantSpectrumWidth] was told.
+  Iterable<int> spectrumWidthsFor(String uuid) => _runtimes[uuid]?.spectrumWidths.values ?? const [];
 
   /// [uuid]'s scope, when it is connected and has one.
   SpectrumSession? spectrumSessionFor(String uuid) => switch (connectedSession(uuid)) {
@@ -256,8 +260,9 @@ extension CatServiceSpectrum on CatService {
   /// a radio that snaps it is not asked again on every display's coming and going.
   void _spectrumSpan(_NodeRuntime runtime, SpectrumSession session) {
     final capabilities = session.spectrumCapabilities;
-    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || runtime.spectrumWidths.isEmpty) return;
-    final widest = runtime.spectrumWidths.values.reduce((a, b) => a > b ? a : b);
+    final named = runtime.spectrumWidths.values.where((w) => w > 0);
+    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || named.isEmpty) return;
+    final widest = named.reduce((a, b) => a > b ? a : b);
     final span = capabilities.spansHz.firstWhere((s) => s * 2 >= widest, orElse: () => capabilities.spansHz.last);
     if (runtime.spectrumSpanAsked == span) return;
     try {

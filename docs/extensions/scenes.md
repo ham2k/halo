@@ -546,8 +546,11 @@ a scope, the control says why instead. Placed like a native control, it takes:
     pointer — or a pinch, by touch or on a trackpad, about the fingers.
     Zooming past the sweep asks for a wider scope: the app's own where the
     radio's `spectrum` says `autoSpan`, the radio's next span where the panel
-    may command it, and no further elsewhere. A double click on the axis puts
-    the window back, about the dial.
+    may command it, and no further elsewhere. Where a zoom ends, a radio span
+    the panel commands goes to the narrowest that covers the window and every
+    other display of that scope; one showing the whole sweep keeps it from
+    narrowing. A double click on the axis puts the window back, about the
+    dial, and widens back what the zoom narrowed.
   - `pan` is a drag along the frequency over the spectrum or the waterfall,
     or a scroll that pans, unless the scene scrolls that way, whose scroll
     takes it. Within the sweep it only moves the window;

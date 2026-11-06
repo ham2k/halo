@@ -973,10 +973,12 @@ class IcomCivSession
     _send(buildReadModeFrame(to: radioAddress, from: controllerAddress));
   }
 
+  /// Read back behind the set, sent not polled as [readBack] is: no tune commanded over CI-V is announced, and the next poll is seconds away.
   @override
   void setFrequency(double freqKHz) {
     final freqHz = (freqKHz * 1000).round();
     _send(buildSetFrequencyFrame(to: radioAddress, from: controllerAddress, freqHz: freqHz));
+    _send(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
     _noteFrequency(freqHz);
   }
 

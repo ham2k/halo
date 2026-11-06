@@ -3787,7 +3787,8 @@ rate it had, which its status reports, and is not asked again until the displays
 need a different span or the scope starts again. Elsewhere the span is the
 radio's own — widening an Icom's would change the radio's own screen, and
 cropping its few hundred points gets coarse — and a panel sets it with
-`setRadioSpectrum`, as before.
+`setRadioSpectrum`, as before, or a native zoom fits it to the widest display
+(panel-scenes.md).
 
 Receivers exposed as separate logical radios each have an ordinary
 `SpectrumSession`, addressed by their own radio UUID. Demand, settings and

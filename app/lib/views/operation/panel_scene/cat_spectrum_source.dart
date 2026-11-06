@@ -193,11 +193,22 @@ class CatSpectrumSource implements SceneSpectrumSource {
     return true;
   }
 
+  /// The widest display drawing the scope sets its span: one display's zoom
+  /// in must not cut off another's wider window, and one naming no width
+  /// draws the whole sweep, so it holds the span at least where it is.
   @override
-  bool widen(String uuid, int widthHz) {
+  bool fitSpan(String uuid, int widthHz) {
     final caps = cat.spectrumCapabilitiesFor(uuid);
     if (!canCommand || caps == null || caps.autoSpan || caps.spansHz.isEmpty) return false;
-    final half = caps.spansHz.firstWhere((h) => 2 * h >= widthHz, orElse: () => caps.spansHz.last);
+    final settings = cat.stateFor(uuid).spectrum;
+    // A fixed scope's width is its edges: a span set there changes nothing but the one centre mode keeps.
+    if (settings?.mode == SpectrumMode.fixed) return false;
+    var width = widthHz;
+    for (final shown in cat.spectrumWidthsFor(uuid)) {
+      final needs = shown > 0 ? shown : 2 * (settings?.spanHz ?? caps.spansHz.last);
+      if (needs > width) width = needs;
+    }
+    final half = caps.spansHz.firstWhere((h) => 2 * h >= width, orElse: () => caps.spansHz.last);
     return cat.setSpectrum(uuid, SpectrumRequest(spanHz: half));
   }
 

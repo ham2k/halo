@@ -33,7 +33,7 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
   @override
-  bool widen(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz) => false;
   int listening = 0;
   int subListening = 0;
   String? problemText;
@@ -1287,7 +1287,7 @@ void main() {
     await _show(tester, source: source, visible: false, spectrum: const {'span': 20000});
     expect(source.widths, isEmpty, reason: 'hidden, it draws nothing');
     await _show(tester, source: source);
-    expect(source.widths, isEmpty, reason: 'with no span it asks for none');
+    expect(source.widths.values, [0], reason: 'with no span it draws the whole sweep: no width, but a display a radio-set span must not cut');
   });
 
   testWidgets('retained receiver views release only their own viewport demand when hidden or replaced', (tester) async {

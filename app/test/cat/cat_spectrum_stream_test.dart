@@ -16,6 +16,7 @@ import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/panel_scene/cat_spectrum_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _Connection implements EquipmentConnection {
@@ -247,8 +248,9 @@ void main() {
     cat.wantSpectrumWidth(uuid, map, 450000);
     await pumpEventQueue();
     cat.wantSpectrumWidth(uuid, map, null);
+    cat.wantSpectrumWidth(uuid, Object(), 0);
     await pumpEventQueue();
-    expect(scope.spans, [80000]);
+    expect(scope.spans, [80000], reason: 'a display drawing the whole sweep names no width either');
   });
 
   test("a span that is the radio's own is left to it, whatever the displays show", () async {
@@ -282,5 +284,42 @@ void main() {
     addTearDown(drawing.cancel);
     await pumpEventQueue();
     expect(scope.spans, [40000, 40000]);
+  });
+
+  test("a radio's own span, fitted by a zoom, covers the widest display drawing it", () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final source = CatSpectrumSource(cat, canCommand: true);
+    final panel = Object(), map = Object();
+    cat.wantSpectrumWidth(uuid, panel, 30000);
+    expect(source.fitSpan(uuid, 30000), isTrue);
+    expect(scope.spans.last, 20000, reason: 'the narrowest span covering 30 kHz');
+    cat.wantSpectrumWidth(uuid, map, 150000);
+    source.fitSpan(uuid, 30000);
+    expect(scope.spans.last, 80000, reason: "one display's zoom in must not cut off another's wider window");
+    expect(CatSpectrumSource(cat).fitSpan(uuid, 30000), isFalse, reason: 'only a panel that may command the radio changes its screen');
+  });
+
+  test("a display drawing the radio's whole sweep holds its span where it is; a fixed scope's is left alone", () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final source = CatSpectrumSource(cat, canCommand: true);
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(spanHz: 40000));
+    cat.wantSpectrumWidth(uuid, Object(), 0);
+    source.fitSpan(uuid, 30000);
+    expect(scope.spans.last, 40000, reason: 'a zoom in on one display would cut the other down to its window');
+    source.fitSpan(uuid, 150000);
+    expect(scope.spans.last, 80000, reason: 'it holds the span from narrowing, never from widening');
+
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, spanHz: 40000));
+    scope.spans.clear();
+    expect(source.fitSpan(uuid, 150000), isFalse);
+    expect(scope.spans, isEmpty, reason: "a fixed scope's width is its edges: a span set rewrites only centre mode's");
   });
 }

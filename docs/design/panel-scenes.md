@@ -470,7 +470,16 @@ published panels name them; what API 17 added has the new names only.
   sweep asks for a wider scope: through `showWidth` where the app sizes it
   (`autoSpan`), as the radio's next span where the panel may command it
   (visible on the radio's own screen, hence the permission), and no further
-  elsewhere. A zoom in never narrows the radio's span — it crops.
+  elsewhere. Within the sweep a zoom crops while it moves; where it ends, a
+  radio whose span the panel commands goes to the narrowest that covers the
+  window where it sits and the widest window any other display of it shows,
+  since a few hundred points cropped to a narrow window draw a handful of
+  them. Narrowed as it went, the zoom would step the radio through every span
+  on the way. A display naming no width draws the whole sweep, so it holds
+  the span from narrowing (`showWidth` 0); a scope in fixed mode, whose width
+  is its edges, is left alone; and the double click's reset widens back what
+  that display's zoom narrowed, which would otherwise leave it cropping the
+  narrowed sweep.
 - **A native gesture is still reported, once.** The extension owns the
   panel's preferences, so the host tells it where a zoom, pan or split ended
   — one `commit` at the end, not the stream an event-mode scene gets, since

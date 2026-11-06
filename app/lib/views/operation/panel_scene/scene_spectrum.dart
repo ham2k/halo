@@ -84,8 +84,9 @@ abstract class SceneSpectrumSource {
   bool recenter(String uuid, int centerHz);
 
   /// [owner] shows [widthHz] of [uuid]'s sweeps — its `span`, or the
-  /// operator's zoom — or null once it shows none: where the span is the
-  /// app's to choose, the scope is run wide enough for the widest.
+  /// operator's zoom; 0 where it names neither and draws the whole sweep —
+  /// or null once it shows none: where the span is the app's to choose, the
+  /// scope is run wide enough for the widest.
   void showWidth(String uuid, Object owner, int? widthHz);
 
   /// Whether a spectrum's gestures are the host's where its scene names
@@ -112,9 +113,10 @@ abstract class SceneSpectrumSource {
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused});
 
   /// Sets a scope whose widths are the radio's own to the narrowest that
-  /// shows [widthHz], for a zoom past the sweep. False where the app sizes
+  /// shows [widthHz] and every other display drawing it: wider for a zoom
+  /// past the sweep, narrower where a zoom in ends. False where the app sizes
   /// the scope itself, or the panel may not command the radio.
-  bool widen(String uuid, int widthHz);
+  bool fitSpan(String uuid, int widthHz);
 }
 
 /// How long a display goes without a sweep before it says it is waiting,
@@ -241,7 +243,11 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
 
   /// Whether the radio moved its scope when last asked; null until asked.
   bool? _recenters;
-  int _lastWidenMillis = 0;
+  int _lastFitMillis = 0;
+
+  /// The sweep's width before this control's zoom first narrowed the radio's
+  /// scope: what a reset widens it back to.
+  double? _sweepBeforeNarrowing;
 
   /// The box last laid out, and the spectrum's own frame for it: what the
   /// gestures map the pointer through. [_axis], in that frame, is the strip
@@ -483,10 +489,11 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _showWidth();
   }
 
-  /// Tells the source the width this control crops its sweeps to, while it draws them.
+  /// Tells the source the width this control crops its sweeps to while it
+  /// draws them, 0 for the whole sweep.
   void _showWidth() {
     final (source, uuid, width) = (widget.source, _uuid, (_viewWidth ?? _number(_spec.span))?.round());
-    final now = source == null || uuid == null || width == null || width <= 0 ? null : (source, uuid, width);
+    final now = source == null || uuid == null ? null : (source, uuid, width == null || width <= 0 ? 0 : width);
     if (now == _shown) return;
     if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
     _shown = now;
@@ -701,6 +708,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     _viewCenter = null;
     _pannedAtVfo = null;
     _recenters = null;
+    _sweepBeforeNarrowing = null;
     // Another radio's: a dial held, a wheel's run, a tune or a glide on its way would land on this one.
     _heldVfo = _wheelHz = _tunePending = _releaseAt = _followedVfo = _labelledVfo = null;
     _tuneTimer?.cancel();

@@ -524,7 +524,7 @@ void main() {
       // own set-frequency as confirmation, so every command looks like it
       // worked — including ones the radio went on to reject.
       session.setFrequency(14074);
-      final ourFrame = sink.sent.single;
+      final ourFrame = sink.sent.first;
       feed(ourFrame);
       expect(sink.readings, isEmpty);
     });
@@ -571,7 +571,18 @@ void main() {
 
     test('set frequency is a CI-V frame with BCD payload', () {
       session.setFrequency(14074);
-      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+      expect(sink.sent.first, [0xFE, 0xFE, ic705, us, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
+    });
+
+    test('a tune is read back right behind it', () {
+      // The radio announces no tune commanded over CI-V. Left to the poll, its
+      // report waits seconds, and the app's record of the radio keeps the
+      // frequency it left for all that time.
+      session.setFrequency(14074);
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic705, us, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD],
+        [0xFE, 0xFE, ic705, us, 0x03, 0xFD],
+      ]);
     });
 
     test('set mode leaves the operator filter alone', () {
@@ -1367,7 +1378,8 @@ void main() {
             feed(cw);
             expect(sink.sent.last, readWidth);
             session.setFrequency(14074);
-            async.elapse(_pastAnswerTimeout * 2);
+            // The width read, the tune and the tune's read-back.
+            async.elapse(_pastAnswerTimeout * 3);
             // RTTY: no width, and no DATA submode to ask after either.
             feed(_fromRadio([0x04, 0x04, 0x01]));
           }
@@ -1694,6 +1706,8 @@ void main() {
         expect(sink.sent, hasLength(1), reason: 'one on the wire at a time, raw or not');
 
         feed(_fromRadio([0xFB]));
+        expect(sink.sent.last[4], 0x03, reason: 'the tune\'s read-back, queued with it');
+        feed(_fromRadio([0x03, 0x00, 0x40, 0x07, 0x14, 0x00]));
         expect(sink.sent.last, raw.sublist(0, 8));
         expect(answers, isEmpty, reason: 'the ACK was the set frequency\'s');
 
