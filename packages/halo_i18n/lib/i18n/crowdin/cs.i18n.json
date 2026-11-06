@@ -1446,11 +1446,6 @@
         "sentFirst": "Odeslaný první, přijatý druhý",
         "rcvdFirst": "Přijatý první, odeslaný druhý"
       },
-      "jumpAfterRST": {
-        "title": "Přejít na další pole po zadání RST",
-        "descriptionOn": "Po zadání RST se přechází dál",
-        "descriptionOff": "Automaticky se nepřechází"
-      },
       "defaultReport": {
         "title": "Výchozí report — fónie",
         "description": "Použije se, když je Odesl. nebo Přij. prázdné u SSB, FM nebo AM"

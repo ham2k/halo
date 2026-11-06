@@ -48,6 +48,7 @@ import 'logging_controls_draft.dart';
 import 'logging_controls_entry_row.dart';
 import 'logging_controls_event_row.dart';
 import 'logging_controls_exchange.dart';
+import 'ref_text_input.dart' show compileRefPattern;
 import 'logging_controls_info_frame.dart';
 import 'logging_controls_ladder.dart';
 import 'logging_controls_focus.dart';
@@ -233,10 +234,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       serialNumbers: widget.log.serialNumbers,
       sequences: widget.log.qsosRepository.sequences,
       call: _call,
+      solo: widget.log.serialNumbers == null && widget.so2r == null,
+      autoAdvance: widget.prefs.autoAdvanceFields,
       menuBelow: widget.prefs.aboveLog,
     ),
     draftQsoData: _draft.toData,
     onPrimaryFieldKeyEvent: _ladder.onPrimaryFieldKeyEvent,
+    onAdvanceFocus: _ladder.advancePrimaryFocus,
     onFocusChanged: _onExchangeFocusChanged,
     onEdited: _lookup.exchangeEdited,
   );
@@ -582,16 +586,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // from "delete" to "revert changes".
     _sentController.addListener(_onSentOrRcvdChanged);
     _rcvdController.addListener(_onSentOrRcvdChanged);
-    _sentController.addListener(() => _maybeJumpAfterRST(_sentFocus, _sentController));
-    _rcvdController.addListener(() => _maybeJumpAfterRST(_rcvdFocus, _rcvdController));
-    // A QSO CONSTRUCTED already-editing (rather than transitioned into) is
-    // populated above, before these listeners exist — so without a baseline
-    // the first notification they see reads as "0 → 3" and jumps. And the
-    // first notification needs no typing: gaining focus collapses the
-    // selection, which is itself a value change. Seed from what the fields
-    // actually hold.
-    _rstLengthSeen[_sentFocus] = _sentController.text.trim().length;
-    _rstLengthSeen[_rcvdFocus] = _rcvdController.text.trim().length;
     // Same reasoning as Sent/Rcvd above — the button needs a rebuild when
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
@@ -943,11 +937,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   void _onSentOrRcvdChanged() => setState(() {});
-
-  /// The length each report field held last time it was looked at, so a jump
-  /// can tell "the operator just finished a report" from "a full report is
-  /// already sitting there".
-  final Map<FocusNode, int> _rstLengthSeen = {};
 
   /// Which controls the strip offers, in what order, and which are hidden —
   /// see [SecondaryControlCatalog]. The specs themselves are built in
@@ -1324,9 +1313,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                   call: (controller: _callController, focus: _callFocus),
                                   rstFields: _showsRSTFields ? _rstPair : const [],
                                   rstPlaceholder: _rstPlaceholder,
+                                  rstAdvanceWhen: _rstAdvanceWhen,
+                                  onRstComplete: _ladder.advancePrimaryFocus,
                                   numericKeyboardType: _numbersAndPunctuationOnIOS,
                                   exchange: _exchange,
-                                  textControls: _textControls,
+                                  textControls: [
+                                    for (final control in _textControls)
+                                      if (widget.prefs.showOptionalFields || !isOptionalLoggingControl(control))
+                                        withOurExchange(control, include: widget.prefs.includeOurExchange),
+                                  ],
                                   state: _showsStateField ? (controller: _stateController, focus: _stateFocus) : null,
                                   stateHint: _guessStateHint,
                                   onStateChanged: (_) {

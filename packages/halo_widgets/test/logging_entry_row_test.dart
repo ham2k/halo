@@ -28,16 +28,20 @@ class _Harness {
   final state = (controller: TextEditingController(), focus: FocusNode());
   final grid = (controller: TextEditingController(), focus: FocusNode());
 
-  /// The contest exchange fields in the row, by key.
+  /// The contest exchange fields in the row, by key — or, where a test
+  /// needs more than a plain text field, [exchangeControls] whole.
   List<String> exchangeKeys = const [];
-  List<Map<String, dynamic>> get _exchangeControls => [
-    for (final key in exchangeKeys)
-      {
-        'key': key,
-        'label': key.toUpperCase(),
-        'input': {'kind': 'text'},
-      },
-  ];
+  List<Map<String, dynamic>>? exchangeControls;
+  List<Map<String, dynamic>> get _exchangeControls =>
+      exchangeControls ??
+      [
+        for (final key in exchangeKeys)
+          {
+            'key': key,
+            'label': key.toUpperCase(),
+            'input': {'kind': 'text'},
+          },
+      ];
 
   /// The row walks `textControls` every time it lays out, so a generator
   /// counts its layouts without reaching into it.
@@ -62,10 +66,20 @@ class _Harness {
   );
 
   late final exchange = ExchangeFieldsModel(
-    config: () =>
-        (textControls: () => _exchangeControls, editingQso: null, operationUuid: 'op', serialNumbers: null, sequences: null, call: '', menuBelow: false),
+    config: () => (
+      textControls: () => _exchangeControls,
+      editingQso: null,
+      operationUuid: 'op',
+      serialNumbers: null,
+      sequences: null,
+      call: '',
+      solo: false,
+      autoAdvance: true,
+      menuBelow: false,
+    ),
     draftQsoData: () => const {},
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
+    onAdvanceFocus: () {},
     onFocusChanged: (node, controller) {},
     onEdited: () {},
   );
@@ -87,6 +101,8 @@ class _Harness {
                 call: call,
                 rstFields: rst ?? rstPair,
                 rstPlaceholder: '59',
+                rstAdvanceWhen: null,
+                onRstComplete: () {},
                 numericKeyboardType: null,
                 exchange: exchange,
                 textControls: _controls(),
@@ -213,6 +229,147 @@ void main() {
     await tester.pump();
     expect(h.submitted, 2);
     expect(h.call.focus.hasFocus, isTrue);
+  });
+
+  group('an optional field (chars.min 0)', () {
+    // Only the exchange fields, so the arithmetic below is the row's whole.
+    Map<String, dynamic> text(String key, Map<String, dynamic> chars) => {
+      'key': key,
+      'label': key.toUpperCase(),
+      'input': {'kind': 'text', 'chars': chars},
+    };
+    const typed = {'min': 3, 'ideal': 8};
+    const optional = {'min': 0, 'ideal': 5};
+
+    /// The width at which the callsign and the typed fields sit at their
+    /// mins and the optional field at its ideal, gaps and padding whole —
+    /// the narrowest row that keeps it.
+    double keepsOptional(WidgetTester tester, _Harness h) {
+      final metrics = mainFieldMetrics(tester.element(find.byType(LoggingEntryRow)));
+      double px(int chars) => mainFieldValueWidth(metrics, chars);
+      final count = h.exchangeControls!.length;
+      return 44 +
+          logButtonGap +
+          count * mainFieldGap +
+          (count + 1) * metrics.fullPadding +
+          px(callFieldChars.min) +
+          px(typed['min']!) * (count - 1) +
+          px(optional['ideal']!);
+    }
+
+    Finder byLabel(String label) => find.widgetWithText(TextField, label);
+
+    testWidgets('keeps its ideal while every field has its min, and leaves altogether once they do not', (tester) async {
+      final h = _Harness()..exchangeControls = [text('a', typed), text('opt', optional)];
+      await tester.pumpWidget(h.host(rst: const [], showState: false, showGrid: false));
+      final fits = keepsOptional(tester, h);
+      final metrics = mainFieldMetrics(tester.element(find.byType(LoggingEntryRow)));
+
+      await tester.pumpWidget(h.host(width: fits + 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      expect(byLabel('OPT'), findsOneWidget);
+      // The trap: a min of 0 taken as written, so the optional field is the
+      // first to shrink — to a sliver nobody can read.
+      expect(
+        tester.getSize(find.ancestor(of: byLabel('OPT'), matching: find.byType(ExchangeField))).width,
+        greaterThanOrEqualTo(mainFieldValueWidth(metrics, optional['ideal']!)),
+      );
+
+      await tester.pumpWidget(h.host(width: fits - 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      // The trap: kept, it takes the gaps and padding from the fields the
+      // operator types into, for a field they never type into.
+      expect(byLabel('OPT'), findsNothing);
+      expect(byLabel('A'), findsOneWidget);
+    });
+
+    testWidgets('stays when focus gives another field its ideal', (tester) async {
+      // Focus is set aside for the decision: a focused field squeezes the
+      // others like any concession, and the row reflowing under the
+      // operator's next keystroke would be worse than the squeeze.
+      final h = _Harness()..exchangeControls = [text('a', typed), text('opt', optional)];
+      await tester.pumpWidget(h.host(rst: const [], showState: false, showGrid: false));
+      final fits = keepsOptional(tester, h);
+      await tester.pumpWidget(h.host(width: fits + 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+
+      h.exchange.focusFor('a').requestFocus();
+      await tester.pumpAndSettle();
+      expect(byLabel('OPT'), findsOneWidget);
+    });
+
+    testWidgets('leaving does not take focus from the field after it', (tester) async {
+      // The fields are positional children of one Row: without a key per
+      // field, the one after the optional field inherits its slot's element,
+      // and the text field the operator is in is torn down under them.
+      final h = _Harness()..exchangeControls = [text('opt', optional), text('b', typed)];
+      await tester.pumpWidget(h.host(rst: const [], showState: false, showGrid: false));
+      final fits = keepsOptional(tester, h);
+      await tester.pumpWidget(h.host(width: fits + 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      await tester.showKeyboard(byLabel('B'));
+      expect(h.exchange.focusFor('b').hasFocus, isTrue);
+
+      await tester.pumpWidget(h.host(width: fits - 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      expect(byLabel('OPT'), findsNothing, reason: 'the fixture has to have dropped it');
+      expect(h.exchange.focusFor('b').hasFocus, isTrue);
+    });
+
+    testWidgets('once it has left, typing that moves on passes it by', (tester) async {
+      // Its focus node keeps the context of the field it was attached to:
+      // read as still on the row, the letter meant for the next field lands in
+      // one the operator cannot see, and is logged from there.
+      Map<String, dynamic> withRules(Map<String, dynamic> control, Map<String, dynamic> rules) => {
+        ...control,
+        'input': {...control['input'] as Map, ...rules},
+      };
+      final h = _Harness()
+        ..exchangeControls = [
+          withRules(text('a', typed), {'numeric': true, 'autoadvanceBefore': '[0-9]*[A-Z]'}),
+          text('opt', optional),
+          text('b', typed),
+        ];
+      await tester.pumpWidget(h.host(rst: const [], showState: false, showGrid: false));
+      final fits = keepsOptional(tester, h);
+      await tester.pumpWidget(h.host(width: fits + 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      expect(byLabel('OPT'), findsOneWidget, reason: 'attached first, so its node has had a context');
+      await tester.pumpWidget(h.host(width: fits - 1, rst: const [], showState: false, showGrid: false));
+      await tester.pumpAndSettle();
+      expect(byLabel('OPT'), findsNothing);
+
+      await tester.showKeyboard(byLabel('A *'));
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: '12', selection: TextSelection.collapsed(offset: 2)));
+      await tester.pump();
+      tester.testTextInput.updateEditingValue(const TextEditingValue(text: '12X', selection: TextSelection.collapsed(offset: 3)));
+      await tester.pump();
+      expect(h.exchange.valueOf('opt'), '');
+      expect(h.exchange.valueOf('b'), 'X');
+      expect(h.exchange.focusFor('b').hasFocus, isTrue);
+    });
+  });
+
+  testWidgets('the segments of one group sit a hairline apart, squared where they meet', (tester) async {
+    Map<String, dynamic> segment(String key, String? group) => {
+      'key': key,
+      'label': key.toUpperCase(),
+      'group': ?group,
+      'input': {'kind': 'text'},
+    };
+    final h = _Harness()..exchangeControls = [segment('nr', 'their'), segment('prec', 'their'), segment('zone', null)];
+    await tester.pumpWidget(h.host(rst: const [], showState: false, showGrid: false));
+    await tester.pumpAndSettle();
+    final fields = find.byType(ExchangeField);
+    Rect rect(int i) => tester.getRect(fields.at(i));
+    expect(rect(1).left - rect(0).right, moreOrLessEquals(segmentDividerWidth, epsilon: 0.01), reason: 'one pill: the panel shows through a hairline');
+    expect(rect(2).left - rect(1).right, moreOrLessEquals(mainFieldGap, epsilon: 0.01), reason: 'another group is another control');
+
+    BorderRadius radius(String label) =>
+        (tester.widget<TextField>(find.widgetWithText(TextField, label)).decoration!.border! as UnderlineInputBorder).borderRadius;
+    const round = Radius.circular(4);
+    expect(radius('NR'), const BorderRadius.only(topLeft: round));
+    expect(radius('PREC'), const BorderRadius.only(topRight: round));
   });
 
   testWidgets('an event row takes the fields\' place and keeps the button where it was', (tester) async {

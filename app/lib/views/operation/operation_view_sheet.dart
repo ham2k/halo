@@ -370,9 +370,9 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
             if (!mounted) return;
             final previous = _draftOperation;
             setState(() => _draftOperation = updated);
-            // Refs are the only input the title (and the logging row's
-            // activity fields) are built from, so nothing else in the draft
-            // is worth a hook fan-out.
+            // Refs are the only input the title is built from; the logging
+            // row's activity fields read the rest of the operation too (the
+            // station call an exchange shows), so they follow any of it.
             //
             // The build method reads `_draftOperation ?? _operation`, so the
             // LoggingPanel below sees a ref the operator just added
@@ -385,13 +385,12 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
             // stays missing until something else (any unrelated cause of
             // `_onOperationChanged` firing, or a per-QSO refresh landing
             // once a callsign is typed) happens to catch it up.
-            if (previous == null || !sameRefs(previous.data['refs'], updated.data['refs'])) {
-              unawaited(_retitleDraft(updated));
-              unawaited(_runtime.refreshControls(updated));
-            }
+            if (previous == null || !sameRefs(previous.data['refs'], updated.data['refs'])) unawaited(_retitleDraft(updated));
+            if (previous == null || !sameControlsInput(previous, updated)) unawaited(_runtime.refreshControls(updated));
           },
           onEditDetails: () async {
-            final updated = await editOperationDetails(context, widget.services, _draftOperation ?? operation, save: false);
+            final previous = _draftOperation ?? operation;
+            final updated = await editOperationDetails(context, widget.services, previous, save: false);
             if (updated != null && mounted) {
               setState(() {
                 _draftOperation = Operation(
@@ -406,6 +405,8 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                 );
               });
               sheetKey.currentState?.updateOperation(_draftOperation!);
+              // The details dialog is where the station call changes.
+              if (!sameControlsInput(previous, _draftOperation!)) unawaited(_runtime.refreshControls(_draftOperation!));
             }
           },
         ),
@@ -466,7 +467,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
         // back: without this, the row keeps the fields of refs the operation
         // does not have.
         final stored = _operation;
-        if (!saved && draft != null && stored != null && !sameRefs(draft.data['refs'], stored.data['refs'])) {
+        if (!saved && draft != null && stored != null && !sameControlsInput(draft, stored)) {
           unawaited(_runtime.refreshControls(stored));
         }
       }

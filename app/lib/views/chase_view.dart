@@ -534,7 +534,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       display: [for (final key in loggingScopedKeys) _loggingDisplay(key)].join(','),
       reports: (s.defaultReport, s.defaultReportCW, s.defaultReportFT8),
       switchSentRcvd: s.switchSentRcvd,
-      jumpAfterRST: s.jumpAfterRST,
+      autoAdvanceFields: s.autoAdvanceFields,
       dxFlags: s.dxFlags,
     );
   }
@@ -646,7 +646,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       defaultReportCW: widget.services.settings.defaultReportCW,
       defaultReportFT8: widget.services.settings.defaultReportFT8,
       switchSentRcvd: widget.services.settings.switchSentRcvd,
-      jumpAfterRST: widget.services.settings.jumpAfterRST,
+      autoAdvanceFields: widget.services.settings.autoAdvanceFields,
       dxFlags: widget.services.settings.dxFlags,
       ourEntityPrefix: _runtime.ourEntityPrefix,
       ourItuRegion: _runtime.ourItuRegion,

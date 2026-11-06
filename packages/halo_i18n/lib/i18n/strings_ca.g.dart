@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$ca extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$ca showBearing = _Translations$settings$logging$showBearing$ca._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$ca showReverseBearing = _Translations$settings$logging$showReverseBearing$ca._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$ca switchSentRcvd = _Translations$settings$logging$switchSentRcvd$ca._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$ca jumpAfterRST = _Translations$settings$logging$jumpAfterRST$ca._(_root);
 	@override late final _Translations$settings$logging$defaultReport$ca defaultReport = _Translations$settings$logging$defaultReport$ca._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$ca defaultReportCW = _Translations$settings$logging$defaultReportCW$ca._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$ca defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$ca._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$ca extends Translations$sett
 	@override String get title => 'Canvia l\'ordre dels informes de senyal';
 	@override String get sentFirst => 'Enviat primer, Rebut segon';
 	@override String get rcvdFirst => 'Rebut primer, Enviat segon';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$ca extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$ca._(TranslationsCa root) : this._root = root, super.internal(root);
-
-	final TranslationsCa _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Salta al camp següent en introduir RST';
-	@override String get descriptionOn => 'Es passa al camp següent després d\'introduir l\'RST';
-	@override String get descriptionOff => 'No es passa automàticament al camp següent';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsCa {
 			'settings.logging.switchSentRcvd.title' => 'Canvia l\'ordre dels informes de senyal',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Enviat primer, Rebut segon',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rebut primer, Enviat segon',
-			'settings.logging.jumpAfterRST.title' => 'Salta al camp següent en introduir RST',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Es passa al camp següent després d\'introduir l\'RST',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'No es passa automàticament al camp següent',
 			'settings.logging.defaultReport.title' => 'Informe per defecte — Fonia',
 			'settings.logging.defaultReport.description' => 'S\'utilitza quan Enviat o Rebut es deixen buits en SSB, FM o AM',
 			'settings.logging.defaultReportCW.title' => 'Informe per defecte — CW i dades',
@@ -6026,11 +6010,11 @@ extension on TranslationsCa {
 			'settings.privacy.shareOpData.descriptionOn' => 'Es comparteixen algunes dades d\'operació públicament i amb altres usuaris',
 			'settings.privacy.shareOpData.descriptionOff' => 'Es mantenen privades les dades d\'operació',
 			'settings.privacy.privacyPolicy' => 'Política de privacitat',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Condicions de servei',
 			'settings.operatorCall' => 'Indicatiu de l\'operador',
 			'settings.sync.title' => 'Sincronització al núvol',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Més opcions de sincronització',
 			'settings.sync.enable' => 'Activa la sincronització',
 			'settings.sync.deviceKey' => 'Clau del dispositiu',
@@ -6540,11 +6524,11 @@ extension on TranslationsCa {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador CW',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Retard de connexió (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quant de temps triga la negociació simulada. En blanc o 0 connecta a l\'instant.',
 			'settings.station.placeholderDropAfter' => 'Desconnecta al cap de (segons)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Tanca la connexió per si sola, per provar el camí de reconnexió. En blanc o 0 no es desconnecta mai.',
 			'settings.station.placeholderFailConnect' => 'Falla sempre en connectar',
 			'settings.station.placeholderConnectFailure' => 'S\'ha indicat a la ràdio provisional que rebutgi aquesta connexió',
@@ -7054,11 +7038,11 @@ extension on TranslationsCa {
 			'switchAccounts.requestFailed' => 'Alguna cosa ha anat malament en comunicar-se amb el servidor de sincronització. Torna-ho a provar més tard.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} operació', other: '${count} operacions', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'Importa una operació QSON',
 			'qsonImport.description' => 'Crea una operació nova a partir d\'un fitxer QSON, com el que exporta el Mode de desenvolupador aquí o a PoLo.',
 			'qsonImport.dropHint' => 'Deixa anar un fitxer QSON per importar-lo com a operació nova',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Important ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'No s\'ha pogut obrir cap fitxer per importar: ${error}',

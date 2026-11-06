@@ -102,7 +102,7 @@ interface ActivityHook {
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
   processQsoBeforeSave?(args: { qso, operation }, ctx): Promise<Patch | null>
 }
-// LoggingControlDescriptor: { key, label, shortLabel?, skipFocus?, icon?, color?, order?,
+// LoggingControlDescriptor: { key, label, shortLabel?, skipFocus?, group?, icon?, color?, order?,
 //                             allowsMultiple?, editable?, input }
 // SuggestArgs:              { operation, location?: { lat, lon }, callsign?, searchTerm?, scoped?,
 //                             bounds?: { south, west, north, east } }
@@ -125,9 +125,9 @@ different validation:
 | `input.kind` | Edits | Also takes | Where |
 | --- | --- | --- | --- |
 | `refList` | a list of references of `refType` | `placeholder`, `pattern`, `transforms`, `numbersRowKey` | both |
-| `text` | one `field` on the ref of `refType` | `placeholder`, `pattern`, `transforms`, `numeric`, `uppercase` (default true), `numbersRowKey`, `maxLength`, `chars`, `suggestedValue` | logging panel |
-| `options` | one `field`, from a known set | `options: [{ code, name? }]`, `matchOn`, `allowFreeform`, `preferredCodes`, `minCharsForSuggestions`, and everything `text` takes | logging panel |
-| `serial` | a serial number the app allocates | `sequence: { key, scope?, start?, padTo? }`, `editable`, `chars` | logging panel |
+| `text` | one `field` on the ref of `refType` | `placeholder`, `pattern`, `transforms`, `numeric`, `uppercase` (default true), `numbersRowKey`, `maxLength`, `chars`, `suggestedValue`, `suffix`, `ourExchange`, `autoadvanceWhen`, `autoadvanceBefore`, `editable`, `value` | logging panel |
+| `options` | one `field`, from a known set | `options: [{ code, name? }]`, `matchOn`, `allowFreeform`, `preferredCodes`, `minCharsForSuggestions`, and everything `text` takes but `editable` and `value` | logging panel |
+| `serial` | a serial number the app allocates | `sequence: { key, scope?, start?, padTo? }`, `editable`, `chars`, `placeholder`, `suffix`, `ourExchange` | logging panel |
 | `form` | a whole form over the ref | `form` | operation setup |
 
 - `pattern` is anchored and matched case-insensitively; a malformed regex
@@ -155,11 +155,57 @@ different validation:
   wider fields. `min` defaults to 3, `ideal` to `min`, `max` to `maxLength`,
   else to `ideal`, and none goes past 20. A field that declares no `chars`
   asks for 6, or its `maxLength` if that is fewer, and may grow to its
-  `maxLength`. A count that is not a whole number of at least 1, one past 20,
-  or an `ideal` under the `min` is adjusted and named on the console. A host
-  that predates `chars` gives the field its usual size.
+  `maxLength`. A count that is not a whole number of at least 1 (0 for
+  `min`), one past 20, or an `ideal` under the `min` is adjusted and named on
+  the console. A host that predates `chars` gives the field its usual size.
+- `min: 0` (API 18) makes a field optional: it asks for its `ideal`, and
+  stays on the row while every field still has its `min`. Past that it
+  leaves the row, rather than squeezing the fields the operator types into.
+  Focusing another field never removes it; it shrinks with the rest. The
+  operator can hide optional fields outright in the logging panel's
+  settings.
+- `editable: false` on a `text` field (API 18) shows `value` in a disabled
+  field: something the operator sends but never types. Space, Tab and the
+  arrow keys pass over it, and nothing is saved from it; `field` is not
+  read.
+- `suffix` (API 18) is drawn after the value, in the placeholder's color,
+  while the field holds a value and does not have focus: units after a
+  number (`"m"` after `40`), or the rest of what goes out beside a serial.
+  It is never part of the value; focusing the field removes it, so the
+  operator edits the bare value. A leading space is kept.
+- `ourExchange` (API 18) is what we send beside the field — a contest's
+  exchange after its serial, `"A KI2D 79 ENY"`. The operator chooses whether
+  the row includes it (the logging panel offers the setting only while a
+  field declares one, and it starts on); while it does, the host draws it
+  after the `suffix` and the `placeholder` and widens the field by as much,
+  so `chars` describes the value alone. Never part of the value.
+- `autoadvanceWhen` and `autoadvanceBefore` (API 18) are regex sources,
+  anchored and case-insensitive like `pattern`, that move focus on by
+  themselves. When an edit changes the field's value to one matching
+  `autoadvanceWhen`, focus moves on: two digits of a check. When the value
+  a typed character would make matches `autoadvanceBefore`, focus moves on
+  first and the character goes to the next field: `[0-9]*[A-Z]` on a serial
+  puts the `A` of `4A` in the next one. Typing at the end of a value is what
+  flows on; an edit inside it stays in the field. A paste without spaces is
+  placed by the rules as if typed, and one with spaces by its spaces alone
+  (a run of them counting once). A deletion never moves focus on, and
+  nothing is placed into a field declaring `editable: false`.
+  A field the operator has not typed into holds only a suggestion, so a
+  character that lands in it replaces the suggestion, and one that passes
+  it by leaves it standing. Both rules apply only while the operator has
+  the Auto-advance Fields setting on, which marks the field's label with
+  `*`, and never on a field that takes spaces: an `options` list whose
+  `multiValue` separator is a space.
+- `group` (API 18) draws consecutive controls with the same group as one
+  control: segments of a single pill, a hairline between them, corners only
+  at its ends. Each segment keeps its own label, `shortLabel`, `chars`,
+  validation and focus stop.
 - A `serial`'s number is allocated by the app when the contact commits. Two
-  extensions keying controls under one prefix share a counter.
+  extensions keying controls under one prefix share a counter. The field
+  shows the next number as soon as the panel opens, unless the operation
+  shares drafts with other stations or a second SO2R radio logs beside it:
+  then no number is shown until the operator starts the contact, and the
+  field shows its `placeholder` instead.
 - `shortLabel` is the same name in fewer characters, for a row that has
   squeezed the field below its label's width; the app measures and picks.
   `skipFocus: true` takes a field out of the Space and Tab cycle; the arrow

@@ -1446,11 +1446,6 @@
         "sentFirst": "先发送，后接收",
         "rcvdFirst": "先接收，后发送"
       },
-      "jumpAfterRST": {
-        "title": "在填入 RST 后跳转下一个字段",
-        "descriptionOn": "输入 RST 后跳转",
-        "descriptionOff": "不自动跳转"
-      },
       "defaultReport": {
         "title": "默认报告——话音",
         "description": "在 SSB、FM 或 AM 下，发送或接收留空时使用"

@@ -3,6 +3,8 @@
 
 import 'package:halo_widgets/halo_widgets.dart' show CommandActionsDispatcher;
 
+import '../settings/settings_registry.dart' show SettingsGroup;
+
 /// One open Operation View's contribution to the ⌘K dialog's context — see
 /// `HaLoServices.openOperationContext`.
 class OperationCommandContext {
@@ -40,4 +42,10 @@ class OperationCommandContext {
   /// False with Settings, or a nested operation, pushed over it — where a
   /// suggestion still lands correctly but nothing on screen shows it.
   bool Function()? isVisible;
+
+  /// The settings groups this operation stands in for the registered ones,
+  /// by key — its Logging group knows which of the operation's fields exist,
+  /// and so which toggles apply. What SET/SHOW/HIDE and the command catalog
+  /// read while it is the front-most operation (`FrontSettingsOverrides`).
+  Map<String, SettingsGroup> Function()? settingsGroups;
 }

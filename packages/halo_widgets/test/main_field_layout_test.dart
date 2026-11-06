@@ -143,6 +143,107 @@ void main() {
     expect(lines, hasLength(3));
   });
 
+  test('a min of 0 is taken as written — the one count allowed under one', () {
+    // The trap: 0 read as "no count" falls back to the default 3, and the
+    // field is never optional.
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 0, 'ideal': 5},
+      }),
+      (min: 0, ideal: 5, max: 5),
+    );
+    // An optional field's ideal is the width it shows at: left out, it is the
+    // default one, never the min — a field of no characters.
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 0},
+      }),
+      (min: 0, ideal: 6, max: 6),
+    );
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'maxLength': 3,
+        'chars': {'min': 0},
+      }),
+      (min: 0, ideal: 3, max: 3),
+    );
+    expect(
+      exchangeFieldChars(const {
+        'kind': 'text',
+        'chars': {'min': 1, 'ideal': 0},
+      }),
+      (min: 1, ideal: 1, max: 1),
+      reason: 'an ideal or a max of 0 is still no count',
+    );
+  });
+
+  test('an optional control is a primary field kind declaring min 0', () {
+    Map<String, dynamic> control(String kind, Object? chars) => {
+      'key': 'c/x',
+      'input': {'kind': kind, 'chars': ?chars},
+    };
+    const optional = {'min': 0, 'ideal': 6};
+    for (final kind in ['text', 'serial', 'options']) {
+      expect(isOptionalLoggingControl(control(kind, optional)), isTrue, reason: kind);
+    }
+    // A chip is never on the entry row, so it has no row to leave: hiding
+    // "optional fields" must not take a secondary control with it.
+    expect(isOptionalLoggingControl(control('refList', optional)), isFalse);
+    expect(isOptionalLoggingControl(control('text', const {'min': 1, 'ideal': 6})), isFalse);
+    expect(isOptionalLoggingControl(control('text', null)), isFalse, reason: 'no declaration is the default min, 3');
+    expect(isOptionalLoggingControl(const {'key': 'c/x'}), isFalse);
+  });
+
+  test('a display-only control is a text control declaring editable: false', () {
+    expect(
+      isDisplayOnlyControl(const {
+        'input': {'kind': 'text', 'editable': false, 'value': 'A 79 ENY'},
+      }),
+      isTrue,
+    );
+    expect(
+      isDisplayOnlyControl(const {
+        'input': {'kind': 'text'},
+      }),
+      isFalse,
+    );
+    // A serial's `editable: false` is a read-only number that is still
+    // logged — leaving the walk and the save is for text alone.
+    expect(
+      isDisplayOnlyControl(const {
+        'input': {'kind': 'serial', 'editable': false},
+      }),
+      isFalse,
+    );
+  });
+
+  test('controls join one pill only when both name the same group', () {
+    const a = {'key': 'a', 'group': 'their'};
+    const b = {'key': 'b', 'group': 'their'};
+    expect(joinsGroup(a, b), isTrue);
+    expect(joinsGroup(a, const {'key': 'c', 'group': 'ours'}), isFalse);
+    // Two controls naming no group are two controls, not one pill of nothing.
+    expect(joinsGroup(const {'key': 'a'}, const {'key': 'b'}), isFalse);
+    expect(joinsGroup(const {'key': 'a', 'group': ''}, const {'key': 'b', 'group': ''}), isFalse);
+  });
+
+  testWidgets('a layout with focus set aside sizes the focused field like any other', (tester) async {
+    // What the optional-field decision reads: a row that keeps the field at
+    // one focus and drops it at the next reflows under the operator's
+    // keystrokes.
+    final focus = await _focused(tester);
+    final fields = [_field((min: 3, ideal: 6, max: 6), focus: focus), _field((min: 3, ideal: 6, max: 6))];
+    final maxWidth = _atMins(fields);
+    final honoured = _resolve(fields, maxWidth);
+    final aside = resolveMainFieldLayout(fields: fields, maxWidth: maxWidth, buttonWidth: _button, metrics: _metrics, call: _call, honorFocus: false);
+    expect(honoured.layout.gapScale, lessThan(1), reason: 'the focused field takes its ideal');
+    expect(aside.layout.gapScale, 1);
+    expect(_values(aside), [_value(3), _value(3)]);
+  });
+
   test('the callsign reaches its ideal before any field leaves its min', () {
     final fields = [_field((min: 3, ideal: 4, max: 6)), _field((min: 3, ideal: 6, max: 6))];
     final r = _resolve(fields, _atMins(fields, slack: 30));

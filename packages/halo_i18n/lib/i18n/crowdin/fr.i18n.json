@@ -1446,11 +1446,6 @@
         "sentFirst": "Envoyé en premier, Reçu en second",
         "rcvdFirst": "Reçu en premier, Envoyé en second"
       },
-      "jumpAfterRST": {
-        "title": "Passer au champ suivant à l'entrée RST",
-        "descriptionOn": "Passage au champ suivant après la saisie du RST",
-        "descriptionOff": "Pas de passage automatique"
-      },
       "defaultReport": {
         "title": "Report par défaut — Phonie",
         "description": "Utilisé quand Envoyé ou Reçu est laissé vide en SSB, FM ou AM"

@@ -766,9 +766,13 @@ InputBorder haloFocusedBorder(InputBorder base, BuildContext context) =>
 
 BorderSide _haloFocusedSide(bool isDark) => BorderSide(color: isDark ? Colors.white : Colors.black, width: 3.0);
 
-/// The underline a field wears while its value isn't one its own rules
+/// [base] as a field wears it while its value isn't one its own rules
 /// recognize — a contest exchange the rules don't know, a reference that
-/// fails its program's pattern.
+/// fails its program's pattern: its fill tinted light red, and an
+/// error-coloured underline twice the idle one's width, as heavy as its focus
+/// underline while focused. Both are read off the field as it would otherwise
+/// look, so a panel that themes its fields keeps its own weights. [base]
+/// unchanged when the value is fine.
 ///
 /// A tint rather than an `errorText`: a decorator with an error — even an
 /// empty one styled to zero height — still reserves its error slot, making
@@ -776,12 +780,26 @@ BorderSide _haloFocusedSide(bool isDark) => BorderSide(color: isDark ? Colors.wh
 /// moving every control and the submit button DOWN as the operator types.
 /// A value is invalid for most of the keystrokes it takes to type it, so
 /// that would be a jump per QSO.
-///
-/// [width] takes the same weights as the normal borders — 1 idle, 2 focused,
-/// matching Material's own focused default — so the tint costs no layout.
-UnderlineInputBorder haloInvalidInputBorder(BuildContext context, {required double width}) => UnderlineInputBorder(
-  borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
-);
+InputDecoration haloInvalidDecoration(BuildContext context, InputDecoration base, {required bool invalid}) {
+  if (!invalid) return base;
+  final theme = Theme.of(context);
+  final fields = theme.inputDecorationTheme;
+  final error = theme.colorScheme.error;
+  final filled = base.filled ?? fields.filled;
+  final fill = filled ? base.fillColor ?? fields.fillColor ?? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surface;
+  final idle = (base.enabledBorder ?? fields.enabledBorder)?.borderSide.width ?? 1.0;
+  final focused = (base.focusedBorder ?? fields.focusedBorder)?.borderSide.width ?? _haloFocusedSide(false).width;
+  UnderlineInputBorder underline(double width) => UnderlineInputBorder(
+    borderSide: BorderSide(color: error, width: width),
+  );
+  return base.copyWith(
+    filled: true,
+    // Stronger over a dark fill, where the same share of red barely lifts it.
+    fillColor: Color.alphaBlend(error.withValues(alpha: theme.brightness == Brightness.dark ? 0.20 : 0.10), fill),
+    enabledBorder: underline(idle * 2),
+    focusedBorder: underline(focused),
+  );
+}
 
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures

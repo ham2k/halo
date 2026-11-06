@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$nl extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$nl showBearing = _Translations$settings$logging$showBearing$nl._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$nl showReverseBearing = _Translations$settings$logging$showReverseBearing$nl._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$nl switchSentRcvd = _Translations$settings$logging$switchSentRcvd$nl._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$nl jumpAfterRST = _Translations$settings$logging$jumpAfterRST$nl._(_root);
 	@override late final _Translations$settings$logging$defaultReport$nl defaultReport = _Translations$settings$logging$defaultReport$nl._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$nl defaultReportCW = _Translations$settings$logging$defaultReportCW$nl._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$nl defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$nl._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$nl extends Translations$sett
 	@override String get title => 'Wijzig volgorde signaalrapport';
 	@override String get sentFirst => 'Verzonden eerst, ontvangen daarna';
 	@override String get rcvdFirst => 'Ontvangen eerst, verzonden daarna';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$nl extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$nl._(TranslationsNl root) : this._root = root, super.internal(root);
-
-	final TranslationsNl _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Ga naar volgende veld bij RST-invoer';
-	@override String get descriptionOn => 'Na RST naar het volgende veld springen';
-	@override String get descriptionOff => 'Niet automatisch springen';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsNl {
 			'settings.logging.switchSentRcvd.title' => 'Wijzig volgorde signaalrapport',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Verzonden eerst, ontvangen daarna',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Ontvangen eerst, verzonden daarna',
-			'settings.logging.jumpAfterRST.title' => 'Ga naar volgende veld bij RST-invoer',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Na RST naar het volgende veld springen',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Niet automatisch springen',
 			'settings.logging.defaultReport.title' => 'Standaardrapport — SSB',
 			'settings.logging.defaultReport.description' => 'Gebruikt als Verzonden of Ontvangen leeg blijft bij SSB, FM of AM',
 			'settings.logging.defaultReportCW.title' => 'Standaardrapport — CW en data',
@@ -6026,11 +6010,11 @@ extension on TranslationsNl {
 			'settings.privacy.shareOpData.descriptionOn' => 'Bepaalde activatiegegevens openbaar en met andere gebruikers delen',
 			'settings.privacy.shareOpData.descriptionOff' => 'Activatiegegevens privé houden',
 			'settings.privacy.privacyPolicy' => 'Privacybeleid',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
 			'settings.operatorCall' => 'Roepnaam van de operator',
 			'settings.sync.title' => 'Cloudsynchronisatie',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
 			'settings.sync.enable' => 'Synchronisatie inschakelen',
 			'settings.sync.deviceKey' => 'Apparaatsleutel',
@@ -6540,11 +6524,11 @@ extension on TranslationsNl {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-seinsleutel',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Verbindingsvertraging (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hoe lang de gesimuleerde handshake duurt. Leeg of 0 verbindt meteen.',
 			'settings.station.placeholderDropAfter' => 'Verbreken na (seconden)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
 			'settings.station.placeholderFailConnect' => 'Verbinden altijd laten mislukken',
 			'settings.station.placeholderConnectFailure' => 'De tijdelijke radio is opgedragen deze verbinding te weigeren',
@@ -7054,11 +7038,11 @@ extension on TranslationsNl {
 			'switchAccounts.requestFailed' => 'Er ging iets mis in de communicatie met de synchronisatieserver. Probeer het later opnieuw.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO', other: '${count} QSO\'s', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'QSON-activatie importeren',
 			'qsonImport.description' => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.',
 			'qsonImport.dropHint' => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}',

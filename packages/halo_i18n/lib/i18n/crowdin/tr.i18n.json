@@ -1446,11 +1446,6 @@
         "sentFirst": "Önce Gönd., sonra Alın.",
         "rcvdFirst": "Önce Alın., sonra Gönd."
       },
-      "jumpAfterRST": {
-        "title": "RST girişinde bir sonraki alana geç",
-        "descriptionOn": "RST girildikten sonra sonraki alana geçiliyor",
-        "descriptionOff": "Otomatik geçiş yapılmıyor"
-      },
       "defaultReport": {
         "title": "Varsayılan rapor — Telefon",
         "description": "SSB, FM veya AM'de Gönd. veya Alın. boş bırakıldığında kullanılır"

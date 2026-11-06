@@ -22,6 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'keyboard_accessory.dart';
+import 'logging_controls_autoadvance.dart';
 import 'logging_controls_metrics.dart';
 import 'option_matching.dart';
 import 'panel_model.dart';
@@ -54,6 +55,17 @@ typedef ExchangeFieldsConfig = ({
   /// draft has content.
   String call,
 
+  /// Whether this panel is the only one taking numbers from the operation's
+  /// sequences — no peers sharing drafts, no second SO2R set. Then nothing
+  /// can take the number between showing it and logging it, so an idle panel
+  /// shows it too (docs/design/contests.md §5.8.1).
+  bool solo,
+
+  /// The operator's Auto-advance Fields setting: whether a field's
+  /// `autoadvanceWhen` and `autoadvanceBefore` move focus on at all. Off, no
+  /// field moves by itself.
+  bool autoAdvance,
+
   /// Whether the suggestions menu opens BELOW its field rather than above
   /// it — a panel drawn above its QSO list has the information area under
   /// the fields, not over them. The menu keeps its best match against the
@@ -71,9 +83,14 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     required this.config,
     required this.draftQsoData,
     required this.onPrimaryFieldKeyEvent,
+    required this.onAdvanceFocus,
     required this.onFocusChanged,
     required this.onEdited,
   });
+
+  /// Moves focus to the next main logging field, the way Space does — what a
+  /// field's `autoadvanceWhen` does when an edit makes its value match.
+  final VoidCallback onAdvanceFocus;
 
   /// The panel's configuration as it stands right now.
   final ExchangeFieldsConfig Function() config;
@@ -120,7 +137,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
 
   /// One controller per control, created on demand and disposed with the
   /// model.
-  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, SuffixedTextEditingController> _controllers = {};
 
   /// One focus node per control, so Space and Tab cycle through the exchange
   /// fields the same way they cycle Call → Sent → Rcvd.
@@ -180,8 +197,12 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   bool isTouched(String key) => _touched.contains(key);
 
   /// Whether any exchange field holds a value — part of what makes the draft
-  /// worth an undo offer.
-  bool get hasTypedValues => _values.values.any((v) => v.trim().isNotEmpty);
+  /// worth an undo offer. A serial preview the operator hasn't touched is
+  /// not one: a solo panel shows it while idle, and counting it would keep
+  /// every idle contest panel "composing" (no Start, a live wipe, a VFO
+  /// move read as a QSY away from a draft).
+  bool get hasTypedValues =>
+      _values.entries.any((entry) => entry.value.trim().isNotEmpty && (_touched.contains(entry.key) || !_serialPreviews.containsKey(entry.key)));
 
   /// The first non-empty value among the controls that write [field] — a
   /// contest's own grid exchange, say — or '' when none does.
@@ -192,6 +213,113 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       if (value.isNotEmpty) return value;
     }
     return '';
+  }
+
+  /// Types [text] into the exchange fields starting at [key], whose value
+  /// before it is [before] — an edit [AutoadvanceFormatter] handed over,
+  /// typed or pasted.
+  ///
+  /// Character by character, against the whole value each would make. With
+  /// [rules] (and the operator's Auto-advance Fields on): a field whose
+  /// `autoadvanceBefore` that value matches moves focus on first and the
+  /// character goes to the next field, and one whose `autoadvanceWhen` it
+  /// matches keeps it and moves on. A space moves on, a run of them once. A character a
+  /// field refuses — a numeric filter, `maxLength` — is dropped, as typing it
+  /// would drop it; so is text left over at the last field. Focus ends where
+  /// the last character landed.
+  ///
+  /// A field the operator hasn't touched holds only a guess or a preview, so
+  /// a character that lands in it starts it afresh rather than appending to
+  /// the guess — "2" after a guessed "79" check is a new check, not "792". A
+  /// field no character lands in keeps what it shows.
+  void typeAcross(String key, String before, String text, {required bool rules}) {
+    if (isDisposed) return;
+    final order = _typingOrder();
+    var i = order.indexWhere((control) => control['key'] == key);
+    if (i < 0) return;
+    // The field typed into starts afresh too while it holds only a guess:
+    // the keystroke after a move lands is a new edit of its own. Only a
+    // character that lands in it replaces the guess — one it refuses leaves
+    // the guess standing, the same as any field the flow passes over.
+    final values = <String, String>{if (_touched.contains(key)) key: before};
+    final applyRules = rules && config().autoAdvance;
+    String keyAt(int index) => order[index]['key'] as String;
+    String valueAt(int index) => values[keyAt(index)] ?? (_touched.contains(keyAt(index)) ? valueOf(keyAt(index)) : '');
+    bool moveOn() {
+      if (i + 1 >= order.length) return false;
+      i++;
+      return true;
+    }
+
+    // A run of spaces is one separator, and spaces ahead of anything in the
+    // field are none: column-aligned text pads with them, and each moving on
+    // would land every later value a field late.
+    var spaceMovesOn = before.isNotEmpty;
+    for (final char in text.split('')) {
+      if (char.trim().isEmpty) {
+        if (spaceMovesOn) moveOn();
+        spaceMovesOn = false;
+        continue;
+      }
+      spaceMovesOn = true;
+      while (true) {
+        final input = order[i]['input'] as Map;
+        if (applyRules && (autoadvanceBefore(input)?.hasMatch(valueAt(i) + char) ?? false) && moveOn()) continue;
+        final candidate = _normalized(input, valueAt(i) + char);
+        if (candidate != null) {
+          values[keyAt(i)] = candidate;
+          if (applyRules && (autoadvanceWhen(input)?.hasMatch(candidate) ?? false)) moveOn();
+        }
+        break;
+      }
+    }
+
+    for (final entry in values.entries) {
+      // A value that lands equal to the guess shown is still the operator's:
+      // left untouched, a later call edit would withdraw it as a guess.
+      if (entry.value == valueOf(entry.key) && _touched.contains(entry.key)) continue;
+      controllerFor(entry.key).value = TextEditingValue(
+        text: entry.value,
+        selection: TextSelection.collapsed(offset: entry.value.length),
+      );
+      typed(entry.key, entry.value);
+    }
+    final target = keyAt(i);
+    if (_focus[target]?.hasFocus ?? false) {
+      controllerFor(target).selection = TextSelection.collapsed(offset: controllerFor(target).text.length);
+    } else {
+      _focus[target]?.requestFocus();
+    }
+  }
+
+  /// The fields [typeAcross] places text in, in row order: the exchange fields
+  /// on the row (an optional one the row dropped is not), without the
+  /// `skipFocus` and display-only ones the Space walk passes over too, nor a
+  /// field the operator may not edit — writing it here would bypass its
+  /// `readOnly`, and a serial the sequence assigns would log as one we sent.
+  List<Map<String, dynamic>> _typingOrder() => [
+    for (final control in config().textControls())
+      if (control['skipFocus'] != true && (control['input'] as Map?)?['editable'] != false && attachedFocusFor(control['key'] as String) != null) control,
+  ];
+
+  /// Whether [key]'s field takes part in [typeAcross] — one that does not
+  /// keeps its own keystrokes, whatever its rules say.
+  bool typesAcross(String key) => _typingOrder().any((control) => control['key'] == key);
+
+  /// [value] as [input]'s field would hold it, or null when the field refuses
+  /// it — a numeric field gets a non-digit, or it runs past `maxLength`. The
+  /// same steps, in the same order, as the field's own formatters, its
+  /// `transforms` included: text placed here never passes through them.
+  static String? _normalized(Map<dynamic, dynamic> input, String value) {
+    final serial = input['kind'] == 'serial';
+    if ((input['numeric'] == true || serial) && !RegExp(r'^\d*$').hasMatch(value)) return null;
+    var text = !serial && input['uppercase'] != false ? value.toUpperCase() : value;
+    final transforms = exchangeTransforms(input);
+    if (transforms.isNotEmpty) {
+      text = RefTransformFormatter(transforms).formatEditUpdate(TextEditingValue.empty, TextEditingValue(text: text)).text;
+    }
+    if (input['maxLength'] case final int max when text.length > max) return null;
+    return text;
   }
 
   /// The operator typed [text] into [key]'s field.
@@ -223,7 +351,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     _touched.add(key);
   }
 
-  TextEditingController controllerFor(String key) => _controllers[key] ??= TextEditingController(text: _values[key] ?? '');
+  SuffixedTextEditingController controllerFor(String key) => _controllers[key] ??= SuffixedTextEditingController(text: _values[key] ?? '');
 
   LayerLink linkFor(String key) => _links[key] ??= LayerLink();
 
@@ -254,7 +382,10 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// misordering focus.
   FocusNode? attachedFocusFor(String key) {
     final node = _focus[key];
-    return node?.context == null ? null : node;
+    // `mounted`, not just a context: a node keeps the context of the field it
+    // was attached to after that field leaves the row (an optional field
+    // dropped for room), and Space walking onto it would go nowhere.
+    return node?.context?.mounted ?? false ? node : null;
   }
 
   /// Tab out of an exchange field takes the offer on the way, exactly as
@@ -397,6 +528,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       final refType = input['refType'] as String?;
       final field = input['field'] as String?;
       if (refType == null || field == null) continue;
+      if (isDisplayOnlyControl(control)) continue;
       final key = control['key'] as String;
       // A serial's displayed number is NOT a suggestion — it is what the
       // operator read off the screen and sent on the air, so it is written to
@@ -750,13 +882,16 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// logged serial on a record that merely had its RST corrected, or invent
   /// one for a QSO that never carried a contest ref at all.
   ///
-  /// Nor before the operator has put anything into the draft. A number is
-  /// held against the other positions from the moment it is shown
-  /// (docs/design/contests.md §5.8.1), so an idle panel holds nothing and
-  /// shows nothing — a blank, never a tentative number that might move. The
-  /// first edit — a typed call, a tapped spot, an exchange field touched —
-  /// is what takes the number; a band or mode change from the radio is not
-  /// an edit, and only moves a claim already held to its new label.
+  /// Nor, on a log shared with other positions, before the operator has put
+  /// anything into the draft. A number is held against the other positions
+  /// from the moment it is shown (docs/design/contests.md §5.8.1), so a
+  /// shared idle panel holds nothing and shows nothing — a blank, never a
+  /// tentative number that might move. The first edit — a typed call, a
+  /// tapped spot, an exchange field touched — is what takes the number; a
+  /// band or mode change from the radio is not an edit, and only moves a
+  /// claim already held to its new label. A panel alone on its log
+  /// ([ExchangeFieldsConfig.solo]) takes it at once, as nothing can take it
+  /// in between.
   Future<void> refreshSerialPreviews() async {
     final config = this.config();
     final sequences = config.sequences;
@@ -769,12 +904,14 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     }
     if (descriptors.isEmpty) return;
 
-    final hasContent = config.call.trim().isNotEmpty || _touched.isNotEmpty;
+    final hasContent = config.solo || config.call.trim().isNotEmpty || _touched.isNotEmpty;
     if (!hasContent) {
       // Nothing composed — never started, or backspaced to nothing. An idle
       // panel holds nothing, so a number taken earlier goes back, and off the
-      // screen with it.
-      if (_serialPreviews.isEmpty && _serialPreviewLabels.isEmpty) return;
+      // screen with it — a number still showing from a solo panel included,
+      // whose state the source swap that ended it has already forgotten.
+      final showing = descriptors.keys.any((key) => !_touched.contains(key) && (_values[key] ?? '').isNotEmpty);
+      if (_serialPreviews.isEmpty && _serialPreviewLabels.isEmpty && !showing) return;
       forgetSerialState();
       config.serialNumbers?.release(config.operationUuid);
       for (final key in descriptors.keys) {
@@ -905,6 +1042,37 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   }
 }
 
+/// An exchange field's controller, which draws the control's `suffix` after
+/// the value — units, or the rest of what is sent beside a serial — while the
+/// field holds a value and doesn't have focus.
+///
+/// Drawn, never typed: [text] is the value alone, so what is saved, scored
+/// and edited never carries it, and focusing the field takes it away so the
+/// operator edits the bare value.
+class SuffixedTextEditingController extends TextEditingController {
+  SuffixedTextEditingController({super.text});
+
+  /// Set by [ExchangeField] on every build, from the control it renders —
+  /// plain fields, so setting them notifies nothing. [EditableText] rebuilds
+  /// on its own focus changes, which is when [suffix] comes and goes.
+  String suffix = '';
+  TextStyle? suffixStyle;
+  FocusNode? focus;
+
+  @override
+  TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
+    final span = super.buildTextSpan(context: context, style: style, withComposing: withComposing);
+    if (suffix.isEmpty || text.isEmpty || (focus?.hasFocus ?? false)) return span;
+    return TextSpan(
+      style: style,
+      children: [
+        span,
+        TextSpan(text: suffix, style: suffixStyle),
+      ],
+    );
+  }
+}
+
 /// One exchange control rendered as a primary entry field — a contest
 /// exchange, sitting inline with Call and the RSTs.
 ///
@@ -916,6 +1084,8 @@ class ExchangeField extends StatelessWidget {
     super.key,
     required this.model,
     required this.control,
+    this.joinsPrevious = false,
+    this.joinsNext = false,
     required this.enabled,
     required this.width,
     required this.padding,
@@ -929,6 +1099,12 @@ class ExchangeField extends StatelessWidget {
 
   /// The control's descriptor, as the extension declared it.
   final Map<String, dynamic> control;
+
+  /// Whether the field is a segment of a pill ([joinsGroup]) with another
+  /// segment before or after it: that side's corners are square, so the
+  /// segments read as one control.
+  final bool joinsPrevious;
+  final bool joinsNext;
 
   final bool enabled;
 
@@ -953,19 +1129,67 @@ class ExchangeField extends StatelessWidget {
   /// before it logs.
   final VoidCallback onSubmitted;
 
+  /// [decoration] with the corners on a joined side squared off. The fill
+  /// takes its shape from the border, so every border the field can wear —
+  /// its own or the theme's — gets the same corners.
+  InputDecoration _segmentCorners(BuildContext context, InputDecoration decoration) {
+    if (!joinsPrevious && !joinsNext) return decoration;
+    final theme = Theme.of(context).inputDecorationTheme;
+    const round = Radius.circular(4);
+    final radius = BorderRadius.only(topLeft: joinsPrevious ? Radius.zero : round, topRight: joinsNext ? Radius.zero : round);
+    InputBorder? cornered(InputBorder? border) => border is UnderlineInputBorder ? border.copyWith(borderRadius: radius) : border;
+    return decoration.copyWith(
+      border: cornered(decoration.border ?? theme.border ?? const UnderlineInputBorder()),
+      enabledBorder: cornered(decoration.enabledBorder ?? theme.enabledBorder),
+      focusedBorder: cornered(decoration.focusedBorder ?? theme.focusedBorder),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final key = control['key'] as String;
     final input = control['input'] as Map;
     // The row squeezes this field well below its own label's width, so which
     // label it shows is a function of the width it was resolved to.
+    final autoAdvance = model.config().autoAdvance;
+    final when = autoAdvance ? autoadvanceWhen(input) : null;
+    final advances = when != null || (autoAdvance && autoadvanceBefore(input) != null);
     final label = mainFieldLabel(
       context,
-      label: (control['label'] as String?) ?? key,
-      shortLabel: control['shortLabel'] as String?,
+      label: autoAdvanceLabel((control['label'] as String?) ?? key, advances: advances),
+      shortLabel: switch (control['shortLabel']) {
+        final String short => autoAdvanceLabel(short, advances: advances),
+        _ => null,
+      },
       width: width,
       horizontalPadding: padding,
     );
+    if (isDisplayOnlyControl(control)) {
+      // No TextField and so no focus node attached: [attachedFocusFor] stays
+      // null, which keeps it out of the primary fields — Space, Tab, the
+      // arrows and ESM all pass over it without a rule of their own.
+      final shown = switch (input['value']) {
+        final String value => value,
+        _ => '',
+      };
+      return AnimatedContainer(
+        duration: duration,
+        curve: Curves.easeOut,
+        width: width,
+        child: InputDecorator(
+          decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(enabled: false),
+          isEmpty: shown.isEmpty,
+          child: Text(
+            shown,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.clip,
+            style: mainFieldStyle(context, fontWeight: FontWeight.w500).copyWith(color: Theme.of(context).disabledColor),
+          ),
+        ),
+      );
+    }
+
     final value = model.valueOf(key).trim();
 
     // A serial is digits, never uppercased. The number shown is the one the
@@ -996,7 +1220,25 @@ class ExchangeField extends StatelessWidget {
       isInvalid = isInvalid || !areKnownExchangeOptions(value, options, separator: model.separatorFor(control), inheritPrefix: model.inheritPrefixFor(control));
     }
     final uppercase = !isSerial && input['uppercase'] != false;
-    final transforms = [for (final t in (input['transforms'] as List?) ?? const []) RefTransform.fromMap((t as Map).cast<String, dynamic>())];
+    final decoration = _segmentCorners(
+      context,
+      haloInvalidDecoration(
+        context,
+        mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(hintText: input['placeholder'] as String?),
+        invalid: isInvalid,
+      ),
+    );
+    final style = mainFieldStyle(context, fontWeight: FontWeight.w500);
+    // The value's own font, in the placeholder's colour: the same grey says
+    // "not part of the value" without a second size on one line.
+    model.controllerFor(key)
+      ..suffix = switch (input['suffix']) {
+        final String suffix => suffix,
+        _ => '',
+      }
+      ..suffixStyle = style.copyWith(color: decoration.hintStyle?.color)
+      ..focus = model.focusFor(key);
+    final transforms = exchangeTransforms(input);
 
     return AnimatedContainer(
       duration: duration,
@@ -1017,7 +1259,7 @@ class ExchangeField extends StatelessWidget {
             selectAllOnFocus: false,
             enabled: enabled,
             readOnly: isSerial && input['editable'] == false,
-            style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+            style: style,
             cursorHeight: mainFieldCursorHeight(context),
             keyboardType: numeric ? numericKeyboardType : null,
             textCapitalization: TextCapitalization.characters,
@@ -1034,19 +1276,18 @@ class ExchangeField extends StatelessWidget {
               virtualSpace,
               // Ahead of the digits filter, which would drop the keystroke.
               if (steps) const SerialStepFormatter(),
+              // Ahead of every filter — see [AutoadvanceFormatter].
+              AutoadvanceFormatter(model, key, control),
               if (numeric) FilteringTextInputFormatter.digitsOnly,
               if (uppercase) const UpperCaseTextFormatter(),
               if (transforms.isNotEmpty) RefTransformFormatter(transforms),
               if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
+              if (when != null) AdvanceWhenFormatter(when, model.onAdvanceFocus),
             ],
-            // An unrecognized value tints the field's own underline rather than
-            // going through `errorText` — see [haloInvalidInputBorder] for why
-            // the error slot is not an option in this row.
-            decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(
-              hintText: input['placeholder'] as String?,
-              enabledBorder: isInvalid ? haloInvalidInputBorder(context, width: 1) : null,
-              focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
-            ),
+            // An unrecognized value tints the field rather than going through
+            // `errorText` — see [haloInvalidDecoration] for why the error slot
+            // is not an option in this row.
+            decoration: decoration,
             onChanged: (text) => model.typed(key, text),
             onEditingComplete: () => finishEditingWithoutBlur(model.controllerFor(key)),
             onSubmitted: (_) => onSubmitted(),
@@ -1203,3 +1444,22 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
     );
   }
 }
+
+/// [input]'s `transforms`, the ones whose parts are all strings — the same
+/// list the field's [RefTransformFormatter] runs and [ExchangeFieldsModel]
+/// applies to text it places.
+List<RefTransform> exchangeTransforms(Map<dynamic, dynamic> input) => [
+  for (final transform in switch (input['transforms']) {
+    final List<dynamic> list => list,
+    _ => const <dynamic>[],
+  })
+    if (transform case {'pattern': final String pattern, 'replacement': final String replacement})
+      RefTransform(
+        pattern: pattern,
+        replacement: replacement,
+        flags: switch (transform['flags']) {
+          final String flags => flags,
+          _ => '',
+        },
+      ),
+];

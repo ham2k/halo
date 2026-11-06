@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$sk extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$sk showBearing = _Translations$settings$logging$showBearing$sk._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$sk showReverseBearing = _Translations$settings$logging$showReverseBearing$sk._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$sk switchSentRcvd = _Translations$settings$logging$switchSentRcvd$sk._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$sk jumpAfterRST = _Translations$settings$logging$jumpAfterRST$sk._(_root);
 	@override late final _Translations$settings$logging$defaultReport$sk defaultReport = _Translations$settings$logging$defaultReport$sk._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$sk defaultReportCW = _Translations$settings$logging$defaultReportCW$sk._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$sk defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$sk._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$sk extends Translations$sett
 	@override String get title => 'Prepnúť poradie reportov signálu';
 	@override String get sentFirst => 'Odoslaný ako prvý, prijatý ako druhý';
 	@override String get rcvdFirst => 'Prijatý ako prvý, odoslaný ako druhý';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$sk extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$sk._(TranslationsSk root) : this._root = root, super.internal(root);
-
-	final TranslationsSk _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Prejsť na ďalšie pole po zadaní RST';
-	@override String get descriptionOn => 'Po zadaní RST sa prechádza ďalej';
-	@override String get descriptionOff => 'Automaticky sa neprechádza ďalej';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsSk {
 			'settings.logging.switchSentRcvd.title' => 'Prepnúť poradie reportov signálu',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Odoslaný ako prvý, prijatý ako druhý',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Prijatý ako prvý, odoslaný ako druhý',
-			'settings.logging.jumpAfterRST.title' => 'Prejsť na ďalšie pole po zadaní RST',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Po zadaní RST sa prechádza ďalej',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Automaticky sa neprechádza ďalej',
 			'settings.logging.defaultReport.title' => 'Predvolený report — fónia',
 			'settings.logging.defaultReport.description' => 'Použije sa, keď Odoslané alebo Prijaté zostane prázdne pri SSB, FM alebo AM',
 			'settings.logging.defaultReportCW.title' => 'Predvolený report — CW a dáta',
@@ -6026,11 +6010,11 @@ extension on TranslationsSk {
 			'settings.privacy.shareOpData.descriptionOn' => 'Niektoré údaje o prevádzke sa zdieľajú verejne a s inými používateľmi',
 			'settings.privacy.shareOpData.descriptionOff' => 'Údaje o prevádzke zostávajú súkromné',
 			'settings.privacy.privacyPolicy' => 'Zásady ochrany osobných údajov',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Podmienky služby',
 			'settings.operatorCall' => 'Volací znak operátora',
 			'settings.sync.title' => 'Cloudová synchronizácia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Ďalšie nastavenia synchronizácie',
 			'settings.sync.enable' => 'Zapnúť synchronizáciu',
 			'settings.sync.deviceKey' => 'Kľúč zariadenia',
@@ -6540,11 +6524,11 @@ extension on TranslationsSk {
 			'settings.station.watts' => 'Watty',
 			'settings.station.trackFieldAntenna' => 'Anténa',
 			'settings.station.trackFieldKey' => 'CW kľúč',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Oneskorenie pripojenia (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Ako dlho trvá simulovaný handshake. Prázdne alebo 0 sa pripojí okamžite.',
 			'settings.station.placeholderDropAfter' => 'Odpojiť po (sekundy)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.',
 			'settings.station.placeholderFailConnect' => 'Vždy zlyhať pri pripájaní',
 			'settings.station.placeholderConnectFailure' => 'Zástupná rádiostanica má nastavené toto pripojenie odmietnuť',
@@ -7054,11 +7038,11 @@ extension on TranslationsSk {
 			'switchAccounts.requestFailed' => 'Pri komunikácii so synchronizačným serverom sa niečo pokazilo. Skúste to neskôr.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} prevádzka', other: '${count} prevádzok', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'Importovať prevádzku QSON',
 			'qsonImport.description' => 'Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.',
 			'qsonImport.dropHint' => 'Pustite sem súbor QSON a importuje sa ako nová prevádzka',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importuje sa ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}',

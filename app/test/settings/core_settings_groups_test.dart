@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // HALO-55: LoggingSettingsGroup's target tagging — the five toggles the old
-// operation-view popup menu had must stay `target: 'logging'` (the
-// tune-icon dialog's always-visible set); everything newer must be
+// operation-view popup menu had, and Auto-advance Fields, must stay `target:
+// 'logging'` (the tune-icon dialog's always-visible set); everything else must be
 // `target: 'logging-extended'` (behind that dialog's "show more settings").
 // Mistagging a field here is silent everywhere else — it just quietly
 // stops showing up in (or starts cluttering) the dialog.
@@ -24,11 +24,11 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('LoggingSettingsGroup target tagging', () {
-    const baseKeys = {'showRSTFields', 'showStateField', 'showGridField', 'showDeletedQSOs', 'showQsoNumbers'};
+    const baseKeys = {'showRSTFields', 'showStateField', 'showGridField', 'showDeletedQSOs', 'showQsoNumbers', 'autoAdvanceFields'};
 
     // Show Deleted QSOs is declared by the User Interface group, so the
     // dialog's base set is gathered across both, as the dialog itself does.
-    test('exactly the five legacy toggles are target: "logging"', () async {
+    test('exactly the five legacy toggles and Auto-advance Fields are target: "logging"', () async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
       final elements = [...await GeneralSettingsGroup(settings, ExtensionService()).buildElements(), ...await LoggingSettingsGroup(settings).buildElements()];
@@ -72,6 +72,41 @@ void main() {
               'from the tune-icon dialog entirely',
         );
       }
+    });
+
+    test('Show optional logging fields is offered only where the row has an optional field, beside the base toggles', () async {
+      // Anywhere else it changes nothing, and a toggle that does nothing
+      // reads as broken. Where it does count it sits with the other "what the
+      // row shows" toggles, in the tune dialog's always-visible set.
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final without = await LoggingSettingsGroup(settings).buildElements();
+      final withOptional = await LoggingSettingsGroup(settings, hasOptionalFields: true).buildElements();
+      expect(without.map((el) => el['key']), isNot(contains('showOptionalFields')));
+
+      final toggle = withOptional.singleWhere((el) => el['key'] == 'showOptionalFields');
+      expect(elementMatchesTarget(toggle, 'logging'), isTrue);
+      expect(toggle['value'], isTrue, reason: 'on by default: what the extension shows is on screen until the operator hides it');
+
+      await LoggingSettingsGroup(settings, hasOptionalFields: true).commit('showOptionalFields', false);
+      expect(settings.showOptionalFields, isFalse);
+    });
+
+    test('Include our exchange is offered only where a field declares one, on by default, beside the base toggles', () async {
+      // The same rule as the optional-fields toggle: one that changes nothing
+      // on this row reads as broken, and one buried behind "show more" is
+      // one the operator never finds.
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final without = await LoggingSettingsGroup(settings).buildElements();
+      expect(without.map((el) => el['key']), isNot(contains('includeOurExchange')));
+
+      final toggle = (await LoggingSettingsGroup(settings, hasOurExchange: true).buildElements()).singleWhere((el) => el['key'] == 'includeOurExchange');
+      expect(elementMatchesTarget(toggle, 'logging'), isTrue);
+      expect(toggle['value'], isTrue, reason: 'the exchange is on the row to read off until the operator drops it');
+
+      await LoggingSettingsGroup(settings, hasOurExchange: true).commit('includeOurExchange', false);
+      expect(settings.includeOurExchange, isFalse);
     });
 
     test('commit writes an extended boolean field through to SettingsService, same path as a base toggle', () async {

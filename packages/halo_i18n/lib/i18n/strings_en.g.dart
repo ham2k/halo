@@ -3920,6 +3920,12 @@ class Translations$operation$menu$en {
 	/// en: 'Show Grid field'
 	String get showGridField => 'Show Grid field';
 
+	/// en: 'Show optional logging fields'
+	String get showOptionalFields => 'Show optional logging fields';
+
+	/// en: 'Include our exchange in logging fields'
+	String get includeOurExchange => 'Include our exchange in logging fields';
+
 	/// en: 'Show deleted QSOs'
 	String get showDeletedQsos => 'Show deleted QSOs';
 
@@ -5000,7 +5006,7 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$showReverseBearing$en showReverseBearing = Translations$settings$logging$showReverseBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
-	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
+	late final Translations$settings$logging$autoAdvanceFields$en autoAdvanceFields = Translations$settings$logging$autoAdvanceFields$en.internal(_root);
 	late final Translations$settings$logging$defaultReport$en defaultReport = Translations$settings$logging$defaultReport$en.internal(_root);
 	late final Translations$settings$logging$defaultReportCW$en defaultReportCW = Translations$settings$logging$defaultReportCW$en.internal(_root);
 	late final Translations$settings$logging$defaultReportFT8$en defaultReportFT8 = Translations$settings$logging$defaultReportFT8$en.internal(_root);
@@ -9009,22 +9015,19 @@ class Translations$settings$logging$switchSentRcvd$en {
 	String get rcvdFirst => 'Rcvd first, Sent second';
 }
 
-// Path: settings.logging.jumpAfterRST
-class Translations$settings$logging$jumpAfterRST$en {
-	Translations$settings$logging$jumpAfterRST$en.internal(this._root);
+// Path: settings.logging.autoAdvanceFields
+class Translations$settings$logging$autoAdvanceFields$en {
+	Translations$settings$logging$autoAdvanceFields$en.internal(this._root);
 
 	final Translations _root; // ignore: unused_field
 
 	// Translations
 
-	/// en: 'Jump to next field on RST entry'
-	String get title => 'Jump to next field on RST entry';
+	/// en: 'Auto-advance Fields'
+	String get title => 'Auto-advance Fields';
 
-	/// en: 'Jumping after RST is entered'
-	String get descriptionOn => 'Jumping after RST is entered';
-
-	/// en: 'Not jumping automatically'
-	String get descriptionOff => 'Not jumping automatically';
+	/// en: 'Advance automatically when full value is entered, some fields only (marked with *)'
+	String get description => 'Advance automatically when full value is entered, some fields only (marked with *)';
 }
 
 // Path: settings.logging.defaultReport
@@ -11213,6 +11216,8 @@ extension on Translations {
 			'operation.menu.showRstFields' => 'Show RST fields',
 			'operation.menu.showStateField' => 'Show State field',
 			'operation.menu.showGridField' => 'Show Grid field',
+			'operation.menu.showOptionalFields' => 'Show optional logging fields',
+			'operation.menu.includeOurExchange' => 'Include our exchange in logging fields',
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
 			'operation.menu.showDeletedOps' => 'Show deleted operations',
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
@@ -11300,10 +11305,10 @@ extension on Translations {
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Left out: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Kept ${panels}: the small-screen arrangement can’t do without it.',
@@ -11814,10 +11819,10 @@ extension on Translations {
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
 			'loggingControls.operatorControl' => 'Operator',
-			'loggingControls.operatorField' => 'Operator',
-			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.operatorField' => 'Operator',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
 			'loggingControls.editStationCalls' => 'Edit list',
 			'loggingControls.stationCallsTitle' => 'Station Callsigns',
 			'loggingControls.stationCallsHint' => 'Calls added here count from the next contact on. A call removed here keeps the contacts already logged under it.',
@@ -12045,9 +12050,8 @@ extension on Translations {
 			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
-			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Jumping after RST is entered',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Not jumping automatically',
+			'settings.logging.autoAdvanceFields.title' => 'Auto-advance Fields',
+			'settings.logging.autoAdvanceFields.description' => 'Advance automatically when full value is entered, some fields only (marked with *)',
 			'settings.logging.defaultReport.title' => 'Default report — Phone',
 			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
@@ -12329,9 +12333,9 @@ extension on Translations {
 			'settings.radio.voiceWords.recordAnother' => 'Record Another',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'Recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'First take ${n}',
-			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'Middle take ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'Middle take ${n}',
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'Last take ${n}',
 			'settings.radio.voiceWords.deleteReading' => 'Delete recording',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'Delete this recording of “${word}”?',
@@ -12843,9 +12847,9 @@ extension on Translations {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'That receiver is already configured for this K4',
 			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
-			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
 			'settings.station.k4RemoteUnreachable' => 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -13357,9 +13361,9 @@ extension on Translations {
 			'sets.empty' => 'Empty folder',
 			'sets.exported' => ({required Object location}) => 'Saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'Saved ${names}',
-			'sets.exportFailed' => ({required Object error}) => 'Could not export: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'sets.exportFailed' => ({required Object error}) => 'Could not export: ${error}',
 			'sets.importPickerFailed' => ({required Object error}) => 'Could not open the file: ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
 			'sets.imported' => ({required Object name}) => 'Imported ${name}',

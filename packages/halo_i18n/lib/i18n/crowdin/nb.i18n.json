@@ -1446,11 +1446,6 @@
         "sentFirst": "Sendt først, mottatt andre",
         "rcvdFirst": "Mottatt først, sendt andre"
       },
-      "jumpAfterRST": {
-        "title": "Hopp til neste felt ved RST-oppføring",
-        "descriptionOn": "Hopper videre når RST er skrevet inn",
-        "descriptionOff": "Hopper ikke automatisk"
-      },
       "defaultReport": {
         "title": "Standardrapport — telefoni",
         "description": "Brukes når Sendt eller Mottatt står tomt på SSB, FM eller AM"

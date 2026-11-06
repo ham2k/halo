@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:halo_widgets/src/logging_controls_info_frame.dart' show LoggingActionButton;
 
 import 'support/logging_controls_harness.dart';
 
@@ -81,21 +82,141 @@ void main() {
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '2');
     });
 
-    testWidgets('shows no number until the operator starts a contact', (tester) async {
+    testWidgets('with peers, shows no number until the operator starts a contact', (tester) async {
       // A shown number is held against every other position from that moment
-      // (docs/design/contests.md §5.8.1), so an idle panel holds nothing —
-      // and a blank is the only honest display of nothing. The same on a
-      // single device: one rule, not a peers-connected special case.
+      // (docs/design/contests.md §5.8.1), so an idle panel that shares the
+      // sequence holds nothing — and a blank is the only honest display of
+      // nothing. Without this, a phone left on the table burns a number.
       final repo = allocating();
-      await tester.pumpWidget(hostWith(repo));
+      final source = RecordingSerialSource(repo.sequences!);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['cqwpx']), qsosRepository: repo, serialNumbers: source),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
+            ),
+          ),
+        ),
+      );
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 10));
       }
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+      expect(source.claims, 0);
 
       await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+    });
+
+    testWidgets('alone, shows the next number before the operator starts a contact', (tester) async {
+      // With no peers and no second SO2R set nothing else can take the
+      // number, so the idle panel shows where the series stands. Without
+      // this, a single-op station reads nothing until the first keystroke.
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+    });
+
+    testWidgets('alone, the number shown is not a contact in progress', (tester) async {
+      // The idle number is the panel's, not the operator's: counted as
+      // composed, every idle contest panel would keep its wipe live (wiping
+      // only puts the number back), hide Start and Pause, and read a VFO move
+      // as a QSY away from a draft.
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      await pumpUntilSerial(tester, 'Our #');
+      final wipe = tester.widget<LoggingActionButton>(find.ancestor(of: find.byIcon(MdiIcons.backspaceOutline), matching: find.byType(LoggingActionButton)));
+      expect(wipe.onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Our #'), '7');
+      await tester.pump();
+      final typed = tester.widget<LoggingActionButton>(find.ancestor(of: find.byIcon(MdiIcons.backspaceOutline), matching: find.byType(LoggingActionButton)));
+      expect(typed.onPressed, isNotNull, reason: 'a number the operator typed is theirs');
+    });
+
+    group('when the panel stops being alone', () {
+      late So2rLink link;
+
+      // One operation for every pump: a fresh `refs` list is a controls
+      // change of its own, which refreshes the number whatever else moved.
+      late Operation contest;
+      setUp(() {
+        link = So2rLink();
+        addTearDown(link.dispose);
+        contest = running(['cqwpx']);
+      });
+
+      Widget setA(QsosRepository repo, {required bool so2r}) => MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: contest, qsosRepository: repo),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
+            so2r: so2r ? So2rSet(radio: 'A', link: link) : null,
+          ),
+        ),
+      );
+
+      String ourSerial(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text ?? '';
+
+      testWidgets('an idle set shows no number, even with no peers', (tester) async {
+        // The other set takes numbers from the same series, so the idle set's
+        // number can be gone by the time it logs: SO2R is never "alone",
+        // peers or not. Without this, both sets show the same next number.
+        final repo = allocating();
+        await tester.pumpWidget(setA(repo, so2r: true));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
+        expect(ourSerial(tester), '');
+
+        await startContact(tester);
+        await pumpUntilSerial(tester, 'Our #');
+        expect(ourSerial(tester), '1');
+      });
+
+      testWidgets('a set appearing takes back the number the idle panel showed alone', (tester) async {
+        // Solo ends the moment a second set can take numbers; a number left
+        // showing would be one the panel no longer holds.
+        final repo = allocating();
+        await tester.pumpWidget(setA(repo, so2r: false));
+        await pumpUntilSerial(tester, 'Our #');
+
+        await tester.pumpWidget(setA(repo, so2r: true));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
+        expect(ourSerial(tester), '');
+      });
+
+      testWidgets('peers arriving take back the number the idle panel showed alone', (tester) async {
+        // The same end of solo from the other side: a number left showing is
+        // one no peer was told about, and a peer may send it too.
+        final repo = allocating();
+        final source = RecordingSerialSource(repo.sequences!);
+        Widget panel(SerialNumberSource? peers) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: contest, qsosRepository: repo, serialNumbers: peers),
+              radio: baseRadio(),
+              activities: ActivityHooks(activityControls: controls),
+            ),
+          ),
+        );
+        await tester.pumpWidget(panel(null));
+        await pumpUntilSerial(tester, 'Our #');
+
+        await tester.pumpWidget(panel(source));
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
+        expect(ourSerial(tester), '');
+        expect(source.claims, 0, reason: 'an idle panel with peers holds nothing');
+      });
     });
 
     testWidgets('a wipe lets go of the number and shows none again', (tester) async {

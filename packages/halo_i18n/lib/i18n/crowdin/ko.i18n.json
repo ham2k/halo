@@ -1446,11 +1446,6 @@
         "sentFirst": "보낸 RST -> 받은 RST",
         "rcvdFirst": "받은 RST -> 보낸 RST"
       },
-      "jumpAfterRST": {
-        "title": "RST 입력 후 다음 필드로 자동 점프",
-        "descriptionOn": "RST 입력 후 다음 필드로 이동",
-        "descriptionOff": "자동으로 이동하지 않음"
-      },
       "defaultReport": {
         "title": "기본 리포트 — 보이스",
         "description": "SSB, FM 또는 AM에서 보냄 또는 받음이 비어 있을 때 사용"

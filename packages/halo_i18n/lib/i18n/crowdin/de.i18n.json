@@ -1446,11 +1446,6 @@
         "sentFirst": "Gesendet zuerst, Empfangen als zweites",
         "rcvdFirst": "Empfangen zuerst, Gesendet als zweites"
       },
-      "jumpAfterRST": {
-        "title": "Spring weiter bei RST-Eingabe",
-        "descriptionOn": "Nach RST-Eingabe wird zum nächsten Feld gesprungen",
-        "descriptionOff": "Es wird nicht automatisch gesprungen"
-      },
       "defaultReport": {
         "title": "Standard-Rapport — Phone",
         "description": "Wird verwendet, wenn Gesendet oder Empfangen bei SSB, FM oder AM leer bleibt"

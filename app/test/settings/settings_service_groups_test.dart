@@ -6,6 +6,8 @@
 // settings registry. Unset values must fall back to the documented
 // defaults (app-polo parity for the new logging/privacy keys).
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -57,11 +59,26 @@ void main() {
       expect(settings.dxFlags, DxFlags.dx);
       expect(settings.showBearing, isFalse);
       expect(settings.switchSentRcvd, isFalse);
-      expect(settings.jumpAfterRST, isFalse);
+      expect(settings.autoAdvanceFields, isFalse);
       expect(settings.enabledBands, SettingsService.defaultBands);
       expect(settings.enabledModes, SettingsService.defaultModes);
       expect(settings.consentAppData, isFalse);
       expect(settings.consentOpData, isFalse);
+    });
+
+    test('Auto-advance Fields starts from the jump-after-RST choice it replaced', () async {
+      // An operator who turned the old setting on would otherwise find their
+      // reports no longer moving on after an update, with nothing to tell
+      // them the setting had been renamed. Once set, the new key is what
+      // counts — the old one is never written again.
+      SharedPreferences.setMockInitialValues({
+        'settings.logging': jsonEncode({'jumpAfterRST': true}),
+      });
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      expect(settings.autoAdvanceFields, isTrue);
+
+      await settings.setSettingValue(SettingsService.loggingGroup, 'autoAdvanceFields', false);
+      expect(settings.autoAdvanceFields, isFalse);
     });
 
     test('updateSettingsGroup batches writes and extension groups enumerate', () async {

@@ -508,6 +508,8 @@
       "showRstFields": "SHOW RST FIELDS",
       "showStateField": "SHOW STATE FIELD",
       "showGridField": "SHOW GRID FIELD",
+      "showOptionalFields": "SHOW OPTIONAL LOGGING FIELDS",
+      "includeOurExchange": "INCLUDE OUR EXCHANGE IN LOGGING FIELDS",
       "showDeletedQsos": "SHOW DELETED QSOS",
       "showDeletedOps": "SHOW DELETED OPERATIONS",
       "showQsoNumbers": "SHOW QSO NUMBERS",
@@ -1500,10 +1502,9 @@
         "sentFirst": "SENT FIRST, RCVD SECOND",
         "rcvdFirst": "RCVD FIRST, SENT SECOND"
       },
-      "jumpAfterRST": {
-        "title": "JUMP TO NEXT FIELD ON RST ENTRY",
-        "descriptionOn": "JUMPING AFTER RST IS ENTERED",
-        "descriptionOff": "NOT JUMPING AUTOMATICALLY"
+      "autoAdvanceFields": {
+        "title": "AUTO-ADVANCE FIELDS",
+        "description": "ADVANCE AUTOMATICALLY WHEN FULL VALUE IS ENTERED, SOME FIELDS ONLY (MARKED WITH *)"
       },
       "defaultReport": {
         "title": "DEFAULT REPORT — PHONE",

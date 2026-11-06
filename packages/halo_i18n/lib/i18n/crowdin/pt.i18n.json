@@ -1446,11 +1446,6 @@
         "sentFirst": "Enviado primeiro, Recebido em segundo",
         "rcvdFirst": "Recebido primeiro, Enviado em segundo"
       },
-      "jumpAfterRST": {
-        "title": "Saltar para o campo seguinte após o RST",
-        "descriptionOn": "A saltar depois de introduzido o RST",
-        "descriptionOff": "A não saltar automaticamente"
-      },
       "defaultReport": {
         "title": "Relatório predefinido — Fonia",
         "description": "Usado quando Enviado ou Recebido fica vazio em SSB, FM ou AM"

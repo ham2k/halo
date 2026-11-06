@@ -18,6 +18,7 @@ import 'call_field_text.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
+import 'logging_controls_autoadvance.dart';
 import 'logging_controls_exchange.dart';
 import 'logging_controls_metrics.dart';
 import 'platform_chrome.dart';
@@ -41,6 +42,8 @@ class LoggingEntryRow extends StatefulWidget {
     required this.call,
     required this.rstFields,
     required this.rstPlaceholder,
+    required this.rstAdvanceWhen,
+    required this.onRstComplete,
     required this.numericKeyboardType,
     required this.exchange,
     required this.textControls,
@@ -74,6 +77,12 @@ class LoggingEntryRow extends StatefulWidget {
   /// The hint a blank report field shows, or null while editing a saved
   /// record (there a blank field is stored data, not a stand-in).
   final String? rstPlaceholder;
+
+  /// The reports' `autoadvanceWhen`, or null when they don't move on by
+  /// themselves (the setting is off, or the mode's reports have no complete
+  /// length); [onRstComplete] moves focus on when one matches.
+  final RegExp? rstAdvanceWhen;
+  final VoidCallback onRstComplete;
 
   /// The keyboard for the numeric-leaning fields (the reports, numeric
   /// exchanges) where the platform wants one — null keeps the field's
@@ -234,6 +243,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
     TextInputType? keyboardType,
     TextCapitalization textCapitalization = TextCapitalization.none,
     TextInputFormatter? filter,
+    TextInputFormatter? advance,
     String? hintText,
 
     /// Only for a field that tracks whether the operator has touched it.
@@ -258,7 +268,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
         enableSuggestions: false,
         smartDashesType: SmartDashesType.disabled,
         smartQuotesType: SmartQuotesType.disabled,
-        inputFormatters: [widget.virtualSpace, ?filter, const UpperCaseTextFormatter()],
+        inputFormatters: [widget.virtualSpace, ?filter, const UpperCaseTextFormatter(), ?advance],
         decoration: mainFieldDecoration(context, label, hintText: hintText, horizontalPadding: padding),
         onChanged: onChanged,
         onEditingComplete: () => finishEditingWithoutBlur(controller),
@@ -283,10 +293,14 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
           context,
           controller: field.controller,
           focusNode: field.focus,
-          label: field.label,
+          label: autoAdvanceLabel(field.label, advances: widget.rstAdvanceWhen != null),
           width: width,
           padding: padding,
           duration: duration,
+          advance: switch (widget.rstAdvanceWhen) {
+            final complete? => AdvanceWhenFormatter(complete, widget.onRstComplete),
+            null => null,
+          },
           // Letters are legitimate in RSTs (CW's "5NN" shorthand, aurora
           // "59A") and the Edit QSO pane accepts them — a digits-only
           // filter here would silently strip a pane-saved letter on the
@@ -309,63 +323,70 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
   ///
   /// The callsign is deliberately not here: it is `Expanded` over whatever
   /// these leave it, and it is never squeezed.
-  List<MainField> _trailingMainFields(BuildContext context) => [
-    ..._rstMainFields(context),
-    // Contest exchanges, inline right after the RSTs.
-    for (final control in widget.textControls)
-      (
-        gapBefore: mainFieldGap,
-        chars: exchangeFieldChars(control['input'] as Map?, key: control['key'] as String?),
-        focusNode: widget.exchange.focusFor(control['key'] as String),
-        build: (width, padding, duration) => ExchangeField(
-          model: widget.exchange,
-          control: control,
-          enabled: widget.enabled,
-          width: width,
-          padding: padding,
-          duration: duration,
-          virtualSpace: widget.virtualSpace,
-          numericKeyboardType: widget.numericKeyboardType,
-          onSubmitted: widget.onExchangeSubmitted,
+  List<MainField> _trailingMainFields(BuildContext context) {
+    final exchangeControls = widget.textControls.toList();
+    return [
+      ..._rstMainFields(context),
+      // Contest exchanges, inline right after the RSTs. Consecutive controls
+      // sharing a `group` make one pill: a hairline between them — the panel
+      // showing through — and corners only at its ends.
+      for (final (index, control) in exchangeControls.indexed)
+        (
+          gapBefore: index > 0 && joinsGroup(exchangeControls[index - 1], control) ? segmentDividerWidth : mainFieldGap,
+          chars: exchangeFieldChars(control['input'] as Map?, key: control['key'] as String?),
+          focusNode: widget.exchange.focusFor(control['key'] as String),
+          build: (width, padding, duration) => ExchangeField(
+            model: widget.exchange,
+            control: control,
+            joinsPrevious: index > 0 && joinsGroup(exchangeControls[index - 1], control),
+            joinsNext: index + 1 < exchangeControls.length && joinsGroup(control, exchangeControls[index + 1]),
+            enabled: widget.enabled,
+            width: width,
+            padding: padding,
+            duration: duration,
+            virtualSpace: widget.virtualSpace,
+            numericKeyboardType: widget.numericKeyboardType,
+            onSubmitted: widget.onExchangeSubmitted,
+          ),
         ),
-      ),
-    if (widget.state case final state?)
-      (
-        gapBefore: mainFieldGroupGap,
-        chars: stateFieldChars,
-        focusNode: state.focus,
-        build: (width, padding, duration) => _fixedField(
-          context,
-          controller: state.controller,
+      if (widget.state case final state?)
+        (
+          gapBefore: mainFieldGroupGap,
+          chars: stateFieldChars,
           focusNode: state.focus,
-          label: t.qsoEditForm.theirState,
-          width: width,
-          padding: padding,
-          duration: duration,
-          textCapitalization: TextCapitalization.characters,
-          hintText: widget.stateHint,
-          onChanged: widget.onStateChanged,
+          build: (width, padding, duration) => _fixedField(
+            context,
+            controller: state.controller,
+            focusNode: state.focus,
+            label: t.qsoEditForm.theirState,
+            width: width,
+            padding: padding,
+            duration: duration,
+            textCapitalization: TextCapitalization.characters,
+            hintText: widget.stateHint,
+            onChanged: widget.onStateChanged,
+          ),
         ),
-      ),
-    if (widget.grid case final grid?)
-      (
-        gapBefore: mainFieldGroupGap,
-        chars: gridFieldChars,
-        focusNode: grid.focus,
-        build: (width, padding, duration) => _fixedField(
-          context,
-          controller: grid.controller,
+      if (widget.grid case final grid?)
+        (
+          gapBefore: mainFieldGroupGap,
+          chars: gridFieldChars,
           focusNode: grid.focus,
-          label: t.qsoEditForm.theirGrid,
-          width: width,
-          padding: padding,
-          duration: duration,
-          textCapitalization: TextCapitalization.characters,
-          hintText: widget.gridHint,
-          onChanged: widget.onGridChanged,
+          build: (width, padding, duration) => _fixedField(
+            context,
+            controller: grid.controller,
+            focusNode: grid.focus,
+            label: t.qsoEditForm.theirGrid,
+            width: width,
+            padding: padding,
+            duration: duration,
+            textCapitalization: TextCapitalization.characters,
+            hintText: widget.gridHint,
+            onChanged: widget.onGridChanged,
+          ),
         ),
-      ),
-  ];
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -388,14 +409,51 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
           return _withButton([Expanded(child: eventFields)], gapScale: 1);
         }
 
-        final trailingFields = _trailingMainFields(context);
+        var trailingFields = _trailingMainFields(context);
         _watchFields(trailingFields);
-        final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
+        ({MainFieldLayout layout, bool squeezed}) resolve({bool honorFocus = true}) => resolveMainFieldLayout(
           fields: trailingFields,
           maxWidth: constraints.maxWidth,
           buttonWidth: widget.buttonWidth,
           metrics: mainFieldMetrics(context),
+          honorFocus: honorFocus,
         );
+        // A field declaring `min: 0` is optional: it asks for its ideal as its
+        // min, and stays on the row while every field still has its min. Past
+        // that it leaves altogether — gap, padding and all — rather than
+        // taking the row into the gaps and padding (the first thing given up
+        // under min) for a field the operator never types into.
+        //
+        // Decided with focus set aside: a focused field taking its ideal
+        // squeezes the others like any concession, and the optional field
+        // shrinks with them — leaving instead would reflow the row under the
+        // operator's next keystroke.
+        final optional = {
+          for (final field in trailingFields)
+            if (field.chars.min == 0) field.focusNode,
+        };
+        if (optional.isNotEmpty) {
+          trailingFields = [
+            for (final field in trailingFields)
+              if (optional.contains(field.focusNode))
+                (
+                  gapBefore: field.gapBefore,
+                  chars: (min: field.chars.ideal, ideal: field.chars.ideal, max: field.chars.max),
+                  focusNode: field.focusNode,
+                  build: field.build,
+                )
+              else
+                field,
+          ];
+          if (resolve(honorFocus: false).layout.gapScale < 1) {
+            trailingFields = [
+              for (final field in trailingFields)
+                if (!optional.contains(field.focusNode)) field,
+            ];
+          }
+        }
+        final resolved = resolve();
+        final (layout: fieldLayout, :squeezed) = resolved;
         _squeezed = squeezed;
         final widthDuration = _widthDuration(constraints.maxWidth, widget.buttonWidth);
 
@@ -482,7 +540,13 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
           // concession.
           for (var i = 0; i < trailingFields.length; i++) ...[
             SizedBox(width: trailingFields[i].gapBefore * fieldLayout.gapScale),
-            trailingFields[i].build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
+            // Keyed by field, so a field leaving the row (an optional one)
+            // never hands its slot's state — a focused text field — to the
+            // field after it.
+            KeyedSubtree(
+              key: ObjectKey(trailingFields[i].focusNode),
+              child: trailingFields[i].build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
+            ),
           ],
         ]);
       },

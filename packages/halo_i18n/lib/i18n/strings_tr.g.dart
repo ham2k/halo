@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$tr extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$tr showBearing = _Translations$settings$logging$showBearing$tr._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$tr showReverseBearing = _Translations$settings$logging$showReverseBearing$tr._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$tr switchSentRcvd = _Translations$settings$logging$switchSentRcvd$tr._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$tr jumpAfterRST = _Translations$settings$logging$jumpAfterRST$tr._(_root);
 	@override late final _Translations$settings$logging$defaultReport$tr defaultReport = _Translations$settings$logging$defaultReport$tr._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$tr defaultReportCW = _Translations$settings$logging$defaultReportCW$tr._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$tr defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$tr._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$tr extends Translations$sett
 	@override String get title => 'Sinyal rapor sırasını değiştir';
 	@override String get sentFirst => 'Önce Gönd., sonra Alın.';
 	@override String get rcvdFirst => 'Önce Alın., sonra Gönd.';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$tr extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$tr._(TranslationsTr root) : this._root = root, super.internal(root);
-
-	final TranslationsTr _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'RST girişinde bir sonraki alana geç';
-	@override String get descriptionOn => 'RST girildikten sonra sonraki alana geçiliyor';
-	@override String get descriptionOff => 'Otomatik geçiş yapılmıyor';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsTr {
 			'settings.logging.switchSentRcvd.title' => 'Sinyal rapor sırasını değiştir',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Önce Gönd., sonra Alın.',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Önce Alın., sonra Gönd.',
-			'settings.logging.jumpAfterRST.title' => 'RST girişinde bir sonraki alana geç',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'RST girildikten sonra sonraki alana geçiliyor',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Otomatik geçiş yapılmıyor',
 			'settings.logging.defaultReport.title' => 'Varsayılan rapor — Telefon',
 			'settings.logging.defaultReport.description' => 'SSB, FM veya AM\'de Gönd. veya Alın. boş bırakıldığında kullanılır',
 			'settings.logging.defaultReportCW.title' => 'Varsayılan rapor — CW ve veri',
@@ -6026,11 +6010,11 @@ extension on TranslationsTr {
 			'settings.privacy.shareOpData.descriptionOn' => 'Bazı operasyon verileri herkese açık olarak ve diğer kullanıcılarla paylaşılıyor',
 			'settings.privacy.shareOpData.descriptionOff' => 'Operasyon verileri gizli tutuluyor',
 			'settings.privacy.privacyPolicy' => 'Gizlilik Politikası',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Hizmet Şartları',
 			'settings.operatorCall' => 'Operatör Çağrı İşareti',
 			'settings.sync.title' => 'Bulut Senkronizasyonu',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Diğer senkronizasyon ayarları',
 			'settings.sync.enable' => 'Senkronizasyonu Etkinleştir',
 			'settings.sync.deviceKey' => 'Cihaz Anahtarı',
@@ -6540,11 +6524,11 @@ extension on TranslationsTr {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Anten',
 			'settings.station.trackFieldKey' => 'CW Anahtarı',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Bağlantı gecikmesi (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Simüle edilen el sıkışmanın ne kadar sürdüğü. Boş veya 0 anında bağlanır.',
 			'settings.station.placeholderDropAfter' => 'Şu süre sonra kes (saniye)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
 			'settings.station.placeholderFailConnect' => 'Bağlantı her zaman başarısız olsun',
 			'settings.station.placeholderConnectFailure' => 'Yer tutucu radyoya bu bağlantıyı reddetmesi söylendi',
@@ -7054,11 +7038,11 @@ extension on TranslationsTr {
 			'switchAccounts.requestFailed' => 'Senkronizasyon sunucusuyla iletişimde bir şeyler ters gitti. Daha sonra tekrar deneyin.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',
 			'qsonImport.description' => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.',
 			'qsonImport.dropHint' => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}',

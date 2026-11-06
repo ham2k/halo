@@ -668,6 +668,12 @@ export interface RefGeojson {
 export interface LoggingControlDescriptor {
   key: string
   label: string
+  /// Consecutive controls naming the same group are drawn as one control —
+  /// segments of a single pill, a hairline between them, each keeping its own
+  /// label, width and validation. Space, Tab and the arrow keys walk the
+  /// segments as they walk any fields; `autoadvanceBefore`/`autoadvanceWhen`
+  /// are what let typing flow through them.
+  group?: string
   /// The same name in fewer characters, for a field the logging row has
   /// squeezed below its own label's width — `QP Loc` where [label] is
   /// `QP Location`.
@@ -770,6 +776,22 @@ export interface SerialInputDescriptor {
   /// Default true — an operator has to be able to correct what they actually
   /// sent.
   editable?: boolean
+  /// As `text`: shown while no number is held — on a log shared with other
+  /// stations or beside a second SO2R radio, until the operator starts the
+  /// contact.
+  placeholder?: string
+  /// Drawn after the value in the placeholder's color while the field holds
+  /// a value and doesn't have focus — units (`"m"` after `40`), or the rest of
+  /// what goes out beside it. Never part of the value: focusing the field
+  /// takes it away, and nothing saves it. A leading space is kept, so `" m"`
+  /// and `"m"` both mean what they show.
+  suffix?: string
+  /// What we send beside this field — a contest's exchange after its serial,
+  /// `"A KI2D 79 ENY"`. While the operator includes it (a logging setting,
+  /// on by default) the host draws it after the `suffix` and the
+  /// `placeholder`, and widens the field for it, so give `chars` for the
+  /// value alone. Never part of the value.
+  ourExchange?: string
 }
 
 /// A whole setup form behind one control, for the enum-shaped configuration an
@@ -809,6 +831,11 @@ export interface FormInputDescriptor {
 /// has the room, and grows it toward `max` when it has more. Each is optional:
 /// `min` is 3, `ideal` is `min`, and `max` is the input's `maxLength`, else
 /// `ideal`. None goes past 20.
+///
+/// `min: 0` makes the field optional: it shows at its `ideal` while every
+/// field on the row still has its `min`, and otherwise leaves the row rather
+/// than squeezing the fields the operator types into. Its `ideal` defaults to
+/// what a field declaring no `chars` asks for, not to the `min`.
 export interface FieldChars {
   min?: number
   ideal?: number
@@ -826,6 +853,34 @@ export interface TextInputDescriptor {
   /// Key within that ref, e.g. 'exchange' → `{type: 'simple-contest', exchange: '…'}`.
   field: string
   placeholder?: string
+  /// A regex source (anchored, case-insensitive, as `pattern`): when an edit
+  /// changes the field's value to one that matches, focus moves on — two
+  /// digits of a check. Any change counts, wherever the caret is.
+  ///
+  /// Both autoadvance rules apply only while the operator has Auto-advance
+  /// Fields on, which marks the field's label with `*`, and never on a field
+  /// that takes spaces (an `options` list a space separates).
+  autoadvanceWhen?: string
+  /// A regex source (anchored, case-insensitive, as `pattern`) checked
+  /// against the field's WHOLE value as a typed character would make it: when
+  /// it matches, focus moves on first and the character goes to the next
+  /// field — `[0-9]*[A-Z]` on a serial puts the "A" of "4A" in the next one.
+  /// A paste without spaces is placed the same way; one with spaces is placed
+  /// by its spaces alone. A field still showing only a suggestion is replaced
+  /// by what lands in it, not appended to.
+  autoadvanceBefore?: string
+  /// Drawn after the value in the placeholder's color while the field holds
+  /// a value and doesn't have focus — units (`"m"` after `40`), or the rest of
+  /// what goes out beside it. Never part of the value: focusing the field
+  /// takes it away, and nothing saves it. A leading space is kept, so `" m"`
+  /// and `"m"` both mean what they show.
+  suffix?: string
+  /// What we send beside this field — a contest's exchange after its serial,
+  /// `"A KI2D 79 ENY"`. While the operator includes it (a logging setting,
+  /// on by default) the host draws it after the `suffix` and the
+  /// `placeholder`, and widens the field for it, so give `chars` for the
+  /// value alone. Never part of the value.
+  ourExchange?: string
   /// Regex source string. The core anchors it (`^(?:…)$`) and matches
   /// case-insensitively — the same compilation `refList` uses, so one pattern
   /// string means the same thing on either kind. A malformed regex disables
@@ -857,6 +912,13 @@ export interface TextInputDescriptor {
   /// callsign lookup that resolves late can never clobber operator input.
   /// Use `placeholder` instead for a hint that must never become a value.
   suggestedValue?: string
+  /// False shows [value] in a disabled field: something the operator sends
+  /// but never types, such as our own exchange beside our serial. Space, Tab
+  /// and the arrow keys pass over it, and nothing is saved from it — `field`
+  /// is not read. Default true.
+  editable?: boolean
+  /// What a field with `editable: false` shows. Ignored otherwise.
+  value?: string
 }
 
 /// A typed exchange that searches a KNOWN SET — QSO-party counties, park
@@ -922,6 +984,14 @@ export interface OptionsInputDescriptor {
   /// but never swapped in.
   minCharsForSuggestions?: number
   placeholder?: string
+  /// As `text`.
+  autoadvanceWhen?: string
+  /// As `text`.
+  autoadvanceBefore?: string
+  /// As `text`.
+  suffix?: string
+  /// As `text`.
+  ourExchange?: string
   /// As `text` — uppercase is the default.
   uppercase?: boolean
   /// As `text`.

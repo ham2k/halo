@@ -262,6 +262,24 @@ missing `ideal` is the min, a missing `max` is the `maxLength`, else the ideal.
 None goes past 20 (`maxFieldChars`): an author who wrote pixels would
 otherwise take a phone's whole row, and see nothing wrong on a desktop.
 
+**A field declaring `min: 0` is optional** (`isOptionalLoggingControl`). It
+asks for its ideal as its min, and stays on the row only while every field
+still has its min — laid out with focus set aside, so moving focus never
+decides it. Past that it leaves the row altogether, gap and padding included,
+rather than sending the row into the gaps-and-padding concession below for a
+field the operator never types into. Once on the row it is like any other:
+a focused field taking its ideal squeezes it with the rest. Removing it
+instead would reflow the row under the operator's next keystroke. *Show
+optional logging fields* (Logging settings, offered only on an operation
+whose controls have one) takes them off the row outright.
+
+**Consecutive controls sharing a `group` are one pill** (`joinsGroup`): a
+1px gap between them (`segmentDividerWidth`, the panel showing through as
+the divider) and square corners where they join. Each segment is still a
+field of its own in everything else — its own `chars`, label and
+`shortLabel`, validation tint, and focus stop — so a narrow row squeezes one
+segment rather than the pill as a block.
+
 The row fills its width in this order, and never moves to the next step until
 the last is spent:
 
@@ -535,8 +553,16 @@ no labels, so a fixed order there would have the operator reading every logged
 contact backwards. Which controller is Sent and which is Rcvd never changes;
 only where each is drawn does.
 
-*Jump to next field on RST entry* advances focus the moment a report is
-complete, so a full exchange costs no Spaces. "Complete" is the **full** report
+*Auto-advance Fields* advances focus the moment a value is complete, so a
+full exchange costs no Spaces. It covers the reports and every exchange field
+declaring `autoadvanceWhen` or `autoadvanceBefore` (below) — off, no field
+moves by itself — and while it is on each of those fields
+shows an `*` after its label — the mark the setting's description points to.
+Off, nothing is marked: a mark would promise a move that never comes. It is
+stored as `autoAdvanceFields`; an operator who never set it gets whatever
+they chose for `jumpAfterRST`, the reports-only setting it replaced.
+
+For a report, "complete" is the **full** report
 — two characters on phone, three on CW and the data modes (`rstLengthFor`) —
 not the significant part the completion rule above expands from: a `44` on CW
 still owes its `A` or its tone, and jumping at two characters would put `44A`
@@ -553,17 +579,17 @@ operator who gives `59+` leaves it off. The alternative, exempting phone the
 way the FT modes are exempt, would remove the setting from the modes most
 people want it in.
 
-It fires only on **crossing that length from below**, so correcting a report
-that is already complete doesn't throw the operator out of the field on their
-first keystroke. That rule needs a baseline, and the baseline has to be seeded
-from the fields when a QSO arrives already loaded: a panel *constructed* around
-a QSO populates before the trigger is attached, and gaining focus is itself a
-value change (it collapses the selection), so an unseeded field jumps on the
-tap that arrives in it — and then again out of the next one.
-
-The trigger hangs off the text controller, since the report fields carry no
-`onChanged`; a focus check is what keeps it to real typing, since every
-programmatic write happens to a field the operator isn't in.
+The report's rule is the same `autoadvanceWhen` an exchange field declares —
+`\S{2}` on phone, `\S{3}` elsewhere, none on the FT modes (`_rstAdvanceWhen`)
+— and it fires on **an edit that changes the value to one that matches**
+(`AdvanceWhenFormatter`). Arriving in a complete report is no edit: gaining
+focus is a value change (it collapses the selection) but leaves the text as
+it was, and a rule read off the value alone would walk an operator who taps
+a loaded `599` straight past Rcvd. Typing on past a complete report (`5991`)
+doesn't match, so it stays put too. **A deletion never moves on**, even to a
+value that matches: Backspace is a correction under way, and a phone `599`
+shortened to a complete `59` would otherwise throw the operator out of the
+field mid-edit.
 
 **USB and LSB count as phone here**, not as data. No CAT protocol has an "SSB"
 mode, so a connected rig reports the concrete sideband and nothing maps it
@@ -588,19 +614,88 @@ position of the next field; **left arrow** at the first position moves to
 the last position of the previous field. Both wrap between the first and
 last main fields.
 
+**Backspace in an empty field** moves to the end of the previous field — as
+if deleting the space that Space typed to get there. It passes over the
+`skipFocus` fields as Shift-Tab does, and stops at the callsign field rather
+than wrapping. Only a press does this, never a key repeat: holding Backspace
+to empty a field must not walk on and empty the ones before it. It is a key
+event, not an edit — an empty field has nothing to delete — so it reaches
+only from a keyboard that sends one, which every hardware keyboard does.
+
 **A field can sit out the Space and Tab cycle** — `skipFocus: true` on its
-control. Space, Tab, Shift-Tab and the RST jump all pass over it; only the
+control. Space, Tab, Shift-Tab and Auto-advance all pass over it; only the
 arrow keys (and a tap) land on it, so it stays reachable from the keyboard.
 It is for a field the operator visits to correct rather than to fill in:
 every shipped contest marks its Our Serial, which the sequence fills and the
 operator only overrides. Tab is therefore always the panel's own move rather
 than Flutter's traversal, which knows nothing of the flag.
 
+**A display-only field is never a stop.** A `text` control declaring
+`editable: false` shows its `value` disabled and attaches no focus node, so
+it is not in the main fields at all: Space, Tab, the arrows and ESM pass over
+it without a rule of their own.
+
+**A field can move focus on by itself**, by its control's
+`autoadvanceWhen` and `autoadvanceBefore`, while the operator has
+*Auto-advance Fields* on. An edit that changes the value to one matching
+`autoadvanceWhen` moves focus on, wherever the caret was
+(`AdvanceWhenFormatter`, installed last so it reads the filtered value). A
+keystroke at the end of the value that would make it match
+`autoadvanceBefore` moves focus on first and lands in the next field
+(`AutoadvanceFormatter`, installed after the Space formatter and before every
+filter, since a numeric filter would otherwise swallow the letter meant for
+the next field). A character a field refuses with no `autoadvanceBefore` to
+carry it is dropped, as in any field: a typo in the check landing in the
+section would hide it there. "Next" is the Space order without the
+`skipFocus` and display-only fields, and without any field declaring
+`editable: false` — a read-only serial placed into would log a number the
+operator never sent. Neither rule applies to a field that
+takes spaces — an `options` list whose values a space separates has no point
+at which it is complete.
+
+`ExchangeFieldsModel.typeAcross` does the placing, character by character,
+so a paste without spaces is the same path as typing it. **A paste with
+spaces is placed by its spaces alone**, the rules sitting out: text that
+already says where each value ends — `12 B 33 CT` from a log or a spot —
+would otherwise move twice after the `B`, once for the precedence completing
+and again for the space. A run of spaces is one separator, and spaces
+ahead of the text are none, so column-aligned text lands where it reads.
+Text left at the last field is dropped. A field the
+operator has not typed into holds only a suggestion or a preview, so a
+character that lands in it replaces it — `2` after a guessed check of `79` is
+a new check, not `792` — and one it refuses leaves it standing. Only an
+insertion at the end of a value flows on; one inside it is a correction.
+
+**Space after an automatic move is a move of its own.** Nothing absorbs it:
+Space always means "next field", so an operator who spaces between the parts
+of an exchange with the setting on skips a field each time a value
+completed itself. One rule they can learn beats a Space whose meaning
+depends on what happened just before it.
+
 **On focus, the cursor goes to the end of the value.** The existing text is
 never selected, not even when focus arrived via Tab — several desktop
 platforms select-all by default, and an operator who tabbed into a field to
 check it shouldn't be one keystroke away from destroying it. This applies to
 the main logging fields only.
+
+**A field's `suffix` is gone while it has focus.** It is drawn after the
+value, in the placeholder's color, by the field's controller
+(`SuffixedTextEditingController`) and never enters the text, so the operator
+edits the bare value and nothing saves, scores or exports the suffix. A tap
+on the suffix lands past the end of the real text for one frame; the focus
+rule above puts the cursor back at the end.
+
+**Our own exchange is the operator's to include.** A field declaring
+`ourExchange` — SS's serial, carrying "A KI2D 79 ENY" — shows it after its
+suffix and its placeholder while *Include our exchange in logging fields* is
+on (`includeOurExchange`, on by default), and the row widens the field by
+that many characters, up to the 20 any field may ask for
+(`withOurExchange`). Off, the field narrows to its value and the room goes to
+the fields still to be copied. The host does this rather than the extension:
+an extension's controls are fetched again when the operation changes, not
+when a setting does. The toggle is offered beside the other "what the row
+shows" toggles, and only while a field declares an exchange — anywhere else
+it would change nothing.
 
 ## Enter and focus
 

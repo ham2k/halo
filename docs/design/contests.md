@@ -1789,9 +1789,19 @@ machinery.
   panel holds nothing, so a phone left on the table burns no number and a
   device that never logs leaves no gap. A band or mode change from the radio
   is not an edit and never claims. Until a claim exists the serial field shows
-  **no tentative number** — a blank, never a number that might move — and that
-  holds with no peers connected too: one rule everywhere, at the cost of the
-  where-does-the-series-stand glance at open (the log answers that).
+  **no tentative number** — a blank (or the control's `placeholder`), never a
+  number that might move.
+- **Taken at once by a panel alone on the log** — peer sharing off for the
+  operation, no second SO2R set (`ExchangeFieldsConfig.solo`). Nothing on
+  the peer link can take the number between showing and logging it, so the
+  idle panel shows where the series stands, and a wipe or a commit takes the
+  next one straight away (after the insert, so never the number just
+  logged). Sharing switched on — whether or not a peer is connected yet — or
+  a second set appearing ends it: an idle number goes back and the rule
+  above applies. A second device logging the same operation through LoFi
+  sync alone is not seen here: the idle number is the local `peek`, and a
+  number the other device already logged and synced in is caught at commit
+  (`isIssued`) and the contact marked `serialConflict`, as any duplicate is.
 - **Chosen locally** as the smallest number above the local `peek` that no live
   peer currently claims on the same label, then announced on the ephemeral
   channel as its own `serialClaims` message beside the draft — the draft goes

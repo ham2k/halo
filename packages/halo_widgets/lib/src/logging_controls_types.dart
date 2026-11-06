@@ -1039,11 +1039,13 @@ class LoggingPreferences {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.showOptionalFields = true,
+    this.includeOurExchange = true,
     this.defaultReport = '',
     this.defaultReportCW = '',
     this.defaultReportFT8 = '',
     this.switchSentRcvd = false,
-    this.jumpAfterRST = false,
+    this.autoAdvanceFields = false,
     this.showNumbersRow = false,
     this.showExtraInNumbersRow = true,
     this.vibrateNumbersRow = true,
@@ -1073,6 +1075,16 @@ class LoggingPreferences {
   final bool showStateField;
   final bool showGridField;
 
+  /// Whether the row offers the exchange fields an extension marks optional
+  /// (`isOptionalLoggingControl`) at all. On, they still leave a row too
+  /// narrow for them.
+  final bool showOptionalFields;
+
+  /// Whether a field declaring `ourExchange` draws it after its value
+  /// (`withOurExchange`). On, what we send is on the row to read off; off,
+  /// the field narrows to its value alone.
+  final bool includeOurExchange;
+
   /// What an untouched Sent/Rcvd stands for, per mode band — the operator's
   /// own overrides from Logging settings ([defaultReport] for phone,
   /// [defaultReportCW] for CW/RTTY and the other data modes,
@@ -1095,7 +1107,7 @@ class LoggingPreferences {
   /// Move focus on once a report is complete, so a full exchange takes no
   /// Spaces at all. "Complete" is [rstLengthFor]: two characters on phone,
   /// three elsewhere.
-  final bool jumpAfterRST;
+  final bool autoAdvanceFields;
 
   /// The mobile numbers row (issue #27) — a bar of digit keys floated above
   /// the on-screen keyboard while a logging field has focus. Only ever shown
@@ -1137,11 +1149,13 @@ class LoggingPreferences {
     bool? showRSTFields,
     bool? showStateField,
     bool? showGridField,
+    bool? showOptionalFields,
+    bool? includeOurExchange,
     String? defaultReport,
     String? defaultReportCW,
     String? defaultReportFT8,
     bool? switchSentRcvd,
-    bool? jumpAfterRST,
+    bool? autoAdvanceFields,
     bool? showNumbersRow,
     bool? showExtraInNumbersRow,
     bool? vibrateNumbersRow,
@@ -1155,11 +1169,13 @@ class LoggingPreferences {
     showRSTFields: showRSTFields ?? this.showRSTFields,
     showStateField: showStateField ?? this.showStateField,
     showGridField: showGridField ?? this.showGridField,
+    showOptionalFields: showOptionalFields ?? this.showOptionalFields,
+    includeOurExchange: includeOurExchange ?? this.includeOurExchange,
     defaultReport: defaultReport ?? this.defaultReport,
     defaultReportCW: defaultReportCW ?? this.defaultReportCW,
     defaultReportFT8: defaultReportFT8 ?? this.defaultReportFT8,
     switchSentRcvd: switchSentRcvd ?? this.switchSentRcvd,
-    jumpAfterRST: jumpAfterRST ?? this.jumpAfterRST,
+    autoAdvanceFields: autoAdvanceFields ?? this.autoAdvanceFields,
     showNumbersRow: showNumbersRow ?? this.showNumbersRow,
     showExtraInNumbersRow: showExtraInNumbersRow ?? this.showExtraInNumbersRow,
     vibrateNumbersRow: vibrateNumbersRow ?? this.vibrateNumbersRow,

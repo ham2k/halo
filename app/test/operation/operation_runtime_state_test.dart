@@ -283,7 +283,12 @@ void main() {
       current = renamed;
       state.operationChanged(operation, renamed);
       await settle();
-      extensions.pending.single.complete((controls: const <Map<String, dynamic>>[], loadFailed: false));
+      // The boot's fetch, and the one the new call asks for: an exchange can
+      // show the station call.
+      expect(extensions.pending, hasLength(2));
+      for (final c in extensions.pending) {
+        c.complete((controls: const <Map<String, dynamic>>[], loadFailed: false));
+      }
       await settle();
 
       // Lookups carry no ordering guard: the boot's, asked last and likely to
@@ -395,6 +400,87 @@ void main() {
       expect(extensions.pending, hasLength(2));
       for (final c in extensions.pending) {
         if (!c.isCompleted) c.complete((controls: const <Map<String, dynamic>>[], loadFailed: false));
+      }
+      await settle();
+    });
+  });
+
+  group('sameControlsInput', () {
+    Operation op(Map<String, dynamic> data) => Operation(uuid: 'op', data: data);
+    const base = {
+      'stationCall': 'N0CALL',
+      'refs': [
+        {'type': 'ss'},
+      ],
+      'status': 'planned',
+      'statusAtMillis': 1,
+      'updatedAtMillis': 1,
+      'createdAtMillis': 1,
+      'title': 'Sweepstakes',
+      'userTitle': 'SS',
+    };
+
+    test("the operation's own bookkeeping is not a change of controls", () {
+      // These move with nobody editing anything — the status flips at the
+      // first QSO, a refs edit re-derives the title. Each counted as a change
+      // would be a hook fan-out per contact.
+      expect(
+        sameControlsInput(
+          op(base),
+          op({...base, 'status': 'active', 'statusAtMillis': 2, 'updatedAtMillis': 2, 'createdAtMillis': 2, 'title': 'Other', 'userTitle': 'Other'}),
+        ),
+        isTrue,
+      );
+    });
+
+    test('anything else in the data the hooks are handed is', () {
+      // The hooks read the whole operation, so a field outside the refs — the
+      // station call a sent exchange shows — can change what they return.
+      for (final (what, changed) in [
+        ('the station call', {...base, 'stationCall': 'N0CALL/P'}),
+        (
+          'the refs',
+          {
+            ...base,
+            'refs': [
+              {'type': 'ss', 'section': 'ENY'},
+            ],
+          },
+        ),
+        ('a field nobody listed', {...base, 'grid': 'FN30'}),
+      ]) {
+        expect(sameControlsInput(op(base), op(changed)), isFalse, reason: what);
+      }
+    });
+  });
+
+  group('controls follow the operation', () {
+    test('a station call change refetches; a status flip or a retitle does not', () async {
+      final extensions = _Scripted();
+      final state = await makeState(extensions);
+
+      state.operationChanged(null, operation);
+      await settle();
+      expect(extensions.pending, hasLength(1));
+
+      final flipped = Operation(uuid: operation.uuid, data: {...operation.data, 'status': 'active', 'title': 'Retitled'});
+      state.operationChanged(operation, flipped);
+      await settle();
+      expect(extensions.pending, hasLength(1));
+
+      // The trap: refetching on refs alone, so the exchange showing our own
+      // call keeps the old one until the operator touches the refs.
+      final renamed = Operation(uuid: operation.uuid, data: {...flipped.data, 'stationCall': 'N0NEW'});
+      current = renamed;
+      state.operationChanged(flipped, renamed);
+      await settle();
+      expect(extensions.pending, hasLength(2));
+
+      for (final c in extensions.pending) {
+        if (!c.isCompleted) c.complete((controls: const <Map<String, dynamic>>[], loadFailed: false));
+      }
+      for (final lookup in extensions.entityLookups) {
+        if (!lookup.isCompleted) lookup.complete(null);
       }
       await settle();
     });

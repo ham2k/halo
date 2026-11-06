@@ -19,6 +19,22 @@ import '../../services/scoring_service.dart' show checkpointDigestOf;
 /// Whether two operations' `refs` are the same list.
 bool sameRefs(Object? a, Object? b) => jsonEncode(a) == jsonEncode(b);
 
+/// The operation's own bookkeeping, which no extension's controls depend on
+/// and which moves without anyone editing anything — a status flip at the
+/// first QSO, the title a refs edit re-derives, an export or a sync stamp.
+const _controlsIgnoredKeys = {'status', 'statusAtMillis', 'updatedAtMillis', 'createdAtMillis', 'processedAtMillis', 'syncedAtMillis', 'title', 'userTitle'};
+
+/// Whether [a] and [b] would get the same logging controls: the hooks are
+/// handed the operation's whole `data`, so any of it — the station call an
+/// exchange shows, a contest's setup on its ref, a location — can shape them.
+bool sameControlsInput(Operation a, Operation b) {
+  Map<String, dynamic> input(Operation operation) => {
+    for (final entry in operation.data.entries)
+      if (!_controlsIgnoredKeys.contains(entry.key)) entry.key: entry.value,
+  };
+  return jsonEncode(input(a)) == jsonEncode(input(b));
+}
+
 /// The count and the checkpoint digest — every uuid with its stamp,
 /// order-free — which is what a pass stamps its checkpoint with, so the two
 /// agree about whether anything moved. An O(N) walk with no allocation, on a
@@ -146,8 +162,8 @@ class OperationRuntimeState extends ChangeNotifier {
       if (previous?.stationCall != operation.stationCall) {
         unawaited(resolveOurEntity(operation));
       }
+      if (previous == null || !sameControlsInput(previous, operation)) unawaited(refreshControls(operation));
       if (previous == null || !sameRefs(previous.data['refs'], operation.data['refs'])) {
-        unawaited(refreshControls(operation));
         // Refs are what suggestOperationTitle reads
         // — no debounce needed, refs only change on a deliberate edit, unlike
         // the QSO list's rescore trigger below.

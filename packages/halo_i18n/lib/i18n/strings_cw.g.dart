@@ -1819,6 +1819,8 @@ class _Translations$operation$menu$cw extends Translations$operation$menu$en {
 	@override String get showRstFields => '··· ···· ——— ·—— / ·—· ··· — / ··—· ·· · ·—·· —·· ···';
 	@override String get showStateField => '··· ···· ——— ·—— / ··· — ·— — · / ··—· ·· · ·—·· —··';
 	@override String get showGridField => '··· ···· ——— ·—— / ——· ·—· ·· —·· / ··—· ·· · ·—·· —··';
+	@override String get showOptionalFields => '··· ···· ——— ·—— / ——— ·——· — ·· ——— —· ·— ·—·· / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ···';
+	@override String get includeOurExchange => '·· —· —·—· ·—·· ··— —·· · / ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · / ·· —· / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ···';
 	@override String get showDeletedQsos => '··· ···· ——— ·—— / —·· · ·—·· · — · —·· / ——·— ··· ——— ···';
 	@override String get showDeletedOps => '··· ···· ——— ·—— / —·· · ·—·· · — · —·· / ——— ·——· · ·—· ·— — ·· ——— —· ···';
 	@override String get showQsoNumbers => '··· ···· ——— ·—— / ——·— ··· ——— / —· ··— —— —··· · ·—· ···';
@@ -2319,7 +2321,7 @@ class _Translations$settings$logging$cw extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$cw showBearing = _Translations$settings$logging$showBearing$cw._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$cw showReverseBearing = _Translations$settings$logging$showReverseBearing$cw._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$cw switchSentRcvd = _Translations$settings$logging$switchSentRcvd$cw._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$cw jumpAfterRST = _Translations$settings$logging$jumpAfterRST$cw._(_root);
+	@override late final _Translations$settings$logging$autoAdvanceFields$cw autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$cw._(_root);
 	@override late final _Translations$settings$logging$defaultReport$cw defaultReport = _Translations$settings$logging$defaultReport$cw._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$cw defaultReportCW = _Translations$settings$logging$defaultReportCW$cw._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$cw defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$cw._(_root);
@@ -4012,16 +4014,15 @@ class _Translations$settings$logging$switchSentRcvd$cw extends Translations$sett
 	@override String get rcvdFirst => '·—· —·—· ···— —·· / ··—· ·· ·—· ··· — ——··—— / ··· · —· — / ··· · —·—· ——— —· —··';
 }
 
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$cw extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+// Path: settings.logging.autoAdvanceFields
+class _Translations$settings$logging$autoAdvanceFields$cw extends Translations$settings$logging$autoAdvanceFields$en {
+	_Translations$settings$logging$autoAdvanceFields$cw._(TranslationsCw root) : this._root = root, super.internal(root);
 
 	final TranslationsCw _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => '·——— ··— —— ·——· / — ——— / —· · —··— — / ··—· ·· · ·—·· —·· / ——— —· / ·—· ··· — / · —· — ·—· —·——';
-	@override String get descriptionOn => '·——— ··— —— ·——· ·· —· ——· / ·— ··—· — · ·—· / ·—· ··· — / ·· ··· / · —· — · ·—· · —··';
-	@override String get descriptionOff => '—· ——— — / ·——— ··— —— ·——· ·· —· ——· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——';
+	@override String get title => '·— ··— — ——— —····— ·— —·· ···— ·— —· —·—· · / ··—· ·· · ·—·· —·· ···';
+	@override String get description => '·— —·· ···— ·— —· —·—· · / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·—— ···· · —· / ··—· ··— ·—·· ·—·· / ···— ·— ·—·· ··— · / ·· ··· / · —· — · ·—· · —·· ——··—— / ··· ——— —— · / ··—· ·· · ·—·· —·· ··· / ——— —· ·—·· —·—— / —·——· —— ·— ·—· —·— · —·· / ·—— ·· — ···· / * —·——·—';
 }
 
 // Path: settings.logging.defaultReport
@@ -5289,6 +5290,8 @@ extension on TranslationsCw {
 			'operation.menu.showRstFields' => '··· ···· ——— ·—— / ·—· ··· — / ··—· ·· · ·—·· —·· ···',
 			'operation.menu.showStateField' => '··· ···· ——— ·—— / ··· — ·— — · / ··—· ·· · ·—·· —··',
 			'operation.menu.showGridField' => '··· ···· ——— ·—— / ——· ·—· ·· —·· / ··—· ·· · ·—·· —··',
+			'operation.menu.showOptionalFields' => '··· ···· ——— ·—— / ——— ·——· — ·· ——— —· ·— ·—·· / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ···',
+			'operation.menu.includeOurExchange' => '·· —· —·—· ·—·· ··— —·· · / ——— ··— ·—· / · —··— —·—· ···· ·— —· ——· · / ·· —· / ·—·· ——— ——· ——· ·· —· ——· / ··—· ·· · ·—·· —·· ···',
 			'operation.menu.showDeletedQsos' => '··· ···· ——— ·—— / —·· · ·—·· · — · —·· / ——·— ··· ——— ···',
 			'operation.menu.showDeletedOps' => '··· ···· ——— ·—— / —·· · ·—·· · — · —·· / ——— ·——· · ·—· ·— — ·· ——— —· ···',
 			'operation.menu.showQsoNumbers' => '··· ···· ——— ·—— / ——·— ··· ——— / —· ··— —— —··· · ·—· ···',
@@ -5376,10 +5379,10 @@ extension on TranslationsCw {
 			'operation.layout.layouts.problemMalformed' => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· —— ·— —',
 			'operation.layout.layouts.problemTooLarge' => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
 			'operation.layout.layouts.importNothing' => '—· ——— / ·——· ·— —· · ·—·· / ·——· ·· —·—· —·— · —·· ——··—— / ··· ——— / —· ——— — ···· ·· —· ——· / ·—— ·— ··· / ·· —— ·——· ——— ·—· — · —·· ·—·—·—',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => '·—·· · ··—· — / ——— ··— — ———··· / ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '—·— · ·——· — / ${panels} ———··· / — ···· · / ··· —— ·— ·—·· ·—·· —····— ··· —·—· ·—· · · —· / ·— ·—· ·—· ·— —· ——· · —— · —· — / —·—· ·— —· ’ — / —·· ——— / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
@@ -5890,10 +5893,10 @@ extension on TranslationsCw {
 			'loggingControls.powerControl' => '·——· ——— ·—— · ·—·',
 			'loggingControls.notesControl' => '—· ——— — · ···',
 			'loggingControls.operatorControl' => '——— ·——· · ·—· ·— — ——— ·—·',
-			'loggingControls.operatorField' => '——— ·——· · ·—· ·— — ——— ·—·',
-			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·—· ·— ·—·· ·—··', other: '${count} / —·—· ·— ·—·· ·—·· ···', ), 
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.operatorField' => '——— ·——· · ·—· ·— — ——— ·—·',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / —·—· ·— ·—·· ·—··', other: '${count} / —·—· ·— ·—·· ·—·· ···', ), 
 			'loggingControls.editStationCalls' => '· —·· ·· — / ·—·· ·· ··· —',
 			'loggingControls.stationCallsTitle' => '··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'loggingControls.stationCallsHint' => '—·—· ·— ·—·· ·—·· ··· / ·— —·· —·· · —·· / ···· · ·—· · / —·—· ——— ··— —· — / ··—· ·—· ——— —— / — ···· · / —· · —··— — / —·—· ——— —· — ·— —·—· — / ——— —· ·—·—·— / ·— / —·—· ·— ·—·· ·—·· / ·—· · —— ——— ···— · —·· / ···· · ·—· · / —·— · · ·——· ··· / — ···· · / —·—· ——— —· — ·— —·—· — ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—·· ——— ——· ——· · —·· / ··— —· —·· · ·—· / ·· — ·—·—·—',
@@ -6121,9 +6124,8 @@ extension on TranslationsCw {
 			'settings.logging.switchSentRcvd.title' => '··· ·—— ·· — —·—· ···· / ··· ·· ——· —· ·— ·—·· / ·—· · ·——· ——— ·—· — / ——— ·—· —·· · ·—·',
 			'settings.logging.switchSentRcvd.sentFirst' => '··· · —· — / ··—· ·· ·—· ··· — ——··—— / ·—· —·—· ···— —·· / ··· · —·—· ——— —· —··',
 			'settings.logging.switchSentRcvd.rcvdFirst' => '·—· —·—· ···— —·· / ··—· ·· ·—· ··· — ——··—— / ··· · —· — / ··· · —·—· ——— —· —··',
-			'settings.logging.jumpAfterRST.title' => '·——— ··— —— ·——· / — ——— / —· · —··— — / ··—· ·· · ·—·· —·· / ——— —· / ·—· ··· — / · —· — ·—· —·——',
-			'settings.logging.jumpAfterRST.descriptionOn' => '·——— ··— —— ·——· ·· —· ——· / ·— ··—· — · ·—· / ·—· ··· — / ·· ··· / · —· — · ·—· · —··',
-			'settings.logging.jumpAfterRST.descriptionOff' => '—· ——— — / ·——— ··— —— ·——· ·· —· ——· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
+			'settings.logging.autoAdvanceFields.title' => '·— ··— — ——— —····— ·— —·· ···— ·— —· —·—· · / ··—· ·· · ·—·· —·· ···',
+			'settings.logging.autoAdvanceFields.description' => '·— —·· ···— ·— —· —·—· · / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·—— ···· · —· / ··—· ··— ·—·· ·—·· / ···— ·— ·—·· ··— · / ·· ··· / · —· — · ·—· · —·· ——··—— / ··· ——— —— · / ··—· ·· · ·—·· —·· ··· / ——— —· ·—·· —·—— / —·——· —— ·— ·—· —·— · —·· / ·—— ·· — ···· / * —·——·—',
 			'settings.logging.defaultReport.title' => '—·· · ··—· ·— ··— ·—·· — / ·—· · ·——· ——— ·—· — / — / ·——· ···· ——— —· ·',
 			'settings.logging.defaultReport.description' => '··— ··· · —·· / ·—— ···· · —· / ··· · —· — / ——— ·—· / ·—· —·—· ···— —·· / ·· ··· / ·—·· · ··—· — / · —— ·——· — —·—— / ——— —· / ··· ··· —··· ——··—— / ··—· —— / ——— ·—· / ·— ——',
 			'settings.logging.defaultReportCW.title' => '—·· · ··—· ·— ··— ·—·· — / ·—· · ·——· ——— ·—· — / — / —·—· ·—— / ·— —· —·· / —·· ·— — ·—',
@@ -6405,9 +6407,9 @@ extension on TranslationsCw {
 			'settings.radio.voiceWords.recordAnother' => '·—· · —·—· ——— ·—· —·· / ·— —· ——— — ···· · ·—·',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => '·—· · —·—· ——— ·—· —·· ·· —· ——· / ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => '··—· ·· ·—· ··· — / — ·— —·— · / ${n}',
-			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => '—— ·· —·· —·· ·—·· · / — ·— —·— · / ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => '—— ·· —·· —·· ·—·· · / — ·— —·— · / ${n}',
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => '·—·· ·— ··· — / — ·— —·— · / ${n}',
 			'settings.radio.voiceWords.deleteReading' => '—·· · ·—·· · — · / ·—· · —·—· ——— ·—· —·· ·· —· ——·',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => '—·· · ·—·· · — · / — ···· ·· ··· / ·—· · —·—· ——— ·—· —·· ·· —· ——· / ——— ··—· / “ ${word} ” ··——··',
@@ -6919,9 +6921,9 @@ extension on TranslationsCw {
 			'settings.station.k4ReceiverAlreadyConfigured' => '— ···· ·— — / ·—· · —·—· · ·· ···— · ·—· / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ··—· ——— ·—· / — ···· ·· ··· / —·— ····—',
 			'settings.station.k4SubReceiverOff' => '— ···· · / —·— ····— / ··· ··— —··· / ·—· · —·—· · ·· ···— · ·—· / ·· ··· / ——— ··—· ··—·',
 			'settings.station.k4RemotePasswordRequired' => '· —· — · ·—· / — ···· · / —·— ····— ’ ··· / —· · — ·—— ——— ·—· —·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· / — ——— / —·—· ——— —· —· · —·—· — / ··· · —·—· ··— ·—· · ·—·· —·—— ·—·—·—',
-			'settings.station.k4RemoteHandshakeFailed' => '— ···· · / —·— ····— / —·—· ——— ··— ·—·· —·· / —· ——— — / · ··· — ·— —··· ·—·· ·· ··· ···· / ·— / ··· · —·—· ··— ·—· · / —·—· ——— —· —· · —·—· — ·· ——— —· ·—·—·— / —·—· ···· · —·—· —·— / ·· — ··· / —· · — ·—— ——— ·—· —·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· / ·— —· —·· / ·—· · —— ——— — · / ·— —·—· —·—· · ··· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4RemoteHandshakeFailed' => '— ···· · / —·— ····— / —·—· ——— ··— ·—·· —·· / —· ——— — / · ··· — ·— —··· ·—·· ·· ··· ···· / ·— / ··· · —·—· ··— ·—· · / —·—· ——— —· —· · —·—· — ·· ——— —· ·—·—·— / —·—· ···· · —·—· —·— / ·· — ··· / —· · — ·—— ——— ·—· —·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· / ·— —· —·· / ·—· · —— ——— — · / ·— —·—· —·—· · ··· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'settings.station.k4RemoteUnreachable' => '— ···· · / —·— ····— ’ ··· / ··· · —·—· ··— ·—· · / —·—· ——— —· —· · —·—· — ·· ——— —· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·— / —·—· ···· · —·—· —·— / ·· — ··· / ·— —·· —·· ·—· · ··· ··· ——··—— / ·——· ——— ·—· — / ·— —· —·· / ·—· · —— ——— — · / ·— —·—· —·—· · ··· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'settings.station.k4PowerRange' => '—·— ····— / ·——· ——— ·—— · ·—· / —— ··— ··· — / —··· · / ————— ·—·—·— ·———— – ·———— ·———— ————— / ·—— ——··—— / ——— ·—· / ————— ·—·—·— ————— ————— ————— ·———— – ————— ·—·—·— ————— ·———— / ·—— / ·—— ···· · —· / — ···· · / — ·—· ·— —· ··· ···— · ·—· — · ·—· / —— ·· ·—·· ·—·· ·· ·—— ·— — — / ——— ··— — ·——· ··— — / ·· ··· / ·— —·—· — ·· ···— · ·—·—·—',
 			'settings.station.elecraftTroubleshootingTitle' => '·· ··—· / — ···· · / ·—· ·— —·· ·· ——— / —·—· ——— —· —· · —·—· — ··· / —··· ··— — / ··· ···· ——— ·—— ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——',
@@ -7433,9 +7435,9 @@ extension on TranslationsCw {
 			'sets.empty' => '· —— ·——· — —·—— / ··—· ——— ·—·· —·· · ·—·',
 			'sets.exported' => ({required Object location}) => '··· ·— ···— · —·· / — ——— / ${location}',
 			'sets.exportedNamed' => ({required Object names}) => '··· ·— ···— · —·· / ${names}',
-			'sets.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / · —··— ·——· ——— ·—· — ———··· / ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'sets.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / · —··— ·——· ——— ·—· — ———··· / ${error}',
 			'sets.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·· —— ·——· ——— ·—· — / ${filename} ———··· / ${error}',
 			'sets.imported' => ({required Object name}) => '·· —— ·——· ——— ·—· — · —·· / ${name}',

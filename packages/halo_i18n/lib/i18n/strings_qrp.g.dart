@@ -1819,6 +1819,8 @@ class _Translations$operation$menu$qrp extends Translations$operation$menu$en {
 	@override String get showRstFields => 'show rst fields';
 	@override String get showStateField => 'show state field';
 	@override String get showGridField => 'show grid field';
+	@override String get showOptionalFields => 'show optional logging fields';
+	@override String get includeOurExchange => 'include our exchange in logging fields';
 	@override String get showDeletedQsos => 'show deleted qsos';
 	@override String get showDeletedOps => 'show deleted operations';
 	@override String get showQsoNumbers => 'show qso numbers';
@@ -2319,7 +2321,7 @@ class _Translations$settings$logging$qrp extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qrp showBearing = _Translations$settings$logging$showBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qrp showReverseBearing = _Translations$settings$logging$showReverseBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qrp switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qrp._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$qrp jumpAfterRST = _Translations$settings$logging$jumpAfterRST$qrp._(_root);
+	@override late final _Translations$settings$logging$autoAdvanceFields$qrp autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qrp defaultReport = _Translations$settings$logging$defaultReport$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$qrp defaultReportCW = _Translations$settings$logging$defaultReportCW$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$qrp defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$qrp._(_root);
@@ -4012,16 +4014,15 @@ class _Translations$settings$logging$switchSentRcvd$qrp extends Translations$set
 	@override String get rcvdFirst => 'rcvd first, sent second';
 }
 
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$qrp extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+// Path: settings.logging.autoAdvanceFields
+class _Translations$settings$logging$autoAdvanceFields$qrp extends Translations$settings$logging$autoAdvanceFields$en {
+	_Translations$settings$logging$autoAdvanceFields$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
 
 	final TranslationsQrp _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'jump to next field on rst entry';
-	@override String get descriptionOn => 'jumping after rst is entered';
-	@override String get descriptionOff => 'not jumping automatically';
+	@override String get title => 'auto-advance fields';
+	@override String get description => 'advance automatically when full value is entered, some fields only (marked with *)';
 }
 
 // Path: settings.logging.defaultReport
@@ -5289,6 +5290,8 @@ extension on TranslationsQrp {
 			'operation.menu.showRstFields' => 'show rst fields',
 			'operation.menu.showStateField' => 'show state field',
 			'operation.menu.showGridField' => 'show grid field',
+			'operation.menu.showOptionalFields' => 'show optional logging fields',
+			'operation.menu.includeOurExchange' => 'include our exchange in logging fields',
 			'operation.menu.showDeletedQsos' => 'show deleted qsos',
 			'operation.menu.showDeletedOps' => 'show deleted operations',
 			'operation.menu.showQsoNumbers' => 'show qso numbers',
@@ -5376,10 +5379,10 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'no panel picked, so nothing was imported.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'left out: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'kept ${panels}: the small-screen arrangement can’t do without it.',
@@ -5890,10 +5893,10 @@ extension on TranslationsQrp {
 			'loggingControls.powerControl' => 'power',
 			'loggingControls.notesControl' => 'notes',
 			'loggingControls.operatorControl' => 'operator',
-			'loggingControls.operatorField' => 'operator',
-			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} call', other: '${count} calls', ), 
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.operatorField' => 'operator',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} call', other: '${count} calls', ), 
 			'loggingControls.editStationCalls' => 'edit list',
 			'loggingControls.stationCallsTitle' => 'station callsigns',
 			'loggingControls.stationCallsHint' => 'calls added here count from the next contact on. a call removed here keeps the contacts already logged under it.',
@@ -6121,9 +6124,8 @@ extension on TranslationsQrp {
 			'settings.logging.switchSentRcvd.title' => 'switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'sent first, rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'rcvd first, sent second',
-			'settings.logging.jumpAfterRST.title' => 'jump to next field on rst entry',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'jumping after rst is entered',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'not jumping automatically',
+			'settings.logging.autoAdvanceFields.title' => 'auto-advance fields',
+			'settings.logging.autoAdvanceFields.description' => 'advance automatically when full value is entered, some fields only (marked with *)',
 			'settings.logging.defaultReport.title' => 'default report — phone',
 			'settings.logging.defaultReport.description' => 'used when sent or rcvd is left empty on ssb, fm or am',
 			'settings.logging.defaultReportCW.title' => 'default report — cw and data',
@@ -6405,9 +6407,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceWords.recordAnother' => 'record another',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'first take ${n}',
-			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'middle take ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'middle take ${n}',
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'last take ${n}',
 			'settings.radio.voiceWords.deleteReading' => 'delete recording',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'delete this recording of “${word}”?',
@@ -6919,9 +6921,9 @@ extension on TranslationsQrp {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'that receiver is already configured for this k4',
 			'settings.station.k4SubReceiverOff' => 'the k4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'enter the k4’s network password to connect securely.',
-			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
 			'settings.station.k4RemoteUnreachable' => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'if the radio connects but shows no frequency',
@@ -7433,9 +7435,9 @@ extension on TranslationsQrp {
 			'sets.empty' => 'empty folder',
 			'sets.exported' => ({required Object location}) => 'saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'saved ${names}',
-			'sets.exportFailed' => ({required Object error}) => 'could not export: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'sets.exportFailed' => ({required Object error}) => 'could not export: ${error}',
 			'sets.importPickerFailed' => ({required Object error}) => 'could not open the file: ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
 			'sets.imported' => ({required Object name}) => 'imported ${name}',

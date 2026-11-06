@@ -99,10 +99,20 @@ class _Harness {
   int edits = 0;
 
   late final model = ExchangeFieldsModel(
-    config: () =>
-        (textControls: () => controls, editingQso: editingQso, operationUuid: 'op', serialNumbers: source, sequences: sequences, call: call, menuBelow: false),
+    config: () => (
+      textControls: () => controls,
+      editingQso: editingQso,
+      operationUuid: 'op',
+      serialNumbers: source,
+      sequences: sequences,
+      call: call,
+      solo: false,
+      autoAdvance: false,
+      menuBelow: false,
+    ),
     draftQsoData: () => draft,
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
+    onAdvanceFocus: () {},
     onFocusChanged: (node, controller) => focusEvents.add(node),
     onEdited: () => edits++,
   )..addListener(() => notifications++);
@@ -201,6 +211,30 @@ void main() {
         ]),
         isEmpty,
       );
+    });
+
+    test('a display-only field neither writes its field nor clears it', () {
+      // Its `field` is not the operator's to set: an empty one taken as "never
+      // filled in" would strip what the ref already carries there, and a value
+      // restored into it would be written as though typed.
+      const ours = {
+        'key': 'ss/ours',
+        'label': 'Ours',
+        'input': {'kind': 'text', 'refType': 'ss', 'field': 'ours', 'editable': false, 'value': 'A 79 ENY'},
+      };
+      final h = _Harness(controls: [ours]);
+      addTearDown(h.model.dispose);
+      expect(
+        h.model.refsWithTextValues([
+          {'type': 'ss', 'ours': 'B 02 CT', 'check': '33'},
+        ]),
+        [
+          {'type': 'ss', 'ours': 'B 02 CT', 'check': '33'},
+        ],
+      );
+
+      h.model.restore('ss/ours', 'B 02 CT');
+      expect(h.model.refsWithTextValues(const []), isEmpty);
     });
 
     test('a value restored off a saved QSO counts as typed, so a suggestion never overwrites it', () {

@@ -727,6 +727,76 @@ void main() {
     expect(field('Their #').controller!.text, '18', reason: 'the received serial steps too');
   });
 
+  testWidgets('Backspace in an empty field goes back to the previous stop, as if deleting the space between them', (tester) async {
+    // The mutations this catches: the walk ignoring `skipFocus` (landing on
+    // Our #, a stop Space never made), firing in a field that still has text
+    // to delete, firing on a key repeat (held Backspace emptying Their # then
+    // marching on into the reports), or wrapping from Call to the last field.
+    const controls = [
+      {
+        'key': 'cqwpx/ourSerial',
+        'label': 'Our #',
+        'icon': 'flag-checkered',
+        'skipFocus': true,
+        'input': {
+          'kind': 'serial',
+          'refType': 'cqwpx',
+          'field': 'ourSerial',
+          'sequence': {'key': 'serial'},
+        },
+      },
+      {
+        'key': 'cqwpx/theirSerial',
+        'label': 'Their #',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirSerial', 'numeric': true},
+      },
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            radio: baseRadio(),
+            activities: ActivityHooks(activityControls: controls),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
+    bool focused(String label) => field(label).focusNode!.hasFocus;
+
+    await tester.showKeyboard(find.widgetWithText(TextField, 'Their #'));
+    tester.testTextInput.updateEditingValue(const TextEditingValue(text: '7', selection: TextSelection.collapsed(offset: 1)));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Their #'), isTrue, reason: 'a field with text deletes it and stays');
+    expect(field('Their #').controller!.text, '');
+
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Their #'), isTrue, reason: 'a held Backspace stops once the field is empty');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Rcvd'), isTrue, reason: 'passes over the skipped Our #, as Shift-Tab does');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Sent'), isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Their call'), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(focused('Their call'), isTrue, reason: 'nothing comes before the first field — no wrap');
+  });
+
   testWidgets('a received serial that is not digits-only never steps', (tester) async {
     // nrrl-nfd's shape: a digimode QSO logs a locator in Their #, and a step
     // keeps only digits — a stray comma would turn `JP50` into `49`.

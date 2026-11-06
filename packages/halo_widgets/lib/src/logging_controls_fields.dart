@@ -121,28 +121,15 @@ extension _EntryFields on _LoggingControlsState {
     return _callList.isNotEmpty && _callList.every(isLoggableCall);
   }
 
-  /// `jumpAfterRST`: move on the moment a report reaches [rstLengthFor],
-  /// so a full exchange costs no Spaces.
-  ///
-  /// Deliberately fires on the **upward crossing** only, not on every keystroke
-  /// at or above the length: correcting a report that is already complete —
-  /// one just typed, or one loaded from a saved QSO — must not throw the
-  /// operator out of the field on their first character.
-  ///
-  /// Hung off the controller because the report fields carry no `onChanged`.
-  /// `hasFocus` is what keeps this to real typing: every programmatic write
-  /// (a wipe, a suggestion, the blur-time [expandRST]) happens to a field the
-  /// operator is not in.
-  void _maybeJumpAfterRST(FocusNode focus, TextEditingController controller) {
-    final length = controller.text.trim().length;
-    final previous = _rstLengthSeen[focus] ?? 0;
-    _rstLengthSeen[focus] = length;
-    if (!widget.prefs.jumpAfterRST || _draft.isPopulating || !focus.hasFocus) return;
-    // Null on the FT modes, whose report has no fixed length — there is no
-    // moment to call "done", so the setting simply doesn't apply.
+  /// The reports' `autoadvanceWhen` under the Auto-advance Fields setting, or
+  /// null when they don't move on by themselves. A report is complete at its
+  /// **full** length, [rstLengthFor] — two characters on phone, three
+  /// elsewhere — so `44A` and `5NN` stay typeable on CW. The FT modes have no
+  /// complete length, so no rule at all.
+  RegExp? get _rstAdvanceWhen {
+    if (!widget.prefs.autoAdvanceFields) return null;
     final full = rstLengthFor(_radio.mode);
-    if (full == null) return;
-    if (previous < full && length >= full) _ladder.advancePrimaryFocus();
+    return full == null ? null : compileRefPattern('\\S{$full}');
   }
 
   void _clearRSTs() {

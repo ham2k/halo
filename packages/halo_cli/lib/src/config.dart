@@ -38,7 +38,7 @@ const defaultSettings = <String, Object?>{
   'dxFlags': 'dx',
   'showBearing': false,
   'switchSentRcvd': false,
-  'jumpAfterRST': false,
+  'autoAdvanceFields': false,
   'defaultReport': '',
   'defaultReportCW': '',
   'defaultReportFT8': '',

@@ -508,6 +508,8 @@
       "showRstFields": "show rst fields",
       "showStateField": "show state field",
       "showGridField": "show grid field",
+      "showOptionalFields": "show optional logging fields",
+      "includeOurExchange": "include our exchange in logging fields",
       "showDeletedQsos": "show deleted qsos",
       "showDeletedOps": "show deleted operations",
       "showQsoNumbers": "show qso numbers",
@@ -1500,10 +1502,9 @@
         "sentFirst": "sent first, rcvd second",
         "rcvdFirst": "rcvd first, sent second"
       },
-      "jumpAfterRST": {
-        "title": "jump to next field on rst entry",
-        "descriptionOn": "jumping after rst is entered",
-        "descriptionOff": "not jumping automatically"
+      "autoAdvanceFields": {
+        "title": "auto-advance fields",
+        "description": "advance automatically when full value is entered, some fields only (marked with *)"
       },
       "defaultReport": {
         "title": "default report — phone",

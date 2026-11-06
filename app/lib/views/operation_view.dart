@@ -28,6 +28,8 @@ import '../services/spot_board_service.dart' show SpotBoardSubscription;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
+import '../settings/core_settings_groups.dart' show LoggingSettingsGroup;
+import '../settings/settings_registry.dart' show SettingsGroup;
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
 import 'keyer_area.dart' show keyerOrSay;
@@ -110,13 +112,15 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   late bool _showRSTFields = widget.services.settings.showRSTFields;
   late bool _showStateField = widget.services.settings.showStateField;
   late bool _showGridField = widget.services.settings.showGridField;
+  late bool _showOptionalFields = widget.services.settings.showOptionalFields;
+  late bool _includeOurExchange = widget.services.settings.includeOurExchange;
   late bool _showDeletedQSOs = widget.services.settings.showDeletedQSOs;
   late bool _showQsoNumbers = widget.services.settings.showQsoNumbers;
   late String _defaultReport = widget.services.settings.defaultReport;
   late String _defaultReportCW = widget.services.settings.defaultReportCW;
   late String _defaultReportFT8 = widget.services.settings.defaultReportFT8;
   late bool _switchSentRcvd = widget.services.settings.switchSentRcvd;
-  late bool _jumpAfterRST = widget.services.settings.jumpAfterRST;
+  late bool _autoAdvanceFields = widget.services.settings.autoAdvanceFields;
   late DxFlags _dxFlags = widget.services.settings.dxFlags;
 
   /// Cached QSO stream. Recreating `watchForOperation` inside `build` would
@@ -338,26 +342,30 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         s.showRSTFields != _showRSTFields ||
         s.showStateField != _showStateField ||
         s.showGridField != _showGridField ||
+        s.showOptionalFields != _showOptionalFields ||
+        s.includeOurExchange != _includeOurExchange ||
         s.showDeletedQSOs != _showDeletedQSOs ||
         s.showQsoNumbers != _showQsoNumbers ||
         s.defaultReport != _defaultReport ||
         s.defaultReportCW != _defaultReportCW ||
         s.defaultReportFT8 != _defaultReportFT8 ||
         s.switchSentRcvd != _switchSentRcvd ||
-        s.jumpAfterRST != _jumpAfterRST ||
+        s.autoAdvanceFields != _autoAdvanceFields ||
         s.dxFlags != _dxFlags;
     if (changed && mounted) {
       setState(() {
         _showRSTFields = s.showRSTFields;
         _showStateField = s.showStateField;
         _showGridField = s.showGridField;
+        _showOptionalFields = s.showOptionalFields;
+        _includeOurExchange = s.includeOurExchange;
         _showDeletedQSOs = s.showDeletedQSOs;
         _showQsoNumbers = s.showQsoNumbers;
         _defaultReport = s.defaultReport;
         _defaultReportCW = s.defaultReportCW;
         _defaultReportFT8 = s.defaultReportFT8;
         _switchSentRcvd = s.switchSentRcvd;
-        _jumpAfterRST = s.jumpAfterRST;
+        _autoAdvanceFields = s.autoAdvanceFields;
         _dxFlags = s.dxFlags;
       });
     }
@@ -406,6 +414,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // to a view nobody is looking at is not lost, but it is invisible, and
     // the caller says so rather than leaving the link looking dead.
     _commandContext.isVisible = () => mounted && (ModalRoute.of(context)?.isCurrent ?? false);
+    _commandContext.settingsGroups = () => _loggingSettingsGroups;
     // The link that pushed this view. Set directly rather than through
     // `_suggestQso`: that one calls setState and reveals the logging panel,
     // neither of which is legal before the first build — the reveal waits for
@@ -869,13 +878,15 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 showRSTFields: _showRSTFields,
                 showStateField: _showStateField,
                 showGridField: _showGridField,
+                showOptionalFields: _showOptionalFields,
+                includeOurExchange: _includeOurExchange,
                 showQsoNumbers: _showQsoNumbers,
                 findRequest: _findRequest,
                 defaultReport: _defaultReport,
                 defaultReportCW: _defaultReportCW,
                 defaultReportFT8: _defaultReportFT8,
                 switchSentRcvd: _switchSentRcvd,
-                jumpAfterRST: _jumpAfterRST,
+                autoAdvanceFields: _autoAdvanceFields,
                 dxFlags: _dxFlags,
                 ourEntityPrefix: _runtime.ourEntityPrefix,
                 ourItuRegion: _runtime.ourItuRegion,

@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$zh extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$zh showBearing = _Translations$settings$logging$showBearing$zh._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$zh showReverseBearing = _Translations$settings$logging$showReverseBearing$zh._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$zh switchSentRcvd = _Translations$settings$logging$switchSentRcvd$zh._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$zh jumpAfterRST = _Translations$settings$logging$jumpAfterRST$zh._(_root);
 	@override late final _Translations$settings$logging$defaultReport$zh defaultReport = _Translations$settings$logging$defaultReport$zh._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$zh defaultReportCW = _Translations$settings$logging$defaultReportCW$zh._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$zh defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$zh._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$zh extends Translations$sett
 	@override String get title => '切换信号报告顺序';
 	@override String get sentFirst => '先发送，后接收';
 	@override String get rcvdFirst => '先接收，后发送';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$zh extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$zh._(TranslationsZh root) : this._root = root, super.internal(root);
-
-	final TranslationsZh _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => '在填入 RST 后跳转下一个字段';
-	@override String get descriptionOn => '输入 RST 后跳转';
-	@override String get descriptionOff => '不自动跳转';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsZh {
 			'settings.logging.switchSentRcvd.title' => '切换信号报告顺序',
 			'settings.logging.switchSentRcvd.sentFirst' => '先发送，后接收',
 			'settings.logging.switchSentRcvd.rcvdFirst' => '先接收，后发送',
-			'settings.logging.jumpAfterRST.title' => '在填入 RST 后跳转下一个字段',
-			'settings.logging.jumpAfterRST.descriptionOn' => '输入 RST 后跳转',
-			'settings.logging.jumpAfterRST.descriptionOff' => '不自动跳转',
 			'settings.logging.defaultReport.title' => '默认报告——话音',
 			'settings.logging.defaultReport.description' => '在 SSB、FM 或 AM 下，发送或接收留空时使用',
 			'settings.logging.defaultReportCW.title' => '默认报告——CW 和数据',
@@ -6026,11 +6010,11 @@ extension on TranslationsZh {
 			'settings.privacy.shareOpData.descriptionOn' => '公开并与其他用户分享部分操作数据',
 			'settings.privacy.shareOpData.descriptionOff' => '保持操作数据私密',
 			'settings.privacy.privacyPolicy' => '隐私政策',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => '服务条款',
 			'settings.operatorCall' => '操作员呼号',
 			'settings.sync.title' => '云同步',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => '更多同步设置',
 			'settings.sync.enable' => '启用同步',
 			'settings.sync.deviceKey' => '设备密钥',
@@ -6540,11 +6524,11 @@ extension on TranslationsZh {
 			'settings.station.watts' => '瓦',
 			'settings.station.trackFieldAntenna' => '天线',
 			'settings.station.trackFieldKey' => 'CW 电键',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
 			'settings.station.placeholderConnectDelayDescription' => '模拟握手所需的时间。留空或 0 表示立即连接。',
 			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
 			'settings.station.placeholderFailConnect' => '总是连接失败',
 			'settings.station.placeholderConnectFailure' => '占位电台被设置为拒绝此连接',
@@ -7054,11 +7038,11 @@ extension on TranslationsZh {
 			'switchAccounts.requestFailed' => '与同步服务器通信时出了问题。请稍后重试。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个 QSO', other: '${count} 个 QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => '导入 QSON 操作',
 			'qsonImport.description' => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。',
 			'qsonImport.dropHint' => '拖放 QSON 文件以导入为新操作',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '无法打开要导入的文件：${error}',

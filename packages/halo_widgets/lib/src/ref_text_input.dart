@@ -356,7 +356,7 @@ class _RefTextInputState extends State<RefTextInput> {
   /// it, and a program's pattern is this app's idea of the program rather than
   /// the program's own — a reference format that changed, or one HaLo simply
   /// has wrong, must not cost the operator the code they were given. The field
-  /// says so with [haloInvalidInputBorder]; the ref reaches the QSO, the log
+  /// says so with [haloInvalidDecoration]; the ref reaches the QSO, the log
   /// and the exports either way.
   void _emit(String text) {
     final regex = _regex;
@@ -417,9 +417,10 @@ class _RefTextInputState extends State<RefTextInput> {
         // after our own focus listener above and overwrites its
         // cursor-at-end placement.
         selectAllOnFocus: false,
-        decoration: poloFieldDecoration(context, widget.label, hintText: widget.placeholder, labelColor: widget.labelColor).copyWith(
-          enabledBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 1) : null,
-          focusedBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 2) : null,
+        decoration: haloInvalidDecoration(
+          context,
+          poloFieldDecoration(context, widget.label, hintText: widget.placeholder, labelColor: widget.labelColor),
+          invalid: _hasInvalid,
         ),
         textCapitalization: TextCapitalization.characters,
         // References (e.g. "US-1234") are codes, not prose: no autocorrect /

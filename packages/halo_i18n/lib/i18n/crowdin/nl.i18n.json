@@ -1446,11 +1446,6 @@
         "sentFirst": "Verzonden eerst, ontvangen daarna",
         "rcvdFirst": "Ontvangen eerst, verzonden daarna"
       },
-      "jumpAfterRST": {
-        "title": "Ga naar volgende veld bij RST-invoer",
-        "descriptionOn": "Na RST naar het volgende veld springen",
-        "descriptionOff": "Niet automatisch springen"
-      },
       "defaultReport": {
         "title": "Standaardrapport — SSB",
         "description": "Gebruikt als Verzonden of Ontvangen leeg blijft bij SSB, FM of AM"

@@ -1446,11 +1446,6 @@
         "sentFirst": "Enviat primer, Rebut segon",
         "rcvdFirst": "Rebut primer, Enviat segon"
       },
-      "jumpAfterRST": {
-        "title": "Salta al camp següent en introduir RST",
-        "descriptionOn": "Es passa al camp següent després d'introduir l'RST",
-        "descriptionOff": "No es passa automàticament al camp següent"
-      },
       "defaultReport": {
         "title": "Informe per defecte — Fonia",
         "description": "S'utilitza quan Enviat o Rebut es deixen buits en SSB, FM o AM"

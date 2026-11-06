@@ -127,7 +127,10 @@ extension _WidgetUpdates on _LoggingControlsState {
     // panel would otherwise leave that number held with nothing left to
     // release it — and served again the moment the source came back.
     if (widget.session.editingQso == null &&
-        (oldWidget.log.serialNumbers != widget.log.serialNumbers || oldWidget.log.operation.uuid != widget.log.operation.uuid)) {
+        (oldWidget.log.serialNumbers != widget.log.serialNumbers ||
+            oldWidget.log.operation.uuid != widget.log.operation.uuid ||
+            // A second set appearing ends solo: an idle number goes back.
+            (oldWidget.so2r == null) != (widget.so2r == null))) {
       oldWidget.log.serialNumbers?.release(oldWidget.log.operation.uuid);
       _exchange.forgetSerialState();
       unawaited(_exchange.refreshSerialPreviews());

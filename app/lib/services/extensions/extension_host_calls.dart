@@ -176,7 +176,7 @@ class _ExtensionHostCalls {
       'dxFlags': _service.settings?.dxFlags.name ?? 'dx',
       'showBearing': _service.settings?.showBearing ?? false,
       'switchSentRcvd': _service.settings?.switchSentRcvd ?? false,
-      'jumpAfterRST': _service.settings?.jumpAfterRST ?? false,
+      'autoAdvanceFields': _service.settings?.autoAdvanceFields ?? false,
       'defaultReport': _service.settings?.defaultReport ?? '',
       'defaultReportCW': _service.settings?.defaultReportCW ?? '',
       'defaultReportFT8': _service.settings?.defaultReportFT8 ?? '',

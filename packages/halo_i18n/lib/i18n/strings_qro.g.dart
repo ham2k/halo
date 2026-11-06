@@ -1819,6 +1819,8 @@ class _Translations$operation$menu$qro extends Translations$operation$menu$en {
 	@override String get showRstFields => 'SHOW RST FIELDS';
 	@override String get showStateField => 'SHOW STATE FIELD';
 	@override String get showGridField => 'SHOW GRID FIELD';
+	@override String get showOptionalFields => 'SHOW OPTIONAL LOGGING FIELDS';
+	@override String get includeOurExchange => 'INCLUDE OUR EXCHANGE IN LOGGING FIELDS';
 	@override String get showDeletedQsos => 'SHOW DELETED QSOS';
 	@override String get showDeletedOps => 'SHOW DELETED OPERATIONS';
 	@override String get showQsoNumbers => 'SHOW QSO NUMBERS';
@@ -2319,7 +2321,7 @@ class _Translations$settings$logging$qro extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qro showBearing = _Translations$settings$logging$showBearing$qro._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qro showReverseBearing = _Translations$settings$logging$showReverseBearing$qro._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qro switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qro._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$qro jumpAfterRST = _Translations$settings$logging$jumpAfterRST$qro._(_root);
+	@override late final _Translations$settings$logging$autoAdvanceFields$qro autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qro defaultReport = _Translations$settings$logging$defaultReport$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$qro defaultReportCW = _Translations$settings$logging$defaultReportCW$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$qro defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$qro._(_root);
@@ -4012,16 +4014,15 @@ class _Translations$settings$logging$switchSentRcvd$qro extends Translations$set
 	@override String get rcvdFirst => 'RCVD FIRST, SENT SECOND';
 }
 
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$qro extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+// Path: settings.logging.autoAdvanceFields
+class _Translations$settings$logging$autoAdvanceFields$qro extends Translations$settings$logging$autoAdvanceFields$en {
+	_Translations$settings$logging$autoAdvanceFields$qro._(TranslationsQro root) : this._root = root, super.internal(root);
 
 	final TranslationsQro _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'JUMP TO NEXT FIELD ON RST ENTRY';
-	@override String get descriptionOn => 'JUMPING AFTER RST IS ENTERED';
-	@override String get descriptionOff => 'NOT JUMPING AUTOMATICALLY';
+	@override String get title => 'AUTO-ADVANCE FIELDS';
+	@override String get description => 'ADVANCE AUTOMATICALLY WHEN FULL VALUE IS ENTERED, SOME FIELDS ONLY (MARKED WITH *)';
 }
 
 // Path: settings.logging.defaultReport
@@ -5289,6 +5290,8 @@ extension on TranslationsQro {
 			'operation.menu.showRstFields' => 'SHOW RST FIELDS',
 			'operation.menu.showStateField' => 'SHOW STATE FIELD',
 			'operation.menu.showGridField' => 'SHOW GRID FIELD',
+			'operation.menu.showOptionalFields' => 'SHOW OPTIONAL LOGGING FIELDS',
+			'operation.menu.includeOurExchange' => 'INCLUDE OUR EXCHANGE IN LOGGING FIELDS',
 			'operation.menu.showDeletedQsos' => 'SHOW DELETED QSOS',
 			'operation.menu.showDeletedOps' => 'SHOW DELETED OPERATIONS',
 			'operation.menu.showQsoNumbers' => 'SHOW QSO NUMBERS',
@@ -5376,10 +5379,10 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE LAYOUT FORMAT',
 			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
 			'operation.layout.layouts.importNothing' => 'NO PANEL PICKED, SO NOTHING WAS IMPORTED.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'LEFT OUT: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'KEPT ${panels}: THE SMALL-SCREEN ARRANGEMENT CAN’T DO WITHOUT IT.',
@@ -5890,10 +5893,10 @@ extension on TranslationsQro {
 			'loggingControls.powerControl' => 'POWER',
 			'loggingControls.notesControl' => 'NOTES',
 			'loggingControls.operatorControl' => 'OPERATOR',
-			'loggingControls.operatorField' => 'OPERATOR',
-			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CALL', other: '${count} CALLS', ), 
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.operatorField' => 'OPERATOR',
+			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CALL', other: '${count} CALLS', ), 
 			'loggingControls.editStationCalls' => 'EDIT LIST',
 			'loggingControls.stationCallsTitle' => 'STATION CALLSIGNS',
 			'loggingControls.stationCallsHint' => 'CALLS ADDED HERE COUNT FROM THE NEXT CONTACT ON. A CALL REMOVED HERE KEEPS THE CONTACTS ALREADY LOGGED UNDER IT.',
@@ -6121,9 +6124,8 @@ extension on TranslationsQro {
 			'settings.logging.switchSentRcvd.title' => 'SWITCH SIGNAL REPORT ORDER',
 			'settings.logging.switchSentRcvd.sentFirst' => 'SENT FIRST, RCVD SECOND',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'RCVD FIRST, SENT SECOND',
-			'settings.logging.jumpAfterRST.title' => 'JUMP TO NEXT FIELD ON RST ENTRY',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'JUMPING AFTER RST IS ENTERED',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'NOT JUMPING AUTOMATICALLY',
+			'settings.logging.autoAdvanceFields.title' => 'AUTO-ADVANCE FIELDS',
+			'settings.logging.autoAdvanceFields.description' => 'ADVANCE AUTOMATICALLY WHEN FULL VALUE IS ENTERED, SOME FIELDS ONLY (MARKED WITH *)',
 			'settings.logging.defaultReport.title' => 'DEFAULT REPORT — PHONE',
 			'settings.logging.defaultReport.description' => 'USED WHEN SENT OR RCVD IS LEFT EMPTY ON SSB, FM OR AM',
 			'settings.logging.defaultReportCW.title' => 'DEFAULT REPORT — CW AND DATA',
@@ -6405,9 +6407,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceWords.recordAnother' => 'RECORD ANOTHER',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'RECORDING ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'FIRST TAKE ${n}',
-			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'MIDDLE TAKE ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'MIDDLE TAKE ${n}',
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'LAST TAKE ${n}',
 			'settings.radio.voiceWords.deleteReading' => 'DELETE RECORDING',
 			'settings.radio.voiceWords.deleteReadingTitle' => ({required Object word}) => 'DELETE THIS RECORDING OF “${word}”?',
@@ -6919,9 +6921,9 @@ extension on TranslationsQro {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4',
 			'settings.station.k4SubReceiverOff' => 'THE K4 SUB RECEIVER IS OFF',
 			'settings.station.k4RemotePasswordRequired' => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.',
-			'settings.station.k4RemoteHandshakeFailed' => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4RemoteHandshakeFailed' => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.',
 			'settings.station.k4RemoteUnreachable' => 'THE K4’S SECURE CONNECTION COULD NOT BE REACHED. CHECK ITS ADDRESS, PORT AND REMOTE ACCESS SETTINGS.',
 			'settings.station.k4PowerRange' => 'K4 POWER MUST BE 0.1–110 W, OR 0.0001–0.01 W WHEN THE TRANSVERTER MILLIWATT OUTPUT IS ACTIVE.',
 			'settings.station.elecraftTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
@@ -7433,9 +7435,9 @@ extension on TranslationsQro {
 			'sets.empty' => 'EMPTY FOLDER',
 			'sets.exported' => ({required Object location}) => 'SAVED TO ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'SAVED ${names}',
-			'sets.exportFailed' => ({required Object error}) => 'COULD NOT EXPORT: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'sets.exportFailed' => ({required Object error}) => 'COULD NOT EXPORT: ${error}',
 			'sets.importPickerFailed' => ({required Object error}) => 'COULD NOT OPEN THE FILE: ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
 			'sets.imported' => ({required Object name}) => 'IMPORTED ${name}',

@@ -1446,11 +1446,6 @@
         "sentFirst": "Odoslaný ako prvý, prijatý ako druhý",
         "rcvdFirst": "Prijatý ako prvý, odoslaný ako druhý"
       },
-      "jumpAfterRST": {
-        "title": "Prejsť na ďalšie pole po zadaní RST",
-        "descriptionOn": "Po zadaní RST sa prechádza ďalej",
-        "descriptionOff": "Automaticky sa neprechádza ďalej"
-      },
       "defaultReport": {
         "title": "Predvolený report — fónia",
         "description": "Použije sa, keď Odoslané alebo Prijaté zostane prázdne pri SSB, FM alebo AM"

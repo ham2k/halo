@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$ja extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$ja showBearing = _Translations$settings$logging$showBearing$ja._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$ja showReverseBearing = _Translations$settings$logging$showReverseBearing$ja._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$ja switchSentRcvd = _Translations$settings$logging$switchSentRcvd$ja._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$ja jumpAfterRST = _Translations$settings$logging$jumpAfterRST$ja._(_root);
 	@override late final _Translations$settings$logging$defaultReport$ja defaultReport = _Translations$settings$logging$defaultReport$ja._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$ja defaultReportCW = _Translations$settings$logging$defaultReportCW$ja._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$ja defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$ja._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$ja extends Translations$sett
 	@override String get title => 'シグナルレポートの順序を切り替える';
 	@override String get sentFirst => '送信が先、受信が後';
 	@override String get rcvdFirst => '受信が先、送信が後';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$ja extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$ja._(TranslationsJa root) : this._root = root, super.internal(root);
-
-	final TranslationsJa _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'RST入力時に次のフィールドにジャンプ';
-	@override String get descriptionOn => 'RST入力後に次のフィールドへジャンプします';
-	@override String get descriptionOff => '自動的にジャンプしません';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsJa {
 			'settings.logging.switchSentRcvd.title' => 'シグナルレポートの順序を切り替える',
 			'settings.logging.switchSentRcvd.sentFirst' => '送信が先、受信が後',
 			'settings.logging.switchSentRcvd.rcvdFirst' => '受信が先、送信が後',
-			'settings.logging.jumpAfterRST.title' => 'RST入力時に次のフィールドにジャンプ',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'RST入力後に次のフィールドへジャンプします',
-			'settings.logging.jumpAfterRST.descriptionOff' => '自動的にジャンプしません',
 			'settings.logging.defaultReport.title' => 'デフォルトレポート — 電話',
 			'settings.logging.defaultReport.description' => 'SSB、FM、AMで送信または受信が空欄の場合に使用',
 			'settings.logging.defaultReportCW.title' => 'デフォルトレポート — CWとデータ',
@@ -6026,11 +6010,11 @@ extension on TranslationsJa {
 			'settings.privacy.shareOpData.descriptionOn' => '一部のオペレーションデータを公開し、他のユーザーと共有しています',
 			'settings.privacy.shareOpData.descriptionOff' => 'オペレーションデータをプライベートに保っています',
 			'settings.privacy.privacyPolicy' => 'プライバシーポリシー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => '利用規約',
 			'settings.operatorCall' => 'オペレーターのコールサイン',
 			'settings.sync.title' => 'クラウド同期',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'その他の同期設定',
 			'settings.sync.enable' => '同期を有効化',
 			'settings.sync.deviceKey' => 'デバイスキー',
@@ -6540,11 +6524,11 @@ extension on TranslationsJa {
 			'settings.station.watts' => 'ワット',
 			'settings.station.trackFieldAntenna' => 'アンテナ',
 			'settings.station.trackFieldKey' => 'CWキー',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => '接続遅延（ms）',
 			'settings.station.placeholderConnectDelayDescription' => 'シミュレートしたハンドシェイクにかかる時間。空欄または0で即座に接続します。',
 			'settings.station.placeholderDropAfter' => '切断までの時間（秒）',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
 			'settings.station.placeholderFailConnect' => '常に接続に失敗する',
 			'settings.station.placeholderConnectFailure' => 'プレースホルダー無線機はこの接続を拒否するよう設定されています',
@@ -7054,11 +7038,11 @@ extension on TranslationsJa {
 			'switchAccounts.requestFailed' => '同期サーバーとの通信で問題が発生しました。後で再試行してください。',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のQSO', other: '${count}件のQSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'QSONオペレーションをインポート',
 			'qsonImport.description' => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。',
 			'qsonImport.dropHint' => 'QSONファイルをドロップして新しいオペレーションとしてインポート',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'インポートするファイルを開けませんでした：${error}',

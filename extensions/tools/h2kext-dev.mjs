@@ -208,6 +208,11 @@ export async function createDevServer({
   let watching = false
 
   function fail(message) {
+    // The same failure again is not news, as an unchanged good build is not:
+    // a rebuild with nothing new to say — a late file event, a save that
+    // changed nothing — would otherwise repeat the error to the app, ahead
+    // of the reload the next real change brings.
+    if (buildError === message) return
     buildError = message
     if (watching) {
       warn(`${stamp()}  ✗ ${key}\n${message}`)

@@ -121,7 +121,8 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services, {Map<String, Se
 /// The settings groups the view the operator is logging in has standing in
 /// for the registered ones — so a SET typed into the Chasing view's call field
 /// writes the Chasing view's copy. An operation open over that view is where
-/// the operator is logging then, and gets the registered groups.
+/// the operator is logging then, and gets its own
+/// (`OperationCommandContext.settingsGroups`).
 class FrontSettingsOverrides {
   Object? _owner;
   Map<String, SettingsGroup> _groups = const {};
@@ -139,7 +140,11 @@ class FrontSettingsOverrides {
     _groups = const {};
   }
 
-  Map<String, SettingsGroup> forScan(HaLoServices services) => services.frontOperationContext == null ? _groups : const {};
+  Map<String, SettingsGroup> forScan(HaLoServices services) {
+    final front = services.frontOperationContext;
+    if (front == null) return _groups;
+    return front.settingsGroups?.call() ?? const {};
+  }
 }
 
 final frontSettingsOverrides = FrontSettingsOverrides();

@@ -133,6 +133,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       // appears in Settings, a different surface
       // with a different audience.
       title: effectiveContext.t.operation.menu.loggingSettingsTitle,
+      groupOverrides: _loggingSettingsGroups,
       // The pane's layout options embeds this same target's fields too, but
       // without this Actions section — see [_paneEditControls]'s
       // `panelSettingsBuilder`, which passes none.
@@ -168,6 +169,17 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       ],
     );
   }
+
+  /// The Logging group as this operation's panel has it: the optional-fields
+  /// and our-exchange toggles only when one of its activities declares such a
+  /// field.
+  Map<String, SettingsGroup> get _loggingSettingsGroups => {
+    'logging': LoggingSettingsGroup(
+      widget.services.settings,
+      hasOptionalFields: _runtime.loggingControls.any(isOptionalLoggingControl),
+      hasOurExchange: _runtime.loggingControls.any(declaresOurExchange),
+    ),
+  };
 
   /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
   /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
@@ -382,7 +394,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// itself.
   @override
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
-    'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging'),
+    'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging', groupOverrides: _loggingSettingsGroups),
     'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
     _ when PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId => switch (_operationForPanels) {
       final operation? => (builderContext) => OperationSummariesSettings(

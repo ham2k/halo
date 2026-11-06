@@ -328,8 +328,8 @@ class GeneralSettingsGroup extends SettingsGroup {
   }
 }
 
-/// Logging behavior and layout. The five show* toggles are `target:
-/// 'logging'` — the base set the logging panel's tune-icon dialog
+/// Logging behavior and layout. The show* toggles and Auto-advance Fields are
+/// `target: 'logging'` — the base set the logging panel's tune-icon dialog
 /// (settings_target_dialog.dart) always shows. Everything else here is
 /// `target: 'logging-extended'` — reachable from the same dialog, behind
 /// its "show more settings" disclosure, since these are newer and more
@@ -344,7 +344,18 @@ class LoggingSettingsGroup extends SettingsGroup {
   /// shared rest.
   final LoggingScope scope;
 
-  LoggingSettingsGroup(this.settings, {this.scope = LoggingScope.operation});
+  /// Whether the logging row in front of the operator has any optional
+  /// field (`isOptionalLoggingControl`) — the "Show optional logging fields"
+  /// toggle is offered only then, since anywhere else it would change
+  /// nothing. The operation view builds its own instance over the
+  /// registry's to say so, as the Chasing view does for its [scope].
+  final bool hasOptionalFields;
+
+  /// Whether a field on that row declares `ourExchange` — the "Include our
+  /// exchange" toggle is offered only then, for the same reason.
+  final bool hasOurExchange;
+
+  LoggingSettingsGroup(this.settings, {this.scope = LoggingScope.operation, this.hasOptionalFields = false, this.hasOurExchange = false});
 
   @override
   String get key => 'logging';
@@ -417,12 +428,17 @@ class LoggingSettingsGroup extends SettingsGroup {
         target: 'logging-extended',
       ),
       _toggle(
-        key: 'jumpAfterRST',
-        label: s.jumpAfterRST.title,
+        key: 'autoAdvanceFields',
+        label: s.autoAdvanceFields.title,
+        // An operator searching for the reports-only setting's key still
+        // finds this one.
+        aliases: const ['jumpAfterRST'],
         icon: 'redo',
-        description: settings.jumpAfterRST ? s.jumpAfterRST.descriptionOn : s.jumpAfterRST.descriptionOff,
-        value: settings.jumpAfterRST,
-        target: 'logging-extended',
+        description: s.autoAdvanceFields.description,
+        value: settings.autoAdvanceFields,
+        // In the dialog's always-visible set: the stars it puts on the row's
+        // labels send the operator looking for it there.
+        target: 'logging',
       ),
       // The report an empty Sent/Rcvd stands for, one field per mode band.
       // Shown with the standard report as the PLACEHOLDER rather than the
@@ -545,6 +561,22 @@ class LoggingSettingsGroup extends SettingsGroup {
         value: settings.loggingDisplay('showGridField', scope),
         target: 'logging',
       ),
+      if (hasOptionalFields)
+        _toggle(
+          key: 'showOptionalFields',
+          label: t.operation.menu.showOptionalFields,
+          icon: 'eye-outline',
+          value: settings.showOptionalFields,
+          target: 'logging',
+        ),
+      if (hasOurExchange)
+        _toggle(
+          key: 'includeOurExchange',
+          label: t.operation.menu.includeOurExchange,
+          icon: 'account-arrow-right-outline',
+          value: settings.includeOurExchange,
+          target: 'logging',
+        ),
       _toggle(
         key: 'showQsoNumbers',
         label: t.operation.menu.showQsoNumbers,

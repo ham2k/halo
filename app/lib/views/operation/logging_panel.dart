@@ -55,6 +55,8 @@ class LoggingPanel extends StatefulWidget {
   final bool showRSTFields;
   final bool showStateField;
   final bool showGridField;
+  final bool showOptionalFields;
+  final bool includeOurExchange;
   final bool showQsoNumbers;
 
   /// The report an empty Sent/Rcvd stands for, per mode band (Logging
@@ -67,7 +69,7 @@ class LoggingPanel extends StatefulWidget {
   /// Rcvd before Sent, and focus advancing on a complete report — both reach
   /// the QSO list as well as the entry row, so the two never disagree.
   final bool switchSentRcvd;
-  final bool jumpAfterRST;
+  final bool autoAdvanceFields;
 
   /// Which contacts get a country flag in the QSO list (Logging settings).
   final DxFlags dxFlags;
@@ -192,12 +194,14 @@ class LoggingPanel extends StatefulWidget {
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
+    this.showOptionalFields = true,
+    this.includeOurExchange = true,
     this.showQsoNumbers = true,
     this.defaultReport = '',
     this.defaultReportCW = '',
     this.defaultReportFT8 = '',
     this.switchSentRcvd = false,
-    this.jumpAfterRST = false,
+    this.autoAdvanceFields = false,
     this.dxFlags = DxFlags.dx,
     this.ourEntityPrefix,
     this.ourItuRegion,
@@ -1205,11 +1209,13 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         showRSTFields: widget.showRSTFields,
         showStateField: widget.showStateField,
         showGridField: widget.showGridField,
+        showOptionalFields: widget.showOptionalFields,
+        includeOurExchange: widget.includeOurExchange,
         defaultReport: widget.defaultReport,
         defaultReportCW: widget.defaultReportCW,
         defaultReportFT8: widget.defaultReportFT8,
         switchSentRcvd: widget.switchSentRcvd,
-        jumpAfterRST: widget.jumpAfterRST,
+        autoAdvanceFields: widget.autoAdvanceFields,
         keyboardAccessory: widget.services.keyboardAccessory,
         showNumbersRow: _showNumbersRow,
         showExtraInNumbersRow: _showExtraInNumbersRow,

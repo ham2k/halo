@@ -202,6 +202,15 @@ class LoggingFocusLadder {
     return null;
   }
 
+  /// The stop before [index] without wrapping — where Backspace in an empty
+  /// field goes. Null from the first stop.
+  static int? _previousStop(List<PrimaryField> fields, int index) {
+    for (var i = index - 1; i >= 0; i--) {
+      if (!fields[i].skipFocus) return i;
+    }
+    return null;
+  }
+
   /// Moves focus to [index] among the main fields (wrapping at either end)
   /// and says where the caret should land — the start of the value for a
   /// rightward move, the end for a leftward one, so the caret keeps
@@ -227,7 +236,7 @@ class LoggingFocusLadder {
     return walk != null && (config().walkQsoList?.call(walk) ?? false);
   }
 
-  /// Tab and the arrow keys inside a main logging field.
+  /// Tab, the arrow keys and Backspace inside a main logging field.
   ///
   /// Tab is always ours: it walks the same stops Space does, passing over the
   /// `skipFocus` fields, and wraps at both ends — Flutter's own traversal
@@ -277,6 +286,19 @@ class LoggingFocusLadder {
     if (key == LogicalKeyboardKey.tab) {
       final next = _nextStop(fields, index, forward: !shift);
       if (next != null) movePrimaryFocus(next, caretAtStart: false);
+      return KeyEventResult.handled;
+    }
+
+    // Backspace in an empty field deletes the space Space typed to get here:
+    // back to the previous stop, caret at its end. A press only, never a
+    // repeat — held Backspace emptying a field must not walk on into the
+    // one before and empty that too. It stops at Call rather than wrapping:
+    // a space before the first field was never typed.
+    if (key == LogicalKeyboardKey.backspace) {
+      if (event is! KeyDownEvent || fields[index].controller.text.isNotEmpty) return KeyEventResult.ignored;
+      final previous = _previousStop(fields, index);
+      if (previous == null) return KeyEventResult.ignored;
+      movePrimaryFocus(previous, caretAtStart: false);
       return KeyEventResult.handled;
     }
 

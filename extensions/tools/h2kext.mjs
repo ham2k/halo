@@ -59,8 +59,11 @@ import yazl from "yazl"
 /// contact still needs before Enter logs it; 16 names the kernel `__halo`,
 /// and keeps `__polo` only for a bundle that declares a lower level; 17
 /// makes a spectrum's gestures the host's — tuning, zoom, pan and an axis —
-/// unless its scene's `gestures` and `scale` say otherwise.
-export const H2KEXT_API_VERSION = 17
+/// unless its scene's `gestures` and `scale` say otherwise; 18 adds the
+/// logging row's segmented fields (`group`), `autoadvanceWhen`/`Before`, a
+/// field's `suffix` and `ourExchange`, display-only (`editable: false`) and
+/// optional (`chars.min: 0`) fields.
+export const H2KEXT_API_VERSION = 18
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -233,6 +236,7 @@ SHARED_MODULES_BY_API[14] = SHARED_MODULES_BY_API[13]
 SHARED_MODULES_BY_API[15] = SHARED_MODULES_BY_API[14]
 SHARED_MODULES_BY_API[16] = SHARED_MODULES_BY_API[15]
 SHARED_MODULES_BY_API[17] = SHARED_MODULES_BY_API[16]
+SHARED_MODULES_BY_API[18] = SHARED_MODULES_BY_API[17]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

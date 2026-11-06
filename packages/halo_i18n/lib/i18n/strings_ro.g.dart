@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$ro extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$ro showBearing = _Translations$settings$logging$showBearing$ro._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$ro showReverseBearing = _Translations$settings$logging$showReverseBearing$ro._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$ro switchSentRcvd = _Translations$settings$logging$switchSentRcvd$ro._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$ro jumpAfterRST = _Translations$settings$logging$jumpAfterRST$ro._(_root);
 	@override late final _Translations$settings$logging$defaultReport$ro defaultReport = _Translations$settings$logging$defaultReport$ro._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$ro defaultReportCW = _Translations$settings$logging$defaultReportCW$ro._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$ro defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$ro._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$ro extends Translations$sett
 	@override String get title => 'Schimbă ordinea rapoartelor de semnal';
 	@override String get sentFirst => 'Întâi Trimis, apoi Primit';
 	@override String get rcvdFirst => 'Întâi Primit, apoi Trimis';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$ro extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$ro._(TranslationsRo root) : this._root = root, super.internal(root);
-
-	final TranslationsRo _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Treci la câmpul următor după RST';
-	@override String get descriptionOn => 'Se trece mai departe după introducerea RST';
-	@override String get descriptionOff => 'Nu se trece automat';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsRo {
 			'settings.logging.switchSentRcvd.title' => 'Schimbă ordinea rapoartelor de semnal',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Întâi Trimis, apoi Primit',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Întâi Primit, apoi Trimis',
-			'settings.logging.jumpAfterRST.title' => 'Treci la câmpul următor după RST',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Se trece mai departe după introducerea RST',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Nu se trece automat',
 			'settings.logging.defaultReport.title' => 'Raport implicit — Fonie',
 			'settings.logging.defaultReport.description' => 'Folosit când Trimis sau Primit rămâne gol în SSB, FM sau AM',
 			'settings.logging.defaultReportCW.title' => 'Raport implicit — CW și date',
@@ -6026,11 +6010,11 @@ extension on TranslationsRo {
 			'settings.privacy.shareOpData.descriptionOn' => 'Se partajează public și cu alți utilizatori unele date despre operațiuni',
 			'settings.privacy.shareOpData.descriptionOff' => 'Datele despre operațiuni rămân private',
 			'settings.privacy.privacyPolicy' => 'Politica de confidențialitate',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Termeni și condiții',
 			'settings.operatorCall' => 'Indicativul operatorului',
 			'settings.sync.title' => 'Sincronizare în cloud',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Mai multe setări de sincronizare',
 			'settings.sync.enable' => 'Activează sincronizarea',
 			'settings.sync.deviceKey' => 'Cheia dispozitivului',
@@ -6540,11 +6524,11 @@ extension on TranslationsRo {
 			'settings.station.watts' => 'Wați',
 			'settings.station.trackFieldAntenna' => 'Antenă',
 			'settings.station.trackFieldKey' => 'Manipulator CW',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Întârziere la conectare (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cât durează handshake-ul simulat. Gol sau 0 se conectează instantaneu.',
 			'settings.station.placeholderDropAfter' => 'Deconectare după (secunde)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
 			'settings.station.placeholderFailConnect' => 'Eșuează mereu la conectare',
 			'settings.station.placeholderConnectFailure' => 'Stația substituent a fost instruită să refuze această conexiune',
@@ -7054,11 +7038,11 @@ extension on TranslationsRo {
 			'switchAccounts.requestFailed' => 'Ceva n-a mers bine în comunicarea cu serverul de sincronizare. Încercați din nou mai târziu.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO', other: '${count} QSO-uri', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} operațiune', other: '${count} operațiuni', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'Importă operațiune QSON',
 			'qsonImport.description' => 'Creează o operațiune nouă dintr-un fișier QSON, așa cum exportă Modul dezvoltator aici sau în PoLo.',
 			'qsonImport.dropHint' => 'Plasați aici un fișier QSON pentru a-l importa ca operațiune nouă',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nu s-a putut deschide un fișier pentru import: ${error}',

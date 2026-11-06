@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$nb extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$nb showBearing = _Translations$settings$logging$showBearing$nb._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$nb showReverseBearing = _Translations$settings$logging$showReverseBearing$nb._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$nb switchSentRcvd = _Translations$settings$logging$switchSentRcvd$nb._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$nb jumpAfterRST = _Translations$settings$logging$jumpAfterRST$nb._(_root);
 	@override late final _Translations$settings$logging$defaultReport$nb defaultReport = _Translations$settings$logging$defaultReport$nb._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$nb defaultReportCW = _Translations$settings$logging$defaultReportCW$nb._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$nb defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$nb._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$nb extends Translations$sett
 	@override String get title => 'Bytt rekkefølge for signalrapport';
 	@override String get sentFirst => 'Sendt først, mottatt andre';
 	@override String get rcvdFirst => 'Mottatt først, sendt andre';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$nb extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$nb._(TranslationsNb root) : this._root = root, super.internal(root);
-
-	final TranslationsNb _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Hopp til neste felt ved RST-oppføring';
-	@override String get descriptionOn => 'Hopper videre når RST er skrevet inn';
-	@override String get descriptionOff => 'Hopper ikke automatisk';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsNb {
 			'settings.logging.switchSentRcvd.title' => 'Bytt rekkefølge for signalrapport',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sendt først, mottatt andre',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Mottatt først, sendt andre',
-			'settings.logging.jumpAfterRST.title' => 'Hopp til neste felt ved RST-oppføring',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Hopper videre når RST er skrevet inn',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Hopper ikke automatisk',
 			'settings.logging.defaultReport.title' => 'Standardrapport — telefoni',
 			'settings.logging.defaultReport.description' => 'Brukes når Sendt eller Mottatt står tomt på SSB, FM eller AM',
 			'settings.logging.defaultReportCW.title' => 'Standardrapport — CW og data',
@@ -6026,11 +6010,11 @@ extension on TranslationsNb {
 			'settings.privacy.shareOpData.descriptionOn' => 'Deler noen operasjonsdata offentlig og med andre brukere',
 			'settings.privacy.shareOpData.descriptionOff' => 'Holder operasjonsdata private',
 			'settings.privacy.privacyPolicy' => 'Personvernpolicy',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Tjenestevilkår',
 			'settings.operatorCall' => 'Operatørkallesignal',
 			'settings.sync.title' => 'Skysynkronisering',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Flere synkroniseringsinnstillinger',
 			'settings.sync.enable' => 'Aktiver synkronisering',
 			'settings.sync.deviceKey' => 'Enhetsnøkkel',
@@ -6540,11 +6524,11 @@ extension on TranslationsNb {
 			'settings.station.watts' => 'Watt',
 			'settings.station.trackFieldAntenna' => 'Antenne',
 			'settings.station.trackFieldKey' => 'CW-nøkkel',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Tilkoblingsforsinkelse (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hvor lang tid det simulerte handshaket tar. Tomt eller 0 kobler til umiddelbart.',
 			'settings.station.placeholderDropAfter' => 'Bryt etter (sekunder)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
 			'settings.station.placeholderFailConnect' => 'Mislykkes alltid med å koble til',
 			'settings.station.placeholderConnectFailure' => 'Plassholderradioen ble bedt om å avvise denne tilkoblingen',
@@ -7054,11 +7038,11 @@ extension on TranslationsNb {
 			'switchAccounts.requestFailed' => 'Noe gikk galt i kommunikasjonen med synkroniseringsserveren. Prøv igjen senere.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO', other: '${count} QSOer', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'Importer QSON-operasjon',
 			'qsonImport.description' => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.',
 			'qsonImport.dropHint' => 'Slipp en QSON-fil her for å importere den som en ny operasjon',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}',

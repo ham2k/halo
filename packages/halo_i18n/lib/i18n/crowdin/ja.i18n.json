@@ -1446,11 +1446,6 @@
         "sentFirst": "送信が先、受信が後",
         "rcvdFirst": "受信が先、送信が後"
       },
-      "jumpAfterRST": {
-        "title": "RST入力時に次のフィールドにジャンプ",
-        "descriptionOn": "RST入力後に次のフィールドへジャンプします",
-        "descriptionOff": "自動的にジャンプしません"
-      },
       "defaultReport": {
         "title": "デフォルトレポート — 電話",
         "description": "SSB、FM、AMで送信または受信が空欄の場合に使用"

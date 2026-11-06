@@ -1446,11 +1446,6 @@
         "sentFirst": "Întâi Trimis, apoi Primit",
         "rcvdFirst": "Întâi Primit, apoi Trimis"
       },
-      "jumpAfterRST": {
-        "title": "Treci la câmpul următor după RST",
-        "descriptionOn": "Se trece mai departe după introducerea RST",
-        "descriptionOff": "Nu se trece automat"
-      },
       "defaultReport": {
         "title": "Raport implicit — Fonie",
         "description": "Folosit când Trimis sau Primit rămâne gol în SSB, FM sau AM"

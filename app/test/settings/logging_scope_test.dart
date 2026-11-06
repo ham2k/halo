@@ -45,7 +45,7 @@ void main() {
   });
 
   test('a setting about how the operator logs is shared, whichever scope writes it', () {
-    expect(loggingGroupFor('jumpAfterRST', LoggingScope.chase), SettingsService.loggingGroup);
+    expect(loggingGroupFor('autoAdvanceFields', LoggingScope.chase), SettingsService.loggingGroup);
     expect(loggingGroupFor('defaultReportCW', LoggingScope.chase), SettingsService.loggingGroup);
     expect(loggingGroupFor('showRSTFields', LoggingScope.chase), chaseLoggingGroup);
   });
@@ -73,8 +73,8 @@ void main() {
     expect(settings.loggingDisplay('showStateField', LoggingScope.chase), isTrue);
     expect(settings.showStateField, isFalse, reason: 'the dialog opened from the Chasing log edits the Chasing copy');
 
-    await chase.commit('jumpAfterRST', true);
-    expect(settings.jumpAfterRST, isTrue, reason: 'a shared setting edited from the Chasing dialog is the shared one');
+    await chase.commit('autoAdvanceFields', true);
+    expect(settings.autoAdvanceFields, isTrue, reason: 'a shared setting edited from the Chasing dialog is the shared one');
 
     final elements = await chase.buildElements();
     expect(elements.firstWhere((e) => e['key'] == 'showStateField')['value'], isTrue, reason: 'and the dialog shows the Chasing value, not the operation one');
@@ -123,5 +123,23 @@ void main() {
     await stillChasing.group!.commit('showQsoNumbers', false);
     expect(settings.loggingDisplay('showQsoNumbers', LoggingScope.chase), isFalse, reason: "a view that never set them can't take another's overrides away");
     expect(settings.showQsoNumbers, isTrue);
+  });
+
+  // The registered Logging group cannot know which fields an operation's
+  // activities declare, so it never lists the optional-fields or
+  // our-exchange toggles. Without the operation's own group in the scan, the
+  // tune dialog offers them and the command bar and settings search do not.
+  test("settings commands read the front operation's own Logging group", () async {
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+    bool scans(Iterable<ScannedSetting> all, String key) => all.any((s) => s.key == key);
+
+    final context = services.openOperationContext('op-1');
+    addTearDown(() => services.closeOperationContext(context));
+    expect(scans(await scanSettings(services), 'includeOurExchange'), isFalse, reason: 'an operation without such a field offers no toggle');
+
+    context.settingsGroups = () => {'logging': LoggingSettingsGroup(settings, hasOptionalFields: true, hasOurExchange: true)};
+    final scanned = await scanSettings(services);
+    expect(scans(scanned, 'includeOurExchange'), isTrue);
+    expect(scans(scanned, 'showOptionalFields'), isTrue);
   });
 }

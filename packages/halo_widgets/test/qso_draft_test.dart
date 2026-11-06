@@ -60,10 +60,13 @@ class _Harness {
       serialNumbers: null,
       sequences: null,
       call: callText,
+      solo: false,
+      autoAdvance: false,
       menuBelow: false,
     ),
     draftQsoData: () => draft.toData(),
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
+    onAdvanceFocus: () {},
     onFocusChanged: (node, controller) {},
     onEdited: () {},
   );

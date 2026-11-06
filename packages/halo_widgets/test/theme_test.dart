@@ -753,6 +753,99 @@ void main() {
     });
   });
 
+  group('haloInvalidDecoration', () {
+    /// [build]'s decoration, built under [theme] — keyed so a second theme
+    /// builds a fresh tree rather than lerping into it (see the focus
+    /// underline group above).
+    Future<(InputDecoration, InputDecoration)> decorate(WidgetTester tester, ThemeData theme, InputDecoration Function(BuildContext) build) async {
+      late InputDecoration base;
+      late InputDecoration invalid;
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(theme),
+          theme: theme,
+          home: Builder(
+            builder: (context) {
+              base = build(context);
+              invalid = haloInvalidDecoration(context, base, invalid: true);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      return (base, invalid);
+    }
+
+    testWidgets('a valid value leaves the decoration untouched', (tester) async {
+      late InputDecoration base;
+      late InputDecoration result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              base = poloFieldDecoration(context, 'Exch');
+              result = haloInvalidDecoration(context, base, invalid: false);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(identical(result, base), isTrue);
+    });
+
+    testWidgets("the underline is twice the field's idle weight, and its own focus weight while focused", (tester) async {
+      // Read off the field, not fixed: Material's 1 and 2 under the house
+      // focus underline's 3 would make the invalid field the one whose
+      // underline THINS as it takes focus.
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final (base, invalid) = await decorate(tester, theme, (context) => poloFieldDecoration(context, 'Exch'));
+        final idle = invalid.enabledBorder! as UnderlineInputBorder;
+        final focused = invalid.focusedBorder! as UnderlineInputBorder;
+        expect(idle.borderSide.color, theme.colorScheme.error, reason: '$brightness');
+        expect(idle.borderSide.width, 2.0, reason: '$brightness: an unset idle underline is 1');
+        expect(focused.borderSide.color, theme.colorScheme.error, reason: '$brightness');
+        expect(focused.borderSide.width, base.focusedBorder!.borderSide.width, reason: '$brightness');
+        expect(focused.borderSide.width, greaterThan(idle.borderSide.width), reason: '$brightness: focus still reads as focus');
+      }
+
+      // A field with heavier borders of its own keeps the proportion.
+      final (_, heavy) = await decorate(
+        tester,
+        buildHaLoTheme(Brightness.light),
+        (context) => const InputDecoration(
+          enabledBorder: UnderlineInputBorder(borderSide: BorderSide(width: 2)),
+          focusedBorder: UnderlineInputBorder(borderSide: BorderSide(width: 4)),
+        ),
+      );
+      expect(heavy.enabledBorder!.borderSide.width, 4.0);
+      expect(heavy.focusedBorder!.borderSide.width, 4.0);
+    });
+
+    testWidgets("the fill is the error tinted over the field's own, stronger in dark", (tester) async {
+      // A share of red that reads on a light fill barely lifts a dark one.
+      for (final (brightness, share) in [(Brightness.light, 0.10), (Brightness.dark, 0.20)]) {
+        final theme = buildHaLoTheme(brightness);
+        final error = theme.colorScheme.error;
+
+        // Unfilled, the field shows the surface; the tint goes over that.
+        final (_, plain) = await decorate(tester, theme, (context) => poloFieldDecoration(context, 'Exch'));
+        expect(plain.filled, isTrue, reason: '$brightness');
+        expect(plain.fillColor, Color.alphaBlend(error.withValues(alpha: share), theme.colorScheme.surface), reason: '$brightness');
+
+        // Filled, as the logging panel's fields are: the tint goes over that fill.
+        const fill = Color(0xFF336699);
+        final (_, filled) = await decorate(tester, theme, (context) => const InputDecoration(filled: true, fillColor: fill));
+        expect(filled.fillColor, Color.alphaBlend(error.withValues(alpha: share), fill), reason: '$brightness');
+
+        // Filled by the theme around it, as the panel does it.
+        final themed = theme.copyWith(inputDecorationTheme: theme.inputDecorationTheme.copyWith(filled: true, fillColor: fill));
+        final (_, fromTheme) = await decorate(tester, themed, (context) => const InputDecoration());
+        expect(fromTheme.fillColor, Color.alphaBlend(error.withValues(alpha: share), fill), reason: '$brightness');
+      }
+    });
+  });
+
   group('haloDialogConstraints', () {
     // The header clearance is the desktop rule; a test runs as Android by
     // default, where the cap is the plain mobile margin instead.

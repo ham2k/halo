@@ -76,6 +76,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   static const _showRSTFieldsKey = 'showRSTFields';
   static const _showStateFieldKey = 'showStateField';
   static const _showGridFieldKey = 'showGridField';
+  static const _showOptionalFieldsKey = 'showOptionalFields';
+  static const _includeOurExchangeKey = 'includeOurExchange';
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
@@ -1259,6 +1261,16 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   Future<void> setShowGridField(bool value) => setSettingValue(loggingGroup, _showGridFieldKey, value);
 
+  /// The exchange fields an extension marks optional (`chars.min: 0`) — on by
+  /// default, so they show wherever the row has room until the operator hides
+  /// them.
+  bool get showOptionalFields => _loggingBool(_showOptionalFieldsKey, true);
+
+  /// Our own exchange beside the field that declares it (`ourExchange`, a
+  /// contest's serial) — on by default, since reading it off the row is what
+  /// it is there for until the operator knows it by heart.
+  bool get includeOurExchange => _loggingBool(_includeOurExchangeKey, true);
+
   /// Off by default — deleted QSOs are hidden from the list unless the user
   /// opts in.
   bool get showDeletedQSOs => _loggingBool(_showDeletedQSOsKey, false);
@@ -1284,7 +1296,12 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// Both reach the logging row, its keyboard order, the QSO list and the More
   /// pane — see `docs/design/logging-fields.md`, whose focus rules they bend.
   bool get switchSentRcvd => _loggingBool('switchSentRcvd', false);
-  bool get jumpAfterRST => _loggingBool('jumpAfterRST', false);
+
+  /// Move focus on once a field's value is complete — the reports, and any
+  /// exchange field declaring `autoadvanceWhen` or `autoadvanceBefore`.
+  /// Stored under its own key; an operator who never set it gets what they
+  /// chose for `jumpAfterRST`, the reports-only setting it stands in for.
+  bool get autoAdvanceFields => _loggingBool('autoAdvanceFields', _loggingBool('jumpAfterRST', false));
 
   /// The report an untouched Sent/Rcvd field stands for, per mode band —
   /// `5NN` instead of `599` for a CW operator, `+00` instead of `+0`.

@@ -92,26 +92,102 @@ FieldChars exchangeFieldChars(Map<dynamic, dynamic>? input, {String? key}) {
   }
 
   var adjusted = false;
-  int? count(String name) {
+  int? count(String name, {int least = 1}) {
     final raw = declared[name];
     if (raw == null) return null;
-    final chars = _chars(raw);
+    final chars = _chars(raw, least: least);
     if (chars == null || chars > maxFieldChars) adjusted = true;
     return chars == null ? null : math.min(chars, maxFieldChars);
   }
 
-  final min = count('min');
+  // A min of 0 is an optional field, which the row leaves off when short of
+  // room (`LoggingEntryRow`).
+  final min = count('min', least: 0);
   final ideal = count('ideal');
   final max = count('max');
-  final result = fieldChars(min: min, ideal: ideal, max: max ?? (maxLength == null ? null : longest));
+  // An optional field's ideal is what it shows at, so one left out takes the
+  // default rather than the min: an ideal of 0 is a field with no room at all.
+  final result = fieldChars(min: min, ideal: ideal ?? (min == 0 ? fallback.ideal : null), max: max ?? (maxLength == null ? null : longest));
   if ((ideal != null && ideal != result.ideal) || (max != null && max != result.max)) adjusted = true;
   if (adjusted) _reportChars(key, declared, result);
   return result;
 }
 
+/// A `text` control declared `editable: false`: a field that shows its
+/// descriptor's `value` — something the operator sends but never types, such
+/// as our own exchange — disabled, out of the focus walk, and never saved.
+bool isDisplayOnlyControl(Map<dynamic, dynamic> control) {
+  final input = control['input'];
+  return input is Map && input['kind'] == 'text' && input['editable'] == false;
+}
+
+/// Whether [control] declares `input.ourExchange`: what we send, drawn after
+/// the field's value while the operator includes it
+/// ([LoggingPreferences.includeOurExchange]).
+bool declaresOurExchange(Map<dynamic, dynamic> control) {
+  final input = control['input'];
+  return input is Map && input['ourExchange'] is String && (input['ourExchange'] as String).trim().isNotEmpty;
+}
+
+/// [control] as the row draws it: with [include], its `ourExchange` follows
+/// its `suffix` and its `placeholder`, and widens its `ideal` and `max` by as
+/// much, up to [maxFieldChars] — past that a long call clips the end of the
+/// exchange rather than being adjusted and named on the console. Without,
+/// the field is the one the extension sized for its value alone.
+Map<String, dynamic> withOurExchange(Map<String, dynamic> control, {required bool include}) {
+  if (!include || !declaresOurExchange(control)) return control;
+  final input = (control['input'] as Map).cast<String, dynamic>();
+  final ours = (input['ourExchange'] as String).trim();
+  final chars = exchangeFieldChars(input, key: control['key'] as String?);
+  final placeholder = switch (input['placeholder']) {
+    final String placeholder => placeholder,
+    _ => '',
+  };
+  final max = chars.max;
+  return {
+    ...control,
+    'input': {
+      ...input,
+      'suffix':
+          '${switch (input['suffix']) {
+            final String suffix => suffix,
+            _ => '',
+          }} $ours',
+      'placeholder': placeholder.isEmpty ? ours : '$placeholder $ours',
+      'chars': {
+        'min': chars.min,
+        'ideal': math.min(maxFieldChars, chars.ideal + ours.length + 1),
+        if (max != null) 'max': math.min(maxFieldChars, max + ours.length + 1),
+      },
+    },
+  };
+}
+
+/// The line between two segments of one pill: the gap the row leaves
+/// between them, with the panel showing through.
+const segmentDividerWidth = 1.0;
+
+/// Whether [next] continues [previous]'s pill — both name the same `group`.
+bool joinsGroup(Map<dynamic, dynamic> previous, Map<dynamic, dynamic> next) {
+  final group = previous['group'];
+  return group is String && group.isNotEmpty && group == next['group'];
+}
+
+/// An exchange control that may leave the logging row: one whose `chars`
+/// declare `min: 0` (the row drops it when the others are short of their
+/// mins, and the operator can hide it outright with
+/// [LoggingPreferences.showOptionalFields]).
+bool isOptionalLoggingControl(Map<dynamic, dynamic> control) {
+  final input = control['input'];
+  if (input is! Map) return false;
+  final kind = input['kind'];
+  if (kind != 'text' && kind != 'serial' && kind != 'options') return false;
+  return exchangeFieldChars(input, key: control['key'] as String?).min == 0;
+}
+
 /// A character count from extension JSON, which arrives as `int` or `double`;
-/// anything else, or under one, is not a count.
-int? _chars(Object? value) => value is num && value >= 1 ? value.floor() : null;
+/// anything else, or under [least], is not a count.
+int? _chars(Object? value, {int least = 1}) => value is num && value >= least ? value.floor() : null;
 
 /// Once per control and declaration, since the row sizes its fields on every
 /// layout.
@@ -267,6 +343,12 @@ InputDecoration mainFieldDecoration(BuildContext context, String label, {String?
   );
 }
 
+/// [label] marked as a field that moves focus on by itself once its value is
+/// complete — an `*` after it, the mark the Auto-advance Fields setting's
+/// description points to. Only while the setting is on: off, nothing moves,
+/// and a mark would promise a move that never comes.
+String autoAdvanceLabel(String label, {required bool advances}) => advances ? '$label *' : label;
+
 /// Which of a control's two labels a field [width] wide can actually show.
 ///
 /// A main field is routinely narrower than its own label — that is what
@@ -360,6 +442,9 @@ double mainFieldValueWidth(MainFieldMetrics metrics, int chars) => chars * metri
 /// The callsign is never in [fields]: it is `Expanded` over what they leave,
 /// so its share here is only reserved, never returned.
 ///
+/// [honorFocus] false lays the row out as if no field had focus — for a
+/// decision that must not flip as focus moves along the row.
+///
 /// `squeezed` says something besides the focused field is under its ideal —
 /// another field, the callsign, or the gaps and padding. The row's own focus
 /// listener reads it: the focused field renders at its ideal, which only
@@ -371,6 +456,7 @@ double mainFieldValueWidth(MainFieldMetrics metrics, int chars) => chars * metri
   required double buttonWidth,
   required MainFieldMetrics metrics,
   FieldChars call = callFieldChars,
+  bool honorFocus = true,
 }) {
   double px(int chars) => mainFieldValueWidth(metrics, chars);
   final fullPadding = metrics.fullPadding;
@@ -385,14 +471,14 @@ double mainFieldValueWidth(MainFieldMetrics metrics, int chars) => chars * metri
   // fit, which is almost always.
   var incompressible = buttonWidth + px(call.min);
   for (final field in fields) {
-    incompressible += px(field.focusNode.hasFocus ? field.chars.ideal : field.chars.min);
+    incompressible += px(honorFocus && field.focusNode.hasFocus ? field.chars.ideal : field.chars.min);
   }
   final compressible = fullGaps + (fields.length + 1) * fullPadding;
   final scale = compressible <= 0 ? 1.0 : ((maxWidth - incompressible) / compressible).clamp(0.0, 1.0);
   final padding = fullPadding * scale;
 
   // Index 0 is the callsign, the fields follow. Value widths, no padding.
-  final focused = [false, for (final field in fields) field.focusNode.hasFocus];
+  final focused = [false, for (final field in fields) honorFocus && field.focusNode.hasFocus];
   final specs = [call, for (final field in fields) field.chars];
   final ideals = [for (final spec in specs) px(spec.ideal)];
   final caps = [for (final spec in specs) spec.max == null ? double.infinity : px(spec.max!)];

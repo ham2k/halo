@@ -2181,7 +2181,6 @@ class _Translations$settings$logging$pt_BR extends Translations$settings$logging
 	@override late final _Translations$settings$logging$showBearing$pt_BR showBearing = _Translations$settings$logging$showBearing$pt_BR._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$pt_BR showReverseBearing = _Translations$settings$logging$showReverseBearing$pt_BR._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$pt_BR switchSentRcvd = _Translations$settings$logging$switchSentRcvd$pt_BR._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$pt_BR jumpAfterRST = _Translations$settings$logging$jumpAfterRST$pt_BR._(_root);
 	@override late final _Translations$settings$logging$defaultReport$pt_BR defaultReport = _Translations$settings$logging$defaultReport$pt_BR._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$pt_BR defaultReportCW = _Translations$settings$logging$defaultReportCW$pt_BR._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$pt_BR defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$pt_BR._(_root);
@@ -3788,18 +3787,6 @@ class _Translations$settings$logging$switchSentRcvd$pt_BR extends Translations$s
 	@override String get title => 'Inverter ordem do reporte de sinal';
 	@override String get sentFirst => 'Enviado primeiro, Recebido depois';
 	@override String get rcvdFirst => 'Recebido primeiro, Enviado depois';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$pt_BR extends Translations$settings$logging$jumpAfterRST$pt {
-	_Translations$settings$logging$jumpAfterRST$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
-
-	final TranslationsPtBr _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Pular para o próximo campo ao inserir RST';
-	@override String get descriptionOn => 'Avançando depois que o RST é inserido';
-	@override String get descriptionOff => 'Não avançando automaticamente';
 }
 
 // Path: settings.logging.defaultReport
@@ -5701,9 +5688,6 @@ extension on TranslationsPtBr {
 			'settings.logging.switchSentRcvd.title' => 'Inverter ordem do reporte de sinal',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Enviado primeiro, Recebido depois',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Recebido primeiro, Enviado depois',
-			'settings.logging.jumpAfterRST.title' => 'Pular para o próximo campo ao inserir RST',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Avançando depois que o RST é inserido',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Não avançando automaticamente',
 			'settings.logging.defaultReport.title' => 'Reporte padrão — Fonia',
 			'settings.logging.defaultReport.description' => 'Usado quando Enviado ou Recebido fica vazio em SSB, FM ou AM',
 			'settings.logging.defaultReportCW.title' => 'Reporte padrão — CW e dados',
@@ -6027,11 +6011,11 @@ extension on TranslationsPtBr {
 			'settings.privacy.shareOpData.descriptionOn' => 'Compartilhando alguns dados de operação publicamente e com outros usuários',
 			'settings.privacy.shareOpData.descriptionOff' => 'Mantendo os dados de operação privados',
 			'settings.privacy.privacyPolicy' => 'Política de privacidade',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => 'Termos de serviço',
 			'settings.operatorCall' => 'Indicativo do operador',
 			'settings.sync.title' => 'Sincronização na nuvem',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Mais configurações de sincronização',
 			'settings.sync.enable' => 'Habilitar sincronização',
 			'settings.sync.deviceKey' => 'Chave do dispositivo',
@@ -6541,11 +6525,11 @@ extension on TranslationsPtBr {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador de CW',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Atraso de conexão (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quanto tempo leva o handshake simulado. Vazio ou 0 conecta na hora.',
 			'settings.station.placeholderDropAfter' => 'Cair após (segundos)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Fecha a conexão sozinho, para testar a reconexão. Vazio ou 0 nunca cai.',
 			'settings.station.placeholderFailConnect' => 'Sempre falhar ao conectar',
 			'settings.station.placeholderConnectFailure' => 'O rádio provisório foi instruído a recusar esta conexão',
@@ -7055,11 +7039,11 @@ extension on TranslationsPtBr {
 			'switchAccounts.requestFailed' => 'Algo deu errado na comunicação com o servidor de sincronização. Tente novamente mais tarde.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} operação', other: '${count} operações', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'Importar operação QSON',
 			'qsonImport.description' => 'Cria uma nova operação a partir de um arquivo QSON, como o Modo desenvolvedor exporta aqui ou no PoLo.',
 			'qsonImport.dropHint' => 'Solte um arquivo QSON para importá-lo como uma nova operação',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Não foi possível abrir um arquivo para importar: ${error}',

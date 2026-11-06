@@ -2180,7 +2180,6 @@ class _Translations$settings$logging$ko extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$ko showBearing = _Translations$settings$logging$showBearing$ko._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$ko showReverseBearing = _Translations$settings$logging$showReverseBearing$ko._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$ko switchSentRcvd = _Translations$settings$logging$switchSentRcvd$ko._(_root);
-	@override late final _Translations$settings$logging$jumpAfterRST$ko jumpAfterRST = _Translations$settings$logging$jumpAfterRST$ko._(_root);
 	@override late final _Translations$settings$logging$defaultReport$ko defaultReport = _Translations$settings$logging$defaultReport$ko._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$ko defaultReportCW = _Translations$settings$logging$defaultReportCW$ko._(_root);
 	@override late final _Translations$settings$logging$defaultReportFT8$ko defaultReportFT8 = _Translations$settings$logging$defaultReportFT8$ko._(_root);
@@ -3787,18 +3786,6 @@ class _Translations$settings$logging$switchSentRcvd$ko extends Translations$sett
 	@override String get title => '시그널 리포트 순서 변경';
 	@override String get sentFirst => '보낸 RST -> 받은 RST';
 	@override String get rcvdFirst => '받은 RST -> 보낸 RST';
-}
-
-// Path: settings.logging.jumpAfterRST
-class _Translations$settings$logging$jumpAfterRST$ko extends Translations$settings$logging$jumpAfterRST$en {
-	_Translations$settings$logging$jumpAfterRST$ko._(TranslationsKo root) : this._root = root, super.internal(root);
-
-	final TranslationsKo _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'RST 입력 후 다음 필드로 자동 점프';
-	@override String get descriptionOn => 'RST 입력 후 다음 필드로 이동';
-	@override String get descriptionOff => '자동으로 이동하지 않음';
 }
 
 // Path: settings.logging.defaultReport
@@ -5700,9 +5687,6 @@ extension on TranslationsKo {
 			'settings.logging.switchSentRcvd.title' => '시그널 리포트 순서 변경',
 			'settings.logging.switchSentRcvd.sentFirst' => '보낸 RST -> 받은 RST',
 			'settings.logging.switchSentRcvd.rcvdFirst' => '받은 RST -> 보낸 RST',
-			'settings.logging.jumpAfterRST.title' => 'RST 입력 후 다음 필드로 자동 점프',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'RST 입력 후 다음 필드로 이동',
-			'settings.logging.jumpAfterRST.descriptionOff' => '자동으로 이동하지 않음',
 			'settings.logging.defaultReport.title' => '기본 리포트 — 보이스',
 			'settings.logging.defaultReport.description' => 'SSB, FM 또는 AM에서 보냄 또는 받음이 비어 있을 때 사용',
 			'settings.logging.defaultReportCW.title' => '기본 리포트 — CW 및 데이터',
@@ -6026,11 +6010,11 @@ extension on TranslationsKo {
 			'settings.privacy.shareOpData.descriptionOn' => '일부 운용 데이터를 공개 및 다른 사용자와 공유',
 			'settings.privacy.shareOpData.descriptionOff' => '운용 데이터 비공개 유지',
 			'settings.privacy.privacyPolicy' => '개인정보처리방침',
-			_ => null,
-		} ?? switch (path) {
 			'settings.privacy.termsOfService' => '서비스 약관',
 			'settings.operatorCall' => '오퍼레이터 콜사인',
 			'settings.sync.title' => '클라우드 동기화',
+			_ => null,
+		} ?? switch (path) {
 			'settings.sync.moreSettings' => '추가 동기화 설정',
 			'settings.sync.enable' => '동기화 활성화',
 			'settings.sync.deviceKey' => '기기 키',
@@ -6540,11 +6524,11 @@ extension on TranslationsKo {
 			'settings.station.watts' => '와트',
 			'settings.station.trackFieldAntenna' => '안테나',
 			'settings.station.trackFieldKey' => 'CW 키',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => '연결 지연 (ms)',
 			'settings.station.placeholderConnectDelayDescription' => '시뮬레이션된 핸드셰이크에 걸리는 시간. 비워 두거나 0이면 즉시 연결됩니다.',
 			'settings.station.placeholderDropAfter' => '연결 끊기 (초)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
 			'settings.station.placeholderFailConnect' => '항상 연결 실패',
 			'settings.station.placeholderConnectFailure' => '임시 무전기가 이 연결을 거부하도록 설정되었습니다',
@@ -7054,11 +7038,11 @@ extension on TranslationsKo {
 			'switchAccounts.requestFailed' => '동기화 서버와 통신 중 문제가 발생했습니다. 나중에 다시 시도하세요.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count} QSO', other: '${count} QSO', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '운용 ${count}개', other: '운용 ${count}개', ), 
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.title' => 'QSON 운용 가져오기',
 			'qsonImport.description' => '이 앱이나 PoLo의 개발자 모드에서 내보낸 QSON 파일로 새 운용을 만듭니다.',
 			'qsonImport.dropHint' => 'QSON 파일을 끌어다 놓아 새 운용으로 가져오세요',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '가져올 파일을 열 수 없습니다: ${error}',
