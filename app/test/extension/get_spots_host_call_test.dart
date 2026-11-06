@@ -209,6 +209,20 @@ void main() {
     expect(_calls(await getSpots({'filter': 'all'})), ['N0XYZ', 'W1AW', 'K1ABC', 'K1ABC']);
   });
 
+  // A band scope draws every band it sweeps, but a source switched off is
+  // off: on the scope, a click on one of its spots would work a station the
+  // operator's own panel never shows.
+  test("'sources' leaves out only the sources the operator switched off", () async {
+    await boot(
+      board,
+      filters: {
+        'bandFilter': '20m',
+        'disabledSources': ['rbn'],
+      },
+    );
+    expect(_calls(await getSpots({'filter': 'sources'})), ['W1AW', 'K1ABC', 'K1ABC']);
+  });
+
   test('the caller\'s options narrow the board further', () async {
     await boot(board);
     expect(_calls(await getSpots({'filter': 'all', 'source': 'pota', 'mode': 'CW'})), ['W1AW']);

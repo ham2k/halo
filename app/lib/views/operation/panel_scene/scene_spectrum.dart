@@ -766,7 +766,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   }
 
   void _hover(Offset at, Size size) {
-    final clickable = ((_annotationAt(at)?.annotation.clickable ?? false) && widget.onAnnotation != null) || _layerAt(at) != null;
+    final clickable = ((_annotationAt(at)?.annotation?.clickable ?? false) && widget.onAnnotation != null) || _layerAt(at) != null;
     // The axis and the tuned frequency's line are dragged sideways.
     final handle = (_onAxis(at) && _gestures.zoom != SceneSpectrumGesture.off) || _dialAt(at) != null;
     if (clickable != _overClickable || handle != _overHandle) {
@@ -897,6 +897,11 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                       final vfoLabel = !spec.pan || spec.noVfoLabel || !(source?.nativeGestures ?? true) || (spec.center != null && spec.center!.pan == null)
                           ? null
                           : spec.center?.pan?.color ?? style.marker;
+                      final _Parts parts = (
+                        spectrum: spec.pan ? (top: 0.0, bottom: panHeight) : null,
+                        axis: scale != null && gap > 0 ? (top: axisTop, bottom: axisTop + gap) : null,
+                        waterfall: spec.waterfall ? (top: fallTop, bottom: frame.height) : null,
+                      );
                       // Behind: over the background, under the spectrum's grid, areas and trace.
                       Widget layers({required bool behind}) => Positioned.fill(
                         child: IgnorePointer(
@@ -911,11 +916,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                               ],
                               values: widget.values,
                               vfoHz: _drawnDial,
-                              parts: (
-                                spectrum: spec.pan ? (top: 0.0, bottom: panHeight) : null,
-                                axis: scale != null && gap > 0 ? (top: axisTop, bottom: axisTop + gap) : null,
-                                waterfall: spec.waterfall ? (top: fallTop, bottom: frame.height) : null,
-                              ),
+                              parts: parts,
                               levels: _panScale,
                               secondsPerPixel: _secondsPerPixel,
                               texts: _texts,
@@ -1007,6 +1008,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                                   marks: marks,
                                   panBottom: spec.pan ? panHeight : null,
                                   waterfallTop: spec.waterfall ? fallTop : null,
+                                  parts: parts,
+                                  levels: _panScale,
+                                  secondsPerPixel: _secondsPerPixel,
                                   hits: _annotationHits,
                                   text: labelStyle.copyWith(color: scheme.onSurface),
                                   background: scheme.surface.withValues(alpha: .8),

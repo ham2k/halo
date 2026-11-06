@@ -206,7 +206,9 @@ class SpectrumTextCache {
   }
 }
 
-typedef _AnnotationHit = ({Rect rect, SceneSpectrumAnnotation annotation, double hz});
+/// [annotation] is null for the dial's label: drawn over the annotations, it
+/// takes a click on what it covers.
+typedef _AnnotationHit = ({Rect rect, SceneSpectrumAnnotation? annotation, double hz});
 
 /// An annotation's box with its point at [x]: a corner drawn out to it for a
 /// box that starts or ends there, a notch in the middle of an edge for one
@@ -232,6 +234,22 @@ Path _bubble(Rect rect, double radius, {required double x, required String align
   return Path.combine(PathOperation.union, Path()..addRRect(box), tail);
 }
 
+/// [text] after its annotation's icon, a glyph of the icon's font at the
+/// text's size: a canvas paints text, not widgets.
+InlineSpan _withIcon(String text, TextStyle style, ({String name, Color? color}) icon) {
+  final data = resolveIconName(icon.name);
+  return TextSpan(
+    style: style,
+    children: [
+      TextSpan(
+        text: String.fromCharCode(data.codePoint),
+        style: style.copyWith(fontFamily: data.fontFamily, package: data.fontPackage, fontFamilyFallback: const [], color: icon.color),
+      ),
+      TextSpan(text: ' $text'),
+    ],
+  );
+}
+
 FontWeight? _weight(double? w) => w == null ? null : FontWeight.values[((w / 100).round() - 1).clamp(0, 8)];
 
 class _AnnotationPainter extends CustomPainter {
@@ -242,6 +260,11 @@ class _AnnotationPainter extends CustomPainter {
 
   /// Null where the part is not shown: its annotations are not drawn.
   final double? panBottom, waterfallTop;
+
+  /// What an annotation's `y` measures by, as a layer's coordinates do.
+  final _Parts parts;
+  final (double, double) Function(SpectrumFrame frame) levels;
+  final double? Function() secondsPerPixel;
 
   /// Rewritten on every paint, for the view's clicks and cursor.
   final List<_AnnotationHit> hits;
@@ -272,6 +295,9 @@ class _AnnotationPainter extends CustomPainter {
     required this.marks,
     required this.panBottom,
     required this.waterfallTop,
+    required this.parts,
+    required this.levels,
+    required this.secondsPerPixel,
     required this.hits,
     required this.text,
     required this.background,
@@ -279,6 +305,15 @@ class _AnnotationPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size screen) {
+    // An annotation near an edge is drawn as far as the edge: past it, it
+    // would paint over the pane beside the scope.
+    canvas.save();
+    canvas.clipRect(Offset.zero & screen);
+    _paint(canvas, screen);
+    canvas.restore();
+  }
+
+  void _paint(Canvas canvas, Size screen) {
     hits.clear();
     // Laid out in the spectrum's frame, as the scale's labels are; the box
     // and its point are mapped onto the screen, the text set upright in it.
@@ -289,9 +324,26 @@ class _AnnotationPainter extends CustomPainter {
     if (current == null || current.highHz <= current.lowHz) return;
     final span = (current.highHz - current.lowHz).toDouble();
     final number = marks.number;
-    _paintVfoLabel(canvas, size, toScreen, turned, current, span);
+    final (floor, range) = levels(current);
+    final perPixel = secondsPerPixel();
     for (final a in marks.spec.annotations) {
-      final edge = a.onWaterfall ? waterfallTop : panBottom;
+      // Not drawn where its part is not shown, nor at a `y` not known yet: the noise before it is estimated.
+      final part = a.onWaterfall ? waterfallTop : panBottom;
+      final y = a.y;
+      final edge = part == null || y == null
+          ? part
+          : y.at(
+              (p) => switch (p) {
+                SceneSpectrumPart.spectrum => parts.spectrum,
+                SceneSpectrumPart.axis => parts.axis,
+                SceneSpectrumPart.waterfall => parts.waterfall,
+              },
+              size.height,
+              noise: current.noiseDb,
+              floor: floor,
+              range: range,
+              secondsPerPixel: perPixel,
+            );
       final anchor = switch (a.anchor) {
         SceneSpectrumAnchor.vfo => marks.vfoHz(),
         SceneSpectrumAnchor.center => (current.lowHz + current.highHz) / 2,
@@ -301,16 +353,15 @@ class _AnnotationPainter extends CustomPainter {
       if (edge == null || anchor == null || at == null) continue;
       final hz = anchor + at;
       final x = (hz - current.lowHz) / span * size.width;
-      final painter = texts.get(
-        a.text,
-        text.copyWith(
-          fontFamily: a.fontFamily,
-          fontSize: number(a.size),
-          fontWeight: _weight(number(a.weight)),
-          fontStyle: a.italic ? FontStyle.italic : null,
-          color: a.color,
-        ),
+      final style = text.copyWith(
+        fontFamily: a.fontFamily,
+        fontSize: number(a.size),
+        fontWeight: _weight(number(a.weight)),
+        fontStyle: a.italic ? FontStyle.italic : null,
+        color: a.color,
       );
+      final icon = a.icon;
+      final painter = texts.get(a.text, style, span: icon == null ? null : () => _withIcon(a.text, style, icon), spanKey: icon);
       final pad = number(a.padding) ?? 2;
       final (textAlong, textAcross) = turned ? (painter.height, painter.width) : (painter.width, painter.height);
       final width = textAlong + pad * 2, height = textAcross + pad * 2;
@@ -332,17 +383,29 @@ class _AnnotationPainter extends CustomPainter {
       canvas.drawPath(shape, Paint()..color = a.background ?? background);
       final border = number(a.borderWidth) ?? (a.borderColor == null ? 0 : 1);
       if (a.borderColor != null && border > 0) {
-        canvas.drawPath(
-          shape,
-          Paint()
-            ..color = a.borderColor!
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = border,
-        );
+        final stroke = Paint()
+          ..color = a.borderColor!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = border;
+        if (a.borderNear) {
+          // The edge facing the one it stands from: an underline on the spectrum, an overline on the waterfall.
+          final y = a.onWaterfall ? rect.top : rect.bottom;
+          canvas.drawPath(
+            (Path()
+                  ..moveTo(rect.left, y)
+                  ..lineTo(rect.right, y))
+                .transform(toScreen.storage),
+            stroke,
+          );
+        } else {
+          canvas.drawPath(shape, stroke);
+        }
       }
       painter.paint(canvas, _toScreen(toScreen, rect).topLeft + Offset(pad, pad));
       hits.add((rect: shape.getBounds(), annotation: a, hz: hz));
     }
+    // Last, so the tuned frequency stays readable over the annotations crowding the dial.
+    _paintVfoLabel(canvas, size, toScreen, turned, current, span);
   }
 
   /// The tuned frequency, at the top of its line, over the passband — the
@@ -376,6 +439,7 @@ class _AnnotationPainter extends CustomPainter {
       _bubble(rect, 2, x: x, align: 'center', point: 0, up: false).transform(toScreen.storage),
       Paint()..color = vfoLabelBackground ?? background,
     );
+    hits.add((rect: rect, annotation: null, hz: vfo));
     final onScreen = _toScreen(toScreen, rect);
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(onScreen.left + pad, onScreen.top + pad, textWidth, painter.height));

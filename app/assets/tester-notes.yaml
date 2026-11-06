@@ -16,6 +16,8 @@ upcoming:
     - "New Backspace move: an empty logging field steps back to the previous one"
     - "New band tags: type QRM! or NET! and Enter to mark the frequency"
     - "New: Run/S&P on each contact, a Run pill to tap; ⌥U, `RUN`, `SNP` switch it"
+    - "New: spots on the Band Scope, click one to work it"
+    - "New: Band Scope shows the band plan, with modes and license limits"
 
 "190":
   changes:

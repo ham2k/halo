@@ -65,7 +65,7 @@ import yazl from "yazl"
 /// optional (`chars.min: 0`) fields; 19 adds a
 /// radio's logging `set` and operating `opStyle` to `readRadio`, which takes
 /// `A` or `B` for a set's radio, and the operation's `uuid` to
-/// `processQsoBeforeSave`.
+/// `processQsoBeforeSave`, and `getSpots`' `filter: 'sources'`.
 export const H2KEXT_API_VERSION = 19
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`

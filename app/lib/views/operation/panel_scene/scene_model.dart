@@ -982,6 +982,12 @@ class SceneSpectrumAnnotation {
   /// waterfall's top down to the text's.
   final SceneNumber? offset;
 
+  /// Where [offset] measures from in place of that edge, in a layer's
+  /// coordinates across the frequency — `noise+30db` stands a spot that far
+  /// above the noise whatever the radio's scale. An app without it measures
+  /// from the edge.
+  final SceneSpectrumAcross? y;
+
   /// Which end of the text sits at [hz].
   final String align;
 
@@ -994,6 +1000,16 @@ class SceneSpectrumAnnotation {
   final bool italic;
   final Color? color, background, borderColor;
 
+  /// The border on only the edge facing the one [offset] measures from — under
+  /// the text on the spectrum, over it on the waterfall — rather than all
+  /// around. An app without it draws the whole border.
+  final bool borderNear;
+
+  /// A named icon (MDI or `fa-`) before the text, at its size, in its own
+  /// color or the text's. An app without it draws the text alone, so it
+  /// raises no API level.
+  final ({String name, Color? color})? icon;
+
   bool get clickable => event != null || menu != null;
 
   SceneSpectrumAnnotation(Map<dynamic, dynamic> json)
@@ -1004,6 +1020,7 @@ class SceneSpectrumAnnotation {
       // `pan` is the spectrum's name before extension API 17.
       onWaterfall = (_oneOf(json, 'part', const ['spectrum', 'pan', 'waterfall']) ?? 'spectrum') == 'waterfall',
       offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
+      y = SceneSpectrumAcross.parse(json, 'y'),
       align = _oneOf(json, 'align', const ['start', 'center', 'end']) ?? 'center',
       pointer = switch (json['pointer']) {
         false => null,
@@ -1022,7 +1039,13 @@ class SceneSpectrumAnnotation {
       italic = json['italic'] == true,
       color = _color(json, 'color'),
       background = _color(json, 'background'),
-      borderColor = _color(json, 'borderColor') {
+      borderColor = _color(json, 'borderColor'),
+      borderNear = (_oneOf(json, 'borderEdges', const ['all', 'near']) ?? 'all') == 'near',
+      icon = switch (json['icon']) {
+        null => null,
+        final Map<dynamic, dynamic> icon => (name: string(icon, 'name'), color: _color(icon, 'color')),
+        _ => throw const FormatException('Invalid spectrum annotation icon'),
+      } {
     _clickable(id, event, menu);
   }
 

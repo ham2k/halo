@@ -243,6 +243,14 @@ void main() {
     });
   });
 
+  testWidgets('a laid-out scene stops at its pane, as artwork does', (tester) async {
+    // A control may paint past its slot — a band scope's annotation at the window's edge —
+    // and with nothing at the pane's edge it would paint over the pane beside this one.
+    await show(tester, scene(controls: [spotButton], layout: column(['spot']), artwork: false));
+    final clips = find.ancestor(of: find.text('Spot'), matching: find.byType(ClipRect));
+    expect(clips.evaluate().map((e) => e.size), contains(const Size(400, 300)));
+  });
+
   testWidgets('a refresh while typing keeps the typing, and nothing is sent before Enter', (tester) async {
     final events = <Map<String, dynamic>>[];
     Future<Map<String, Object>> handler(Map<String, dynamic> event) async {

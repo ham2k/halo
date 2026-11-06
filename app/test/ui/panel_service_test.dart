@@ -47,6 +47,21 @@ void main() {
     expect(panel.formFields.length, 1);
   });
 
+  test("a section header in a panel's form stays to fold the fields under it, though it has no key", () {
+    final panel = PanelDefinition.fromExtensionEntry(
+      entry(
+        form: [
+          {'type': 'field', 'fieldType': 'select', 'key': 'display'},
+          {'type': 'header', 'title': 'Band Scope Settings', 'style': 'section', 'collapsed': true},
+          {'type': 'field', 'fieldType': 'number', 'key': 'floor'},
+          {'type': 'field', 'fieldType': 'number', 'label': 'No key'},
+        ],
+      ),
+    )!;
+    // Dropped as a keyless field would be, the fields it folds would all show at once.
+    expect(panel.formFields.map((f) => f['key'] ?? f['title']), ['display', 'Band Scope Settings', 'floor']);
+  });
+
   test('a panel with no form and no settings target offers no settings', () {
     // What decides whether a gear appears beside it in Layout Setup.
     expect(PanelDefinition.fromExtensionEntry(entry())!.hasSettings, isFalse);

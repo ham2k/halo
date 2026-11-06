@@ -242,7 +242,7 @@ class CliHostCalls {
 
       case 'getSpots':
         // The CLI has no operator, so no filters of theirs and no scorers to
-        // judge with: `'user'` reads as every spot handed over, unannotated,
+        // judge with: `'user'` and `'sources'` read as every spot handed over, unannotated,
         // and only the caller's own options narrow it. Parsed first, so a
         // malformed option rejects here as it does in the app.
         final query = SpotsQuery.fromParams(params);

@@ -577,6 +577,12 @@ export interface PanelSceneSpectrumAnnotation {
   part?: "spectrum" | "pan" | "waterfall"
   /** Pixels from the spectrum's bottom up to the text's, or from the waterfall's top down to the text's. Default 4. */
   offset?: PanelSceneSpectrumNumber
+  /**
+   * Where `offset` measures from in place of that edge, as a layer's `y` is written — `noise+30db`
+   * stands the text that far above the noise on any radio's scale. Not drawn until the app has
+   * estimated the noise. An app without it measures from the edge.
+   */
+  y?: PanelSceneSpectrumAcross
   /** Which end of the text sits at `hz`. Default `center`. */
   align?: "start" | "center" | "end"
   /**
@@ -594,6 +600,11 @@ export interface PanelSceneSpectrumAnnotation {
   background?: string
   borderColor?: string
   borderWidth?: PanelSceneSpectrumNumber
+  /**
+   * `near` draws the border on only the edge facing the one `offset` measures from — under the
+   * text on the spectrum, over it on the waterfall. Default `all`; an app without it draws all.
+   */
+  borderEdges?: "all" | "near"
   /** Default 2. */
   padding?: PanelSceneSpectrumNumber
   /** Default 2. */
@@ -601,6 +612,11 @@ export interface PanelSceneSpectrumAnnotation {
   event?: string
   /** Opened where it is clicked, in place of an `event`. Extension API 17. */
   menu?: { label: string; event: string }[]
+  /**
+   * An MDI or `fa-` icon before the text, at its size, in `color` or the text's. An app without it
+   * draws the text alone.
+   */
+  icon?: { name: string; color?: string }
 }
 
 /** `color` and `width` draw a line, or an area's edges; `fill` fills an area. */

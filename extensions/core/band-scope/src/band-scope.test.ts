@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import type { PanelRadioSpectrum, PanelRadioState, PanelRenderArgs, PanelScene, PanelSceneLayoutNode } from "@ham2k/extension-sdk"
+import type { PanelEnvironment, PanelRadioSpectrum, PanelRadioState, PanelRenderArgs, PanelScene, PanelSceneLayoutNode } from "@ham2k/extension-sdk"
 import { createBandScope, scene, settingsFrom, type BandScopeHost } from "./band-scope.ts"
 
 const spectrum: PanelRadioSpectrum = {
@@ -100,8 +100,9 @@ test("the scope is all the pane shows: its settings are behind the gear, with no
     ),
   ).getPanels({}, context)
   assert.deepEqual(
-    descriptor.form!.map((field) => ("key" in field ? field.key : "")),
-    ["display", "floor", "average", "fps", "rows", "ref", "speed"],
+    descriptor.form!.map((field) => ("key" in field ? field.key : field.title)),
+    // The view and the spots up front; what the scope draws and asks of the radio folded under a heading.
+    ["display", "spots", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "ref", "speed"],
   )
   // Each select's default must be one of its choices, or the form opens on a blank.
   for (const field of descriptor.form!) {
@@ -153,6 +154,29 @@ const fakeHost = (radios: () => PanelRadioState[], designated: () => PanelRadioS
   readRadio: async (id?: string) => (id ? (radios().find((receiver) => receiver.id === id) ?? null) : designated()),
   listRadios: async () => radios(),
   setRadioSpectrum: async () => ({ accepted: true, state: designated() }),
+  setRadio: async () => ({ accepted: true, state: designated() }),
+  suggestQso: async () => ({ accepted: true }),
+})
+
+test("with the receiver picked gone, the one the scene falls back to keeps its band plan", async () => {
+  // The scene shows the radio's own receiver for a selection no longer there; marking only the
+  // receiver selected, the panel would leave that pane bare.
+  let radios: PanelRadioState[] = dualRadios()
+  const hook = createBandScope(
+    fakeHost(
+      () => radios,
+      () => radios[0],
+    ),
+  )
+  const environment = { width: 600, height: 300, typography: { mono: {} } } as unknown as PanelEnvironment
+  const render = { ...args("gone", { plan: "edges", spots: false }), environment }
+  await hook.render(render, context)
+  await hook.onEvent!({ ...render, event: { controlId: "radios", phase: "commit", sequence: 1, action: "select", text: "k4/sub" } }, context)
+  radios = [radios[0]]
+  const content = await hook.render(render, context)
+  const controls = (content as { scene: PanelScene }).scene.controls ?? []
+  const spectrum = controls.find((c) => c.id.endsWith("spectrum")) as { layers?: { id: string }[] }
+  assert.ok(spectrum.layers?.some((l) => l.id.startsWith("plan:edge:")))
 })
 
 test("Main/Sub/Both pins two stable spectrum slots to logical radio IDs", () => {

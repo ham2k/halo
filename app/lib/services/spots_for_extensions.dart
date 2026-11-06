@@ -56,7 +56,11 @@ class ExtensionSpotsReader {
         continentOf: (call) => callInfo[call]?.continent,
       ).filtered;
     } else {
-      spots = sortSpots([for (final list in bySource.values) ...list], 'time');
+      final off = query.base == SpotsBase.sources ? _services.settings.disabledSpotSources : const <String>{};
+      spots = sortSpots([
+        for (final MapEntry(key: source, value: list) in bySource.entries)
+          if (!off.contains(source)) ...list,
+      ], 'time');
     }
 
     final narrowed = query.narrow(spots);

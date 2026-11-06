@@ -525,9 +525,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
 
   void _tap(TapUpDetails e) {
     final at = e.localPosition;
-    if (_annotationAt(at) case final hit? when hit.annotation.clickable && widget.onAnnotation != null) {
-      final annotation = hit.annotation;
-      return _click(annotation.event, annotation.menu, e, (action, details) => widget.onAnnotation!(annotation, action, hit.hz, details));
+    if (_annotationAt(at) case (:final annotation?, :final hz, rect: _) when annotation.clickable && widget.onAnnotation != null) {
+      return _click(annotation.event, annotation.menu, e, (action, details) => widget.onAnnotation!(annotation, action, hz, details));
     }
     if (_layerAt(at) case final layer?) {
       final hz = _hzAt(at, _screen);

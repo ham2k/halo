@@ -555,6 +555,39 @@ void main() {
     expect(_lines(tester).map((line) => line.$1.dy), [closeTo(90, .01), closeTo(140, .01)]);
   });
 
+  testWidgets('an annotation measured from the noise stands that far above it as the floor moves the picture', (tester) async {
+    final radio = _Radio();
+    Map<String, dynamic> spec(num floor) => {
+      'floor': floor,
+      'annotations': [
+        {'id': 'spot', 'text': 'K1ABC', 'hz': 14050000, 'y': 'noise+20db', 'pointer': false, 'event': 'spot'},
+      ],
+    };
+    Future<List<String?>> clickAt(num floor, List<double> ys) async {
+      final events = await _show(tester, radio, spec(floor));
+      radio.controller.add(SpectrumFrame(lowHz: 14000000, highHz: 14100000, levels: Float32List(1000), floorDb: 0, ceilingDb: 80, noiseDb: 10, atMillis: 0));
+      await tester.pump();
+      // Painted, so a click finds where it was drawn.
+      await tester.pump();
+      final box = tester.getRect(find.byType(SceneSpectrumView));
+      final hit = <String?>[];
+      for (final y in ys) {
+        events.clear();
+        await tester.tapAt(box.topLeft + Offset(200, y));
+        await tester.pump(const Duration(milliseconds: 400));
+        hit.add(events.isEmpty ? null : events.single['annotation'] as String?);
+      }
+      await tester.pump(const Duration(seconds: 2));
+      return hit;
+    }
+
+    // 0 to 80 dB down a 120-pixel spectrum, the noise at 10: 20 dB above it is 75 pixels down, and
+    // the box stands 4 above that. Ten dB more floor lowers the noise by 15 pixels, the box with it:
+    // measured in pixels from the spectrum's foot, it would stay put while the signals moved.
+    expect(await clickAt(0, [58, 80]), ['spot', null]);
+    expect(await clickAt(10, [58, 80]), [null, 'spot']);
+  });
+
   test('the band scope reads its names from before extension API 17 the same as its own', () {
     SceneSpectrumSpec spec(Map<String, dynamic> spectrum, {String kind = 'bandScope'}) => PanelScene({
       ..._doc(spectrum),

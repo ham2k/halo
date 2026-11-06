@@ -117,7 +117,9 @@ export interface HookContext {
   /// admit (sources, enabled bands, band and mode — "auto" following the
   /// radio — age and continents), merged and ordered as that panel shows it.
   /// `filter: 'all'` starts instead from every held spot, unmerged, newest
-  /// first. The other options narrow either one further.
+  /// first, and `filter: 'sources'` (extension API 19) from those of the
+  /// sources the operator has on, with none of the panel's other filters.
+  /// The other options narrow any of them further.
   ///
   /// Spots come back annotated — worked, our own, scoring notices — when
   /// there is an operation to judge them against: `operationUuid`, or by
@@ -318,8 +320,10 @@ export interface Spot {
 /// `string | string[]` option matches any of the values listed.
 export interface GetSpotsOptions {
   /// `'user'` (the default): what the operator's own Spots Panel filters
-  /// admit. `'all'`: every spot the host holds.
-  filter?: "user" | "all"
+  /// admit. `'all'`: every spot the host holds. `'sources'` (extension API
+  /// 19): every spot from the sources the operator has on, one per source
+  /// report, without the panel's other filters.
+  filter?: "user" | "all" | "sources"
   /// Measured on the spot's own `spot.timeInMillis`; inclusive.
   maxAgeMinutes?: number
   /// Band names as the app spells them (`'20m'`).
@@ -3515,8 +3519,9 @@ export interface PanelDescriptor {
   /// The panel's own configuration, in the same declarative field schema a
   /// SimpleSettingsPanel uses and rendered by the same core form renderer.
   /// Values are host-persisted per panel and handed back in
-  /// `PanelRenderArgs.config`.
-  form?: SettingsField[]
+  /// `PanelRenderArgs.config`. A `section` header folds the fields under it;
+  /// an app older than that shows the fields without it.
+  form?: (SettingsField | FormHeader)[]
 }
 
 /** Resolved host typography; sizes are logical pixels, not the app Font Scale. */

@@ -459,7 +459,15 @@ a scope, the control says why instead. Placed like a native control, it takes:
   `value`, its `id` as `annotation` and where it was clicked as `at`, and
   does not tune. One with a `menu` (API 17, `[{ label, event }]` like a
   button's, and no `event` beside it) opens it where it was clicked, and
-  sends the item picked the same way.
+  sends the item picked the same way. An `icon` (`{ name, color? }`, an MDI
+  or `fa-` name) is drawn before the text at its size, in the text's color
+  unless it names its own; an app without it draws the text alone. Its
+  `offset` is pixels up from the spectrum's foot or down from the
+  waterfall's head, or from a `y` written as a layer's is: `noise+30db`
+  stands it that far above the noise on any radio, once the app has
+  estimated it, and an app without `y` measures from the edge. With
+  `borderEdges: "near"` its border is only the edge facing that one, an
+  underline on the spectrum.
 - `layers` (API 17): up to 128 rectangles, lines, text and artwork placed by
   frequency, drawn over the picture under the annotations and moving with
   every zoom, pan and glide. Each has an `id` and a `kind` — `rect`, `line`,

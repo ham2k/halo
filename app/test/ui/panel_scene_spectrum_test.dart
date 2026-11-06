@@ -507,6 +507,38 @@ void main() {
       expect(() => only({'corner': 'left'}), throwsFormatException);
     });
 
+    test("an annotation's icon is a name and a color that may be see-through, as the text's may", () {
+      SceneSpectrumAnnotation only(Object? icon) => PanelScene(
+        _doc(
+          spectrum: {
+            'annotations': [
+              {'id': 'a', 'text': 'A', 'hz': 1, 'icon': ?icon},
+            ],
+          },
+        ),
+      ).controlsById['pan']!.spectrum!.annotations.single;
+      expect(only(null).icon, isNull);
+      expect(only({'name': 'pine-tree'}).icon, (name: 'pine-tree', color: null));
+      // A fading spot fades its icon with its call.
+      expect(only({'name': 'pine-tree', 'color': '#802E7D32'}).icon!.color, const Color(0x802E7D32));
+      expect(() => only('pine-tree'), throwsFormatException);
+      expect(() => only({'color': '#2E7D32'}), throwsFormatException);
+    });
+
+    test("an annotation's border goes all around unless it asks for only the edge facing its part's", () {
+      SceneSpectrumAnnotation only(String? edges) => PanelScene(
+        _doc(
+          spectrum: {
+            'annotations': [
+              {'id': 'a', 'text': 'A', 'hz': 1, 'borderColor': '#FFFFFF', 'borderEdges': ?edges},
+            ],
+          },
+        ),
+      ).controlsById['pan']!.spectrum!.annotations.single;
+      expect([only(null).borderNear, only('all').borderNear, only('near').borderNear], [false, false, true]);
+      expect(() => only('bottom'), throwsFormatException, reason: 'the edge depends on the part, which the flow may turn');
+    });
+
     test('a center with no parts, or false, is no tuned-frequency line', () {
       for (final center in [<String, dynamic>{}, false]) {
         final mark = PanelScene(_doc(spectrum: {'center': center})).controlsById['pan']!.spectrum!.center!;
@@ -1139,6 +1171,120 @@ void main() {
       expect(events.single['action'], 'spot');
       expect(events.single['annotation'], 'spot-1');
       expect(events.single['value'], 14050000);
+    });
+
+    testWidgets('one at the edge of the window is cut off there, not drawn over what lies beside the scope', (tester) async {
+      final source = _Source();
+      await _show(
+        tester,
+        source: source,
+        spectrum: {
+          'annotations': [
+            // Centred on the window's low edge: half its box lies off the scope.
+            {'id': 'edge', 'text': 'IU8QGR', 'hz': 14000000, 'background': '#FFFF0000'},
+          ],
+        },
+      );
+      source.controller.add(_frame());
+      await tester.pump();
+      await tester.pump();
+      final painted = tester.renderObjectList(find.descendant(of: find.byType(SceneSpectrumView), matching: find.byType(CustomPaint)));
+      final size = tester.getSize(find.byType(SceneSpectrumView));
+      expect(
+        painted,
+        anyElement(
+          paints
+            ..clipRect(rect: Offset.zero & size)
+            ..path(color: const Color(0xFFFF0000)),
+        ),
+      );
+    });
+
+    testWidgets('the dial\'s frequency is drawn over one on the dial', (tester) async {
+      // Spots crowd the frequency tuned; drawn after the label, theirs would cover the readout.
+      final source = _Source()..nativeGestures = true;
+      await _show(
+        tester,
+        source: source,
+        spectrum: {
+          'backgroundColor': '#FF00FF00',
+          'annotations': [
+            {'id': 'on-dial', 'text': 'K1ABC', 'hz': 14074000, 'background': '#FFFF0000'},
+          ],
+        },
+      );
+      source.controller.add(_frame());
+      await tester.pump();
+      await tester.pump();
+      final painted = tester.renderObjectList(find.descendant(of: find.byType(SceneSpectrumView), matching: find.byType(CustomPaint)));
+      expect(
+        painted,
+        anyElement(
+          paints
+            ..path(color: const Color(0xFFFF0000))
+            ..path(color: const Color(0xFF00FF00).withValues(alpha: .7)),
+        ),
+      );
+    });
+
+    testWidgets('a click on the dial\'s frequency over a spot does not work the spot it hides', (tester) async {
+      // The label is drawn over the annotations; hit-tested under it, a click on the readout would
+      // put a station the operator cannot see in the logging fields.
+      final source = _Source()..nativeGestures = true;
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        source: source,
+        spectrum: {
+          'annotations': [
+            {'id': 'on-dial', 'text': 'K1ABCDEFGH', 'hz': 14074000, 'event': 'spot', 'y': 'spectrum+28px', 'align': 'center'},
+          ],
+        },
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      source.controller.add(_frame());
+      await tester.pump();
+      await tester.pump();
+      final box = tester.getRect(find.byType(SceneSpectrumView));
+      await tester.tapAt(Offset(box.left + box.width * .74 + 6, box.top + 6));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(events.where((e) => e['annotation'] != null), isEmpty);
+    });
+
+    testWidgets('its icon is part of the box a click lands on', (tester) async {
+      // Starting at the middle of the sweep, the text alone is 24 px wide at this size; the icon
+      // before it widens the box past where this click lands. Drawn beside the box, the icon would
+      // look clickable and tune the radio instead.
+      Future<List<Map<String, dynamic>>> clickBeyondText(Map<String, dynamic>? icon) async {
+        final source = _Source();
+        final events = <Map<String, dynamic>>[];
+        await _show(
+          tester,
+          source: source,
+          spectrum: {
+            'annotations': [
+              {'id': 'spot-1', 'text': 'K', 'hz': 14050000, 'event': 'spot', 'align': 'start', 'size': 20, 'icon': ?icon},
+            ],
+          },
+          onEvent: (e) async {
+            events.add(e);
+            return {};
+          },
+        );
+        source.controller.add(_frame());
+        await tester.pump();
+        await tester.pump();
+        final box = tester.getRect(find.byType(SceneSpectrumView));
+        await tester.tapAt(Offset(box.center.dx + 34, box.top + box.height * .4 - 14));
+        await tester.pump();
+        return events;
+      }
+
+      expect((await clickBeyondText(null)).where((e) => e['annotation'] != null), isEmpty);
+      expect((await clickBeyondText({'name': 'pine-tree'})).single['annotation'], 'spot-1');
     });
 
     testWidgets('a click on it while another event is in flight is not swallowed by the next click', (tester) async {

@@ -27,6 +27,10 @@ void main() {
       expect(query.annotate, isTrue);
     });
 
+    test("'sources' is the held spots less the sources switched off", () {
+      expect(SpotsQuery.fromParams(const {'filter': 'sources'}).base, SpotsBase.sources);
+    });
+
     // The kernel spreads the caller's options and sends the ones it was not
     // given as undefined; refusing those would refuse every plain call.
     test('null values read as absent', () {

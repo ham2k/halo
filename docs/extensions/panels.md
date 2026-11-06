@@ -159,7 +159,9 @@ against this operation.
   a settings panel uses ([Settings panels](settings.md)). The app renders it
   behind the gear beside the panel in Layout Setup, persists the values per
   placed panel, and hands them back as `args.config`. Nothing for you to
-  store.
+  store. A `header` with `style: "section"` and `collapsed: true` folds the
+  settings an operator seldom changes under it ([Forms](forms.md)); an app
+  older than that shows its fields without the heading.
 - **`multiple`** lets the operator place more than one of the panel. Off by
   default: most panels are one thing. Set it where two is the point, such as
   a panel whose content is the operator's own notes. Each placement gets

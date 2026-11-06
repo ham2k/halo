@@ -276,6 +276,9 @@ function describeError(e: unknown): string {
   // a revoked Proxy — and this runs inside the kernel's own error handling,
   // where a throw abandons whatever it was handling.
   try {
+    // QuickJS throws a bare null when it runs out of memory with too little left to build its own
+    // "out of memory" error; read as String(null), the operator would be told only "null".
+    if (e === null) return "out of memory, or null thrown"
     const err = e as Error
     return err?.message ? `${err.message}\n${err.stack ?? ""}`.trim() : String(e)
   } catch {

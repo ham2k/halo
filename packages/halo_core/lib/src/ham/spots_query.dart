@@ -19,6 +19,11 @@ enum SpotsBase {
 
   /// Every spot the host holds, one per source report, newest first.
   all,
+
+  /// [all] less the sources the operator switched off: those are a standing
+  /// exclusion, where their bands, modes and the rest follow what they look
+  /// at. A host with no operator reads it as [all].
+  sources,
 }
 
 class SpotsQuery {
@@ -63,7 +68,8 @@ class SpotsQuery {
     final base = switch (params['filter']) {
       null || 'user' => SpotsBase.user,
       'all' => SpotsBase.all,
-      final other => throw FormatException("getSpots: `filter` must be 'user' or 'all', not `$other`"),
+      'sources' => SpotsBase.sources,
+      final other => throw FormatException("getSpots: `filter` must be 'user', 'all' or 'sources', not `$other`"),
     };
     final maxAge = params['maxAgeMinutes'];
     if (maxAge != null && (maxAge is! num || !maxAge.isFinite || maxAge < 0)) {

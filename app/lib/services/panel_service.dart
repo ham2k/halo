@@ -237,8 +237,9 @@ class PanelDefinition {
         for (final f in (entry['form'] as List?) ?? const [])
           // A field with no key renders in the form and can never be saved
           // or handed back as `config`, so the operator would fill in a
-          // control that does nothing.
-          if (f is Map && f['key'] is String)
+          // control that does nothing. A header holds no value: every reader
+          // of the fields skips what has no key.
+          if (f is Map && (f['key'] is String || f['type'] == 'header'))
             f.cast<String, dynamic>()
           else
             ...() {

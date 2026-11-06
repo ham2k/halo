@@ -63,7 +63,9 @@ assets, which ship wholesale, and only the host's bridge tests load it. To try i
 - Native SVG layers, dynamic numeric text, clamped linear bindings, and transitions
   of rotation, translation, scale, and opacity. Rotation is in degrees; rotation and
   scale turn about a pivot given as fractions of each layer's rectangle. Layers draw
-  in list order, within a clipped viewBox.
+  in list order, within a clipped viewBox. The whole scene, laid-out controls
+  included, stops at its pane, so nothing a control draws past its slot paints
+  over the pane beside it.
 - Rectangular buttons, absolute horizontal sliders, and relative tuning knobs.
   Dragging is in scene coordinates, independent of resizing/letterboxing. Knobs
   combine horizontal and upward travel; their sensitivity is value per scene unit.

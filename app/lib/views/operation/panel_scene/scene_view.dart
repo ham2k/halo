@@ -884,11 +884,15 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
                 actions: [TextButton(onPressed: () => setState(() => _failed = false), child: Text(context.t.common.dismiss))],
               ),
             Expanded(
-              child: TickerMode(
-                enabled: awake && !reduceMotion,
-                child: IgnorePointer(
-                  ignoring: !awake,
-                  child: widget.scene.layout == null ? _artwork(reduceMotion) : _layout(widget.scene.layout!, () => _artwork(reduceMotion)),
+              // Whatever a control draws stops at the pane: past it, it would paint over the
+              // panes beside this one. Artwork clips itself; a laid-out control may not.
+              child: ClipRect(
+                child: TickerMode(
+                  enabled: awake && !reduceMotion,
+                  child: IgnorePointer(
+                    ignoring: !awake,
+                    child: widget.scene.layout == null ? _artwork(reduceMotion) : _layout(widget.scene.layout!, () => _artwork(reduceMotion)),
+                  ),
                 ),
               ),
             ),

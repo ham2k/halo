@@ -164,7 +164,7 @@ release it can run. The SDK's minor version is the level it describes
 | 16 | the kernel is `globalThis.__halo`; `__polo`, its name before, answers only once a bundle declaring a lower level is loaded, and only it carries `registerDynamicForm`, `unregisterDynamicForm` and `host.showForm`, which take the extension's key from their caller |
 | 17 | a spectrum's own gestures: the host tunes on a click or the wheel, zooms and pans, and draws an axis, unless the scene's `gestures` and `scale` say otherwise; a spectrum's `layers`, placed by frequency |
 | 18 | logging fields drawn as one control (`group`), typed straight through (`autoadvanceWhen`, `autoadvanceBefore`), with a `suffix` after the value and our exchange beside it (`ourExchange`); a serial's `placeholder`; display-only fields (`editable: false`, `value`) and optional ones (`chars.min: 0`) |
-| 19 | a radio's logging `set` and operating `opStyle` in `readRadio` and `listRadios`, and `readRadio('A')` / `readRadio('B')` for a set's radio; the operation's `uuid` in `processQsoBeforeSave`; a command's `setOpStyle`; `ctx.opStyle`; templates' `keyer.opStyle` |
+| 19 | a radio's logging `set` and operating `opStyle` in `readRadio` and `listRadios`, and `readRadio('A')` / `readRadio('B')` for a set's radio; the operation's `uuid` in `processQsoBeforeSave`; a command's `setOpStyle`; `ctx.opStyle`; templates' `keyer.opStyle`; `getSpots`' `filter: 'sources'` |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook
