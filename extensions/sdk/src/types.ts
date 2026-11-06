@@ -2321,6 +2321,15 @@ export interface SyncTransportHook {
   findLinkRequest?(args: { challenge_token: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   findLinkRequestByClient?(args: { client: string; challenge_token: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   approveLinkRequest?(args: { client: string; challenge_token?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Moves this device onto a client of its own, registered under `key`, on
+  /// the account it is on now: the new client asks to join and the current
+  /// one approves it, as a QR link would, and only then does the new one
+  /// become this device's identity. Answers `{ client, account }`; a failure
+  /// leaves the current identity as it was and comes back as
+  /// `{ error, error_status }`. The app calls it to give an install that
+  /// shared its sync identity with another app one of its own. Optional, so
+  /// transports predating this contract keep compiling.
+  moveToNewClient?(args: { key: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   /// Ensures this device is registered with the sync server, independent of
   /// whether the operator has QSO sync enabled — registration establishes
   /// device identity and the realtime push channel, it does not push any log

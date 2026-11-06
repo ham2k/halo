@@ -65,6 +65,10 @@ String? _anonymousIdentity(Map<dynamic, dynamic>? account) {
   return t.syncAccount.anonymous(id: id);
 }
 
+/// An account's short id ("#XXXXXXXX" without the "#"), from its bare uuid —
+/// for an account known only by uuid, as the sync engine names one.
+String syncAccountShortId(String uuid) => _shortId({'uuid': uuid}) ?? uuid;
+
 /// The uuid's first 8 characters, upper-cased — app-polo's convention, and
 /// short enough to read aloud to support.
 String? _shortId(Map<dynamic, dynamic>? account) {

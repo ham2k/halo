@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import Security
 
 class MainFlutterWindow: NSWindow {
   // The AppBar height Flutter is actually rendering, pushed across the
@@ -27,6 +28,8 @@ class MainFlutterWindow: NSWindow {
   private var screenCaptureChannel: ScreenCaptureChannel?
 
   private var imageClipboardChannel: FlutterMethodChannel?
+
+  private var keychainChannel: FlutterMethodChannel?
 
   // The frame restored from the saved geometry, held only through the initial
   // layout. Flutter resizes the window once shortly after its first frame
@@ -101,6 +104,45 @@ class MainFlutterWindow: NSWindow {
       }
     }
     imageClipboardChannel = imageClipboard
+
+    // The names of the secrets stored under a keychain service
+    // (edition_keychain.dart), which flutter_secure_storage cannot list on the
+    // file keychain: its readAll asks for the values too, and macOS refuses
+    // that for more than one item. Attributes only — never a value — so it
+    // needs no access to any item, and cannot ask for the keychain password.
+    let keychain = FlutterMethodChannel(
+      name: "ham2k/keychain",
+      binaryMessenger: flutterViewController.engine.binaryMessenger)
+    keychain.setMethodCallHandler { call, result in
+      guard call.method == "listKeys",
+        let args = call.arguments as? [String: Any],
+        let service = args["service"] as? String
+      else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      let query: [CFString: Any] = [
+        kSecClass: kSecClassGenericPassword,
+        kSecAttrService: service,
+        kSecMatchLimit: kSecMatchLimitAll,
+        kSecReturnAttributes: true,
+      ]
+      var found: AnyObject?
+      let status = SecItemCopyMatching(query as CFDictionary, &found)
+      if status == errSecItemNotFound {
+        result([String]())
+      } else if status != errSecSuccess {
+        result(FlutterError(code: "keychain_list_failed", message: "SecItemCopyMatching failed", details: Int(status)))
+      } else {
+        // `fss.wrapped.` items are flutter_secure_storage's own companions to
+        // a Secure Enclave secret, not secrets of their own.
+        let keys = (found as? [[CFString: Any]] ?? [])
+          .compactMap { $0[kSecAttrAccount] as? String }
+          .filter { !$0.hasPrefix("fss.wrapped.") }
+        result(keys)
+      }
+    }
+    keychainChannel = keychain
 
     // Documents opened through Finder reach the app delegate; this is how they
     // reach Flutter. Assigning the channel also flushes anything the OS handed

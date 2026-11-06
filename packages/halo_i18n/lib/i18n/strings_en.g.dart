@@ -2723,6 +2723,24 @@ class Translations$notices$en {
 
 	/// en: 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.'
 	String autoConnectHeld({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.';
+
+	/// en: 'Some passwords could not be moved'
+	String get keychainMoveTitle => 'Some passwords could not be moved';
+
+	/// en: 'HaLo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. Until you choose, HaLo keeps using them where they are. Retry to try again — macOS may ask for your login keychain password — or continue without them and enter them again where needed.'
+	String get keychainMove => 'HaLo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. Until you choose, HaLo keeps using them where they are. Retry to try again — macOS may ask for your login keychain password — or continue without them and enter them again where needed.';
+
+	/// en: 'Retry'
+	String get keychainMoveRetry => 'Retry';
+
+	/// en: 'Continue without them'
+	String get keychainMoveContinue => 'Continue without them';
+
+	/// en: 'This Mac is syncing with a new account'
+	String get syncAccountReplacedTitle => 'This Mac is syncing with a new account';
+
+	/// en: 'HaLo could not bring this Mac's sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. To sync with your previous account (#${previous}) instead, link this Mac to it again in Sync settings.'
+	String syncAccountReplaced({required Object account, required Object previous}) => 'HaLo could not bring this Mac\'s sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. To sync with your previous account (#${previous}) instead, link this Mac to it again in Sync settings.';
 }
 
 // Path: syncAccount
@@ -13507,6 +13525,12 @@ extension on Translations {
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
+			'notices.keychainMoveTitle' => 'Some passwords could not be moved',
+			'notices.keychainMove' => 'HaLo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. Until you choose, HaLo keeps using them where they are. Retry to try again — macOS may ask for your login keychain password — or continue without them and enter them again where needed.',
+			'notices.keychainMoveRetry' => 'Retry',
+			'notices.keychainMoveContinue' => 'Continue without them',
+			'notices.syncAccountReplacedTitle' => 'This Mac is syncing with a new account',
+			'notices.syncAccountReplaced' => ({required Object account, required Object previous}) => 'HaLo could not bring this Mac\'s sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. To sync with your previous account (#${previous}) instead, link this Mac to it again in Sync settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',

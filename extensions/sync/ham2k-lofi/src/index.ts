@@ -54,6 +54,7 @@ defineExtension({
         findLinkRequest,
         findLinkRequestByClient,
         approveLinkRequest,
+        moveToNewClient,
         ensureClientRegistered,
         fetchWebhookEvents,
         submitReport,
@@ -329,7 +330,26 @@ async function registerClient(): Promise<string> {
 }
 
 async function doRegisterClient(): Promise<string> {
-  const [key, secret, call, clientName] = await Promise.all([host.kvGet("key"), host.kvGet("secret"), host.kvGet("call"), host.kvGet("clientName")])
+  const json = await registrationFor(await host.kvGet("key"))
+  cachedToken = json.token as string
+  await host.kvSet("token", cachedToken)
+
+  // `client` carries push_channel/webhook_client_token alongside uuid/name
+  // (Client#as_json on the server) — cached the same way as the token so a
+  // caller that only wants the channel/webhook identity (ensureClientRegistered,
+  // used regardless of whether QSO sync is enabled — HALO-66) doesn't force a
+  // second round trip.
+  await cacheClientIdentity(json.client)
+
+  return cachedToken
+}
+
+/// Registers the client [key] identifies — the server's existing client for a
+/// key it knows, a new client on a new account otherwise — and answers the
+/// server's `{ token, client }`. Stores nothing: what becomes this device's
+/// identity is the caller's decision.
+async function registrationFor(key: JSONValue): Promise<Record<string, JSONValue>> {
+  const [secret, call, clientName] = await Promise.all([host.kvGet("secret"), host.kvGet("call"), host.kvGet("clientName")])
   const server = await serverUrl()
 
   const response = await host.fetch(`${server}/v1/client`, {
@@ -354,17 +374,7 @@ async function doRegisterClient(): Promise<string> {
     // as recoverable rather than a hard failure — see `sync`.
     throw new LoFiRequestError(`LoFi registration failed: ${(json.error as string) ?? `HTTP ${response.status}`}`, response.status, "v1/client")
   }
-  cachedToken = json.token
-  await host.kvSet("token", cachedToken)
-
-  // `client` carries push_channel/webhook_client_token alongside uuid/name
-  // (Client#as_json on the server) — cached the same way as the token so a
-  // caller that only wants the channel/webhook identity (ensureClientRegistered,
-  // used regardless of whether QSO sync is enabled — HALO-66) doesn't force a
-  // second round trip.
-  await cacheClientIdentity(json.client)
-
-  return cachedToken
+  return json
 }
 
 /// Stores the identity fields off a `client` payload, and reports what it
@@ -664,6 +674,51 @@ async function approveLinkRequest(
       permission: { status: "active" },
       ...(challenge_token ? { challenge_token } : {}),
     })
+  })
+}
+
+/// Moves this device onto a client of its own, under [key], on the account it
+/// is on now — a QR link with both sides here. The new client is registered
+/// and asks to join; the current client, still this device's identity,
+/// approves it with the challenge code; only then does the new one become
+/// this device's identity. Any failure before that leaves the current
+/// identity exactly as it was, and comes back as `{ error, error_status }`.
+/// The current client stays on the account: another app may still be using
+/// it.
+async function moveToNewClient({ key }: { key: string }, _ctx: HookContext): Promise<Record<string, JSONValue>> {
+  return asData(async () => {
+    const account = await currentAccountUuid()
+    const registration = await registrationFor(key)
+    const client = registration.client as Record<string, JSONValue> | null
+    const clientUuid = client?.uuid
+    if (typeof clientUuid !== "string") throw new LoFiRequestError("LoFi registration returned no client", 500, "v1/client")
+
+    const server = await serverUrl()
+    const response = await host.fetch(`${server}/v1/client/permissions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${registration.token as string}` },
+      body: JSON.stringify({}),
+    })
+    const permission = parseJson(response.body).permission as Record<string, JSONValue> | null
+    const challengeToken = permission?.challenge_token
+    if (response.status !== 200 || typeof challengeToken !== "string") {
+      throw new LoFiRequestError(`LoFi link request failed: HTTP ${response.status}`, response.status, "v1/client/permissions")
+    }
+
+    await request("PATCH", `v1/accounts/${account}/permissions/${encodeURIComponent(clientUuid)}`, {
+      permission: { status: "active" },
+      challenge_token: challengeToken,
+    })
+
+    // A registration already on the wire is the current client's (another
+    // call's retry after a 401). Landing after the switch, it would take this
+    // device back to the old client while the app holds the new key.
+    if (registrationInFlight) await registrationInFlight.catch(() => null)
+    cachedToken = registration.token as string
+    await host.kvSet("token", cachedToken)
+    await host.kvSet("key", key)
+    await cacheClientIdentity(client ?? undefined)
+    return { client: clientUuid, account }
   })
 }
 

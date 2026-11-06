@@ -142,6 +142,7 @@ abstract final class Hooks {
   static const syncTransportFindLinkRequest = HookRef(HookCategories.syncTransport, 'findLinkRequest');
   static const syncTransportFindLinkRequestByClient = HookRef(HookCategories.syncTransport, 'findLinkRequestByClient');
   static const syncTransportApproveLinkRequest = HookRef(HookCategories.syncTransport, 'approveLinkRequest');
+  static const syncTransportMoveToNewClient = HookRef(HookCategories.syncTransport, 'moveToNewClient');
   static const syncTransportEnsureClientRegistered = HookRef(HookCategories.syncTransport, 'ensureClientRegistered');
   static const syncTransportFetchWebhookEvents = HookRef(HookCategories.syncTransport, 'fetchWebhookEvents');
   static const syncTransportSubmitReport = HookRef(HookCategories.syncTransport, 'submitReport');

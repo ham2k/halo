@@ -97,8 +97,9 @@ expected soon.
 methods are `sync`, `getAccountData`, `linkClient` and
 `linkClientWithEmail`, and the rest (`setAccountEmail`,
 `resendAccountEmail`, `findLinkRequest`, `findLinkRequestByClient`,
-`approveLinkRequest`, `submitReport`, `uploadStashFile`, `listStashFiles`,
-`emailStashLink`) are optional. The conventions every method follows:
+`approveLinkRequest`, `moveToNewClient`, `submitReport`, `uploadStashFile`,
+`listStashFiles`, `emailStashLink`) are optional. The conventions every
+method follows:
 
 - **A rejection is data, not a throw**: `{ error, error_status }`. Every one
   of these methods reports to an operator in the middle of an action.
@@ -118,6 +119,10 @@ methods are `sync`, `getAccountData`, `linkClient` and
   link a requesting device's QR code carries; `approveLinkRequest` must be
   given the `challenge_token` for a blank permission, which is what binds it
   to this account.
+- **`moveToNewClient`** is both sides of that at once: it registers a new
+  client under the `key` it is given, approves it onto the current account
+  as the current client, and only then becomes the new client. A failure
+  leaves the device as it was.
 - **`uploadStashFile`** takes one file and the `groupUuid` of its batch,
   minted by the app since the sandbox has no uuid source, and is called once
   per file, since a call's timeout does not stop a hook and a whole batch in

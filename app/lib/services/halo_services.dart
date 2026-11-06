@@ -28,6 +28,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../tools/contest_bench.dart';
 import '../tools/operation_title.dart';
+import '../tools/sync_account_identity.dart';
 import '../views/operation_dialogs.dart';
 import '../views/settings_view.dart';
 import '../views/cw_messages_dialog.dart';
@@ -44,6 +45,7 @@ import 'panel_radio_service.dart';
 import 'midi/midi_service.dart';
 import 'midi/midi_station.dart';
 import 'deep_link_service.dart';
+import 'edition_keychain.dart';
 import 'export_service.dart';
 import 'connectivity_service.dart';
 import 'error_policy.dart';
@@ -123,10 +125,11 @@ import 'sibling_apps_service.dart';
 export 'operation_command_context.dart';
 
 part 'halo_services_realtime.dart';
+part 'halo_services_sync_identity.dart';
 part 'halo_services_time_travel.dart';
 
 /// The core services bundle passed down to screens.
-class HaLoServices with _Realtime, _TimeTravel {
+class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   final HaLoDatabase db;
   @override
   final SettingsService settings;
@@ -1005,6 +1008,7 @@ class HaLoServices with _Realtime, _TimeTravel {
     onPushBacklog: wakeLock.onPushBacklog,
     onError: ErrorReportingService.report,
     onAuthError: _showSyncAuthNotice,
+    onAccountReplaced: _showSyncAccountReplacedNotice,
     // Sync doubles as the app's connectivity probe: it is the one request the
     // app makes on its own schedule whatever else is suspended, and its
     // success is what declares us back online. It is also the one
@@ -1028,6 +1032,7 @@ class HaLoServices with _Realtime, _TimeTravel {
 
   /// Opens Settings at [panel] — how a notice's button reaches the screen that
   /// can act on what it reported.
+  @override
   void openSettingsPanel(String panel) => navigatorKey.currentState?.push(
     MaterialPageRoute<void>(
       builder: (_) => SettingsView(services: this, initialPanel: panel),

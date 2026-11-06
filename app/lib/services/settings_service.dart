@@ -25,6 +25,7 @@ import 'extensions/engine_load_settings.dart';
 import 'extensions/extension_store_settings.dart';
 import 'network_settings.dart';
 import 'cw_message_set.dart';
+import 'edition_keychain.dart';
 import 'onboarding_flows.dart';
 
 // Importers of this file name a flow in the same breath as the calls that
@@ -129,19 +130,8 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   SettingsService(this._prefs, {FlutterSecureStorage? secureStorage})
     : _secureStorage =
           secureStorage ??
-          const FlutterSecureStorage(
-            // macOS uses the FILE keychain, not the data-protection keychain.
-            // The data-protection keychain requires the `keychain-access-groups`
-            // entitlement, which is RESTRICTED: a Developer ID direct-download
-            // build has no provisioning profile to validate it, so ADDING it
-            // makes the app fail to spawn and NOT adding it makes every
-            // save throw errSecMissingEntitlement (-34018). The file keychain
-            // needs no entitlement and works under the sandbox (it's what debug
-            // already uses). A future Mac App Store build has a profile
-            // and can switch back. See ExtensionService._secureStorage.
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
-            iOptions: IOSOptions(accountName: 'Ham2K Logger'),
-          );
+          // macOS: this edition's own FILE keychain service (edition_keychain.dart).
+          EditionSecureStorage();
 
   @override
   SharedPreferences get prefs => _prefs;
@@ -544,6 +534,40 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
       ErrorReportingService.report(e, st, context: 'settings:equipment-secret-write');
       return false;
     }
+  }
+
+  /// Keeps this device on its sync account once a keychain move
+  /// ([MacKeychainMove]) has finished without bringing the device key across.
+  ///
+  /// The key this session already loaded is written under the new name, and
+  /// the next launch reads it from there. With none loaded, the next
+  /// [ensureSyncDeviceKey] mints a new one, which the server puts on a
+  /// brand-new account: the account being left is named for the sync engine
+  /// ([SyncEngine.replacedAccountKey]), which then combines into that new
+  /// account instead of asking, and says so.
+  Future<void> keepSyncIdentityAfterKeychainMove() async {
+    try {
+      if (await _secureStorage.read(key: _syncDeviceKeyKey) != null) return;
+      final key = _cachedDeviceKey;
+      if (key != null) {
+        await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
+        return;
+      }
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'settings:sync-device-key');
+    }
+    // The key minted next is this device's alone, so there is no client to
+    // split off ([MacKeychainMove.syncClientSplitDue]).
+    await MacKeychainMove.settleSyncClientSplit();
+    final account = syncState['lastSyncAccountUUID'];
+    if (account != null) await setSyncState({...syncState, SyncEngine.replacedAccountKey: account});
+  }
+
+  /// Makes [key] this device's sync identity from now on, for this session
+  /// and the next launch alike.
+  Future<void> adoptSyncDeviceKey(String key) async {
+    await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
+    _cachedDeviceKey = key;
   }
 
   /// The already-loaded device key, or null before [ensureSyncDeviceKey] has

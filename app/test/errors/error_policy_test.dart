@@ -32,6 +32,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/cat/transports/udp_transport_io.dart' show UdpReplyPortTaken;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
+import 'package:ham2k_logger/services/edition_keychain.dart' show KeychainMoveIncomplete;
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/export_service.dart' show ExportException;
 import 'package:ham2k_logger/services/sets/set_category.dart' show SetFileException, SetFileProblem;
@@ -806,6 +807,18 @@ void main() {
       final error = keychainFailure(-34018, "A required entitlement isn't present.");
       expect(ErrorPolicy.decide(error).rule, isNull);
       expect(dispositionFor(error), ErrorDisposition.notify);
+    });
+
+    // A Mac with two editions answers the keychain move's silent read this
+    // way on every launch until the operator answers the move's own notice,
+    // so uploading it would be one event per launch. Only the refusal, and the
+    // dialog a Retry may show turned down: any other failure of the move is a
+    // fault, and wrapping it must not hide it.
+    test('a keychain move refused an item is logged, and any other failure of it stays loud', () {
+      expect(dispositionFor(KeychainMoveIncomplete(keychainFailure(-25308, 'User interaction is not allowed.'))), ErrorDisposition.logOnly);
+      expect(dispositionFor(KeychainMoveIncomplete(keychainFailure(-128, 'User canceled the operation.'))), ErrorDisposition.logOnly);
+      expect(dispositionFor(KeychainMoveIncomplete(keychainFailure(-34018, "A required entitlement isn't present."))), ErrorDisposition.notify);
+      expect(dispositionFor(KeychainMoveIncomplete(MissingPluginException())), ErrorDisposition.notify);
     });
 
     test('a PlatformException carrying no status stays loud', () {

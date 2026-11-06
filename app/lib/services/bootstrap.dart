@@ -21,11 +21,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../views/settings_view.dart';
 import 'app_storage.dart';
 import 'auto_update_service.dart';
 import 'database_snapshot_service.dart';
+import 'edition_keychain.dart';
 
 import 'hang_watchdog.dart';
 
@@ -38,6 +40,7 @@ import 'unclean_quit.dart';
 import 'metrics_service.dart';
 import 'purchase_service.dart';
 import 'settings_service.dart';
+import 'status_bar_service.dart';
 import 'web_storage_persistence.dart';
 import 'window_chrome_service.dart';
 import 'update_check_service.dart';
@@ -102,6 +105,10 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // Held for the notice below: the operator has to be told when settings they
   // had made are gone, and this is the only moment anything knows it.
   final preferencesRecovery = await initializeAppStorage();
+  // Ahead of the extension runtime's start and the settings load, which both
+  // read the keychain, and of every preference this launch writes: whether
+  // the preferences were empty is how it tells a first launch.
+  await MacKeychainMove.start(await SharedPreferences.getInstance());
   // What drift's web worker actually negotiated — read by
   // [reportWebStorageHealth] once the (lazy) database has opened, so boot
   // can warn when the browser degraded to storage that can lose the log.
@@ -237,7 +244,11 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // up on a later launch once the keyring is available.
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   if (syncDeviceKey != null) {
-    unawaited(services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall));
+    unawaited(
+      services.extensions
+          .setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall)
+          .then((_) => services.splitSyncClientIfDue()),
+    );
     services.syncEngine.start();
     services.watchReceivedTestOperationPurges();
     // Independent of syncEngine.start() above: this registers device
@@ -258,6 +269,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // instead of to one caller's control flow.
   if (settings.secureStorageUnavailable) maybeShowNoKeyringNotice(services);
   showPreferencesRecoveryNotice(services, preferencesRecovery);
+  maybeShowKeychainMoveNotice(services);
   await showLogFromNewerBuildNotice(services, await logRefusal);
 
   // Started before the first thing it guards, and awaited: spawning an isolate
@@ -529,6 +541,62 @@ void maybeShowNoKeyringNotice(HaLoServices services) {
     title: t.settings.accounts.noKeyringTitle,
     text: t.settings.accounts.noKeyringText,
   );
+}
+
+const keychainMoveNoticeKey = 'keychain:move';
+
+/// Tells the operator that some of this install's secrets are still under the
+/// keychain name every edition shares ([MacKeychainMove]), and lets them
+/// choose: try again, now allowing macOS to ask for the keychain password, or
+/// go on without what could not be moved.
+///
+/// Not persisted: it is posted again on every launch the move is still
+/// pending, and a copy restored on a launch that finished the move would
+/// report something no longer true, with no actions to answer it.
+@visibleForTesting
+void maybeShowKeychainMoveNotice(HaLoServices services) {
+  if (!MacKeychainMove.pending) return;
+  final statusBar = services.statusBar;
+  statusBar.showNotice(
+    key: keychainMoveNoticeKey,
+    icon: 'key-alert',
+    title: t.notices.keychainMoveTitle,
+    text: t.notices.keychainMove,
+    persist: false,
+    actions: [
+      StatusBarAction(
+        label: t.notices.keychainMoveRetry,
+        primary: true,
+        onTap: () {
+          statusBar.dismissNotice(keychainMoveNoticeKey);
+          unawaited(
+            MacKeychainMove.retry().then((_) async {
+              maybeShowKeychainMoveNotice(services);
+              await services.splitSyncClientIfDue();
+            }),
+          );
+        },
+      ),
+      StatusBarAction(
+        label: t.notices.keychainMoveContinue,
+        onTap: () {
+          statusBar.dismissNotice(keychainMoveNoticeKey);
+          unawaited(continueKeychainMove(services));
+        },
+      ),
+    ],
+  );
+}
+
+/// The notice's Continue: finishes the move with what could be copied, and
+/// keeps this device on its sync account even if its device key was not
+/// among it ([SettingsService.keepSyncIdentityAfterKeychainMove]).
+@visibleForTesting
+Future<void> continueKeychainMove(HaLoServices services) async {
+  await MacKeychainMove.continueWithout();
+  if (MacKeychainMove.pending) return maybeShowKeychainMoveNotice(services);
+  await services.settings.keepSyncIdentityAfterKeychainMove();
+  await services.splitSyncClientIfDue();
 }
 
 /// Tells the operator that this launch had to repair an unreadable

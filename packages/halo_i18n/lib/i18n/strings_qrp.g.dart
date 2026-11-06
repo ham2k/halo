@@ -1216,6 +1216,12 @@ class _Translations$notices$qrp extends Translations$notices$en {
 	@override String get preferencesReset => 'the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.';
 	@override String autoConnectHeldTitle({required Object name}) => '${name} was not connected automatically';
 	@override String autoConnectHeld({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.';
+	@override String get keychainMoveTitle => 'some passwords could not be moved';
+	@override String get keychainMove => 'halo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. until you choose, halo keeps using them where they are. retry to try again — macos may ask for your login keychain password — or continue without them and enter them again where needed.';
+	@override String get keychainMoveRetry => 'retry';
+	@override String get keychainMoveContinue => 'continue without them';
+	@override String get syncAccountReplacedTitle => 'this mac is syncing with a new account';
+	@override String syncAccountReplaced({required Object account, required Object previous}) => 'halo could not bring this mac\'s sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. to sync with your previous account (#${previous}) instead, link this mac to it again in sync settings.';
 }
 
 // Path: syncAccount
@@ -7621,6 +7627,12 @@ extension on TranslationsQrp {
 			'notices.preferencesReset' => 'the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.',
+			'notices.keychainMoveTitle' => 'some passwords could not be moved',
+			'notices.keychainMove' => 'halo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. until you choose, halo keeps using them where they are. retry to try again — macos may ask for your login keychain password — or continue without them and enter them again where needed.',
+			'notices.keychainMoveRetry' => 'retry',
+			'notices.keychainMoveContinue' => 'continue without them',
+			'notices.syncAccountReplacedTitle' => 'this mac is syncing with a new account',
+			'notices.syncAccountReplaced' => ({required Object account, required Object previous}) => 'halo could not bring this mac\'s sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. to sync with your previous account (#${previous}) instead, link this mac to it again in sync settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'anonymous account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',

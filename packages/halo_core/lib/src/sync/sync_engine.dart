@@ -30,6 +30,7 @@ import '../repo/qsos_repository.dart';
 import 'sync_progress.dart';
 import 'sync_types.dart';
 
+part 'account_change.dart';
 part 'claims_sync.dart';
 part 'sync_wire.dart';
 
@@ -82,6 +83,10 @@ class SyncEngine {
   /// when the response names none (an operation-scoped grant). The app
   /// subscribes to it and answers its events with [notifyRemoteChanged].
   final void Function(String? channel)? onAccountPushChannel;
+
+  /// Called after the engine moved this device, unasked, off the account
+  /// named under [replacedAccountKey], so the operator can be told.
+  final void Function(String from, String to)? onAccountReplaced;
 
   /// Called after every periodic round that succeeded, with whether a push
   /// backlog is still draining: the round moved records out and more are
@@ -372,6 +377,7 @@ class SyncEngine {
     this.log,
     this.onProgress,
     this.onAccountPushChannel,
+    this.onAccountReplaced,
     this.onPushBacklog,
     this.onError,
     this.onAuthError,
@@ -565,6 +571,10 @@ class SyncEngine {
   /// a first link, which is exactly the moment a device legitimately has
   /// neither operations nor QSOs.
   Future<bool> _canAdoptAccountSilently() async => (await qsos.syncCounts()).total == 0;
+
+  /// Names the account this device is expected to leave involuntarily; see
+  /// account_change.dart.
+  static const replacedAccountKey = 'replacedAccountUUID';
 
   /// The `SYNCALL` debug command: back up and wipe local data, then run a
   /// fresh backfill under whatever account is already linked. Reuses
@@ -888,18 +898,7 @@ class SyncEngine {
         // anything synced or merge this response — same pause-and-ask
         // treatment as a fresh link. (Fresh state read: the snapshot above
         // predates the network call.)
-        await settings.setState({...settings.state, 'pendingAccountUUID': responseAccountUuid});
-        if (await _canAdoptAccountSilently()) {
-          // Same race as the never-linked branch above.
-          if (generation != _generation) return _abandonRound();
-          // Refused (see the never-linked branch above): don't leave a pending
-          // account behind, or the operator is asked to combine-or-wipe for an
-          // account that needed no question asked.
-          if (!await resolveAccountChange(SyncAccountChoice.combine)) {
-            await settings.setState({...settings.state, 'pendingAccountUUID': null});
-          }
-        }
-        return;
+        return await _settleAccountChange(state, responseAccountUuid, generation);
       }
 
       final responseAccount = response['account'];

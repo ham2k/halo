@@ -22,6 +22,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' as priority;
 import 'package:halo_core/halo_core.dart';
 import 'catalog_service.dart';
 import '../connectivity_service.dart';
+import '../edition_keychain.dart';
 import '../error_reporting_service.dart';
 import '../fyi_service.dart';
 import 'export_type_registry.dart';

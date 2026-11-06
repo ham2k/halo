@@ -20,21 +20,7 @@ mixin _ExtensionAccounts {
   ExtensionHost? get _host;
   Future<void>? get _starting;
 
-  static const _keychainAccountName = 'Ham2K Logger';
-
-  final _secureStorage = const FlutterSecureStorage(
-    mOptions: MacOsOptions(
-      // FILE keychain on macOS. The data-protection keychain needs the RESTRICTED
-      // keychain-access-groups entitlement, which a Developer ID build can't
-      // carry (no provisioning profile → spawn crash), so it fails every
-      // save with errSecMissingEntitlement (-34018). The file keychain needs no
-      // entitlement and works under the sandbox.
-      // A future Mac App Store build has a profile and can switch back.
-      usesDataProtectionKeychain: false,
-      accountName: _keychainAccountName,
-    ),
-    iOptions: IOSOptions(accountName: _keychainAccountName),
-  );
+  final FlutterSecureStorage _secureStorage = EditionSecureStorage();
 
   /// Per-account iCloud Keychain sync flag (`kSecAttrSynchronizable`), keyed
   /// by account `kvKey`, as declared by each extension's `account` hook
@@ -117,7 +103,7 @@ mixin _ExtensionAccounts {
   /// macOS: a synchronizable item requires the data-protection keychain, but the
   /// app uses the FILE keychain on macOS (Developer ID can't carry the
   /// keychain-access-groups entitlement the data-protection keychain needs — see
-  /// the instance default), so macOS accounts are never synchronizable and stay
+  /// [macKeychainOptions]), so macOS accounts are never synchronizable and stay
   /// device-local. iOS always uses the data-protection keychain, so it syncs when
   /// the account declares it. Both keep `synchronizable` and
   /// `usesDataProtectionKeychain` from ever contradicting.
@@ -140,19 +126,7 @@ mixin _ExtensionAccounts {
       await _accountSyncReady.future;
     }
     final declared = _accountSynchronizable[kvKey] ?? false;
-    return (
-      mOptions: MacOsOptions(
-        // File keychain on macOS (see the instance default), so accounts can't
-        // be synchronizable here — kSecAttrSynchronizable requires the
-        // data-protection keychain, which Developer ID can't use. macOS account
-        // creds stay device-local; iOS (always data-protection) still syncs when
-        // the account declares it.
-        usesDataProtectionKeychain: false,
-        accountName: _keychainAccountName,
-        synchronizable: false,
-      ),
-      iOptions: IOSOptions(accountName: _keychainAccountName, synchronizable: declared),
-    );
+    return (mOptions: macKeychainOptions, iOptions: IOSOptions(accountName: iosKeychainService, synchronizable: declared));
   }
 
   /// Every extension-declared account, or null when the extensions could not

@@ -2606,6 +2606,123 @@ void main() {
       expect(settings.state['lastSyncAccountUUID'], 'acct-2');
     });
 
+    group('an account change the app said to expect', () {
+      // The app names the account a device is about to lose its identity on
+      // (a sync key left behind by a keychain move); the server answers the
+      // new identity with a brand-new account. Combining into that one keeps
+      // sync running; asking would hold the whole log behind a question about
+      // an account nobody chose. The rule is one-shot and narrow on purpose:
+      // every other change, empty or not, is still the operator's to settle.
+      late List<(String, String)> replaced;
+
+      setUp(() async {
+        replaced = [];
+        engine.dispose();
+        engine = SyncEngine(
+          operations: operations,
+          qsos: qsos,
+          transport: transport.call,
+          settings: settings,
+          onAccountReplaced: (from, to) => replaced.add((from, to)),
+        );
+        final op = await operations.create(stationCall: 'KI2D');
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W1AW'},
+        });
+      });
+
+      _TransportResponder newAccount({required int qsoTotal}) =>
+          (method, args) => method == 'getAccountData'
+          ? {
+              'current_account': {'uuid': 'acct-2'},
+              'qsos': {'total': qsoTotal},
+            }
+          : {
+              'account': {'uuid': 'acct-2'},
+            };
+
+      test('into an empty account is combined without asking, and reported', () async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-1'};
+        transport.responder = newAccount(qsoTotal: 0);
+
+        await engine.runOneRound();
+
+        expect(settings.state['pendingAccountUUID'], isNull);
+        expect(settings.state['lastSyncAccountUUID'], 'acct-2');
+        expect(settings.state[SyncEngine.replacedAccountKey], isNull);
+        expect((await qsos.syncCounts()).total, 1, reason: 'combined: the log stays, to be pushed to the new account');
+        expect(replaced, [('acct-1', 'acct-2')]);
+      });
+
+      test('into an account that already holds QSOs is asked about, and the expectation is spent', () async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-1'};
+        transport.responder = newAccount(qsoTotal: 42);
+
+        await engine.runOneRound();
+
+        expect(settings.state['pendingAccountUUID'], 'acct-2');
+        expect(settings.state[SyncEngine.replacedAccountKey], isNull);
+        expect(replaced, isEmpty);
+      });
+
+      test('an account that holds only deletions counts as empty, by its contacts', () async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-1'};
+        transport.responder = (method, args) => method == 'getAccountData'
+            ? {
+                'current_account': {'uuid': 'acct-2'},
+                'qsos': {'total': 3, 'contacts': 0},
+              }
+            : {
+                'account': {'uuid': 'acct-2'},
+              };
+
+        await engine.runOneRound();
+
+        expect(settings.state['lastSyncAccountUUID'], 'acct-2');
+      });
+
+      test('a device with nothing logged joins a non-empty account silently, but not as a replacement', () async {
+        // Adopting is the ordinary rule for an empty log; calling an account
+        // that already holds QSOs "the new account the server made" is not.
+        await db.delete(db.qsos).go();
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-1'};
+        transport.responder = newAccount(qsoTotal: 42);
+
+        await engine.runOneRound();
+
+        expect(settings.state['lastSyncAccountUUID'], 'acct-2');
+        expect(replaced, isEmpty);
+      });
+
+      test('naming some other account than the one being left changes nothing', () async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-0'};
+        transport.responder = newAccount(qsoTotal: 0);
+
+        await engine.runOneRound();
+
+        expect(settings.state['pendingAccountUUID'], 'acct-2');
+        expect(replaced, isEmpty);
+      });
+
+      test('a failed emptiness check leaves nothing pending, so the next round can still adopt', () async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true, SyncEngine.replacedAccountKey: 'acct-1'};
+        transport.responder = (method, args) => method == 'getAccountData'
+            ? throw Exception('server exploded')
+            : {
+                'account': {'uuid': 'acct-2'},
+              };
+
+        await engine.runOneRound();
+        expect(settings.state['pendingAccountUUID'], isNull);
+        expect(settings.state[SyncEngine.replacedAccountKey], 'acct-1');
+
+        transport.responder = newAccount(qsoTotal: 0);
+        await engine.runOneRound();
+        expect(settings.state['lastSyncAccountUUID'], 'acct-2');
+        expect(replaced, [('acct-1', 'acct-2')]);
+      });
+    });
+
     test('forceFullResync (SYNCALL) backs up and clears data without touching account state', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
       final op = await operations.create(stationCall: 'KI2D');

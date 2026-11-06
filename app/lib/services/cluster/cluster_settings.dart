@@ -4,6 +4,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../edition_keychain.dart';
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
 
@@ -89,14 +90,8 @@ class ClusterPasswords {
   ClusterPasswords([FlutterSecureStorage? storage])
     : _storage =
           storage ??
-          const FlutterSecureStorage(
-            // The FILE keychain on macOS, as SettingsService's and the extension
-            // accounts' storage use: the data-protection keychain needs the
-            // restricted keychain-access-groups entitlement, which a Developer
-            // ID build cannot carry, and every save there fails with -34018.
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false, accountName: 'Ham2K Logger'),
-            iOptions: IOSOptions(accountName: 'Ham2K Logger'),
-          );
+          // macOS: this edition's own FILE keychain service (edition_keychain.dart).
+          EditionSecureStorage();
 
   final FlutterSecureStorage _storage;
 

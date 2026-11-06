@@ -117,6 +117,16 @@ mixin _ExtensionSyncCalls {
   Future<Map<String, dynamic>?> syncApproveLinkRequest({required String clientUuid, String? challengeToken}) =>
       _syncTransportCall(Hooks.syncTransportApproveLinkRequest, {'client': clientUuid, 'challenge_token': ?challengeToken});
 
+  /// Moves this device onto a sync client of its own, registered under
+  /// [key], on the account it is on now: the transport links the new client
+  /// with the current one's approval, then speaks as the new one. Answers
+  /// `{'client': …, 'account': …}`, the server's rejection as
+  /// `{'error': …}`, or null when the runtime is not up, the call failed, or
+  /// the transport predates the method; in all but the first, this device
+  /// is still the client it was. Five requests, so a longer timeout.
+  Future<Map<String, dynamic>?> syncMoveToNewClient(String key) =>
+      _syncTransportCall(Hooks.syncTransportMoveToNewClient, {'key': key}, timeout: const Duration(seconds: 30));
+
   /// Shared shape of the account/linking calls above: null when the runtime
   /// isn't up or the host call failed, the server's map otherwise —
   /// including the `error`/`error_status` maps those endpoints return for

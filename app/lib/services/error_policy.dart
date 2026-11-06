@@ -43,6 +43,7 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
+import 'edition_keychain.dart' show KeychainMoveIncomplete;
 import 'export_service.dart' show ExportException;
 import 'sets/set_category.dart' show SetFileException;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
@@ -402,6 +403,19 @@ class ErrorPolicy {
           'and the thing it says is already known',
       disposition: ErrorDisposition.logOnly,
       matches: _isKeychainCannotEnumerate,
+    ),
+    ErrorRule(
+      id: 'keychain-move-refused',
+      reason:
+          'the macOS keychain move (edition_keychain.dart) could not read an item under the name the '
+          'editions share without the login keychain password (errSecInteractionNotAllowed), or the '
+          'password dialog a Retry showed was turned down. The first is the expected answer for an item '
+          'another edition created, on any Mac with two editions installed, and the move tells the '
+          'operator itself, with a notice offering to retry or continue without it. Uploading it would '
+          'send one event per launch for as long as that notice goes unanswered. Any other failure of '
+          'the move is not this rule\'s, and is reported as usual',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isKeychainMoveRefused,
     ),
     ErrorRule(
       id: 'keychain-locked',
@@ -904,6 +918,17 @@ class ErrorPolicy {
       // refuse anything.
       error.details is int &&
       error.details == _errSecInteractionNotAllowed;
+
+  /// errSecUserCanceled and errSecAuthFailed: a keychain password dialog the
+  /// operator turned down.
+  static const _keychainDialogDeclined = {-128, -25293};
+
+  static bool _isKeychainMoveRefused(Object error, FlutterErrorDetails? details) {
+    if (error is! KeychainMoveIncomplete) return false;
+    final cause = error.cause;
+    return _isKeychainLocked(cause, details) ||
+        (cause is PlatformException && cause.code == _keychainFailureCode && cause.details is int && _keychainDialogDeclined.contains(cause.details));
+  }
 
   /// errSecParam, which macOS answers for a keychain `readAll` against the
   /// file keychain. Read off `details` like its sibling above, and for the

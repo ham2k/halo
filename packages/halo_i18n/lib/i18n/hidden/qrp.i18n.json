@@ -3222,7 +3222,13 @@
     "preferencesResetTitle": "settings reset",
     "preferencesReset": "the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json.",
     "autoConnectHeldTitle": "${name} was not connected automatically",
-    "autoConnectHeld": "halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings."
+    "autoConnectHeld": "halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.",
+    "keychainMoveTitle": "some passwords could not be moved",
+    "keychainMove": "halo now keeps its passwords and sign-ins in the keychain under its own name, but some of yours could not be moved there yet. until you choose, halo keeps using them where they are. retry to try again — macos may ask for your login keychain password — or continue without them and enter them again where needed.",
+    "keychainMoveRetry": "retry",
+    "keychainMoveContinue": "continue without them",
+    "syncAccountReplacedTitle": "this mac is syncing with a new account",
+    "syncAccountReplaced": "halo could not bring this mac's sync identity along when it moved its passwords in the keychain, so the sync server put it on a new account (#${account}) and your log is syncing there now. to sync with your previous account (#${previous}) instead, link this mac to it again in sync settings."
   },
   "syncAccount": {
     "anonymous": "anonymous account (#${id})",
