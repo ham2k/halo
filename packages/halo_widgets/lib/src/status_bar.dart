@@ -26,6 +26,8 @@ import 'theme.dart';
 import 'ui_scale.dart';
 import 'platform_view_shield.dart';
 
+part 'status_bar_notices.dart';
+
 /// One row in the footer: a transient message or progress bar. Mirrors the
 /// app's `StatusBarItem` without depending on it, so this package doesn't
 /// need to know about the app's service layer.
@@ -187,7 +189,11 @@ class StatusBarFooter extends StatefulWidget {
   /// Whether the bar runs down to the screen's bottom edge instead of stopping
   /// above the bottom safe area. On a phone with rounded corners — the bottom
   /// inset is the tell: the home indicator, or Android's gesture bar — that
-  /// strip is otherwise a band of bare chrome under the bar. Tablets keep the
+  /// strip is otherwise a band of bare chrome under the bar. Only while the
+  /// bar carries no message, though: a message drawn mid-bar sits on the home
+  /// indicator, so the bar grows by the strip for as long as one is showing
+  /// (see [liftDuration]). Its perma icons sit at the trailing edge, clear of
+  /// the indicator, and need no such room. Tablets keep the
   /// safe area: their corners are far tighter than the top inset suggests.
   /// So does a foldable's display, which reports its corners and places the
   /// bar off the edge itself ([bottomBarPaddingOf]).
@@ -211,8 +217,16 @@ class StatusBarFooter extends StatefulWidget {
   static const double _maxGestureInset = 40;
 
   /// What [collapsedHeightOf] costs the bottom of the window once drawn —
-  /// the bar, plus the safe area below it unless it [reachesBottomEdgeOf].
-  static double drawnHeightOf(BuildContext context) => collapsedHeightOf(context) + (reachesBottomEdgeOf(context) ? 0 : bottomBarPaddingOf(context).bottom);
+  /// the bar, plus the safe area below it unless it [reachesBottomEdgeOf]
+  /// with no message on it.
+  static double drawnHeightOf(BuildContext context, {bool hasMessage = false}) =>
+      collapsedHeightOf(context) + (reachesBottomEdgeOf(context) && !hasMessage ? 0 : bottomBarPaddingOf(context).bottom);
+
+  /// How long a bar that [reachesBottomEdgeOf] takes to rise off the edge as
+  /// a message arrives, and to settle back once the last one is gone. Slow on
+  /// purpose: the whole window above moves with it, and a quick jump reads as
+  /// the layout breaking rather than the bar making room.
+  static const liftDuration = Duration(seconds: 2);
 
   /// The horizontal inset that keeps the bar's content clear of the screen's
   /// rounded corners, once it [reachesBottomEdgeOf].
@@ -285,6 +299,15 @@ class StatusBarFooter extends StatefulWidget {
   /// read (see `StatusBarOverlay`).
   final bool showWhenEmpty;
 
+  /// Shows [StatusBarItemData]'s whole message somewhere it fits — the app
+  /// raises it as a notice. Called when the operator taps a message the bar
+  /// has cut short: its line ellipsized, or a title standing in for a text
+  /// the collapsed bar has no room for. Only where the tap has nothing else
+  /// to do — the collapsed bar while it holds a single message, a row of the
+  /// open list — and never for a progress item, whose title is a label for
+  /// the bar beside it. Null leaves a cut-off message cut off.
+  final ValueChanged<StatusBarItemData>? onShowFull;
+
   const StatusBarFooter({
     super.key,
     required this.items,
@@ -296,6 +319,7 @@ class StatusBarFooter extends StatefulWidget {
     this.showWhenEmpty = false,
     this.expanded,
     this.onExpandedChanged,
+    this.onShowFull,
   }) : assert(expanded == null || onExpandedChanged != null, 'a controlled footer needs onExpandedChanged, or nothing can open or close it');
 
   @override
@@ -412,6 +436,12 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     // and trades the side insets for the corners' — but only while there is a
     // bar: an empty footer still holds the strip, for the same reason as above.
     final toEdge = hasContent && StatusBarFooter.reachesBottomEdgeOf(context);
+    // A message on a bar that runs to the edge lifts it off the home indicator
+    // (see [StatusBarFooter.reachesBottomEdgeOf]). With the keyboard up the
+    // safe area is zero and the lift goes at once: easing it out would hold a
+    // strip of bar above the keyboard as the operator starts typing.
+    final inset = bottomBarPaddingOf(context).bottom;
+    final lift = toEdge && widget.items.isNotEmpty ? inset : 0.0;
     // The same widgets either way — [BottomBarSafeArea]'s own pair, with the
     // edges switched — so the switch as the first message arrives does not
     // remount the band and lose its slide.
@@ -422,46 +452,55 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
         bottom: !toEdge,
         left: !toEdge,
         right: !toEdge,
-        minimum: toEdge ? EdgeInsets.symmetric(horizontal: math.max(0, StatusBarFooter.cornerInsetOf(context) - Space.lg)) : EdgeInsets.zero,
+        // Lifted, the band clears the screen's rounded corners as well.
+        minimum: toEdge && lift == 0 ? EdgeInsets.symmetric(horizontal: math.max(0, StatusBarFooter.cornerInsetOf(context) - Space.lg)) : EdgeInsets.zero,
         child: child,
       ),
     );
+    // The lift sits outside the AnimatedSizes below: one of those re-targets
+    // on every frame of a two-second change in its child's size, and would
+    // trail it rather than follow it.
     return Material(
       color: backgroundColor,
       child: held(
-        child: ClipRect(
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.fastOutSlowIn,
-            alignment: Alignment.bottomCenter,
-            child: AnimatedSwitcher(
+        child: AnimatedPadding(
+          duration: toEdge && inset > 0 ? StatusBarFooter.liftDuration : Duration.zero,
+          curve: Curves.easeInOut,
+          padding: EdgeInsets.only(bottom: lift),
+          child: ClipRect(
+            child: AnimatedSize(
               duration: const Duration(milliseconds: 200),
-              reverseDuration: const Duration(milliseconds: 200),
-              switchInCurve: Curves.fastOutSlowIn,
-              switchOutCurve: Curves.fastOutSlowIn,
-              transitionBuilder: (child, animation) {
-                final offsetAnimation = Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation);
-                return SlideTransition(position: offsetAnimation, child: child);
-              },
-              child: !hasContent
-                  ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
-                  : ChromeTopEdge(
-                      key: const ValueKey('footer_active'),
-                      child: Material(
-                        color: backgroundColor,
-                        child: InkWell(
-                          // The BAR opens the messages; the icons riding on it
-                          // open their own menu, and take their taps first.
-                          onTap: canExpand ? () => _setExpanded(!_expanded) : null,
-                          child: AnimatedSize(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.fastOutSlowIn,
-                            alignment: Alignment.bottomCenter,
-                            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor, backgroundColor),
+              curve: Curves.fastOutSlowIn,
+              alignment: Alignment.bottomCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                reverseDuration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.fastOutSlowIn,
+                switchOutCurve: Curves.fastOutSlowIn,
+                transitionBuilder: (child, animation) {
+                  final offsetAnimation = Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation);
+                  return SlideTransition(position: offsetAnimation, child: child);
+                },
+                child: !hasContent
+                    ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
+                    : ChromeTopEdge(
+                        key: const ValueKey('footer_active'),
+                        child: Material(
+                          color: backgroundColor,
+                          child: InkWell(
+                            // The BAR opens the messages; the icons riding on it
+                            // open their own menu, and take their taps first.
+                            onTap: canExpand ? () => _setExpanded(!_expanded) : null,
+                            child: AnimatedSize(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.fastOutSlowIn,
+                              alignment: Alignment.bottomCenter,
+                              child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor, backgroundColor),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+              ),
             ),
           ),
         ),
@@ -471,6 +510,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   Widget _buildCollapsed(BuildContext context, Color foregroundColor, Color backgroundColor) {
     final theme = Theme.of(context);
+    final messageStyle = theme.textTheme.bodySmall?.copyWith(color: foregroundColor);
     final last = widget.items.isNotEmpty ? widget.items.last : null;
     final showGroups = widget.items.length > 1;
 
@@ -553,11 +593,19 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                                         ),
                                       ] else
                                         Expanded(
-                                          child: Text(
-                                            last.title ?? last.text ?? '',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                                          child: _FullTextTap(
+                                            // With more than one message the bar's tap opens the
+                                            // list, where each one has a row of its own.
+                                            onTap: widget.items.length == 1 && widget.onShowFull != null ? () => widget.onShowFull!(last) : null,
+                                            cutOff: (context, width) =>
+                                                (last.title != null && (last.text ?? '').isNotEmpty) ||
+                                                _overflows(context, last.title ?? last.text ?? '', messageStyle, width),
+                                            // Filling the row's height, so the tap target is the
+                                            // bar's and not a line of text's.
+                                            child: Align(
+                                              alignment: AlignmentDirectional.centerStart,
+                                              child: Text(last.title ?? last.text ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: messageStyle),
+                                            ),
                                           ),
                                         ),
                                     ],
@@ -640,6 +688,12 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
           color: foregroundColor,
           onDismiss: () => widget.onDismiss(list[index].key),
           onToggle: () => _setExpanded(false),
+          onShowFull: widget.onShowFull == null
+              ? null
+              : () {
+                  widget.onShowFull!(list[index]);
+                  _setExpanded(false);
+                },
           dismissLabel: widget.dismissLabel,
         ),
       ),
@@ -1044,11 +1098,24 @@ class _StatusBarItemRow extends StatelessWidget {
   /// and its dismiss button takes its own taps from inside this.
   final VoidCallback onToggle;
 
-  const _StatusBarItemRow({required this.item, required this.color, required this.onDismiss, required this.onToggle, required this.dismissLabel});
+  /// Takes the tap instead of [onToggle] when the row cuts its message short
+  /// (see [StatusBarFooter.onShowFull]).
+  final VoidCallback? onShowFull;
+
+  const _StatusBarItemRow({
+    required this.item,
+    required this.color,
+    required this.onDismiss,
+    required this.onToggle,
+    required this.dismissLabel,
+    this.onShowFull,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final titleStyle = theme.textTheme.bodySmall?.copyWith(color: color);
+    final textStyle = theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85));
     return _ExpandedRow(
       color: color,
       onTap: onToggle,
@@ -1073,25 +1140,22 @@ class _StatusBarItemRow extends StatelessWidget {
             ),
           ] else
             Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (item.title != null)
-                    Text(
-                      item.title!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(color: color),
-                    ),
-                  if (item.text != null)
-                    Text(
-                      item.text!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
-                    ),
-                ],
+              child: _FullTextTap(
+                onTap: onShowFull,
+                cutOff: (context, width) =>
+                    (item.title != null && _overflows(context, item.title!, titleStyle, width)) ||
+                    (item.text != null && _overflows(context, item.text!, textStyle, width)),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (item.title != null) Text(item.title!, maxLines: 1, overflow: TextOverflow.ellipsis, style: titleStyle),
+                      if (item.text != null) Text(item.text!, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                    ],
+                  ),
+                ),
               ),
             ),
           const SizedBox(width: Space.xs),
@@ -1102,378 +1166,44 @@ class _StatusBarItemRow extends StatelessWidget {
   }
 }
 
-/// The stack of dismissible "post-it" notices, overlaid above whatever the
-/// [StatusBarFooter] is doing. [notices] is oldest-first; the most recent is
-/// drawn fully on top, with the next one peeking a few pixels behind when
-/// there's more than one.
-class NoticeStack extends StatefulWidget {
-  /// The vertical chrome this widget paints around its card, on top of
-  /// whatever the card itself needs. Public so that anything reasoning about
-  /// the stack's height — a caller's budget, a test's expected viewport —
-  /// reads it rather than re-deriving it from the two paddings, which is a
-  /// copy that goes stale silently the next time either one moves.
-  static const double bandHeight = _noticeBandHeight;
-
-  final List<StatusBarNoticeData> notices;
-  final void Function(String key) onDismiss;
-
-  /// Accessible name for each card's dismiss button (see
-  /// [StatusBarFooter.dismissLabel]).
-  final String dismissLabel;
-
-  /// How tall the **whole stack** may grow — band included — before the card
-  /// inside it scrolls. Null falls back to a fraction of the window, which is
-  /// right when this owns the screen and wrong when it is sharing the bottom
-  /// strip with the footer, the numbers row and the keyboard; there the caller
-  /// has a budget and this is how it says so.
-  ///
-  /// Deliberately the total, not the card. The band is chrome this widget adds
-  /// on its own account, so a caller dividing up a fixed strip cannot pay for
-  /// it without knowing these internals — a card-only cap quietly overruns a
-  /// tight budget by the whole band. Below [_noticeBandHeight] the
-  /// band itself gives way, so this is a bound the widget cannot exceed.
-  final double? maxHeight;
-
-  /// The least this stack can be given and still SHOW a notice rather than a
-  /// sliver of one: a row of card, plus the band it paints around it. The
-  /// footer floors its own cap the same way (`_buildExpanded`) — a notice is
-  /// where ErrorPolicy puts what the operator must read, so it may not be the
-  /// one piece that silently shrinks to nothing.
-  static double minHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).statusBarRow + _noticeBandHeight;
-
-  const NoticeStack({super.key, required this.notices, required this.onDismiss, this.maxHeight, this.dismissLabel = 'Dismiss'});
-
-  @override
-  State<NoticeStack> createState() => _NoticeStackState();
-}
-
-const _noticeDismissDuration = Duration(milliseconds: 220);
-
-class _NoticeStackState extends State<NoticeStack> {
-  /// Set while the top notice is fading out and the one behind it is
-  /// animating into its place; cleared (and [NoticeStack.onDismiss] actually
-  /// called) once that transition finishes.
-  String? _dismissingKey;
-
-  void _startDismiss(String key) {
-    setState(() => _dismissingKey = key);
-    Future.delayed(_noticeDismissDuration, () {
-      widget.onDismiss(key);
-      if (mounted) setState(() => _dismissingKey = null);
-    });
-  }
-
-  /// The budget for the whole stack: what the caller allowed, or 40% of the
-  /// window when it did not say.
-  double _stackCap(BuildContext context) => widget.maxHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
-
-  /// The band actually painted. Normally the full [_noticeBandHeight]; when
-  /// the stack's whole budget is smaller than that, the band shrinks with it
-  /// rather than pushing the stack past what it was given. Keeping the top and
-  /// bottom in proportion means it reads as a tighter band, not a broken one.
-  EdgeInsets _bandFor(double cap) {
-    final scale = (cap / _noticeBandHeight).clamp(0.0, 1.0);
-    return EdgeInsets.fromLTRB(Space.lg, _noticeBandTop * scale, Space.lg, _noticeBandBottom * scale);
-  }
-
-  /// Caps a notice card so the card PLUS the band fits the stack's budget,
-  /// scrolling its content when it would grow past that. Applied to every card
-  /// — including the ghost that sizes the stack — so the whole stack stays
-  /// within the limit, which is the property the caller is relying on.
-  Widget _capHeight(BuildContext context, Widget card) {
-    final cap = _stackCap(context);
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: math.max(0.0, cap - _bandFor(cap).vertical)),
-      child: SingleChildScrollView(child: card),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasNotices = widget.notices.isNotEmpty;
-
-    final theme = Theme.of(context);
-    final footerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
-    final top = hasNotices ? widget.notices.last : null;
-    final second = widget.notices.length > 1 ? widget.notices[widget.notices.length - 2] : null;
-    final isDismissingTop = top != null && top.key == _dismissingKey;
-
-    return ClipRect(
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.fastOutSlowIn,
-        alignment: Alignment.bottomCenter,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          reverseDuration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          transitionBuilder: (child, animation) {
-            final offsetAnimation = Tween<Offset>(begin: const Offset(0, 1.0), end: Offset.zero).animate(animation);
-            return SlideTransition(position: offsetAnimation, child: child);
-          },
-          child: !hasNotices || top == null
-              ? const SizedBox(key: ValueKey('notice_empty'), width: double.infinity, height: 0)
-              : Container(
-                  key: const ValueKey('notice_active'),
-                  width: double.infinity,
-                  color: footerColor,
-                  padding: _bandFor(_stackCap(context)),
-                  // Hold the notice card to the ideal pane width, centered, rather than
-                  // letting it stretch across a wide window (the full-width band behind it
-                  // stays, matching the footer).
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          // Invisible sizing reference: once the real cards below are
-                          // `Positioned` (needed for the peek/expand animation), the
-                          // Stack has no unpositioned child left to size itself from, so
-                          // this ghost copy of the top card's content establishes its
-                          // box — which is also how the peeking card ends up the same
-                          // height as the top one, rather than a fixed decorative sliver.
-                          // `onDismiss` must be non-null here too so the ghost renders
-                          // the same close button as the real top card — otherwise it's
-                          // shorter and the real (Positioned-constrained) card overflows
-                          // its box.
-                          //
-                          // `ExcludeSemantics` states what `Opacity(0)` already achieves
-                          // (RenderOpacity drops its child's semantics at zero alpha) so
-                          // that raising the opacity for a fade one day cannot silently
-                          // publish a duplicate of the notice — and a dead close button —
-                          // to assistive tech. The peek below is the case that got that
-                          // wrong.
-                          ExcludeSemantics(
-                            child: Opacity(
-                              opacity: 0,
-                              child: IgnorePointer(
-                                child: _capHeight(context, NoticeCard(notice: top, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
-                              ),
-                            ),
-                          ),
-                          if (second != null)
-                            AnimatedPositioned(
-                              key: ValueKey(second.key),
-                              duration: _noticeDismissDuration,
-                              curve: Curves.easeInOut,
-                              left: isDismissingTop ? 0 : 6,
-                              top: isDismissingTop ? 0 : 6,
-                              right: isDismissingTop ? 0 : -6,
-                              bottom: isDismissingTop ? 0 : -6,
-                              // A few pixels of card edge showing behind the top one, to
-                              // say "there is another". Purely visual, and it must stay
-                              // that way: `IgnorePointer` takes it out of hit testing but
-                              // NOT out of semantics (`ignoringSemantics` defaults to
-                              // null, which reads as false), and at 0.7 opacity the
-                              // subtree is not dropped either — so without the exclusion
-                              // a screen reader is read the second notice in full, ahead
-                              // of the one actually on top, along with a close button
-                              // wired to a no-op. It is also churn: the whole card's
-                              // worth of nodes appears and vanishes as notices stack, and
-                              // freed nodes get recycled onto other widgets — including,
-                              // on web, a focused text field, whose `<input>` the engine
-                              // then disposes mid-word (see StatusBarFooter.build).
-                              //
-                              // This does cost something, and it is not only the label:
-                              // `NoticeCard` renders `notice.actions` as live buttons, so
-                              // a stacked notice's actions become unreachable to assistive
-                              // tech until it reaches the top. That is the intended
-                              // trade — activating a button on a card sitting visually
-                              // behind another is worse than waiting for it to surface —
-                              // but it is a trade, not a free silence.
-                              child: ExcludeSemantics(
-                                child: IgnorePointer(
-                                  child: AnimatedOpacity(
-                                    duration: _noticeDismissDuration,
-                                    opacity: isDismissingTop ? 1 : 0.7,
-                                    // A no-op `onDismiss` (rather than none) keeps this
-                                    // card's rendered height identical to the ghost/top
-                                    // cards — see the ghost's comment above. It's inert
-                                    // either way since this whole subtree is wrapped in
-                                    // `IgnorePointer`.
-                                    child: _capHeight(context, NoticeCard(notice: second, onDismiss: () {}, dismissLabel: widget.dismissLabel)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          AnimatedPositioned(
-                            key: ValueKey(top.key),
-                            duration: _noticeDismissDuration,
-                            curve: Curves.easeInOut,
-                            left: 0,
-                            top: isDismissingTop ? 80 : 0,
-                            right: 0,
-                            bottom: isDismissingTop ? -80 : 0,
-                            child: IgnorePointer(
-                              ignoring: isDismissingTop,
-                              child: AnimatedOpacity(
-                                duration: _noticeDismissDuration,
-                                opacity: isDismissingTop ? 0 : 1,
-                                child: _capHeight(context, NoticeCard(notice: top, onDismiss: () => _startDismiss(top.key), dismissLabel: widget.dismissLabel)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NoticeSurface extends StatelessWidget {
+/// Hands a tap on a message to [onTap] when [cutOff] says the message does
+/// not fit the width it is laid out in, and leaves the tap to whatever is
+/// around it otherwise.
+///
+/// Decided at layout, where the width is known: the same message is cut short
+/// in a phone's bar and whole in a desktop's, and a tap that opened a notice
+/// repeating a line already in full would be a dialog for nothing.
+class _FullTextTap extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool Function(BuildContext context, double width) cutOff;
   final Widget child;
 
-  const _NoticeSurface({required this.child});
+  const _FullTextTap({required this.onTap, required this.cutOff, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Material(color: HaLoColors.of(context).notice, elevation: 2, child: child);
-  }
-}
-
-/// The post-it keeps its own paper color in both brightnesses (see
-/// [HaLoColors.notice]), so every markdown role has to be pinned to the notice
-/// ink rather than inherited: what `fromTheme` derives from the ambient
-/// surface is near-white under the dark theme and disappears on the yellow.
-///
-/// The same constraint binds every CONTROL on a notice, not just its markdown,
-/// and it now cuts against the theme's own defaults: a bare `TextButton`,
-/// spinner or text field takes [HaLoColors.onSurfaceAccent], which reads at
-/// 2.46:1 on this yellow. Anything added to a `NoticeCard` has to pin
-/// `onNotice` explicitly the way the action and dismiss buttons below do.
-MarkdownStyleSheet _noticeMarkdownStyle(MarkdownStyleSheet base, ThemeData theme, Color onNotice) {
-  final body = theme.textTheme.bodyMedium?.copyWith(color: onNotice);
-  final faint = onNotice.withValues(alpha: 0.08);
-  final rule = onNotice.withValues(alpha: 0.3);
-  return base.copyWith(
-    p: body,
-    listBullet: body,
-    blockquote: body,
-    tableBody: body,
-    img: body,
-    checkbox: body,
-    // Color only, never a body-derived style: the builder merges the link
-    // style onto its parent, and `merge` takes every non-null field — a
-    // fontSize or fontWeight here would override the heading or bold run the
-    // link sits inside. No underline either, since without an `onTapLink`
-    // these links do nothing; [StatusBarActionData]s are the actionable part.
-    a: TextStyle(color: Colors.blue.shade900),
-    code: body?.copyWith(backgroundColor: faint, fontFamily: 'monospace', fontSize: theme.textTheme.bodyMedium!.fontSize! * 0.85),
-    h1: theme.textTheme.headlineSmall?.copyWith(color: onNotice),
-    h2: theme.textTheme.titleLarge?.copyWith(color: onNotice),
-    h3: theme.textTheme.titleMedium?.copyWith(color: onNotice),
-    h4: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    h5: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    h6: theme.textTheme.bodyLarge?.copyWith(color: onNotice),
-    codeblockDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
-    blockquoteDecoration: BoxDecoration(color: faint, borderRadius: BorderRadius.circular(2)),
-    horizontalRuleDecoration: BoxDecoration(
-      border: Border(top: BorderSide(width: 5, color: rule)),
-    ),
-  );
-}
-
-/// One notice, as a "post-it" card: icon+title row, markdown body, action
-/// buttons. Used both live (dismissible, in [NoticeStack]) and read-only (no
-/// [onDismiss]) in the Recent Notices history screen.
-class NoticeCard extends StatelessWidget {
-  final StatusBarNoticeData notice;
-  final VoidCallback? onDismiss;
-
-  /// Accessible name for the dismiss button (see [StatusBarFooter.dismissLabel]).
-  final String dismissLabel;
-
-  const NoticeCard({super.key, required this.notice, this.onDismiss, this.dismissLabel = 'Dismiss'});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final onNotice = HaLoColors.of(context).onNotice;
-
-    return _NoticeSurface(
-      child: Padding(
-        padding: const EdgeInsets.all(Space.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (notice.icon != null) ...[Icon(resolveIconName(notice.icon), size: 18, color: onNotice), const SizedBox(width: Space.md)],
-                if (notice.title != null)
-                  Expanded(
-                    child: Text(
-                      notice.title!,
-                      style: theme.textTheme.titleSmall?.copyWith(color: onNotice, fontWeight: FontWeight.bold),
-                    ),
-                  )
-                else
-                  const Spacer(),
-                if (onDismiss != null)
-                  IconButton(
-                    icon: Icon(MdiIcons.close, size: 18, color: onNotice, semanticLabel: dismissLabel),
-                    onPressed: onDismiss,
-                    // The hover/press overlay derives from foregroundColor, so
-                    // without this it resolves against the ambient theme and a
-                    // near-white state layer washes out on the yellow paper.
-                    style: IconButton.styleFrom(foregroundColor: onNotice),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    mouseCursor: SystemMouseCursors.click,
-                  ),
-              ],
-            ),
-            const SizedBox(height: Space.xs),
-            HaloMarkdown(data: notice.text, style: (base) => _noticeMarkdownStyle(base, theme, onNotice), sizedImageBuilder: notice.images),
-            if (notice.actions.isNotEmpty) ...[
-              const SizedBox(height: Space.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          for (final action in notice.actions.where((a) => !a.primary))
-                            Padding(
-                              padding: const EdgeInsets.only(right: Space.md),
-                              child: TextButton(
-                                onPressed: action.onTap,
-                                style: TextButton.styleFrom(foregroundColor: onNotice),
-                                child: Text(action.label),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Outlined, as the Extensions panel draws the same verb on the
-                  // same yellow: a bare label on the notice ground reads as one
-                  // more piece of the sentence above it.
-                  for (final action in notice.actions.where((a) => a.primary))
-                    Padding(
-                      padding: const EdgeInsets.only(left: Space.md),
-                      child: OutlinedButton(
-                        onPressed: action.onTap,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: onNotice,
-                          side: BorderSide(color: onNotice),
-                        ),
-                        child: Text(action.label),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
+    final onTap = this.onTap;
+    if (onTap == null) return child;
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          cutOff(context, constraints.maxWidth) ? GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child) : child,
     );
   }
+}
+
+/// Whether [text] runs past one line [width] wide, set the way the bar's own
+/// one-line [Text] sets it — so this agrees with where the ellipsis lands,
+/// Bold Text included.
+bool _overflows(BuildContext context, String text, TextStyle? style, double width) {
+  var effective = DefaultTextStyle.of(context).style.merge(style);
+  if (MediaQuery.boldTextOf(context)) effective = effective.merge(const TextStyle(fontWeight: FontWeight.bold));
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: effective),
+    maxLines: 1,
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: width);
+  final overflows = painter.didExceedMaxLines;
+  painter.dispose();
+  return overflows;
 }

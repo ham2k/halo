@@ -140,7 +140,8 @@ class StatusBarService extends ChangeNotifier {
   final SharedPreferences _prefs;
   final Map<String, StatusBarItem> _items = {};
 
-  /// Notices in creation order (stack order), active and dismissed alike —
+  /// Notices in stack order — the order they were posted, but for one raised
+  /// with `front:` (see [showNotice]) — active and dismissed alike —
   /// the single source of truth for both `activeNotices` and `history`, kept
   /// in sync with the persisted copy by `_persistNotices`. Actions aren't
   /// persisted since a `VoidCallback` can't survive a restart — history
@@ -167,7 +168,8 @@ class StatusBarService extends ChangeNotifier {
 
   List<StatusBarNotice> get activeNotices => _notices.where((n) => n.dismissedAt == null).toList();
 
-  /// Most-recent-first, including dismissed notices.
+  /// Reverse stack order, including dismissed notices: latest-posted first,
+  /// but a notice updated while still on screen keeps the slot it first took.
   List<StatusBarNotice> get history => _notices.reversed.toList();
 
   /// How long a completion message lingers before dismissing itself — shared
@@ -267,6 +269,10 @@ class StatusBarService extends ChangeNotifier {
     if (keys.isNotEmpty || dismissed) notifyListeners();
   }
 
+  /// Notices queue oldest first, each on top until dismissed. [front] puts
+  /// this one ahead of those already showing instead — for a notice the
+  /// operator just asked for, which would otherwise wait out of sight behind
+  /// them and leave the asking looking like it did nothing.
   void showNotice({
     required String key,
     String? icon,
@@ -275,6 +281,7 @@ class StatusBarService extends ChangeNotifier {
     List<StatusBarAction> actions = const [],
     bool persist = true,
     String? extensionKey,
+    bool front = false,
   }) {
     final notice = StatusBarNotice(
       key: key,
@@ -286,9 +293,26 @@ class StatusBarService extends ChangeNotifier {
       persist: persist,
       extensionKey: extensionKey,
     );
-    _notices.removeWhere((n) => n.key == key);
-    _notices.add(notice);
-    if (_notices.length > _maxHistory) _notices.removeRange(0, _notices.length - _maxHistory);
+    // A notice still on screen is updated where it stands: the stack shows the
+    // OLDEST first, and a re-post that went to the back of the queue would
+    // hide the notice behind the ones that arrived after it, and bring a
+    // different one to the top in its place.
+    final active = _notices.indexWhere((n) => n.key == key && n.dismissedAt == null);
+    if (active != -1 && !front) {
+      _notices[active] = notice;
+    } else {
+      _notices.removeWhere((n) => n.key == key);
+      final first = front ? _notices.indexWhere((n) => n.dismissedAt == null) : -1;
+      _notices.insert(first == -1 ? _notices.length : first, notice);
+    }
+    // Dismissed notices go first: the oldest ACTIVE one is the notice on
+    // screen, and dropping it by position takes it away without dismissing
+    // it — out of the stack and out of Recent Notices, while whoever watches
+    // for its dismissal never hears of it.
+    while (_notices.length > _maxHistory) {
+      final dismissed = _notices.indexWhere((n) => n.dismissedAt != null);
+      _notices.removeAt(dismissed == -1 ? 0 : dismissed);
+    }
     unawaited(_persistNotices());
     notifyListeners();
   }

@@ -214,7 +214,10 @@ void main() {
       await notice('b', 'theirs');
       await Future<void>.delayed(const Duration(seconds: 61));
       await notice('a', 'again');
-      expect(statusBar.activeNotices.map((n) => n.text), ['theirs', 'again']);
+      expect(statusBar.activeNotices.map((n) => n.text), [
+        'again',
+        'theirs',
+      ], reason: 'a notice still showing is updated where it stands, ahead of the one posted after it');
     });
   });
 

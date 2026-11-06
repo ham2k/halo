@@ -202,7 +202,7 @@ Where a hook's result can carry a `userMessage` (spot posting), prefer that.
 | `setMessage({ key, text?, title?, icon? })` | A transient one-line message under `key`, replacing the last one under it |
 | `setProgress({ key, text?, title?, icon?, value? })` | A progress bar under `key`; omit `value` for indeterminate |
 | `clear(key)` | Removes the message or progress under `key` |
-| `showNotice({ key, text, title?, icon?, actions? })` | A richer, dismissible notice over the footer, kept under **Settings → About → Recent Notices** after dismissal; `text` is markdown. `actions` are buttons: `{ label, type: "link", url }`, `{ label, type: "dialog", title?, text }` or `{ label, type: "account", key, subkey? }` |
+| `showNotice({ key, text, title?, icon?, actions? })` | A richer, dismissible notice over the footer, kept under **Settings → About → Recent Notices** after dismissal; `text` is markdown. Notices queue oldest first, each shown until dismissed; one posted under a key still showing replaces it where it stands. `actions` are buttons: `{ label, type: "link", url }`, `{ label, type: "dialog", title?, text }` or `{ label, type: "account", key, subkey? }` |
 | `dismissNotice(key)` | Dismisses the notice under `key` |
 
 Keys are namespaced to your extension. You hold at most **8 keys** in the

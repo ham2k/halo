@@ -51,7 +51,9 @@ void main() {
     WidgetTester tester, {
     required double inset,
     Size window = const Size(390, 844),
+    bool message = false,
   }) async {
+    if (message) services.statusBar.setMessage(key: 'test:lift', text: 'Spots refreshed');
     final dpr = tester.view.devicePixelRatio;
     tester.view.physicalSize = window * dpr;
     tester.view.padding = FakeViewPadding(bottom: inset * dpr);
@@ -79,6 +81,8 @@ void main() {
     // the geometry needs.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // The lift off the home indicator is slower than the rest.
+    if (message) await tester.pump(StatusBarFooter.liftDuration);
 
     final footerTop = tester.getTopLeft(find.byType(StatusBarFooter)).dy;
     final result = (
@@ -162,6 +166,28 @@ void main() {
         withIndicator.footerHeight,
         moreOrLessEquals(without.footerHeight, epsilon: 0.5),
         reason: 'the bar paints over the indicator rather than stacking on it',
+      );
+      expectNothingAboveHoldsIt(withIndicator, without);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  // The trap: the bar lifts off the indicator while a message is on it (the
+  // message would sit on the indicator otherwise) — and the strip it takes is
+  // still the footer's alone, so a view above that reserved it as well would
+  // double it the moment the first message arrived.
+  testWidgets('on a phone a message lifts the footer off the home indicator, and still nothing above it holds it', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final withIndicator = await measure(tester, inset: indicator, message: true);
+      final without = await measure(tester, inset: 0, message: true);
+
+      expect(withIndicator.drawn && without.drawn, isTrue, reason: 'the footer must be drawn, or none of these reserves is under test');
+      expect(
+        withIndicator.footerHeight - without.footerHeight,
+        moreOrLessEquals(indicator, epsilon: 0.5),
+        reason: 'a message on the bar must not sit on the indicator',
       );
       expectNothingAboveHoldsIt(withIndicator, without);
     } finally {

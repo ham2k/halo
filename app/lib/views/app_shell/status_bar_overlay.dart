@@ -65,7 +65,7 @@ import '../extension_markdown_images.dart';
 class _ChromeScrim extends StatelessWidget {
   final Widget child;
 
-  const _ChromeScrim({required this.child});
+  const _ChromeScrim({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -253,6 +253,31 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
     super.didUpdateWidget(oldWidget);
     assert(identical(oldWidget.services, widget.services), 'StatusBarOverlay follows the services it was mounted with');
   }
+
+  /// Raises a message the bar has cut short as a notice, where all of it fits.
+  ///
+  /// Keyed by the message, so a second tap brings back the same notice rather
+  /// than stacking a copy, and in front of any notice already up, since the
+  /// operator asked for it. Not persisted: it repeats a message that is itself
+  /// transient, and a copy of it in a later session's history would be
+  /// a record of something that was never a notice. Its text is escaped, since
+  /// a notice is markdown and a message is not: `*field-day*` would otherwise
+  /// lose its asterisks to italics.
+  static void _showFullMessage(StatusBarService statusBar, StatusBarItemData item) {
+    final hasBoth = item.title != null && (item.text ?? '').isNotEmpty;
+    statusBar.showNotice(
+      key: 'footer:full:${item.key}',
+      icon: item.icon,
+      title: hasBoth ? item.title : null,
+      text: _escapeMarkdown(hasBoth ? item.text! : item.title ?? item.text ?? ''),
+      persist: false,
+      front: true,
+    );
+  }
+
+  /// Backslash-escapes every ASCII punctuation mark, which CommonMark allows
+  /// on any of them, so plain text renders as written.
+  static String _escapeMarkdown(String text) => text.replaceAllMapped(RegExp(r'[!-/:-@\[-`{-~]'), (m) => '\\${m[0]}');
 
   /// The permanent statuses, in the order they take the trailing edge of the
   /// bar.
@@ -580,7 +605,11 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           // the notice and the expanded list a strip of an iPhone that is
           // already spent. Zero with the keyboard up, which is the only state
           // where this term decides whether the footer is drawn at all.
-          footerHeight: StatusBarFooter.drawnHeightOf(context),
+          // Charged at the lifted height the moment a message arrives,
+          // though the bar takes [StatusBarFooter.liftDuration] to get
+          // there: a budget that followed the animation would rebuild the
+          // whole chrome on every frame of it.
+          footerHeight: StatusBarFooter.drawnHeightOf(context, hasMessage: footerItems.isNotEmpty),
           // Quick Lookup is chrome for the home layer and nothing else, so it
           // is charged exactly while that layer is showing — a view that owns
           // the window replaces it, and charging for it there would take the
@@ -667,6 +696,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                     expanded: listOpen,
                     onExpandedChanged: (expanded) => setState(() => _footerExpanded = expanded),
                     onDismiss: statusBar.clear,
+                    onShowFull: (item) => _showFullMessage(statusBar, item),
                     maxExpandedHeight: bottom.footerMax,
                     dismissLabel: context.t.common.dismiss,
                   ),
@@ -677,7 +707,12 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 // leaves a lit, pressable footer beside a dimmed window —
                 // where a tap opens a second dialog behind the first, or
                 // dismisses a notice the operator cannot see.
-                _ChromeScrim(child: piece),
+                //
+                // Keyed by what it holds: the pieces come and go, and an
+                // unkeyed footer that moved down a slot as a notice arrived
+                // would be mounted afresh, losing every animation in flight
+                // (its lift off the home indicator lands in one frame).
+                _ChromeScrim(key: ValueKey(piece.runtimeType), child: piece),
             ],
             keyboard: [
               // The mobile numbers row, published by whichever field has focus

@@ -147,8 +147,8 @@ void main() {
         home: Scaffold(
           body: NoticeStack(
             notices: [
-              StatusBarNoticeData(key: 'older', title: 'Older', text: 'the one underneath', createdAt: DateTime(2026)),
-              StatusBarNoticeData(key: 'newer', title: 'Newer', text: 'the one on top', createdAt: DateTime(2026, 1, 2)),
+              StatusBarNoticeData(key: 'older', title: 'Older', text: 'the one on top', createdAt: DateTime(2026)),
+              StatusBarNoticeData(key: 'newer', title: 'Newer', text: 'the one underneath', createdAt: DateTime(2026, 1, 2)),
             ],
             onDismiss: (_) {},
             dismissLabel: 'Dismiss',
@@ -168,6 +168,148 @@ void main() {
 
     handle.dispose();
   });
+
+  testWidgets('a burst of notices is read oldest first, each revealed by dismissing the one before', (tester) async {
+    // The trap: a stack that put the newest on top would bury the first of a
+    // burst (a data-file refresh posts one per file) under everything after
+    // it, and the operator would read them backwards, if at all.
+    var notices = [
+      for (final n in ['first', 'second', 'third']) StatusBarNoticeData(key: n, text: 'the $n notice', createdAt: DateTime(2026)),
+    ];
+    Widget stack() => MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) =>
+              NoticeStack(notices: notices, onDismiss: (key) => setState(() => notices = notices.where((n) => n.key != key).toList()), dismissLabel: 'Dismiss'),
+        ),
+      ),
+    );
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(stack());
+    await tester.pumpAndSettle();
+
+    for (final n in ['first', 'second', 'third']) {
+      expect(find.bySemanticsLabel('the $n notice'), findsOneWidget, reason: 'the oldest notice still up is the one on top');
+      await tester.tap(find.bySemanticsLabel('Dismiss'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.byType(NoticeCard), findsNothing);
+    handle.dispose();
+  });
+
+  group('a message cut short', () {
+    const long = 'Data file update finished: the POTA parks list, the SOTA summits list and the WWFF references are all current now';
+
+    Future<List<String>> tapsOn(WidgetTester tester, List<StatusBarItemData> items, {required Finder target, bool expand = false}) async {
+      final shown = <String>[];
+      await tester.binding.setSurfaceSize(const Size(400, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: StatusBarFooter(items: items, onDismiss: _noop, onShowFull: (item) => shown.add(item.key)),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      if (expand) {
+        await tester.tap(find.byType(StatusBarFooter));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(target);
+      await tester.pumpAndSettle();
+      return shown;
+    }
+
+    testWidgets('opens in full when tapped', (tester) async {
+      expect(await tapsOn(tester, [const StatusBarItemData(key: 'files', title: long)], target: find.text(long)), ['files']);
+    });
+
+    // The trap: a tap that opens the whole of a line already shown whole is a
+    // notice for nothing — the decision has to be the measured one.
+    testWidgets('a message that fits is left alone', (tester) async {
+      expect(await tapsOn(tester, [const StatusBarItemData(key: 'files', title: 'Done')], target: find.text('Done')), isEmpty);
+    });
+
+    // The collapsed bar shows `title ?? text`: a text under a title is never
+    // on it, however short both are.
+    testWidgets('a title standing in for a text counts as cut short', (tester) async {
+      expect(await tapsOn(tester, [const StatusBarItemData(key: 'job', title: 'Export', text: 'Saved')], target: find.text('Export')), ['job']);
+    });
+
+    testWidgets('a progress title is a label for its bar, not a message', (tester) async {
+      expect(await tapsOn(tester, [const StatusBarItemData(key: 'sync', title: long, progressValue: 0.5)], target: find.text(long)), isEmpty);
+    });
+
+    // With two messages the bar's tap opens the list; a cut-off one there
+    // opens in full from its own row.
+    testWidgets('in the open list, from the row that cuts it short', (tester) async {
+      final items = [const StatusBarItemData(key: 'files', title: long), const StatusBarItemData(key: 'other', title: 'Done')];
+      expect(await tapsOn(tester, items, target: find.text(long), expand: true), ['files']);
+    });
+  });
+
+  testWidgets('a message lifts a bar that runs to the edge off the home indicator, slowly, and lets it back down', (tester) async {
+    const inset = EdgeInsets.only(top: 62, bottom: 34);
+    Widget phone(List<StatusBarItemData> items) => MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(size: Size(402, 874), padding: inset, viewPadding: inset),
+        child: Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: StatusBarFooter(items: items, onDismiss: _noop, showWhenEmpty: true),
+          ),
+        ),
+      ),
+    );
+    double height() => tester.getSize(find.byType(StatusBarFooter)).height;
+
+    await tester.pumpWidget(phone(const []));
+    await tester.pumpAndSettle();
+    final resting = height();
+
+    await tester.pumpWidget(phone([const StatusBarItemData(key: 'msg', title: 'Spots refreshed')]));
+    await tester.pump(StatusBarFooter.liftDuration ~/ 2);
+    expect(height(), allOf(greaterThan(resting), lessThan(resting + 34)), reason: 'the window above moves with the bar, so it eases rather than jumps');
+    await tester.pumpAndSettle();
+    expect(height(), moreOrLessEquals(resting + 34), reason: 'a message mid-bar must clear the home indicator');
+
+    await tester.pumpWidget(phone(const []));
+    await tester.pumpAndSettle();
+    expect(height(), moreOrLessEquals(resting));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  // Eased out over the lift's two seconds, the lift would hold a strip of bar
+  // between the app and the keyboard just as the operator starts typing.
+  testWidgets('a lifted bar drops at once when the keyboard takes the safe area', (tester) async {
+    const viewPadding = EdgeInsets.only(top: 62, bottom: 34);
+    Widget phone({required bool keyboard}) => MaterialApp(
+      home: MediaQuery(
+        data: MediaQueryData(size: const Size(402, 874), padding: keyboard ? viewPadding.copyWith(bottom: 0) : viewPadding, viewPadding: viewPadding),
+        child: const Scaffold(
+          body: Align(
+            alignment: Alignment.bottomCenter,
+            child: StatusBarFooter(
+              items: [StatusBarItemData(key: 'msg', title: 'Spots refreshed')],
+              onDismiss: _noop,
+            ),
+          ),
+        ),
+      ),
+    );
+    double height() => tester.getSize(find.byType(StatusBarFooter)).height;
+
+    await tester.pumpWidget(phone(keyboard: false));
+    await tester.pumpAndSettle();
+    final lifted = height();
+
+    await tester.pumpWidget(phone(keyboard: true));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(height(), moreOrLessEquals(lifted - 34));
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('a progress item gives its bar at most half the row and left-aligns the title', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
