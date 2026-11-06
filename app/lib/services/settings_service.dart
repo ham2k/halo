@@ -1107,11 +1107,11 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   /// Enter Sends Messages (docs/design/logging-fields.md § Enter Sends
   /// Messages): whether Enter keys the exchange's messages, and whether the
-  /// operator is running (the default — ESM's home ground) or searching and
-  /// pouncing. Device-wide like the keyer area: they describe how this
+  /// operator is running or in the normal style, S&P (the default —
+  /// logging-fields.md § Operating style). Device-wide like the keyer area: they describe how this
   /// operator works the radio, not one operation.
   bool get enterSendsMessages => settingValue(radioGroup, 'enterSendsMessages') == true;
-  bool get enterSendsRunning => settingValue(radioGroup, 'enterSendsRunning') != false;
+  bool get enterSendsRunning => settingValue(radioGroup, 'enterSendsRunning') == true;
 
   Future<void> setEnterSends({required bool on, required bool running}) =>
       updateSettingsGroup(radioGroup, {'enterSendsMessages': on, 'enterSendsRunning': running});
@@ -1302,6 +1302,10 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// Stored under its own key; an operator who never set it gets what they
   /// chose for `jumpAfterRST`, the reports-only setting it stands in for.
   bool get autoAdvanceFields => _loggingBool('autoAdvanceFields', _loggingBool('jumpAfterRST', false));
+
+  /// The FYI area's style pill for S&P as well as Run — logging-fields.md
+  /// § Operating style. Off, only Run shows.
+  bool get alwaysShowStyle => _loggingBool('alwaysShowStyle', false);
 
   /// The report an untouched Sent/Rcvd field stands for, per mode band —
   /// `5NN` instead of `599` for a CW operator, `+00` instead of `+0`.

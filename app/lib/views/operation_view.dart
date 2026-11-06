@@ -234,6 +234,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // is where that is put to the operator, once the gesture is over, and
     // [_withdrawSuggestedQso] is where it goes when the row closes.
     if (!reveal) return;
+    // A spot picked is a station gone after: S&P (docs/design/
+    // logging-fields.md § Operating style). A measured suggestion is where
+    // the radio already is, and says nothing about how it is worked.
+    if (!measured) widget.services.cat.operatingStyle.pickedSpot(widget.services.cat.operatorRadio);
     // The operator may have tabbed the logging pane behind others, so
     // surface it (no-op when it's already on top).
     _revealLoggingPanel();

@@ -1715,6 +1715,12 @@ class Translations$fyi$en {
 
 	/// en: 'SWR $swr'
 	String swrWarning({required Object swr}) => 'SWR ${swr}';
+
+	/// en: 'Run'
+	String get run => 'Run';
+
+	/// en: 'S&P'
+	String get sp => 'S&P';
 }
 
 // Path: callInfo
@@ -2042,6 +2048,9 @@ class Translations$commands$en {
 
 	/// en: 'Nothing sent: Radio $radio can't key that'
 	String so2rRadioCannotKey({required Object radio}) => 'Nothing sent: Radio ${radio} can\'t key that';
+
+	/// en: 'Not an operating style: $opStyle'
+	String opStyleUnknown({required Object opStyle}) => 'Not an operating style: ${opStyle}';
 
 	/// en: 'Nothing sent: pick a Radio B in Station Configuration to key from this set'
 	String get so2rNoRadioB => 'Nothing sent: pick a Radio B in Station Configuration to key from this set';
@@ -5015,6 +5024,7 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$showReverseBearing$en showReverseBearing = Translations$settings$logging$showReverseBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
+	late final Translations$settings$logging$alwaysShowStyle$en alwaysShowStyle = Translations$settings$logging$alwaysShowStyle$en.internal(_root);
 	late final Translations$settings$logging$autoAdvanceFields$en autoAdvanceFields = Translations$settings$logging$autoAdvanceFields$en.internal(_root);
 	late final Translations$settings$logging$defaultReport$en defaultReport = Translations$settings$logging$defaultReport$en.internal(_root);
 	late final Translations$settings$logging$defaultReportCW$en defaultReportCW = Translations$settings$logging$defaultReportCW$en.internal(_root);
@@ -7689,6 +7699,9 @@ class Translations$keyboardShortcuts$command$en {
 	/// en: 'Keyboard mode on or off'
 	String get keyboardMode => 'Keyboard mode on or off';
 
+	/// en: 'Switch between Run and S&P'
+	String get toggleStyle => 'Switch between Run and S&P';
+
 	/// en: 'Push to talk'
 	String get ptt => 'Push to talk';
 
@@ -9022,6 +9035,24 @@ class Translations$settings$logging$switchSentRcvd$en {
 
 	/// en: 'Rcvd first, Sent second'
 	String get rcvdFirst => 'Rcvd first, Sent second';
+}
+
+// Path: settings.logging.alwaysShowStyle
+class Translations$settings$logging$alwaysShowStyle$en {
+	Translations$settings$logging$alwaysShowStyle$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Always show Run/S&P indicator'
+	String get title => 'Always show Run/S&P indicator';
+
+	/// en: 'Show when running or S&P'
+	String get descriptionOn => 'Show when running or S&P';
+
+	/// en: 'Only show when running'
+	String get descriptionOff => 'Only show when running';
 }
 
 // Path: settings.logging.autoAdvanceFields
@@ -11982,6 +12013,8 @@ extension on Translations {
 			'loggingPanel.duplicates' => 'Duplicates',
 			'fyi.swrAlert' => ({required Object swr}) => 'High SWR ${swr}',
 			'fyi.swrWarning' => ({required Object swr}) => 'SWR ${swr}',
+			'fyi.run' => 'Run',
+			'fyi.sp' => 'S&P',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'Show Image',
 			'callInfo.imageUnavailable' => 'Photo unavailable',
@@ -12062,6 +12095,9 @@ extension on Translations {
 			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
+			'settings.logging.alwaysShowStyle.title' => 'Always show Run/S&P indicator',
+			'settings.logging.alwaysShowStyle.descriptionOn' => 'Show when running or S&P',
+			'settings.logging.alwaysShowStyle.descriptionOff' => 'Only show when running',
 			'settings.logging.autoAdvanceFields.title' => 'Auto-advance Fields',
 			'settings.logging.autoAdvanceFields.description' => 'Advance automatically when full value is entered, some fields only (marked with *)',
 			'settings.logging.defaultReport.title' => 'Default report — Phone',
@@ -12337,13 +12373,13 @@ extension on Translations {
 			'settings.radio.voiceMessages.voiced' => 'Said with your words',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.previewNoOperation' => 'Open an operation to see what it will say.',
 			'settings.radio.voiceMessages.wordsDescription' => 'Use your own voice for calls, numbers and more.',
 			'settings.radio.voiceWords.title' => 'Word Recordings',
 			'settings.radio.voiceWords.callField' => 'Words for operator',
 			'settings.radio.voiceWords.intro' => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once. Record another reading, up to five, and messages mix them, so they never sound the same twice.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.recordAnother' => 'Record Another',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'Recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'First take ${n}',
@@ -12851,13 +12887,13 @@ extension on Translations {
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4RemoteNotes' => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.',
 			'settings.station.k4Receiver' => 'Receiver',
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
 			'settings.station.k4ReceiverInvalid' => 'Choose Main or Sub',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'That receiver is already configured for this K4',
 			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
@@ -13328,6 +13364,7 @@ extension on Translations {
 			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'Phone message M${n}: ${error}',
 			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Nothing sent: Radio ${radio} can\'t key that',
+			'commands.opStyleUnknown' => ({required Object opStyle}) => 'Not an operating style: ${opStyle}',
 			'commands.so2rNoRadioB' => 'Nothing sent: pick a Radio B in Station Configuration to key from this set',
 			'commands.swapExperimentOff' => 'SO2R is off — turn it on with EXP SO2R',
 			'commands.swapNeedsOperation' => 'Open an operation to swap radios',
@@ -13364,14 +13401,14 @@ extension on Translations {
 			'sets.topLevel' => 'Top level',
 			'sets.export' => 'Export…',
 			'sets.import' => 'Import…',
+			_ => null,
+		} ?? switch (path) {
 			'sets.delete' => 'Delete…',
 			'sets.deleteSet' => 'Delete Set',
 			'sets.deleteConfirm' => ({required Object name}) => 'Delete ${name}? This cannot be undone.',
 			'sets.deleteFailed' => ({required Object name, required Object error}) => 'Could not delete ${name}: ${error}',
 			'sets.inUse' => 'In use',
 			'sets.actions' => ({required Object name}) => 'Actions for ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'sets.empty' => 'Empty folder',
 			'sets.exported' => ({required Object location}) => 'Saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'Saved ${names}',
@@ -13426,6 +13463,7 @@ extension on Translations {
 			'keyboardShortcuts.command.find' => 'Find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
+			'keyboardShortcuts.command.toggleStyle' => 'Switch between Run and S&P',
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',

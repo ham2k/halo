@@ -75,6 +75,11 @@ export interface HookContext {
   /// off. Lets a hook resolve a typed token to the key `enabledExperiments`
   /// lists — the app remains the authority when it flips the state.
   experiments?: { key: string; name: string; aliases: string[] }[]
+  /// Each logging set's operating style: `A`, and `B` under SO2R — `run`, or
+  /// `normal` (search and pounce, which the app labels S&P, and the default).
+  /// The style each new contact records as `opStyle`; it needs no radio, and
+  /// moves with the operator (docs/extensions/radio.md). Extension API 19.
+  opStyle?: { A: "run" | "normal"; B?: "run" | "normal" }
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
   /// on the Dart side). Resolves null when the uuid is unknown. For hooks
@@ -1139,7 +1144,7 @@ export interface ActivityHook {
   /// segmented log, the operation as it stood when the contact was made, not
   /// as it stands now — so an edit of an old contact projects what was true
   /// then, and nothing here needs to stamp a value to protect it from a
-  /// later re-run.
+  /// later re-run. From extension API 19 it carries the operation's `uuid`.
   processQsoBeforeSave?(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     ctx: HookContext,
@@ -1900,10 +1905,14 @@ export interface CommandAction {
   /// buttons, speed pill and queue). Dispatched like `setPower`; the app
   /// answers with an error when no connected radio can key CW.
   showKeyer?: Record<string, never>
-  /// ESM / RUN / SP: Enter Sends Messages on or off, and Run versus Search &
-  /// Pounce — an absent field is left as it is. Dispatched like `setPower`;
-  /// the app answers with an error when no connected radio can key.
+  /// ESM: Enter Sends Messages on or off, and Run versus Search & Pounce —
+  /// an absent field is left as it is. Dispatched like `setPower`; the app
+  /// answers with an error when no connected radio can key.
   setEnterSends?: { on?: boolean; running?: boolean }
+  /// RUN / SNP: the operating style of the set the operator is in, the one
+  /// `readRadio`'s `opStyle` reports and each new contact records. Needs no
+  /// radio connected.
+  setOpStyle?: { opStyle: "run" | "normal" }
   /// SWAP, under SO2R: Radio A and Radio B trade frequency, band, mode, the
   /// rigs' own antenna ports, and Run or S&P, and each set of the logging
   /// panel hands its entry to the other with the frequency it was on. Only
@@ -3560,6 +3569,16 @@ export interface PanelRadioState {
   deviceId?: string
   /** Receiver identity within the device. Keys are opaque; labels are for display. */
   channel?: { key: string; label: string }
+  /**
+   * Which logging set works this radio: `A` for the logging radio, `B` for SO2R's Radio B, null
+   * for any other (extension API 19).
+   */
+  set?: "A" | "B" | null
+  /**
+   * How the set is working it: running a frequency of its own, or `normal`, anything else (search
+   * and pounce, which the app labels S&P); null where `set` is (extension API 19).
+   */
+  opStyle?: "run" | "normal" | null
   status: "disconnected" | "connecting" | "connected" | "disconnecting" | "error"
   stale: boolean
   problem: string | null

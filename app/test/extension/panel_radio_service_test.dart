@@ -11,6 +11,7 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
@@ -106,6 +107,11 @@ class TestCat extends Fake implements CatService {
   String? radioB;
   @override
   bool isRadio2(String uuid) => radioB == uuid;
+  @override
+  String? get radio2 => radioB;
+  final styles = {'A': OperatingStyle.run, 'B': OperatingStyle.normal};
+  @override
+  OperatingStyle styleOf(String radio) => styles[radio]!;
   final deviceIds = <String, String>{};
   final channels = <String, Map<String, String>>{};
   @override
@@ -304,6 +310,34 @@ void main() {
     cat.selected = const LocalRadio('b');
     expect(bridge.read()['id'], 'b');
     expect(bridge.read()['channel'], {'key': 'sub', 'label': 'Sub'});
+  });
+
+  // `set` is what lets an extension tell the logging radio and Radio B from
+  // a radio a panel merely shows, and `opStyle` is that set's — a radio no set
+  // works has none, never a borrowed one.
+  test("a set's radio carries its set and the set's style; any other radio neither", () {
+    final cat = TestCat();
+    final bridge = PanelRadioService(cat, TestRadio());
+    expect([for (final radio in bridge.list()) (radio['id'], radio['set'], radio['opStyle'])], [('a', 'A', 'run'), ('b', null, null)]);
+    cat.radioB = 'b';
+    expect([for (final radio in bridge.list()) (radio['id'], radio['set'], radio['opStyle'])], [('a', 'A', 'run'), ('b', 'B', 'normal')]);
+    cat.styles['A'] = OperatingStyle.normal;
+    expect(bridge.read()['opStyle'], 'normal');
+  });
+
+  // A letter picks a set's radio, for an extension that wants "Radio B"
+  // without tracking its id. With no Radio B the answer is no radio — never
+  // the logging radio, which is what an omitted id means.
+  test('readRadio takes A or B for a set, and B with no Radio B is no radio', () {
+    final cat = TestCat();
+    final bridge = PanelRadioService(cat, TestRadio());
+    expect(bridge.readFor('A')['id'], 'a');
+    expect(bridge.readFor('B')['id'], isNull);
+    expect(bridge.readFor('B')['frequencyHz'], isNull);
+    cat.radioB = 'b';
+    expect(bridge.readFor('B')['id'], 'b');
+    expect(bridge.readFor('b')['id'], 'b', reason: 'an id still reads its radio');
+    expect(bridge.readFor(null)['id'], 'a');
   });
 
   test('ordinary radios and non-radio selections do not acquire logical receiver metadata', () {

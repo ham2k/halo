@@ -19,6 +19,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   bool stopNodeTunes();
   String get operatorRadio;
   void setRunning(String radio, bool running);
+  void _messageOneKeyed(String radio);
   bool get _disposed;
 
   /// Each radio's keying (cat_keying.dart) — which session keys, what it is
@@ -31,6 +32,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       settings: _settings,
       chain: KeyerRepeat(vfo: () => _radio?.vfoA),
       peer: _peerKeying,
+      onMessageOne: () => _messageOneKeyed('A'),
     ),
     'B': CatKeying(
       station: _RadioBKeyingStation(this as CatService),
@@ -38,6 +40,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
       chain: KeyerRepeat(vfo: () => _radio?.vfo('vfoB')),
       peer: PeerKeying(),
       radio: 'B',
+      onMessageOne: () => _messageOneKeyed('B'),
     ),
   };
 

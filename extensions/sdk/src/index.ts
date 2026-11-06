@@ -53,7 +53,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 18
+export const API_VERSION = 19
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -335,6 +335,7 @@ export const host = {
   async listRadios(): Promise<PanelRadioState[]> {
     return (await hostCallFn()("listRadios", {})) as PanelRadioState[]
   },
+  /** `id` is a radio's id, or `"A"` / `"B"` for a logging set's radio; omitted, the logging radio. */
   async readRadio(id?: string): Promise<PanelRadioState | null> {
     return (await hostCallFn()("readRadio", { ...(id ? { id } : {}) })) as PanelRadioState | null
   },

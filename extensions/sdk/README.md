@@ -56,9 +56,9 @@ repository says today. If an agent is writing your extension, point it at
 
 ## Versions
 
-The minor version is the extension API: SDK 1.18 describes API 18, and
+The minor version is the extension API: SDK 1.19 describes API 19, and
 exports it as `API_VERSION`. `@ham2k/extension-tools` follows the same rule,
-so a `^1.17.0` range says the extension needs API 17 and admits every later
+so a `^1.18.0` range says the extension needs API 18 and admits every later
 one. A major version is a change that breaks an extension already written.
 
 ## Export types and settings

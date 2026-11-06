@@ -396,6 +396,26 @@ void main() {
       await tester.pump(const Duration(seconds: 62));
     });
 
+    // The operating style's pill (StyleWatch): how the operator is working,
+    // read before the keying it explains — and the keyer line still before
+    // what is under way at the ordinary priority.
+    testWidgets('a high operational message comes before the keyer line, the others after it', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
+      final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+      await tester.runAsync(() => services.cat.connect(node.uuid));
+      addTearDown(() => services.cat.disconnect(node.uuid));
+      await tester.pumpWidget(host(keyer: true));
+      fyi.post(message('tuning', FyiCategory.operational, 'Tuning', icon: MdiIcons.tune));
+      fyi.post(FyiMessage(key: 'style', category: FyiCategory.operational, priority: FyiPriority.high, icon: MdiIcons.run, text: 'Run'));
+      services.cat.sendCw('CQ DE N0DEV');
+      await settle(tester);
+      final key = tester.getRect(find.byIcon(MdiIcons.key));
+      expect(key.left, greaterThan(tester.getRect(find.text('Run')).right));
+      expect(key.right, lessThan(tester.getRect(find.text('Tuning')).left));
+      services.cat.stopCw();
+      await tester.pump(const Duration(seconds: 62));
+    });
+
     testWidgets('editing a logged QSO hides the keyer line alone; the other messages stay', (tester) async {
       await services.settings.setExperimentEnabled('keyer', true);
       final node = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
@@ -427,5 +447,20 @@ void main() {
         find.ancestor(of: find.text(text), matching: find.byWidgetPredicate((w) => w is Container && (w.decoration as BoxDecoration?)?.color == red));
     expect(filled('No Band'), findsOneWidget);
     expect(filled('SWR 2.4'), findsNothing);
+  });
+
+  // Run's pill (StyleWatch): a low alert, filled all the same, in a colour
+  // that is not the alert's.
+  testWidgets('a message with a background colour draws as a pill in it, whatever its priority', (tester) async {
+    const green = Color(0xFF5E7D63);
+    fyi.post(FyiMessage(key: 'style', category: FyiCategory.alert, priority: FyiPriority.low, icon: MdiIcons.run, text: 'Run', backgroundColor: green));
+    await tester.pumpWidget(host());
+    await settle(tester);
+    expect(
+      find.ancestor(of: find.text('Run'), matching: find.byWidgetPredicate((w) => w is Container && (w.decoration as BoxDecoration?)?.color == green)),
+      findsOneWidget,
+    );
+    final onAlert = HaLoColors.of(tester.element(find.byType(FyiArea))).onAlert;
+    expect(tester.widget<Icon>(find.byIcon(MdiIcons.run)).color, onAlert, reason: 'the icon in the colour that reads on a pill');
   });
 }

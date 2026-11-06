@@ -19,9 +19,11 @@ import 'package:halo_widgets/halo_widgets.dart' show EsmFacts, HaloDialog, MdiIc
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart' show kCategoryKey;
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/keyer_repeat.dart' show KeyerRepeatWait;
 import 'package:ham2k_logger/services/cat/main_vfo.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/fyi_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
@@ -33,8 +35,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import '../support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
-/// `{{ qso.call }}` and `{{ keyer.msgN }}` are filled, which is all a label
-/// test needs.
+/// `{{ qso.call }}`, `{{ keyer.msgN }}` and `{{ keyer.opStyle }}` are filled,
+/// which is all a label test needs.
 class _TemplateExtensions extends ExtensionService {
   @override
   bool get ready => true;
@@ -57,7 +59,9 @@ class _TemplateExtensions extends ExtensionService {
       final n = int.parse(m[1]!);
       return n <= messages.length ? messages[n - 1] : '';
     });
-    return expanded.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
+    return expanded
+        .replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '')
+        .replaceAll('{{ keyer.opStyle }}', keyer?['opStyle'] as String? ?? '');
   }
 
   /// How many times the labels crossed the bridge — the batching is the point.
@@ -525,12 +529,16 @@ void main() {
   });
 
   group('the panel', () {
-    testWidgets('the ESM pill is there only with its experiment, and steps Off, Run, S&P', (tester) async {
+    // Run or S&P is the set's operating style, which every new contact
+    // records: switching ESM on or off must not quietly change it.
+    testWidgets('the ESM pill is there only with its experiment, steps Run, S&P, Off, and comes on in the style the set is in', (tester) async {
       await connectPlaceholder(tester);
       await tester.pumpWidget(host());
       expect(find.text('ESM Off'), findsNothing, reason: "Enter is not the keyer's without EXP ESM");
 
       await tester.pumpWidget(host(enterSends: true));
+      services.cat.setStyle('A', OperatingStyle.run);
+      await tester.pump();
       await tester.tap(find.text('ESM Off'));
       await tester.pump();
       expect(services.cat.enterSends.value, (on: true, running: true));
@@ -539,8 +547,10 @@ void main() {
       expect(services.cat.enterSends.value, (on: true, running: false));
       await tester.tap(find.text('ESM S&P'));
       await tester.pump();
-      // Off comes back as Run, so the next tap starts where a contest does.
-      expect(services.cat.enterSends.value, (on: false, running: true));
+      expect(services.cat.enterSends.value, (on: false, running: false));
+      await tester.tap(find.text('ESM Off'));
+      await tester.pump();
+      expect(services.cat.enterSends.value, (on: true, running: false), reason: 'an operator in S&P switching ESM on is still in S&P');
       await tester.pump(const Duration(seconds: 62));
     });
 
@@ -835,6 +845,37 @@ void main() {
       expect(cat.keyer('B').voiceActivity.value?.memory, 2);
       expect(cat.keyer('A').voiceActivity.value, isNull);
       cat.keyer('B').stopVoice();
+      await tester.pump(const Duration(seconds: 62));
+    });
+
+    // The trap: the buttons stay when the operator moves to the other set,
+    // and a label reading the style keeps the set they left's.
+    testWidgets("under SO2R a label reads the operator's set's style", (tester) async {
+      await services.settings.setExperimentEnabled('so2r', true);
+      final cat = services.cat;
+      Future<String> rig(String name) async {
+        final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+        await tester.runAsync(() => cat.connect(node.uuid));
+        addTearDown(() => cat.disconnect(node.uuid));
+        return node.uuid;
+      }
+
+      final left = await rig('Left Rig'), right = await rig('Right Rig');
+      await cat.setRadio1(LocalRadio(left));
+      await cat.setRadio2(right);
+      await cat.setDesignated(kCategoryKey, right, radio: right);
+      await messages({1: ('CQ', '{{ keyer.opStyle }}')});
+      cat.setStyle('A', OperatingStyle.run);
+      await tester.pumpWidget(host(templateContext: contextFor('K1ABC')));
+      await tester.pump();
+      await tester.pump();
+      expect(button('run'), findsOneWidget, reason: 'sanity');
+
+      cat.noteOperatorRadio('B');
+      await tester.pump();
+      await tester.pump(cwLabelRenderDelay);
+      await tester.pump();
+      expect(button('normal'), findsOneWidget);
       await tester.pump(const Duration(seconds: 62));
     });
 

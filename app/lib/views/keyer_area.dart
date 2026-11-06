@@ -532,14 +532,16 @@ class _MessageButtonsState extends State<_MessageButtons> {
     return label.contains('keyer.') ? [label, ...settings.activeCwMessageSet.messages].join('\u0000') : label;
   }
 
-  /// The 16 message/label values as last rendered against — settings notify
-  /// for a theme change too, and that is no reason to cross the bridge.
+  /// The 16 message/label values and the keying set's style as last
+  /// rendered against — settings notify for a theme change too, and that is
+  /// no reason to cross the bridge.
   String _fingerprint = '';
 
   String _currentFingerprint() {
     final settings = widget.services.settings;
     return [
       for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[settings.cwMessage(n), settings.cwMessageLabel(n)],
+      widget.services.cat.styleOf(widget.keyer.radio).value,
     ].join('\u0000');
   }
 
@@ -555,6 +557,8 @@ class _MessageButtonsState extends State<_MessageButtons> {
     super.initState();
     _fingerprint = _currentFingerprint();
     widget.services.settings.addListener(_onSettings);
+    // A label may read `keyer.opStyle`, which changes with no setting saved.
+    widget.services.cat.styleChanges.addListener(_onSettings);
     // At once rather than after the debounce: the buttons wait for it.
     if (!_rendersCurrent || !_sameContext(_renderedFor, widget.templateContext)) unawaited(_render());
   }
@@ -575,6 +579,9 @@ class _MessageButtonsState extends State<_MessageButtons> {
   void didUpdateWidget(_MessageButtons old) {
     super.didUpdateWidget(old);
     if (!_sameContext(old.templateContext, widget.templateContext)) _scheduleRender();
+    // Under SO2R the buttons stay and the keyer moves to the other set,
+    // whose style a label may read.
+    if (old.keyer.radio != widget.keyer.radio) _onSettings();
   }
 
   /// PanelRenderContext is rebuilt on every view build and has no equality
@@ -589,6 +596,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
   @override
   void dispose() {
     widget.services.settings.removeListener(_onSettings);
+    widget.services.cat.styleChanges.removeListener(_onSettings);
     _debounce?.cancel();
     super.dispose();
   }
@@ -622,7 +630,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
         operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
         qso: ctx.qso,
         qsoCount: ctx.qsoCount,
-        keyer: {'messages': settings.activeCwMessageSet.messages},
+        keyer: {'messages': settings.activeCwMessageSet.messages, 'opStyle': widget.services.cat.styleOf(widget.keyer.radio).value},
       );
     } catch (e, st) {
       // A hook timeout or a dead runtime: the labels show as written until
@@ -942,11 +950,14 @@ class _VoiceButtons extends StatelessWidget {
 }
 
 /// Enter Sends Messages, and which side of the exchange it plays: a tap
-/// steps Off → Run → S&P → Off, the three states an operator moves between
-/// mid-contest without looking away from the call field for long. Shown for
-/// either keyer — ESM plays voice memories in Phone the way it keys messages
-/// in CW (docs/design/logging-fields.md § Enter Sends Messages). Under SO2R
-/// its Run / S&P is the radio of the set the operator is in.
+/// steps Run → S&P → Off, the states an operator moves between mid-contest
+/// without looking away from the call field for long, and from Off switches
+/// ESM on in whichever the set is in. Shown for either keyer — ESM plays
+/// voice memories in Phone the way it keys messages in CW
+/// (docs/design/logging-fields.md § Enter Sends Messages). Under SO2R its
+/// Run / S&P is the radio of the set the operator is in. Run / S&P is the
+/// set's operating style, which outlives ESM: switching ESM on or off
+/// leaves it where it is.
 class _EnterSendsPill extends StatelessWidget {
   final CatService cat;
 
@@ -959,12 +970,10 @@ class _EnterSendsPill extends StatelessWidget {
     final esm = cat.enterSends.value;
     if (!esm.on) {
       cat.setEnterSends(on: true);
-      cat.setRunning(radio, true);
     } else if (cat.isRunning(radio)) {
       cat.setRunning(radio, false);
     } else {
       cat.setEnterSends(on: false);
-      cat.setRunning(radio, true);
     }
   }
 

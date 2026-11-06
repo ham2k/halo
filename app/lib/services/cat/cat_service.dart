@@ -49,6 +49,7 @@ import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'keyer_repeat.dart';
 import 'main_vfo.dart';
+import 'operating_style.dart';
 import 'peer_keying.dart';
 import 'equipment_registry.dart';
 import 'transport.dart';

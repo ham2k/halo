@@ -9,6 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -44,6 +45,11 @@ class _Cat extends Fake implements CatService {
   bool isRadio1(String uuid) => logging;
   @override
   bool isRadio2(String uuid) => false;
+  @override
+  String? get radio2 => null;
+  OperatingStyle style = OperatingStyle.run;
+  @override
+  OperatingStyle styleOf(String radio) => style;
   @override
   List<EquipmentNode> get nodes => const [EquipmentNode(uuid: 'a', typeKey: 'test')];
   @override
@@ -153,5 +159,16 @@ void main() {
       telemetry: cat.state.telemetry,
     );
     expect(source.dialState(), isNot(settled));
+  });
+
+  // A switch to S&P can come with no reading at all — a spot picked on a
+  // radio that is not connected — and a panel showing the style must still
+  // hear of it.
+  test("a set's style is part of the dial a `radio` trigger compares", () {
+    final cat = _Cat();
+    final source = CatSpectrumSource(cat);
+    final before = source.dialState();
+    cat.style = OperatingStyle.normal;
+    expect(source.dialState(), isNot(before));
   });
 }

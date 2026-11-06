@@ -759,6 +759,8 @@ class _Translations$fyi$cw extends Translations$fyi$en {
 	// Translations
 	@override String swrAlert({required Object swr}) => '···· ·· ——· ···· / ··· ·—— ·—· / ${swr}';
 	@override String swrWarning({required Object swr}) => '··· ·—— ·—· / ${swr}';
+	@override String get run => '·—· ··— —·';
+	@override String get sp => '··· ·—··· ·——·';
 }
 
 // Path: callInfo
@@ -909,6 +911,7 @@ class _Translations$commands$cw extends Translations$commands$en {
 	@override String voiceMessageError({required Object n, required Object error}) => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · / —— ${n} ———··· / ${error}';
 	@override String get voiceMessageNotRendered => '— ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——';
 	@override String so2rRadioCannotKey({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —';
+	@override String opStyleUnknown({required Object opStyle}) => '—· ——— — / ·— —· / ——— ·——· · ·—· ·— — ·· —· ——· / ··· — —·—— ·—·· · ———··· / ${opStyle}';
 	@override String get so2rNoRadioB => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —';
 	@override String get swapExperimentOff => '··· ——— ··——— ·—· / ·· ··· / ——— ··—· ··—· / — / — ··— ·—· —· / ·· — / ——— —· / ·—— ·· — ···· / · —··— ·——· / ··· ——— ··——— ·—·';
 	@override String get swapNeedsOperation => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· ·—— ·— ·——· / ·—· ·— —·· ·· ——— ···';
@@ -2324,6 +2327,7 @@ class _Translations$settings$logging$cw extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$showBearing$cw showBearing = _Translations$settings$logging$showBearing$cw._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$cw showReverseBearing = _Translations$settings$logging$showReverseBearing$cw._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$cw switchSentRcvd = _Translations$settings$logging$switchSentRcvd$cw._(_root);
+	@override late final _Translations$settings$logging$alwaysShowStyle$cw alwaysShowStyle = _Translations$settings$logging$alwaysShowStyle$cw._(_root);
 	@override late final _Translations$settings$logging$autoAdvanceFields$cw autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$cw._(_root);
 	@override late final _Translations$settings$logging$defaultReport$cw defaultReport = _Translations$settings$logging$defaultReport$cw._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$cw defaultReportCW = _Translations$settings$logging$defaultReportCW$cw._(_root);
@@ -3398,6 +3402,7 @@ class _Translations$keyboardShortcuts$command$cw extends Translations$keyboardSh
 	@override String get find => '··—· ·· —· —·· / ·· —· / — ···· · / ·—·· ——— ——·';
 	@override String keyerMessage({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}';
 	@override String get keyboardMode => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·';
+	@override String get toggleStyle => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—· ··— —· / ·— —· —·· / ··· ·—··· ·——·';
 	@override String get ptt => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—';
 	@override String get so2rStereo => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·';
 	@override String get wipe => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··';
@@ -4015,6 +4020,18 @@ class _Translations$settings$logging$switchSentRcvd$cw extends Translations$sett
 	@override String get title => '··· ·—— ·· — —·—· ···· / ··· ·· ——· —· ·— ·—·· / ·—· · ·——· ——— ·—· — / ——— ·—· —·· · ·—·';
 	@override String get sentFirst => '··· · —· — / ··—· ·· ·—· ··· — ——··—— / ·—· —·—· ···— —·· / ··· · —·—· ——— —· —··';
 	@override String get rcvdFirst => '·—· —·—· ···— —·· / ··—· ·· ·—· ··· — ——··—— / ··· · —· — / ··· · —·—· ——— —· —··';
+}
+
+// Path: settings.logging.alwaysShowStyle
+class _Translations$settings$logging$alwaysShowStyle$cw extends Translations$settings$logging$alwaysShowStyle$en {
+	_Translations$settings$logging$alwaysShowStyle$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '·— ·—·· ·—— ·— —·—— ··· / ··· ···· ——— ·—— / ·—· ··— —· —··—· ··· ·—··· ·——· / ·· —· —·· ·· —·—· ·— — ——— ·—·';
+	@override String get descriptionOn => '··· ···· ——— ·—— / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——· / ——— ·—· / ··· ·—··· ·——·';
+	@override String get descriptionOff => '——— —· ·—·· —·—— / ··· ···· ——— ·—— / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——·';
 }
 
 // Path: settings.logging.autoAdvanceFields
@@ -6050,6 +6067,8 @@ extension on TranslationsCw {
 			'loggingPanel.duplicates' => '—·· ··— ·——· ·—·· ·· —·—· ·— — · ···',
 			'fyi.swrAlert' => ({required Object swr}) => '···· ·· ——· ···· / ··· ·—— ·—· / ${swr}',
 			'fyi.swrWarning' => ({required Object swr}) => '··· ·—— ·—· / ${swr}',
+			'fyi.run' => '·—· ··— —·',
+			'fyi.sp' => '··· ·—··· ·——·',
 			'callInfo.qrz' => '——·— ·—· ——··',
 			'callInfo.showImage' => '··· ···· ——— ·—— / ·· —— ·— ——· ·',
 			'callInfo.imageUnavailable' => '·——· ···· ——— — ——— / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
@@ -6130,6 +6149,9 @@ extension on TranslationsCw {
 			'settings.logging.switchSentRcvd.title' => '··· ·—— ·· — —·—· ···· / ··· ·· ——· —· ·— ·—·· / ·—· · ·——· ——— ·—· — / ——— ·—· —·· · ·—·',
 			'settings.logging.switchSentRcvd.sentFirst' => '··· · —· — / ··—· ·· ·—· ··· — ——··—— / ·—· —·—· ···— —·· / ··· · —·—· ——— —· —··',
 			'settings.logging.switchSentRcvd.rcvdFirst' => '·—· —·—· ···— —·· / ··—· ·· ·—· ··· — ——··—— / ··· · —· — / ··· · —·—· ——— —· —··',
+			'settings.logging.alwaysShowStyle.title' => '·— ·—·· ·—— ·— —·—— ··· / ··· ···· ——— ·—— / ·—· ··— —· —··—· ··· ·—··· ·——· / ·· —· —·· ·· —·—· ·— — ——— ·—·',
+			'settings.logging.alwaysShowStyle.descriptionOn' => '··· ···· ——— ·—— / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——· / ——— ·—· / ··· ·—··· ·——·',
+			'settings.logging.alwaysShowStyle.descriptionOff' => '——— —· ·—·· —·—— / ··· ···· ——— ·—— / ·—— ···· · —· / ·—· ··— —· —· ·· —· ——·',
 			'settings.logging.autoAdvanceFields.title' => '·— ··— — ——— —····— ·— —·· ···— ·— —· —·—· · / ··—· ·· · ·—·· —·· ···',
 			'settings.logging.autoAdvanceFields.description' => '·— —·· ···— ·— —· —·—· · / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ·—— ···· · —· / ··—· ··— ·—·· ·—·· / ···— ·— ·—·· ··— · / ·· ··· / · —· — · ·—· · —·· ——··—— / ··· ——— —— · / ··—· ·· · ·—·· —·· ··· / ——— —· ·—·· —·—— / —·——· —— ·— ·—· —·— · —·· / ·—— ·· — ···· / * —·——·—',
 			'settings.logging.defaultReport.title' => '—·· · ··—· ·— ··— ·—·· — / ·—· · ·——· ——— ·—· — / — / ·——· ···· ——— —· ·',
@@ -6405,13 +6427,13 @@ extension on TranslationsCw {
 			'settings.radio.voiceMessages.voiced' => '··· ·— ·· —·· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— ——— ·—· —·· ···',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => '··· ·— —·—— ··· ———··· / ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => '—· ——— — / ·—· · —·—· ——— ·—· —·· · —·· / —·—— · — ———··· / ${words}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.previewNoOperation' => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· · · / ·—— ···· ·— — / ·· — / ·—— ·· ·—·· ·—·· / ··· ·— —·—— ·—·—·—',
 			'settings.radio.voiceMessages.wordsDescription' => '··— ··· · / —·—— ——— ··— ·—· / ——— ·—— —· / ···— ——— ·· —·—· · / ··—· ——— ·—· / —·—· ·— ·—·· ·—·· ··· ——··—— / —· ··— —— —··· · ·—· ··· / ·— —· —·· / —— ——— ·—· · ·—·—·—',
 			'settings.radio.voiceWords.title' => '·—— ——— ·—· —·· / ·—· · —·—· ——— ·—· —·· ·· —· ——· ···',
 			'settings.radio.voiceWords.callField' => '·—— ——— ·—· —·· ··· / ··—· ——— ·—· / ——— ·——· · ·—· ·— — ——— ·—·',
 			'settings.radio.voiceWords.intro' => '·—· · —·—· ——— ·—· —·· / · ·— —·—· ···· / ·—— ——— ·—· —·· / ——— ·—· / —· ··— —— —··· · ·—· / — ···· ·—· · · / — ·· —— · ··· ——··—— / ·—· ··— —· / — ——— ——· · — ···· · ·—· / ——·— ··— ·· —·—· —·— ·—·· —·—— ——··—— / — ···· · / ·—— ·— —·—— / —·—— ——— ··— / ··· ·— —·—— / ·· — / ··—· ——— ·—· / ·— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ·—·—·— / ·—·· ——— —· ——· · ·—· / ·——· ···· ·—· ·— ··· · ··· / ·— ·—· · / ·—· · —·—· ——— ·—· —·· · —·· / ——— —· ·—·· —·—— / ——— —· —·—· · ·—·—·— / ·—· · —·—· ——— ·—· —·· / ·— —· ——— — ···· · ·—· / ·—· · ·— —·· ·· —· ——· ——··—— / ··— ·——· / — ——— / ··—· ·· ···— · ——··—— / ·— —· —·· / —— · ··· ··· ·— ——· · ··· / —— ·· —··— / — ···· · —— ——··—— / ··· ——— / — ···· · —·—— / —· · ···— · ·—· / ··· ——— ··— —· —·· / — ···· · / ··· ·— —— · / — ·—— ·· —·—· · ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.recordAnother' => '·—· · —·—· ——— ·—· —·· / ·— —· ——— — ···· · ·—·',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => '·—· · —·—· ——— ·—· —·· ·· —· ——· / ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => '··—· ·· ·—· ··· — / — ·— —·— · / ${n}',
@@ -6919,13 +6941,13 @@ extension on TranslationsCw {
 			'settings.station.k4SerialNotes' => '—·—· ——— —· —· · —·—· — / — ···· · / —·— ····— ’ ··· / ·—· · ·— ·—· / ··— ··· —··· —····— —··· / —·——· ·——· —·—· —·——·— / ··· ——— —·—· —·— · — ·—·—·— / · ·· — ···· · ·—· / ··— ··· —··· —····— ·——· —·—· ·———— / ——— ·—· / ··— ··· —··· —····— ·——· —·—· ··——— / ·—— ——— ·—· —·— ··· / ··—· ——— ·—· / —·—· ·— — —·—·—· / —·—· ···· ——— ——— ··· · / ·— —· / ··— —· ··— ··· · —·· / ·——· ——— ·—· — / ·— —· —·· / —— ·— — —·—· ···· / ·· — ··· / ··· · ·—· ·· ·— ·—·· / ··— ··· —··· —····— ·——· —·—· —· ———··· / —··· ·— ··— —·· / ·—· ·— — · / ··· · — — ·· —· ——· / ——— —· / — ···· · / ·—· ·— —·· ·· ——— ·—·—·— / ···· ·— ·—·· ——— / ·——· ·—· · ··—· ·· ·—·· ·—·· ··· / ···—— ———·· ····— ————— ————— —·—·—· / —·—· ···· ·— —· ——· · / ·· — / ·· ··—· / —· · · —·· · —·· ·—·—·— / ·— —· ——— — ···· · ·—· / ·— ·——· ·——· ·—·· ·· —·—· ·— — ·· ——— —· / —— ··— ··· — / ··— ··· · / — ···· · / ——— — ···· · ·—· / ·——· ——— ·—· — / ——— ·—· / · — ···· · ·—· —· · — ·—·—·—\n\n— ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / —·—· ——— —· — ·—· ——— ·—·· ··· / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / ·· — ··· / —·— · —·—— · ·—· ··· —·—·—· / ·· — / —·· ——— · ··· / —· ——— — / ··· · —· —·· / ·— ··— —·· ·· ——— / — ——— / ···· ·— ·—·· ——— ·—·—·—',
 			'settings.station.k4TcpNotes' => '—·—· ——— —· —· · —·—· — / — ···· · / —·— ····— ’ ··· / · — ···· · ·—· —· · — / ··· ——— —·—· —·— · — / — ——— / —·—— ——— ··— ·—· / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— ·—·—·— / · —· — · ·—· / ·· — ··· / ···· ——— ··· — —· ·— —— · / ——— ·—· / ·· ·——· / ·— —·· —·· ·—· · ··· ··· / ·— —· —·· / —·—· ·— — / ·——· ——— ·—· — / ————· ··——— ————— ————— ·—·—·— / ···· ·— ·—·· ——— / ··— ··· · ··· / — ···· · / ··· ·— —— · / ···· ——— ··· — / ——— —· / ··—· ·· —··— · —·· / ·——· ——— ·—· — / ————· ··——— ————— ·———— / ·—— ···· · —· / ·— / ·——· ·— —· ·— —·· ·— ·——· — · ·—· / ——— ·—· / ·—— ·— — · ·—· ··—· ·— ·—·· ·—·· / ·· ··· / ···— ·· ··· ·· —··· ·—·· · —·—·—· / —·—· ···· ·— —· ——· ·· —· ——· / — ···· · / —·—· ·— — / ·——· ——— ·—· — / —·· ——— · ··· / —· ——— — / —·—· ···· ·— —· ——· · / — ···· · / ··· ·——· · —·—· — ·—· ··— —— / ·——· ——— ·—· — ·—·—·—\n\n— ···· · / ··· ·——· · —·—· — ·—· ··— —— / ··· ···· ——— ·—— ··· / — ···· · / —— ·— ·· —· / ·—· · —·—· · ·· ···— · ·—· ·—·—·— / ·· — ··· / ——·· ——— ——— —— ——··—— / ·—· · ··—· · ·—· · —· —·—· · / ·— —·· ·——— ··— ··· — —— · —· — / ·— —· —·· / ··· ·——· · · —·· / —·—· ——— —· — ·—· ——— ·—·· ··· / ·— ··—· ··—· · —·—· — / ——— —· ·—·· —·—— / ···· ·— ·—·· ——— ’ ··· / —·· ·· ··· ·——· ·—·· ·— —·—— ·—·—·— / ·— ··— —·· ·· ——— / ··· — ·—· · ·— —— ·· —· ——· / ·· ··· / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· ·—·—·—',
 			'settings.station.k4PowerTimeout' => '—·— ····— / ·——· ——— ·—— · ·—· / ·—— ·— ··· / —· ——— — / —·—· ···· ·— —· ——· · —·· / —··· · —·—· ·— ··— ··· · / — ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· / —· ——— — / —·—· ——— —· ··—· ·· ·—· —— / ·· — ··· / ——— ··— — ·——· ··— — / ·—· ·— —· ——· · ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4RemoteNotes' => '· —· ·— —··· ·—·· · / ·—· · —— ——— — · / ·— —·—· —·—· · ··· ··· / ——— —· / —·—— ——— ··— ·—· / —·— ····— / ·— —· —·· / · —· — · ·—· / ·· — ··· / —· · — ·—— ——— ·—· —·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· ·—·—·— / —— ·— ·· —· / ·— —· —·· / ··· ··— —··· / ··· ···· ·— ·—· · / ——— —· · / · —· —·—· ·—· —·—— ·——· — · —·· / —·—· ——— —· —· · —·—· — ·· ——— —· / ··—· ——— ·—· / ·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· / ·— —· —·· / ··· ·——· · —·—· — ·—· ··— —— ·—·—·— / — ···· · / —·· · ··—· ·— ··— ·—·· — / ·——· ——— ·—· — / ·· ··· / ————· ··——— ————— ····— —·—·—· / · —· — · ·—· / —·—— ——— ··— ·—· / ··—· ——— ·—· ·—— ·— ·—· —·· · —·· / ·——· ——— ·—· — / ·—— ···· · —· / —·—· ——— —· —· · —·—· — ·· —· ——· / ·—· · —— ——— — · ·—·· —·—— ·—·—·—\n\n·— ··— —·· ·· ——— / ·——· ·—·· ·— —·—— —··· ·— —·—· —·— / ·— —· —·· / —— ·· —·—· ·—· ——— ·——· ···· ——— —· · / ··· — ·—· · ·— —— ·· —· ——· / ·— ·—· · / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· ·—·—·—',
 			'settings.station.k4Receiver' => '·—· · —·—· · ·· ···— · ·—·',
 			'settings.station.k4ReceiverMain' => '—— ·— ·· —·',
 			'settings.station.k4ReceiverSub' => '··· ··— —···',
 			'settings.station.k4ReceiverInvalid' => '—·—· ···· ——— ——— ··· · / —— ·— ·· —· / ——— ·—· / ··· ··— —···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4ReceiverAlreadyConfigured' => '— ···· ·— — / ·—· · —·—· · ·· ···— · ·—· / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ··—· ——— ·—· / — ···· ·· ··· / —·— ····—',
 			'settings.station.k4SubReceiverOff' => '— ···· · / —·— ····— / ··· ··— —··· / ·—· · —·—· · ·· ···— · ·—· / ·· ··· / ——— ··—· ··—·',
 			'settings.station.k4RemotePasswordRequired' => '· —· — · ·—· / — ···· · / —·— ····— ’ ··· / —· · — ·—— ——— ·—· —·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· / — ——— / —·—· ——— —· —· · —·—· — / ··· · —·—· ··— ·—· · ·—·· —·—— ·—·—·—',
@@ -7396,6 +7418,7 @@ extension on TranslationsCw {
 			'commands.voiceMessageError' => ({required Object n, required Object error}) => '·——· ···· ——— —· · / —— · ··· ··· ·— ——· · / —— ${n} ———··· / ${error}',
 			'commands.voiceMessageNotRendered' => '— ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —',
+			'commands.opStyleUnknown' => ({required Object opStyle}) => '—· ——— — / ·— —· / ——— ·——· · ·—· ·— — ·· —· ——· / ··· — —·—— ·—·· · ———··· / ${opStyle}',
 			'commands.so2rNoRadioB' => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —',
 			'commands.swapExperimentOff' => '··· ——— ··——— ·—· / ·· ··· / ——— ··—· ··—· / — / — ··— ·—· —· / ·· — / ——— —· / ·—— ·· — ···· / · —··— ·——· / ··· ——— ··——— ·—·',
 			'commands.swapNeedsOperation' => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··· ·—— ·— ·——· / ·—· ·— —·· ·· ——— ···',
@@ -7432,14 +7455,14 @@ extension on TranslationsCw {
 			'sets.topLevel' => '— ——— ·——· / ·—·· · ···— · ·—··',
 			'sets.export' => '· —··— ·——· ——— ·—· — …',
 			'sets.import' => '·· —— ·——· ——— ·—· — …',
+			_ => null,
+		} ?? switch (path) {
 			'sets.delete' => '—·· · ·—·· · — · …',
 			'sets.deleteSet' => '—·· · ·—·· · — · / ··· · —',
 			'sets.deleteConfirm' => ({required Object name}) => '—·· · ·—·· · — · / ${name} ··——·· / — ···· ·· ··· / —·—· ·— —· —· ——— — / —··· · / ··— —· —·· ——— —· · ·—·—·—',
 			'sets.deleteFailed' => ({required Object name, required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·· · ·—·· · — · / ${name} ———··· / ${error}',
 			'sets.inUse' => '·· —· / ··— ··· ·',
 			'sets.actions' => ({required Object name}) => '·— —·—· — ·· ——— —· ··· / ··—· ——— ·—· / ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'sets.empty' => '· —— ·——· — —·—— / ··—· ——— ·—·· —·· · ·—·',
 			'sets.exported' => ({required Object location}) => '··· ·— ···— · —·· / — ——— / ${location}',
 			'sets.exportedNamed' => ({required Object names}) => '··· ·— ···— · —·· / ${names}',
@@ -7494,6 +7517,7 @@ extension on TranslationsCw {
 			'keyboardShortcuts.command.find' => '··—· ·· —· —·· / ·· —· / — ···· · / ·—·· ——— ——·',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => '··· · —· —·· / —— · ··· ··· ·— ——· · / ${n}',
 			'keyboardShortcuts.command.keyboardMode' => '—·— · —·—— —··· ——— ·— ·—· —·· / —— ——— —·· · / ——— —· / ——— ·—· / ——— ··—· ··—·',
+			'keyboardShortcuts.command.toggleStyle' => '··· ·—— ·· — —·—· ···· / —··· · — ·—— · · —· / ·—· ··— —· / ·— —· —·· / ··· ·—··· ·——·',
 			'keyboardShortcuts.command.ptt' => '·——· ··— ··· ···· / — ——— / — ·— ·—·· —·—',
 			'keyboardShortcuts.command.so2rStereo' => '··· ——— ··——— ·—· ———··· / ···· · ·— ·—· / —··· ——— — ···· / ·—· ·— —·· ·· ——— ··· ——··—— / ——— ·—· / ——— —· ·—·· —·—— / — ···· · / ··—· ——— —·—· ··— ··· · —·· / ——— —· ·',
 			'keyboardShortcuts.command.wipe' => '—·—· ·—·· · ·— ·—· / — ···· · / —·—· ——— —· — ·— —·—· — / —··· · ·· —· ——· / ·—·· ——— ——· ——· · —··',

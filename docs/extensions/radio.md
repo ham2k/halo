@@ -32,7 +32,9 @@ name.
 
 `host.listRadios()` lists the configured local transceivers.
 `host.readRadio(id?)` answers a local radio's state, or `null` on a host
-without this API:
+without this API. `id` is a radio's `id`, or from API 19 `A` or `B` for the
+radio a logging set works: `A` the logging radio, `B` SO2R's Radio B, whose
+answer has every field empty while there is none. Omitted, the logging radio.
 
 - `frequency` (Hz), `mode`, the connection state, `power`, the transmit
   state.
@@ -70,6 +72,18 @@ Extension API 7 adds to the answer:
   `swrAverage` averages the readings taken with RF out and is `null` when
   there were none; `endedAtMillis` is real time, to compare with
   `clock.realNowMillis`.
+
+Extension API 19 adds:
+
+- `set`: `A` for the logging radio, `B` for SO2R's Radio B, `null` for a
+  radio no logging set works.
+- `opStyle`: how that set is working it, `run` (calling CQ on a frequency of
+  its own) or `normal` (anything else: search and pounce, which the app
+  labels S&P, and the default), `null` where `set` is. It is the style each
+  new contact records as `opStyle`, and it moves with the operator: message 1
+  keyed is `run`; leaving the run frequency, or picking a spot, is `normal`;
+  coming back to it within three minutes is `run` again. The `RUN` and
+  `SNP` commands set it outright.
 
 Logical receivers keep separate `id`s. When several share a physical radio
 the answer may also carry `deviceId`, an opaque string shared by those

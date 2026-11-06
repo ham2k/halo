@@ -43,6 +43,8 @@ class FakeRadio extends Fake implements PanelRadioService {
   @override
   Map<String, dynamic> read([String? selection]) => {'id': selection ?? 'a'};
   @override
+  Map<String, dynamic> readFor(String? id) => read(id);
+  @override
   Map<String, dynamic> setConnection(Map<String, dynamic> args) {
     commands.add('connection');
     return {'accepted': true, 'state': null};

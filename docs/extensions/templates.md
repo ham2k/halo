@@ -129,6 +129,11 @@ others, is an error naming the loop (`a message includes itself: F3 → F1 →
 F3`), and like any template error keys nothing. A label may name its own
 message; only a message being sent is part of the chain.
 
+`opStyle` (extension API 19): how the keying set is working, `run` or
+`normal` (search and pounce, labeled S&P), in CW and phone messages and
+the labels alike, so one message can serve both:
+`{% if keyer.opStyle == 'run' %}CQ{% else %}{{ op.call }}{% endif %}`.
+
 ## Timestamps
 
 - **`…At` values are ISO-8601 UTC strings.** Feed these to the `date`

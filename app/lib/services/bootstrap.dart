@@ -284,6 +284,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
 
   // The FYI area's SWR message, for whichever radio connects below or later.
   services.swrWatch.start();
+  services.styleWatch.start();
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout.

@@ -391,6 +391,7 @@ final List<KeyCommandSpec> keyCommandSpecs = [
   for (var n = 1; n <= keyerMessageKeyCount; n++) KeyCommandSpec('keyer.message$n', KeyCommandContext.operation, ['F$n', 'alt+$n']),
   const KeyCommandSpec('keyer.keyboardMode', KeyCommandContext.operation, ['alt+K']),
   const KeyCommandSpec('radio.ptt', KeyCommandContext.operation, ["'"]),
+  const KeyCommandSpec(styleToggleCommandId, KeyCommandContext.operation, ['alt+U']),
   const KeyCommandSpec(so2rStereoCommandId, KeyCommandContext.operation, [r'\']),
   const KeyCommandSpec('logging.wipe', KeyCommandContext.logging, ['alt+W']),
 ];
@@ -411,6 +412,9 @@ const pttCommandId = 'radio.ptt';
 
 /// SO2R's switcher: both radios in the headphones, or only the one in focus.
 const so2rStereoCommandId = 'so2r.stereo';
+
+/// Run or S&P, for the set the operator is in — N1MM's ⌥U.
+const styleToggleCommandId = 'style.toggle';
 
 /// What the operator changed from the defaults: a command's chords in place
 /// of its defaults (none at all, for a command they took every key from),
@@ -703,13 +707,13 @@ class LegacyKeyBindings extends KeyBindings {
   @override
   ({String text, KeyChord chord})? textCommandFor(KeyEvent event) => null;
 
-  /// Only the keys that ever stood aside: the keyer's ⌥-digits in free text,
-  /// and PTT's ['] and SO2R stereo's backslash wherever a field would take
+  /// Only the keys that ever stood aside: the keyer's ⌥-digits and the
+  /// style's ⌥U in free text, and PTT's ['] and SO2R stereo's backslash wherever a field would take
   /// them.
   @override
   bool yieldsToField(String id, KeyChord chord, KeyEvent event) {
     if (event is CommandKeyEvent) return false;
-    if (id.startsWith('keyer.message')) return chord.modifiers.contains(KeyModifier.alt) && focusInFreeText();
+    if (id.startsWith('keyer.message') || id == styleToggleCommandId) return chord.modifiers.contains(KeyModifier.alt) && focusInFreeText();
     if (id == pttCommandId || id == so2rStereoCommandId) {
       final character = _typed(event);
       return character != null && fieldTakesKey(FocusManager.instance.primaryFocus?.context, character);
@@ -752,6 +756,9 @@ class LegacyKeyBindings extends KeyBindings {
         return alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyK;
       case 'logging.wipe':
         return alt && !command && !shift && key == LogicalKeyboardKey.keyW;
+      // By position: on a Mac ⌥U is the umlaut dead key.
+      case styleToggleCommandId:
+        return alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyU;
       case pttCommandId:
         return !keyboard.isMetaPressed && !keyboard.isControlPressed && !alt && event.character == "'";
       // By the character alone: on most layouts beyond US English `\` is

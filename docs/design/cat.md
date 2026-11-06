@@ -1117,9 +1117,10 @@ its rig's memories, or the computer's recordings through its rig's own sound dev
 computer's voice keyer).
 
 **SWAP trades the two radios' places** (`radio-commands`, the `swapRadios` action). The VFOs move
-with the logging panel's entries ([logging-fields.md](logging-fields.md) § SO2R); the rest is
-`swapRadioSettings`: each radio takes the other's Run or S&P and, when the two are slices of one
-radio (`so2rAudioRadio`), the other's antenna ports (`RadioAntennas`, `setNodeAntenna`) and antenna
+with the logging panel's entries ([logging-fields.md](logging-fields.md) § SO2R). Each radio takes the
+other's Run or S&P and its run frequency first (`swapStyles`, § Operating style there), or the entries'
+retunes would read as both sets leaving their own. The rest is `swapRadioSettings`: when the two are
+slices of one radio (`so2rAudioRadio`), the other's antenna ports (`RadioAntennas`, `setNodeAntenna`) and antenna
 in use (`designatedFor(kCategoryAntenna)`), which go together or each radio's next contact credits
 the wire the other is now on. Two different rigs keep both: a port name is the same wire only on
 one radio — an IC-7610's ANT2 is not a TS-890's — and each rig is still on its own wire. Power and

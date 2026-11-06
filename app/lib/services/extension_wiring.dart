@@ -36,6 +36,7 @@ void wireExtensions(HaLoServices services) {
   extensions.qsos = services.qsos;
   extensions.location = services.location;
   extensions.radioCalls.radio = services.panelRadio;
+  _wireOpStyle(services);
   _wireCluster(services);
   (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup)
     ..destinations = extensions.getSpotDestinations
@@ -59,6 +60,12 @@ void wireExtensions(HaLoServices services) {
   // settings to carry choices or record installs in. Without this that
   // session runs on the core extensions alone.
   if (extensions.ready && !extensions.firstCatchUpSettled) unawaited(catchUpOnCatalogExtensions(extensions));
+}
+
+/// `ctx.opStyle` moves with no setting saved — message 1, a QSY, a spot —
+/// so a set's style changing drops the cached hook context.
+void _wireOpStyle(HaLoServices services) {
+  services.cat.styleChanges.addListener(services.extensions.invalidateHookContext);
 }
 
 /// The DX cluster connection extensions post spots through

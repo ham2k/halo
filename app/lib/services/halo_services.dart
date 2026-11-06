@@ -60,6 +60,8 @@ import 'geoshape_service.dart';
 import 'outline_grid_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'cat/operating_style.dart';
+import 'cat/style_watch.dart';
 import 'cat/swr_watch.dart';
 import 'app_storage.dart' show appDataDirectory;
 import 'cat/computer_voice_keyer.dart' show HaloVoiceAudio;
@@ -470,6 +472,7 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// Each local radio's SWR, as the FYI area reports it. Started by the
   /// boot: nothing else touches it.
   late final SwrWatch swrWatch = SwrWatch(cat: cat, fyi: fyi);
+  late final StyleWatch styleWatch = StyleWatch(cat: cat, fyi: fyi, settings: settings);
   late final PanelRadioService panelRadio = PanelRadioService(
     cat,
     radio,
@@ -1752,6 +1755,17 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
         return null;
       case 'setKeyerSpeed' || 'showKeyer' || 'setEnterSends':
         return keyerCommandAction(this, action, params);
+      case 'setOpStyle':
+        // RUN / SNP: the set the operator is in. Written with or without a
+        // radio — it is how they are working, and what the next contact
+        // records. Null is success: the hook's `confirm` already said it —
+        // so a value it does not know fails aloud, or that confirm would
+        // stand over a style left as it was.
+        final value = params?['opStyle'];
+        final style = OperatingStyle.values.where((s) => s.value == value).firstOrNull;
+        if (style == null) return (text: t.commands.opStyleUnknown(opStyle: '$value'), failed: true);
+        cat.setStyle(cat.operatorRadio, style);
+        return null;
       case 'swapRadios':
         // SWAP moves the logging panel's two sets, and reaches here only
         // with no panel live (`dispatchCommandActions`).

@@ -26,8 +26,9 @@ export interface TemplateRenderArgs {
   qsoCount?: number
   log?: Record<string, JSONValue>
   /// A CW message's own set, for `keyer.msgN`; `current` is the message
-  /// being rendered, when one is (a label isn't).
-  keyer?: { messages: string[]; current?: number }
+  /// being rendered, when one is (a label isn't); `opStyle` the keying
+  /// set's, for `keyer.opStyle`.
+  keyer?: { messages: string[]; current?: number; opStyle?: "run" | "normal" }
 }
 
 /// `text` on success; `error` — the renderer's own message — when the
@@ -42,8 +43,9 @@ export interface TemplateRenderManyArgs {
   qsoCount?: number
   log?: Record<string, JSONValue>
   /// A CW message's own set, for `keyer.msgN`; `current` is the message
-  /// being rendered, when one is (a label isn't).
-  keyer?: { messages: string[]; current?: number }
+  /// being rendered, when one is (a label isn't); `opStyle` the keying
+  /// set's, for `keyer.opStyle`.
+  keyer?: { messages: string[]; current?: number; opStyle?: "run" | "normal" }
 }
 
 function renderOne(template: string, context: Record<string, unknown>): TemplateRenderResult {

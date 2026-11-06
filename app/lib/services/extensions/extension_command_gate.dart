@@ -20,7 +20,7 @@ mixin _ExtensionCommandGate on _ExtensionHookApi {
   /// developer's, which run only for the app's own extensions. An action not
   /// listed here is one any command may carry; list it here when it writes a
   /// setting, drives the radio, or belongs to the developer.
-  static const _settingsActions = {'updateSetting', 'updateSettings', 'toggleExperiment', 'setEnterSends', 'setKeyerSpeed', 'showKeyer'};
+  static const _settingsActions = {'updateSetting', 'updateSettings', 'toggleExperiment', 'setEnterSends', 'setOpStyle', 'setKeyerSpeed', 'showKeyer'};
   static const _radioActions = {'setPower', 'swapRadios'};
   static const _developerActions = {
     'reloadDataFiles',

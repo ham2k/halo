@@ -5,7 +5,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import '../halo_services.dart';
 
-/// The keyer's command actions — WPM, KEYER, and ESM/RUN/SP — for
+/// The keyer's command actions — WPM, KEYER, and ESM — for
 /// [HaLoServices.handleCommandAction]. Null is success: the hook's own
 /// `confirm` is the operator's feedback, and a message here would be a second
 /// one saying the same thing.
@@ -40,7 +40,7 @@ CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, M
       services.cat.openKeyerControl();
       return null;
     case 'setEnterSends':
-      // ESM / RUN / SP. Written whether or not anything can key right now —
+      // ESM. Written whether or not anything can key right now —
       // it is how the operator wants Enter to behave once one does — but
       // said to be doing nothing when it would, rather than confirmed.
       if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) {

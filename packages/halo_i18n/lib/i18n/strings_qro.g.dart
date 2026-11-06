@@ -759,6 +759,8 @@ class _Translations$fyi$qro extends Translations$fyi$en {
 	// Translations
 	@override String swrAlert({required Object swr}) => 'HIGH SWR ${swr}';
 	@override String swrWarning({required Object swr}) => 'SWR ${swr}';
+	@override String get run => 'RUN';
+	@override String get sp => 'S&P';
 }
 
 // Path: callInfo
@@ -909,6 +911,7 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String voiceMessageError({required Object n, required Object error}) => 'PHONE MESSAGE M${n}: ${error}';
 	@override String get voiceMessageNotRendered => 'THE EXTENSIONS ARE NOT READY';
 	@override String so2rRadioCannotKey({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT';
+	@override String opStyleUnknown({required Object opStyle}) => 'NOT AN OPERATING STYLE: ${opStyle}';
 	@override String get so2rNoRadioB => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET';
 	@override String get swapExperimentOff => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R';
 	@override String get swapNeedsOperation => 'OPEN AN OPERATION TO SWAP RADIOS';
@@ -2324,6 +2327,7 @@ class _Translations$settings$logging$qro extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qro showBearing = _Translations$settings$logging$showBearing$qro._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qro showReverseBearing = _Translations$settings$logging$showReverseBearing$qro._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qro switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qro._(_root);
+	@override late final _Translations$settings$logging$alwaysShowStyle$qro alwaysShowStyle = _Translations$settings$logging$alwaysShowStyle$qro._(_root);
 	@override late final _Translations$settings$logging$autoAdvanceFields$qro autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qro defaultReport = _Translations$settings$logging$defaultReport$qro._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$qro defaultReportCW = _Translations$settings$logging$defaultReportCW$qro._(_root);
@@ -3398,6 +3402,7 @@ class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardS
 	@override String get find => 'FIND IN THE LOG';
 	@override String keyerMessage({required Object n}) => 'SEND MESSAGE ${n}';
 	@override String get keyboardMode => 'KEYBOARD MODE ON OR OFF';
+	@override String get toggleStyle => 'SWITCH BETWEEN RUN AND S&P';
 	@override String get ptt => 'PUSH TO TALK';
 	@override String get so2rStereo => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE';
 	@override String get wipe => 'CLEAR THE CONTACT BEING LOGGED';
@@ -4015,6 +4020,18 @@ class _Translations$settings$logging$switchSentRcvd$qro extends Translations$set
 	@override String get title => 'SWITCH SIGNAL REPORT ORDER';
 	@override String get sentFirst => 'SENT FIRST, RCVD SECOND';
 	@override String get rcvdFirst => 'RCVD FIRST, SENT SECOND';
+}
+
+// Path: settings.logging.alwaysShowStyle
+class _Translations$settings$logging$alwaysShowStyle$qro extends Translations$settings$logging$alwaysShowStyle$en {
+	_Translations$settings$logging$alwaysShowStyle$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'ALWAYS SHOW RUN/S&P INDICATOR';
+	@override String get descriptionOn => 'SHOW WHEN RUNNING OR S&P';
+	@override String get descriptionOff => 'ONLY SHOW WHEN RUNNING';
 }
 
 // Path: settings.logging.autoAdvanceFields
@@ -6050,6 +6067,8 @@ extension on TranslationsQro {
 			'loggingPanel.duplicates' => 'DUPLICATES',
 			'fyi.swrAlert' => ({required Object swr}) => 'HIGH SWR ${swr}',
 			'fyi.swrWarning' => ({required Object swr}) => 'SWR ${swr}',
+			'fyi.run' => 'RUN',
+			'fyi.sp' => 'S&P',
 			'callInfo.qrz' => 'QRZ',
 			'callInfo.showImage' => 'SHOW IMAGE',
 			'callInfo.imageUnavailable' => 'PHOTO UNAVAILABLE',
@@ -6130,6 +6149,9 @@ extension on TranslationsQro {
 			'settings.logging.switchSentRcvd.title' => 'SWITCH SIGNAL REPORT ORDER',
 			'settings.logging.switchSentRcvd.sentFirst' => 'SENT FIRST, RCVD SECOND',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'RCVD FIRST, SENT SECOND',
+			'settings.logging.alwaysShowStyle.title' => 'ALWAYS SHOW RUN/S&P INDICATOR',
+			'settings.logging.alwaysShowStyle.descriptionOn' => 'SHOW WHEN RUNNING OR S&P',
+			'settings.logging.alwaysShowStyle.descriptionOff' => 'ONLY SHOW WHEN RUNNING',
 			'settings.logging.autoAdvanceFields.title' => 'AUTO-ADVANCE FIELDS',
 			'settings.logging.autoAdvanceFields.description' => 'ADVANCE AUTOMATICALLY WHEN FULL VALUE IS ENTERED, SOME FIELDS ONLY (MARKED WITH *)',
 			'settings.logging.defaultReport.title' => 'DEFAULT REPORT — PHONE',
@@ -6405,13 +6427,13 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.voiced' => 'SAID WITH YOUR WORDS',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'SAYS: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'NOT RECORDED YET: ${words}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.previewNoOperation' => 'OPEN AN OPERATION TO SEE WHAT IT WILL SAY.',
 			'settings.radio.voiceMessages.wordsDescription' => 'USE YOUR OWN VOICE FOR CALLS, NUMBERS AND MORE.',
 			'settings.radio.voiceWords.title' => 'WORD RECORDINGS',
 			'settings.radio.voiceWords.callField' => 'WORDS FOR OPERATOR',
 			'settings.radio.voiceWords.intro' => 'RECORD EACH WORD OR NUMBER THREE TIMES, RUN TOGETHER QUICKLY, THE WAY YOU SAY IT FOR A CALLSIGN. LONGER PHRASES ARE RECORDED ONLY ONCE. RECORD ANOTHER READING, UP TO FIVE, AND MESSAGES MIX THEM, SO THEY NEVER SOUND THE SAME TWICE.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.recordAnother' => 'RECORD ANOTHER',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'RECORDING ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'FIRST TAKE ${n}',
@@ -6919,13 +6941,13 @@ extension on TranslationsQro {
 			'settings.station.k4SerialNotes' => 'CONNECT THE K4’S REAR USB-B (PC) SOCKET. EITHER USB-PC1 OR USB-PC2 WORKS FOR CAT; CHOOSE AN UNUSED PORT AND MATCH ITS SERIAL USB-PCN: BAUD RATE SETTING ON THE RADIO. HALO PREFILLS 38400; CHANGE IT IF NEEDED. ANOTHER APPLICATION MUST USE THE OTHER PORT OR ETHERNET.\n\nTHIS CONNECTION CONTROLS THE RADIO AND ITS KEYERS; IT DOES NOT SEND AUDIO TO HALO.',
 			'settings.station.k4TcpNotes' => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.',
 			'settings.station.k4PowerTimeout' => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4RemoteNotes' => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.',
 			'settings.station.k4Receiver' => 'RECEIVER',
 			'settings.station.k4ReceiverMain' => 'MAIN',
 			'settings.station.k4ReceiverSub' => 'SUB',
 			'settings.station.k4ReceiverInvalid' => 'CHOOSE MAIN OR SUB',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4',
 			'settings.station.k4SubReceiverOff' => 'THE K4 SUB RECEIVER IS OFF',
 			'settings.station.k4RemotePasswordRequired' => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.',
@@ -7396,6 +7418,7 @@ extension on TranslationsQro {
 			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'PHONE MESSAGE M${n}: ${error}',
 			'commands.voiceMessageNotRendered' => 'THE EXTENSIONS ARE NOT READY',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'NOTHING SENT: RADIO ${radio} CAN\'T KEY THAT',
+			'commands.opStyleUnknown' => ({required Object opStyle}) => 'NOT AN OPERATING STYLE: ${opStyle}',
 			'commands.so2rNoRadioB' => 'NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET',
 			'commands.swapExperimentOff' => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R',
 			'commands.swapNeedsOperation' => 'OPEN AN OPERATION TO SWAP RADIOS',
@@ -7432,14 +7455,14 @@ extension on TranslationsQro {
 			'sets.topLevel' => 'TOP LEVEL',
 			'sets.export' => 'EXPORT…',
 			'sets.import' => 'IMPORT…',
+			_ => null,
+		} ?? switch (path) {
 			'sets.delete' => 'DELETE…',
 			'sets.deleteSet' => 'DELETE SET',
 			'sets.deleteConfirm' => ({required Object name}) => 'DELETE ${name}? THIS CANNOT BE UNDONE.',
 			'sets.deleteFailed' => ({required Object name, required Object error}) => 'COULD NOT DELETE ${name}: ${error}',
 			'sets.inUse' => 'IN USE',
 			'sets.actions' => ({required Object name}) => 'ACTIONS FOR ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'sets.empty' => 'EMPTY FOLDER',
 			'sets.exported' => ({required Object location}) => 'SAVED TO ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'SAVED ${names}',
@@ -7494,6 +7517,7 @@ extension on TranslationsQro {
 			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
+			'keyboardShortcuts.command.toggleStyle' => 'SWITCH BETWEEN RUN AND S&P',
 			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE',
 			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',

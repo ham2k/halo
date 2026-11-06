@@ -271,8 +271,9 @@ export interface TemplateContextArgs {
   atMillis?: number
   /// The keyer's messages, for `keyer.msg1`…`keyer.msgN` — and which of
   /// them is being rendered, if one is, so it can't include itself. See
-  /// [keyerValues].
-  keyer?: { messages: string[]; current?: number }
+  /// [keyerValues]. `opStyle` is the keying set's operating style, for
+  /// `keyer.opStyle` (extension API 19).
+  keyer?: { messages: string[]; current?: number; opStyle?: "run" | "normal" }
   /// Overrides "now", for tests.
   nowMillis?: number
 }
@@ -292,7 +293,7 @@ export function templateContext(args: TemplateContextArgs): Record<string, unkno
     ...(args.log ? { log: logValues(args.log) } : {}),
     ...(args.config ? { config: args.config } : {}),
   }
-  if (args.keyer) context.keyer = keyerValues(context, args.keyer.messages ?? [], args.keyer.current ? [args.keyer.current] : [])
+  if (args.keyer) context.keyer = keyerValues(context, args.keyer.messages ?? [], args.keyer.current ? [args.keyer.current] : [], args.keyer.opStyle)
   return context
 }
 
@@ -308,8 +309,8 @@ export function templateContext(args: TemplateContextArgs): Record<string, unkno
 /// typo they can only fix if they are told where it is. The chain is what
 /// bounds the recursion — there are only so many messages to expand before
 /// one repeats.
-function keyerValues(base: Record<string, unknown>, messages: string[], chain: number[]): Record<string, unknown> {
-  const keyer: Record<string, unknown> = {}
+function keyerValues(base: Record<string, unknown>, messages: string[], chain: number[], opStyle?: string): Record<string, unknown> {
+  const keyer: Record<string, unknown> = opStyle ? { opStyle } : {}
   messages.forEach((template, i) => {
     const n = i + 1
     Object.defineProperty(keyer, `msg${n}`, {
@@ -317,7 +318,7 @@ function keyerValues(base: Record<string, unknown>, messages: string[], chain: n
       get() {
         const path = [...chain, n]
         if (chain.includes(n)) throw new TemplateError(`a message includes itself: ${path.map((k) => `F${k}`).join(" → ")}`)
-        return renderTemplate(template ?? "", { ...base, keyer: keyerValues(base, messages, path) })
+        return renderTemplate(template ?? "", { ...base, keyer: keyerValues(base, messages, path, opStyle) })
       },
     })
   })

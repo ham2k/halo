@@ -134,7 +134,7 @@ last answer. Not a cache, not a database.
 locale, font scale, distance units, logging toggles, bands and modes,
 privacy consents, the active profile's `operatorCall`, `operatorName`,
 `operatorEmail`, `operatorClub` and `operatorSection`, `syncEnabled`,
-`developerMode`, `appName`, `enabledExperiments`) plus every extension's own
+`developerMode`, `appName`, `enabledExperiments`, `opStyle`) plus every extension's own
 group under `extensions`, keyed `extension_<key>`. Reading is unrestricted;
 settings are not secrets. Credentials and accounts are absent by design:
 they live in the keychain, through the `account` hook. The `operator*`
@@ -361,6 +361,7 @@ older than the feature; call the optional reads as `ctx.getSpots?.()`.
 | `gridPrecision?` | 6 or 8, how many characters the operator shows a locator with |
 | `enabledExperiments?` | Keys of the experiments on for this user |
 | `experiments?` | The experiment catalog: `{ key, name, aliases }[]` |
+| `opStyle?` | Each logging set's operating style, `{ A, B? }` (`B` under SO2R): `run`, or `normal` for search and pounce, the default. What each new contact records; needs no radio. API 19 |
 | `account?` | `{ credentials?, session? }` for an extension with an `account` hook |
 | `getOperation?(uuid)` | One operation's data with `uuid` folded in, or `null` |
 | `getQsos?(operationUuid)` | Every contact in the operation, oldest first, soft-deleted ones excluded, event markers (`band: 'event'`) included; `null` when the operation is unknown or the host has no log access, distinct from `[]`. Every extension reads one shared copy of the log, which asks the app only for what changed since the last read, so the whole log crosses the bridge once; each call gets a new array. From API 9 its QSOs are that shared copy, frozen: a write throws, so copy what you mean to change. Under an older `api` each call gets QSOs of its own |

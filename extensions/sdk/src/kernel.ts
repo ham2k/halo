@@ -767,6 +767,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
         edition?: string
         enabledExperiments?: string[]
         experiments?: { key: string; name: string; aliases: string[] }[]
+        opStyle?: { A: "run" | "normal"; B?: "run" | "normal" }
       }
     | undefined
   if (settings?.developerMode) {
@@ -786,6 +787,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     edition: settings?.edition,
     enabledExperiments: settings?.enabledExperiments ?? [],
     experiments: settings?.experiments ?? [],
+    opStyle: settings?.opStyle,
     // Log-data reads (HookContext.getOperation/getQsos in types.ts). Built
     // per call like the rest of ctx but deliberately NOT cached like
     // settings/account above — log data changes with every QSO, and a

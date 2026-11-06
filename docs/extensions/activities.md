@@ -320,6 +320,11 @@ skipped entirely when the operation has no refs, so ordinary logging pays
 nothing. A serial the app allocates at commit is not visible here for the
 second and later contacts of a call list.
 
+`operation` is the operation as it stood at the contact's own time, on a log
+whose refs change partway through. From extension API 19 it carries the
+operation's `uuid`, to read the rest of the log with `ctx.getQsos`. A new
+contact arrives with its `opStyle`, `run` or `normal`, already set.
+
 ## `ref:<type>`
 
 **For:** what one kind of reference means: whether a code is valid, what it

@@ -72,10 +72,10 @@ abstract class SceneSpectrumSource {
   /// rate, so only what draws them listens.
   Listenable get readingChanges;
 
-  /// Every radio's dial — frequency, mode, passband, transmitting, PTT and
-  /// connection, never a meter — as a list equal to an earlier answer exactly
-  /// when none of them moved: what a panel's `radio` trigger fires on. Read on
-  /// [readingChanges].
+  /// Every radio's dial — frequency, mode, passband, transmitting, PTT,
+  /// connection and its set's operating style, never a meter — as a list
+  /// equal to an earlier answer exactly when none of them moved: what a
+  /// panel's `radio` trigger fires on. Read on [readingChanges].
   List<Object?> dialState();
 
   /// Moves [uuid]'s scope to centre on [centerHz], for a control that

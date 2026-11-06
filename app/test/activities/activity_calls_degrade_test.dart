@@ -124,6 +124,38 @@ void main() {
     expect(qso['their'], {'call': 'W1AW', 'exchange': '5'});
   });
 
+  // An activity keeping its own state per operation — a contest's running
+  // tally — needs to know which log the contact goes to; the operation's
+  // data carries no uuid of its own.
+  test("processQsoBeforeSave's operation carries the operation's uuid", () async {
+    Object? seen;
+    final extensions = ExtensionServiceWithFakeHost(
+      FakeExtensionHost({
+        'activity:*:processQsoBeforeSave': (Object? args) {
+          seen = (args as Map)['operation'];
+          return const <Map<String, dynamic>>[];
+        },
+      }),
+    );
+    await extensions.decorateQsoBeforeSave(
+      {
+        'their': {'call': 'W1AW'},
+      },
+      {
+        'refs': [
+          {'type': 'cqww'},
+        ],
+      },
+      operationUuid: 'op-1',
+    );
+    expect(seen, {
+      'refs': [
+        {'type': 'cqww'},
+      ],
+      'uuid': 'op-1',
+    });
+  });
+
   group('the add-activity search with no runtime up', () {
     test('waits for the runtime to come up and answers from it', () async {
       final extensions = _BootingExtensions(

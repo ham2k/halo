@@ -759,6 +759,8 @@ class _Translations$fyi$qrp extends Translations$fyi$en {
 	// Translations
 	@override String swrAlert({required Object swr}) => 'high swr ${swr}';
 	@override String swrWarning({required Object swr}) => 'swr ${swr}';
+	@override String get run => 'run';
+	@override String get sp => 's&p';
 }
 
 // Path: callInfo
@@ -909,6 +911,7 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String voiceMessageError({required Object n, required Object error}) => 'phone message m${n}: ${error}';
 	@override String get voiceMessageNotRendered => 'the extensions are not ready';
 	@override String so2rRadioCannotKey({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that';
+	@override String opStyleUnknown({required Object opStyle}) => 'not an operating style: ${opStyle}';
 	@override String get so2rNoRadioB => 'nothing sent: pick a radio b in station configuration to key from this set';
 	@override String get swapExperimentOff => 'so2r is off — turn it on with exp so2r';
 	@override String get swapNeedsOperation => 'open an operation to swap radios';
@@ -2324,6 +2327,7 @@ class _Translations$settings$logging$qrp extends Translations$settings$logging$e
 	@override late final _Translations$settings$logging$showBearing$qrp showBearing = _Translations$settings$logging$showBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$qrp showReverseBearing = _Translations$settings$logging$showReverseBearing$qrp._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$qrp switchSentRcvd = _Translations$settings$logging$switchSentRcvd$qrp._(_root);
+	@override late final _Translations$settings$logging$alwaysShowStyle$qrp alwaysShowStyle = _Translations$settings$logging$alwaysShowStyle$qrp._(_root);
 	@override late final _Translations$settings$logging$autoAdvanceFields$qrp autoAdvanceFields = _Translations$settings$logging$autoAdvanceFields$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReport$qrp defaultReport = _Translations$settings$logging$defaultReport$qrp._(_root);
 	@override late final _Translations$settings$logging$defaultReportCW$qrp defaultReportCW = _Translations$settings$logging$defaultReportCW$qrp._(_root);
@@ -3398,6 +3402,7 @@ class _Translations$keyboardShortcuts$command$qrp extends Translations$keyboardS
 	@override String get find => 'find in the log';
 	@override String keyerMessage({required Object n}) => 'send message ${n}';
 	@override String get keyboardMode => 'keyboard mode on or off';
+	@override String get toggleStyle => 'switch between run and s&p';
 	@override String get ptt => 'push to talk';
 	@override String get so2rStereo => 'so2r: hear both radios, or only the focused one';
 	@override String get wipe => 'clear the contact being logged';
@@ -4015,6 +4020,18 @@ class _Translations$settings$logging$switchSentRcvd$qrp extends Translations$set
 	@override String get title => 'switch signal report order';
 	@override String get sentFirst => 'sent first, rcvd second';
 	@override String get rcvdFirst => 'rcvd first, sent second';
+}
+
+// Path: settings.logging.alwaysShowStyle
+class _Translations$settings$logging$alwaysShowStyle$qrp extends Translations$settings$logging$alwaysShowStyle$en {
+	_Translations$settings$logging$alwaysShowStyle$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'always show run/s&p indicator';
+	@override String get descriptionOn => 'show when running or s&p';
+	@override String get descriptionOff => 'only show when running';
 }
 
 // Path: settings.logging.autoAdvanceFields
@@ -6050,6 +6067,8 @@ extension on TranslationsQrp {
 			'loggingPanel.duplicates' => 'duplicates',
 			'fyi.swrAlert' => ({required Object swr}) => 'high swr ${swr}',
 			'fyi.swrWarning' => ({required Object swr}) => 'swr ${swr}',
+			'fyi.run' => 'run',
+			'fyi.sp' => 's&p',
 			'callInfo.qrz' => 'qrz',
 			'callInfo.showImage' => 'show image',
 			'callInfo.imageUnavailable' => 'photo unavailable',
@@ -6130,6 +6149,9 @@ extension on TranslationsQrp {
 			'settings.logging.switchSentRcvd.title' => 'switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'sent first, rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'rcvd first, sent second',
+			'settings.logging.alwaysShowStyle.title' => 'always show run/s&p indicator',
+			'settings.logging.alwaysShowStyle.descriptionOn' => 'show when running or s&p',
+			'settings.logging.alwaysShowStyle.descriptionOff' => 'only show when running',
 			'settings.logging.autoAdvanceFields.title' => 'auto-advance fields',
 			'settings.logging.autoAdvanceFields.description' => 'advance automatically when full value is entered, some fields only (marked with *)',
 			'settings.logging.defaultReport.title' => 'default report — phone',
@@ -6405,13 +6427,13 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.voiced' => 'said with your words',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'says: ${words}',
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'not recorded yet: ${words}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.previewNoOperation' => 'open an operation to see what it will say.',
 			'settings.radio.voiceMessages.wordsDescription' => 'use your own voice for calls, numbers and more.',
 			'settings.radio.voiceWords.title' => 'word recordings',
 			'settings.radio.voiceWords.callField' => 'words for operator',
 			'settings.radio.voiceWords.intro' => 'record each word or number three times, run together quickly, the way you say it for a callsign. longer phrases are recorded only once. record another reading, up to five, and messages mix them, so they never sound the same twice.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.recordAnother' => 'record another',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'first take ${n}',
@@ -6919,13 +6941,13 @@ extension on TranslationsQrp {
 			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
 			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4RemoteNotes' => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.',
 			'settings.station.k4Receiver' => 'receiver',
 			'settings.station.k4ReceiverMain' => 'main',
 			'settings.station.k4ReceiverSub' => 'sub',
 			'settings.station.k4ReceiverInvalid' => 'choose main or sub',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'that receiver is already configured for this k4',
 			'settings.station.k4SubReceiverOff' => 'the k4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'enter the k4’s network password to connect securely.',
@@ -7396,6 +7418,7 @@ extension on TranslationsQrp {
 			'commands.voiceMessageError' => ({required Object n, required Object error}) => 'phone message m${n}: ${error}',
 			'commands.voiceMessageNotRendered' => 'the extensions are not ready',
 			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that',
+			'commands.opStyleUnknown' => ({required Object opStyle}) => 'not an operating style: ${opStyle}',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.swapExperimentOff' => 'so2r is off — turn it on with exp so2r',
 			'commands.swapNeedsOperation' => 'open an operation to swap radios',
@@ -7432,14 +7455,14 @@ extension on TranslationsQrp {
 			'sets.topLevel' => 'top level',
 			'sets.export' => 'export…',
 			'sets.import' => 'import…',
+			_ => null,
+		} ?? switch (path) {
 			'sets.delete' => 'delete…',
 			'sets.deleteSet' => 'delete set',
 			'sets.deleteConfirm' => ({required Object name}) => 'delete ${name}? this cannot be undone.',
 			'sets.deleteFailed' => ({required Object name, required Object error}) => 'could not delete ${name}: ${error}',
 			'sets.inUse' => 'in use',
 			'sets.actions' => ({required Object name}) => 'actions for ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'sets.empty' => 'empty folder',
 			'sets.exported' => ({required Object location}) => 'saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'saved ${names}',
@@ -7494,6 +7517,7 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.command.find' => 'find in the log',
 			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'send message ${n}',
 			'keyboardShortcuts.command.keyboardMode' => 'keyboard mode on or off',
+			'keyboardShortcuts.command.toggleStyle' => 'switch between run and s&p',
 			'keyboardShortcuts.command.ptt' => 'push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'so2r: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'clear the contact being logged',

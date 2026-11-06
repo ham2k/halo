@@ -14,6 +14,7 @@ upcoming:
     - "New Auto-advance Fields setting replaces RST jump, now covering contest exchanges too"
     - "New Backspace move: an empty logging field steps back to the previous one"
     - "New band tags: type QRM! or NET! and Enter to mark the frequency"
+    - "New: Run/S&P on each contact, a Run pill to tap; ⌥U, `RUN`, `SNP` switch it"
 
 "190":
   changes:

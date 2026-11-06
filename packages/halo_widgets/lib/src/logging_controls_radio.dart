@@ -633,19 +633,16 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     _settling = Timer(const Duration(seconds: 3), () => _settling = null);
   }
 
-  /// The VFO the entry was started on, when the VFO has since moved off it —
-  /// a QSY, which takes the operator to another station: another mode,
-  /// another band, or a frequency more than 1 kHz away in a phone mode and
-  /// 200 Hz in CW or a digital one. Null when it has not. With nothing
-  /// [composing], while the entry is writing the VFO itself, or while the rig
-  /// is settling ([_settling]), the VFO is taken as the start instead. While
+  /// The VFO the entry was started on, when the VFO has since moved off it
+  /// ([Vfo.movedOffOf]) — a QSY, which takes the operator to another
+  /// station. Null when it has not. With nothing [composing], while the
+  /// entry is writing the VFO itself, or while the rig is settling
+  /// ([_settling]), the VFO is taken as the start instead. While
   /// transmitting it is neither: working split, a rig reports the frequency
   /// it is sending on, and the reading after it unkeys says where it went.
   ///
-  /// The tolerance is the dial being nudged on the same station: to clear up
-  /// a voice, or to zero-beat a narrow signal. Measured from the start, never
-  /// from the last reading, so a caller zero-beaten in steps adds up to the
-  /// same QSY one turn of the knob would.
+  /// Measured from the start, never from the last reading, so a caller
+  /// zero-beaten in steps adds up to the same QSY one turn of the knob would.
   Vfo? qsyFromStart({required bool composing}) {
     final radio = config().radio;
     final vfo = radio.radioService?.vfoA;
@@ -658,15 +655,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       _startVfo = vfo;
       return null;
     }
-    if (vfo.mode != start.mode) return start;
-    final (from, to) = (start.freq, vfo.freq);
-    if (from == null || to == null) return vfo.band != start.band ? start : null;
-    final toleranceHz = switch (superModeForMode(start.mode)) {
-      'CW' || 'Digital' => 200,
-      _ => 1000,
-    };
-    // In whole hertz: kHz doubles land a hair either side of 200 Hz.
-    return ((to - from).abs() * 1000).round() > toleranceHz ? start : null;
+    return vfo.movedOffOf(start) ? start : null;
   }
 
   /// Re-baselines the frequency edit detector. Call wherever the field is

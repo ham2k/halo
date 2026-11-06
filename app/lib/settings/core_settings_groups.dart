@@ -440,6 +440,14 @@ class LoggingSettingsGroup extends SettingsGroup {
         // labels send the operator looking for it there.
         target: 'logging',
       ),
+      _toggle(
+        key: 'alwaysShowStyle',
+        label: s.alwaysShowStyle.title,
+        icon: 'run',
+        description: settings.alwaysShowStyle ? s.alwaysShowStyle.descriptionOn : s.alwaysShowStyle.descriptionOff,
+        value: settings.alwaysShowStyle,
+        target: 'logging-extended',
+      ),
       // The report an empty Sent/Rcvd stands for, one field per mode band.
       // Shown with the standard report as the PLACEHOLDER rather than the
       // value, the same rule the logging fields themselves follow: an empty

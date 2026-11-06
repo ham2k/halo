@@ -22,6 +22,7 @@ import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -409,6 +410,32 @@ void main() {
     await pumpEventQueue();
     expect(seen, [const VoiceActivity(memory: 1), const VoiceActivity(memory: 4, take: 1), null], reason: 'never idle between them');
     expect(cat.radio1IsTransmitting, isFalse);
+  });
+
+  // The operating style (logging-fields.md § Operating style): memory 1 is
+  // a CQ once its play is taken. The trap: marking it as it is queued, so a
+  // CQ queued and then dropped leaves the set running with no CQ sent.
+  test('memory 1 runs once it plays, not while it waits behind another', () async {
+    final cat = services.cat;
+    audio.lengths['/v/s1/4.wav'] = const Duration(seconds: 1);
+    await connectRig();
+    final keyer = cat.keyer('A');
+    keyer.queueVoiceMemory(4);
+    await pumpEventQueue();
+    keyer.queueVoiceMemory(1);
+    await pumpEventQueue();
+    keyer.dropQueuedVoice(0);
+    expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'queued and dropped, never sent');
+
+    keyer.queueVoiceMemory(1);
+    await pumpEventQueue();
+    expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'still waiting');
+    audio.plays.last.end();
+    await pumpEventQueue();
+    expect(audio.plays.last.path, '/v/s1/1.wav', reason: 'sanity: memory 1 is playing');
+    expect(cat.styleOf('A'), OperatingStyle.run);
+    audio.plays.last.end();
+    await pumpEventQueue();
   });
 
   group('under SO2R', () {

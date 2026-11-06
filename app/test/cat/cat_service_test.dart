@@ -27,6 +27,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/auto_connect_guard.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/services/cat/radio_modes.dart';
 import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
@@ -2550,6 +2551,24 @@ void main() {
       expect(a.sent, ['5NN'], reason: 'only message 1 is what the call answers');
     });
 
+    // Message 1 is a CQ: the radio it went out on is running. Only that one —
+    // the other set is still pouncing — and only once the send is taken: a
+    // message held for the other radio has not called anybody yet.
+    test("message 1 runs the radio that keys it, once the send is taken", () async {
+      final (a, b) = await twoRadios();
+      await settings.setSo2rQueueMessages(true);
+      cat.setStyle('A', OperatingStyle.normal);
+      cat.setStyle('B', OperatingStyle.normal);
+      cat.keyer('A').sendCw('5NN');
+      expect(cat.styleOf('A'), OperatingStyle.normal, reason: 'not message 1');
+      cat.keyer('B').sendCw('CQ', hasMessageOne: true);
+      expect(cat.styleOf('B'), OperatingStyle.normal, reason: 'held for A, not on the air yet');
+      a.finishCw();
+      await pumpEventQueue();
+      expect(b.sent, ['CQ'], reason: 'sanity: the held CQ went');
+      expect((cat.styleOf('A'), cat.styleOf('B')), (OperatingStyle.normal, OperatingStyle.run));
+    });
+
     test('stopping CW drops what was held for the other radio behind it', () async {
       final (a, b) = await twoRadios();
       await settings.setSo2rQueueMessages(true);
@@ -2798,6 +2817,7 @@ void main() {
     // S&P while the operator is in set B, which files it under B.
     test("the ESM switch shows the operator's radio's Run or S&P, and hands it back unchanged", () async {
       await twoRadios();
+      cat.setStyle('A', OperatingStyle.run);
       cat.noteOperatorRadio('B');
       expect(cat.operatorEnterSends.running, isFalse, reason: "radio B's S&P, not radio A's Run");
       final shown = cat.operatorEnterSends;
@@ -2834,8 +2854,10 @@ void main() {
     // The trap: one app-wide Run / S&P, so the operator running A and
     // pouncing with B has ESM sending the wrong half of the exchange on one.
     test("each radio has its own Run / S&P, and ESM's Run / S&P keys set the operator's radio's", () async {
-      expect(cat.isRunning('A'), isTrue, reason: 'radio A runs by default');
-      expect(cat.isRunning('B'), isFalse, reason: 'radio B pounces by default');
+      // Neither runs until told to: the normal style, S&P, is the default.
+      expect((cat.isRunning('A'), cat.isRunning('B')), (false, false));
+      cat.setEnterSends(running: true);
+      expect((cat.isRunning('A'), cat.isRunning('B')), (true, false));
 
       cat.noteOperatorRadio('B');
       cat.setEnterSends(running: true);

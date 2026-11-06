@@ -77,7 +77,7 @@ class RadioHostCalls {
     const unavailable = {'accepted': false, 'reason': 'disconnected', 'state': null};
     return switch (method) {
       'listRadios' => radio?.list() ?? [],
-      'readRadio' => radio?.read(params['id'] as String?),
+      'readRadio' => radio?.readFor(params['id'] as String?),
       'setRadioConnection' => radio?.setConnection(params) ?? unavailable,
       'setRadioSpectrum' => radio?.setSpectrum(params) ?? unavailable,
       'sendRadioCw' => radio?.sendCw(params) ?? unavailable,

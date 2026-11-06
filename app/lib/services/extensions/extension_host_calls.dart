@@ -172,6 +172,9 @@ class _ExtensionHostCalls {
       'operatorEmail': _service.settings?.activeProfile.operatorEmail ?? '',
       'operatorClub': _service.settings?.activeProfile.operatorClub ?? '',
       'operatorSection': _service.settings?.activeProfile.operatorSection ?? '',
+      // Each logging set's operating style, for the hook context's
+      // `opStyle` — logging-fields.md § Operating style.
+      'opStyle': ?_service.radioCalls.radio?.opStyles(),
       'leftieMode': _service.settings?.leftieMode ?? false,
       'dxFlags': _service.settings?.dxFlags.name ?? 'dx',
       'showBearing': _service.settings?.showBearing ?? false,

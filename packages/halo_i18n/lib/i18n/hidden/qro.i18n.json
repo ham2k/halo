@@ -1388,7 +1388,9 @@
   },
   "fyi": {
     "swrAlert": "HIGH SWR $swr",
-    "swrWarning": "SWR $swr"
+    "swrWarning": "SWR $swr",
+    "run": "RUN",
+    "sp": "S&P"
   },
   "callInfo": {
     "qrz": "QRZ",
@@ -1504,6 +1506,11 @@
         "title": "SWITCH SIGNAL REPORT ORDER",
         "sentFirst": "SENT FIRST, RCVD SECOND",
         "rcvdFirst": "RCVD FIRST, SENT SECOND"
+      },
+      "alwaysShowStyle": {
+        "title": "ALWAYS SHOW RUN/S&P INDICATOR",
+        "descriptionOn": "SHOW WHEN RUNNING OR S&P",
+        "descriptionOff": "ONLY SHOW WHEN RUNNING"
       },
       "autoAdvanceFields": {
         "title": "AUTO-ADVANCE FIELDS",
@@ -2933,6 +2940,7 @@
     "voiceMessageError": "PHONE MESSAGE M$n: $error",
     "voiceMessageNotRendered": "THE EXTENSIONS ARE NOT READY",
     "so2rRadioCannotKey": "NOTHING SENT: RADIO $radio CAN'T KEY THAT",
+    "opStyleUnknown": "NOT AN OPERATING STYLE: $opStyle",
     "so2rNoRadioB": "NOTHING SENT: PICK A RADIO B IN STATION CONFIGURATION TO KEY FROM THIS SET",
     "swapExperimentOff": "SO2R IS OFF — TURN IT ON WITH EXP SO2R",
     "swapNeedsOperation": "OPEN AN OPERATION TO SWAP RADIOS",
@@ -3038,6 +3046,7 @@
       "find": "FIND IN THE LOG",
       "keyerMessage": "SEND MESSAGE ${n}",
       "keyboardMode": "KEYBOARD MODE ON OR OFF",
+      "toggleStyle": "SWITCH BETWEEN RUN AND S&P",
       "ptt": "PUSH TO TALK",
       "so2rStereo": "SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE",
       "wipe": "CLEAR THE CONTACT BEING LOGGED"

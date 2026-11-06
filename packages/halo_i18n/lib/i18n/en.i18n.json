@@ -1388,7 +1388,9 @@
   },
   "fyi": {
     "swrAlert": "High SWR $swr",
-    "swrWarning": "SWR $swr"
+    "swrWarning": "SWR $swr",
+    "run": "Run",
+    "sp": "S&P"
   },
   "callInfo": {
     "qrz": "QRZ",
@@ -1504,6 +1506,11 @@
         "title": "Switch signal report order",
         "sentFirst": "Sent first, Rcvd second",
         "rcvdFirst": "Rcvd first, Sent second"
+      },
+      "alwaysShowStyle": {
+        "title": "Always show Run/S&P indicator",
+        "descriptionOn": "Show when running or S&P",
+        "descriptionOff": "Only show when running"
       },
       "autoAdvanceFields": {
         "title": "Auto-advance Fields",
@@ -2933,6 +2940,7 @@
     "voiceMessageError": "Phone message M$n: $error",
     "voiceMessageNotRendered": "the extensions are not ready",
     "so2rRadioCannotKey": "Nothing sent: Radio $radio can't key that",
+    "opStyleUnknown": "Not an operating style: $opStyle",
     "so2rNoRadioB": "Nothing sent: pick a Radio B in Station Configuration to key from this set",
     "swapExperimentOff": "SO2R is off — turn it on with EXP SO2R",
     "swapNeedsOperation": "Open an operation to swap radios",
@@ -3038,6 +3046,7 @@
       "find": "Find in the log",
       "keyerMessage": "Send message ${n}",
       "keyboardMode": "Keyboard mode on or off",
+      "toggleStyle": "Switch between Run and S&P",
       "ptt": "Push to talk",
       "so2rStereo": "SO2R: hear both radios, or only the focused one",
       "wipe": "Clear the contact being logged"

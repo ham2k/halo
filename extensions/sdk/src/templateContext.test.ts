@@ -237,3 +237,12 @@ test("keyer.msgN is that message rendered, and a message that reaches itself is 
   assert.throws(() => renderTemplate("{{ keyer.msg2 }}", context(3)), /F3 → F2 → F3/)
   assert.equal(renderTemplate("{{ keyer.msg3 }}", context()), "TU CQ DE N0DEV K", "a label renders a message without being one")
 })
+
+// The trap: a message that includes another losing the style on the way in,
+// so a CQ named inside a run-only thanks renders as if nobody were running.
+test("keyer.opStyle is the keying set's style, in a message and in one it includes", () => {
+  const messages = ["{% if keyer.opStyle == 'run' %}CQ{% else %}DE{% endif %}", "TU {{ keyer.msg1 }}"]
+  assert.equal(renderTemplate(messages[1], templateContext({ keyer: { messages, current: 2, opStyle: "run" } })), "TU CQ")
+  assert.equal(renderTemplate(messages[1], templateContext({ keyer: { messages, current: 2, opStyle: "normal" } })), "TU DE")
+  assert.equal(renderTemplate("{{ keyer.opStyle }}", templateContext({ keyer: { messages } })), "", "absent where the app gave none")
+})

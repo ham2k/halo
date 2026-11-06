@@ -56,6 +56,11 @@ mixin _So2r on _KeyingSurface {
     // way.
     addListener(_pumpSoon);
     _startSo2rAudio();
+    for (final radio in const ['A', 'B']) {
+      _lastStyles[radio] = isRunning(radio);
+    }
+    _styles.addListener(_noteStyles);
+    _radio?.addListener(_onStyleVfo);
   }
 
   void _stopSo2r() {
@@ -63,7 +68,10 @@ mixin _So2r on _KeyingSurface {
     _onAirChanges.removeListener(_pump);
     removeListener(_pumpSoon);
     _setPttWaiting(null);
+    _styles.removeListener(_noteStyles);
+    _radio?.removeListener(_onStyleVfo);
     runningB.dispose();
+    _styleChanges.dispose();
     _stopSo2rAudio();
   }
 
@@ -72,6 +80,11 @@ mixin _So2r on _KeyingSurface {
     if (on == _so2rOn) return;
     if (!on) _stopRadioB();
     _withKeyInUseTidied(() => _so2rOn = on);
+    // Radio B becomes a set of its own, or stops being one: its style is
+    // now runningB's, or Radio A's, and what it ran before is no run of it.
+    _lastStyles['B'] = isRunning('B');
+    operatingStyle.forget('B');
+    _styleChanges.notify();
     // Radio B and the SO2R switcher are kept connected, and nothing else
     // would bring them up until the next launch or a link drop.
     if (on) {
@@ -168,10 +181,96 @@ mixin _So2r on _KeyingSurface {
     unawaited(_settings.setEnterSendsRunningB(running));
   }
 
+  /// [radio]'s operating style (`A` or `B`) — the same Run or S&P Enter
+  /// Sends Messages plays, kept whether or not ESM is on
+  /// (docs/design/logging-fields.md § Operating style).
+  OperatingStyle styleOf(String radio) => isRunning(radio) ? OperatingStyle.run : OperatingStyle.normal;
+
+  void setStyle(String radio, OperatingStyle style) => setRunning(radio, style == OperatingStyle.run);
+
+  /// Run ↔ S&P: ⌥U, and a tap on the FYI area's pill.
+  void toggleStyle(String radio) => setStyle(radio, styleOf(radio) == OperatingStyle.run ? OperatingStyle.normal : OperatingStyle.run);
+
+  /// Moves each set's style with what the operator does — message 1, a QSY,
+  /// a spot picked, a return to the run frequency.
+  late final operatingStyle = OperatingStyleTracker(
+    isRunning: isRunning,
+    setRunning: setRunning,
+    vfoOf: (radio) => _radio?.vfo(radio == 'B' ? 'vfoB' : 'vfoA') ?? const Vfo(),
+    // The repeat chain's rule (CatService._onVfoChanged): only the rig's own
+    // report while it says it transmits. A move the operator makes during a
+    // message counts — the store notifies once, and skipped, it is lost.
+    transmitting: (radio) => _radio?.lastVfoOrigin == VfoOrigin.radio && _nodeTransmitting(_radioUuid(radio)),
+  );
+
+  @override
+  void _messageOneKeyed(String radio) {
+    if (styledRadios.contains(radio)) operatingStyle.messageOne(radio);
+  }
+
+  /// The sets whose style is their own: Radio B's only under SO2R, where
+  /// otherwise [isRunning] answers it with Radio A's.
+  List<String> get styledRadios => _so2rOn ? const ['A', 'B'] : const ['A'];
+
+  /// Everything a style is kept in. [enterSends] changes with ESM's switch
+  /// too, so [_noteStyles] tells a change of style from a restatement.
+  late final Listenable _styles = Listenable.merge([enterSends, runningB]);
+
+  final _styleChanges = _StyleChanges();
+
+  /// A set's style changing, or SO2R making Radio B a set or not
+  /// ([styledRadios]) — and never ESM's switch alone.
+  Listenable get styleChanges => _styleChanges;
+
+  /// [meterReadings], and a set's style changing — which a radio reports
+  /// nothing for: what a panel's `radio` trigger reads its dial on.
+  late final Listenable dialChanges = Listenable.merge([(this as CatService).meterReadings, _styleChanges]);
+
+  /// A set's VFO moved; the other VFOs are no set's.
+  void _onStyleVfo() {
+    final key = _radio!.lastVfoKey;
+    if (key == 'vfoA' || (key == 'vfoB' && _so2rOn)) operatingStyle.vfoMoved(key == 'vfoB' ? 'B' : 'A');
+  }
+
+  final _lastStyles = <String, bool>{};
+
+  /// Set while SWAP trades the styles: the run frequencies trade with them
+  /// ([OperatingStyleTracker.swap]) and are not taken afresh.
+  bool _tradingStyles = false;
+
+  void _noteStyles() {
+    var changed = false;
+    for (final radio in styledRadios) {
+      final running = isRunning(radio);
+      if (_lastStyles[radio] == running) continue;
+      _lastStyles[radio] = running;
+      changed = true;
+      if (!_tradingStyles) operatingStyle.styleChanged(radio);
+    }
+    if (changed) _styleChanges.notify();
+  }
+
+  /// SWAP: Radio A and Radio B trade Run or S&P, and each its run frequency.
+  /// Ahead of the entries moving, whose retunes would otherwise read as each
+  /// set leaving its own run frequency.
+  void swapStyles() {
+    if (radio2 == null) return;
+    final runningA = isRunning('A');
+    _tradingStyles = true;
+    try {
+      setRunning('A', isRunning('B'));
+      setRunning('B', runningA);
+    } finally {
+      _tradingStyles = false;
+    }
+    operatingStyle.swap();
+  }
+
   /// SWAP's part beyond the VFOs, which the logging panel's sets move with
-  /// their entries (docs/design/cat.md § Radio B, for SO2R): each radio
-  /// takes the other's Run or S&P and, when the two are slices of one radio
-  /// ([so2rAudioRadio]), the other's antenna ports and antenna in use.
+  /// their entries, and the styles, which [swapStyles] trades
+  /// (docs/design/cat.md § Radio B, for SO2R): when the two are slices of
+  /// one radio ([so2rAudioRadio]), each takes the other's antenna ports and
+  /// antenna in use.
   ///
   /// Two rigs keep their own: a port name means the same wire only on one
   /// radio — an IC-7610's ANT2 is not a TS-890's — and each rig is still on
@@ -189,9 +288,6 @@ mixin _So2r on _KeyingSurface {
         unawaited(setDesignated(kCategoryAntenna, inUseA, radio: b));
       }
     }
-    final runningA = isRunning('A');
-    setRunning('A', isRunning('B'));
-    setRunning('B', runningA);
   }
 
   /// Points [uuid]'s antenna ports where [from] has the other slice's.
@@ -465,4 +561,8 @@ mixin _So2r on _KeyingSurface {
     final uuid = radio2;
     if (uuid != null) _retune(uuid, 'vfoB');
   }
+}
+
+class _StyleChanges extends ChangeNotifier {
+  void notify() => notifyListeners();
 }

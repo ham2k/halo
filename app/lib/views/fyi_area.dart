@@ -340,7 +340,8 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
 
   /// The line (logging-fields.md § The FYI area): every message with its
   /// text, left to right — the high alerts, then what is under way with the
-  /// keyer line first, then the other alerts, the warnings and the info —
+  /// keyer line after the high operational messages and before the rest,
+  /// then the other alerts, the warnings and the info —
   /// and by priority within a group, each taking the room it needs from
   /// what the ones before it left.
   Widget _line(BuildContext context) {
@@ -356,17 +357,21 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     // room; after the last, the whole line sinks away with its content as
     // it was.
     final shrinking = messages.isNotEmpty || keyerActive;
-    bool highAlert(FyiMessage m) => m.category == FyiCategory.alert && m.priority == FyiPriority.high;
+    bool high(FyiMessage m, FyiCategory category) => m.category == category && m.priority == FyiPriority.high;
     final current = [
       for (final m in messages)
-        if (highAlert(m)) m.key,
+        if (high(m, FyiCategory.alert)) m.key,
+      // A high operational message — the operating style — is how the
+      // operator is working, which the keying it explains follows.
+      for (final m in messages)
+        if (high(m, FyiCategory.operational)) m.key,
       // What is under way outranks every warning and reading: a message
       // keying is read while it keys.
       if (keyer != null && keyerActive) _keyerKey,
       for (final m in messages)
-        if (m.category == FyiCategory.operational) m.key,
+        if (m.category == FyiCategory.operational && !high(m, FyiCategory.operational)) m.key,
       for (final m in messages)
-        if (m.category == FyiCategory.alert && !highAlert(m)) m.key,
+        if (m.category == FyiCategory.alert && !high(m, FyiCategory.alert)) m.key,
       for (final category in [FyiCategory.warning, FyiCategory.info])
         for (final m in messages)
           if (m.category == category) m.key,
@@ -445,9 +450,11 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
     final theme = Theme.of(context);
     final colors = HaLoColors.of(context);
     final style = theme.textTheme.bodyMedium ?? const TextStyle();
-    // A high alert is the one message drawn as a filled pill — the alert
-    // red behind it, its icon and text in the colour that reads on that.
-    final pill = m.category == FyiCategory.alert && m.priority == FyiPriority.high;
+    // A high alert is drawn as a filled pill — the alert red behind it, its
+    // icon and text in the colour that reads on that — and so is a message
+    // asking for a pill of its own colour.
+    final fill = m.backgroundColor ?? (m.category == FyiCategory.alert && m.priority == FyiPriority.high ? colors.alert : null);
+    final pill = fill != null;
     final onPill = pill ? colors.onAlert : null;
     final content = Row(
       mainAxisSize: MainAxisSize.min,
@@ -487,7 +494,7 @@ class _FyiAreaState extends State<FyiArea> with TickerProviderStateMixin {
                     // above and below it.
                     ? Container(
                         padding: const EdgeInsets.only(left: Space.sm, right: Space.sm, top: _textInset, bottom: _textInset),
-                        decoration: BoxDecoration(color: colors.alert, borderRadius: BorderRadius.circular(3)),
+                        decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(3)),
                         child: content,
                       )
                     : Padding(

@@ -143,7 +143,10 @@ mixin _ExtensionActivityCalls {
   /// Skipped when the operation carries no refs — ordinary logging is the
   /// common case and must not pay a bridge crossing per QSO for a hook only
   /// contests implement.
-  Future<Map<String, dynamic>> decorateQsoBeforeSave(Map<String, dynamic> qsoData, Map<String, dynamic> operationData) async {
+  ///
+  /// [operationUuid] reaches the hook as `operation.uuid`, which the
+  /// operation's data does not carry — folded in as `ctx.getOperation` does.
+  Future<Map<String, dynamic>> decorateQsoBeforeSave(Map<String, dynamic> qsoData, Map<String, dynamic> operationData, {String? operationUuid}) async {
     final host = this.host;
     if (host == null) return qsoData;
     final refs = operationData['refs'];
@@ -152,7 +155,10 @@ mixin _ExtensionActivityCalls {
     try {
       final entries = await host.invokeAll(
         Hooks.activityProcessQsoBeforeSave,
-        args: {'qso': qsoData, 'operation': operationData},
+        args: {
+          'qso': qsoData,
+          'operation': {...operationData, 'uuid': ?operationUuid},
+        },
         // Saving blocks the operator's next QSO, so a stalled hook loses its
         // contribution rather than the log its pace — and only its own: the
         // timeout is one budget for the whole fan-out, and without partials

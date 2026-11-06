@@ -19,7 +19,8 @@ enum FyiCategory {
   alert,
   warning,
 
-  /// Something under way — the keyer's message going out, first of them.
+  /// Something under way — the keyer's message going out, first of them
+  /// but for the high ones (the operating style).
   operational,
   info,
 }
@@ -44,6 +45,11 @@ class FyiMessage {
   /// One line of inline markdown ([InlineMarkdownText]'s syntax).
   final String text;
   final Color? textColor;
+
+  /// Draws the message as a filled pill in this colour, as a high alert is
+  /// in the alert's, its icon and text by default in the colour that reads
+  /// on the alert's.
+  final Color? backgroundColor;
 
   /// `A` or `B` for a message about one radio, shown in that set's area
   /// alone; null for one about the station, shown in both.
@@ -70,6 +76,7 @@ class FyiMessage {
     this.iconColor,
     required this.text,
     this.textColor,
+    this.backgroundColor,
     this.radio,
     this.onTap,
     this.dismissible = true,
@@ -87,6 +94,7 @@ class FyiMessage {
       iconColor == other.iconColor &&
       text == other.text &&
       textColor == other.textColor &&
+      backgroundColor == other.backgroundColor &&
       radio == other.radio &&
       dismissible == other.dismissible;
 }

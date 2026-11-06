@@ -5,18 +5,12 @@
 // plain node test runner.
 
 const ESM_MATCH = /^ESM(?:\s+(ON|OFF))?$/i
-const RUN_MATCH = /^RUN$/i
-const SP_MATCH = /^(SP|S&P)$/i
 
 /// What `input` asks of Enter Sends Messages, or null when it is not one of
-/// its commands: `ESM` / `ESM ON` / `ESM OFF` switch it, and `RUN` / `SP`
-/// (or `S&P`) pick the side of the exchange — switching it on too, since
-/// Run and S&P mean nothing else here and an operator naming one wants it.
-export function parseEnterSendsCommand(input: string): { on: boolean; running?: boolean } | null {
-  const text = input.trim()
-  const esm = ESM_MATCH.exec(text)
-  if (esm) return { on: esm[1]?.toUpperCase() !== "OFF" }
-  if (RUN_MATCH.test(text)) return { on: true, running: true }
-  if (SP_MATCH.test(text)) return { on: true, running: false }
-  return null
+/// its commands: `ESM` / `ESM ON` / `ESM OFF` switch it. Which side of the
+/// exchange it plays is the operating style, which `RUN` and `SNP` set
+/// (parseStyleCommand.ts).
+export function parseEnterSendsCommand(input: string): { on: boolean } | null {
+  const esm = ESM_MATCH.exec(input.trim())
+  return esm ? { on: esm[1]?.toUpperCase() !== "OFF" } : null
 }

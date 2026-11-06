@@ -23,6 +23,7 @@ import { parsePowerCommand } from "./parsePowerCommand.ts"
 import { parseWpmCommand } from "./parseWpmCommand.ts"
 import { parseKeyerCommand } from "./parseKeyerCommand.ts"
 import { parseEnterSendsCommand } from "./parseEnterSendsCommand.ts"
+import { parseStyleCommand } from "./parseStyleCommand.ts"
 import { parseGigBandCommand } from "./parseGigBandCommand.ts"
 import { parseBandCommand } from "./parseBandCommand.ts"
 import { parseSwapCommand } from "./parseSwapCommand.ts"
@@ -281,16 +282,15 @@ const KeyerCommand = {
   },
 }
 
-// ESM / ESM OFF / RUN / SP: Enter Sends Messages and which side of the
-// exchange it plays. Gated on its own experiment on top of KEYER's; the app
-// says when nothing can key.
+// ESM / ESM OFF: Enter Sends Messages. Gated on its own experiment on top of
+// KEYER's; the app says when nothing can key.
 const EnterSendsCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     if (!esmEnabled(ctx)) return null
     const ask = parseEnterSendsCommand(input)
     if (!ask) return null
     const t = tFor(ctx)
-    const which = !ask.on ? "esmOff" : ask.running === true ? "esmRun" : ask.running === false ? "esmSp" : "esmOn"
+    const which = ask.on ? "esmOn" : "esmOff"
     return {
       describe: t(`${which}Describe`),
       confirm: t(`${which}Confirm`),
@@ -301,13 +301,34 @@ const EnterSendsCommand = {
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     if (!esmEnabled(ctx)) return []
     const t = tFor(ctx)
+    return [{ command: "ESM", keywords: ["ENTER SENDS", "ENTER"], params: "(OFF)", describe: t("catalogEsm"), category: t("catalogCategory"), suggest: true }]
+  },
+}
+
+// RUN / SNP (also SP, S&P): the operating style of the set the operator is
+// in — what each new contact records, and which side of the exchange Enter
+// Sends Messages plays.
+const StyleCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    const style = parseStyleCommand(input)
+    if (!style) return null
+    const t = tFor(ctx)
+    const which = style === "run" ? "styleRun" : "styleSp"
+    return {
+      describe: t(`${which}Describe`),
+      confirm: t(`${which}Confirm`),
+      commands: [{ setOpStyle: { opStyle: style } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
     return [
-      { command: "ESM", keywords: ["ENTER SENDS", "ENTER"], params: "(OFF)", describe: t("catalogEsm"), category: t("catalogCategory"), suggest: true },
-      { command: "RUN", keywords: ["RUNNING", "CQ", "ENTER SENDS"], describe: t("catalogRun"), category: t("catalogCategory"), suggest: true },
+      { command: "RUN", keywords: ["RUNNING", "CQ", "STYLE"], describe: t("catalogRun"), category: t("catalogCategory"), suggest: true },
       {
-        command: "SP",
-        keywords: ["S&P", "SEARCH AND POUNCE", "POUNCE", "ENTER SENDS"],
-        params: "(S&P)",
+        command: "SNP",
+        keywords: ["SP", "S&P", "SEARCH AND POUNCE", "POUNCE", "STYLE"],
+        params: "(SP, S&P)",
         describe: t("catalogSp"),
         category: t("catalogCategory"),
         suggest: true,
@@ -357,6 +378,7 @@ defineExtension({
     registerHook("command", { key: "radio-commands-wpm", hook: WpmCommand, priority: 100 })
     registerHook("command", { key: "radio-commands-keyer", hook: KeyerCommand, priority: 100 })
     registerHook("command", { key: "radio-commands-enter-sends", hook: EnterSendsCommand, priority: 100 })
+    registerHook("command", { key: "radio-commands-style", hook: StyleCommand, priority: 100 })
     registerHook("command", { key: "radio-commands-swap", hook: SwapCommand, priority: 100 })
   },
 })

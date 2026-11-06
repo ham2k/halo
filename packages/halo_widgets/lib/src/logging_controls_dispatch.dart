@@ -164,6 +164,8 @@ extension _ActionDispatch on _LoggingControlsState {
         await widget.commands.onCommandAction?.call('showKeyer', null);
       } else if (map['setEnterSends'] is Map) {
         await widget.commands.onCommandAction?.call('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
+      } else if (map['setOpStyle'] is Map) {
+        await widget.commands.onCommandAction?.call('setOpStyle', (map['setOpStyle'] as Map).cast<String, dynamic>());
       } else if (map['findInLog'] is Map) {
         // The host's Find bar over its own list — nothing of this widget's.
         await widget.commands.onCommandAction?.call('findInLog', (map['findInLog'] as Map).cast<String, dynamic>());

@@ -164,7 +164,8 @@ B's and shows in that set's area alone, a storm is the station's and shows
 in each. Outside SO2R there is one set, radio A's. Messages come in four
 **categories**, which decide where on the line they go: the high-priority
 **alerts** first, then the **operational** messages — things under way,
-the keyer line first of all — then the other alerts, then the
+the keyer line first of all but for the high-priority ones (the operating
+style) — then the other alerts, then the
 **warnings**, and the **info** messages last.
 
 Every message shows its icon and its text, left to right in that order —
@@ -176,7 +177,8 @@ remains, or runs off the end of the line when nothing does. Nothing folds
 to its icon and nothing sits against the trailing edge; a lone info message
 reads from the left as an alert would. A high-priority alert is drawn as a
 filled pill, the alert colour behind its text, so it is told apart from a
-reading at a glance; priority changes nothing else.
+reading at a glance; priority changes nothing else. A message may also ask
+for a pill of another colour (`backgroundColor`), whatever its priority.
 
 **Resizes animate.** A message arriving grows into its room from nothing
 and one leaving shrinks out of it, the rest of the line following, over
@@ -219,7 +221,13 @@ transmission reads under the warning. A tune — a transmission the radio's
 tuner reports tuning through, or a FlexRadio reports as its TUNE carrier —
 reads the mismatch being fixed, so it raises nothing and takes down what an
 earlier transmission raised; the next ordinary one says whether the fix
-held. Extensions post through `host.fyi`
+held. Each running set says `Run` (`StyleWatch`, § Operating style): a
+high-priority operational message, ahead of the keyer line, with a run
+icon, on a greyish-green pill rather than the alert colour — a state, not a problem — under one key per set. The
+normal style says nothing, or `S&P` on a grey pill with **Always show
+Run/S&P indicator** (Logging settings, off by default). A tap switches the
+style rather than dismissing the pill, so with the setting off a tap on
+`Run` takes it down. Extensions post through `host.fyi`
 (extension API 14, docs/extensions/host.md), bounded on the bridge beside
 the footer's calls (`extension_host_calls.dart`): four messages each, a
 `text` of one line, every one of them dismissible — the operator has the
@@ -901,8 +909,8 @@ asked once.
 Enter Sends Messages, so a contest can be run from the call field without
 reaching for a function key. It is an operator's switch (the keyer control's
 `ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages field in
-the CW Keyer and Phone Keyer dialogs) and a side of the pileup (the same
-pill, `RUN` and `SP`, the same field), device-wide like the keyer control, and exists only
+the CW Keyer and Phone Keyer dialogs) and a side of the pileup, which is the
+set's operating style (§ Operating style), device-wide like the keyer control, and exists only
 behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
 apart from keying because it changes what Enter does. The panel asks for it at every Enter
 (`LoggingSession.enterSends`) and gets nothing back while no key could send
@@ -999,6 +1007,55 @@ depends on where the contact stands**, decided by `esmStep`:
   keeps its repeat; a different message still queues behind it. The thanks
   is the exception: every one reads `TU`, and the one still waiting belongs
   to the last contact, so each contact gets its own.
+
+## Operating style
+
+**Each set works its radio in a style: Run, calling CQ on a frequency of
+its own, or the normal style, labeled S&P — searching and pouncing on
+other stations', or anything else that is not a run.** Normal is the
+default, Radio A's as Radio B's. It is the side of the pileup ESM plays,
+kept whether or not ESM is on — one Run/S&P per set, Radio A's and under
+SO2R Radio B's (`CatService.styleOf`), remembered across launches in the
+settings ESM always kept it in. Switching ESM off leaves it where it is.
+
+- **A new contact records it as `opStyle`**, `run` or `normal`, from the set it
+  is logged from. An edit never stamps it: today's style is not how an older
+  contact was made, and a contact logged before styles existed stays
+  without one.
+- **The operator sets it** with the ESM pill (its Run → S&P step; switching
+  ESM on or off leaves the style alone), the `RUN` and `SNP` commands
+  (also `SP` and `S&P`; outside any experiment, and never switching ESM
+  on), and the Enter Sends Messages field in the keyer dialogs. **⌥U**
+  switches it, as in N1MM, and says nothing
+  ([keyboard-shortcuts.md](keyboard-shortcuts.md)). SWAP trades the two
+  sets' styles with their frequencies.
+- **Run shows** in the set's FYI area, as `Run` (§ The FYI area); the
+  normal style, the default, shows nothing unless **Always show Run/S&P
+  indicator** is on. A tap on the pill switches the style.
+- **It moves with what the operator does**, as a contester's hands would
+  move it (`OperatingStyleTracker`):
+  - **Message 1 keyed is Run**: a CQ, from F1, ESM, a repeat or a voice
+    memory 1, CW or Phone. Where it is keyed becomes the *run frequency*,
+    taken again on every CQ so a run nudged off QRM keeps up.
+  - **Leaving the run frequency is S&P** — the same QSY that wipes an entry
+    (`Vfo.movedOffOf`: another mode or band, or more than 200 Hz in CW and
+    digital and 1 kHz in phone), measured from the run frequency so a run
+    walked off in steps adds up to one turn of the knob. A radio's readings
+    while it transmits are not read: working split, a rig reports where it
+    sends.
+  - **Picking a spot is S&P** — a tapped row, or an extension's
+    `host.suggestQso`; a slid-open row is only a look. A `/qso` link is not
+    a pick: it says where the radio already is.
+  - **Coming back is Run.** Within three minutes of leaving, a VFO back on
+    the run frequency is Run again — but only after it has been off it, so a
+    spot picked on the run frequency stays S&P.
+- **Extensions read it** as the hook context's `opStyle`, radio or none
+  ([host.md](../extensions/host.md#the-hook-context)), as `readRadio`'s
+  `opStyle` beside the radio's `set` ([radio.md](../extensions/radio.md)),
+  and in CW and phone messages as `keyer.opStyle`
+  ([templates.md](../extensions/templates.md)); a panel's `radio` trigger
+  fires when it changes. The run frequency and the three minutes are the
+  session's alone.
 
 ## An incomplete call
 

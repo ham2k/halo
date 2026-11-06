@@ -935,6 +935,8 @@ Future<void> dispatchCommandActions(
       await runAction('showKeyer', null);
     } else if (map['setEnterSends'] is Map) {
       await runAction('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
+    } else if (map['setOpStyle'] is Map) {
+      await runAction('setOpStyle', (map['setOpStyle'] as Map).cast<String, dynamic>());
     } else if (map['swapRadios'] is Map) {
       // The logging panel's alone, and none is live: it says so.
       await runAction('swapRadios', null);

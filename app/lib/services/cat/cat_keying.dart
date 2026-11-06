@@ -36,6 +36,7 @@ import 'peer_keying.dart';
 
 part 'cat_keying_computer_voice.dart';
 part 'cat_keying_peer_bridge.dart';
+part 'cat_keying_waiting_send.dart';
 
 /// What keying needs of the station it runs on — the equipment half of
 /// `CatService`, which is where sessions, nodes and the picks live.
@@ -103,7 +104,7 @@ abstract class KeyingStation {
 }
 
 class CatKeying {
-  CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A'}) {
+  CatKeying({required this.station, required this.settings, required this.chain, required this.peer, this.radio = 'A', this.onMessageOne}) {
     voiceActivity.addListener(_onVoiceActivityForSequence);
     // A message-1 mark lasts while its message does. Left standing, the
     // next message on a shared transmitter — a peer's, or a third
@@ -135,6 +136,14 @@ class CatKeying {
   /// Which of the station's radios this keys for, `A` or `B` — whose Phone
   /// Keying pick is this keyer's (SettingsService.voiceKeyingSourceFor).
   final String radio;
+
+  /// Called whenever this operator's message 1 is marked as going out — a
+  /// CQ, the operating style's cue to run. Never for a peer's played here.
+  final void Function()? onMessageOne;
+
+  void _markMessageOne(bool marked) {
+    if (marked) onMessageOne?.call();
+  }
 
   /// Fires when what an offered radio is keying changes, so the peer bridge
   /// can report it — for the STATION's keying, whether or not anything here
@@ -351,7 +360,9 @@ class CatKeying {
   /// Whether the memory this operator last played is memory 1 — cleared
   /// when a peer's request plays one here, and when the play ends, so a
   /// memory 1 somebody else put on the air is theirs to stop.
-  bool _voiceMessageOne = false;
+  bool get _voiceMessageOne => _voiceMessageOneMark;
+  set _voiceMessageOne(bool value) => _markMessageOne(_voiceMessageOneMark = value);
+  bool _voiceMessageOneMark = false;
 
   /// Whether [stopKeying] stopped something on the keystroke being
   /// dispatched — true only until that dispatch returns.
@@ -361,7 +372,9 @@ class CatKeying {
   /// an Enter Sends Messages chain keyed as one message. The queue carries
   /// no message numbers, so "message 1 is on the air" is read as "the
   /// newest send held message 1 and the key is still busy".
-  bool _lastCwHasMessageOne = false;
+  bool get _lastCwHasMessageOne => _lastCwMessageOneMark;
+  set _lastCwHasMessageOne(bool value) => _markMessageOne(_lastCwMessageOneMark = value);
+  bool _lastCwMessageOneMark = false;
 
   /// A callsign entered over message 1: message 1 stops, CW or voice, along
   /// with any Enter Sends Messages chain holding it and any repeat — the
@@ -1088,7 +1101,9 @@ class CatKeying {
   /// Whether the sequence running holds memory 1 anywhere — played, playing
   /// or still waiting — until its last memory ends. Set only for two or
   /// more memories: a lone one is a plain play, marked by [_voiceMessageOne],
-  /// and has no start timeout to clear a mark its play never ended.
+  /// and has no start timeout to clear a mark its play never ended. Not a
+  /// CQ for the operating style: memory 1 is that once its play is taken
+  /// ([_voiceMessageOne]), not while it waits to be dropped.
   bool _voiceSequenceHasOne = false;
 
   /// How long a queued memory waits to be heard starting before the
@@ -1473,26 +1488,4 @@ class CatKeying {
     keyerOpenRequests.dispose();
     keyboardModeRequests.dispose();
   }
-}
-
-/// A send SO2R holds for the other radio ([CatKeying.waiting]): a CW
-/// message's text or a memory's number, and whether a repeat chain sent it.
-class WaitingSend {
-  WaitingSend._(this.sequence, {this.text, this.memory, this.then = const [], required this.repeat, required this.messageOne, required this.send});
-
-  /// When it was held, across both keyers — the oldest goes first.
-  final int sequence;
-  final String? text;
-  final int? memory;
-
-  /// The memories that follow [memory] in the same turn, under its key.
-  final List<int> then;
-  final bool repeat;
-
-  /// Whether it is message 1 — what a callsign entered over it stops
-  /// ([CatKeying.stopMessageOne]).
-  final bool messageOne;
-
-  /// Sends it, once the other radio is quiet.
-  final void Function() send;
 }

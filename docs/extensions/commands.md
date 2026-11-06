@@ -44,7 +44,7 @@ never arbitrary state:
 | `updateOperation`, `markSegment` | changes the operation, marks a break | |
 | `setCallField`, `findInLog`, `navigate`, `openSettings` | moves the operator somewhere | |
 | `sendSpots`, `autoRespot`, `syncAll`, `setTime` | the app's own actions; `sendSpots` with a `source` posts only to the spot sources whose hook key carries that word (`pota` for `ham2k-pota`), the app's preview names them, and a word no source carries is refused | |
-| `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setKeyerSpeed`, `showKeyer` | changes the app's own settings | `requiresSettingsWrite` |
+| `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed`, `showKeyer` | changes the app's own settings; `setOpStyle` (API 19) is `{ opStyle: 'run' \| 'normal' }`, the operating style of the set the operator is in | `requiresSettingsWrite` |
 
 A command carrying an action its extension may not run is refused before it
 runs, and the command bar says so. The developer actions (`dev…`,

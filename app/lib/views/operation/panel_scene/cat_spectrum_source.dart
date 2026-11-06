@@ -130,6 +130,9 @@ class CatSpectrumSource implements SceneSpectrumSource {
   List<Object?> dialState() => [
     for (final node in cat.nodes)
       if (cat.typeFor(node)?.category == kCategoryTransceiver) ..._dial(node.uuid),
+    // `readRadio`'s `opStyle`, which a set's radio carries.
+    cat.styleOf('A'),
+    if (cat.radio2 != null) cat.styleOf('B'),
   ];
 
   /// What a `radio` trigger answers to, read straight from the state: it runs on every meter
@@ -154,7 +157,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
       live && (cat.isRadio1(uuid) || cat.isRadio2(uuid)) && (settings?.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ?? false);
 
   @override
-  Listenable get readingChanges => cat.meterReadings;
+  Listenable get readingChanges => cat.dialChanges;
 
   @override
   bool recenter(String uuid, int centerHz) {

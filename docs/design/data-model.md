@@ -45,7 +45,7 @@ A profile also includes a selected station configuration, along with the attribu
 
 ## The Log Data
 
-The core purpose of the app is to register QSOs (amateur radio contacts) between two parties. This information is divided into `our`, `their`, `refs` and common qso data (like, band, mode, frequency and timestamps). The `our` and `their` components contain the details specific to each party and have similar shapes, while `refs` is an array of "references", or information specific to different activities, contests, events, etc, managed by different extensions. Each QSO has its own UUID, and also can reference the UUID of the operation it belongs to.
+The core purpose of the app is to register QSOs (amateur radio contacts) between two parties. This information is divided into `our`, `their`, `refs` and common qso data (like, band, mode, frequency and timestamps). The `our` and `their` components contain the details specific to each party and have similar shapes, while `refs` is an array of "references", or information specific to different activities, contests, events, etc, managed by different extensions. Each QSO has its own UUID, and also can reference the UUID of the operation it belongs to. A contact logged from a set records the set's operating style as `opStyle`, `run` or `normal` ([logging-fields.md](logging-fields.md) § Operating style).
 
 QSOs are often grouped in Operations, which have their own `refs` and attributes that apply to the entire operation. And they can be broken down into segments, each with their own refs and attributes.
 

@@ -245,6 +245,44 @@ void main() {
       );
     });
 
+    // N1MM's Run/S&P key. On a Mac ⌥U is the umlaut dead key: matched by the
+    // letter it reports, it would never fire there.
+    testWidgets('take the style\'s ⌥U by position, and leave it to a text field as a character', (tester) async {
+      final legacy = LegacyKeyBindings();
+      bool styleKey(KeyEvent e) => legacy.claim(styleToggleCommandId, e) != null;
+      expect(
+        await pressing(
+          tester,
+          const LogicalKeyboardKey(0x000000a8),
+          styleKey,
+          modifiers: [LogicalKeyboardKey.altLeft],
+          physicalKey: PhysicalKeyboardKey.keyU,
+          character: '¨',
+          platform: 'web',
+        ),
+        isTrue,
+      );
+      final focus = FocusNode();
+      final controller = TextEditingController();
+      addTearDown(focus.dispose);
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: EditableText(
+            controller: controller,
+            focusNode: focus,
+            style: const TextStyle(),
+            cursorColor: const Color(0xFF000000),
+            backgroundCursorColor: const Color(0xFF000000),
+          ),
+        ),
+      );
+      focus.requestFocus();
+      await tester.pump();
+      expect(await pressing(tester, LogicalKeyboardKey.keyU, styleKey, modifiers: [LogicalKeyboardKey.altLeft]), isFalse, reason: 'ü in a note');
+    });
+
     testWidgets('run no bound command text', (tester) async {
       final legacy = LegacyKeyBindings();
       expect(await pressing(tester, LogicalKeyboardKey.keyJ, (e) => legacy.textCommandFor(e) != null, modifiers: [LogicalKeyboardKey.metaLeft]), isFalse);

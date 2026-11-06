@@ -53,6 +53,24 @@ class PanelRadioService {
       if (cat.typeFor(node)?.category == kCategoryTransceiver) read(node.uuid),
   ];
 
+  /// What `readRadio` answers: [id] is a radio's id, or `A` / `B` for a
+  /// set's radio — Radio B only under SO2R, and with none the answer of a
+  /// radio that is not there. Only reads take a letter: a command names the
+  /// radio it may move by its id.
+  Map<String, dynamic> readFor(String? id) => switch (id) {
+    'A' => read(),
+    'B' => read(cat.radio2 ?? _noRadio),
+    _ => read(id),
+  };
+
+  /// An id no node has: [read] answers it with every field empty.
+  static const _noRadio = '';
+
+  /// Each logging set's operating style, `{A: 'run' | 'normal', B?: …}` —
+  /// Radio B's only under SO2R. The hook context's `opStyle`: unlike [read],
+  /// it needs no radio, since the style is how the operator is working.
+  Map<String, String> opStyles() => {for (final set in cat.styledRadios) set: cat.styleOf(set).value};
+
   Map<String, dynamic> read([String? selection]) {
     final id =
         selection ??
@@ -70,9 +88,12 @@ class PanelRadioService {
     final telemetry = state.telemetry;
     final type = node == null ? null : cat.typeFor(node);
     final config = type?.driverConfig(node!.config);
+    final set = node == null ? null : _keyedRadio(node.uuid);
     return {
       'id': node?.uuid,
       'name': node == null ? null : cat.displayNameFor(node),
+      'set': set,
+      'opStyle': set == null ? null : cat.styleOf(set).value,
       'deviceId': ?(node == null ? null : cat.logicalDeviceIdFor(node.uuid)),
       'channel': ?(node == null ? null : cat.logicalChannelFor(node.uuid)),
       'status': state.status.name,
@@ -115,7 +136,8 @@ class PanelRadioService {
   ];
 
   /// Which of the app's radios [uuid] is — `A` for radio1, `B` for SO2R's
-  /// Radio B — or null for one the app does not key with.
+  /// Radio B — or null for one no logging set works: its `set`, and whom
+  /// the app keys.
   String? _keyedRadio(String uuid) => cat.isRadio1(uuid)
       ? 'A'
       : cat.isRadio2(uuid)

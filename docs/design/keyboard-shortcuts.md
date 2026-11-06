@@ -65,6 +65,7 @@ A chord is one key and the modifiers held for it, stored as text:
 | `keyer.message1`…`8` | F1…F8, ⌥1…⌥8 | Operation, keying a CAT radio |
 | `keyer.keyboardMode` | ⌥K | Operation, keying a CAT radio |
 | `radio.ptt` | ['] | Operation, PTT on |
+| `style.toggle` | ⌥U | Operation: Run or S&P for the operator's set |
 | `so2r.stereo` | [\\] | Operation, an SO2R switcher switching; listed only with `so2r` on |
 | `logging.wipe` | ⌥W | the logging panel |
 | `text:<command>` | none | anywhere |
@@ -131,7 +132,7 @@ the press typed, since ⇧= is `+` on one layout and not on another.
 ## The experiment
 
 **With `kb` off, no key changes.** `LegacyKeyBindings` answers each command
-— and whether it yields to a field: only the keyer's ⌥-digits in free text,
+— and whether it yields to a field: only the keyer's ⌥-digits and ⌥U in free text,
 and ['] and [\\] — with the test its handler made before bindings existed — ⌘ or Ctrl on every
 platform, F-keys whatever ⇧ says — so the refactor alone changes nothing an
 operator can press. With `kb` on, the defaults hold only the platform's own

@@ -1253,6 +1253,24 @@ class Vfo {
 
   @override
   String toString() => 'Vfo(freq: $freq, band: $band, mode: $mode, power: $power)';
+
+  /// Whether this VFO is on another station than [from]: another mode,
+  /// another band, or a frequency more than 1 kHz away in a phone mode and
+  /// 200 Hz in CW or a digital one. The tolerance is the dial being nudged on
+  /// the same station — to clear up a voice, or to zero-beat a narrow signal.
+  /// The one QSY rule: the logging panel's wipe and the operating style both
+  /// read it, so the two never disagree about whether the operator moved.
+  bool movedOffOf(Vfo from) {
+    if (mode != from.mode) return true;
+    final (a, b) = (from.freq, freq);
+    if (a == null || b == null) return band != from.band;
+    final toleranceHz = switch (superModeForMode(from.mode)) {
+      'CW' || 'Digital' => 200,
+      _ => 1000,
+    };
+    // In whole hertz: kHz doubles land a hair either side of 200 Hz.
+    return ((b - a).abs() * 1000).round() > toleranceHz;
+  }
 }
 
 /// What `LoggingControls` (halo_widgets) needs for reading and writing the

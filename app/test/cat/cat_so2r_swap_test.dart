@@ -3,7 +3,7 @@
 //
 // SWAP's radio side — docs/design/cat.md § Radio B, for SO2R: the radios'
 // Run or S&P trade places, and on two slices of one radio their antenna
-// ports and antennas in use (CatService.swapRadioSettings). The VFOs move
+// ports and antennas in use (CatService.swapStyles, CatService.swapRadioSettings). The VFOs move
 // with the logging panel's entries, tested in halo_widgets'
 // logging_controls_so2r_swap_test.dart.
 
@@ -228,9 +228,9 @@ void main() {
     );
     cat.setRunning('A', true);
     cat.setRunning('B', false);
-    cat.swapRadioSettings();
+    cat.swapStyles();
     expect((cat.isRunning('A'), cat.isRunning('B')), (false, true));
-    cat.swapRadioSettings();
+    cat.swapStyles();
     expect((cat.isRunning('A'), cat.isRunning('B')), (true, false));
   });
 }

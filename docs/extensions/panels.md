@@ -112,7 +112,7 @@ costs a bridge call each time it fires.
 | `spots` | whenever `ctx.getSpots()`'s answer may have moved: a refresh, new verdicts, the operator's filters or bands, the radio's band or mode |
 | `lookup` | when the panel is shown a callsign that **has** a lookup answer, including opening a QSO whose record already carries one; never when a lookup starts, fails or times out |
 | `qso` | as the draft contact changes, debounced to one wake per pause in typing |
-| `radio` | when any radio's dial moves: frequency, mode, passband, transmit state, PTT or connection; never for a meter. Extension API 13; needs `requiresRadioRead` |
+| `radio` | when any radio's dial moves: frequency, mode, passband, transmit state, PTT or connection, or a logging set's `opStyle` (API 19); never for a meter. Extension API 13; needs `requiresRadioRead` |
 | `tick:<seconds>` | on wall-clock boundaries, one second at the fastest; a smaller value is not a trigger and is dropped |
 
 - The app keeps **at least 750 ms of idle** between one render finishing

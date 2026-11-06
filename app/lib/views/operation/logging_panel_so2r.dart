@@ -178,8 +178,9 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   /// set's entry goes to the other set with the frequency, band and mode it
   /// is on, and the set it lands in tunes its radio there — so Radio A ends
   /// where Radio B was and B where A was, each with the contact being worked
-  /// there. The radios' Run or S&P cross with them, and on two slices of one
-  /// radio their antennas too ([CatService.swapRadioSettings]).
+  /// there. The radios' Run or S&P cross with them ([CatService.swapStyles]),
+  /// and on two slices of one radio their antennas too
+  /// ([CatService.swapRadioSettings]).
   ///
   /// Refused, with nothing moved, while either radio is on the air or has a
   /// message going or waiting — a radio retuned under a message would send
@@ -200,6 +201,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       if (b != null) _loggingControllerB.putEntry(b);
       return services.reportCommandOutcome((text: t.commands.swapLocked, failed: true));
     }
+    cat.swapStyles();
     _loggingController.putEntry(b);
     _loggingControllerB.putEntry(a);
     cat.swapRadioSettings();
@@ -272,6 +274,15 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     final our = {...(qso['our'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{}};
     our['radio'] ??= radio;
     return {...qso, 'our': our};
+  }
+
+  /// Stamps a new contact with the operating style of the set it is logged
+  /// from — Run or S&P, docs/design/logging-fields.md § Operating style. An
+  /// edit keeps the style it was worked in, or none: today's style is not
+  /// how an older contact was made. Event rows are not contacts.
+  Map<String, dynamic> _withStyle(Map<String, dynamic> qso, String radio) {
+    if (qso['band'] == 'event' || (asQsonString(qso['uuid']) ?? '').isNotEmpty || qso['opStyle'] != null) return qso;
+    return {...qso, 'opStyle': widget.services.cat.styleOf(radio).value};
   }
 
   /// Merges the operator's tracked station-info fields (Station

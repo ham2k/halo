@@ -14,6 +14,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/operating_style.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 import '../support/halo_test_support.dart';
@@ -128,5 +129,21 @@ void main() {
 
     expect(result['our'].containsKey('rig'), isFalse);
     expect(result['our'].containsKey('antenna'), isFalse);
+  });
+
+  // `opStyle` is how a contact was worked. An edit saved today must not write
+  // today's style over it — nor give one to a contact logged before styles
+  // existed — and a timeline marker is no contact at all.
+  testWidgets("a new contact records its set's style; an edit and an event row do not", (tester) async {
+    services.cat.setStyle('A', OperatingStyle.normal);
+    await tester.pumpWidget(wrap(panel()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect((await decorate(tester, {'our': {}}))['opStyle'], 'normal');
+    services.cat.setStyle('A', OperatingStyle.run);
+    expect((await decorate(tester, {'our': {}}))['opStyle'], 'run');
+    expect((await decorate(tester, {'uuid': 'logged-before', 'our': {}})).containsKey('opStyle'), isFalse);
+    expect((await decorate(tester, {'uuid': 'logged-sp', 'opStyle': 'normal', 'our': {}}))['opStyle'], 'normal');
+    expect((await decorate(tester, {'band': 'event', 'our': {}})).containsKey('opStyle'), isFalse);
   });
 }
