@@ -42,7 +42,13 @@ const kExchangeComplaintKeys = {'missingExchange', 'invalidExchange', 'shortGrid
 
 /// How long a typed call must stand unchanged before any pill shows for it,
 /// so the partial calls on the way to it (`KB2`, `KB2S`) never flash a set.
+/// A dupe is the exception ([kUnheldAlertKeys]).
 const kCallSettleDelay = Duration(milliseconds: 600);
+
+/// Scored keys that show while the typed call is still settling: the operator
+/// has to know a call is a dupe before they reach for Enter, and a partial
+/// call flashing Dupe on the way to another is the price of that.
+const kUnheldAlertKeys = {'duplicate'};
 
 /// How long after an exchange keystroke an exchange complaint may show.
 const kExchangeTypingDelay = Duration(milliseconds: 500);
@@ -195,13 +201,26 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// and an exchange complaint ([kExchangeComplaintKeys]) also waits out the
   /// exchange typing and the lookup, and then the verdict scored on what they
   /// brought — or [kExchangeLookupTimeout], for a lookup that never
-  /// finishes. A key a newer verdict drops goes at once:
-  /// only appearing is held, never correcting.
+  /// finishes. A dupe ([kUnheldAlertKeys]) is not held at all. A key a newer
+  /// verdict drops goes at once: only appearing is held, never correcting.
   List<String> get currentAlertKeys => _shown(_alertKeys);
   List<String> get currentNoticeKeys => _shown(_noticeKeys);
-  Map<String, List<String>> get currentScoreSources => scoreIsCurrent && !_callSettling ? _scoreSources : const {};
+
+  /// While the call settles only the unheld keys show, and only they are
+  /// named: a source joining a pill already up changes its text.
+  Map<String, List<String>> get currentScoreSources {
+    if (!scoreIsCurrent) return const {};
+    if (!_callSettling) return _scoreSources;
+    return {
+      for (final MapEntry(:key, :value) in _scoreSources.entries)
+        if (kUnheldAlertKeys.contains(key)) key: value,
+    };
+  }
 
   bool get _callSettling => _settlingCall != null && _settlingCall == activeCall();
+
+  /// Whether a dupe shows for the call at the cursor ahead of its settling.
+  bool get _unheldDupeShowing => _callSettling && scoreIsCurrent && _alertKeys.any(kUnheldAlertKeys.contains);
 
   bool get _complaintsMayShow {
     if (_exchangeTyping || _verdictIssue <= _exchangeChangedAt) return false;
@@ -212,7 +231,8 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   }
 
   List<String> _shown(List<String> keys) {
-    if (!scoreIsCurrent || _callSettling) return const [];
+    if (!scoreIsCurrent) return const [];
+    if (_callSettling) return keys.where(kUnheldAlertKeys.contains).toList();
     if (!keys.any(kExchangeComplaintKeys.contains) || _complaintsMayShow) return keys;
     return [
       for (final key in keys)
@@ -229,8 +249,10 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// The worked-before times for the call at the cursor, or null while they
   /// are unknown, belong to another key, or the typed call is still settling:
   /// the count sits in the pill row, and a partial call's history painting at
-  /// every pause flashes it the way a partial call's score would.
-  List<int>? get workedBefore => _workedBeforeFor == workedBeforeKey && !_callSettling ? _workedBefore : null;
+  /// every pause flashes it the way a partial call's score would. Except
+  /// beside an unheld dupe, which it stays with (docs/design/logging-fields.md
+  /// § When the info area's pills appear).
+  List<int>? get workedBefore => _workedBeforeFor == workedBeforeKey && (!_callSettling || _unheldDupeShowing) ? _workedBefore : null;
 
   // ---- Lifecycle ----
 
@@ -373,6 +395,15 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     _complaintClock?.cancel();
     _complaintClockCall = null;
     _complaintClockFor = null;
+    // A score still out was asked about the session this ends. Landing for
+    // the same call — the logged contact just opened for editing — it is
+    // judged against a log that still holds that contact, and calls the
+    // contact a dupe of itself.
+    _verdictIssue = ++_scoresIssued;
+    // Nor does a score asked for meanwhile carry over: the new session
+    // schedules its own.
+    _scoreAgain = false;
+    _scoreAskedFor = null;
   }
 
   // ---- The lookup ----
@@ -583,7 +614,8 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// fired whenever any of them changes (and when an existing QSO is selected
   /// for editing). Debounced on the same 300ms as the offline lookup, so the
   /// scoring pills land alongside the offline lookup's data rather than
-  /// lagging it.
+  /// lagging it — all but the first score of a lone call being typed,
+  /// which runs at once.
   ///
   /// A lookup RESOLVING must re-fire it too: the state a US station is scored
   /// on almost always arrives as `guess.state` from the lookup, which lands
@@ -591,7 +623,11 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// all. Without that, New State only ever appeared for a call already in
   /// the cache. No-op (and clears) below the call-info threshold or with no
   /// `scoreQso` wired.
-  void scheduleScore() {
+  void scheduleScore() => _scheduleScore(waited: false);
+
+  /// [waited]: the request already waited out its debounce, behind a score
+  /// in flight ([_scoreQueued]).
+  void _scheduleScore({required bool waited}) {
     if (config().scoreQso == null) return;
     _scoreDebounce?.cancel();
     final call = activeCall();
@@ -627,7 +663,48 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
         notify();
       });
     }
-    _scoreDebounce = Timer(const Duration(milliseconds: 300), () => unawaited(_scoreNow(call)));
+    // A typed call still settling is scored at the keystroke, once, so its
+    // dupe is in hand before the operator reaches for Enter
+    // ([kUnheldAlertKeys]); the lookup it gets scored again on is debounced,
+    // so this one runs ahead of it. Later rescores of the same call keep the
+    // debounce, which is what gathers a burst of them into one — a scorer
+    // that keeps failing included. A call in a list or a stack keeps it too:
+    // nothing holds its other pills, so a score per keystroke paints them
+    // for every partial call.
+    final typedUnasked = call == _settlingCall && _scoreAskedFor != call;
+    _scoreDebounce = Timer(waited || typedUnasked ? Duration.zero : const Duration(milliseconds: 300), () => _scoreQueued(call));
+  }
+
+  /// The live score in flight, and whether another was asked for meanwhile.
+  /// One at a time: a keystroke's score that has to fold a long log cold
+  /// would otherwise stack a fold per keystroke in the engine, every one of
+  /// them for a call already typed past, and the newest call's dupe waits
+  /// behind them all. The one asked for meanwhile scores whatever is at the
+  /// cursor once the first lands. Enter waits for the one in flight rather
+  /// than starting another beside it.
+  Future<void>? _scoring;
+  bool _scoreAgain = false;
+
+  /// The call the last live score was asked about, whatever became of it.
+  String? _scoreAskedFor;
+
+  void _scoreQueued(String call) {
+    if (_scoring != null) {
+      _scoreAgain = true;
+      return;
+    }
+    _scoring = _scoreNow(call)
+        .catchError((Object exception, StackTrace stack) {
+          FlutterError.reportError(
+            FlutterErrorDetails(exception: exception, stack: stack, library: 'halo_widgets', context: ErrorDescription('scoring the entry')),
+          );
+        })
+        .whenComplete(() {
+          _scoring = null;
+          if (!_scoreAgain || isDisposed) return;
+          _scoreAgain = false;
+          _scheduleScore(waited: true);
+        });
   }
 
   /// Whether a verdict in this operation has named [key] as a field the
@@ -640,7 +717,8 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// call that names fields is scored again first, since the field it named
   /// may have been filled since — inside the debounce, or in a field whose
   /// edits schedule no score (the reports). With no verdict for this call yet
-  /// (a slid spot, an Enter before the first pass lands) it scores too. A
+  /// (a slid spot, an Enter before the first pass lands) it scores too, once
+  /// the live score already out has landed without one. A
   /// held verdict naming nothing is taken as it stands, so an operation whose
   /// scorers never hold a contact back waits on no score at Enter.
   ///
@@ -656,6 +734,11 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     final call = activeCall();
     if (config().scoreQso == null || !isCallInfoActive() || !looksLikeCallsign(call)) return const [];
     try {
+      // With no verdict yet, the score out is usually this call's own from
+      // the keystroke: a second one started beside it only queues behind it
+      // in the engine, and Enter waits for both.
+      final inFlight = _scoring;
+      if (_scoreFor != call && inFlight != null) await inFlight;
       if (_scoreFor != call || _incomplete.isNotEmpty) await _rescoreNow(call);
       if (!isDisposed && _scoreFor == call && _incomplete.isNotEmpty && !_lookupSettledFor(call)) {
         await _lookupLanded(call);
@@ -685,6 +768,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     // about which activities are running. The timeline goes along so the log
     // the candidate is judged against is folded per-segment too — otherwise
     // a contest that started at a break calls a pre-contest contact a dupe.
+    _scoreAskedFor = call;
     final cfg = config();
     final segments = segmented();
     final issue = ++_scoresIssued;

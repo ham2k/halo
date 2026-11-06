@@ -309,13 +309,12 @@ void main() {
   testWidgets('a scorer that fails holds nothing back', (tester) async {
     await tester.pumpWidget(panel(score: failingScorer));
     await tester.pump();
-    // No pause: the debounced pass never runs, and the Enter's own score is
-    // the only one to fail.
     await tester.enterText(field('Their call'), 'W1AW');
+    expect(tester.takeException(), isStateError, reason: 'the pills\' own pass, scored at the keystroke');
     await enter(tester);
 
     expect(await logged(tester), hasLength(1), reason: 'a broken extension must not stop the operator logging');
-    expect(tester.takeException(), isStateError, reason: 'the failure is still reported, as the pills\' own would be');
+    expect(tester.takeException(), isStateError, reason: 'the Enter\'s failure is reported too');
   });
 
   // The row and the score are the current segment's; a contact from before

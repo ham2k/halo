@@ -1499,10 +1499,10 @@ void main() {
             radio: baseRadio(),
             lookups: LookupHooks(
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
-                'notices': <String>[],
-                'alerts': ['duplicate'],
+                'notices': ['newBand'],
+                'alerts': <String>[],
               },
-              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+              scoreNoticeLabel: (key) => key == 'newBand' ? 'New Band' : key,
             ),
           ),
         ),
@@ -1512,7 +1512,7 @@ void main() {
 
     await tester.enterText(field, 'W1AW');
     await tester.pump(const Duration(milliseconds: 350));
-    expect(find.text('Dupe!'), findsNothing, reason: 'a lone call is still settling');
+    expect(find.text('New Band'), findsNothing, reason: 'a lone call is still settling');
     await tester.pump(const Duration(milliseconds: 250));
 
     for (final text in ['K1ABC,W1AW', 'K1ABC//W1AW']) {
@@ -1520,7 +1520,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       await tester.enterText(field, text);
       await tester.pump(const Duration(milliseconds: 350));
-      expect(find.text('Dupe!'), findsOneWidget, reason: text);
+      expect(find.text('New Band'), findsOneWidget, reason: text);
     }
   });
 

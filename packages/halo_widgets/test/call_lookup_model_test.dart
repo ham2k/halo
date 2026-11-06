@@ -234,6 +234,211 @@ void main() {
       h.model.dispose();
     });
 
+    // The operator decides whether to work the station off the dupe, often
+    // before they stop typing; held for the settle, it lands after they have
+    // already called them.
+    testWidgets('a dupe shows as the call is typed, with its count, ahead of the rest', (tester) async {
+      final h = _Harness()
+        ..verdict = (qso) => {
+          'alerts': ['duplicate', 'missingExchange'],
+          'notices': ['newDay'],
+          'sources': {
+            'duplicate': ['PAQP'],
+            'newDay': ['POTA'],
+          },
+        };
+      h.call = 'W1AW';
+      h.model.callTyped();
+      h.model.scheduleLookup();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      expect(h.scores, ['W1AW excluding=null'], reason: 'scored at the keystroke, not after the lookup debounce');
+      expect(h.model.currentAlertKeys, ['duplicate']);
+      expect(h.model.currentNoticeKeys, isEmpty, reason: 'only the dupe skips the settling');
+      expect(h.model.currentScoreSources, {
+        'duplicate': ['PAQP'],
+      }, reason: 'its source with it, so the pill does not change text when the call settles');
+      expect(h.model.workedBefore, [1, 2, 3], reason: 'the count stays beside a dupe');
+      await tester.pump(kCallSettleDelay);
+      expect(h.model.currentNoticeKeys, ['newDay']);
+      await tester.pump(const Duration(milliseconds: 300));
+      h.model.dispose();
+    });
+
+    testWidgets('a call typed past while its score is out is not scored at all', (tester) async {
+      final h = _Harness()..scoreLatency = const Duration(milliseconds: 100);
+      for (final call in ['K1A', 'K1AB', 'K1ABC']) {
+        h.call = call;
+        h.model.callTyped();
+        h.model.scheduleScore();
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(h.scores, ['K1A excluding=null', 'K1ABC excluding=null'], reason: 'one score at a time, then the call at the cursor');
+      expect(h.model.scoreIsCurrent, isTrue);
+      await tester.pump(kCallSettleDelay);
+      h.model.dispose();
+    });
+
+    // Nothing holds a list or stack call's other pills, so scored at each
+    // keystroke it paints them for every partial call on the way.
+    testWidgets('a call typed into a list or a stack waits out the score debounce', (tester) async {
+      final h = _Harness();
+      h.call = 'W1AW';
+      h.model.callTyped(settles: false);
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(h.scores, isEmpty);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(h.scores, ['W1AW excluding=null']);
+      h.model.dispose();
+    });
+
+    // A scorer that throws on every call never gives a verdict; were "no
+    // verdict yet" what skips the debounce, every exchange keystroke would
+    // score, and report its failure, at once.
+    testWidgets("only a typed call's first score skips the debounce, whether or not it lands", (tester) async {
+      final h = _Harness()..verdict = (qso) => throw StateError('scorer down');
+      h.call = 'W1AW';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      expect(tester.takeException(), isStateError);
+      expect(h.scores, hasLength(1));
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(h.scores, hasLength(1));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(h.scores, hasLength(2));
+      expect(tester.takeException(), isStateError);
+      await tester.pump(kCallSettleDelay);
+      h.model.dispose();
+    });
+
+    // Enter right after the last keystroke: a second score started beside
+    // the keystroke's only queues behind it in the engine, so Enter takes
+    // two scores' time.
+    testWidgets('Enter waits for the score already out instead of starting another', (tester) async {
+      final h = _Harness()
+        ..scoreLatency = const Duration(milliseconds: 100)
+        ..verdict = (qso) => {
+          'alerts': ['duplicate'],
+        };
+      h.call = 'W1AW';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      final enter = h.model.incompleteAtEnter();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(await enter, isEmpty);
+      expect(h.scores, ['W1AW excluding=null']);
+      expect(h.model.currentAlertKeys, ['duplicate']);
+      await tester.pump(kCallSettleDelay);
+      h.model.dispose();
+    });
+
+    // A request queued in the session a wipe ends would fire in the next one
+    // as having waited, skipping the debounce that gathers the burst of
+    // rescores a QSO opened for editing sets off.
+    testWidgets('a score asked for before a reset does not carry over', (tester) async {
+      final h = _Harness()..scoreLatency = const Duration(milliseconds: 100);
+      h.call = 'W1AW';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      h.call = 'W1AWX';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      h.call = 'K2ABC';
+      h.model.reset();
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 101));
+      expect(h.scores, ['W1AW excluding=null']);
+      await tester.pump(const Duration(milliseconds: 199));
+      expect(h.scores, ['W1AW excluding=null', 'K2ABC excluding=null']);
+      await tester.pump(const Duration(milliseconds: 100));
+      h.model.dispose();
+    });
+
+    // One score at a time means a failure that left the queue thinking a score
+    // was still out would end live scoring for the session, silently.
+    testWidgets('a failed score does not stop the next one', (tester) async {
+      var fail = true;
+      final h = _Harness()
+        ..scoreLatency = const Duration(milliseconds: 50)
+        ..verdict = (qso) {
+          if (fail) {
+            fail = false;
+            throw StateError('scorer down');
+          }
+          return {
+            'alerts': ['duplicate'],
+          };
+        };
+      h.call = 'K1A';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      expect(tester.takeException(), isStateError, reason: 'reported, not swallowed');
+      h.call = 'K1AB';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(h.scores.last, 'K1AB excluding=null');
+      expect(h.model.currentAlertKeys, ['duplicate']);
+      await tester.pump(kCallSettleDelay);
+      h.model.dispose();
+    });
+
+    // A band change while a slow score is out has already waited out its
+    // debounce by the time that score lands; waiting it out again leaves the
+    // pills on the old band for another 300ms.
+    testWidgets('a score asked for while one is out runs as soon as it lands', (tester) async {
+      final h = _Harness()..scoreLatency = const Duration(milliseconds: 500);
+      h.call = 'W1AW';
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(h.scores, hasLength(1));
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 449));
+      expect(h.scores, hasLength(1), reason: 'the first is still out');
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(h.scores, hasLength(2));
+      await tester.pump(const Duration(milliseconds: 600));
+      h.model.dispose();
+    });
+
+    // Opening the logged contact for editing while the compose score for its
+    // call is out: that score was judged against a log holding the contact.
+    testWidgets('a score out when the session resets is dropped', (tester) async {
+      final h = _Harness()
+        ..scoreLatency = const Duration(milliseconds: 100)
+        ..verdict = (qso) => {
+          'alerts': ['duplicate'],
+        };
+      h.call = 'W1AW';
+      h.model.callTyped();
+      h.model.scheduleScore();
+      await tester.pump(Duration.zero);
+      h.verdict = (qso) => {'alerts': <String>[]};
+      h.editingQso = const Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'their': {'call': 'W1AW'},
+        },
+      );
+      h.model.reset();
+      h.model.scheduleScore();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(h.model.currentAlertKeys, isEmpty, reason: 'the compose verdict is not the edit\'s');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(h.scores.last, 'W1AW excluding=q1');
+      expect(h.model.currentAlertKeys, isEmpty);
+      h.model.dispose();
+    });
+
     // In a list or a stack the cursor moves between calls already entered;
     // holding each one as the cursor lands on it blanks its pills for nothing.
     testWidgets('a call that does not settle shows its pills as soon as they are scored', (tester) async {

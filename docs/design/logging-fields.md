@@ -1009,12 +1009,25 @@ arrives makes the pill row jump, so appearing is held back
 (`CallLookupModel`) while disappearing never is:
 
 - **A typed call settles for 600ms** before any scored pill or the
-  worked-before count shows; each keystroke restarts the clock. Both are
-  fetched meanwhile, so they arrive together. Only a keystroke that changes
-  the call field's text holds anything. A call that arrives whole — a spot,
-  a QSO opened for editing, a restored draft, a stack's remainder after a
-  log — is not held, nor is a caret move, nor any call while the field
-  holds a `,` list or a `//` stack.
+  worked-before count shows, a dupe aside; each keystroke restarts the
+  clock. Both are fetched meanwhile, so they arrive together. Only a
+  keystroke that changes the call field's text holds anything. A call that
+  arrives whole — a spot, a QSO opened for editing, a restored draft, a
+  stack's remainder after a log — is not held, nor is a caret move, nor
+  any call while the field holds a `,` list or a `//` stack.
+- **A dupe is never held.** The operator decides whether to call a station
+  off it, often before they stop typing, so a typed call is scored at the
+  keystroke, ahead of its lookup, and a dupe shows the moment its verdict
+  lands, with the worked-before count and the scorer naming it beside it.
+  A partial call on the way to another (`K1AB` → `K1ABC`) can flash Dupe;
+  that is the price. A call typed into a `,` list or a `//` stack is not
+  held, so nothing would keep its other pills from flashing too: it waits
+  out the usual 300ms score debounce instead. One live score runs at a
+  time: a keystroke's score that has to fold a long log would otherwise
+  queue a fold per keystroke, each for a call already typed past, and the
+  next call's verdict comes from the score after the one in flight. An
+  Enter that finds no verdict yet waits for that score rather than
+  starting a second one behind it.
 - **An exchange complaint** (`missingExchange`, `invalidExchange`,
   `shortGrid`) also waits until the lookup finishes, since the lookup often
   fills the field it complains about — or 2s, for a lookup that never
@@ -1023,9 +1036,9 @@ arrives makes the pill row jump, so appearing is held back
   Each of these ends on the verdict scored *after* it, not on the event: the
   verdict in hand when a lookup lands, an exchange is typed or a lookup's
   suggestion fills a field was scored without it, and showing its complaint
-  shows the one the rescore is about to withdraw. Other alerts, a dupe among
-  them, show as soon as the call settles and are corrected if the exchange
-  changes the verdict.
+  shows the one the rescore is about to withdraw. Other alerts show as soon
+  as the call settles and are corrected if the exchange changes the
+  verdict.
 - **The worked-before count stays beside a dupe**, where app-polo drops it:
   for a call that is not held the count can show first, and withdrawing it
   when the dupe lands reads as the history being taken back.
