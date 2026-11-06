@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"191":
   changes:
     - "Added Icom IC-7200, Apache Labs ANAN (Thetis) and Expert Electronics SunSDR (ExpertSDR3) to the radio list"
     - "New: calls you enter and contacts you log go on your Spots list"
