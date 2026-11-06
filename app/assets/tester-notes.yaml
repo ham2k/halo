@@ -13,6 +13,7 @@ upcoming:
     - "Improved ARRL Sweepstakes: type or paste the whole exchange in one go (feedback welcome)"
     - "New Auto-advance Fields setting replaces RST jump, now covering contest exchanges too"
     - "New Backspace move: an empty logging field steps back to the previous one"
+    - "New band tags: type QRM! or NET! and Enter to mark the frequency"
 
 "190":
   changes:

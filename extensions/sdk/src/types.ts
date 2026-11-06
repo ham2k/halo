@@ -302,6 +302,10 @@ export interface Spot {
     source: string
     label?: string
     sourceInfo?: Record<string, JSONValue>
+    /// Set by the app on a band tag the operator made on this device
+    /// (`hookKey: 'local'`): `their.call` is free text marking a stretch of
+    /// the band ("QRM", "NET"), not a station. A source never sets it.
+    tag?: boolean
   }
 }
 

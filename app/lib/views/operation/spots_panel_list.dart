@@ -149,8 +149,10 @@ mixin _SpotsList on State<SpotsPanel> {
                                     background: theme.colorScheme.surface,
                                     // Our own station is not a contact to log — no
                                     // slide-to-log on a row that is ours alone, same
-                                    // reasoning as the tap below.
-                                    leading: widget.onLogQso == null || selfOnly
+                                    // reasoning as the tap below — and neither is a
+                                    // band tag, whose tap still puts its text in the
+                                    // call field (logging-fields.md § Local spots).
+                                    leading: widget.onLogQso == null || selfOnly || isBandTag(spot)
                                         ? null
                                         : _SlideAction(
                                             icon: MdiIcons.upload,
@@ -209,14 +211,18 @@ mixin _SpotsList on State<SpotsPanel> {
                                     // the gesture reads the same whether the row was dimmed
                                     // by scoring or by an earlier slide: undo puts a worked
                                     // spot back on the board, backspace takes a live one off
-                                    // it.
-                                    trailing: _SlideAction(
-                                      icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
-                                      label: worked ? t.operation.spots.slideRestore : t.operation.spots.slideIgnore,
-                                      background: theme.colorScheme.surfaceContainerHighest,
-                                      foreground: theme.colorScheme.onSurface,
-                                      onPressed: () => setState(() => _workedOverrides.toggle(spot, worked: worked)),
-                                    ),
+                                    // it. A row naming no operator has no verdict to
+                                    // keep (SpotWorkedOverrides), and a slide there would
+                                    // change nothing; a lone `!` takes a local one down.
+                                    trailing: spotOperatorCalls(spot).isEmpty
+                                        ? null
+                                        : _SlideAction(
+                                            icon: worked ? MdiIcons.undoVariant : MdiIcons.backspace,
+                                            label: worked ? t.operation.spots.slideRestore : t.operation.spots.slideIgnore,
+                                            background: theme.colorScheme.surfaceContainerHighest,
+                                            foreground: theme.colorScheme.onSurface,
+                                            onPressed: () => setState(() => _workedOverrides.toggle(spot, worked: worked)),
+                                          ),
                                     child: _SpotTile(
                                       key: _reveal.isCurrentRow(sectionIndex, index)
                                           ? _currentRowKey

@@ -1472,6 +1472,15 @@ class Translations$loggingControls$en {
 	/// en: 'Pick a mode before logging'
 	String get modeRequired => 'Pick a mode before logging';
 
+	/// en: 'A local spot needs a frequency'
+	String get localSpotNeedsFrequency => 'A local spot needs a frequency';
+
+	/// en: 'Local spots are made only at the live time'
+	String get localSpotNeedsLiveTime => 'Local spots are made only at the live time';
+
+	/// en: 'Local spots are off in Settings › Spotting'
+	String get localSpotsOff => 'Local spots are off in Settings › Spotting';
+
 	/// en: 'Fill in ${fields}, or put a ? where you didn't copy'
 	String incompleteExchange({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy';
 
@@ -7776,8 +7785,8 @@ class Translations$keyboardShortcuts$editor$en {
 	/// en: 'The system may take ${keys} before the app sees it.'
 	String reserved({required Object keys}) => 'The system may take ${keys} before the app sees it.';
 
-	/// en: '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.'
-	String callField({required Object keys}) => '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.';
+	/// en: '${keys} is also typed in the call field, for the time commands and band tags. Bound, the shortcut wins there.'
+	String callField({required Object keys}) => '${keys} is also typed in the call field, for the time commands and band tags. Bound, the shortcut wins there.';
 
 	/// en: '${keys} is already one of this command’s keys.'
 	String already({required Object keys}) => '${keys} is already one of this command’s keys.';
@@ -11855,6 +11864,9 @@ extension on Translations {
 			'loggingControls.spotBusy' => 'Another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
 			'loggingControls.modeRequired' => 'Pick a mode before logging',
+			'loggingControls.localSpotNeedsFrequency' => 'A local spot needs a frequency',
+			'loggingControls.localSpotNeedsLiveTime' => 'Local spots are made only at the live time',
+			'loggingControls.localSpotsOff' => 'Local spots are off in Settings › Spotting',
 			'loggingControls.incompleteExchange' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy',
 			'loggingControls.incompleteExchangeShift' => ({required Object fields}) => 'Fill in ${fields}, or put a ? where you didn\'t copy. Shift+Enter logs it as is',
 			'loggingControls.missingBand' => 'No Band',
@@ -12330,11 +12342,11 @@ extension on Translations {
 			'settings.radio.voiceWords.title' => 'Word Recordings',
 			'settings.radio.voiceWords.callField' => 'Words for operator',
 			'settings.radio.voiceWords.intro' => 'Record each word or number three times, run together quickly, the way you say it for a callsign. Longer phrases are recorded only once. Record another reading, up to five, and messages mix them, so they never sound the same twice.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceWords.recordAnother' => 'Record Another',
 			'settings.radio.voiceWords.reading' => ({required Object n}) => 'Recording ${n}',
 			'settings.radio.voiceWords.takeOpening' => ({required Object n}) => 'First take ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceWords.takeMiddle' => ({required Object n}) => 'Middle take ${n}',
 			'settings.radio.voiceWords.takeClosing' => ({required Object n}) => 'Last take ${n}',
 			'settings.radio.voiceWords.deleteReading' => 'Delete recording',
@@ -12844,11 +12856,11 @@ extension on Translations {
 			'settings.station.k4ReceiverMain' => 'Main',
 			'settings.station.k4ReceiverSub' => 'Sub',
 			'settings.station.k4ReceiverInvalid' => 'Choose Main or Sub',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4ReceiverAlreadyConfigured' => 'That receiver is already configured for this K4',
 			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
 			'settings.station.k4RemoteUnreachable' => 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
@@ -13358,11 +13370,11 @@ extension on Translations {
 			'sets.deleteFailed' => ({required Object name, required Object error}) => 'Could not delete ${name}: ${error}',
 			'sets.inUse' => 'In use',
 			'sets.actions' => ({required Object name}) => 'Actions for ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'sets.empty' => 'Empty folder',
 			'sets.exported' => ({required Object location}) => 'Saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'Saved ${names}',
-			_ => null,
-		} ?? switch (path) {
 			'sets.exportFailed' => ({required Object error}) => 'Could not export: ${error}',
 			'sets.importPickerFailed' => ({required Object error}) => 'Could not open the file: ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
@@ -13440,7 +13452,7 @@ extension on Translations {
 			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} belongs to the logging fields or a dialog, and can’t be changed.',
 			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.',
 			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'The system may take ${keys} before the app sees it.',
-			'keyboardShortcuts.editor.callField' => ({required Object keys}) => '${keys} is also typed in the call field, for the time commands. Bound, the shortcut wins there.',
+			'keyboardShortcuts.editor.callField' => ({required Object keys}) => '${keys} is also typed in the call field, for the time commands and band tags. Bound, the shortcut wins there.',
 			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} is already one of this command’s keys.',
 			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Take ${keys} from “${command}”',
 			'keyboardShortcuts.editor.resetDefault' => 'Reset to Default',

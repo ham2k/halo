@@ -20,8 +20,8 @@ import 'package:halo_core/halo_core.dart';
 /// would let a free-text parameter be judged safe and then be stripped by
 /// the returning filter on the next keystroke. `?` marks a call not fully
 /// copied ([isIncompleteCall]); `:`, `+` and `-` are the time commands'
-/// (`+1m`, `12:33`).
-const callsignCharacters = r'a-zA-Z0-9/.,?:+\-';
+/// (`+1m`, `12:33`); a trailing `!` makes the text a band tag.
+const callsignCharacters = r'a-zA-Z0-9/.,?!:+\-';
 
 /// The "//"-separated segments of a stack, each one's start offset in the
 /// field text, and the index of the segment holding the cursor.

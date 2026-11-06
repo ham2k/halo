@@ -319,6 +319,7 @@ extension _Submit on _LoggingControlsState {
       },
     );
     if (consumed) return;
+    if (_postBandTag()) return;
 
     // Note expansion inside a stack (see [_expandStackedNote]): "KI2D//1AB"
     // becomes "KI2D//W1AB,W1AC" and logs NOTHING this time round. Placed

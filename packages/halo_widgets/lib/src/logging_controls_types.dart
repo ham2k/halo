@@ -132,8 +132,14 @@ typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
 
 /// The local spot for the station being worked: [key] names it for as long
 /// as the panel follows it, and [qso] is the draft it is made from, or null
-/// to take the spot back — see [LoggingSession.onDraftSpot].
-typedef DraftSpotChanged = void Function(String key, Map<String, dynamic>? qso);
+/// to take the spot back — see [LoggingSession.onDraftSpot]. [tag] marks a
+/// band tag: [qso]'s call is whatever the operator typed, not a callsign.
+/// True when a spot stands under [key] afterwards.
+typedef DraftSpotChanged = bool Function(String key, Map<String, dynamic>? qso, {bool tag});
+
+/// Takes down the local spots within a signal's width of [at] (`freq`,
+/// `band`, `mode`) — see [LoggingSession.onClearLocalSpots].
+typedef LocalSpotsCleared = void Function(Map<String, dynamic> at);
 
 /// One main logging field, as a peer's panel renders it: what it is called,
 /// what the operator typed, and the suggestion standing in while they have
@@ -288,6 +294,7 @@ class LoggingSession {
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.onDraftSpot,
+    this.onClearLocalSpots,
     this.controller,
   });
 
@@ -464,7 +471,16 @@ class LoggingSession {
   /// the followed key, or a fresh one when the call field was never left —
   /// and ends the follow, as any other wipe does: the key is never sent
   /// again, and the host keeps what it last had.
+  ///
+  /// A band tag ("QRM!" and Enter) is sent once, `tag: true`, under a key of
+  /// its own that nothing follows: the text without its `!`, at the radio's
+  /// frequency, band and mode. A false answer to it means the host made no
+  /// spot, and the panel says so rather than empty the field for nothing.
   final DraftSpotChanged? onDraftSpot;
+
+  /// A lone `!` and Enter: the operator clears the local spots at the
+  /// radio's frequency, band and mode.
+  final LocalSpotsCleared? onClearLocalSpots;
 
   /// Optional imperative handle for driving the controls from outside (set the
   /// call, log, wipe) — used by the app's dev bridge. Attached on mount.

@@ -1016,7 +1016,9 @@ an incomplete call counts as one for logging and for nothing else:
   the log a live score reads for itself, so no contest or activity counts it,
   takes a multiplier or an entity from it, or calls it a dupe. The info area
   says so with an `incompleteCall` pill rather than leaving it bare.
-- **It is never spotted.** No spot source is offered for it.
+- **It is never spotted to a network.** No spot source is offered for it.
+  It does go on this device's own Spots list (§ Local spots): someone is on
+  that frequency.
 - **With Enter Sends Messages on, Enter asks for it again** — keys their
   call, `?` and all, and logs nothing (§ Enter Sends Messages).
 
@@ -1230,7 +1232,10 @@ Space, Tab, an arrow, a tap anywhere else — makes the entry a spot
 and mode, with its references (a park, a summit) and a contest's received
 exchange as its label. **Logging a new contact** makes one too, from the
 record as logged, so a call entered and logged straight from the call field
-is on the board as well. Only a new contact at the live time makes one: an
+is on the board as well. A call not fully copied ("W1A?") is spotted like a
+whole one: someone is on that frequency. Text that is neither makes no spot
+when the field is left; a callsign half typed is not news. Only a new contact
+at the live time makes one: an
 earlier contact being edited is a record, not a station on the air, and so is
 one under manual time entry or with a start time of its own.
 
@@ -1256,10 +1261,42 @@ hides; it deletes nothing. It happens on the board (`mergedSpotBoard`), after
 the operator's source filter, so switching the local source off, or taking a
 local spot back, brings back what it replaced, and an extension asking for
 one source's spots gets all of them. A spot posted after the local one is news the local one
-cannot speak for, and stays. Digital modes make no local spots: every station
+cannot speak for, and stays. Digital modes make no station's local spot
+(band tags, below, are the exception): every station
 in the passband shares one dial frequency, so a frequency says nothing about
 who is on it. Settings › Spotting turns the whole thing off, and takes down
 the local spots already up.
+
+**A band tag** marks an area of the band rather than a station: any text
+ending in `!` in the call field, and Enter ("QRM!", "NET!", "CONTEST!"), puts
+the text without its `!` on the board at the radio's frequency, band and mode,
+and empties the call field for the next call. **A lone `!`** and Enter clears
+the local spots there instead — every one within the window above on that
+band and family of modes, tags and stations, those hidden under the newest
+too. A command takes Enter first, so text that interprets as one runs as the
+command and tags nothing. Only a single entry tags: in a call stack or list
+(`//`, `,`) Enter is the logging path's, which keeps the queued calls.
+
+When no spot can be made — no frequency, a time other than the live one, or
+local spots off in Settings — the text stays in the field and the message
+slot says why; emptied, the field would read as done.
+
+A tag is sent once under a key of its own that nothing follows. It replaces
+by frequency alone, as does a call not fully copied: the text names no
+station, and two "QRM"s, or two stations both copied as "W1A?", are two places
+on the band — nor does the board merge one with another spot by its text, so
+a tag reading "W1AW" never swallows the real W1AW's spot beside it. It is
+spotted in a digital mode too, where a frequency names a stretch of the
+passband even when it names no station. A tag, and a call not fully copied,
+name no operator (`spotOperatorCalls` answers none,
+`isLocalSpotWithoutStation`): on the board, but never looked up, scored,
+chased, counted on a continent or taken for our own call, each of which would
+act on text nobody heard as a callsign. A tag carries `spot.tag` to say so,
+rather than being judged by its text: "Q65" and "JT65" read as callsigns. Its
+row in the Spots list puts its text in the call field when tapped, like any
+row, but does not slide to log (`isBandTag`): an area of the band is no
+contact. Neither row offers Ignore, which keeps a verdict per operator; a lone
+`!` takes either down.
 
 ## Focus and the secondary controls
 

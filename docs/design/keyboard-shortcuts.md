@@ -93,8 +93,8 @@ chord has matched:
 
 - **with no text field focused**, the shortcut runs;
 - **in the logging entry row**, the shortcut runs — what a callsign needs is
-  fixed (below), and a bound `-`, `+` or `:`, which the call field's filter
-  admits for the time commands, is the operator's shortcut before it is a
+  fixed (below), and a bound `-`, `+`, `:` or `!`, which the call field's
+  filter admits for the time commands and band tags, is the operator's shortcut before it is a
   character — save the call field reading a command's parameters (free
   text, as NOTE's), which keeps what it would accept;
 - **in the logging panel's other controls**, a field that would take the
@@ -123,8 +123,9 @@ the field rule above deciding where it fires.
 
 Chords the system or a browser may take first (⌘Q, ⌘W, ⌘C/V/X/A, Alt+F4…)
 are bindable with a warning, and so is a key the call field's filter admits
-beyond the callsign keys — `-`, `+` and `:`, for the time commands — which a
-binding takes from every call typed there. The editor judges that by what
+beyond the callsign keys — `-`, `+` and `:`, for the time commands, and `!`,
+for band tags (logging-fields.md § Local spots) — which a binding takes from
+every call typed there. The editor judges that by what
 the press typed, since ⇧= is `+` on one layout and not on another.
 
 ## The experiment

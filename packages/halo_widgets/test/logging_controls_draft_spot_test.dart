@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'support/logging_controls_harness.dart';
@@ -21,9 +22,21 @@ void main() {
   installLoggingHarness();
 
   late List<_Sent> sent;
-  setUp(() => sent = []);
+  late List<({String key, Map<String, dynamic> qso})> tags;
+  late List<Map<String, dynamic>> cleared;
+  setUp(() {
+    sent = [];
+    tags = [];
+    cleared = [];
+  });
 
-  LoggingSession session() => LoggingSession(onDraftSpot: (key, qso) => sent.add((key: key, call: (qso?['their'] as Map?)?['call'] as String?)));
+  LoggingSession session({bool hostSpots = true}) => LoggingSession(
+    onDraftSpot: (key, qso, {tag = false}) {
+      tag ? tags.add((key: key, qso: qso!)) : sent.add((key: key, call: (qso?['their'] as Map?)?['call'] as String?));
+      return hostSpots && qso != null;
+    },
+    onClearLocalSpots: cleared.add,
+  );
 
   Finder field(String label) => find.widgetWithText(TextField, label);
 
@@ -192,5 +205,145 @@ void main() {
     await tester.pump();
 
     expect(sent, isEmpty, reason: 'a record in the log is not a station on the air now');
+  });
+
+  group('band tags', () {
+    testWidgets('text ending in ! and Enter tags the frequency, logs nothing, and empties the call field', (tester) async {
+      await tester.pumpWidget(host(session: session()));
+      await tester.enterText(field('Their call'), 'QRM!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(tags.single.qso, {
+        'their': {'call': 'QRM'},
+        'freq': 14285.0,
+        'band': '20m',
+        'mode': 'SSB',
+      });
+      expect(tester.widget<TextField>(field('Their call')).controller!.text, isEmpty);
+      expect(await qsosAfterWaiting(tester), isEmpty, reason: 'a tag is not a contact');
+      expect(sent, isEmpty, reason: 'a tag is not an entry the panel follows');
+
+      await tester.enterText(field('Their call'), 'NET!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(tags.last.key, isNot(tags.first.key), reason: 'under one key the second tag would move the first');
+    });
+
+    testWidgets('a command ending in ! runs as the command, and tags nothing', (tester) async {
+      await tester.pumpWidget(
+        host(
+          session: session(),
+          commands: CommandHooks(
+            interpretCommand: (input, [operation, qso, execute = false]) async => input == 'GO!' ? {'describe': 'Go', 'commands': const []} : null,
+          ),
+        ),
+      );
+      await tester.enterText(field('Their call'), 'GO!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(tags, isEmpty);
+      expect(tester.widget<TextField>(field('Their call')).controller!.text, isEmpty, reason: 'the command ran, and took its text');
+    });
+
+    testWidgets('a lone ! clears the local spots at the radio, and empties the call field', (tester) async {
+      await tester.pumpWidget(host(session: session()));
+      await tester.enterText(field('Their call'), '!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(cleared.single, {'freq': 14285.0, 'band': '20m', 'mode': 'SSB'});
+      expect(tags, isEmpty);
+      expect(tester.widget<TextField>(field('Their call')).controller!.text, isEmpty);
+    });
+
+    testWidgets('the same station left again after a lone ! goes back on the board', (tester) async {
+      await tester.pumpWidget(host(session: session()));
+      await typeCallAndLeave(tester, 'W1AW');
+      await tester.enterText(field('Sent'), '57');
+      await tester.pump();
+      await tester.tap(field('Their call'));
+      await tester.pump();
+      await tester.enterText(field('Their call'), '!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(cleared, hasLength(1));
+      final before = sent.length;
+
+      // The clear took this entry's spot down with the rest. Remembered as
+      // still sent, the draft below is the one last sent, and would be deduped.
+      await typeCallAndLeave(tester, 'W1AW');
+      expect(sent.length, before + 1);
+      expect(sent.last.call, 'W1AW');
+    });
+
+    testWidgets('in a call stack Enter is the logging path\'s, which keeps the queued call', (tester) async {
+      // Taken whole, "K1ABC//QRM" would go up as one tag and K1ABC leave the field unlogged.
+      await tester.pumpWidget(host(session: session()));
+      await tester.enterText(field('Their call'), 'K1ABC//QRM!');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+
+      expect((logged.single.data['their'] as Map)['call'], 'K1ABC');
+      expect(tester.widget<TextField>(field('Their call')).controller!.text, 'QRM!', reason: 'the rest of the stack stays to be worked');
+      expect(tags, isEmpty);
+      expect(cleared, isEmpty);
+    });
+
+    group('when no spot can be made, the text stays and the message slot says why', () {
+      // An emptied field reads as done; the operator would never know the tag is not up.
+      Future<List<String?>> tagWith(WidgetTester tester, {LoggingSession? on, RadioHookup? radio, ManualTimeHooks? manualTime}) async {
+        final messages = <String?>[];
+        await tester.pumpWidget(
+          host(
+            session: on ?? session(),
+            radio: radio,
+            manualTime: manualTime,
+            commands: CommandHooks(onCommandMessageChanged: messages.add),
+          ),
+        );
+        await tester.enterText(field('Their call'), 'QRM!');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.widget<TextField>(field('Their call')).controller!.text, 'QRM!');
+        return messages;
+      }
+
+      testWidgets('no frequency', (tester) async {
+        final bandOnly = FakeVfoStore()..setVfo('vfoA', band: '20m', mode: 'SSB');
+        addTearDown(bandOnly.dispose);
+        final messages = await tagWith(tester, radio: baseRadio().copyWith(radioService: bandOnly));
+        expect(messages.last, t.loggingControls.localSpotNeedsFrequency);
+        expect(tags, isEmpty);
+      });
+
+      testWidgets('a frequency off every band', (tester) async {
+        // Left to the host, its refusal would read as local spots switched off.
+        final offBand = FakeVfoStore()..setVfo('vfoA', freq: 14360, mode: 'SSB');
+        addTearDown(offBand.dispose);
+        final messages = await tagWith(tester, radio: baseRadio().copyWith(radioService: offBand));
+        expect(messages.last, t.loggingControls.localSpotNeedsFrequency);
+        expect(tags, isEmpty);
+      });
+
+      testWidgets('a time that is not the live one', (tester) async {
+        final messages = await tagWith(tester, manualTime: ManualTimeHooks(startAtMillis: nowMillis() - const Duration(days: 2).inMilliseconds));
+        expect(messages.last, t.loggingControls.localSpotNeedsLiveTime);
+        expect(tags, isEmpty);
+      });
+
+      testWidgets('the host made no spot: local spots are off', (tester) async {
+        final messages = await tagWith(tester, on: session(hostSpots: false));
+        expect(messages.last, t.loggingControls.localSpotsOff);
+      });
+    });
   });
 }

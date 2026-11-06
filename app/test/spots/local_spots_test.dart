@@ -10,7 +10,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/local_spots.dart';
-import 'package:ham2k_logger/services/spot_board.dart' show mergedSpotBoard;
+import 'package:ham2k_logger/services/spot_board.dart' show mergedSpotBoard, spotOperatorCalls;
 import 'package:ham2k_logger/services/spots_service.dart';
 import 'package:ham2k_logger/services/spotting_settings.dart';
 
@@ -84,13 +84,88 @@ void main() {
       expect((spot['spot'] as Map)['label'], 'NY');
     });
 
-    test('makes no spot without a whole callsign, a frequency, or in a digital mode', () {
+    test('makes no spot without a callsign, a frequency, or in a digital mode', () {
       expect(localSpotFromQso(draft('W1'), now: 0), isNull);
-      expect(localSpotFromQso(draft('W1A?'), now: 0), isNull, reason: 'an incomplete call is never spotted');
       expect(localSpotFromQso({...draft('W1AW')}..remove('freq'), now: 0), isNull);
       // Every FT8 station on the band shares the dial frequency.
       expect(localSpotFromQso(draft('W1AW', mode: 'FT8'), now: 0), isNull);
       expect(localSpotFromQso(draft('W1AW', mode: 'CW'), now: 0), isNotNull);
+    });
+  });
+
+  group('incomplete calls and band tags', () {
+    test('a call not fully copied is spotted: someone is there', () {
+      expect(callOfSpot(localSpotFromQso(draft('W1A?'), now: 0)!), 'W1A?');
+      expect(localSpotFromQso(draft('W1A?', mode: 'FT8'), now: 0), isNull, reason: 'still a station, so still not in digital');
+    });
+
+    test('a tag is any text, and tags a digital passband too', () {
+      expect(localSpotFromQso(draft('QRM'), now: 0), isNull, reason: 'untagged, text that is no callsign is not spotted');
+      expect(callOfSpot(localSpotFromQso(draft('QRM'), now: 0, tag: true)!), 'QRM');
+      expect(localSpotFromQso(draft('CONTEST', mode: 'FT8'), now: 0, tag: true), isNotNull);
+    });
+
+    test('a tag replaces the spots on its frequency, as a station worked there does', () {
+      final tag = localSpotFromQso(draft('QRM'), now: nowMillis(), tag: true)!;
+      expect(localSpotReplaces(tag, fetched('K2ABC', freq: 14250.05)), isTrue);
+    });
+
+    test('isLocalSpotWithoutStation: the local spots whose call is no callsign', () {
+      expect(isLocalSpotWithoutStation(localSpotFromQso(draft('QRM'), now: 0, tag: true)!), isTrue);
+      expect(isLocalSpotWithoutStation(localSpotFromQso(draft('W1A?'), now: 0)!), isTrue);
+      expect(isLocalSpotWithoutStation(local('W1AW')), isFalse);
+      // A network spot's call is the network's to vouch for.
+      expect(isLocalSpotWithoutStation(fetched('QRM')), isFalse);
+    });
+
+    test('a tag is one by its marker, not its text: Q65 and JT65 read as callsigns', () {
+      // Judged by shape, a digital-mode tag would be looked up and scored as a station.
+      for (final text in ['Q65', 'JT65', 'W1AW']) {
+        expect(isLocalSpotWithoutStation(localSpotFromQso(draft(text, mode: 'FT8'), now: 0, tag: true)!), isTrue, reason: text);
+      }
+    });
+
+    test('a call stack or list is never one spot, a call not fully copied in it included', () {
+      for (final text in ['K1ABC//W1A?', 'W1AW,K1A?']) {
+        expect(localSpotFromQso(draft(text), now: 0), isNull, reason: text);
+        expect(localSpotFromQso(draft(text), now: 0, tag: true), isNull, reason: text);
+      }
+    });
+
+    test('tags and calls not fully copied replace by frequency only, never by their text', () {
+      Map<String, dynamic> older(Map<String, dynamic> spot) => {
+        ...spot,
+        'spot': {...spot['spot'] as Map, 'timeInMillis': nowMillis() - 60000},
+      };
+      // Two QRMs, or two stations both copied as W1A?, are two places on the band.
+      final tag = localSpotFromQso(draft('QRM'), now: nowMillis(), tag: true)!;
+      expect(localSpotReplaces(tag, older(localSpotFromQso(draft('QRM', freq: 14200), now: 0, tag: true)!)), isFalse);
+      expect(localSpotReplaces(local('W1A?'), older(local('W1A?', freq: 14200))), isFalse);
+      // A tag that reads as a callsign is still no station that call could move.
+      expect(localSpotReplaces(local('W1AW'), older(localSpotFromQso(draft('W1AW', freq: 14200), now: 0, tag: true)!)), isFalse);
+    });
+
+    test('name no operator: nothing reads their text as a callsign', () {
+      // Read as one, "NET" is a US call and "Q65" a station to look up, score and chase.
+      expect(spotOperatorCalls(localSpotFromQso(draft('NET'), now: 0, tag: true)!), isEmpty);
+      expect(spotOperatorCalls(localSpotFromQso(draft('Q65', mode: 'FT8'), now: 0, tag: true)!), isEmpty);
+      expect(spotOperatorCalls(local('W1A?')), isEmpty);
+      expect(spotOperatorCalls(local('W1AW')), ['W1AW']);
+    });
+
+    test('on the board, never merged with a spot by their text', () {
+      Map<String, dynamic> tag(String text, double freq) => localSpotFromQso(draft(text, freq: freq), now: nowMillis(), tag: true)!;
+      // Each within the call-merge pass's 0.5 kHz, beyond a signal's width.
+      final board = mergedSpotBoard(
+        {
+          localSpotSource: [tag('QRM', 14200.0), tag('QRM', 14200.3), tag('W1AW', 14230.0)],
+          'pota': [fetched('W1AW', freq: 14230.3)],
+        },
+        const {},
+        entityOf: (_) => 'K',
+      );
+      expect(board, hasLength(4), reason: 'two QRMs are two places, and a tag reading W1AW must not swallow the station');
+      expect(board.where((spot) => spot['hookKey'] == 'pota'), hasLength(1));
     });
   });
 
@@ -135,8 +210,10 @@ void main() {
       // The index narrows by band, mode, call and frequency before asking;
       // a bound off by a window, or a bucket keyed apart from what
       // localSpotReplaces compares, shows here as a spot kept or hidden wrongly.
+      // Tags, some reading as callsigns, and calls not fully copied replace by
+      // frequency alone, which the index's call bucket must leave to the scan.
       final random = Random(7);
-      final calls = ['W1AW', 'K2ABC', 'N3XYZ', 'W1AW,K2ABC', 'VE3ABC', 'G4ABC'];
+      final calls = ['W1AW', 'K2ABC', 'N3XYZ', 'W1AW,K2ABC', 'VE3ABC', 'G4ABC', 'W1A?', 'Q65'];
       final freqs = [14030.0, 14030.015, 14030.025, 14250.0, 14250.09, 14250.11, 14300.0, 7200.0, 7200.05];
       final modes = ['SSB', 'USB', 'CW', 'FT8'];
       Map<String, dynamic> pick(String source) {
@@ -147,7 +224,7 @@ void main() {
           'band': bandForFrequency(freq),
           'mode': modes[random.nextInt(modes.length)],
           'hookKey': source,
-          'spot': {'timeInMillis': 1000 + random.nextInt(20) * 1000, 'source': source},
+          'spot': {'timeInMillis': 1000 + random.nextInt(20) * 1000, 'source': source, if (source == localSpotSource && random.nextBool()) 'tag': true},
         };
       }
 
@@ -236,6 +313,23 @@ void main() {
 
       service.putLocalSpot('a', localSpotFromQso(draft('W1AX'), now: 3000)!);
       expect(notices, 2);
+    });
+
+    test('clearLocalSpotsAt takes down every local spot within a signal of the radio, those hidden included', () {
+      final service = SpotsService(fetchSpots: feed(const []));
+      addTearDown(service.dispose);
+      service.putLocalSpot('hidden', {
+        ...local('W1AW'),
+        'spot': {'timeInMillis': nowMillis() - 60000, 'source': localSpotSource},
+      });
+      service.putLocalSpot('tag', localSpotFromQso(draft('QRM', freq: 14250.05), now: nowMillis(), tag: true)!);
+      service.putLocalSpot('away', local('K2ABC', freq: 14300));
+      service.putLocalSpot('cw', local('N3XYZ', freq: 14250.02, mode: 'CW'));
+
+      clearLocalSpotsAt(service, {'freq': 14250.0, 'band': null, 'mode': 'USB'});
+
+      // Taking only the newest would bring W1AW back from under it.
+      expect(callsOn(service, localSpotSource), unorderedEquals(['K2ABC', 'N3XYZ']));
     });
 
     test('clearLocalSpots takes every local spot down', () {

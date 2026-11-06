@@ -18,6 +18,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
+import 'package:ham2k_logger/services/local_spots.dart' show localSpotFromQso;
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/spot_board_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -252,6 +253,37 @@ void main() {
 
     expect(extensions.lookedUp, hasLength(lookups));
     expect(extensions.scored, hasLength(passes));
+  });
+
+  test('a band tag or a call not fully copied is on the board, but never looked up or scored', () async {
+    // "QRM" asked as a callsign resolves to whatever prefix it happens to
+    // spell, and a scorer would badge it as a new one to work.
+    await boot(board);
+    Map<String, dynamic> local(String call, {bool tag = false}) => localSpotFromQso(
+      {
+        'their': {'call': call},
+        'freq': 14280.0,
+        'band': '20m',
+        'mode': 'SSB',
+      },
+      now: nowMillis(),
+      tag: tag,
+    )!;
+    services.spots
+      ..putLocalSpot('tag', local('QRM', tag: true))
+      ..putLocalSpot('partial', {...local('W1A?'), 'freq': 14300.0})
+      ..putLocalSpot('station', {...local('K9XYZ'), 'freq': 14320.0});
+    await services.spotBoard.refreshCallInfo();
+    await showOperation();
+
+    expect(_calls(await getSpots()), containsAll(['QRM', 'W1A?', 'K9XYZ']));
+    expect(extensions.lookedUp, contains('K9XYZ'));
+    final scoredCalls = {
+      for (final pass in extensions.scored)
+        for (final candidate in pass.values) (candidate['their'] as Map)['call'],
+    };
+    expect(scoredCalls, contains('K9XYZ'));
+    expect([...extensions.lookedUp, ...scoredCalls], isNot(anyOf(contains('QRM'), contains('W1A?'))));
   });
 
   group('annotations', () {

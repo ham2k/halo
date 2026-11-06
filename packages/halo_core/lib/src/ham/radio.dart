@@ -1184,7 +1184,9 @@ bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpp
 /// Whether [call] is one the operator marked as not fully copied — any `?`
 /// in it, a lone `?` included ("worked someone, didn't get the call"), as
 /// app-polo accepts. Such a call logs, but is never looked up, scored or
-/// spotted: every one of those would act on letters nobody heard. It stays
+/// spotted to a network: every one of those would act on letters nobody
+/// heard. It goes on this device's own Spots list as a local spot, which
+/// says only that someone is on that frequency. It stays
 /// that way until the operator edits the `?` out.
 bool isIncompleteCall(String call) => call.contains('?');
 

@@ -820,8 +820,8 @@ bool fieldTakesKey(BuildContext? focused, String character) {
     // Only the call field reading a command's parameters — free text, as
     // NOTE's — keeps what it would accept. In callsign mode a bound key is
     // the shortcut's: what a callsign needs is fixed and unbindable
-    // (KeyChordRefusal.callsignKey), and `-`, `+` and `:` — in the filter for
-    // the time commands — would otherwise make every binding on them dead
+    // (KeyChordRefusal.callsignKey), and `-`, `+`, `:` and `!` — in the filter
+    // for the time commands and band tags — would otherwise make every binding on them dead
     // wherever a call is typed; the editor warns of the trade
     // (takesCallFieldKey). The mode follows the debounced interpretation, so
     // a bound key typed within it after a command word runs rather than
@@ -915,8 +915,8 @@ bool isReservedKeyChord(KeyChord chord, [TargetPlatform? platform]) {
 }
 
 /// Whether [chord], bound, takes a character the call field's filter admits
-/// beyond the callsign keys — `-`, `+` and `:`, the time commands'
-/// ([callsignCharacters] less [_callsignCharacter]) — from every call typed
+/// beyond the callsign keys — `-`, `+` and `:`, the time commands', and `!`,
+/// a band tag's ([callsignCharacters] less [_callsignCharacter]) — from every call typed
 /// there: the shortcut wins in the field ([fieldTakesKey]), so the character
 /// can no longer be typed into a call. Bindable, with a warning. Read as a
 /// callsign key is, with at most ⇧ held ([KeyChord.atMostShift]): a ⌥ chord

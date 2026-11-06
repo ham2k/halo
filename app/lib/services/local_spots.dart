@@ -20,21 +20,28 @@ const _phoneWindowKHz = 0.1;
 const _cwWindowKHz = 0.02;
 
 /// The spot [qso] (a logging-panel draft, in QSON) makes, posted [now], or
-/// null when it makes none: a call that is not a whole callsign, no
-/// frequency, or a digital mode, where every station in the passband shares
-/// one dial frequency and a frequency says nothing about who is on it.
+/// null when it makes none: a call that is neither a whole callsign nor one
+/// marked not fully copied ("W1A?" — someone is there), a call stack or list
+/// rather than one entry, no frequency, or a digital mode, where every
+/// station in the passband shares one dial frequency and a frequency says
+/// nothing about who is on it.
+///
+/// A [tag] marks an area of the band rather than a station ("QRM", "NET"):
+/// its call is any text, the spot says it is a tag (`spot.tag`), and it is
+/// spotted in a digital mode too.
 ///
 /// The draft's references go along when they name one (a park, a summit);
 /// a contest's received exchange, which rides the refs as values with no
 /// `ref`, becomes the spot's label.
-Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int now}) {
+Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int now, bool tag = false}) {
   final call = callOfSpot(qso);
   final freq = asSpotNum(qso['freq'])?.toDouble();
   final mode = asSpotString(qso['mode']);
   final band = asSpotString(qso['band']) ?? (freq == null ? null : bandForFrequency(freq));
-  if (call == null || !looksLikeCallsign(call) || freq == null || band == null) return null;
+  if (call == null || freq == null || band == null || call.contains(',') || call.contains('//')) return null;
+  if (!tag && !isLoggableCall(call)) return null;
   final superMode = superModeForMode(mode);
-  if (superMode != 'Phone' && superMode != 'CW') return null;
+  if (!tag && superMode != 'Phone' && superMode != 'CW') return null;
   final refs = <Map<String, dynamic>>[];
   final exchange = <String>[];
   for (final ref in (qso['refs'] as List?) ?? const []) {
@@ -56,27 +63,51 @@ Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int n
     'band': band,
     'mode': mode,
     if (refs.isNotEmpty) 'refs': refs,
-    'spot': {'timeInMillis': now, 'source': localSpotSource, if (exchange.isNotEmpty) 'label': exchange.join(' ')},
+    'spot': {'timeInMillis': now, 'source': localSpotSource, if (tag) 'tag': true, if (exchange.isNotEmpty) 'label': exchange.join(' ')},
     'hookKey': localSpotSource,
   };
 }
+
+/// Whether [spot] is a band tag ("QRM!" and Enter): an area of the band, not
+/// a contact to log.
+bool isBandTag(Map<String, dynamic> spot) => spot['hookKey'] == localSpotSource && (spot['spot'] as Map?)?['tag'] == true;
+
+/// Whether [spot] is a local one whose call names no station to look up or
+/// work: a band tag, or a call not fully copied. On the board like any spot;
+/// never asked about, scored or chased, which would act on text nobody heard
+/// as a callsign. A tag says so rather than being judged by its text: "Q65"
+/// and "JT65" read as callsigns.
+bool isLocalSpotWithoutStation(Map<String, dynamic> spot) =>
+    isBandTag(spot) || (spot['hookKey'] == localSpotSource && !looksLikeCallsign(callOfSpot(spot) ?? ''));
 
 /// Whether [local] replaces [other]: posted no later, on the same band and
 /// in the same family of modes, and either the same station anywhere there
 /// or any station within a signal's width of it — a local spot says who is
 /// on that frequency now, and that the station is no longer where an older
-/// spot put it.
+/// spot put it. A tag or a call not fully copied replaces by frequency only:
+/// its text names no station, and two "QRM"s, or two stations both copied
+/// as "W1A?", are two places on the band.
 bool localSpotReplaces(Map<String, dynamic> local, Map<String, dynamic> other) {
   if ((timeOfSpot(other) ?? 0) > (timeOfSpot(local) ?? 0)) return false;
-  if (asSpotString(local['band']) != asSpotString(other['band'])) return false;
-  final superMode = superModeForMode(asSpotString(local['mode']));
-  if (superMode != superModeForMode(asSpotString(other['mode']))) return false;
+  if (!_sameBandAndModes(local, other)) return false;
   final call = callOfSpot(local);
-  if (call != null && spotCallsIn(callOfSpot(other)).contains(call)) return true;
-  final freq = asSpotNum(local['freq']);
+  if (call != null && _byStation(local) && _byStation(other) && spotCallsIn(callOfSpot(other)).contains(call)) return true;
+  return _withinSignal(local, other);
+}
+
+bool _byStation(Map<String, dynamic> spot) => !isLocalSpotWithoutStation(spot);
+
+bool _sameBandAndModes(Map<String, dynamic> a, Map<String, dynamic> b) =>
+    asSpotString(a['band']) == asSpotString(b['band']) && superModeForMode(asSpotString(a['mode'])) == superModeForMode(asSpotString(b['mode']));
+
+/// Whether [other] is within a signal's width of [at]'s frequency, by
+/// [at]'s family of modes.
+bool _withinSignal(Map<String, dynamic> at, Map<String, dynamic> other) {
+  final freq = asSpotNum(at['freq']);
   final otherFreq = asSpotNum(other['freq']);
   if (freq == null || otherFreq == null) return false;
-  return (freq - otherFreq).abs() <= (superMode == 'CW' ? _cwWindowKHz : _phoneWindowKHz) + 1e-9;
+  final window = superModeForMode(asSpotString(at['mode'])) == 'CW' ? _cwWindowKHz : _phoneWindowKHz;
+  return (freq - otherFreq).abs() <= window + 1e-9;
 }
 
 /// [spots] less every spot a local spot among them replaces
@@ -121,7 +152,7 @@ class _LocalSpotIndex {
   void add(Map<String, dynamic> local) {
     final bucket = _buckets.putIfAbsent(_bucketOf(local), () => (byCall: {}, byFreq: []));
     final call = callOfSpot(local);
-    if (call != null) bucket.byCall.putIfAbsent(call, () => []).add(local);
+    if (call != null && _byStation(local)) bucket.byCall.putIfAbsent(call, () => []).add(local);
     final freq = _freqOf(local);
     if (freq.isNaN) return;
     bucket.byFreq.insert(_lowerBound(bucket.byFreq, freq), local);
@@ -132,8 +163,10 @@ class _LocalSpotIndex {
   bool replaces(Map<String, dynamic> other) {
     final bucket = _buckets[_bucketOf(other)];
     if (bucket == null) return false;
-    for (final call in spotCallsIn(callOfSpot(other))) {
-      if (bucket.byCall[call]?.any((local) => localSpotReplaces(local, other)) ?? false) return true;
+    if (_byStation(other)) {
+      for (final call in spotCallsIn(callOfSpot(other))) {
+        if (bucket.byCall[call]?.any((local) => localSpotReplaces(local, other)) ?? false) return true;
+      }
     }
     final freq = _freqOf(other);
     if (freq.isNaN) return false;
@@ -161,9 +194,22 @@ class _LocalSpotIndex {
   }
 }
 
-/// A logging panel's draft spot (`LoggingSession.onDraftSpot`) onto [spots]:
-/// put while the draft makes one and [enabled] holds, taken off otherwise.
-void updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled}) {
-  final spot = qso == null || !enabled ? null : localSpotFromQso(qso, now: nowMillis());
+/// A logging panel's draft spot or band tag (`LoggingSession.onDraftSpot`)
+/// onto [spots]: put while the draft makes one and [enabled] holds, taken off
+/// otherwise. True when a spot stands under [key] afterwards.
+bool updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled, bool tag = false}) {
+  final spot = qso == null || !enabled ? null : localSpotFromQso(qso, now: nowMillis(), tag: tag);
   spot == null ? spots.removeLocalSpot(key) : spots.putLocalSpot(key, spot);
+  return spot != null;
+}
+
+/// A logging panel's lone `!` (`LoggingSession.onClearLocalSpots`): every
+/// local spot within a signal's width of [at] on its band and family of
+/// modes comes down — tags and stations, those hidden under the newest too,
+/// which taking only that one would bring back.
+void clearLocalSpotsAt(SpotsService spots, Map<String, dynamic> at) {
+  final freq = asSpotNum(at['freq'])?.toDouble();
+  if (freq == null) return;
+  final here = {...at, 'band': asSpotString(at['band']) ?? bandForFrequency(freq)};
+  spots.removeLocalSpotsWhere((spot) => _sameBandAndModes(here, spot) && _withinSignal(here, spot));
 }

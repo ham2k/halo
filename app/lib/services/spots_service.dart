@@ -131,6 +131,16 @@ class SpotsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Takes the local spots [test] picks off the board.
+  void removeLocalSpotsWhere(bool Function(Map<String, dynamic> spot) test) {
+    if (_disposed) return;
+    final before = _local.length;
+    _local.removeWhere((_, spot) => test(spot));
+    if (_local.length == before) return;
+    _rebuildBoard();
+    notifyListeners();
+  }
+
   /// Takes every local spot off the board — the operator turned them off.
   void clearLocalSpots() {
     if (_disposed || _local.isEmpty) return;

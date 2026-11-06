@@ -67,6 +67,47 @@ extension _DraftSpot on _LoggingControlsState {
     onDraftSpot(_spotKey ?? uuidGenerator.v4(), logged.last.data);
   }
 
+  /// Enter on one entry ending in `!` that no command took: the rest of it,
+  /// any text at all, goes on the board as a band tag at the radio's
+  /// frequency — "QRM!", "NET!", "CONTEST!" — and a lone `!` clears the local
+  /// spots there. Either way the call field empties for the next call. A
+  /// stack or a call list is the logging path's: taken whole, the calls
+  /// queued in it would go on the board as one tag and leave the field.
+  ///
+  /// When no spot can be made the text stays and the message slot says why;
+  /// emptied, it would read as done. True when Enter was the tag's, and logs
+  /// nothing.
+  bool _postBandTag() {
+    final text = _callController.text.trim();
+    if (widget.session.editingQso != null || !text.endsWith('!') || text.contains(',') || text.contains('//')) return false;
+    final tag = text.substring(0, text.length - 1).trim();
+    final at = {'freq': _radio.freq, 'band': _radio.band, 'mode': _radio.mode};
+    // A frequency off every band has no band either, and the host makes no
+    // spot of it; asked anyway, its refusal would read as local spots off.
+    if (_radio.freq == null || _radio.band == null) {
+      _command.showError(t.loggingControls.localSpotNeedsFrequency);
+      return true;
+    }
+    if (tag.isEmpty) {
+      widget.session.onClearLocalSpots?.call(at);
+      // The clear may take this entry's own spot down too; remembered as
+      // sent, the same call left again would be deduped and never come back.
+      _lastSpotQso = null;
+    } else if (!_spotsNow) {
+      _command.showError(t.loggingControls.localSpotNeedsLiveTime);
+      return true;
+    } else if (!(widget.session.onDraftSpot?.call(uuidGenerator.v4(), {
+          'their': {'call': tag},
+          ...at,
+        }, tag: true) ??
+        false)) {
+      _command.showError(t.loggingControls.localSpotsOff);
+      return true;
+    }
+    _callController.clear();
+    return true;
+  }
+
   /// Whether the entry's time is now. A spot says who is on the air at the
   /// moment it is posted; a paper log typed in under manual time entry, or a
   /// contact with a start time of its own, would put every station in it on

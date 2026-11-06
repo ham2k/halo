@@ -21,7 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/chase_service.dart';
 import '../../services/hook_payloads.dart';
-import '../../services/local_spots.dart' show localSpotSource;
+import '../../services/local_spots.dart' show isBandTag, localSpotSource;
 import '../../services/radio_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/halo_services.dart';
