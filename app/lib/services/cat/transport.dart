@@ -143,6 +143,22 @@ abstract class EquipmentConnection {
   Future<void> close();
 }
 
+/// A connection whose protocol frames its own messages and carries binary
+/// ones beside the text — a WebSocket, where TCI sends its commands as text
+/// and its IQ as binary frames.
+///
+/// The text goes up [EquipmentConnection.data] like any other connection's
+/// bytes; the binary frames come here, whole, and never through `data`. A
+/// session could not tell an IQ block from a command once both were bytes
+/// in one stream, and the CAT traffic log, which records `data`, would fill
+/// with samples.
+abstract interface class BinaryFramesConnection {
+  /// One event per binary frame. Broadcast: a frame nobody listens for is
+  /// dropped rather than buffered, so an IQ stream left running costs no
+  /// memory here.
+  Stream<Uint8List> get binaryFrames;
+}
+
 /// A connection that also carries the radio's transmit audio — an Icom's
 /// network link, whose audio stream sits beside its CI-V (docs/design/cat.md
 /// § The computer's voice keyer).

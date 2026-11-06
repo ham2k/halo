@@ -3576,6 +3576,69 @@ from the same documents.
 - **None of the three sets power or keys the transmitter.** HRD's power is a per-radio slider,
   N3FJP's API has no power, and Commander's `cwchars` (CW from text) is not wired to the keyer.
 
+### Thetis, for an ANAN
+
+An Apache Labs ANAN has no CAT of its own: the radio speaks OpenHPSDR to Thetis, the Windows program
+that runs it, and Thetis serves CAT for it on a TCP/IP server (port 13013 by default). So the
+catalogue's ANAN entry (`anan-thetis`, under Apache Labs) is a radio on the shared TCP transport
+whose driver speaks Thetis's `ZZ` command set (`thetis_codec.dart`, `thetis_driver.dart`). It is
+**built from the CAT Command Reference Guide that ships with Thetis alone**, with no capture; its
+troubleshooting note says so and asks for a report. It is the entry's second variant: Thetis also
+serves TCI (below), which is offered first.
+
+- **`ZZ`, not the TS-2000 emulation Thetis also answers.** TS-2000's `MD` has no code for DIGU
+  (Thetis reports it as FSK-R), and `ZZMD` names DIGU and DIGL outright, as `DATA-USB` and
+  `DATA-LSB`. Every `ZZ` answer names its command, so nothing is read by its place in a packet
+  and the Kenwood driver's learned `IF` offset has no counterpart here. The shared framer reads
+  `ZZFA…;` as command `ZZ`; the codec splits off the real one.
+- **Polled, never pushed.** `ZZAI1` needs a checkbox in Thetis's Setup, and it would change a
+  setting the operator's other CAT clients on the same server share. A poll asks `ZZFA`, `ZZMD`
+  and `ZZPC`; the TX watch asks `ZZXV`, whose MOX or TUNE bit says the radio is on the air — a
+  tune carrier counts, since nothing may switch an antenna under it.
+- **VFO A only.** The reference says Thetis's VFO A is always the receive VFO, so it is the one
+  read and tuned.
+- **Power is drive.** `ZZPC` is 0–100% of the radio's rated output, which a field holds (100 W
+  unless set), because one entry serves every ANAN: the 10E's 10 W and the 8000DLE's 200 W read
+  through the same command. No meters: `ZZRM` gives no unit for its answers.
+- **CW goes through CWX**: `ZZKY` with the text padded to 24 characters, `ZZSS` to stop at once,
+  `ZZKS` for 1–99 WPM. Paced by arithmetic like the Kenwood `KY`.
+
+### TCI: Thetis and ExpertSDR3
+
+TCI is Expert Electronics' protocol for a program that runs an SDR: ExpertSDR3 serves it for
+SunSDR radios, and Thetis serves it for an ANAN. One driver (`tci_codec.dart`, `tci_driver.dart`)
+serves both catalogue entries: the ANAN's first variant (`anan-thetis-tci`), and the SunSDR's only
+one (`sunsdr-tci`, under Expert Electronics). It is **built from the TCI 2.1 specification alone**
+([ExpertSDR3/TCI](https://github.com/ExpertSDR3/TCI), MIT-licensed), with no capture, and the
+troubleshooting notes say so.
+
+- **A WebSocket, not a byte stream.** `WebSocketTransport` (`transports/websocket_transport*.dart`)
+  puts text frames on `EquipmentConnection.data` and binary frames on a stream of their own
+  (`BinaryFramesConnection`, reached through `BinaryFramesSink`). IQ on `data` would reach the
+  command parser and fill the CAT traffic log. The binary stream is broadcast, so a frame nobody
+  listens for is dropped rather than buffered. Plain `ws://` at the root path: the spec names no
+  path, and both servers listen unencrypted. Both default to port 50001 (ExpertSDR2 used 40001).
+  The ANAN's TCI variant keeps it under `tciPort`, because its CAT variant's `port` is 13013 and
+  the editor shows one field per key.
+- **Pushed.** The server sends its state on connect and every change after, to every client. The
+  session also reads the VFO, mode, drive, TRX, TUNE, macro speed and `DDS` once on connect, for
+  a server that sends less. A quiet server says nothing, so the session reads the VFO every 10 s
+  to stay inside `catStaleAfter`.
+- **Receiver 0, channel 0.** A `VFO`, `MODULATION`, `TRX` or sensor reading for another receiver
+  or channel is another node's, and is ignored.
+- **Modes in the server's spelling.** ExpertSDR3 has one `CW` and calls FM `NFM`. Thetis is
+  assumed to have `CWL`/`CWU`, as its `ZZMD` does. A set picks whichever spelling the server's
+  `MODULATIONS_LIST` offers. CW-R is read but not offered as settable, since ExpertSDR3 has no
+  reverse CW.
+- **Power is drive**, 0–100% of a rated-output field (`rated_power_config.dart`, shared with the
+  Thetis CAT driver). `TRX` or `TUNE` means on the air, and `TUNE` is also reported as a tune
+  carrier. `RX_SENSORS` gives the signal in dBm. `TX_SENSORS` gives power out and SWR, read only
+  while on the air.
+- **CW goes as `CW_MACROS`**, whole, since the server queues macros itself. The queue only
+  estimates when it is done, for progress. A comma is sent as `~`, as the spec asks.
+  `CW_MACROS_STOP` stops at once. The speed is `CW_MACROS_SPEED` (1–60), not the paddle's
+  `CW_KEYER_SPEED`.
+
 ## CAT server
 
 The other direction: HaLo as the thing other programs connect to. Ham Radio Deluxe, flrig, rigctld
@@ -3834,6 +3897,22 @@ Mirroring shows the operator's own panadapter, which is what a logger beside
 SmartSDR or AetherSDR wants. A slice no client owns — HaLo alone on the radio
 — would instead need HaLo to be the GUI client: its own multiFLEX station,
 pan and slice, with the radio's FFT. That session mode does not exist yet.
+
+### TCI: computed from the IQ stream
+
+TCI defines no spectrum of its own, but it streams the receiver's IQ as binary frames on the same
+WebSocket. `tci_spectrum.dart` asks for it with `IQ_SAMPLERATE` and `IQ_START:0`, and computes the
+sweeps with `spectrum_fft.dart`, as the Flex does.
+
+- **The rate is this client's own** (48, 96, 192 or 384 kHz), so the scope is `autoSpan`. The
+  frames' own header says the rate, and that is what is used when the server refused the one
+  asked for.
+- **The spec does not say where the IQ is centred.** This takes it to be the receiver's `DDS`,
+  the centre the spec gives a receiver. A `centerHz` request sets `DDS`, which moves the server's
+  own panadapter too, and nothing is placed until the server answers with the `DDS` it took.
+- **The edge trim is the Flex's sixteenth, not measured on any TCI server.**
+- **A server that sends no IQ is said to.** Five seconds without a frame reports that. Thetis
+  streams IQ over TCI from 2.10.3.13 on.
 
 ## SDR receivers
 

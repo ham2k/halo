@@ -8,6 +8,8 @@ upcoming:
   changes:
     - "New: calls you enter and contacts you log go on your Spots list"
     - "Cut-off status bar messages open in full when tapped"
+    - "Added Apache Labs ANAN (Thetis) to the radio list"
+    - "Added Expert Electronics SunSDR (ExpertSDR3) to the radio list"
 
 "190":
   changes:

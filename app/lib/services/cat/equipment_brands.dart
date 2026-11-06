@@ -35,6 +35,12 @@ const lab599Brand = 'Lab599';
 /// Not featured either; spelled once for the same reason.
 const tenTecBrand = 'Ten-Tec';
 
+/// Not featured either; spelled once for the same reason.
+const apacheLabsBrand = 'Apache Labs';
+
+/// Not featured either; spelled once for the same reason.
+const expertElectronicsBrand = 'Expert Electronics';
+
 /// The models that are not a radio but a way to reach one: a program on the
 /// same machine that owns the rig's port and answers for it. Keyed by
 /// [EquipmentModel.key], because these name a protocol or a program rather

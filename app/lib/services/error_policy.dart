@@ -18,7 +18,7 @@
 // docs/design/error-reporting.md is the overview.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show FileSystemException, IOException, SocketException;
+import 'dart:io' show FileSystemException, HttpException, IOException, SocketException, WebSocketException;
 
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
@@ -937,10 +937,15 @@ class ErrorPolicy {
   static bool _isKeychainCannotEnumerate(Object error, FlutterErrorDetails? details) =>
       error is PlatformException && error.code == _keychainFailureCode && error.details is int && error.details == _errSecParam;
 
+  /// `HttpException` and `WebSocketException` are a TCI dial reaching
+  /// something that answers but is not a TCI server — the CAT port typed
+  /// into the TCI field, or a server that closes mid-handshake. Not the
+  /// whole of `IOException`, which takes in file errors too: those are not a
+  /// radio being away.
   static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
     if (error is! CatConnectFailure) return false;
     final cause = error.cause;
-    return cause is SocketException || cause is TimeoutException || cause is CatUnreachable;
+    return cause is SocketException || cause is HttpException || cause is WebSocketException || cause is TimeoutException || cause is CatUnreachable;
   }
 
   /// `IOException` rather than the two shapes a refusal usually takes: a

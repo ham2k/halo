@@ -321,6 +321,14 @@ abstract class TransmitAudioSink {
   TransmitAudioConnection? get transmitAudio;
 }
 
+/// Where a session whose connection carries binary frames
+/// ([BinaryFramesConnection]) reaches them — a sink of its own, as
+/// [TunerSink] is.
+abstract class BinaryFramesSink {
+  /// Null on a connection that carries none.
+  Stream<Uint8List>? get binaryFrames;
+}
+
 /// Where a session that reads the radio's own antenna ports reports them — a
 /// sink of its own, as [TunerSink] is.
 abstract class RadioAntennaSink {

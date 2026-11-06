@@ -1,9 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The radios that belong to no protocol family: FlexRadio's SmartSDR API, the
-// Guohetec Q900's own protocol, a KX2/KX3 behind a SOTAcat, and the
-// placeholder that stands in for a radio with no CAT at all.
+// The radios that belong to no protocol family: FlexRadio's SmartSDR API, an
+// ANAN through Thetis, a SunSDR through ExpertSDR3, the Guohetec Q900's own
+// protocol, a KX2/KX3 behind a SOTAcat, and the placeholder that stands in
+// for a radio with no CAT at all.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -12,6 +13,8 @@ import 'drivers/flex_discovery.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/guohetec_driver.dart';
 import 'drivers/rigctld_driver.dart';
+import 'drivers/tci_driver.dart';
+import 'drivers/thetis_driver.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'equipment.dart';
@@ -22,8 +25,16 @@ import 'transports/mdns.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
+import 'transports/websocket_transport.dart';
 
 const _flexRadioTcpKey = 'flexradio-tcp';
+const _ananThetisTciKey = 'anan-thetis-tci';
+const _ananThetisTcpKey = 'anan-thetis-tcp';
+const _sunSdrTciKey = 'sunsdr-tci';
+
+/// Where the ANAN's TCI variant keeps its port: its CAT variant's `port` is
+/// 13013, and the editor shows one field per key across a model's variants.
+const tciPortConfigKey = 'tciPort';
 const _q900SerialKey = 'q900-serial';
 const _q900BluetoothKey = 'q900-bluetooth';
 const _placeholderRadioKey = 'placeholder-radio';
@@ -52,6 +63,104 @@ const flexRadioModel = EquipmentModel(
 );
 
 String _flexRadioName() => t.settings.station.models.flexRadio;
+
+/// An Apache Labs ANAN, through the Thetis program that runs it: the radio
+/// has no CAT of its own, and Thetis answers for it — over TCI ([TciDriver]),
+/// or over its TCP/IP CAT server ([ThetisDriver]). Any radio Thetis runs
+/// answers the same way, which is why the rated output is a field rather
+/// than a per-model entry.
+///
+/// TCI first: it pushes every change, reads the meters, and carries the IQ
+/// the band scope is computed from. The CAT server stays for a Thetis older
+/// than its TCI, and for an operator whose other programs already use it.
+///
+/// No discoverer: Thetis announces nothing. The default host is the same
+/// machine, where Thetis usually runs beside the logger.
+///
+/// Written from Thetis's published CAT reference and the TCI spec, and run
+/// against no radio.
+const ananThetisModel = EquipmentModel(
+  key: 'anan-thetis',
+  manufacturer: apacheLabsBrand,
+  category: kCategoryTransceiver,
+  name: _ananThetisName,
+  variants: [
+    EquipmentVariant(
+      key: _ananThetisTciKey,
+      driver: TciDriver(),
+      transport: WebSocketTransport(portConfigKey: tciPortConfigKey),
+      defaultConfig: {'host': '127.0.0.1', tciPortConfigKey: TciDriver.defaultPort},
+      notes: _thetisTciNotes,
+    ),
+    EquipmentVariant(
+      key: _ananThetisTcpKey,
+      driver: ThetisDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'host': '127.0.0.1', 'port': ThetisDriver.defaultPort},
+      notes: _thetisNotes,
+    ),
+  ],
+);
+
+String _ananThetisName() => t.settings.station.models.ananThetis;
+
+/// An Expert Electronics SunSDR, through ExpertSDR3, which serves TCI for
+/// every radio it runs — the protocol is Expert Electronics' own. Rated
+/// output is a field for the same reason it is on the ANAN.
+///
+/// Written from the TCI spec and run against no radio.
+const sunSdrModel = EquipmentModel(
+  key: 'sunsdr',
+  manufacturer: expertElectronicsBrand,
+  category: kCategoryTransceiver,
+  name: _sunSdrName,
+  variants: [
+    EquipmentVariant(
+      key: _sunSdrTciKey,
+      driver: TciDriver(),
+      transport: WebSocketTransport(),
+      defaultConfig: {'host': '127.0.0.1', 'port': TciDriver.defaultPort},
+      notes: _expertSdrTciNotes,
+    ),
+  ],
+);
+
+String _sunSdrName() => t.settings.station.models.sunSdr;
+
+List<Map<String, dynamic>> _thetisTciNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.tciTroubleshootingTitle}**\n\n'
+        '${t.settings.station.thetisTciTroubleshooting}\n\n'
+        '${t.settings.station.tciTroubleshooting}',
+  },
+];
+
+List<Map<String, dynamic>> _expertSdrTciNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.tciTroubleshootingTitle}**\n\n'
+        '${t.settings.station.expertSdrTciTroubleshooting}\n\n'
+        '${t.settings.station.tciTroubleshooting}',
+  },
+];
+
+List<Map<String, dynamic>> _thetisNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.thetisTroubleshootingTitle}**\n\n'
+        '${t.settings.station.thetisTroubleshooting}',
+  },
+];
 
 /// An Elecraft KX2 or KX3 behind a SOTAcat, the ESP32 module on its ACC
 /// port that serves the radio's CAT as a rigctld-compatible TCP server.

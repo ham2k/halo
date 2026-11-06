@@ -237,6 +237,9 @@ void main() {
   test('the shipped variant keys are exactly these', () {
     expect(registry.types.map((t) => t.key).toSet(), {
       'flexradio-tcp',
+      'anan-thetis-tci',
+      'anan-thetis-tcp',
+      'sunsdr-tci',
       'ft891-serial',
       'ft991a-serial',
       'ft710-serial',
@@ -329,6 +332,8 @@ void main() {
       // Derived from the model's key, one per real transceiver — stored like
       // any other, so renaming a model's key orphans its placeholder nodes.
       'flexradio-placeholder',
+      'anan-thetis-placeholder',
+      'sunsdr-placeholder',
       'ft891-placeholder',
       'ft991a-placeholder',
       'ft710-placeholder',
@@ -886,7 +891,8 @@ void main() {
     // The Winkeyer pushes too: status, echo and pot reports, as they happen.
     // An SDR streams continuously and has no dial of its own to settle.
     // An OTRSP box pushes its RX events, a front-panel switch included.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'sdr-usb', 'otrsp'};
+    // A TCI server sends every change to every client.
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp', 'spyserver', 'sdr-usb', 'otrsp', 'tci'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.
@@ -913,6 +919,19 @@ void main() {
         }
       });
     }
+  });
+
+  test('every pairing that connects names a transport the registry can dial', () {
+    // CatConnection dials through the registry's own transport map, not the
+    // variant's instance: a transport missing there reads as "Unknown
+    // equipment type" on every connect, and nothing else in the catalogue
+    // notices.
+    final registry = EquipmentRegistry();
+    final undialable = [
+      for (final type in registry.types)
+        if (type.transportKey != NoneTransport.transportKey && registry.transportFor(type.transportKey) == null) type.key,
+    ];
+    expect(undialable, isEmpty);
   });
 }
 

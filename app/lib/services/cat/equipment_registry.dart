@@ -52,6 +52,7 @@ import 'transports/sdr_usb_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
 import 'transports/udp_transport.dart';
+import 'transports/websocket_transport.dart';
 import 'transports/k4_remote_transport.dart';
 
 export 'equipment_models_accessories.dart';
@@ -478,6 +479,7 @@ String? transportLabelFor(String transportKey) {
   final labels = t.settings.station.transports;
   return switch (transportKey) {
     TcpTransport.transportKey || UdpTransport.transportKey => labels.network,
+    WebSocketTransport.transportKey => labels.tci,
     K4RemoteTransport.transportKey => labels.secureNetwork,
     SerialTransport.transportKey => labels.usbSerial,
     SdrUsbTransport.transportKey => labels.usb,
@@ -504,7 +506,11 @@ String? transportLabelFor(String transportKey) {
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
   SerialTransport.transportKey || SdrUsbTransport.transportKey => 'usb-port',
   BluetoothSerialTransport.transportKey || BleSerialTransport.transportKey => 'bluetooth',
-  TcpTransport.transportKey || UdpTransport.transportKey || IcomNetworkTransport.transportKey || K4RemoteTransport.transportKey => 'wifi',
+  TcpTransport.transportKey ||
+  UdpTransport.transportKey ||
+  IcomNetworkTransport.transportKey ||
+  K4RemoteTransport.transportKey ||
+  WebSocketTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
   // allows for, because what this transport connects to is nothing.
   PlaceholderTransport.transportKey => 'flask-outline',
@@ -518,6 +524,8 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
 /// already merges Dart settings groups with extension-contributed panels.
 const _defaultModels = [
   flexRadioModel,
+  ananThetisModel,
+  sunSdrModel,
   ft891Model,
   ft991aModel,
   ft710Model,
@@ -616,6 +624,7 @@ class EquipmentRegistry {
             IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
             SdrUsbTransport.transportKey: const SdrUsbTransport(),
+            WebSocketTransport.transportKey: const WebSocketTransport(),
           };
 
   /// Every config key that is a credential for ANY pairing in the catalogue.

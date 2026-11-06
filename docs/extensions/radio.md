@@ -203,7 +203,7 @@ once each has come or the window closes:
 | flrig | `text`: one XML-RPC call, which the app posts | the response's body |
 
 Every other radio's commands (Kenwood, Elecraft, Yaesu ASCII, rigctld,
-N3FJP, Guohetec) are written as given, several back to back
+N3FJP, Guohetec, Thetis, TCI) are written as given, several back to back
 (`FA00014074000;MD2;`) in one write with none of the app's own between them,
 since each of their answers names what it answers. The reply there is
 everything the connection received in the window, the answers to the app's

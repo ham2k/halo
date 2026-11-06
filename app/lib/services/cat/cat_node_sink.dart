@@ -17,6 +17,7 @@ class _NodeSink
         RadioAntennaSink,
         RotatorSink,
         TransmitAudioSink,
+        BinaryFramesSink,
         So2rSwitchSink {
   final EquipmentConnection connection;
   final double? Function() linkedVfo;
@@ -83,6 +84,12 @@ class _NodeSink
   @override
   TransmitAudioConnection? get transmitAudio => switch (connection) {
     final TransmitAudioConnection audio when audio.carriesTransmitAudio => audio,
+    _ => null,
+  };
+
+  @override
+  Stream<Uint8List>? get binaryFrames => switch (connection) {
+    final BinaryFramesConnection frames => frames.binaryFrames,
     _ => null,
   };
 

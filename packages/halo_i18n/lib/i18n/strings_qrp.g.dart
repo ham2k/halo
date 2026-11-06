@@ -2818,6 +2818,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spectrumNoPanadapter => 'this slice has no panadapter on the radio';
 	@override String spectrumStreamRefused({required Object code}) => 'the radio refused a dax iq stream (error ${code})';
 	@override String get spectrumNoUdp => 'the radio\'s spectrum data cannot reach this device';
+	@override String get spectrumTciNoIq => 'no iq is coming from the tci server. thetis sends it from version 2.10.3.13 on.';
 	@override String get spectrumK4Unavailable => 'cannot receive the k4’s lan spectrum. retrying…';
 	@override String get spectrumK4RemoteUnavailable => 'cannot receive the k4’s remote spectrum';
 	@override String get spectrumScopeRefused => 'the radio refused its scope commands';
@@ -2907,6 +2908,12 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get tenTecKeyerOff => 'the radio\'s internal keyer is off, so it ignores cw sent from the app. turn the keyer on in the radio\'s menu.';
 	@override String get guohetecTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get guohetecTroubleshooting => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.';
+	@override String get thetisTroubleshootingTitle => 'if the radio does not connect, or connects but does not follow';
+	@override String get thetisTroubleshooting => 'this connects to **thetis**, the program that runs the radio, not to the radio itself: an anan has no cat of its own.\n\n- **thetis\'s cat server must be running.** in thetis, setup → serial/network/midi cat → network, check **server running**. it is not the tci server, which is a different thing.\n- **port** is 13013 unless you changed it there.\n- **from another computer**, thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **rated power** is what full drive puts out: 100 w on most anans, 200 w on the 8000dle, 10 w on the 10e. the app sets power as a share of it.\n- **cw messages go out through thetis\'s cwx keyer.** if one does not, open the cwx window in thetis and try again.\n\nthis entry was written from thetis\'s published cat reference and has not been run against a radio. if it half-works, that is worth reporting.';
+	@override String get tciTroubleshootingTitle => 'if the radio does not connect, or connects but does not follow';
+	@override String get thetisTciTroubleshooting => 'this connects to **thetis**, the program that runs the radio, over **tci**, not to the radio itself: an anan has no cat of its own. thetis\'s **tci server** must be running; it is set up in thetis\'s setup, apart from its tcp/ip cat server. the band scope needs thetis 2.10.3.13 or later.';
+	@override String get expertSdrTciTroubleshooting => 'this connects to **expertsdr3**, the program that runs the radio, over **tci**. expertsdr3\'s **tci server** must be turned on in its settings.';
+	@override String get tciTroubleshooting => '- **port** is 50001 unless you changed it there. expertsdr2 used 40001.\n- **from another computer**, the server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **rated power** is what full drive puts out. the app sets power as a share of it.\n\nthis entry was written from the tci specification and has not been run against a radio. if it half-works, that is worth reporting.';
 	@override String get yaesuTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get yaesuTroubleshooting => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative. where that setting lives differs by model (menu **05-08** on an ft-891).\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **modes follow the ft-891\'s table.** most of the yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. the frequency is unaffected.';
 	@override String get ftdx3000Troubleshooting => '**menu 037 cat select must be usb** for cat over the radio\'s usb port; set to rs232c, cat is on the jack on the back.\n\nthis entry was written from published cat documentation and has not been run against an ftdx3000. if it half-works, that is worth reporting.';
@@ -3075,6 +3082,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get pollInterval => 'idle polling interval (ms)';
 	@override String pollIntervalDescription({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.';
 	@override String pollIntervalInvalid({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}';
+	@override String get ratedPower => 'rated power (w)';
+	@override String get ratedPowerDescription => 'what this radio puts out at full drive. its sdr program sets power as a share of it. leave blank for 100 w.';
+	@override String ratedPowerInvalid({required Object max}) => 'a whole number of watts, 1 to ${max}';
 	@override String get advancedSettings => 'advanced settings';
 	@override String get placeholderSwr => 'swr reading';
 	@override String get placeholderSwrDescription => 'what this radio reports on its swr meter while transmitting. above 1.8 the panel warns.';
@@ -4537,6 +4547,8 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 
 	// Translations
 	@override String get flexRadio => 'flexradio (smartsdr)';
+	@override String get ananThetis => 'apache labs anan (thetis)';
+	@override String get sunSdr => 'expert electronics sunsdr (expertsdr3)';
 	@override String get ft891 => 'yaesu ft-891';
 	@override String get ft991a => 'yaesu ft-991/a';
 	@override String get ft710 => 'yaesu ft-710';
@@ -4624,6 +4636,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 
 	// Translations
 	@override String get network => 'network/wifi';
+	@override String get tci => 'tci';
 	@override String get secureNetwork => 'secure network/wifi';
 	@override String get usbSerial => 'usb serial';
 	@override String get wifi => 'network/wifi';
@@ -6707,6 +6720,7 @@ extension on TranslationsQrp {
 			'settings.station.spectrumNoPanadapter' => 'this slice has no panadapter on the radio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'the radio refused a dax iq stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'the radio\'s spectrum data cannot reach this device',
+			'settings.station.spectrumTciNoIq' => 'no iq is coming from the tci server. thetis sends it from version 2.10.3.13 on.',
 			'settings.station.spectrumK4Unavailable' => 'cannot receive the k4’s lan spectrum. retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'cannot receive the k4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
@@ -6784,6 +6798,8 @@ extension on TranslationsQrp {
 			'settings.station.connectFailedReplyPort' => ({required Object port}) => 'port ${port} on this device is already in use, and the answers arrive there. close whatever else listens on it — another pstrotator node included — or change the port.',
 			'settings.station.connectFailedTimeout' => 'the radio didn\'t respond in time. check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'flexradio (smartsdr)',
+			'settings.station.models.ananThetis' => 'apache labs anan (thetis)',
+			'settings.station.models.sunSdr' => 'expert electronics sunsdr (expertsdr3)',
 			'settings.station.models.ft891' => 'yaesu ft-891',
 			'settings.station.models.ft991a' => 'yaesu ft-991/a',
 			'settings.station.models.ft710' => 'yaesu ft-710',
@@ -6862,6 +6878,7 @@ extension on TranslationsQrp {
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
 			'settings.station.transports.network' => 'network/wifi',
+			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
 			'settings.station.transports.wifi' => 'network/wifi',
@@ -6880,6 +6897,12 @@ extension on TranslationsQrp {
 			'settings.station.tenTecKeyerOff' => 'the radio\'s internal keyer is off, so it ignores cw sent from the app. turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.',
+			'settings.station.thetisTroubleshootingTitle' => 'if the radio does not connect, or connects but does not follow',
+			'settings.station.thetisTroubleshooting' => 'this connects to **thetis**, the program that runs the radio, not to the radio itself: an anan has no cat of its own.\n\n- **thetis\'s cat server must be running.** in thetis, setup → serial/network/midi cat → network, check **server running**. it is not the tci server, which is a different thing.\n- **port** is 13013 unless you changed it there.\n- **from another computer**, thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **rated power** is what full drive puts out: 100 w on most anans, 200 w on the 8000dle, 10 w on the 10e. the app sets power as a share of it.\n- **cw messages go out through thetis\'s cwx keyer.** if one does not, open the cwx window in thetis and try again.\n\nthis entry was written from thetis\'s published cat reference and has not been run against a radio. if it half-works, that is worth reporting.',
+			'settings.station.tciTroubleshootingTitle' => 'if the radio does not connect, or connects but does not follow',
+			'settings.station.thetisTciTroubleshooting' => 'this connects to **thetis**, the program that runs the radio, over **tci**, not to the radio itself: an anan has no cat of its own. thetis\'s **tci server** must be running; it is set up in thetis\'s setup, apart from its tcp/ip cat server. the band scope needs thetis 2.10.3.13 or later.',
+			'settings.station.expertSdrTciTroubleshooting' => 'this connects to **expertsdr3**, the program that runs the radio, over **tci**. expertsdr3\'s **tci server** must be turned on in its settings.',
+			'settings.station.tciTroubleshooting' => '- **port** is 50001 unless you changed it there. expertsdr2 used 40001.\n- **from another computer**, the server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **rated power** is what full drive puts out. the app sets power as a share of it.\n\nthis entry was written from the tci specification and has not been run against a radio. if it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative. where that setting lives differs by model (menu **05-08** on an ft-891).\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **modes follow the ft-891\'s table.** most of the yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. the frequency is unaffected.',
 			'settings.station.ftdx3000Troubleshooting' => '**menu 037 cat select must be usb** for cat over the radio\'s usb port; set to rs232c, cat is on the jack on the back.\n\nthis entry was written from published cat documentation and has not been run against an ftdx3000. if it half-works, that is worth reporting.',
@@ -6897,6 +6920,8 @@ extension on TranslationsQrp {
 			'settings.station.k4SubReceiverOff' => 'the k4 sub receiver is off',
 			'settings.station.k4RemotePasswordRequired' => 'enter the k4’s network password to connect securely.',
 			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4RemoteUnreachable' => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'if the radio connects but shows no frequency',
@@ -6907,8 +6932,6 @@ extension on TranslationsQrp {
 			'settings.station.kenwoodTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'this driver is proven against kenwood\'s ts-590sg and ts-480, qrp labs\' qmx and qcx-mini, and elecraft\'s kx2 and kx3. the rest of the line is written from published cat references, so please report what happens either way.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the radio\'s cat menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **some rigs need cat enabled** in the menu before they respond at all.\n- **kenwood radios wait for rts**: their cat port uses it as a handshake, so hold rts high (under advanced settings) must be on. a connection set up before it was on by default may have it off. on a digirig or another cable that keys ptt from rts, turn it off, or the radio transmits.\n\n**several sdr front-ends speak this same protocol**, so this entry is worth trying for those too; elecraft rigs are listed separately, under elecraft. if the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusLost' => 'disconnected',
 			'settings.station.notConfigured' => 'not configured',
 			'settings.station.currentConfiguration' => 'current configuration',
@@ -7118,6 +7141,9 @@ extension on TranslationsQrp {
 			'settings.station.pollInterval' => 'idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'how often to ask the radio for its frequency and mode while neither is changing. leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'a whole number of milliseconds, ${min} to ${max}',
+			'settings.station.ratedPower' => 'rated power (w)',
+			'settings.station.ratedPowerDescription' => 'what this radio puts out at full drive. its sdr program sets power as a share of it. leave blank for 100 w.',
+			'settings.station.ratedPowerInvalid' => ({required Object max}) => 'a whole number of watts, 1 to ${max}',
 			'settings.station.advancedSettings' => 'advanced settings',
 			'settings.station.placeholderSwr' => 'swr reading',
 			'settings.station.placeholderSwrDescription' => 'what this radio reports on its swr meter while transmitting. above 1.8 the panel warns.',
@@ -7408,6 +7434,8 @@ extension on TranslationsQrp {
 			'sets.exported' => ({required Object location}) => 'saved to ${location}',
 			'sets.exportedNamed' => ({required Object names}) => 'saved ${names}',
 			'sets.exportFailed' => ({required Object error}) => 'could not export: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'sets.importPickerFailed' => ({required Object error}) => 'could not open the file: ${error}',
 			'sets.importFailed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
 			'sets.imported' => ({required Object name}) => 'imported ${name}',
@@ -7421,8 +7449,6 @@ extension on TranslationsQrp {
 			'keyboardShortcuts.search' => 'search commands and keys',
 			'keyboardShortcuts.sets.label' => 'shortcut set',
 			'keyboardShortcuts.sets.title' => 'keyboard shortcut sets',
-			_ => null,
-		} ?? switch (path) {
 			'keyboardShortcuts.sets.manage' => 'manage shortcut sets…',
 			'keyboardShortcuts.sets.appDefaults' => 'app defaults',
 			'keyboardShortcuts.sets.carriedName' => 'my shortcuts',

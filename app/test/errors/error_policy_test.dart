@@ -494,6 +494,19 @@ void main() {
       expect(dispositionFor(const CatConnectFailure('pstrotator-udp', UdpReplyPortTaken(12001))), ErrorDisposition.logOnly);
     });
 
+    test('a TCI dial that reaches something other than a TCI server is console-only', () {
+      // The CAT port typed into the TCI field answers TCP and then not the
+      // upgrade: the retry loop would otherwise report it every attempt.
+      expect(
+        dispositionFor(const CatConnectFailure('anan-thetis-tci', HttpException('Connection closed before full header was received'))),
+        ErrorDisposition.logOnly,
+      );
+      expect(
+        dispositionFor(const CatConnectFailure('sunsdr-tci', WebSocketException('Connection to ws://127.0.0.1:50001/ was not upgraded to websocket'))),
+        ErrorDisposition.logOnly,
+      );
+    });
+
     test('a bug raised inside a connect attempt is still loud', () {
       // The reason the cause is inspected at all rather than the rule
       // matching every failed connect: our own code runs inside that try —
