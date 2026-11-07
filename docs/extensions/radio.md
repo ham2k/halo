@@ -37,7 +37,9 @@ radio a logging set works: `A` the logging radio, `B` SO2R's Radio B, whose
 answer has every field empty while there is none. Omitted, the logging radio.
 
 - `frequency` (Hz), `mode`, the connection state, `power`, the transmit
-  state.
+  state. While the radio is live, the frequency is where the app has it: a
+  tune set through the app shows there from the moment it is accepted,
+  ahead of the radio's report of it.
 - `meters`: `signalDbm`, `powerOut`, `swr`, `alc` and `supplyVolts`, each
   only while its driver has a fresh reading. `signalDbm` is receive power in
   whole dBm, refreshed a few times a second, expiring two seconds after the
@@ -84,6 +86,12 @@ Extension API 19 adds:
   keyed is `run`; leaving the run frequency, or picking a spot, is `normal`;
   coming back to it within three minutes is `run` again. The `RUN` and
   `SNP` commands set it outright.
+- `reportedFrequencyHz`: the frequency the radio itself last reported.
+  It trails `frequencyHz` after a tune until the radio reports it there.
+  If the radio reports something else and keeps to it past a hold, about
+  one and a half seconds and longer on a radio slow to answer, that report
+  becomes `frequencyHz` too: a radio that refused or rounded the tune is
+  where it says.
 
 Logical receivers keep separate `id`s. When several share a physical radio
 the answer may also carry `deviceId`, an opaque string shared by those
@@ -135,7 +143,8 @@ disconnected or stale radio (`disconnected`), a transmission in progress
 (`invalid`); a setting this radio cannot take (a tuner, passband or antenna
 its readout has as `null`, a keyer speed without `keying.canKeyCw`) answers
 `unsupported`. An accepted result means **requested, not confirmed**; only
-the state the radio reports afterwards confirms it. Drivers keep their own
+the state the radio reports afterwards confirms it, as `reportedFrequencyHz`
+(API 19) does for a tune. Drivers keep their own
 protocol and echo handling.
 
 **Pacing.** Accepted requests are spaced at least 250 ms apart, since a

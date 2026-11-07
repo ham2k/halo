@@ -31,6 +31,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 12 | up to 512 layers and 256 controls, `icon` layers, `scroll` and the `zoom` strip, `hoverSet`, `tapAt`, `scrollThrough`, `invertDrag`, the band scope's `rising` and `autoSpan` |
 | 13 | the radio's dial in the values (`radio.frequencyHz` and the rest marked so below), `radio.mode`, `radio.tuner` and `radio.status` in `strings`, and `when` on layers and controls |
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
+| 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -612,7 +613,8 @@ reserved: a scene may not declare them, and nothing may set them.
 | `radio.transmitting` | 1 or 0, the radio's own report |
 | `radio.swrAverage` | SWR averaged over the transmission under way, else the last one; only readings taken with RF out count |
 | `radio.secondsSinceTransmit` | 0 while transmitting, then counting up; very large when there has been none |
-| `radio.frequencyHz` | The frequency, in Hz, last reported; kept while disconnected, as the app's own Radio panel keeps it. API 13 |
+| `radio.frequencyHz` | The frequency, in Hz, where the app has the radio: a tune set through the app from the moment it is accepted, ahead of the radio's report of it; the last reported, kept while disconnected, as the app's own Radio panel keeps it. API 13 |
+| `radio.reportedFrequencyHz` | The frequency, in Hz, the radio itself last reported, as `readRadio()` gives it. API 19 |
 | `radio.passbandLowHz`, `radio.passbandHighHz`, `radio.passbandWidthHz` | The receive passband's edges relative to the carrier, and its width. API 13 |
 | `radio.powerWatts` | The power the radio is **set** to; `powerOut` is what it measures. API 13 |
 | `radio.ptt` | 1 while the app holds the radio's PTT, given where `readRadio()` gives `keying`: the logging radio, connected, on a host with keying enabled. `radio.transmitting` is the radio's own report, and the two differ: a radio keyed from its own microphone is transmitting with no PTT held. API 13 |

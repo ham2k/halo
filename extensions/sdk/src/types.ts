@@ -3587,7 +3587,13 @@ export interface PanelRadioState {
   status: "disconnected" | "connecting" | "connected" | "disconnecting" | "error"
   stale: boolean
   problem: string | null
+  /**
+   * Where the app has the radio: a tune set through the app from the moment it is accepted, ahead
+   * of the radio's report of it, while the radio is live; otherwise the last it reported.
+   */
   frequencyHz: number | null
+  /** The frequency the radio itself last reported (extension API 19). */
+  reportedFrequencyHz?: number | null
   mode: string | null
   powerWatts: number | null
   transmitting: boolean | null

@@ -226,10 +226,10 @@ class _RadioPanelState extends State<RadioPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // CatService alone: every reading, the node list and the designation come
-    // from it, and nothing else on this pane is read from a setting.
+    // CatService alone, and the VFO it shows the frequency from: every reading, the node list and
+    // the designation come from it, and nothing else on this pane is read from a setting.
     return ListenableBuilder(
-      listenable: _cat,
+      listenable: Listenable.merge([_cat, _cat.vfoChanges]),
       builder: (context, _) {
         final node = _selectedNode();
         final state = node == null ? const EquipmentState() : _cat.stateFor(node.uuid);
@@ -245,6 +245,7 @@ class _RadioPanelState extends State<RadioPanel> {
           child: RadioReadout(
             node: node,
             state: state,
+            freqKHz: node == null ? null : _cat.vfoFreqKHzFor(node.uuid),
             live: live,
             unconfigured: node != null && (_cat.typeFor(node)?.isUnconfigured(node.config) ?? false),
             style: _style,
@@ -324,6 +325,10 @@ class RadioReadout extends StatelessWidget {
   final RadioPalette palette;
   final num? power;
 
+  /// The frequency shown: the app's, a tune ahead of the radio's report of it
+  /// ([CatService.vfoFreqKHzFor]); null, the report in [state].
+  final double? freqKHz;
+
   /// Which meters this radio's driver can read — [EquipmentDriver.telemetryMeters],
   /// not what has arrived. Empty hides the strip entirely.
   final Set<RadioMeter> meters;
@@ -338,6 +343,7 @@ class RadioReadout extends StatelessWidget {
     super.key,
     required this.node,
     required this.state,
+    this.freqKHz,
     required this.live,
     this.unconfigured = false,
     required this.style,
@@ -363,7 +369,7 @@ class RadioReadout extends StatelessWidget {
       );
     }
 
-    final freq = state.vfo.freqKHz;
+    final freq = freqKHz ?? state.vfo.freqKHz;
     final mode = state.vfo.mode;
     // A connect that failed has a REASON, already translated by CatService
     // into something an operator can act on ("port in use", "no such

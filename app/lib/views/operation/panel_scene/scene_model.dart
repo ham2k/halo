@@ -20,8 +20,10 @@ part 'scene_model_spectrum_trace.dart';
 /// `radio.secondsSinceTransmit` is 0 while transmitting, then counts up — a long time when there
 /// has been none, so a hold bound to it is over rather than pending.
 ///
-/// The dial follows `readRadio`: `radio.frequencyHz` is the last frequency reported, connected or
-/// not, so a readout holds it as the built-in Radio panel does; the passband and the power setting
+/// The dial follows `readRadio`: `radio.frequencyHz` is where the app has the radio, a tune ahead
+/// of the radio's report while it is live and the last frequency reported otherwise, so a readout
+/// holds it as the built-in Radio panel does; `radio.reportedFrequencyHz` the radio's own last
+/// report. The passband and the power setting
 /// only while it is live, which `radio.connected` says as 1 or 0. `radio.ptt` (the app holding the
 /// radio's PTT, 1 or 0) only where `readRadio` gives `keying`.
 const sceneRadioValues = {
@@ -34,6 +36,7 @@ const sceneRadioValues = {
   'radio.swrAverage',
   'radio.secondsSinceTransmit',
   'radio.frequencyHz',
+  'radio.reportedFrequencyHz',
   'radio.passbandLowHz',
   'radio.passbandHighHz',
   'radio.passbandWidthHz',

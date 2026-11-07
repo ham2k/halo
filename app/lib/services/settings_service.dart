@@ -1025,7 +1025,9 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// One setting for the VFO the app is driving, not one per radio: the
   /// operator has one pair of ears and one preference about where voice
   /// contacts sit.
-  bool get smartVfoSnap => (settingValue(radioGroup, 'smartVfoSnap') as bool?) ?? false;
+  ///
+  /// Behind the private `snap` experiment: with it off, a stored `true` reads false.
+  bool get smartVfoSnap => experimentEnabled('snap') /* stored key, see experiments.yaml */ && ((settingValue(radioGroup, 'smartVfoSnap') as bool?) ?? false);
 
   Future<void> setSmartVfoSnap(bool value) => setSettingValue(radioGroup, 'smartVfoSnap', value);
 

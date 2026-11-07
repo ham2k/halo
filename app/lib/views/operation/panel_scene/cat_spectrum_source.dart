@@ -79,7 +79,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
 
   @override
   double? vfoHz(String uuid) => switch (_radioOf(uuid)) {
-    final radio? => switch (cat.stateFor(radio).vfo.freqKHz) {
+    final radio? => switch (cat.vfoFreqKHzFor(radio)) {
       final khz? => khz * 1000,
       null => null,
     },
@@ -87,10 +87,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
   };
 
   @override
-  Listenable get changes => switch (settings) {
-    final settings? => Listenable.merge([cat, settings]),
-    null => cat,
-  };
+  Listenable get changes => Listenable.merge([cat, cat.vfoChanges, ?settings]);
 
   /// Kept to `readRadio`'s rules ([PanelRadioService.read]), so a scene and a
   /// render never disagree about what the radio is doing: the frequency and
@@ -110,7 +107,8 @@ class CatSpectrumSource implements SceneSpectrumSource {
       if (live) 'swrAverage': ?cat.swrAverageFor(uuid),
       // Always given, a long time when there has been none: a hold bound to it is over, not pending.
       'secondsSinceTransmit': transmitting ? 0 : (last == null ? 1e9 : (realNowMillis() - last.endedAtMillis) / 1000),
-      if (state.vfo.freqKHz case final khz?) 'frequencyHz': (khz * 1000).round(),
+      if (cat.vfoFreqKHzFor(uuid) case final khz?) 'frequencyHz': (khz * 1000).round(),
+      if (state.vfo.freqKHz case final khz?) 'reportedFrequencyHz': (khz * 1000).round(),
       if (passband != null) ...{'passbandLowHz': passband.lowHz, 'passbandHighHz': passband.highHz, 'passbandWidthHz': passband.widthHz},
       if (live) 'powerWatts': ?state.power,
       if (_keyed(uuid, live)) 'ptt': cat.pttHeldOn(uuid) ? 1 : 0,
@@ -144,6 +142,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
       uuid,
       state.status,
       live,
+      cat.vfoFreqKHzFor(uuid),
       state.vfo.freqKHz,
       state.vfo.mode,
       if (live) ...[state.passband?.lowHz, state.passband?.highHz, state.telemetry.transmitting],
@@ -157,7 +156,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
       live && (cat.isRadio1(uuid) || cat.isRadio2(uuid)) && (settings?.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ?? false);
 
   @override
-  Listenable get readingChanges => cat.dialChanges;
+  Listenable get readingChanges => Listenable.merge([cat.dialChanges, cat.vfoChanges]);
 
   @override
   bool recenter(String uuid, int centerHz) {

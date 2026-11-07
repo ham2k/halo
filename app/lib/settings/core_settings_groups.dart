@@ -743,14 +743,15 @@ class RadioSettingsGroup extends SettingsGroup {
               'target': 'current-radio',
             },
         ],
-        _toggle(
-          key: 'smartVfoSnap',
-          label: s.smartVfoSnap.title,
-          icon: 'magnet',
-          description: settings.smartVfoSnap ? s.smartVfoSnap.descriptionOn : s.smartVfoSnap.descriptionOff,
-          value: settings.smartVfoSnap,
-          target: 'current-radio',
-        ),
+        if (settings.experimentEnabled('snap') /* stored key, see experiments.yaml */ )
+          _toggle(
+            key: 'smartVfoSnap',
+            label: s.smartVfoSnap.title,
+            icon: 'magnet',
+            description: settings.smartVfoSnap ? s.smartVfoSnap.descriptionOn : s.smartVfoSnap.descriptionOff,
+            value: settings.smartVfoSnap,
+            target: 'current-radio',
+          ),
         // The feel, in the `-extended` bucket behind the dialog's "show more
         // settings" — four numbers nobody should have to meet to use the
         // feature, and which only mean anything once it's on.

@@ -1085,6 +1085,48 @@ construction instead of by maintenance: an earlier version delegated to lib-oper
 `bandForFrequency`, whose edges are wider, whose 60 m starts at 5300 where ours started at 5250, and
 which retries an unmatched argument as MHz — 10300 kHz came back as `3cm`.
 
+### The VFO the app shows
+
+Each VFO in `RadioService` is two: **`vfo`**, what the app shows and logs, and **`realVfo`**, the
+radio's own last report. An operator's write (`user` or `dial`) lands in `vfo` at once and is held
+there as a tune; a `radio` write is a report, and always becomes `realVfo`. It reaches `vfo` only where
+it does not contradict a tune still in its hold. A report that confirms the tune ends the hold, field
+by field. One that contradicts it is the radio answering a poll sent ahead of the tune, or announcing
+a step a drag has already passed, and is kept out of `vfo` until the hold runs out. If no report has
+confirmed the tune by then, the last one stands: a radio that refused or rounded the tune is where
+it says. A VFO with no radio behind it never hears a report, so the operator's value simply stays.
+A QSO logged inside the hold logs the tune, even against a report already held back: the hold is
+there because that report is, more often than not, the past.
+
+Only what a write changes is a tune, a sideband the frequency carried across an edge included:
+restating what `vfo` already shows sends the radio nothing, so nothing waits on it, and the release
+a held report is waiting on stands. And a report is only what the radio said: a reading that leaves a
+field out, as a mode-only frame does, has the gap filled from what the radio was sent
+(`_applyReading`'s merge), which is the tune itself, so while that field's tune is unconfirmed
+RadioService is not given it (`_asReport`). Taken as the radio's word it would confirm what the
+radio never said. For the same reason the echo guard (`lastSent`, which `tuneNode` checks a tune
+against) keeps what was sent for an unconfirmed field rather than taking the held report: taken,
+the operator tuning back onto the stale value (a scroll reversing onto the step it came from) would
+send nothing. When the hold runs out it goes back to the report, so a refused tune asked for again
+is sent again.
+
+The hold is 1.5 s until the radio has answered a tune, then three times its smoothed answer time,
+within 1–5 s: a remote rig over a slow link holds longer than a wired one, and a fast radio that
+rounds a tune shows the truth sooner. An answer that comes after the hold, within the 5 s, is timed
+too: timed only inside it, the hold of a slow link would never grow past where it started. A frequency within 10 Hz of the tune confirms it, since a
+radio stepping 10 Hz lands on its own step.
+
+Every radio has one: radio1 and Radio B under `vfoA` and `vfoB`, and any other radio under its own
+node id (`CatService.vfoKeyFor`), which CAT feeds its reports into and forwards an operator's write
+from (`_onNodeVfoChanged`), as it does for `vfoA`. Only the app VFOs persist. Consumers read `vfo`:
+the logging fields and the QSO they log, the band scope, the Radio panel, and an extension's
+`readRadio` and scene `radio.frequencyHz`, through `CatService.vfoFreqKHzFor`, which gives the tune
+only while it is unconfirmed and the radio is live, and the radio's own report otherwise: a frequency
+typed while the radio is away never reached it, and a radio's own VFO is not fed its reports while it
+fills radio1's or Radio B's role.
+`readRadio`'s `reportedFrequencyHz` and the station rows show the report. A report that moves only
+`realVfo` notifies nobody through `RadioService`; CatService notifies each one.
+
 ### Radio B, for SO2R
 
 Behind the `so2r` experiment, a second role: **`radio2`** (`CatService.radio2`), the transceiver
@@ -2841,6 +2883,12 @@ longer arrive. A withdrawn radio's status goes with its offer for the same reaso
 re-adopted when that rig reconnects, as a phantom message over a quiet transmitter.
 
 ## Smart VFO Snap
+
+Behind the private `snap` experiment (`EXP SNAP`): with it off the setting is not offered, and one
+stored on does nothing (`SettingsService.smartVfoSnap`). The snap retunes the radio as the operator,
+so it starts a hold of the VFO the app shows (§ The VFO the app shows), and a knob turned again
+within that hold is not shown until the hold runs out — one of the things to settle before it comes
+out.
 
 Off by default, and it is the only thing in the app that moves the operator's radio without being
 asked to — so almost all of its design is about when to keep its hands off. The rules are

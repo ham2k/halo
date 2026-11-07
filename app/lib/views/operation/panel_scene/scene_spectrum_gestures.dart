@@ -66,7 +66,9 @@ const _slowNotchMs = 120, _fastNotchMs = 40;
 const _glideMsPerWidth = 600, _glideMinMs = 150, _glideMaxMs = 350;
 
 /// How long, in ms, the dial is drawn where the operator put it while the
-/// radio has yet to report it there.
+/// source has yet to give it there: a tune waits its turn in the panels'
+/// paced queue before the app's VFO has it, and the VFO holds it from there
+/// against the radio's reports (docs/design/cat.md).
 const _dialHold = 1500;
 
 /// Scroll travel that makes one notch of the wheel: a mouse's notch is one

@@ -160,6 +160,15 @@ experiments:
     name: MIDI Controllers
     description: Tune, key and adjust the radios from a MIDI controller.
     private: true
+  # Smart VFO Snap (docs/design/cat.md § Smart VFO Snap): a knob turn on
+  # radio1 settles on a round frequency. Private while it is reworked to sit
+  # with the VFO the app shows ahead of the radio, which takes the snap's
+  # retune as the operator's own tune. With this off the setting is not
+  # offered and a stored one does nothing.
+  - key: snap
+    name: Smart VFO Snap
+    description: Round a knob turn on the radio to a sensible frequency once you stop turning.
+    private: true
 
   # The operation lifecycle in the logging panel (docs/design/data-model.md
   # §The Log Data): the state read

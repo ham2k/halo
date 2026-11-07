@@ -295,6 +295,7 @@ void main() {
       driver = _FakeDriver();
       final transport = _FakeTransport();
       settings = SettingsService(prefs, secureStorage: FakeSecureStorage());
+      await settings.setExperimentEnabled('snap', true);
       fakeNow = _t0;
       cat = CatService(
         settings,
@@ -322,6 +323,22 @@ void main() {
     }
 
     test('off by default: the radio is left exactly where it was tuned', () async {
+      final session = await restingRadio();
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, isEmpty);
+      expect(radio.vfoA.freq, 14285.43);
+    });
+
+    test('switched on but with the snap experiment off, the radio is left where it was tuned', () async {
+      // The stored setting outlives the experiment being turned off, and the
+      // snap reads the setting on every reading: without the gate in the
+      // getter, an operator who once switched it on keeps having their knob
+      // rounded with no setting in sight to switch it off.
+      await settings.setSmartVfoSnap(true);
+      await settings.setExperimentEnabled('snap', false);
       final session = await restingRadio();
       fakeAsync((async) {
         session.radioReports(freqKHz: 14285.43);

@@ -236,6 +236,7 @@ void main() {
       // catalog is rebuilt per call, so the SAME query has to change its
       // answer mid-session — which is the property a cached catalog would
       // quietly break.
+      await settings.setExperimentEnabled('snap', true);
       await settings.setSmartVfoSnap(true);
       final before = await interpret('SET SNAPDEBOUNCE');
       expect(before?['expectsParams'], isTrue, reason: 'not reachable while developer mode is off');

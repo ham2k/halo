@@ -294,9 +294,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   Curve _glideCurve = Curves.easeOutCubic;
 
   /// Where the operator put the dial — a click, the wheel, a drag of the
-  /// line — shown ahead of the radio's report of it: while the line is
-  /// dragged, and until the radio reports it there or
-  /// [_heldMillis] is [_dialHold] old — a radio that settled elsewhere wins.
+  /// line — shown ahead of the source's dial: while the line is dragged, and
+  /// until the source gives it there — the app's VFO, once the tune is through
+  /// the paced queue — or [_heldMillis] is [_dialHold] old.
   double? _heldVfo;
 
   /// When the panel last tuned, which a click reads to tell adjusting from jumping.

@@ -408,7 +408,7 @@ class PeerChannels {
     // rig moves BETWEEN its report and this echo of it, and the stale echo —
     // arriving as a `user` move — tunes the rig backwards against the
     // operator's own knob.
-    if (radio.lastVfoOrigin != VfoOrigin.user) return;
+    if (radio.lastVfoOrigin != VfoOrigin.user || radio.lastVfoKey != 'vfoA') return;
     final vfo = radio.vfoA;
     if (vfo.freq == null && vfo.mode == null) return;
     final session = peers.peers[selection.deviceId]?.session;

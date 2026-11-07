@@ -186,33 +186,53 @@ extension _Readings on CatService {
     // [_onVfoChanged].
     runtime.lastSent = merged;
 
-    // Only the designated radios drive the app's VFOs. Tagging the write
-    // `radio` is what lets _onVfoChanged recognise the notification it's
-    // about to receive as its own, instead of re-tuning the radio to the
-    // value the radio just gave it.
+    // Only the designated radios drive the app's VFOs; every other radio has
+    // a VFO of its own, under its node id. Tagging the write `radio` is what
+    // lets _onVfoChanged recognise the notification it's about to receive as
+    // its own, instead of re-tuning the radio to the value the radio just
+    // gave it.
     final vfoKey = _vfoKeyOf(uuid);
-    if (vfoKey == null) return;
+    final report = _asReport(vfoKeyFor(uuid), reading, merged);
+    if (vfoKey == null) {
+      _radio?.setVfo(uuid, freq: report.freqKHz, mode: report.mode, origin: VfoOrigin.radio);
+      _keepUnconfirmedSent(runtime, uuid, sent, merged);
+      return;
+    }
     // From what the radio SAID: [merged] fills a missing frequency in from
     // what it was told, which it may not have reached.
     if (reading.freqKHz case final freqKHz?) {
       if (bandForFrequency(freqKHz) case final band?) runtime.lastFreqByBand[bandMemoryKey(band, merged.mode)] = freqKHz;
     }
     if (_heldByBandPick(runtime, reading)) return;
-    _followRadio(vfoKey, merged);
+    _followRadio(vfoKey, report);
+    _keepUnconfirmedSent(runtime, vfoKey, sent, merged);
+    // Smart VFO Snap is radio1's, and measures the knob by [merged]: the radio's frequency, where
+    // [report] may leave it out.
+    if (vfoKey == 'vfoA') _noteSnapReading(merged);
   }
 
-  /// The app VFO [uuid] drives: `vfoA` for radio1, `vfoB` for SO2R's Radio
-  /// B, null for any other node.
-  String? _vfoKeyOf(String uuid) => uuid == _localRadio1
-      ? 'vfoA'
-      : uuid == radio2
-      ? 'vfoB'
-      : null;
+  void _followRadio(String vfoKey, VfoReading report) {
+    final mode = appModeForRadioReport(current: _radio?.vfo(vfoKey).mode, reported: report.mode, freqKHz: report.freqKHz ?? _radio?.vfo(vfoKey).freq);
+    _radio?.setVfo(vfoKey, freq: report.freqKHz, mode: mode, origin: VfoOrigin.radio);
+  }
 
-  void _followRadio(String vfoKey, VfoReading merged) {
-    final mode = appModeForRadioReport(current: _radio?.vfo(vfoKey).mode, reported: merged.mode, freqKHz: merged.freqKHz);
-    _radio?.setVfo(vfoKey, freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
-    // Smart VFO Snap is radio1's.
-    if (vfoKey == 'vfoA') _noteSnapReading(merged);
+  /// [merged] as RadioService takes it, the radio's report: a field the radio left out of
+  /// [reading] while the operator's tune of it is unconfirmed is left out here too. [merged] fills
+  /// it in from what the radio was sent, which is that tune — taken as the radio's report, it would
+  /// confirm what the radio never said, ending the hold ahead of the stale report it is there for.
+  VfoReading _asReport(String key, VfoReading reading, VfoReading merged) {
+    final open = _radio?.unconfirmed(key);
+    if (open == null) return merged;
+    return VfoReading(freqKHz: open.freq && reading.freqKHz == null ? null : merged.freqKHz, mode: open.mode && reading.mode == null ? null : merged.mode);
+  }
+
+  /// A report RadioService keeps from the VFO, its tune unconfirmed, is no sign the radio was told
+  /// it: [tuneNode]'s echo guard keeps what was [sent] for that field. Taken as sent, the operator
+  /// tuning back onto the stale value — a scroll reversing onto the step it came from — would send
+  /// nothing, and the radio would end up on the tune before it.
+  void _keepUnconfirmedSent(_NodeRuntime runtime, String key, VfoReading? sent, VfoReading merged) {
+    final open = _radio?.unconfirmed(key);
+    if (sent == null || open == null || !(open.freq || open.mode)) return;
+    runtime.lastSent = VfoReading(freqKHz: open.freq ? sent.freqKHz : merged.freqKHz, mode: open.mode ? sent.mode : merged.mode);
   }
 }

@@ -46,8 +46,10 @@ export type PanelSceneRadioValue =
   | "radio.swrAverage"
   /** 0 while transmitting, then counting up; a long time when there has been none. Extension API 7. */
   | "radio.secondsSinceTransmit"
-  /** The frequency, in Hz: the last the radio reported, kept while it is disconnected. Extension API 13. */
+  /** The frequency, in Hz: where the app has the radio, a tune ahead of its report while it is live; the last it reported, kept while it is disconnected. Extension API 13. */
   | "radio.frequencyHz"
+  /** The frequency, in Hz, the radio itself last reported. Extension API 19. */
+  | "radio.reportedFrequencyHz"
   /** The receive passband's edges and width, in Hz, while the radio is live. Extension API 13. */
   | "radio.passbandLowHz"
   | "radio.passbandHighHz"

@@ -6,6 +6,7 @@
 // mode are the last the radio gave, connected or not, and the rest is only
 // what a live radio says now.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
@@ -28,6 +29,16 @@ class _Cat extends Fake implements CatService {
     power: 50,
     tuner: TunerStatus.inline,
   );
+
+  /// What the app shows the radio on, ahead of its report; null, the report.
+  double? shownKHz;
+
+  @override
+  double? vfoFreqKHzFor(String uuid) => shownKHz ?? state.vfo.freqKHz;
+
+  @override
+  Listenable get vfoChanges => _vfoChanges;
+  final _vfoChanges = ChangeNotifier();
   bool ptt = false;
   bool logging = true;
 
@@ -69,6 +80,7 @@ void main() {
     expect(source.readings('a'), {
       'secondsSinceTransmit': 1e9,
       'frequencyHz': 14074500,
+      'reportedFrequencyHz': 14074500,
       'passbandLowHz': 100,
       'passbandHighHz': 2800,
       'passbandWidthHz': 2700,
@@ -77,6 +89,18 @@ void main() {
       'connected': 1,
     });
     expect(source.readingStrings('a'), {'mode': 'USB', 'tuner': 'inline', 'status': 'connected'});
+  });
+
+  // The trap: a scene's readout drawn from the report alone, jumping back to the old frequency for
+  // the round trip of every tune its own knob makes.
+  test("the dial is where the app has the radio, the radio's own report beside it", () {
+    final cat = _Cat()..shownKHz = 14080, source = CatSpectrumSource(cat, settings: _Settings());
+    expect(source.readings('a'), containsPair('frequencyHz', 14080000));
+    expect(source.readings('a'), containsPair('reportedFrequencyHz', 14074500));
+    expect(source.vfoHz('a'), 14080000);
+    final before = source.dialState();
+    cat.shownKHz = 14081;
+    expect(source.dialState(), isNot(before), reason: 'a `radio` trigger fires on a tune, not only on the report of it');
   });
 
   test('PTT is given only where `readRadio` gives keying', () {
@@ -103,7 +127,7 @@ void main() {
     final cat = _Cat();
     cat.state = EquipmentState(status: EquipmentStatus.disconnected, vfo: cat.state.vfo, passband: cat.state.passband, power: 50, tuner: TunerStatus.inline);
     final source = CatSpectrumSource(cat);
-    expect(source.readings('a'), {'secondsSinceTransmit': 1e9, 'frequencyHz': 14074500, 'connected': 0});
+    expect(source.readings('a'), {'secondsSinceTransmit': 1e9, 'frequencyHz': 14074500, 'reportedFrequencyHz': 14074500, 'connected': 0});
     expect(source.readingStrings('a'), {'mode': 'USB', 'status': 'disconnected'});
   });
 

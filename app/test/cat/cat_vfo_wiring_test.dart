@@ -422,6 +422,120 @@ void main() {
     });
   });
 
+  // docs/design/cat.md § The VFO the app shows.
+  group('a radio no app VFO is driven by', () {
+    /// radio1, and a second radio nothing designates; the second's session.
+    Future<(String, _FakeSession)> thirdRadio() async {
+      final a = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final b = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.setRadio1(LocalRadio(a.uuid));
+      await cat.connect(a.uuid);
+      await cat.connect(b.uuid);
+      return (b.uuid, driver.sessions[1]);
+    }
+
+    // The trap: a panel tuning a radio straight at its driver, so the app shows nothing of the tune
+    // until the radio reports it, and a poll answered from before it jumps the dial back.
+    test("an operator's tune goes through its own VFO, and holds there against a stale report", () async {
+      final (uuid, session) = await thirdRadio();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      expect(cat.vfoKeyFor(uuid), uuid);
+      expect(radio.vfo(uuid).freq, 7010);
+      session.commands.clear();
+
+      radio.setVfo(uuid, freq: 7030);
+      await pumpEventQueue();
+      expect(session.commands, contains('freq:7030.0'));
+      expect(radio.vfoA.freq, isNull, reason: "radio1's VFO is not this radio's");
+
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      expect(cat.vfoFreqKHzFor(uuid), 7030);
+      expect(cat.stateFor(uuid).vfo.freqKHz, 7010, reason: "the radio's own report is still its own");
+
+      session.commands.clear();
+      session.radioReports(freqKHz: 7030, mode: 'CW');
+      session.radioReports(freqKHz: 7031, mode: 'CW');
+      await pumpEventQueue();
+      expect(cat.vfoFreqKHzFor(uuid), 7031, reason: 'confirmed, so its own knob shows at once');
+      expect(session.commands, isEmpty, reason: 'its own reports are never sent back to it');
+    });
+
+    // The echo guard taking the held report as what the radio was told: a scroll reversing onto the
+    // step it came from would send nothing, and the radio would land on the tune before it.
+    test('tuning back onto the report a hold kept off is sent to the radio', () async {
+      final (uuid, session) = await thirdRadio();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      radio.setVfo(uuid, freq: 7030);
+      await pumpEventQueue();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      session.commands.clear();
+
+      radio.setVfo(uuid, freq: 7010);
+      await pumpEventQueue();
+      expect(session.commands, contains('freq:7010.0'));
+    });
+
+    // A mode-only frame (CI-V, TCI and Flex send them) filled in with the frequency last sent reads
+    // as the radio confirming the tune, and the stale frequency after it shows at once.
+    test("a report of the mode alone is no word on the frequency, and doesn't end its hold", () async {
+      final (uuid, session) = await thirdRadio();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      radio.setVfo(uuid, freq: 7030);
+      await pumpEventQueue();
+
+      session.radioReports(mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.realVfo(uuid).freq, 7010, reason: 'the radio has not said 7030');
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      expect(cat.vfoFreqKHzFor(uuid), 7030);
+    });
+
+    test('a tune the radio refused is sent again when asked again', () async {
+      final (uuid, session) = await thirdRadio();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      radio.setVfo(uuid, freq: 7030);
+      await pumpEventQueue();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+      await Future<void>.delayed(Duration(milliseconds: radio.holdMillis(uuid) + 100));
+      expect(cat.vfoFreqKHzFor(uuid), 7010, reason: 'the hold ran out with the radio still elsewhere');
+      session.commands.clear();
+
+      radio.setVfo(uuid, freq: 7030);
+      await pumpEventQueue();
+      expect(session.commands, contains('freq:7030.0'));
+    });
+
+    // A tune typed while a radio is away never reached it; and a radio's own VFO is not fed its
+    // reports while it fills radio1's role, so it can be anywhere the radio was before.
+    test("away, or outside a tune, a radio is shown where it last said", () async {
+      final (uuid, session) = await thirdRadio();
+      session.radioReports(freqKHz: 7010, mode: 'CW');
+      await pumpEventQueue();
+
+      await cat.setRadio1(LocalRadio(uuid));
+      session.radioReports(freqKHz: 14025, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 14025);
+      await cat.setRadio1(LocalRadio(cat.nodes.firstWhere((node) => node.uuid != uuid).uuid));
+      expect(cat.vfoFreqKHzFor(uuid), 14025);
+
+      radio.setVfo(uuid, freq: 14030);
+      await pumpEventQueue();
+      expect(cat.vfoFreqKHzFor(uuid), 14030);
+      await cat.disconnect(uuid);
+      expect(cat.vfoFreqKHzFor(uuid), isNot(14030), reason: 'the tune never reached it');
+      expect(cat.vfoFreqKHzFor(uuid), cat.stateFor(uuid).vfo.freqKHz);
+    });
+  });
+
   group('radio → app', () {
     test('what the radio reports becomes the app VFO', () async {
       await connectedRadio();
@@ -686,6 +800,9 @@ void main() {
       // radio gets there. One that never arrives — the radio refused, or
       // ignores the command — must not leave the app on a band the radio is
       // not on, logging QSOs there, until the knob is turned.
+      //
+      // On the fake clock: RadioService measures a tune's hold on the app clock.
+      followFakeClock();
       fakeAsync((async) {
         late EquipmentNode node;
         cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
@@ -974,6 +1091,8 @@ void main() {
       await pumpEventQueue();
       radio.setVfo('vfoA', freq: 21030);
       await pumpEventQueue();
+      session().radioReports(freqKHz: 21030, mode: 'CW');
+      await pumpEventQueue();
       // What only the radio could say: the knob turned on the typed band.
       session().radioReports(freqKHz: 21031, mode: 'CW');
       await pumpEventQueue();
@@ -1185,6 +1304,8 @@ void main() {
     test('the radio reporting another mode still replaces FT8', () async {
       await connectedRadio();
       radio.setVfo('vfoA', freq: 14074, mode: 'FT8');
+      await pumpEventQueue();
+      session().radioReports(freqKHz: 14074, mode: 'DATA-USB');
       await pumpEventQueue();
 
       session().radioReports(freqKHz: 14074, mode: 'USB');

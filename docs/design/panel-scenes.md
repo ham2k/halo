@@ -447,13 +447,15 @@ published panels name them; what API 17 added has the new names only.
   sent the scope only until the sweeps arrive from there, then is the
   sweeps' again, so it goes on following a scope moved from the radio
   itself. A gesture taking hold of the window stops either.
-- **The dial is drawn where the operator put it.** After a click, a notch
-  or a drag of the line, the line, the `vfoHz` readout and `follow` use the
-  frequency sent, not the radio's report, until the radio reports it there
-  or 1.5 s pass — a radio that settled elsewhere wins, and one that
-  answers no (transmitting, gone, the request queued too long) puts it back
-  at once. Drawn from reports, the line trails the operator by the pacing
-  and the round trip. Where a tune can go nowhere — no leave to command the
+- **The dial is drawn where the operator put it.** The source's dial is
+  the app's VFO for that radio, which runs ahead of the radio's report
+  with the operator's tune until the radio reports it, and holds it
+  against reports that contradict it (cat.md § The VFO the app shows).
+  After a click, a notch or a drag of the line, the control draws the
+  frequency sent ahead of that too, while the tune waits its turn in the
+  paced queue: until the source gives it there or 1.5 s pass, and a radio
+  that answers no (transmitting, gone, the request queued too long) puts
+  it back at once. Where a tune can go nowhere — no leave to command the
   radio and no event to hear it — nothing tunes, and nothing is drawn as
   though it had. Only a tune the app sends the radio itself is drawn ahead:
   one that goes out as the control's event may be put to another use or

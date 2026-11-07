@@ -73,7 +73,10 @@ extension _BandPick on CatService {
       // next report is followed as any is.
       final reported = runtime.state.vfo;
       final vfoKey = _vfoKeyOf(uuid);
-      if (runtime.bandPickHeldReport && vfoKey != null && reported.freqKHz != null) _followRadio(vfoKey, reported);
+      if (runtime.bandPickHeldReport && vfoKey != null && reported.freqKHz != null) {
+        _followRadio(vfoKey, reported);
+        if (vfoKey == 'vfoA') _noteSnapReading(reported);
+      }
     });
   }
 

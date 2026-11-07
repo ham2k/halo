@@ -152,10 +152,11 @@ void main() {
   });
 
   group('RadioSettingsGroup', () {
-    Future<SettingsService> settingsWith({bool keyer = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
+    Future<SettingsService> settingsWith({bool keyer = true, bool snapExperiment = true, bool snap = true, bool zeroBeat = true, bool developer = true}) async {
       SharedPreferences.setMockInitialValues({
         'experiments': jsonEncode({
           if (keyer) 'keyer': {'enabled': true},
+          if (snapExperiment) 'snap': {'enabled': true},
         }),
         // Both features written explicitly, never left to their defaults: a
         // test isolating one of them would otherwise also be asserting the
@@ -215,6 +216,15 @@ void main() {
       // expands to nothing.
       expect(await keysFor(await settingsWith(developer: false)), isNot(contains('smartVfoSnapDebounceMs')));
       expect(await keysFor(await settingsWith()), contains('smartVfoSnapDebounceMs'));
+    });
+
+    test('Smart VFO Snap and its knobs are not offered without the snap experiment, even switched on', () async {
+      // Absent rather than unlisted: SET/SHOW scan the same elements, and a
+      // private experiment must not be reachable by typing its setting's name.
+      final keys = await keysFor(await settingsWith(snapExperiment: false));
+      expect(keys, isNot(contains('smartVfoSnap')));
+      expect(keys, isNot(contains('smartVfoSnapDebounceMs')));
+      expect((await settingsWith(snapExperiment: false)).smartVfoSnap, isFalse);
     });
 
     test('the zero-beat range follows its own feature, not developer mode', () async {
@@ -456,6 +466,9 @@ void main() {
       // would be the only way to reconcile them.
       SharedPreferences.setMockInitialValues({
         'developerMode': true,
+        'experiments': jsonEncode({
+          'snap': {'enabled': true},
+        }),
         'settings.radio': jsonEncode({'smartVfoSnap': true, 'smartVfoSnapMinSpeed': '0'}),
       });
       final settings = SettingsService(await SharedPreferences.getInstance());
@@ -473,7 +486,12 @@ void main() {
       // option string. An option that doesn't survive that round trip (0.10,
       // say, which formats as "0.1") leaves the dropdown with no matching
       // item — which throws when the dialog opens.
-      SharedPreferences.setMockInitialValues({'developerMode': true});
+      SharedPreferences.setMockInitialValues({
+        'developerMode': true,
+        'experiments': jsonEncode({
+          'snap': {'enabled': true},
+        }),
+      });
       final prefs = await SharedPreferences.getInstance();
       final settings = SettingsService(prefs);
 

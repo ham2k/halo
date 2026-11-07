@@ -138,6 +138,15 @@ class TestCat extends Fake implements CatService {
   @override
   EquipmentState stateFor(String uuid) => state;
 
+  /// The VFOs [vfoFreqKHzFor] reads, as CatService reads RadioService's; none, the report.
+  TestRadio? vfos;
+
+  @override
+  String vfoKeyFor(String uuid) => isRadio1(uuid) ? 'vfoA' : (isRadio2(uuid) ? 'vfoB' : uuid);
+
+  @override
+  double? vfoFreqKHzFor(String uuid) => (isLiveRadio(state) ? vfos?.vfo(vfoKeyFor(uuid)).freq : null) ?? state.vfo.freqKHz;
+
   final powered = <String, num>{};
   @override
   void setNodePower(String uuid, num watts) => powered[uuid] = watts;
@@ -284,6 +293,15 @@ class TestRadio extends Fake implements RadioService {
   }) {
     calls.add((key: key, freq: freq, mode: mode, power: power, time: realNowMillis()));
   }
+
+  /// The last frequency asked of [key], as RadioService shows a tune ahead of the radio's report.
+  @override
+  Vfo vfo(String key) {
+    for (final call in calls.reversed) {
+      if (call.key == key && call.freq != null) return Vfo(freq: call.freq);
+    }
+    return const Vfo();
+  }
 }
 
 void main() {
@@ -362,14 +380,19 @@ void main() {
     expect(bridge.setConnection({'id': 'a', 'connected': 'yes'})['reason'], 'invalid');
   });
 
-  test('CAT reports remain distinct from requested VFO writes and units cross correctly', () async {
-    final cat = TestCat(), radio = TestRadio(), bridge = PanelRadioService(cat, radio);
+  // The trap: a panel showing its own tune only once the radio reports it, so its dial jumps back
+  // to the old frequency for the round trip — or one that can no longer tell the radio's word apart.
+  test('a tune shows in frequencyHz at once, the radio report stays in reportedFrequencyHz, and units cross correctly', () async {
+    final radio = TestRadio(), cat = TestCat()..vfos = radio, bridge = PanelRadioService(cat, radio);
     expect(bridge.read()['frequencyHz'], 14074000);
     final result = await bridge.set({'id': 'a', 'frequencyHz': 14075000, 'mode': 'CW'});
     expect(result['accepted'], true);
     expect(radio.calls.single.freq, 14075);
     expect(radio.calls.single.mode, 'CW');
-    expect((result['state'] as Map)['frequencyHz'], 14074000);
+    expect((result['state'] as Map)['frequencyHz'], 14075000);
+    expect((result['state'] as Map)['reportedFrequencyHz'], 14074000);
+    cat.state = cat.state.copyWith(status: EquipmentStatus.disconnected);
+    expect(bridge.read()['frequencyHz'], 14074000, reason: 'a radio away is where it last said');
   });
   test('changed selection, stale state, TX and invalid commands never reach CAT', () async {
     final cat = TestCat(), radio = TestRadio(), bridge = PanelRadioService(cat, radio);
@@ -436,8 +459,9 @@ void main() {
     expect(bridge.read('b')['id'], 'b');
     final result = await bridge.set({'selection': 'b', 'id': 'b', 'frequencyHz': 7100000});
     expect(result['accepted'], true);
-    expect(cat.tuned['b']?.freqKHz, 7100);
-    expect(radio.calls, isEmpty);
+    // Through its own VFO, which CatService forwards to it: shown ahead of its report, as radio1's is.
+    expect((radio.calls.single.key, radio.calls.single.freq), ('b', 7100));
+    expect(cat.tuned, isEmpty);
     expect(cat.radio1, const LocalRadio('a'));
     expect((await bridge.set({'selection': 'gone', 'id': 'gone', 'frequencyHz': 7100000}))['reason'], 'changed');
   });

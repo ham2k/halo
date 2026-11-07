@@ -99,7 +99,12 @@ class PanelRadioService {
       'status': state.status.name,
       'stale': state.stale,
       'problem': state.problem ?? state.error,
-      'frequencyHz': state.vfo.freqKHz == null ? null : (state.vfo.freqKHz! * 1000).round(),
+      // Where the app has it, a tune ahead of the radio's report of it; the report beside it.
+      'frequencyHz': switch (node == null ? null : cat.vfoFreqKHzFor(node.uuid)) {
+        final khz? => (khz * 1000).round(),
+        null => null,
+      },
+      'reportedFrequencyHz': state.vfo.freqKHz == null ? null : (state.vfo.freqKHz! * 1000).round(),
       'mode': state.vfo.mode,
       'powerWatts': live ? state.power : null,
       'tuner': live ? state.tuner?.name : null,
@@ -393,14 +398,16 @@ class PanelRadioService {
       if (freqKHz != null || mode != null) radio.setVfo('vfoB', freq: freqKHz, mode: mode as String?, origin: origin);
       if (power != null) cat.setNodePower(id, power as num);
     } else {
-      if (freqKHz != null || mode != null) cat.tuneNode(id, VfoReading(freqKHz: freqKHz, mode: mode as String?));
+      // Through the radio's own VFO, which shows the tune ahead of the radio's report of it.
+      if (freqKHz != null || mode != null) radio.setVfo(id, freq: freqKHz, mode: mode as String?, origin: origin);
       if (power != null) cat.setNodePower(id, power as num);
     }
     if (tunerInline != null) cat.setNodeTuner(id, inline: tunerInline as bool);
     if (startTune == true) cat.startNodeTune(id);
     if (passband != null) cat.setNodePassband(id, passband);
     if (antenna is Map) cat.setNodeAntenna(id, rx: antenna['rx'] as String?, tx: antenna['tx'] as String?);
-    // Acceptance is not an acknowledgement: read() contains only radio reports.
+    // Acceptance is not an acknowledgement: read()'s frequencyHz already shows the tune, and only
+    // reportedFrequencyHz, the radio's own report, says it arrived.
     return {'accepted': true, 'state': read(selection)};
   }
 

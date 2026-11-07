@@ -72,6 +72,7 @@ part 'cat_discovery.dart';
 part 'cat_vfo_snap.dart';
 part 'cat_connection.dart';
 part 'cat_readings.dart';
+part 'cat_node_vfos.dart';
 part 'cat_band_pick.dart';
 part 'cat_equipment_store.dart';
 part 'cat_tracking.dart';
@@ -207,7 +208,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
 }
 
 class CatService extends ChangeNotifier
-    with _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio
+    with _NodeVfos, _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r, _So2rAudio
     implements PeerStationRadios, KeyingStation {
   @override
   final SettingsService _settings;
@@ -465,10 +466,6 @@ class CatService extends ChangeNotifier
     LocalRadio(:final uuid) => uuid,
     _ => null,
   };
-
-  /// Whether [uuid] is the local node filling the role — a peer pick is no
-  /// node of this station's, so it answers false for every uuid.
-  bool isRadio1(String uuid) => _localRadio1 == uuid;
 
   /// The peer bridge's own view of the pick: which peer radio this device
   /// follows, or null when `vfoA` is a local rig's or nothing's.
@@ -1258,6 +1255,8 @@ class CatService extends ChangeNotifier
   void _onVfoChanged() {
     final radio = _radio;
     if (radio == null) return;
+    if (radio.lastVfoOrigin == VfoOrigin.radio) _sentFollowsRelease(radio, radio.lastVfoKey);
+    if (radio.lastVfoKey case final key when key != 'vfoA' && key != 'vfoB') return _onNodeVfoChanged(radio, key);
     // Ahead of the echo check below: the radio's own knob moving off the CQ
     // frequency ends a repeat as surely as a frequency typed in the app. But
     // not the radio's reading while it transmits: working split, a rig may
