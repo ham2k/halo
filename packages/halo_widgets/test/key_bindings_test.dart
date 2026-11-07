@@ -283,6 +283,33 @@ void main() {
       expect(await pressing(tester, LogicalKeyboardKey.keyU, styleKey, modifiers: [LogicalKeyboardKey.altLeft]), isFalse, reason: 'ü in a note');
     });
 
+    // ⌥↑ steps DOWN: read as turning a dial, not as pointing up the band. A
+    // matcher keyed on the arrow's direction would swap every press, and one
+    // disagreeing with the defaults would change the keys with the
+    // experiment.
+    testWidgets('step the VFO down on ⌥↑ and up on ⌥↓, coarse with ⇧, as the defaults do', (tester) async {
+      final legacy = LegacyKeyBindings();
+      final defaults = KeyBindings.resolve();
+      Future<List<String>> ids(LogicalKeyboardKey key, List<LogicalKeyboardKey> modifiers) async {
+        final matched = <String>[];
+        await pressing(tester, key, (e) {
+          for (final id in [vfoFineUpCommandId, vfoFineDownCommandId, vfoCoarseUpCommandId, vfoCoarseDownCommandId]) {
+            expect(legacy.matches(id, e), defaults.matches(id, e), reason: id);
+            if (legacy.matches(id, e)) matched.add(id);
+          }
+          return true;
+        }, modifiers: modifiers);
+        return matched;
+      }
+
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.altLeft]), [vfoFineDownCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowDown, [LogicalKeyboardKey.altLeft]), [vfoFineUpCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.altLeft, LogicalKeyboardKey.shiftLeft]), [vfoCoarseDownCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowDown, [LogicalKeyboardKey.altLeft, LogicalKeyboardKey.shiftLeft]), [vfoCoarseUpCommandId]);
+      expect(await ids(LogicalKeyboardKey.arrowUp, [LogicalKeyboardKey.altLeft, LogicalKeyboardKey.metaLeft]), isEmpty);
+      expect(await ids(LogicalKeyboardKey.arrowUp, []), isEmpty);
+    });
+
     testWidgets('run no bound command text', (tester) async {
       final legacy = LegacyKeyBindings();
       expect(await pressing(tester, LogicalKeyboardKey.keyJ, (e) => legacy.textCommandFor(e) != null, modifiers: [LogicalKeyboardKey.metaLeft]), isFalse);
@@ -299,9 +326,20 @@ void main() {
     test("never the QSO list's walk, nor undo", () {
       expect(keyChordRefusal(chord('alt+Up'), 'app.toggleTheme'), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('cmd+Down'), 'app.toggleTheme'), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('meta+Up'), 'app.toggleTheme'), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('cmd+Z'), 'app.toggleTheme', platform: TargetPlatform.macOS), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', platform: TargetPlatform.windows), KeyChordRefusal.fixed);
       expect(keyChordRefusal(chord('ctrl+Z'), 'app.toggleTheme', platform: TargetPlatform.macOS), isNull, reason: 'Ctrl+Z is no undo on a Mac');
+    });
+
+    // Only the VFO's commands stand aside where ⌥↑ is the list's and mark a
+    // press they took: any other command there would page the list under it.
+    test("leave the walk's ⌥ page to the VFO's commands alone", () {
+      expect(keyChordRefusal(chord('alt+Up'), vfoFineDownCommandId), isNull);
+      expect(keyChordRefusal(chord('alt+Down'), vfoCoarseUpCommandId), isNull);
+      expect(keyChordRefusal(chord('alt+Down'), 'logging.wipe'), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('cmd+Up'), vfoFineDownCommandId), KeyChordRefusal.fixed);
+      expect(keyChordRefusal(chord('shift+alt+Up'), 'app.toggleTheme'), isNull, reason: 'the walk leaves ⇧ to the field');
     });
 
     // Every callsign is typed with these: taken by a command, a call could

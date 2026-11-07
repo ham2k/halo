@@ -19,6 +19,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/vfo_keys.dart';
 import 'package:ham2k_logger/services/cat/vfo_snap.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -403,6 +404,22 @@ void main() {
         async.elapse(quiet * 2);
       });
       expect(session.commands, ['freq:14285.43']);
+    });
+
+    // A VFO key lands on its step's grid, a target the operator picked as
+    // surely as a typed one: settled as a knob turn, eleven quick presses
+    // from 14 285 travel 1.1 kHz and land on the 250 Hz grid at 14 286.
+    test('a VFO key step is exact, and is never snapped', () async {
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        for (var i = 0; i < 11; i++) {
+          stepVfoByKey(radio, 'vfoA', up: true, coarse: false);
+        }
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands.last, 'freq:14286.1');
+      expect(radio.vfoA.freq, closeTo(14286.1, 1e-6));
     });
 
     test('CW is never snapped', () async {

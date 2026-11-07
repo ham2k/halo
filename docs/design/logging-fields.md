@@ -1490,7 +1490,12 @@ suggestion menu opens below its field, best match nearest the field.
   The walk keys (`qsoListWalkFor`) are the jumps every list is expected to
   take: **Up** and **Down** a row; **Page Up** and **Page Down**, and
   **Option+Up/Down**, a screenful (as many rows as fit, less one carried
-  over for context); **Cmd+Up/Down** the oldest and newest contact. In a
+  over for context); **Cmd+Up/Down** the oldest and newest contact.
+  Option+Up/Down are the VFO's in the Operation and Chasing views by default
+  ([keyboard-shortcuts.md](keyboard-shortcuts.md)) while a new contact is
+  composed: there they page only with a logged contact loaded, and from the
+  Find bar, whose arrows are its own; a main field drops a press the VFO
+  took. In a
   single-line field those chords only ever park the caret at an end of the
   text, which Left and Right reach too, so the walk takes them; **Home** and
   **End** stay the caret's. Unlike a single-row Down, no jump ever walks off

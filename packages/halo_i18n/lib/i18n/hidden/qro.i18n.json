@@ -470,6 +470,7 @@
     "titleNone": "NO TITLE",
     "deleteOperation": "DELETE OPERATION",
     "loggingControlsStale": "ACTIVITY FIELDS MAY BE OUT OF DATE — REOPEN THE OPERATION TO REFRESH THEM",
+    "vfoKeysNoFrequency": "NO FREQUENCY TO TUNE FROM — TYPE ONE, OR CONNECT A RADIO",
     "locationNone": "NOT SET",
     "generalOperation": "GENERAL OPERATION",
     "lifecycle": {
@@ -3026,6 +3027,7 @@
     "conflict": "${keys} IS ALSO BOUND TO ${commands}",
     "groupApp": "APP",
     "groupKeying": "KEYING",
+    "groupStation": "STATION",
     "groupLogging": "LOGGING",
     "groupCommands": "COMMANDS",
     "groupFixed": "FIXED KEYS",
@@ -3033,6 +3035,7 @@
     "contextLogView": "OPERATION, CHASING AND LOGS VIEWS",
     "contextOperation": "OPERATION VIEW, KEYING A CAT RADIO",
     "contextLogging": "IN THE LOGGING PANEL",
+    "contextStation": "OPERATION AND CHASING VIEWS",
     "addCommand": "ADD A COMMAND…",
     "unknownCommand": "UNKNOWN COMMAND: ${command}",
     "command": {
@@ -3051,7 +3054,11 @@
       "toggleStyle": "SWITCH BETWEEN RUN AND S&P",
       "ptt": "PUSH TO TALK",
       "so2rStereo": "SO2R: HEAR BOTH RADIOS, OR ONLY THE FOCUSED ONE",
-      "wipe": "CLEAR THE CONTACT BEING LOGGED"
+      "wipe": "CLEAR THE CONTACT BEING LOGGED",
+      "vfoFineUp": "VFO UP ONE FINE STEP",
+      "vfoFineDown": "VFO DOWN ONE FINE STEP",
+      "vfoCoarseUp": "VFO UP ONE COARSE STEP",
+      "vfoCoarseDown": "VFO DOWN ONE COARSE STEP"
     },
     "fixed": {
       "callsign": "TYPING CALLSIGNS",

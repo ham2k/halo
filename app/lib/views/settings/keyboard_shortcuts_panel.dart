@@ -47,6 +47,10 @@ String keyCommandTitle(Translations t, String id) {
     pttCommandId => c.ptt,
     so2rStereoCommandId => c.so2rStereo,
     'logging.wipe' => c.wipe,
+    vfoFineUpCommandId => c.vfoFineUp,
+    vfoFineDownCommandId => c.vfoFineDown,
+    vfoCoarseUpCommandId => c.vfoCoarseUp,
+    vfoCoarseDownCommandId => c.vfoCoarseDown,
     _ => id,
   };
 }
@@ -62,6 +66,7 @@ String _contextLabel(Translations t, KeyCommandContext context) => switch (conte
   KeyCommandContext.logView => t.keyboardShortcuts.contextLogView,
   KeyCommandContext.operation => t.keyboardShortcuts.contextOperation,
   KeyCommandContext.logging => t.keyboardShortcuts.contextLogging,
+  KeyCommandContext.station => t.keyboardShortcuts.contextStation,
 };
 
 /// The keys the panel lists as fixed: each with the chords that press it,
@@ -396,6 +401,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
                   category('app', t.groupApp, specRows(KeyCommandContext.app)),
                   category('logging', t.groupLogging, [...specRows(KeyCommandContext.logView), ...specRows(KeyCommandContext.logging)]),
                   if (keying) category('keying', t.groupKeying, specRows(KeyCommandContext.operation)),
+                  category('station', t.groupStation, specRows(KeyCommandContext.station)),
                   category(
                     'commands',
                     t.groupCommands,

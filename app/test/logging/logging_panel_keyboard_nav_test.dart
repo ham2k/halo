@@ -19,7 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:halo_widgets/halo_widgets.dart' show hardwareKeyboardAttached;
+import 'package:halo_widgets/halo_widgets.dart' show hardwareKeyboardAttached, takeKeyEvent;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -447,6 +447,31 @@ void main() {
       await tester.pump();
 
       expect(loadedCall(tester), viaPageUp, reason: 'Alt+Up is Page Up');
+      await drainLookupQueueTimer(tester);
+    });
+
+    // A command's handler runs ahead of the focus tree and cannot stop it: a
+    // field that also acted on a press the command took would do two things
+    // on one key.
+    testWidgets('Alt+Up a command already acted on pages nothing', (tester) async {
+      final list = await longLog();
+      await pumpPanel(tester, list);
+      await enterList(tester);
+      bool take(KeyEvent event) {
+        if (event.logicalKey == LogicalKeyboardKey.arrowUp && HardwareKeyboard.instance.isAltPressed) takeKeyEvent(event);
+        return false;
+      }
+
+      HardwareKeyboard.instance.addHandler(take);
+      addTearDown(() => HardwareKeyboard.instance.removeHandler(take));
+      final before = loadedCall(tester);
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.alt);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.alt);
+      await tester.pump();
+
+      expect(loadedCall(tester), before);
       await drainLookupQueueTimer(tester);
     });
   });

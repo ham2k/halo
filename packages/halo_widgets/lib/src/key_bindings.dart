@@ -8,7 +8,8 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' show BuildContext, EditableText, FocusManager, FocusNode, IconData, KeyEventResult, TextEditingValue, TextSelection;
+import 'package:flutter/widgets.dart'
+    show BuildContext, EditableText, FocusManager, FocusNode, IconData, KeyEventResult, StatelessWidget, TextEditingValue, TextSelection, Widget;
 
 import 'call_field_text.dart' show callsignCharacters;
 import 'logging_controls.dart' show LoggingControls;
@@ -335,8 +336,8 @@ class KeyChord {
 }
 
 /// Where a command's key works — what the Keyboard Shortcuts settings say
-/// beside it. Not consulted for conflicts: every context sits inside the one
-/// before it, so two commands on one chord always meet somewhere.
+/// beside it. Not consulted for conflicts: every context takes in the
+/// Operation view, so two commands on one chord always meet there.
 enum KeyCommandContext {
   /// Anywhere in the app, no dialog over it.
   app,
@@ -349,6 +350,9 @@ enum KeyCommandContext {
 
   /// The keyboard in the logging panel.
   logging,
+
+  /// The Operation or Chasing view in front, tuning the operator's radio.
+  station,
 }
 
 /// A command a key can run, and the chords it starts with.
@@ -394,7 +398,18 @@ final List<KeyCommandSpec> keyCommandSpecs = [
   const KeyCommandSpec(styleToggleCommandId, KeyCommandContext.operation, ['alt+U']),
   const KeyCommandSpec(so2rStereoCommandId, KeyCommandContext.operation, [r'\']),
   const KeyCommandSpec('logging.wipe', KeyCommandContext.logging, ['alt+W']),
+  // Down raises the frequency: the arrow is read as turning a dial, not as
+  // pointing at a spot on the band.
+  const KeyCommandSpec(vfoFineUpCommandId, KeyCommandContext.station, ['alt+Down']),
+  const KeyCommandSpec(vfoFineDownCommandId, KeyCommandContext.station, ['alt+Up']),
+  const KeyCommandSpec(vfoCoarseUpCommandId, KeyCommandContext.station, ['shift+alt+Down']),
+  const KeyCommandSpec(vfoCoarseDownCommandId, KeyCommandContext.station, ['shift+alt+Up']),
 ];
+
+/// The operator's VFO one fine or coarse step up or down.
+const vfoFineUpCommandId = 'vfo.fineUp', vfoFineDownCommandId = 'vfo.fineDown';
+const vfoCoarseUpCommandId = 'vfo.coarseUp', vfoCoarseDownCommandId = 'vfo.coarseDown';
+const _vfoCommandIds = {vfoFineUpCommandId, vfoFineDownCommandId, vfoCoarseUpCommandId, vfoCoarseDownCommandId};
 
 /// How many keyer messages have a command of their own.
 const keyerMessageKeyCount = 8;
@@ -766,6 +781,10 @@ class LegacyKeyBindings extends KeyBindings {
       // otherwise never fire there.
       case so2rStereoCommandId:
         return !keyboard.isMetaPressed && event.character == r'\';
+      case vfoFineUpCommandId || vfoCoarseUpCommandId:
+        return alt && !command && shift == (id == vfoCoarseUpCommandId) && key == LogicalKeyboardKey.arrowDown;
+      case vfoFineDownCommandId || vfoCoarseDownCommandId:
+        return alt && !command && shift == (id == vfoCoarseDownCommandId) && key == LogicalKeyboardKey.arrowUp;
     }
     if (id.startsWith('keyer.message')) {
       final n = int.tryParse(id.substring('keyer.message'.length));
@@ -784,6 +803,18 @@ class LegacyKeyBindings extends KeyBindings {
 /// widget built without the app (a test) keys as it always has.
 final ValueNotifier<KeyBindings> keyBindings = ValueNotifier<KeyBindings>(LegacyKeyBindings());
 
+/// The key event a command's handler last acted on. A [HardwareKeyboard]
+/// handler cannot stop the focus tree from hearing the same press, so a
+/// field that would give the key a meaning of its own — the QSO list's walk
+/// taking ⌥↑ — asks [keyEventTaken] first.
+KeyEvent? _takenKeyEvent;
+
+/// Marks [event] as acted on by a command's handler ([keyEventTaken]).
+void takeKeyEvent(KeyEvent event) => _takenKeyEvent = event;
+
+/// Whether a command's handler acted on [event] ahead of the focus tree.
+bool keyEventTaken(KeyEvent event) => identical(_takenKeyEvent, event);
+
 /// True while the Keyboard Shortcuts settings are listening for a chord to
 /// bind: every key goes to the recorder then, ⌘K included.
 final ValueNotifier<bool> keyChordRecording = ValueNotifier<bool>(false);
@@ -797,6 +828,23 @@ bool focusInFreeText([BuildContext? focused]) {
   final context = focused ?? FocusManager.instance.primaryFocus?.context;
   if (context == null || context.findAncestorWidgetOfExactType<EditableText>() == null) return false;
   return context.findAncestorWidgetOfExactType<LoggingEntryRow>() == null;
+}
+
+/// A control that steps on the arrow keys whatever the modifiers — a scene
+/// knob or slider — where a command bound to an arrow chord stands aside as
+/// it does in free text ([focusInFreeText]). Only while [owns]: a disabled
+/// control steps on nothing, and a press left to it would do nothing at all.
+class ArrowKeysOwner extends StatelessWidget {
+  final bool owns;
+  final Widget child;
+
+  const ArrowKeysOwner({super.key, this.owns = true, required this.child});
+
+  /// Whether the keyboard is inside an [ArrowKeysOwner] that [owns] the arrows.
+  static bool hasFocus() => FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<ArrowKeysOwner>()?.owns ?? false;
+
+  @override
+  Widget build(BuildContext context) => child;
 }
 
 /// What [event] types, or null for a key that types nothing: control
@@ -892,10 +940,12 @@ final _fieldKeys = {
 KeyChordRefusal? keyChordRefusal(KeyChord chord, String id, {TargetPlatform? platform, String? typed}) {
   if (chord.key == LogicalKeyboardKey.escape) return KeyChordRefusal.fixed;
   if (!chord.hasCommandModifier && !chord.modifiers.contains(KeyModifier.alt) && _fieldKeys.contains(chord.key)) return KeyChordRefusal.fixed;
-  // The QSO list's walk (qso_list_walk.dart): ⌥ and ⌘ on Up and Down.
+  // The QSO list's walk (qso_list_walk.dart): ⌥ and ⌘ on Up and Down. Only
+  // the VFO's commands may take its ⌥ page: they alone stand aside while a
+  // logged contact is loaded, where a field walks the list on it.
   final vertical = chord.key == LogicalKeyboardKey.arrowUp || chord.key == LogicalKeyboardKey.arrowDown;
-  if (vertical && !chord.modifiers.contains(KeyModifier.shift) && !chord.modifiers.contains(KeyModifier.ctrl)) {
-    if (chord.modifiers.length == 1) return KeyChordRefusal.fixed;
+  if (vertical && chord.modifiers.length == 1) {
+    if (chord._hasMeta || (chord.modifiers.contains(KeyModifier.alt) && !_vfoCommandIds.contains(id))) return KeyChordRefusal.fixed;
   }
   // Undo of a wipe or a staged delete, and every text field's own undo.
   if (chord.key == LogicalKeyboardKey.keyZ) {

@@ -16,7 +16,9 @@ enum QsoListWalk { up, down, pageUp, pageDown, top, bottom }
 /// Up and Down step a row; Page Up and Page Down, and Option+Up/Down, a
 /// screenful; Cmd+Up/Down go to the ends, as macOS spells them. In a
 /// single-line field those chords only ever park the caret at an end of the
-/// text, which Left and Right reach as well. Home and End are not taken:
+/// text, which Left and Right reach as well. Option+Up/Down may be bound to
+/// the VFO's commands as well, and a logging field leaves one to a command
+/// that acted on it ([keyEventTaken]). Home and End are not taken:
 /// there they are the caret's. Shift and Ctrl leave every key to the field
 /// — Shift+arrow is a selection, and Ctrl belongs to the platform.
 QsoListWalk? qsoListWalkFor(KeyEvent event) {

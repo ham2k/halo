@@ -10,7 +10,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -22,6 +22,7 @@ import '../services/cat/cat_service.dart' show RadioKeyer;
 import '../services/cat/computer_voice_keyer.dart' show ComputerVoiceProblem, VoicedMessageRefused;
 import '../services/cat/voiced_words.dart' show VoiceTemplateRender;
 import '../services/cat/drivers/cw_send_queue.dart' show sanitizeCwText;
+import '../services/cat/vfo_keys.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
@@ -441,6 +442,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     HardwareKeyboard.instance.addHandler(_onWakeKeyEvent);
     // ⌘F/Ctrl+F from wherever focus is — see [_onFindKeyEvent].
     HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
+    // ⌥↑/⌥↓ and the rest of the VFO keys — see [onVfoKey].
+    HardwareKeyboard.instance.addHandler(_onVfoKeyEvent);
     // Keeps spots flowing, judged against this operation and its log (shown
     // to the board below, mounted Spots Panel or not), while it is open: the
     // `spot-history` lookup reads that cache from the logging panel alone, and
@@ -591,6 +594,20 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     setState(() => _findRequest++);
   }
 
+  /// ⌥↑/⌥↓ and the rest of the VFO keys while this operation is the
+  /// front-most route ([onVfoKey]), on the operator's radio.
+  bool _onVfoKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    return onVfoKey(
+      event,
+      radio: widget.services.radio,
+      statusBar: widget.services.statusBar,
+      vfo: widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA',
+      qsoLoaded: _selectedQsoUuid != null,
+    );
+  }
+
   /// ⌘F/Ctrl+F, while this operation is the front-most route — a dialog over
   /// it owns the keyboard — and its layout has a logging pane to find in.
   /// Without one the chord is left to the platform: on web, the browser's
@@ -655,6 +672,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.cat.keyer('A').voicedWords?.detach(_voiceRender);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
     _wakeHold.release();
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);

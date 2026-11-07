@@ -68,10 +68,46 @@ A chord is one key and the modifiers held for it, stored as text:
 | `style.toggle` | ⌥U | Operation: Run or S&P for the operator's set |
 | `so2r.stereo` | [\\] | Operation, an SO2R switcher switching; listed only with `so2r` on |
 | `logging.wipe` | ⌥W | the logging panel |
+| `vfo.fineUp` / `fineDown` | ⌥↓ / ⌥↑ | Operation, Chasing; not with a logged contact loaded (below) |
+| `vfo.coarseUp` / `coarseDown` | ⇧⌥↓ / ⇧⌥↑ | Operation, Chasing; not with a logged contact loaded |
 | `text:<command>` | none | anywhere |
 
 ⌘ here is the platform's command key: `cmd` on Apple platforms, `ctrl`
 elsewhere. Ids are stable — they are what the settings and files store.
+
+**The VFO keys** (the Station group) tune the VFO with or without a radio
+connected, since the VFO is what the next contact logs: in the Operation view
+the operator's radio — radio1, or under SO2R the radio of the set they are
+in — and in Chasing radio1. Down raises the frequency: the arrow turns a
+dial, it does not point up the band. A fine step is 10 Hz in CW and the data
+modes and 100 Hz in phone, a coarse one ten times that; each lands on its
+step's grid as a MIDI knob does (`vfo_keys.dart`), and a held key repeats.
+Unlike the knob's, a press is an exact tune, as a typed frequency is: Smart
+VFO Snap never settles it onto a coarser grid.
+With nothing to step from — no radio, and a band picked by name — a press
+says so on the status bar. A radio's last report counts only while it is on
+the VFO's band: one from a radio since disconnected would tune back to a band
+the operator left.
+
+They stand aside, leaving the press to what else would take it:
+
+- **With a logged contact loaded**, all four: the panel shows that contact,
+  not the VFO, so a tune would move the radio unseen. ⌥↑ and ⌥↓ are the QSO
+  list's page keys ([logging-fields.md](logging-fields.md)) and page it.
+- **In a text field other than the main logging fields** (`focusInFreeText`)
+  — a note, the Find bar — an arrow with any modifiers is the field's: it
+  moves the caret, selects, or pages the Find bar's matches.
+- **On a control that steps on the arrows whatever the modifiers** — a scene
+  knob or slider, while enabled (`ArrowKeysOwner`) — the arrows are the
+  control's.
+
+In the Logs view, which tunes nothing, ⌥↑ and ⌥↓ page the list. Everywhere
+else in the Operation and Chasing views the VFO has them, and the logging
+fields, which hear the same press after the VFO's handler
+(`HardwareKeyboard` cannot stop the focus tree), drop a press it took
+(`takeKeyEvent`) rather than move the caret or select too. No other command
+may take ⌥↑ or ⌥↓ alone: none stands aside while a logged contact is
+loaded, so the list would page under it.
 
 **Command text** (`text:20M`) runs exactly as the ⌘K dialog runs what is typed
 into it: against the operation in front, through the same dispatch, with the
@@ -111,8 +147,9 @@ wherever it is pressed.
 
 Never bindable, and listed in the panel so the operator can see what is
 taken: Escape, with any modifier; Enter, Space, Tab, the arrows, Page Up/Down,
-Home, End, Backspace and Delete on their own or with ⇧; ⌥ or ⌘ with Up or
-Down (the QSO list's walk); ⌘Z (Ctrl+Z off a Mac); and **the callsign keys** —
+Home, End, Backspace and Delete on their own or with ⇧; ⌘ with Up or
+Down, and ⌥ with them for every command but the VFO keys (the QSO list's
+walk); ⌘Z (Ctrl+Z off a Mac); and **the callsign keys** —
 A–Z, 0–9, `,` `.` `/`, the `?` that marks a partial call, and the keypad's
 digits, `.` and `/` — on their own or with ⇧, for every command, PTT
 included: a call could not be typed with one taken. The editor refuses by
@@ -197,9 +234,9 @@ shows them.
 
 ## Conflicts
 
-Every context sits inside the one before it — the logging panel inside the
-Operation view inside the app — so two commands on one chord always meet, and
-conflicts ignore context. The panel shows each one in red on both rows; the
+Every context takes in the Operation view — the app, the views that hold a
+log, the Station views, the logging panel inside it — so two commands on one
+chord always meet there, and conflicts ignore context. The panel shows each one in red on both rows; the
 editor offers to take a chord from the command that has it. The app does not
 pick a winner: the app-wide handler is registered first and answers first, as
 it always has.

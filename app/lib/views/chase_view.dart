@@ -11,11 +11,12 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyEvent;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../services/cat/vfo_keys.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/chase_service.dart';
 import '../services/command_actions.dart';
@@ -469,6 +470,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     WallClock.seconds.addListener(_onTick);
     frontSettingsOverrides.set(this, _loggingSettings);
     HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
+    HardwareKeyboard.instance.addHandler(_onVfoKeyEvent);
   }
 
   void _hidden() {
@@ -477,6 +479,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     WallClock.seconds.removeListener(_onTick);
     frontSettingsOverrides.clear(this);
     HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onVfoKeyEvent);
   }
 
   /// Bumped to open the logging panel's Find bar — [LoggingPanel.findRequest].
@@ -499,6 +502,16 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     if (!(dockKey.currentState?.modules.contains(ChaseView.loggingPanelId) ?? true)) return false;
     _openFind();
     return true;
+  }
+
+  /// ⌥↑/⌥↓ and the rest of the VFO keys while this view is on screen and
+  /// front-most, as in the Operation view ([onVfoKey]) — on radio1, even
+  /// under SO2R: the operator's set is what an operation's panel last
+  /// reported, which can be another view's.
+  bool _onVfoKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return false;
+    if (testerOverlayCovering.value || !mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    return onVfoKey(event, radio: widget.services.radio, statusBar: widget.services.statusBar, vfo: 'vfoA', qsoLoaded: _selectedQsoUuid != null);
   }
 
   /// The period ends at a UTC midnight that no write announces: "today"

@@ -909,6 +909,9 @@ class Translations$operation$en {
 	/// en: 'Activity fields may be out of date — reopen the operation to refresh them'
 	String get loggingControlsStale => 'Activity fields may be out of date — reopen the operation to refresh them';
 
+	/// en: 'No frequency to tune from — type one, or connect a radio'
+	String get vfoKeysNoFrequency => 'No frequency to tune from — type one, or connect a radio';
+
 	/// en: 'Not set'
 	String get locationNone => 'Not set';
 
@@ -2282,6 +2285,9 @@ class Translations$keyboardShortcuts$en {
 	/// en: 'Keying'
 	String get groupKeying => 'Keying';
 
+	/// en: 'Station'
+	String get groupStation => 'Station';
+
 	/// en: 'Logging'
 	String get groupLogging => 'Logging';
 
@@ -2302,6 +2308,9 @@ class Translations$keyboardShortcuts$en {
 
 	/// en: 'In the logging panel'
 	String get contextLogging => 'In the logging panel';
+
+	/// en: 'Operation and Chasing views'
+	String get contextStation => 'Operation and Chasing views';
 
 	/// en: 'Add a Command…'
 	String get addCommand => 'Add a Command…';
@@ -7713,6 +7722,18 @@ class Translations$keyboardShortcuts$command$en {
 
 	/// en: 'Clear the contact being logged'
 	String get wipe => 'Clear the contact being logged';
+
+	/// en: 'VFO up one fine step'
+	String get vfoFineUp => 'VFO up one fine step';
+
+	/// en: 'VFO down one fine step'
+	String get vfoFineDown => 'VFO down one fine step';
+
+	/// en: 'VFO up one coarse step'
+	String get vfoCoarseUp => 'VFO up one coarse step';
+
+	/// en: 'VFO down one coarse step'
+	String get vfoCoarseDown => 'VFO down one coarse step';
 }
 
 // Path: keyboardShortcuts.fixed
@@ -11233,6 +11254,7 @@ extension on Translations {
 			'operation.titleNone' => 'No title',
 			'operation.deleteOperation' => 'Delete operation',
 			'operation.loggingControlsStale' => 'Activity fields may be out of date — reopen the operation to refresh them',
+			'operation.vfoKeysNoFrequency' => 'No frequency to tune from — type one, or connect a radio',
 			'operation.locationNone' => 'Not set',
 			'operation.generalOperation' => 'General Operation',
 			'operation.lifecycle.paused' => 'Paused',
@@ -11350,9 +11372,9 @@ extension on Translations {
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
-			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
@@ -11864,9 +11886,9 @@ extension on Translations {
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
-			'loggingControls.operatorControl' => 'Operator',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.operatorControl' => 'Operator',
 			'loggingControls.operatorField' => 'Operator',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
 			'loggingControls.editStationCalls' => 'Edit list',
@@ -12378,9 +12400,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateHelpMessage' => 'Message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'Said with your words',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Says: ${words}',
-			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'Open an operation to see what it will say.',
 			'settings.radio.voiceMessages.wordsDescription' => 'Use your own voice for calls, numbers and more.',
 			'settings.radio.voiceWords.title' => 'Word Recordings',
@@ -12892,9 +12914,9 @@ extension on Translations {
 			'settings.station.ftdx3000Troubleshooting' => '**Menu 037 CAT SELECT must be USB** for CAT over the radio\'s USB port; set to RS232C, CAT is on the jack on the back.\n\nThis entry was written from published CAT documentation and has not been run against an FTDX3000. If it half-works, that is worth reporting.',
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS off at the radio, or Hold RTS high on.** With the radio\'s **CAT RTS** menu on, it stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4RemoteNotes' => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.',
@@ -13406,9 +13428,9 @@ extension on Translations {
 			'sets.duplicateFailed' => ({required Object name, required Object error}) => 'Could not duplicate ${name}: ${error}',
 			'sets.moveTo' => 'Move to…',
 			'sets.moveTitle' => ({required Object name}) => 'Move ${name} to',
-			'sets.topLevel' => 'Top level',
 			_ => null,
 		} ?? switch (path) {
+			'sets.topLevel' => 'Top level',
 			'sets.export' => 'Export…',
 			'sets.import' => 'Import…',
 			'sets.delete' => 'Delete…',
@@ -13450,6 +13472,7 @@ extension on Translations {
 			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} is also bound to ${commands}',
 			'keyboardShortcuts.groupApp' => 'App',
 			'keyboardShortcuts.groupKeying' => 'Keying',
+			'keyboardShortcuts.groupStation' => 'Station',
 			'keyboardShortcuts.groupLogging' => 'Logging',
 			'keyboardShortcuts.groupCommands' => 'Commands',
 			'keyboardShortcuts.groupFixed' => 'Fixed Keys',
@@ -13457,6 +13480,7 @@ extension on Translations {
 			'keyboardShortcuts.contextLogView' => 'Operation, Chasing and Logs views',
 			'keyboardShortcuts.contextOperation' => 'Operation view, keying a CAT radio',
 			'keyboardShortcuts.contextLogging' => 'In the logging panel',
+			'keyboardShortcuts.contextStation' => 'Operation and Chasing views',
 			'keyboardShortcuts.addCommand' => 'Add a Command…',
 			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Unknown command: ${command}',
 			'keyboardShortcuts.command.commandDialog' => 'Open the command dialog',
@@ -13475,6 +13499,10 @@ extension on Translations {
 			'keyboardShortcuts.command.ptt' => 'Push to talk',
 			'keyboardShortcuts.command.so2rStereo' => 'SO2R: hear both radios, or only the focused one',
 			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
+			'keyboardShortcuts.command.vfoFineUp' => 'VFO up one fine step',
+			'keyboardShortcuts.command.vfoFineDown' => 'VFO down one fine step',
+			'keyboardShortcuts.command.vfoCoarseUp' => 'VFO up one coarse step',
+			'keyboardShortcuts.command.vfoCoarseDown' => 'VFO down one coarse step',
 			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
 			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
 			'keyboardShortcuts.fixed.enter' => 'Log the contact',

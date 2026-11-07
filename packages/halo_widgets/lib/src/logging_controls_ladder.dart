@@ -35,6 +35,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'key_bindings.dart' show keyEventTaken;
 import 'logging_controls_metrics.dart';
 import 'qso_list_walk.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec;
@@ -230,8 +231,11 @@ class LoggingFocusLadder {
   KeyEventResult onEventTextKeyEvent(FocusNode node, KeyEvent event) => _walkedQsoList(event) ? KeyEventResult.handled : KeyEventResult.ignored;
 
   /// A walk key offered to the host's list walk first ([FocusLadderConfig]'s
-  /// `walkQsoList`); true when it took the key.
+  /// `walkQsoList`); true when it took the key — or when a command's handler
+  /// already acted on it ([keyEventTaken]): ⌥↑ tuning the VFO neither moves
+  /// the caret nor, with ⇧, selects the field's text as well.
   bool _walkedQsoList(KeyEvent event) {
+    if (keyEventTaken(event)) return true;
     final walk = qsoListWalkFor(event);
     return walk != null && (config().walkQsoList?.call(walk) ?? false);
   }

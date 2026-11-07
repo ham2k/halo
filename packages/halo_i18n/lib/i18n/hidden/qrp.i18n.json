@@ -470,6 +470,7 @@
     "titleNone": "no title",
     "deleteOperation": "delete operation",
     "loggingControlsStale": "activity fields may be out of date — reopen the operation to refresh them",
+    "vfoKeysNoFrequency": "no frequency to tune from — type one, or connect a radio",
     "locationNone": "not set",
     "generalOperation": "general operation",
     "lifecycle": {
@@ -3026,6 +3027,7 @@
     "conflict": "${keys} is also bound to ${commands}",
     "groupApp": "app",
     "groupKeying": "keying",
+    "groupStation": "station",
     "groupLogging": "logging",
     "groupCommands": "commands",
     "groupFixed": "fixed keys",
@@ -3033,6 +3035,7 @@
     "contextLogView": "operation, chasing and logs views",
     "contextOperation": "operation view, keying a cat radio",
     "contextLogging": "in the logging panel",
+    "contextStation": "operation and chasing views",
     "addCommand": "add a command…",
     "unknownCommand": "unknown command: ${command}",
     "command": {
@@ -3051,7 +3054,11 @@
       "toggleStyle": "switch between run and s&p",
       "ptt": "push to talk",
       "so2rStereo": "so2r: hear both radios, or only the focused one",
-      "wipe": "clear the contact being logged"
+      "wipe": "clear the contact being logged",
+      "vfoFineUp": "vfo up one fine step",
+      "vfoFineDown": "vfo down one fine step",
+      "vfoCoarseUp": "vfo up one coarse step",
+      "vfoCoarseDown": "vfo down one coarse step"
     },
     "fixed": {
       "callsign": "typing callsigns",

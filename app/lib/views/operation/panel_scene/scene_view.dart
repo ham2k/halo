@@ -1038,7 +1038,7 @@ class _ControlViewState extends State<_ControlView> {
         child: Semantics(label: c.label, button: true, child: const SizedBox.expand()),
       );
     }
-    return Semantics(
+    final control = Semantics(
       label: c.label,
       button: button,
       slider: !button,
@@ -1214,6 +1214,7 @@ class _ControlViewState extends State<_ControlView> {
         ),
       ),
     );
+    return button ? control : ArrowKeysOwner(owns: !widget.disabled, child: control);
   }
 }
 
