@@ -12,6 +12,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -316,6 +317,10 @@ void main() {
     }
 
     setUp(built.clear);
+    // A test runs as Android, and as one new enough for the gallery unless
+    // it says otherwise.
+    setUp(() => OperationPostcardPanel.debugAndroidSdk = 34);
+    tearDown(() => OperationPostcardPanel.debugAndroidSdk = null);
 
     /// Both clocks turned [rounds] times, 10ms each.
     Future<void> turn(WidgetTester tester, int rounds) async {
@@ -347,6 +352,32 @@ void main() {
     }
 
     Future<void> copyOnce(WidgetTester tester) => press(tester, 'Copy');
+
+    /// Save's menu opened — Save on a phone is a menu — and [item] picked
+    /// from it and let run.
+    Future<void> saveTo(WidgetTester tester, String item) async {
+      await tester.tap(find.bySemanticsLabel('Save'));
+      await tester.pumpAndSettle();
+      // A menu item runs once its menu has closed, a frame after the tap:
+      // waiting for idle before then waits on nothing.
+      await tester.tap(find.bySemanticsLabel(item));
+      await tester.pump();
+      await tester.pump();
+      expect(idle(), isFalse, reason: '$item started');
+      await until(tester, idle, '$item finished');
+      await tester.pumpAndSettle();
+    }
+
+    /// Answers the Photos channel (AppDelegate.swift, PhotosChannel.kt):
+    /// [put] for each image.
+    void mockPhotos(WidgetTester tester, Future<Object?> Function(MethodCall call) put) {
+      const channel = MethodChannel('ham2k/photos');
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, put);
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+    }
+
+    /// The options dialog's Save, over the pane's own.
+    final optionsSave = find.text('Save').last;
 
     /// The map's page comes first; the summary's pages each have an overlay
     /// of their own.
@@ -409,7 +440,7 @@ void main() {
           throw PlatformException(code: saves.length == 1 ? 'save_failed' : 'bad_args', message: 'no room');
         });
         addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
-        Future<void> save() => press(tester, 'Save…');
+        Future<void> save() => saveTo(tester, 'Save to Files…');
 
         await pumpPanel(tester, await freshSettings(), mapIsFlutter: true);
         await save();
@@ -729,26 +760,32 @@ void main() {
       expect(find.descendant(of: shield, matching: find.byKey(const ValueKey('platform-view-blocker'))), findsOneWidget);
     });
 
-    testWidgets('lines the footer actions up from its leading edge, Done at the trailing one, and gives up their labels from the right', (tester) async {
-      const labels = ['Share', 'Copy', 'Save…'];
-      var lastBare = 0;
-      for (var width = 700.0; width >= 300; width -= 20) {
-        await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, width: width);
-        final shown = [for (final label in labels) find.text(label).evaluate().isNotEmpty];
-        final bare = shown.where((s) => !s).length;
-        expect(shown, [for (var i = 0; i < labels.length; i++) i < labels.length - bare], reason: 'the rightmost first, at $width');
-        expect(bare, greaterThanOrEqualTo(lastBare), reason: 'no label comes back as the pane narrows, at $width');
-        lastBare = bare;
-        final pane = tester.getRect(find.byType(OperationPostcardPanel));
-        final done = tester.getRect(find.text('Done'));
-        final share = tester.getRect(find.bySemanticsLabel('Share'));
-        final save = tester.getRect(find.bySemanticsLabel('Save…'));
-        expect(share.left, closeTo(pane.left + Space.xxl, 1), reason: 'at the leading edge, at $width');
-        expect(save.right, lessThanOrEqualTo(done.left), reason: 'clear of Done, at $width');
-        expect(save.center.dy, inInclusiveRange(done.top, done.bottom), reason: 'one row, at $width');
-      }
-      expect(lastBare, greaterThan(0), reason: 'the case being tested: some narrow width gives a label up');
-    });
+    testWidgets(
+      'lines the footer actions up from its leading edge, Done at the trailing one, and gives up their labels from the right',
+      (tester) async {
+        // A phone's Save opens a menu; a desktop's Save… a dialog, and is wider.
+        final save = defaultTargetPlatform == TargetPlatform.android ? 'Save' : 'Save…';
+        final labels = ['Share', 'Copy', save];
+        var lastBare = 0;
+        for (var width = 700.0; width >= 300; width -= 20) {
+          await pumpPanel(tester, await freshSettings(), mapIsFlutter: false, width: width);
+          final shown = [for (final label in labels) find.text(label).evaluate().isNotEmpty];
+          final bare = shown.where((s) => !s).length;
+          expect(shown, [for (var i = 0; i < labels.length; i++) i < labels.length - bare], reason: 'the rightmost first, at $width');
+          expect(bare, greaterThanOrEqualTo(lastBare), reason: 'no label comes back as the pane narrows, at $width');
+          lastBare = bare;
+          final pane = tester.getRect(find.byType(OperationPostcardPanel));
+          final done = tester.getRect(find.text('Done'));
+          final share = tester.getRect(find.bySemanticsLabel('Share'));
+          final saveAt = tester.getRect(find.bySemanticsLabel(save));
+          expect(share.left, closeTo(pane.left + Space.xxl, 1), reason: 'at the leading edge, at $width');
+          expect(saveAt.right, lessThanOrEqualTo(done.left), reason: 'clear of Done, at $width');
+          expect(saveAt.center.dy, inInclusiveRange(done.top, done.bottom), reason: 'one row, at $width');
+        }
+        expect(lastBare, greaterThan(0), reason: 'the case being tested: some narrow width gives a label up');
+      },
+      variant: TargetPlatformVariant({TargetPlatform.android, TargetPlatform.macOS}),
+    );
 
     testWidgets('sets the pages off with a glow of the other tone when they share the pane\'s', (tester) async {
       List<BoxShadow>? glow() => tester
@@ -785,7 +822,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Save'));
+      await tester.tap(optionsSave);
       await tester.pumpAndSettle();
 
       expect(find.bySemanticsLabel(RegExp(r'^Page \d of 2$')), findsOneWidget, reason: 'the map and the stats alone');
@@ -807,7 +844,7 @@ void main() {
       await pumpPanel(tester, settings, mapIsFlutter: false, sections: summary);
       expect(mark(), isNull);
 
-      await inDialog(() => tester.tap(find.text('Save')));
+      await inDialog(() => tester.tap(optionsSave));
       expect(mark(), isNull, reason: 'saved as it came: nothing to remember');
       expect(settings.postcardSections.order, isEmpty);
 
@@ -820,7 +857,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.tap(find.text('Save'));
+        await tester.tap(optionsSave);
       });
       expect(mark(), const Color(0xFF00BFA5));
 
@@ -846,7 +883,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Show band legend'));
       await tester.pump();
-      await tester.tap(find.text('Save'));
+      await tester.tap(optionsSave);
       await tester.pumpAndSettle();
     }
 
@@ -891,7 +928,7 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text('Show grayline'));
         await tester.pump();
-        await tester.tap(find.text('Save'));
+        await tester.tap(optionsSave);
         await tester.pumpAndSettle();
       }
 
@@ -921,7 +958,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Show grayline'));
       await tester.pump();
-      await tester.tap(find.text('Save'));
+      await tester.tap(optionsSave);
       await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Copy'));
       await until(tester, () => copies.length == 2, 'copied with it');
@@ -986,7 +1023,7 @@ void main() {
       final page = await copyPage(tester);
       expect(pngSize(page), (1080, 1920), reason: 'a summary page, offline');
 
-      await press(tester, 'Save…');
+      await saveTo(tester, 'Save to Files…');
       expect([for (final name in asked) name.split(' ').last], ['2.png', '3.png'], reason: 'the summary pages, as numbered with the map');
       expect(find.textContaining("the map didn't load, so it was left out"), findsOneWidget);
     });
@@ -1063,15 +1100,156 @@ void main() {
       addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
       await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
 
-      await press(tester, 'Save…');
+      await saveTo(tester, 'Save to Files…');
       expect([for (final name in asked) name.split(' ').last], ['1.png', '2.png', '3.png']);
       expect(find.text('Saved saved-1.png, saved-2.png, saved-3.png'), findsOneWidget);
 
       asked.clear();
       answer = (call) => call == 1 ? 'saved-1.png' : null;
-      await press(tester, 'Save…');
+      await saveTo(tester, 'Save to Files…');
       expect(asked, hasLength(2), reason: 'no third dialog after the second was cancelled');
       expect(find.text('Saved to saved-1.png'), findsOneWidget, reason: 'what landed, not what was asked for');
+    });
+
+    testWidgets('saves every page to the gallery on Android', (tester) async {
+      final added = <String>[];
+      mockPhotos(tester, (call) async {
+        added.add((call.arguments as Map<Object?, Object?>)['name']! as String);
+        return null;
+      });
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+
+      await saveTo(tester, 'Save to Gallery');
+      expect([for (final name in added) name.split(' ').last], ['1.png', '2.png', '3.png']);
+      expect(find.text('Saved 3 images to the gallery'), findsOneWidget);
+    });
+
+    testWidgets('offers no gallery before Android 10, whose gallery takes nothing unasked: its Save goes straight to the dialog', (tester) async {
+      OperationPostcardPanel.debugAndroidSdk = 28;
+      final asked = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), (call) async {
+        asked.add(call.method);
+        return 'saved.png';
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(const MethodChannel('ham2k/file_save'), null));
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true);
+
+      // The ellipsis, as on a desktop: this Save opens a dialog.
+      await press(tester, 'Save…');
+      expect(find.text('Save to Gallery'), findsNothing);
+      expect(asked, hasLength(1));
+      expect(find.text('Saved to saved.png'), findsOneWidget);
+    });
+
+    group('on iOS', () {
+      final ios = TargetPlatformVariant.only(TargetPlatform.iOS);
+
+      testWidgets('saves every page into Photos, with no dialog to promise', (tester) async {
+        final added = <String>[];
+        mockPhotos(tester, (call) async {
+          expect(call.method, 'addImage');
+          added.add((call.arguments as Map<Object?, Object?>)['name']! as String);
+          return null;
+        });
+        await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+
+        expect(find.bySemanticsLabel('Save…'), findsNothing, reason: 'an ellipsis promises a dialog; Save opens a menu');
+        await saveTo(tester, 'Save to Photos');
+        expect([for (final name in added) name.split(' ').last], ['1.png', '2.png', '3.png']);
+        expect(find.text('Saved 3 images to Photos'), findsOneWidget);
+      }, variant: ios);
+
+      testWidgets("says why Photos refused, names the pages already in when one fails partway, and reports only what Photos did not explain", (tester) async {
+        final backend = FakeErrorReportingBackend();
+        await withErrorHooks(backend: backend, () async {
+          // The answer for each page in turn; null lands it.
+          var answers = <PlatformException?>[];
+          var put = 0;
+          mockPhotos(tester, (call) async {
+            final answer = answers[put++];
+            if (answer != null) throw answer;
+            return null;
+          });
+          Future<void> save(List<PlatformException?> each) async {
+            answers = each;
+            put = 0;
+            await saveTo(tester, 'Save to Photos');
+          }
+
+          await pumpPanel(tester, await freshSettings(), mapIsFlutter: true);
+          await save([PlatformException(code: 'denied')]);
+          // iOS asks once: after a "Don't Allow", every Save fails this way
+          // until the operator finds the setting.
+          expect(find.text('Photos access is off for this app — allow Add Photos Only in Settings'), findsOneWidget);
+          await save([PlatformException(code: 'restricted')]);
+          // Screen Time's lock is not the operator's to lift in Settings.
+          expect(find.textContaining('restricted on this device'), findsOneWidget);
+          await save([PlatformException(code: 'full', message: 'the disk is full')]);
+          expect(find.text('Could not save the postcard: the disk is full'), findsOneWidget);
+          expect(backend.exceptions, isEmpty, reason: "the operator's own answers, not faults");
+
+          await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+          await save([null, null, PlatformException(code: 'failed', message: 'the library is busy', details: 'PHPhotosErrorDomain 3300')]);
+          // Without the pages already in, a retry adds them to Photos twice;
+          // counted, as Photos shows no file names to match.
+          expect(find.text('Could not save the postcard: the library is busy — the first 2 pages had already been saved'), findsOneWidget);
+          await save([null, PlatformException(code: 'failed', message: 'the library is busy')]);
+          expect(find.text('Could not save the postcard: the library is busy — the first page had already been saved'), findsOneWidget);
+          // Access turned off between two pages: what went in still counts.
+          await save([null, PlatformException(code: 'denied')]);
+          expect(find.text('Photos access is off for this app — allow Add Photos Only in Settings — the first page had already been saved'), findsOneWidget);
+          expect(backend.exceptions, hasLength(2), reason: 'an answer Photos gave no reason for goes up');
+          // Without Photos' words and code, every such fault reads the same.
+          expect('${backend.exceptions.first.error}', allOf(contains('the library is busy'), contains('3300')));
+        });
+      }, variant: ios);
+
+      testWidgets('saves every page to Files through one picker, and says what landed under the names Files gave them', (tester) async {
+        final temp = Directory.systemTemp.createTempSync('postcard_files');
+        addTearDown(() => temp.deleteSync(recursive: true));
+        const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(pathProvider, (call) async => temp.path);
+        addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(pathProvider, null));
+        final exported = <List<String>>[];
+        final heads = <List<int>>[];
+        List<String>? Function(List<String> paths) answer = (paths) => [for (final path in paths) path.split('/').last];
+        const files = MethodChannel('ham2k/files');
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(files, (call) async {
+          final paths = ((call.arguments as Map<Object?, Object?>)['paths']! as List<Object?>).cast<String>();
+          exported.add(paths);
+          heads.addAll([for (final path in paths) File(path).readAsBytesSync().take(4).toList()]);
+          return answer(paths);
+        });
+        addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(files, null));
+        await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, sections: summary);
+
+        await saveTo(tester, 'Save to Files…');
+        expect(exported, hasLength(1), reason: 'one picker for every page, not one each');
+        expect([for (final path in exported.single) path.split(' ').last], ['1.png', '2.png', '3.png']);
+        // The picker copies what is at each path: an empty or missing file
+        // lands as nothing.
+        expect(heads, everyElement([0x89, 0x50, 0x4E, 0x47]));
+        // Copied by the picker, and megabytes each: none kept after.
+        expect(exported.single.where((path) => File(path).existsSync()), isEmpty);
+
+        answer = (paths) => ['renamed.png', 'b.png', 'c.png'];
+        await saveTo(tester, 'Save to Files…');
+        expect(find.text('Saved renamed.png, b.png, c.png'), findsOneWidget);
+
+        answer = (paths) => null;
+        await saveTo(tester, 'Save to Files…');
+        expect(find.textContaining('Saved'), findsNothing, reason: 'a cancelled picker saved nothing');
+
+        // A picker that never showed answers with an error, never with
+        // silence: the pane would otherwise wait on it for good.
+        final backend = FakeErrorReportingBackend();
+        await withErrorHooks(backend: backend, () async {
+          answer = (paths) => throw PlatformException(code: 'not_shown', message: 'Files could not be shown');
+          await saveTo(tester, 'Save to Files…');
+          expect(find.text('Could not save the postcard: Files could not be shown'), findsOneWidget, reason: 'the save failed, not the postcard');
+          expect(backend.exceptions, isEmpty, reason: "iOS's moment, not a fault");
+        });
+      }, variant: ios);
     });
 
     testWidgets('fits its shape labels to a phone, one line each', (tester) async {

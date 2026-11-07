@@ -18,6 +18,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,7 @@ import '../map/map_grayline.dart' show graylineAtContact, graylineInstant;
 import '../map/map_marker_data.dart' show MapMarkerData, mapUnknownBandColor;
 import '../map/map_zoom_controller.dart';
 import '../map/osm_map_view.dart' show osmAttribution;
+import 'postcard_footer.dart';
 import 'postcard_framing.dart';
 import 'postcard_overlay.dart';
 import 'postcard_options_dialog.dart';
@@ -239,6 +241,13 @@ class OperationPostcardPanel extends StatefulWidget {
     required this.graylineAt,
   });
 
+  /// Android's API level, once asked: Save to Gallery needs 29, Android 10
+  /// (PhotosChannel.kt).
+  static int? _androidSdk;
+
+  @visibleForTesting
+  static set debugAndroidSdk(int? sdk) => _androidSdk = sdk;
+
   @override
   State<OperationPostcardPanel> createState() => _OperationPostcardPanelState();
 }
@@ -347,6 +356,31 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   /// The polls of [_mapUp] under way, ended with the pane rather than left
   /// to find it gone.
   final _waits = <Completer<void>, Timer>{};
+
+  /// Whether Save offers Photos or the gallery beside Files: on iOS always;
+  /// on Android from 10, the first whose gallery takes an app's images with
+  /// no permission asked (PhotosChannel.kt). Until Android has said, and
+  /// where it is older, Save is Files' alone.
+  late bool _photosSave = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final known = OperationPostcardPanel._androidSdk;
+    if (known != null) {
+      _photosSave = known >= 29;
+      return;
+    }
+    DeviceInfoPlugin().androidInfo.then(
+      (info) {
+        final sdk = OperationPostcardPanel._androidSdk = info.version.sdkInt;
+        if (mounted && sdk >= 29) setState(() => _photosSave = true);
+      },
+      // Files alone, as on an older Android: Save still works.
+      onError: (Object e, StackTrace stack) => ErrorReportingService.report(e, stack, context: 'postcard:sdk'),
+    );
+  }
 
   @override
   void dispose() {
@@ -591,6 +625,13 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
 
   static const _changed = 'the postcard changed while it was drawn';
 
+  /// Save to Photos on iOS (AppDelegate.swift's `addToPhotos`), to Gallery
+  /// on Android (PhotosChannel.kt): one image a call, the same answers.
+  static const _photos = MethodChannel('ham2k/photos');
+
+  /// iOS's Save to Files: AppDelegate.swift's `FilesExporter`.
+  static const _files = MethodChannel('ham2k/files');
+
   RenderRepaintBoundary _boundary(GlobalKey key) {
     final boundary = key.currentContext?.findRenderObject();
     if (boundary is! RenderRepaintBoundary) throw StateError('the postcard is not on screen');
@@ -662,8 +703,10 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   }
 
   /// Every page: on a desktop, into a folder picked for them when there are
-  /// several; on Android, a dialog each, as the exports save several files.
-  void _save() {
+  /// several; on Android, a dialog each, as the exports save several files;
+  /// on iOS, a folder picked in Files. On a phone, [toPhotos] puts them in
+  /// Photos or the gallery instead.
+  void _save({bool toPhotos = false}) {
     final (shape, style, count) = (_shape, _style, _pageCount);
     _run('save', () async {
       final t = context.t.map.postcard;
@@ -693,6 +736,35 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
         // download more than one file, and the answer never comes back here.
         return left(pngs.length == 1 ? t.downloaded(name: names.single) : t.downloadedMany(count: pngs.length));
       }
+      // No folder to pick: the only question is the platform's own — iOS's,
+      // asked once, for permission to add.
+      if (toPhotos) {
+        final ios = defaultTargetPlatform == TargetPlatform.iOS;
+        for (var page = 0; page < pngs.length; page++) {
+          try {
+            await _photos.invokeMethod<void>('addImage', {'png': pngs[page], 'name': names[page]});
+          } on PlatformException catch (e, stack) {
+            final said = t.saveFailed(error: e.message ?? e.code);
+            // Any other answer, a PNG Photos will not take among them, is a
+            // fault — still told as a failed save, with how many pages are
+            // already in, so a retry does not add them twice. A count: Photos
+            // and the gallery show no file names.
+            if (!const {'denied', 'restricted', 'full'}.contains(e.code)) {
+              ErrorReportingService.report(e, stack, context: 'postcard:save', told: mounted);
+            }
+            final why = switch (e.code) {
+              'denied' => t.photosDenied,
+              'restricted' => t.photosRestricted,
+              _ => said,
+            };
+            throw _Refused(page == 0 ? why : t.savePartialFirst(error: why, count: page), e);
+          }
+        }
+        final one = pngs.length == 1;
+        return left(
+          ios ? (one ? t.savedToPhotos : t.savedManyToPhotos(count: pngs.length)) : (one ? t.savedToGallery : t.savedManyToGallery(count: pngs.length)),
+        );
+      }
       // No file_selector save on Android — see AndroidFileSave.
       if (defaultTargetPlatform == TargetPlatform.android) {
         for (var page = 0; page < pngs.length; page++) {
@@ -712,6 +784,38 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
         }
         if (saved.isEmpty) return null;
         return left(saved.length == 1 ? t.saved(path: saved.single) : t.savedFiles(names: saved.join(', ')));
+      }
+      // One picker for every page, as a desktop's folder.
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final directory = (await getTemporaryDirectory()).path;
+        final paths = [for (final name in names) p.join(directory, name)];
+        final List<String>? landed;
+        try {
+          for (var page = 0; page < pngs.length; page++) {
+            try {
+              await File(paths[page]).writeAsBytes(pngs[page]);
+            } on FileSystemException catch (e) {
+              throw _Refused(failed(e.osError?.message ?? e.message), e);
+            }
+          }
+          try {
+            landed = await _files.invokeListMethod<String>('export', {'paths': paths});
+          } on PlatformException catch (e, stack) {
+            // iOS declining to show the picker just then is no fault here.
+            if (!const {'not_shown', 'no-window'}.contains(e.code)) {
+              ErrorReportingService.report(e, stack, context: 'postcard:save', told: mounted);
+            }
+            throw _Refused(failed(e.message ?? e.code), e);
+          }
+        } finally {
+          // The picker has copied them by the time it answers. A file left
+          // behind is iOS's to clear with the rest of the temporary folder.
+          for (final path in paths) {
+            await File(path).delete().then((_) {}, onError: (Object _) {});
+          }
+        }
+        if (landed == null || landed.isEmpty) return null;
+        return left(landed.length == 1 ? t.saved(path: landed.single) : t.savedFiles(names: landed.join(', ')));
       }
       if (pngs.length == 1) {
         final location = await getSaveLocation(
@@ -863,16 +967,26 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     final t = context.t.map.postcard;
     final theme = Theme.of(context);
     final ios = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
-    // iOS saves an image from the share sheet (Save Image), which is where
-    // an iOS operator looks for it; a Save button beside it would be a
-    // second way to the same place.
-    final canSave = !ios;
     final canShare = kIsWeb ? browserCanShareImages() : defaultTargetPlatform != TargetPlatform.linux;
 
-    final actions = <_Action>[
-      if (canShare) (icon: MdiIcons.shareVariant, label: t.share, onPressed: _share),
-      (icon: MdiIcons.contentCopy, label: t.copy, onPressed: _copy),
-      if (canSave) (icon: kIsWeb ? MdiIcons.download : MdiIcons.contentSave, label: kIsWeb ? t.download : t.save, onPressed: _save),
+    final actions = <PostcardAction>[
+      if (canShare) (icon: MdiIcons.shareVariant, label: t.share, onPressed: _share, menu: null),
+      (icon: MdiIcons.contentCopy, label: t.copy, onPressed: _copy, menu: null),
+      if (kIsWeb)
+        (icon: MdiIcons.download, label: t.download, onPressed: _save, menu: null)
+      // No ellipsis on this Save: it opens a menu, not a dialog.
+      else if (_photosSave)
+        (
+          icon: MdiIcons.contentSave,
+          label: context.t.common.save,
+          onPressed: null,
+          menu: [
+            (icon: MdiIcons.imageMultipleOutline, label: ios ? t.saveToPhotos : t.saveToGallery, onPressed: () => _save(toPhotos: true)),
+            (icon: MdiIcons.folderOutline, label: t.saveToFiles, onPressed: _save),
+          ],
+        )
+      else
+        (icon: MdiIcons.contentSave, label: t.save, onPressed: _save, menu: null),
     ];
 
     final shapes = SegmentedButton<PostcardShape>(
@@ -1012,100 +1126,8 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
                   ),
           ),
         ),
-        _footer(actions),
+        PostcardFooter(actions: actions, busy: _busy),
       ],
-    );
-  }
-
-  /// Each form of the footer's action row at its natural width — none, then
-  /// one, two… of them from the trailing edge showing their icon alone — as
-  /// measured for [_formsOf]; null until measured.
-  List<double>? _formWidths;
-  String? _formsOf;
-  final _forms = <GlobalKey>[];
-
-  /// The actions at the footer's leading edge and Done at its trailing one,
-  /// the actions' labels given up from the trailing edge in until they fit
-  /// the room Done leaves them.
-  ///
-  /// Which of them fits is read off the buttons themselves: every form of the
-  /// row laid out unseen at its natural width once, and then, whatever the
-  /// room, the first no wider than it taken — no arithmetic about buttons'
-  /// padding to go stale. Measured again only when the labels or the text
-  /// size change.
-  Widget _footer(List<_Action> actions) {
-    Widget row(int bare) => Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: Space.md,
-      children: [
-        for (final (i, action) in actions.indexed)
-          if (i >= actions.length - bare)
-            MergeSemantics(
-              child: Semantics(
-                label: action.label,
-                child: FilledButton(onPressed: _busy ? null : action.onPressed, child: Icon(action.icon)),
-              ),
-            )
-          else
-            FilledButton.icon(onPressed: _busy ? null : action.onPressed, icon: Icon(action.icon), label: Text(action.label)),
-      ],
-    );
-
-    final forms = '${[for (final action in actions) action.label].join('|')}@${MediaQuery.textScalerOf(context).scale(100)}';
-    final widths = forms == _formsOf ? _formWidths : null;
-    while (_forms.length < actions.length + 1) {
-      _forms.add(GlobalKey());
-    }
-    if (widths == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final measured = [
-          for (var bare = 0; bare <= actions.length; bare++)
-            switch (_forms[bare].currentContext?.findRenderObject()) {
-              final RenderBox box when box.hasSize => box.size.width,
-              _ => null,
-            },
-        ];
-        if (measured.contains(null)) return;
-        setState(() {
-          _formWidths = measured.cast<double>();
-          _formsOf = forms;
-        });
-      });
-    }
-    return haloDialogFooterBand(
-      context,
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-      tools: widths == null
-          // Icons alone until measured: the narrowest form, so nothing jumps.
-          ? Stack(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FittedBox(fit: BoxFit.scaleDown, child: row(actions.length)),
-                ),
-                for (var bare = 0; bare <= actions.length; bare++)
-                  Offstage(
-                    child: ExcludeFocus(
-                      child: UnconstrainedBox(
-                        child: KeyedSubtree(key: _forms[bare], child: row(bare)),
-                      ),
-                    ),
-                  ),
-              ],
-            )
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                // The fewest bare that fits; where none does, all of them, so
-                // that narrowing the pane never brings a label back.
-                final fits = widths.indexWhere((width) => width <= constraints.maxWidth + 0.5);
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  // Scaled down only where even the icons alone do not fit.
-                  child: FittedBox(fit: BoxFit.scaleDown, child: row(fits < 0 ? actions.length : fits)),
-                );
-              },
-            ),
     );
   }
 
@@ -1345,7 +1367,8 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
 
 /// An action the platform turned down — a full disk, a browser that would
 /// not share — with the words to tell the operator: an answer, not a fault
-/// (see [_OperationPostcardPanelState._run]).
+/// (see [_OperationPostcardPanelState._run]). Or a fault already reported
+/// where it was thrown, when its words must say what had already landed.
 class _Refused implements Exception {
   final String message;
 
@@ -1354,9 +1377,6 @@ class _Refused implements Exception {
 
   const _Refused(this.message, this.cause);
 }
-
-/// A footer action: its icon, and the label it shows where there is room.
-typedef _Action = ({IconData icon, String label, VoidCallback onPressed});
 
 /// Renders shared by every action taken on them: a Copy and then a Save are
 /// the same image, and the map's picture under it is the slow part. A failure

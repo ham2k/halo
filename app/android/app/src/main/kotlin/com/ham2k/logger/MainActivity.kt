@@ -43,6 +43,9 @@ class MainActivity : FlutterActivity() {
   // Postcard.
   private var imageClipboardChannel: ImageClipboardChannel? = null
 
+  // The postcard's Save to Gallery (PhotosChannel).
+  private var photosChannel: PhotosChannel? = null
+
   // Extension bundles opened from Files, a browser download, or a share
   // (HALO-422). The intent carries a content:// URI, which Dart cannot read —
   // only a ContentResolver can — so the bytes are copied into our cache and
@@ -70,6 +73,7 @@ class MainActivity : FlutterActivity() {
     usbSerialChannel = UsbSerialChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     siblingAppsChannel = SiblingAppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     imageClipboardChannel = ImageClipboardChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+    photosChannel = PhotosChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     openFileChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ham2k/open_file")
     flushPendingOpenFiles()
     val inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
@@ -102,6 +106,8 @@ class MainActivity : FlutterActivity() {
     siblingAppsChannel = null
     imageClipboardChannel?.dispose()
     imageClipboardChannel = null
+    photosChannel?.dispose()
+    photosChannel = null
     openFileChannel = null
     super.cleanUpFlutterEngine(flutterEngine)
   }

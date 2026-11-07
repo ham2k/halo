@@ -4618,6 +4618,39 @@ class Translations$map$postcard$en {
 	/// en: '${error} — ${names} had already been saved'
 	String savePartial({required Object error, required Object names}) => '${error} — ${names} had already been saved';
 
+	/// en: '(one) {${error} — the first page had already been saved} (other) {${error} — the first ${count} pages had already been saved}'
+	String savePartialFirst({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${error} — the first page had already been saved',
+		other: '${error} — the first ${count} pages had already been saved',
+	);
+
+	/// en: 'Save to Photos'
+	String get saveToPhotos => 'Save to Photos';
+
+	/// en: 'Save to Gallery'
+	String get saveToGallery => 'Save to Gallery';
+
+	/// en: 'Save to Files…'
+	String get saveToFiles => 'Save to Files…';
+
+	/// en: 'Saved to Photos'
+	String get savedToPhotos => 'Saved to Photos';
+
+	/// en: 'Saved ${count} images to Photos'
+	String savedManyToPhotos({required Object count}) => 'Saved ${count} images to Photos';
+
+	/// en: 'Saved to the gallery'
+	String get savedToGallery => 'Saved to the gallery';
+
+	/// en: 'Saved ${count} images to the gallery'
+	String savedManyToGallery({required Object count}) => 'Saved ${count} images to the gallery';
+
+	/// en: 'Photos access is off for this app — allow Add Photos Only in Settings'
+	String get photosDenied => 'Photos access is off for this app — allow Add Photos Only in Settings';
+
+	/// en: 'Adding to Photos is restricted on this device, by Screen Time or a device profile'
+	String get photosRestricted => 'Adding to Photos is restricted on this device, by Screen Time or a device profile';
+
 	/// en: 'Downloading ${count} images — allow them if the browser asks'
 	String downloadedMany({required Object count}) => 'Downloading ${count} images — allow them if the browser asks';
 
@@ -11754,6 +11787,16 @@ extension on Translations {
 			'map.postcard.savedMany' => ({required Object count, required Object path}) => 'Saved ${count} images to ${path}',
 			'map.postcard.savedFiles' => ({required Object names}) => 'Saved ${names}',
 			'map.postcard.savePartial' => ({required Object error, required Object names}) => '${error} — ${names} had already been saved',
+			'map.postcard.savePartialFirst' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${error} — the first page had already been saved', other: '${error} — the first ${count} pages had already been saved', ), 
+			'map.postcard.saveToPhotos' => 'Save to Photos',
+			'map.postcard.saveToGallery' => 'Save to Gallery',
+			'map.postcard.saveToFiles' => 'Save to Files…',
+			'map.postcard.savedToPhotos' => 'Saved to Photos',
+			'map.postcard.savedManyToPhotos' => ({required Object count}) => 'Saved ${count} images to Photos',
+			'map.postcard.savedToGallery' => 'Saved to the gallery',
+			'map.postcard.savedManyToGallery' => ({required Object count}) => 'Saved ${count} images to the gallery',
+			'map.postcard.photosDenied' => 'Photos access is off for this app — allow Add Photos Only in Settings',
+			'map.postcard.photosRestricted' => 'Adding to Photos is restricted on this device, by Screen Time or a device profile',
 			'map.postcard.downloadedMany' => ({required Object count}) => 'Downloading ${count} images — allow them if the browser asks',
 			'map.postcard.mapLeftOut' => 'The map didn\'t load, so it was left out',
 			'map.postcard.withMapLeftOut' => ({required Object outcome}) => '${outcome} — the map didn\'t load, so it was left out',
@@ -11876,6 +11919,8 @@ extension on Translations {
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
@@ -11886,8 +11931,6 @@ extension on Translations {
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.powerControl' => 'Power',
 			'loggingControls.notesControl' => 'Notes',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.operatorControl' => 'Operator',
 			'loggingControls.operatorField' => 'Operator',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} call', other: '${count} calls', ), 
@@ -12390,6 +12433,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'Help',
 			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
@@ -12400,8 +12445,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateHelpMessage' => 'Message 2\'s recording, played as recorded',
 			'settings.radio.voiceMessages.voiced' => 'Said with your words',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'Says: ${words}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'Not recorded yet: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'Open an operation to see what it will say.',
 			'settings.radio.voiceMessages.wordsDescription' => 'Use your own voice for calls, numbers and more.',
@@ -12904,6 +12947,8 @@ extension on Translations {
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.thetisTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.thetisTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, not to the radio itself: an ANAN has no CAT of its own.\n\n- **Thetis\'s CAT server must be running.** In Thetis, Setup → Serial/Network/Midi CAT → Network, check **Server Running**. It is not the TCI server, which is a different thing.\n- **Port** is 13013 unless you changed it there.\n- **From another computer**, Thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **Rated power** is what full drive puts out: 100 W on most ANANs, 200 W on the 8000DLE, 10 W on the 10E. The app sets power as a share of it.\n- **CW messages go out through Thetis\'s CWX keyer.** If one does not, open the CWX window in Thetis and try again.\n\nThis entry was written from Thetis\'s published CAT reference and has not been run against a radio. If it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTciTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, over **TCI**, not to the radio itself: an ANAN has no CAT of its own. Thetis\'s **TCI server** must be running; it is set up in Thetis\'s Setup, apart from its TCP/IP CAT server. The band scope needs Thetis 2.10.3.13 or later.',
@@ -12914,8 +12959,6 @@ extension on Translations {
 			'settings.station.ftdx3000Troubleshooting' => '**Menu 037 CAT SELECT must be USB** for CAT over the radio\'s USB port; set to RS232C, CAT is on the jack on the back.\n\nThis entry was written from published CAT documentation and has not been run against an FTDX3000. If it half-works, that is worth reporting.',
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS off at the radio, or Hold RTS high on.** With the radio\'s **CAT RTS** menu on, it stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
@@ -13418,6 +13461,8 @@ extension on Translations {
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.blockedByPane' => 'Cannot use commands while a panel or dialog is open',
 			'sets.newFolder' => 'New Folder',
 			'sets.deleteFolder' => 'Delete Folder',
@@ -13428,8 +13473,6 @@ extension on Translations {
 			'sets.duplicateFailed' => ({required Object name, required Object error}) => 'Could not duplicate ${name}: ${error}',
 			'sets.moveTo' => 'Move to…',
 			'sets.moveTitle' => ({required Object name}) => 'Move ${name} to',
-			_ => null,
-		} ?? switch (path) {
 			'sets.topLevel' => 'Top level',
 			'sets.export' => 'Export…',
 			'sets.import' => 'Import…',

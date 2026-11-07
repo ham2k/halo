@@ -2123,6 +2123,19 @@ class _Translations$map$postcard$qro extends Translations$map$postcard$en {
 	@override String savedMany({required Object count, required Object path}) => 'SAVED ${count} IMAGES TO ${path}';
 	@override String savedFiles({required Object names}) => 'SAVED ${names}';
 	@override String savePartial({required Object error, required Object names}) => '${error} — ${names} HAD ALREADY BEEN SAVED';
+	@override String savePartialFirst({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${error} — THE FIRST PAGE HAD ALREADY BEEN SAVED',
+		other: '${error} — THE FIRST ${count} PAGES HAD ALREADY BEEN SAVED',
+	);
+	@override String get saveToPhotos => 'SAVE TO PHOTOS';
+	@override String get saveToGallery => 'SAVE TO GALLERY';
+	@override String get saveToFiles => 'SAVE TO FILES…';
+	@override String get savedToPhotos => 'SAVED TO PHOTOS';
+	@override String savedManyToPhotos({required Object count}) => 'SAVED ${count} IMAGES TO PHOTOS';
+	@override String get savedToGallery => 'SAVED TO THE GALLERY';
+	@override String savedManyToGallery({required Object count}) => 'SAVED ${count} IMAGES TO THE GALLERY';
+	@override String get photosDenied => 'PHOTOS ACCESS IS OFF FOR THIS APP — ALLOW ADD PHOTOS ONLY IN SETTINGS';
+	@override String get photosRestricted => 'ADDING TO PHOTOS IS RESTRICTED ON THIS DEVICE, BY SCREEN TIME OR A DEVICE PROFILE';
 	@override String downloadedMany({required Object count}) => 'DOWNLOADING ${count} IMAGES — ALLOW THEM IF THE BROWSER ASKS';
 	@override String get mapLeftOut => 'THE MAP DIDN\'T LOAD, SO IT WAS LEFT OUT';
 	@override String withMapLeftOut({required Object outcome}) => '${outcome} — THE MAP DIDN\'T LOAD, SO IT WAS LEFT OUT';
@@ -5790,6 +5803,16 @@ extension on TranslationsQro {
 			'map.postcard.savedMany' => ({required Object count, required Object path}) => 'SAVED ${count} IMAGES TO ${path}',
 			'map.postcard.savedFiles' => ({required Object names}) => 'SAVED ${names}',
 			'map.postcard.savePartial' => ({required Object error, required Object names}) => '${error} — ${names} HAD ALREADY BEEN SAVED',
+			'map.postcard.savePartialFirst' => ({required num count, required Object error}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${error} — THE FIRST PAGE HAD ALREADY BEEN SAVED', other: '${error} — THE FIRST ${count} PAGES HAD ALREADY BEEN SAVED', ), 
+			'map.postcard.saveToPhotos' => 'SAVE TO PHOTOS',
+			'map.postcard.saveToGallery' => 'SAVE TO GALLERY',
+			'map.postcard.saveToFiles' => 'SAVE TO FILES…',
+			'map.postcard.savedToPhotos' => 'SAVED TO PHOTOS',
+			'map.postcard.savedManyToPhotos' => ({required Object count}) => 'SAVED ${count} IMAGES TO PHOTOS',
+			'map.postcard.savedToGallery' => 'SAVED TO THE GALLERY',
+			'map.postcard.savedManyToGallery' => ({required Object count}) => 'SAVED ${count} IMAGES TO THE GALLERY',
+			'map.postcard.photosDenied' => 'PHOTOS ACCESS IS OFF FOR THIS APP — ALLOW ADD PHOTOS ONLY IN SETTINGS',
+			'map.postcard.photosRestricted' => 'ADDING TO PHOTOS IS RESTRICTED ON THIS DEVICE, BY SCREEN TIME OR A DEVICE PROFILE',
 			'map.postcard.downloadedMany' => ({required Object count}) => 'DOWNLOADING ${count} IMAGES — ALLOW THEM IF THE BROWSER ASKS',
 			'map.postcard.mapLeftOut' => 'THE MAP DIDN\'T LOAD, SO IT WAS LEFT OUT',
 			'map.postcard.withMapLeftOut' => ({required Object outcome}) => '${outcome} — THE MAP DIDN\'T LOAD, SO IT WAS LEFT OUT',
@@ -5912,6 +5935,8 @@ extension on TranslationsQro {
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
@@ -5922,8 +5947,6 @@ extension on TranslationsQro {
 			'loggingControls.radioControl' => 'RADIO',
 			'loggingControls.powerControl' => 'POWER',
 			'loggingControls.notesControl' => 'NOTES',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.operatorControl' => 'OPERATOR',
 			'loggingControls.operatorField' => 'OPERATOR',
 			'loggingControls.stationCallsOnAir' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} CALL', other: '${count} CALLS', ), 
@@ -6426,6 +6449,8 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'HELP',
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
@@ -6436,8 +6461,6 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.templateHelpMessage' => 'MESSAGE 2\'S RECORDING, PLAYED AS RECORDED',
 			'settings.radio.voiceMessages.voiced' => 'SAID WITH YOUR WORDS',
 			'settings.radio.voiceMessages.willSay' => ({required Object words}) => 'SAYS: ${words}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.willSayMissing' => ({required Object words}) => 'NOT RECORDED YET: ${words}',
 			'settings.radio.voiceMessages.previewNoOperation' => 'OPEN AN OPERATION TO SEE WHAT IT WILL SAY.',
 			'settings.radio.voiceMessages.wordsDescription' => 'USE YOUR OWN VOICE FOR CALLS, NUMBERS AND MORE.',
@@ -6940,6 +6963,8 @@ extension on TranslationsQro {
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.thetisTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.thetisTroubleshooting' => 'THIS CONNECTS TO **THETIS**, THE PROGRAM THAT RUNS THE RADIO, NOT TO THE RADIO ITSELF: AN ANAN HAS NO CAT OF ITS OWN.\n\n- **THETIS\'S CAT SERVER MUST BE RUNNING.** IN THETIS, SETUP → SERIAL/NETWORK/MIDI CAT → NETWORK, CHECK **SERVER RUNNING**. IT IS NOT THE TCI SERVER, WHICH IS A DIFFERENT THING.\n- **PORT** IS 13013 UNLESS YOU CHANGED IT THERE.\n- **FROM ANOTHER COMPUTER**, THETIS\'S SERVER MUST LISTEN ON ITS NETWORK ADDRESS RATHER THAN 127.0.0.1, AND ITS FIREWALL MUST LET THE PORT THROUGH.\n- **RATED POWER** IS WHAT FULL DRIVE PUTS OUT: 100 W ON MOST ANANS, 200 W ON THE 8000DLE, 10 W ON THE 10E. THE APP SETS POWER AS A SHARE OF IT.\n- **CW MESSAGES GO OUT THROUGH THETIS\'S CWX KEYER.** IF ONE DOES NOT, OPEN THE CWX WINDOW IN THETIS AND TRY AGAIN.\n\nTHIS ENTRY WAS WRITTEN FROM THETIS\'S PUBLISHED CAT REFERENCE AND HAS NOT BEEN RUN AGAINST A RADIO. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tciTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
 			'settings.station.thetisTciTroubleshooting' => 'THIS CONNECTS TO **THETIS**, THE PROGRAM THAT RUNS THE RADIO, OVER **TCI**, NOT TO THE RADIO ITSELF: AN ANAN HAS NO CAT OF ITS OWN. THETIS\'S **TCI SERVER** MUST BE RUNNING; IT IS SET UP IN THETIS\'S SETUP, APART FROM ITS TCP/IP CAT SERVER. THE BAND SCOPE NEEDS THETIS 2.10.3.13 OR LATER.',
@@ -6950,8 +6975,6 @@ extension on TranslationsQro {
 			'settings.station.ftdx3000Troubleshooting' => '**MENU 037 CAT SELECT MUST BE USB** FOR CAT OVER THE RADIO\'S USB PORT; SET TO RS232C, CAT IS ON THE JACK ON THE BACK.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED CAT DOCUMENTATION AND HAS NOT BEEN RUN AGAINST AN FTDX3000. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuRs232Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **THE CAT JACK IS RS-232.** IT NEEDS A USB-TO-SERIAL ADAPTER AND A STRAIGHT-THROUGH DB-9 CABLE — A NULL-MODEM CABLE SWAPS THE LINES, AND THE RADIO NEVER HEARS A THING.\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW UNLESS **HOLD RTS HIGH** IS ON UNDER ADVANCED SETTINGS.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED CAT DOCUMENTATION AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuUsbTroubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **USE THE FIRST OF THE RADIO\'S TWO USB PORTS.** CAT IS NORMALLY ON THE FIRST (THE **ENHANCED** COM PORT ON WINDOWS); THE SECOND (**STANDARD**) IS FOR PTT AND KEYING. THE PICKER POINTS AT THE FIRST WHEREVER IT CAN TELL THE TWO APART.\n- **CAT RTS OFF AT THE RADIO, OR HOLD RTS HIGH ON.** WITH THE RADIO\'S **CAT RTS** MENU ON, IT STAYS SILENT WHILE RTS IS LOW — IT MAY ANSWER ONCE AS THE PORT OPENS, THEN NOTHING. PICKING THE RADIO\'S OWN USB PORT TURNS ON **HOLD RTS HIGH** UNDER ADVANCED SETTINGS. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES RTS IS PTT, AND HOLDING IT HIGH KEYS YOUR TRANSMITTER: TURN CAT RTS OFF AT THE RADIO INSTEAD.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4SerialNotes' => 'CONNECT THE K4’S REAR USB-B (PC) SOCKET. EITHER USB-PC1 OR USB-PC2 WORKS FOR CAT; CHOOSE AN UNUSED PORT AND MATCH ITS SERIAL USB-PCN: BAUD RATE SETTING ON THE RADIO. HALO PREFILLS 38400; CHANGE IT IF NEEDED. ANOTHER APPLICATION MUST USE THE OTHER PORT OR ETHERNET.\n\nTHIS CONNECTION CONTROLS THE RADIO AND ITS KEYERS; IT DOES NOT SEND AUDIO TO HALO.',
 			'settings.station.k4TcpNotes' => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.',
 			'settings.station.k4PowerTimeout' => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.',
@@ -7454,6 +7477,8 @@ extension on TranslationsQro {
 			'commandDialog.runTyped' => ({required Object text}) => 'RUN “${text}”',
 			'commandDialog.sectionSuggestions' => 'TRY',
 			'commandDialog.lookingUp' => 'LOOKING UP CALLSIGN…',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.blockedByPane' => 'CANNOT USE COMMANDS WHILE A PANEL OR DIALOG IS OPEN',
 			'sets.newFolder' => 'NEW FOLDER',
 			'sets.deleteFolder' => 'DELETE FOLDER',
@@ -7464,8 +7489,6 @@ extension on TranslationsQro {
 			'sets.duplicateFailed' => ({required Object name, required Object error}) => 'COULD NOT DUPLICATE ${name}: ${error}',
 			'sets.moveTo' => 'MOVE TO…',
 			'sets.moveTitle' => ({required Object name}) => 'MOVE ${name} TO',
-			_ => null,
-		} ?? switch (path) {
 			'sets.topLevel' => 'TOP LEVEL',
 			'sets.export' => 'EXPORT…',
 			'sets.import' => 'IMPORT…',

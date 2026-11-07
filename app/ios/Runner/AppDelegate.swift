@@ -1,5 +1,6 @@
 import Flutter
 import GameController
+import Photos
 import UIKit
 
 @main
@@ -34,6 +35,17 @@ import UIKit
   // An image on the clipboard (image_clipboard_io.dart), which Flutter's own
   // Clipboard cannot do.
   private var imageClipboardChannel: FlutterMethodChannel?
+
+  // The postcard's Save (operation_postcard.dart): an image into Photos,
+  // asking add-only access and nothing more, so the binary never reaches
+  // for the read APIs NSPhotoLibraryUsageDescription would have to explain.
+  private var photosChannel: FlutterMethodChannel?
+
+  // Files into a folder the operator picks in Files (operation_postcard.dart):
+  // file_selector cannot save on iOS. The exporter is held here because the
+  // picker keeps its delegate weakly.
+  private var filesChannel: FlutterMethodChannel?
+  private var filesExporter: FilesExporter?
 
   // Equipment discovery by service record (mdns_io.dart). Dart cannot send
   // multicast on iOS without a restricted entitlement; NetServiceBrowser
@@ -204,6 +216,56 @@ import UIKit
       UIPasteboard.general.setData(png.data, forPasteboardType: "public.png")
       result(nil)
     }
+    photosChannel = FlutterMethodChannel(
+      name: "ham2k/photos",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    photosChannel?.setMethodCallHandler { call, result in
+      guard call.method == "addImage" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let args = call.arguments as? [String: Any], let png = args["png"] as? FlutterStandardTypedData else {
+        result(FlutterError(code: "bad_args", message: "addImage needs png bytes", details: nil))
+        return
+      }
+      AppDelegate.addToPhotos(png.data, name: args["name"] as? String) { error in
+        DispatchQueue.main.async { result(error) }
+      }
+    }
+    filesChannel = FlutterMethodChannel(
+      name: "ham2k/files",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    filesChannel?.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "export" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let paths = (call.arguments as? [String: Any])?["paths"] as? [String] else {
+        result(FlutterError(code: "bad_args", message: "export needs paths", details: nil))
+        return
+      }
+      guard let self, let presenter = AppDelegate.frontmostViewController() else {
+        result(FlutterError(code: "no-window", message: "no window to show Files in", details: nil))
+        return
+      }
+      // UIKit refuses to present over a controller mid-transition, or one
+      // out of any window, and says so only in the log: no delegate call
+      // would ever come. Asked before, not read off the picker after — the
+      // picker's presentation may be deferred while it connects, and would
+      // read as refused.
+      if presenter.viewIfLoaded?.window == nil || presenter.isBeingDismissed || presenter.transitionCoordinator != nil {
+        result(FlutterError(code: "not_shown", message: "Files could not be shown", details: nil))
+        return
+      }
+      let exporter = FilesExporter(urls: paths.map { URL(fileURLWithPath: $0) }) { [weak self] answer in
+        self?.filesExporter = nil
+        result(answer)
+      }
+      self.filesExporter = exporter
+      presenter.present(exporter.picker, animated: true)
+    }
     bonjourChannel = FlutterMethodChannel(
       name: "ham2k/bonjour",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
@@ -301,6 +363,87 @@ import UIKit
 
   @objc private func runBoundKeyCommand(_ sender: UIKeyCommand) {
     if let id = sender.propertyList as? String { sendKeyCommand(id) }
+  }
+
+  private static func frontmostViewController() -> UIViewController? {
+    let window = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap(\.windows)
+      .first(where: \.isKeyWindow)
+    var top = window?.rootViewController
+    while let presented = top?.presentedViewController { top = presented }
+    return top
+  }
+
+  // Answers nil once the image is in, or why not: `denied` (the operator
+  // turned access off — Settings can turn it back on), `restricted` (Screen
+  // Time or a device profile — Settings cannot), `full`, or `failed` with
+  // Photos' own words. iOS asks for access itself, once, on the first call.
+  private static func addToPhotos(_ png: Data, name: String?, done: @escaping (FlutterError?) -> Void) {
+    PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+      switch status {
+      case .denied: return done(FlutterError(code: "denied", message: nil, details: nil))
+      case .restricted: return done(FlutterError(code: "restricted", message: nil, details: nil))
+      default: break
+      }
+      PHPhotoLibrary.shared().performChanges({
+        let options = PHAssetResourceCreationOptions()
+        options.originalFilename = name
+        PHAssetCreationRequest.forAsset().addResource(with: .photo, data: png, options: options)
+      }) { ok, error in
+        if ok { return done(nil) }
+        let code: String
+        switch (error as? PHPhotosError)?.code {
+        case .accessUserDenied: code = "denied"
+        case .accessRestricted: code = "restricted"
+        case .notEnoughSpace: code = "full"
+        default: code = "failed"
+        }
+        let nsError = error as NSError?
+        done(FlutterError(
+          code: code,
+          message: nsError?.localizedDescription ?? "Photos did not take the image",
+          details: nsError.map { "\($0.domain) \($0.code)" }
+        ))
+      }
+    }
+  }
+}
+
+/// Copies files into the folder the operator picks, answering the names they
+/// landed under — Files renames around a collision — or nil if cancelled.
+///
+/// Answers exactly once, whichever comes first: the picker's own callbacks
+/// or a swipe that dismisses the sheet. A call left unanswered keeps the
+/// Dart side waiting for good.
+private final class FilesExporter: NSObject, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
+  let picker: UIDocumentPickerViewController
+  private var done: ((Any?) -> Void)?
+
+  init(urls: [URL], done: @escaping (Any?) -> Void) {
+    picker = UIDocumentPickerViewController(forExporting: urls, asCopy: true)
+    self.done = done
+    super.init()
+    picker.delegate = self
+    picker.presentationController?.delegate = self
+  }
+
+  private func finish(_ answer: Any?) {
+    let answering = done
+    done = nil
+    answering?(answer)
+  }
+
+  func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    finish(urls.map(\.lastPathComponent))
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    finish(nil)
+  }
+
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    finish(nil)
   }
 }
 
