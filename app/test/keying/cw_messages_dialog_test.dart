@@ -241,7 +241,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.descendant(of: find.byType(RepeatFields), matching: find.byType(Switch)));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Cooldown before repeat'));
     await tester.pumpAndSettle();
@@ -249,9 +249,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
 
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Enter sends messages'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('S&P').last);
+    await tester.tap(find.descendant(of: find.byType(EnterSendsField), matching: find.byType(Switch)));
     await tester.pumpAndSettle();
     expect(services.cat.enterSends.value, (on: true, running: false));
 
@@ -266,6 +264,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(services.settings.cwRepeatDelay, const Duration(seconds: 5));
     expect(services.cat.enterSends.value, (on: true, running: false));
+  });
+
+  // Run or S&P is the set's operating style, which every new contact
+  // records; a switch that only says on or off must not quietly move it,
+  // either way.
+  testWidgets('the Enter Sends Messages switch turns ESM on and off and leaves Run or S&P where it is', (tester) async {
+    await services.settings.setExperimentEnabled('esm', true);
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final esmSwitch = find.descendant(of: find.byType(EnterSendsField), matching: find.byType(Switch));
+
+    for (final running in [true, false]) {
+      services.cat.setEnterSends(running: running);
+      await tester.tap(esmSwitch);
+      await tester.pumpAndSettle();
+      expect(services.cat.enterSends.value, (on: true, running: running));
+      expect(tester.widget<Switch>(esmSwitch).value, isTrue, reason: 'the switch shows a change made through it');
+      await tester.tap(esmSwitch);
+      await tester.pumpAndSettle();
+      expect(services.cat.enterSends.value, (on: false, running: running));
+    }
+
+    services.cat.setEnterSends(on: true);
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(esmSwitch).value, isTrue, reason: 'the switch follows ESM switched on elsewhere — the pill, the ESM command');
   });
 
   testWidgets('an install with nothing stored is seeded: a Default to key, and a POTA beside it', (tester) async {

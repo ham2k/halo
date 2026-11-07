@@ -950,14 +950,16 @@ class _VoiceButtons extends StatelessWidget {
 }
 
 /// Enter Sends Messages, and which side of the exchange it plays: a tap
-/// steps Run → S&P → Off, the states an operator moves between mid-contest
-/// without looking away from the call field for long, and from Off switches
-/// ESM on in whichever the set is in. Shown for either keyer — ESM plays
-/// voice memories in Phone the way it keys messages in CW
-/// (docs/design/logging-fields.md § Enter Sends Messages). Under SO2R its
-/// Run / S&P is the radio of the set the operator is in. Run / S&P is the
-/// set's operating style, which outlives ESM: switching ESM on or off
-/// leaves it where it is.
+/// steps Off → Run → S&P → Off, the states an operator moves between
+/// mid-contest without looking away from the call field for long. Shown for
+/// either keyer — ESM plays voice memories in Phone the way it keys messages
+/// in CW (docs/design/logging-fields.md § Enter Sends Messages). Under SO2R
+/// its Run / S&P is the radio of the set the operator is in. Run / S&P is
+/// the set's operating style, which outlives ESM: switching ESM off leaves
+/// it at S&P. Switching it on sets Run because the cycle is the pill's
+/// whole promise — coming on in S&P would make S&P → Off → S&P a loop that
+/// never reaches Run. The ESM command and the dialogs' switch, which say
+/// nothing about a side, leave the style alone.
 class _EnterSendsPill extends StatelessWidget {
   final CatService cat;
 
@@ -969,6 +971,7 @@ class _EnterSendsPill extends StatelessWidget {
   void _step() {
     final esm = cat.enterSends.value;
     if (!esm.on) {
+      cat.setRunning(radio, true);
       cat.setEnterSends(on: true);
     } else if (cat.isRunning(radio)) {
       cat.setRunning(radio, false);

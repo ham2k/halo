@@ -199,15 +199,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                         _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio)),
                         if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
                           const SizedBox(width: Space.md),
-                          Expanded(
-                            child: EnterSendsField(
-                              value: (on: widget.services.cat.enterSends.value.on, running: widget.services.cat.isRunning(widget.radio)),
-                              onChanged: (value) {
-                                widget.services.cat.setEnterSends(on: value.on);
-                                widget.services.cat.setRunning(widget.radio, value.running);
-                              },
-                            ),
-                          ),
+                          Expanded(child: EnterSendsField(cat: widget.services.cat)),
                         ],
                       ],
                     ),
@@ -350,41 +342,35 @@ class RepeatFields extends StatelessWidget {
   }
 }
 
-/// Enter Sends Messages as a field — Off, Run or S&P, the three states the
-/// keyer area's pill steps through. In both keyer dialogs, because the one
+/// Enter Sends Messages as a switch, in both keyer dialogs, because the one
 /// setting plays CW messages and voice memories alike
-/// (docs/design/logging-fields.md § Enter Sends Messages).
+/// (docs/design/logging-fields.md § Enter Sends Messages). On or off only:
+/// Run or S&P is the set's operating style, which outlives ESM and is set
+/// elsewhere (docs/design/logging-fields.md § Operating style).
 class EnterSendsField extends StatelessWidget {
-  final ({bool on, bool running}) value;
-  final ValueChanged<({bool on, bool running})> onChanged;
+  final CatService cat;
 
-  const EnterSendsField({super.key, required this.value, required this.onChanged});
+  const EnterSendsField({super.key, required this.cat});
 
   @override
   Widget build(BuildContext context) {
     final m = context.t.settings.radio.enterSends;
-    final current = !value.on
-        ? 'off'
-        : value.running
-        ? 'run'
-        : 'sp';
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      initialValue: current,
-      icon: dropdownTrailingIcon,
-      decoration: poloFieldDecoration(context, m.field).copyWith(filled: true, fillColor: Theme.of(context).colorScheme.surface),
-      menuMaxHeight: dropdownMenuMaxHeight(context),
-      items: [
-        DropdownMenuItem<String>(value: 'off', child: Text(m.off)),
-        DropdownMenuItem<String>(value: 'run', child: Text(m.run)),
-        DropdownMenuItem<String>(value: 'sp', child: Text(m.sp)),
-      ],
-      onChanged: (choice) => switch (choice) {
-        'run' => onChanged((on: true, running: true)),
-        'sp' => onChanged((on: true, running: false)),
-        'off' => onChanged((on: false, running: true)),
-        _ => null,
-      },
+    return ValueListenableBuilder(
+      valueListenable: cat.enterSends,
+      builder: (context, esm, _) => Row(
+        children: [
+          // The name lives in Semantics, per docs/design/user-interface.md.
+          Semantics(
+            label: m.field,
+            child: Switch(
+              value: esm.on,
+              onChanged: (on) => cat.setEnterSends(on: on),
+            ),
+          ),
+          const SizedBox(width: Space.xs),
+          Flexible(child: Text(m.field, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
     );
   }
 }

@@ -529,28 +529,28 @@ void main() {
   });
 
   group('the panel', () {
-    // Run or S&P is the set's operating style, which every new contact
-    // records: switching ESM on or off must not quietly change it.
-    testWidgets('the ESM pill is there only with its experiment, steps Run, S&P, Off, and comes on in the style the set is in', (tester) async {
+    // The pill is the operator's one control for all three states. Coming
+    // on in the style the set is in would trap an S&P set in S&P ↔ Off,
+    // Run out of reach; going off must still leave the style where it is.
+    testWidgets('the ESM pill is there only with its experiment, and steps Off, Run, S&P, Off from any style', (tester) async {
       await connectPlaceholder(tester);
       await tester.pumpWidget(host());
       expect(find.text('ESM Off'), findsNothing, reason: "Enter is not the keyer's without EXP ESM");
 
       await tester.pumpWidget(host(enterSends: true));
-      services.cat.setStyle('A', OperatingStyle.run);
-      await tester.pump();
-      await tester.tap(find.text('ESM Off'));
-      await tester.pump();
-      expect(services.cat.enterSends.value, (on: true, running: true));
-      await tester.tap(find.text('ESM Run'));
-      await tester.pump();
-      expect(services.cat.enterSends.value, (on: true, running: false));
-      await tester.tap(find.text('ESM S&P'));
-      await tester.pump();
-      expect(services.cat.enterSends.value, (on: false, running: false));
-      await tester.tap(find.text('ESM Off'));
-      await tester.pump();
-      expect(services.cat.enterSends.value, (on: true, running: false), reason: 'an operator in S&P switching ESM on is still in S&P');
+      for (final style in OperatingStyle.values) {
+        services.cat.setStyle('A', style);
+        await tester.pump();
+        await tester.tap(find.text('ESM Off'));
+        await tester.pump();
+        expect(services.cat.enterSends.value, (on: true, running: true), reason: 'from Off in ${style.value}, the pill comes on in Run');
+        await tester.tap(find.text('ESM Run'));
+        await tester.pump();
+        expect(services.cat.enterSends.value, (on: true, running: false));
+        await tester.tap(find.text('ESM S&P'));
+        await tester.pump();
+        expect(services.cat.enterSends.value, (on: false, running: false), reason: 'switching ESM off leaves the set in S&P');
+      }
       await tester.pump(const Duration(seconds: 62));
     });
 

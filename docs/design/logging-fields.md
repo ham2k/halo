@@ -908,7 +908,7 @@ asked once.
 **With ESM on, Enter keys the exchange as well as logging it** — N1MM's
 Enter Sends Messages, so a contest can be run from the call field without
 reaching for a function key. It is an operator's switch (the keyer control's
-`ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages field in
+`ESM` pill, the `ESM`/`ESM OFF` commands, the Enter Sends Messages switch in
 the CW Keyer and Phone Keyer dialogs) and a side of the pileup, which is the
 set's operating style (§ Operating style), device-wide like the keyer control, and exists only
 behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
@@ -1022,11 +1022,15 @@ settings ESM always kept it in. Switching ESM off leaves it where it is.
   is logged from. An edit never stamps it: today's style is not how an older
   contact was made, and a contact logged before styles existed stays
   without one.
-- **The operator sets it** with the ESM pill (its Run → S&P step; switching
-  ESM on or off leaves the style alone), the `RUN` and `SNP` commands
-  (also `SP` and `S&P`; outside any experiment, and never switching ESM
-  on), and the Enter Sends Messages field in the keyer dialogs. **⌥U**
-  switches it, as in N1MM, and says nothing
+- **The operator sets it** with the ESM pill, which steps Off → Run → S&P →
+  Off: switching ESM on there sets Run, so the cycle reaches all three from
+  either style, and switching it off leaves the set in S&P. A tap through
+  Run is a real Run: it takes the frequency it is on as the run frequency
+  (below), so an operator who steps on to ESM S&P and then tunes away and
+  back within the return window is Running there. The `RUN` and `SNP`
+  commands (also `SP` and `S&P`; outside any experiment, and never switching
+  ESM on) set it too; the keyer dialogs' Enter Sends Messages switch, only
+  on or off, never does. **⌥U** switches it, as in N1MM, and says nothing
   ([keyboard-shortcuts.md](keyboard-shortcuts.md)). SWAP trades the two
   sets' styles with their frequencies.
 - **Run shows** in the set's FYI area, as `Run` (§ The FYI area); the

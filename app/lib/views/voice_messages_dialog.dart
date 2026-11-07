@@ -135,13 +135,7 @@ class _VoiceMessagesPane extends StatelessWidget {
                         // ESM, then message 1's repeat on a row of its own: the
                         // switch and its cooldown need the width.
                         if (settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                          EnterSendsField(
-                            value: (on: cat.enterSends.value.on, running: cat.isRunning(radio)),
-                            onChanged: (value) {
-                              cat.setEnterSends(on: value.on);
-                              cat.setRunning(radio, value.running);
-                            },
-                          ),
+                          EnterSendsField(cat: cat),
                           const SizedBox(height: Space.md),
                         ],
                         RepeatFields(
