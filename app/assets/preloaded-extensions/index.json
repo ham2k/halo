@@ -134,9 +134,9 @@
     },
     {
       "key": "ham2k-parksnpeaks",
-      "version": "0.2.2",
-      "file": "ham2k-parksnpeaks-0.2.2.h2kext",
-      "sha256": "5705d8bbeec597ebed1bb02997f6e880a8496972cbb5cca576349f8d18cb89ca"
+      "version": "0.2.3",
+      "file": "ham2k-parksnpeaks-0.2.3.h2kext",
+      "sha256": "79f31cb0bec588dd12cb121e8c80a8c297f1a6693cf335a6b1f43fc0750d55bd"
     },
     {
       "key": "ham2k-pga",
