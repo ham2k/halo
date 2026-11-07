@@ -143,6 +143,17 @@ void main() {
     expect(bound.single.protocol, CatServerProtocol.rigctld);
   });
 
+  test('closed for the quit, it lets the port go and a settings write binds nothing', () async {
+    // Not disposed: Settings may still be listening as the window goes, so
+    // what keeps a late write from rebinding is the close itself.
+    await start(radio: {protocolKey: 'rigctld'});
+    await service.closeForExit();
+    expect(bound.single.closed, isTrue);
+
+    await set({protocolKey: 'n3fjp'});
+    expect(bound, hasLength(1), reason: 'a setting landing on the way out reopened a port the quit closed');
+  });
+
   test('a protocol left on starts with the service', () async {
     await start(radio: {protocolKey: 'flrig'});
     expect(bound.single.protocol, CatServerProtocol.flrig);

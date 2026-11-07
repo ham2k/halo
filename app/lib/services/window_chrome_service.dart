@@ -24,6 +24,8 @@ import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatf
 import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart' show macOSWindowIsFullScreen, windowsWindowIsMaximized;
 
+import 'error_reporting_service.dart';
+
 class WindowChromeService {
   static const _channel = MethodChannel('ham2k/window_chrome');
 
@@ -37,6 +39,11 @@ class WindowChromeService {
   /// Chosen from the macOS app menu's "Check for Updates…" item (below About) —
   /// a user-initiated, full-UI update check (see AutoUpdateService).
   static void Function()? onCheckForUpdates;
+
+  /// The Windows runner is closing the window without the engine having asked
+  /// the app whether it may exit (services/app_exit.dart says when). Answered
+  /// once the app has said its goodbyes; the runner closes the window then.
+  static Future<void> Function()? onWindowClosing;
 
   static bool get _supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
@@ -70,6 +77,15 @@ class WindowChromeService {
         onOpenSettings?.call();
       } else if (call.method == 'menuCheckForUpdates') {
         onCheckForUpdates?.call();
+      } else if (call.method == 'windowClosing') {
+        // Answered whatever happens — the runner closes the window on any
+        // answer — so a teardown that throws is reported here, or the channel
+        // turns it into an error reply nobody reads.
+        try {
+          await onWindowClosing?.call();
+        } catch (e, st) {
+          ErrorReportingService.report(e, st, context: 'exit:window-closing');
+        }
       }
       return null;
     });

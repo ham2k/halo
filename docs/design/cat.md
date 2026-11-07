@@ -4239,6 +4239,15 @@ reports it as **held**, and says so in a notice naming the rig. Only a Connect t
 lifts a hold — a launch that cleared its own would merely take turns, hanging and starting, which
 nobody could tell from a random fault. See `services/cat/auto_connect_guard.dart`.
 
+**Quitting disconnects every radio**, side by side with the app's other connections (peer sync,
+the cluster, the CAT servers), and before the database closes (`services/app_exit.dart`). An Icom
+that is never told its session ended keeps holding it, and refuses the next connect until it times
+out. On the desktop the app waits for the disconnects, but only if the quit asks it to: Windows
+asks only when it counts the closing window as the process's last top-level one, and it counts
+windows that plugins create, so the runner asks the app itself about a close the engine let
+through (`windowClosing`). On Android and iOS nothing waits: `detached` is best effort, and an app
+killed in the background disconnects nothing.
+
 The connect itself, and the shutdown at quit, run under a watchdog isolate
 (`services/hang_watchdog.dart`). The mark keeps the *next* launch out of a call that does not return; the
 watchdog ends the process stuck *in* one, so that there is a next launch rather than a corpse

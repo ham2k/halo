@@ -344,4 +344,68 @@ void main() {
       async.flushMicrotasks();
     });
   });
+
+  group('closing a link', () {
+    /// Two links wired straight to each other; [failSends] makes A's radio
+    /// refuse every packet from then on.
+    late PeerBleLink linkA;
+    late PeerBleLink linkB;
+    var failSends = false;
+    var shutdowns = 0;
+
+    void wire(FakeAsync async) {
+      failSends = false;
+      shutdowns = 0;
+      linkA = PeerBleLink(
+        sendPacket: (packet) async {
+          if (failSends) throw StateError('the radio is gone');
+          linkB.feed(packet);
+        },
+        shutdown: () async => shutdowns++,
+      );
+      linkB = PeerBleLink(sendPacket: (packet) async => linkA.feed(packet), shutdown: () async {});
+      linkA.start(30);
+      linkB.start(30);
+      async.flushMicrotasks();
+    }
+
+    test('an orderly close sends what was queued first — a session\'s bye', () {
+      followFakeClock();
+      fakeAsync((async) {
+        wire(async);
+        final received = <List<int>>[];
+        linkB.inbound.listen(received.add);
+
+        // Bigger than one packet, and closed in the same breath: cut at once,
+        // the queue dies with the link and the peer only sees it drop.
+        final bye = List<int>.generate(200, (i) => i & 0xFF);
+        linkA.send(bye);
+        unawaited(linkA.close());
+        async.elapse(const Duration(seconds: 1));
+
+        expect(received, [bye]);
+        expect(shutdowns, 1);
+        unawaited(linkB.close());
+        async.flushMicrotasks();
+      });
+    });
+
+    test('a link whose sends fail closes at once, without waiting on a queue that will never drain', () {
+      followFakeClock();
+      fakeAsync((async) {
+        wire(async);
+        var closed = false;
+        unawaited(linkA.closed.then((_) => closed = true));
+
+        failSends = true;
+        linkA.send(List<int>.filled(200, 1));
+        // No time passes: a drain here would hold the dead link open, taking
+        // sends as if it were alive, for half a second.
+        async.flushMicrotasks();
+        expect(closed, isTrue);
+        unawaited(linkB.close());
+        async.flushMicrotasks();
+      });
+    });
+  });
 }

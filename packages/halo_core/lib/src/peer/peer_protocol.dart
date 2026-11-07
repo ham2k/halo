@@ -71,6 +71,14 @@ abstract final class PeerMessageType {
   /// Terminal: this side will not proceed, with a machine-readable reason.
   static const refuse = 'refuse';
 
+  /// Terminal: the sender is going away on purpose — the app quitting, or
+  /// peer sync switched off. Its last message on the link, so the far side
+  /// can tell a departure from a lost link: nothing to report as lost, and
+  /// nothing to redial until the device is heard announcing again. A build
+  /// that predates it reads it as an unknown type and sees only the link
+  /// close, which is what it saw before.
+  static const bye = 'bye';
+
   /// "Send me your outbox after `sinceSeq`."
   static const catchUp = 'catchUp';
 
@@ -259,6 +267,8 @@ class PeerMessage {
   static PeerMessage trusted() => const PeerMessage(PeerMessageType.trusted);
 
   static PeerMessage refuse(String reason) => PeerMessage(PeerMessageType.refuse, {'reason': reason});
+
+  static PeerMessage bye() => const PeerMessage(PeerMessageType.bye);
 
   /// The sync messages each name their operation. A session outlives any one
   /// operation now, so "the shared operation" is a moving target: a batch

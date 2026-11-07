@@ -409,6 +409,17 @@ class InboundQsoListenerService extends ChangeNotifier {
     return added;
   }
 
+  /// The app is quitting: lets both ports go, and stops following the
+  /// settings, so nothing binds them again. Not [dispose]: the Imports panel
+  /// may still be listening as the window goes.
+  void closeForExit() {
+    settings.removeListener(_onSettingsChanged);
+    _captureRetryTimer?.cancel();
+    _captureRetryTimer = null;
+    _stopN1mm();
+    _stopWsjtx();
+  }
+
   @override
   void dispose() {
     _disposed = true;

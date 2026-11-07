@@ -2000,6 +2000,7 @@
       "bleProblem": "BLUETOOTH: ${error}",
       "statusConnected": "CONNECTED TO ${device}",
       "statusLost": "LOST CONNECTION TO ${device}",
+      "statusLeft": "${device} LEFT",
       "statusPerma": "PEER DEVICES: ${connected} OF ${linked} CONNECTED",
       "screenEnable": "SHARE SCREENS AND WINDOWS",
       "screenDescription": "ALLOW OTHER DEVICES TO SHOW SCREENS OR WINDOWS FROM THIS COMPUTER",

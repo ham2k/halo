@@ -253,7 +253,7 @@ void main() {
     await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
     await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
     final events = <String>[];
-    deviceA.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+    deviceA.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
       events.add(connected ? 'connected' : 'lost');
     };
     await bleOn(deviceA);

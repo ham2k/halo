@@ -339,6 +339,18 @@ class CatServerService extends ChangeNotifier {
     if (listener != null) _closing = _closeReporting(listener);
   }
 
+  /// The app is quitting: lets the port go, and stops following the settings
+  /// and the rig, so nothing binds it again. Not [dispose]: the Settings view
+  /// may still be listening as the window goes.
+  Future<void> closeForExit() {
+    _rebind?.cancel();
+    _rebind = null;
+    settings.removeListener(_onSettingsChanged);
+    rig.changes.removeListener(_onRigChanged);
+    _stop();
+    return _closing;
+  }
+
   @override
   void dispose() {
     _disposed = true;

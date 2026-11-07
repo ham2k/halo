@@ -52,6 +52,10 @@
 //      applies what comes back, and acks; the acked side sends the next
 //      batch, until there is nothing left and the session reads as caught
 //      up. A `sharing` change re-runs this against the new operation.
+//   6. A side going away on purpose (quitting, or switching peer sync off)
+//      says `bye` before it closes ([leave]). The other side then knows it
+//      left rather than that the link failed, and neither reports it lost
+//      nor redials it.
 //
 // Cursors, not acks, are the source of truth for what has been applied: the
 // receiver advances `PeerCursors` only after `mergeFromPeer` has committed,
@@ -217,6 +221,11 @@ class PeerSession {
   StreamSubscription<List<int>>? _subscription;
   bool _closed = false;
 
+  /// The peer said `bye` before the session closed: it left on purpose,
+  /// rather than the link failing under it.
+  bool get peerLeft => _peerLeft;
+  bool _peerLeft = false;
+
   /// Serializes the durable-sync handlers. They await the database, and two
   /// `events` batches arriving back-to-back must not interleave their
   /// apply-then-advance-cursor sequences — the second could otherwise
@@ -299,6 +308,13 @@ class PeerSession {
     await _finish(PeerSessionState.closed);
   }
 
+  /// [close], telling the peer first that this device is going away on
+  /// purpose ([PeerMessageType.bye]).
+  Future<void> leave() async {
+    _send(PeerMessage.bye());
+    await _finish(PeerSessionState.closed);
+  }
+
   /// First look at every inbound frame. Ephemeral types are delivered
   /// immediately; everything else joins the serialized sync queue.
   void _dispatch(List<int> raw) {
@@ -307,6 +323,11 @@ class PeerSession {
     if (message == null) return;
 
     switch (message.type) {
+      // Not queued behind the sync handlers: a batch still applying there
+      // would hold the close back, and the peer that sent this is gone.
+      case PeerMessageType.bye:
+        _peerLeft = true;
+        unawaited(_finish(PeerSessionState.closed));
       case PeerMessageType.hello:
       case PeerMessageType.trusted:
       case PeerMessageType.refuse:

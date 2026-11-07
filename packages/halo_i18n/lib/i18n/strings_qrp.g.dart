@@ -2598,6 +2598,7 @@ class _Translations$settings$peers$qrp extends Translations$settings$peers$en {
 	@override String bleProblem({required Object error}) => 'bluetooth: ${error}';
 	@override String statusConnected({required Object device}) => 'connected to ${device}';
 	@override String statusLost({required Object device}) => 'lost connection to ${device}';
+	@override String statusLeft({required Object device}) => '${device} left';
 	@override String statusPerma({required Object connected, required Object linked}) => 'peer devices: ${connected} of ${linked} connected';
 	@override String get screenEnable => 'share screens and windows';
 	@override String get screenDescription => 'allow other devices to show screens or windows from this computer';
@@ -6557,6 +6558,7 @@ extension on TranslationsQrp {
 			'settings.peers.bleProblem' => ({required Object error}) => 'bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'connected to ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'lost connection to ${device}',
+			'settings.peers.statusLeft' => ({required Object device}) => '${device} left',
 			'settings.peers.statusPerma' => ({required Object connected, required Object linked}) => 'peer devices: ${connected} of ${linked} connected',
 			'settings.peers.screenEnable' => 'share screens and windows',
 			'settings.peers.screenDescription' => 'allow other devices to show screens or windows from this computer',
@@ -6941,9 +6943,9 @@ extension on TranslationsQrp {
 			'settings.station.yaesuRs232Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **the cat jack is rs-232.** it needs a usb-to-serial adapter and a straight-through db-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis entry was written from published cat documentation and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **use the first of the radio\'s two usb ports.** cat is normally on the first (the **enhanced** com port on windows); the second (**standard**) is for ptt and keying. the picker points at the first wherever it can tell the two apart.\n- **cat rts off at the radio, or hold rts high on.** with the radio\'s **cat rts** menu on, it stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
-			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
 			'settings.station.k4RemoteNotes' => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.',
 			'settings.station.k4Receiver' => 'receiver',
@@ -7455,9 +7457,9 @@ extension on TranslationsQrp {
 			'sets.moveTo' => 'move to…',
 			'sets.moveTitle' => ({required Object name}) => 'move ${name} to',
 			'sets.topLevel' => 'top level',
-			'sets.export' => 'export…',
 			_ => null,
 		} ?? switch (path) {
+			'sets.export' => 'export…',
 			'sets.import' => 'import…',
 			'sets.delete' => 'delete…',
 			'sets.deleteSet' => 'delete set',

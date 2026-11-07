@@ -231,7 +231,8 @@ class PeerService extends ChangeNotifier {
   void Function(PeerSession session)? onSessionEstablished;
 
   /// Fired when a peer connection is made, and again when an established one
-  /// is LOST for a reason the operator did not cause. What the app layer
+  /// ends for a reason the operator did not cause — [left] when the peer said
+  /// it was going ([PeerMessageType.bye]), rather than the link failing. What the app layer
   /// turns into status messages — a peer link is expected to come and go,
   /// and the operator's answer to "is my other device on?" is the only
   /// thing either edge is for.
@@ -240,7 +241,7 @@ class PeerService extends ChangeNotifier {
   /// and has no losing edge. Operator-caused disconnections — peer sync
   /// switched off, trust revoked, the app quitting — are deliberately
   /// silent: the operator just did that, and being told so is noise.
-  void Function(String deviceId, String deviceName, {required bool connected})? onPeerConnectionChanged;
+  void Function(String deviceId, String deviceName, {required bool connected, bool left})? onPeerConnectionChanged;
 
   /// Peers reported connected and not yet reported lost. Doubles as the
   /// suppression: an operator-caused disconnection takes the peer OUT of
@@ -362,9 +363,52 @@ class PeerService extends ChangeNotifier {
   /// the other — which is exactly how a device with the switch on and no
   /// operation open would never start at all.
   Future<void> setEnabled(bool enabled) async {
-    _enabled = enabled;
+    _wanted = enabled;
+    _enabled = enabled && !_leaving && !_paused;
     await _apply();
   }
+
+  /// What the master switch asks for, held apart from [_enabled] so a
+  /// [resume] knows what to go back to.
+  bool _wanted = true;
+  bool _paused = false;
+
+  /// The app is being detached on a phone, which may be the end of it or may
+  /// not: stops as [leave] does, telling each peer, but only until [resume].
+  Future<void> pause() {
+    _paused = true;
+    _enabled = false;
+    return _applyReported();
+  }
+
+  /// Back from a [pause]: shares again if the switch is still on.
+  Future<void> resume() {
+    if (!_paused) return Future.value();
+    _paused = false;
+    _enabled = _wanted && !_leaving;
+    return _applyReported();
+  }
+
+  /// [_apply], for a caller that cannot add anything to its failure: settles
+  /// once the failure has been reported, rather than handing the same error
+  /// on to be reported again.
+  Future<void> _applyReported() {
+    // Ignored, not lost: [_apply]'s own handler has reported it.
+    _apply().ignore();
+    return _applyTail;
+  }
+
+  /// The app is quitting: stops everything the master switch would, telling
+  /// each peer this device is going (a `bye` on every session, a last beacon
+  /// saying so) — and for good, so an operation closing or a setting landing
+  /// on the way out cannot start it again.
+  Future<void> leave() {
+    _leaving = true;
+    _enabled = false;
+    return _applyReported();
+  }
+
+  bool _leaving = false;
 
   /// The Bluetooth sub-switch (`SettingsService.peerBleEnabled`), effective
   /// only under the master switch. Its own opt-in, unlike location sharing:
@@ -710,20 +754,31 @@ class PeerService extends ChangeNotifier {
     _linkSubscription = null;
     await _mediaSubscription?.cancel();
     _mediaSubscription = null;
+    // First, and the sessions below all at once: a quit gives this whole
+    // stop a short budget, and one slow link closing must not use it up
+    // before the others, or the devices with no session at all, hear that
+    // this one is going. The beacon is for those — a device that only knows
+    // this one by its beacons would otherwise list it until they time out.
+    final port = _linkServer?.port;
+    if (port != null) {
+      _beaconSocket?.announce(PeerBeacon(deviceId: localDeviceId, deviceName: localDeviceName, port: port, leaving: true));
+    }
     // Snapshotted: a session identifying itself can putIfAbsent into
-    // _peers while this awaits a close (see _pushToPeers).
-    for (final runtime in _peers.values.toList()) {
+    // _peers while this awaits a close (see _pushToPeers). Left, not closed:
+    // this device is going on purpose, and saying so is what keeps each
+    // peer from reporting it lost and redialling it.
+    for (final runtime in _peers.values) {
       runtime.attemptSeq++;
       runtime.retryTimer?.cancel();
-      await runtime.session?.close();
     }
-    // Sessions from links that never sent a valid hello are filed under no
-    // peer id at all, so the loop above cannot reach them — closing the
-    // server does not close an already-upgraded socket, and each would keep
-    // a live PeerSession behind it.
-    for (final session in _unidentifiedSessions.toList()) {
-      await session.close();
-    }
+    await Future.wait([
+      for (final runtime in _peers.values.toList()) ?runtime.session?.leave(),
+      // Sessions from links that never sent a valid hello are filed under no
+      // peer id at all, so the peers cannot reach them — closing the server
+      // does not close an already-upgraded socket, and each would keep a
+      // live PeerSession behind it.
+      for (final session in _unidentifiedSessions.toList()) session.leave(),
+    ]);
     _unidentifiedSessions.clear();
     _peers.clear();
     await _beaconSocket?.close();
@@ -768,6 +823,14 @@ class PeerService extends ChangeNotifier {
     if (beacon.address == null) return;
 
     final existing = _peers[beacon.deviceId];
+    if (beacon.leaving) {
+      // A connected peer is left to its session, whose `bye` says the same
+      // thing and ends it the right way.
+      if (existing == null || existing.isConnected) return;
+      _forget(beacon.deviceId);
+      notifyListeners();
+      return;
+    }
     if (existing == null) {
       debugPrint(
         '[peer] discovered "${beacon.deviceName}" (${beacon.deviceId}) '
@@ -945,7 +1008,14 @@ class PeerService extends ChangeNotifier {
         // duplicate-link teardown above — which closes a session nothing
         // tracks — never reads as the peer going away.
         if (peer != null && _announcedConnections.remove(peer.deviceId)) {
-          onPeerConnectionChanged?.call(peer.deviceId, peer.deviceName, connected: false);
+          onPeerConnectionChanged?.call(peer.deviceId, peer.deviceName, connected: false, left: session.peerLeft);
+        }
+        // Gone on purpose: nothing to redial, and nothing to list until it
+        // is heard announcing again. By the runtime's own key: a `bye` can
+        // overtake the hello still queued behind it, leaving [peer] null.
+        if (session.peerLeft) {
+          _forget(runtime.beacon.deviceId);
+          continue;
         }
         // A refusal is a decision, not a fault — retrying it would just
         // re-refuse in a loop. A plain close is worth reconnecting for.
@@ -968,13 +1038,17 @@ class PeerService extends ChangeNotifier {
         if (!entry.value.isConnected && entry.value.lastSeenMillis < cutoff) entry.key,
     ];
     if (gone.isEmpty) return;
-    for (final deviceId in gone) {
-      final runtime = _peers.remove(deviceId);
-      runtime?.attemptSeq++;
-      runtime?.retryTimer?.cancel();
-      unawaited(runtime?.session?.close());
-    }
+    gone.forEach(_forget);
     notifyListeners();
+  }
+
+  /// Drops [deviceId] from the peers this device knows, with any dial or
+  /// retry still pending for it.
+  void _forget(String deviceId) {
+    final runtime = _peers.remove(deviceId);
+    runtime?.attemptSeq++;
+    runtime?.retryTimer?.cancel();
+    unawaited(runtime?.session?.close());
   }
 
   bool _disposed = false;

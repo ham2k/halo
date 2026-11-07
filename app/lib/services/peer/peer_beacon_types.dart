@@ -37,13 +37,26 @@ class PeerBeacon {
   /// Where to dial it for the real link.
   final int port;
 
+  /// This device is going away on purpose — its last beacon, sent as peer
+  /// sync stops. A listener forgets it at once rather than waiting out the
+  /// beacon timeout. A build that predates the field reads it as one more
+  /// beacon, which a missing next one corrects within that same timeout.
+  final bool leaving;
+
   /// Filled in from the datagram's sender by [PeerBeaconListener], not from
   /// the payload. Null on a beacon this device composed to send.
   final String? address;
 
-  const PeerBeacon({required this.deviceId, required this.deviceName, this.operationUuid, required this.port, this.address});
+  const PeerBeacon({required this.deviceId, required this.deviceName, this.operationUuid, required this.port, this.address, this.leaving = false});
 
-  Map<String, dynamic> toJson() => {'halo': 'peer', 'deviceId': deviceId, 'deviceName': deviceName, 'operationUuid': ?operationUuid, 'port': port};
+  Map<String, dynamic> toJson() => {
+    'halo': 'peer',
+    'deviceId': deviceId,
+    'deviceName': deviceName,
+    'operationUuid': ?operationUuid,
+    'port': port,
+    if (leaving) 'leaving': true,
+  };
 
   /// Null for anything that isn't one of ours — the discovery port is shared
   /// with whatever else the operator runs, so a datagram that doesn't parse
@@ -61,10 +74,12 @@ class PeerBeacon {
       operationUuid: operationUuid is String && operationUuid.isNotEmpty ? operationUuid : null,
       port: port,
       address: address,
+      leaving: json['leaving'] == true,
     );
   }
 
-  PeerBeacon withAddress(String? address) => PeerBeacon(deviceId: deviceId, deviceName: deviceName, operationUuid: operationUuid, port: port, address: address);
+  PeerBeacon withAddress(String? address) =>
+      PeerBeacon(deviceId: deviceId, deviceName: deviceName, operationUuid: operationUuid, port: port, address: address, leaving: leaving);
 }
 
 /// The default UDP port peer beacons go out on. Not registered with IANA and

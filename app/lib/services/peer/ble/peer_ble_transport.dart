@@ -365,7 +365,7 @@ class PeerBleTransport {
       live.feed(packet);
     }
     earlyPackets.clear();
-    unawaited(connection.disconnected.then((_) => live.close(), onError: (Object _) => live.close()));
+    unawaited(connection.disconnected.then((_) => live.lose(), onError: (Object _) => live.lose()));
     _startLink(
       live,
       connection.chunkLimit,
@@ -395,14 +395,14 @@ class PeerBleTransport {
         // to go and is dropped.
         _serverLinks[centralId]?.feed(value);
       case PeerBleCentralUnsubscribed(:final centralId):
-        unawaited(_serverLinks.remove(centralId)?.close());
+        unawaited(_serverLinks.remove(centralId)?.lose());
     }
   }
 
   Future<void> _acceptCentral(String centralId) async {
     // A re-subscribe from a central we still track is a stale link on this
     // side — the central reset without a clean unsubscribe.
-    await _serverLinks.remove(centralId)?.close();
+    await _serverLinks.remove(centralId)?.lose();
     if (!_running) return;
     log?.call('BLE central $centralId subscribed');
     final link = PeerBleLink(
@@ -509,7 +509,7 @@ class PeerBleLink implements PeerLink {
     onSendable: _wake,
     onError: (problem) {
       log?.call('BLE link $label dropped: $problem');
-      unawaited(close());
+      unawaited(lose());
     },
   );
 
@@ -588,7 +588,7 @@ class PeerBleLink implements PeerLink {
     _keepaliveTimer = Timer.periodic(keepaliveInterval, (_) {
       if (realNowMillis() - _lastHeardMillis > idleCutoff.inMilliseconds) {
         log?.call('BLE link $label silent past ${idleCutoff.inSeconds}s; dropping');
-        unawaited(close());
+        unawaited(lose());
         return;
       }
       _conduit.sendPing();
@@ -609,10 +609,27 @@ class PeerBleLink implements PeerLink {
         await sendPacket(packet);
       } catch (e) {
         log?.call('BLE link $label send failed: $e');
-        await close();
+        await lose();
         return;
       }
       _checkReady();
+    }
+  }
+
+  /// Gives the send worker up to half a second to put what is still queued
+  /// on the air, so the last message before a close — a session's `bye` —
+  /// reaches the peer instead of dying in the queue when the connection is
+  /// cut. Skipped on a link that never came up, which has nothing to drain.
+  Future<void> _drain() async {
+    if (!_conduit.ready) return;
+    // Counted in steps rather than read off a clock, so a test running on
+    // fake timers cannot spin here forever.
+    for (var step = 0; step < 25 && _conduit.pendingOutboundBytes > 0 && !_isClosed; step++) {
+      _wake();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    if (_conduit.pendingOutboundBytes > 0 && !_isClosed) {
+      log?.call('BLE link $label closing with ${_conduit.pendingOutboundBytes} bytes still queued');
     }
   }
 
@@ -631,7 +648,7 @@ class PeerBleLink implements PeerLink {
       // unbounded queue for it would grow forever. Dropping the link lets
       // the session's reconnect-and-catch-up path recover instead.
       log?.call('BLE link $label stuck with ${_conduit.pendingOutboundBytes} bytes pending; dropping');
-      unawaited(close());
+      unawaited(lose());
       return;
     }
     _conduit.enqueueMessage(message);
@@ -640,8 +657,22 @@ class PeerBleLink implements PeerLink {
   @override
   Future<void> get closed => _closedCompleter.future;
 
+  /// Closes once what is still queued has gone out (see [_drain]), so the
+  /// last message before it — a session's `bye` — reaches the peer.
   @override
-  Future<void> close() async {
+  Future<void> close() => _close(drain: true);
+
+  /// Closes a link that is already dead — dropped, silent, or failing its
+  /// sends — at once: nothing queued on it is going anywhere, and until the
+  /// close it would go on taking sends as if it were alive.
+  Future<void> lose() => _close(drain: false);
+
+  Future<void> _close({required bool drain}) async {
+    if (_isClosed) {
+      await _closedCompleter.future;
+      return;
+    }
+    if (drain) await _drain();
     if (_isClosed) {
       await _closedCompleter.future;
       return;

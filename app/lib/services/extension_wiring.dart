@@ -76,15 +76,19 @@ void _wireCluster(HaLoServices services) {
   final settings = services.settings;
   final passwords = ClusterPasswords();
   ClusterService? cluster;
-  ClusterService clusterService() => cluster ??= ClusterService(
-    settings: settings,
-    // The operator of the operation in front, or the profile's with none open.
-    loginCall: () {
-      final operatorCall = services.frontOperationContext?.operatorCall ?? '';
-      return operatorCall.isNotEmpty ? operatorCall : settings.activeProfile.operatorCall;
-    },
-    password: passwords.read,
-  )..deliver = (subscriber, lines) => extensions.deliverClusterLines(subscriber, [for (final line in lines) line.toJson()]);
+  ClusterService clusterService() => cluster ??= services.closedOnExit<ClusterService>(
+    'cluster',
+    ClusterService(
+      settings: settings,
+      // The operator of the operation in front, or the profile's with none open.
+      loginCall: () {
+        final operatorCall = services.frontOperationContext?.operatorCall ?? '';
+        return operatorCall.isNotEmpty ? operatorCall : settings.activeProfile.operatorCall;
+      },
+      password: passwords.read,
+    )..deliver = (subscriber, lines) => extensions.deliverClusterLines(subscriber, [for (final line in lines) line.toJson()]),
+    (cluster) => cluster.closeForExit(),
+  );
   extensions.clusterCalls.cluster = clusterService;
   (services.settingsRegistry[SpottingSettings.group]! as SpottingSettingsGroup).cluster = ClusterSettingsGroup(
     settings,

@@ -155,8 +155,15 @@ class _FakeNode implements ClusterLink {
     return ['DX de $call:     ${words[1]}  ${words[2]}       ${words.skip(3).join(' ')}     0354Z'];
   }
 
+  /// When set, [close] waits on it — a connection still draining.
+  Completer<void>? closing;
+
   @override
   Future<void> close() async {
+    // Only when set: an await of nothing still yields, and every other test
+    // reads [closed] the moment its close was asked for.
+    final gate = closing;
+    if (gate != null) await gate.future;
     closed = true;
     await _out.close();
   }
@@ -281,6 +288,31 @@ void main() {
     expect(nodes.single.received, ['KI2D', 'DX 7200 N2Y This is a test']);
     expect(nodes.single.host, 'dx.k3lr.com', reason: 'K3LR is the default node');
     expect(service.status.state, ClusterState.connected);
+  });
+
+  test('the quit logs out with a bye and waits for the connection to close', () async {
+    await start();
+    await service.postSpot(freqKHz: 7200, call: 'N2Y', comment: 'This is a test');
+    final node = nodes.single..closing = Completer<void>();
+
+    // What the quit awaits: settling before the link is gone would let the
+    // process end with the `bye` still unsent.
+    var settled = false;
+    final quit = service.closeForExit().then((_) => settled = true);
+    await pumpEventQueue();
+    expect(node.received.last, 'bye');
+    expect(settled, isFalse, reason: 'the quit moved on while the connection was still closing');
+    node.closing!.complete();
+    await quit;
+    expect(node.closed, isTrue);
+    expect(service.status.state, ClusterState.idle);
+
+    // The extension runtime outlives this on the way out. A command from it
+    // logging in again would leave the node a connection the process then
+    // drops without a `bye`.
+    final late = await service.send('SH/DX');
+    expect(late.ok, isFalse);
+    expect(nodes, hasLength(1), reason: 'the quit is not undone by the next command');
   });
 
   test('logs in at a prompt the node ends with a newline, still not at the banner line', () async {

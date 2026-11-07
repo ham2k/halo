@@ -24,7 +24,16 @@
 // path or moving it after the database close, letting a start sneak a
 // runtime back in once the exit has begun, installing a boot that was already
 // in flight, and letting a failed boot arm its retry timer on the way out.
+//
+// And the connections besides the radios — peer sync, the cluster, the
+// CAT servers, push: a service that stops registering its close, dropping
+// them from the exit path, closing them after the
+// database (a peer's `bye` and an inbound batch both still write), letting
+// one that will not let go hold the quit, building a service nobody used
+// just to close it, and running the teardown a second time when the Windows
+// runner asks after the engine already did.
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
@@ -42,8 +51,22 @@ import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
+import 'package:ham2k_logger/services/window_chrome_service.dart';
 
 import '../support/halo_test_support.dart';
+
+/// Counts the radios being told to let go.
+class _CountingCat extends CatService {
+  _CountingCat(super.settings);
+
+  int shutdowns = 0;
+
+  @override
+  Future<void> shutdown() {
+    shutdowns++;
+    return super.shutdown();
+  }
+}
 
 Future<HaLoServices> _services() async {
   return (await makeHaLoServices()).services;
@@ -80,15 +103,33 @@ void main() {
     // process-lifetime global (`_shutdownLifecycle ??=`), so a second one
     // would silently exercise the first test's already-closed database.
     testWidgets('a requested exit closes the database, and says so afterwards', (tester) async {
-      final services = await _services();
+      late _CountingCat cat;
+      final services = (await makeHaLoServices(cat: (settings) => cat = _CountingCat(settings))).services;
       // Opens it for real: drift's close() is a no-op on a connection that was
       // never used, so a database this test never queried would look "closed"
       // even with the close deleted.
       await services.db.customSelect('SELECT 1').get();
+      var closes = 0;
+      services.closedOnExit('counted', null, (_) => closes++);
 
       shutdownOnExit(services);
 
       expect(await WidgetsBinding.instance.handleRequestAppExit(), AppExitResponse.exit);
+      expect(closes, 1);
+
+      // Windows asks again, from its runner, for the close the engine then
+      // lets through (services/app_exit.dart). The answer must come at once
+      // and change nothing: a second teardown would tell every peer goodbye
+      // twice and write through a database it already closed.
+      await WindowChromeService.onWindowClosing!();
+      expect(closes, 1, reason: 'one quit is one teardown, whichever side asks');
+      expect(cat.shutdowns, 1);
+
+      // And a desktop window reports detached as it goes. The phone's
+      // best-effort goodbyes must not run again over a closed database.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.detached);
+      await tester.pump();
+      expect(cat.shutdowns, 1, reason: 'detached after the quit said its goodbyes a second time');
 
       // Set BEFORE the teardown, not after it: the writes that lose their race
       // with the close happen while it runs, and it is this flag that keeps
@@ -206,6 +247,64 @@ void main() {
       await boot;
 
       expect(service.ready, isFalse);
+    });
+  });
+
+  group('the other connections', () {
+    test('are closed on the way out, while the database is still open', () async {
+      final services = await _services();
+      await services.db.customSelect('SELECT 1').get();
+      final closed = <String>[];
+      for (final name in ['peer', 'cluster']) {
+        services.closedOnExit(name, null, (_) async {
+          // A peer's last batch, or a `bye` landing as its link goes, still
+          // writes: the database closing first loses it.
+          await services.db.customSelect('SELECT 1').get();
+          closed.add(name);
+        });
+      }
+
+      await tearDownForExit(services);
+
+      expect(closed, unorderedEquals(['peer', 'cluster']));
+      await expectLater(services.db.customSelect('SELECT 1').get(), throwsA(isA<StateError>()));
+    });
+
+    test('one that will not let go, or fails, holds up neither the others nor the quit', () async {
+      final services = await _services();
+      var closedOthers = false;
+      services.closedOnExit('wedged', null, (_) => Completer<void>().future);
+      services.closedOnExit('broken', null, (_) => throw StateError('already gone'));
+      services.closedOnExit('fine', null, (_) => closedOthers = true);
+
+      await closeConnectionsForExit(services).timeout(const Duration(seconds: 4));
+
+      expect(closedOthers, isTrue);
+    });
+
+    test('each service that holds a connection is closed on the way out, once built', () async {
+      // The other tests here stand in their own closers under these names;
+      // this is what says the real services register theirs at all.
+      final services = await _services();
+      services
+        ..peerService
+        ..catServer
+        ..inboundQsos
+        ..midi
+        ..push
+        ..extensionDev;
+      services.extensions.clusterCalls.cluster!();
+      expect(services.exitClosers.keys, containsAll(['peer', 'cat-server', 'inbound-qsos', 'midi', 'push', 'extension-dev', 'cluster']));
+    });
+
+    test('a service nobody used is not built just to be closed', () async {
+      final services = await _services();
+      // Built at quit, peer sync would bind its sockets and beacon to the
+      // segment for the length of the teardown, on a device that never
+      // turned it on.
+      expect(services.exitClosers.keys, isNot(contains('peer')));
+      services.peerService;
+      expect(services.exitClosers.keys, contains('peer'));
     });
   });
 

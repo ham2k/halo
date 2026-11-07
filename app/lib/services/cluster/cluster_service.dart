@@ -271,6 +271,11 @@ class ClusterService extends ChangeNotifier {
   /// no reconnect, no retry, and a connect already under way is dropped.
   bool _parked = false;
 
+  /// Set by [closeForExit], never cleared. The extension runtime outlives
+  /// the closes on the way out, and a spot or command from it would log in
+  /// again, for the process to then drop without a `bye`.
+  bool _exiting = false;
+
   /// Whether a dropped session should come back on its own.
   bool get _wanted => _subscribers.isNotEmpty || _held;
 
@@ -336,6 +341,16 @@ class ClusterService extends ChangeNotifier {
     _parked = true;
     _reconnectTimer?.cancel();
     _closeSession(ClusterState.idle);
+  }
+
+  /// The app is quitting: the console's Disconnect, settling once the node
+  /// has been sent its `bye` and the connection is gone — so the node logs a
+  /// logout rather than a dropped connection.
+  Future<void> closeForExit() {
+    _exiting = true;
+    final session = _session;
+    disconnect();
+    return session?.linkClosed ?? Future.value();
   }
 
   /// The console closed: the session goes back to the usual rules.
@@ -480,7 +495,7 @@ class ClusterService extends ChangeNotifier {
   /// [until] bounds the wait, for a command that has to answer by then.
   Future<_Session> _ensureSession({int? until}) async {
     if (!supported) throw const _ClusterFailure('unsupported');
-    if (!_enabled) throw const _ClusterFailure('off');
+    if (!_enabled || _exiting) throw const _ClusterFailure('off');
     final call = _normalizedCall(loginCall());
     if (call == null) {
       _fail('noCall', null);
@@ -516,13 +531,13 @@ class ClusterService extends ChangeNotifier {
     try {
       link = await connect(node.host, node.port, until == null ? connectTimeout : _left(connectTimeout, until));
     } catch (e) {
-      if (_parked || !_enabled) throw _ClusterFailure(_enabled ? 'disconnected' : 'off');
+      if (_parked || !_enabled || _exiting) throw _ClusterFailure(_enabled ? 'disconnected' : 'off');
       _fail('connectFailed', '$e');
       throw _ClusterFailure('connectFailed', '$e');
     }
-    // Off, or Disconnect, while the connect was under way: there was no
-    // session yet for either to close.
-    if (_parked || !_enabled) {
+    // Off, Disconnect or the quit while the connect was under way: there was
+    // no session yet for any of them to close.
+    if (_parked || !_enabled || _exiting) {
       unawaited(link.close());
       throw _ClusterFailure(_enabled ? 'disconnected' : 'off');
     }
@@ -583,7 +598,7 @@ class ClusterService extends ChangeNotifier {
   }
 
   void _scheduleReconnect() {
-    if (_disposed || !supported || !_enabled || _parked || !_wanted || _reconnectTimer?.isActive == true) return;
+    if (_disposed || _exiting || !supported || !_enabled || _parked || !_wanted || _reconnectTimer?.isActive == true) return;
     final delay = reconnectDelays[_failures.clamp(0, reconnectDelays.length - 1)];
     _failures++;
     _reconnectTimer = Timer(delay, _reconnect);
@@ -749,6 +764,9 @@ class _Session {
   final _decoder = ClusterLineDecoder();
   bool open = true;
 
+  /// Settles once [close] has let the connection go, `bye` included.
+  Future<void> linkClosed = Future.value();
+
   /// Why the connection ended, when the node or the network ended it.
   String? closeReason;
 
@@ -895,10 +913,15 @@ class _Session {
     final prompted = _prompted;
     if (prompted != null && !prompted.isCompleted) prompted.complete(false);
     unawaited(_subscription.cancel());
-    // A courtesy the node logs as a clean logout; nothing waits on it.
+    // A courtesy the node logs as a clean logout. Only the quit waits on it
+    // ([ClusterService.closeForExit]); anything else lets it go on its own.
     try {
       _link.write(encodeClusterLine('bye'));
-    } catch (_) {}
-    unawaited(_link.close());
+    } catch (e) {
+      // A link already gone takes the session with it; the node sees a drop.
+      debugPrint('[cluster] bye not sent: $e');
+    }
+    linkClosed = _link.close();
+    unawaited(linkClosed);
   }
 }

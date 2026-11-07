@@ -10,9 +10,12 @@
 // depends on the machine's network, never collides with a HaLo running on
 // the standard port, and never puts a broadcast on the operator's LAN.
 
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:ham2k_logger/services/peer/peer_beacon_types.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 
 import '../support/peer_network_fakes.dart';
@@ -341,7 +344,7 @@ void main() {
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
     final events = <String>[];
-    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
       events.add('${connected ? 'connected' : 'lost'}:$deviceId:$deviceName');
     };
     await deviceA.service.setOpenOperation(op);
@@ -352,11 +355,88 @@ void main() {
     // is, and the id is what the panel shows when they need to be sure.
     expect(events.first, 'connected:device-a:Laptop');
 
-    // A carried out of range — from B's side an ordinary disappearance, and
-    // the only edge that tells B's operator their devices stopped talking.
-    await deviceA.service.setEnabled(false);
+    // A carried out of range: its link goes with no `bye` — from B's side an
+    // ordinary disappearance, and the only edge that tells B's operator
+    // their devices stopped talking.
+    await waitFor('A to hold the session', () => deviceA.service.peers['device-b']?.session != null);
+    await deviceA.service.peers['device-b']!.session!.link.close();
     await waitFor('B to report the loss', () => events.length > 1);
     expect(events[1], 'lost:device-a:Laptop');
+  });
+
+  test('a peer that leaves says so, and is neither reported lost nor redialled', () async {
+    final op = await sharedOperation();
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    final events = <String>[];
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
+      events.add(connected ? 'connected' : (left ? 'left' : 'lost'));
+    };
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('B to report the connection', () => events.isNotEmpty);
+
+    // The quit's path. Without the `bye` this reads on B exactly like the
+    // loss above: "lost connection", and a redial of a device that is gone
+    // until its beacons time out.
+    await deviceA.service.leave();
+    await waitFor('B to hear the departure', () => events.length > 1);
+    expect(events, ['connected', 'left']);
+    expect(deviceB.service.peers, isNot(contains('device-a')), reason: 'a device that left is not listed, or dialled, until it announces again');
+  });
+
+  test('a device known only by its beacons is dropped by its leaving one', () async {
+    // Nothing answers at that port, so B holds it with no session that
+    // could carry a `bye` — only a dial to retry, for as long as it is
+    // listed.
+    List<int> beacon({bool leaving = false}) =>
+        utf8.encode(jsonEncode(PeerBeacon(deviceId: 'device-z', deviceName: 'Tablet', port: 9, leaving: leaving).toJson()));
+    await deviceB.service.setEnabled(true);
+    lan.sendRaw(beacon(), port: fakeBeaconPort);
+    await waitFor('B to hear it', () => deviceB.service.peers.containsKey('device-z'));
+
+    lan.sendRaw(beacon(leaving: true), port: fakeBeaconPort);
+    await waitFor('B to forget it', () => !deviceB.service.peers.containsKey('device-z'));
+  });
+
+  test('a paused device says it left, and comes back on resume — a phone detached is not always gone', () async {
+    final op = await sharedOperation();
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceB.service.trust.trust('device-a', name: 'Laptop');
+    final events = <String>[];
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
+      events.add(connected ? 'connected' : (left ? 'left' : 'lost'));
+    };
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('B to report the connection', () => events.isNotEmpty);
+
+    await deviceA.service.pause();
+    await waitFor('B to hear the departure', () => events.length > 1);
+    expect(events, ['connected', 'left']);
+    // A settings write while paused must not start it early.
+    await deviceA.service.setEnabled(true);
+    expect(deviceA.service.running, isFalse);
+
+    await deviceA.service.resume();
+    expect(deviceA.service.running, isTrue, reason: 'a quit that turned out not to be one must not leave peer sync off for good');
+    await waitFor('the pair to reconnect', () => events.length > 2);
+    expect(events.last, 'connected');
+  });
+
+  test('switched off while paused, it stays off on resume', () async {
+    await deviceA.service.pause();
+    // The operator's switch, landing while the app was detached: the resume
+    // must not undo it.
+    await deviceA.service.setEnabled(false);
+    await deviceA.service.resume();
+    expect(deviceA.service.running, isFalse);
+  });
+
+  test('a peer that has left cannot be started again on the way out', () async {
+    await deviceA.service.leave();
+    await deviceA.service.setEnabled(true);
+    expect(deviceA.service.running, isFalse, reason: 'an operation closing as the window goes would otherwise rebind the sockets the quit just closed');
   });
 
   test('a disconnection the operator asked for says nothing', () async {
@@ -364,7 +444,7 @@ void main() {
     await deviceA.service.trust.trust('device-b', name: 'Phone');
     await deviceB.service.trust.trust('device-a', name: 'Laptop');
     final events = <String>[];
-    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+    deviceB.service.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
       events.add(connected ? 'connected' : 'lost');
     };
     await deviceA.service.setOpenOperation(op);

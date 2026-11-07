@@ -126,12 +126,13 @@ import 'sibling_apps_service.dart';
 
 export 'operation_command_context.dart';
 
+part 'halo_services_exit.dart';
 part 'halo_services_realtime.dart';
 part 'halo_services_sync_identity.dart';
 part 'halo_services_time_travel.dart';
 
 /// The core services bundle passed down to screens.
-class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
+class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
   final HaLoDatabase db;
   @override
   final SettingsService settings;
@@ -207,7 +208,7 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// (docs/extensions/in-repo.md#the-dev-server). Lazy, and inert until someone turns it
   /// on in Developer settings and types a server address — an operator who
   /// never writes an extension pays nothing for it.
-  late final ExtensionDevClient extensionDev = ExtensionDevClient(extensions: extensions);
+  late final ExtensionDevClient extensionDev = closedOnExit('extension-dev', ExtensionDevClient(extensions: extensions), (dev) => dev.closeForExit());
 
   /// The peer-sync outbox (HALO-310). Owned here rather than inside
   /// [peerService] because the repositories' `onChange` reaches it on every
@@ -219,19 +220,23 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// on, so a lazy `late final` that nobody touches costs an operator who
   /// never uses this exactly nothing.
   final PeerService? _peerServiceOverride;
-  late final PeerService peerService =
-      _peerServiceOverride ??
-      PeerService(
-        db: db,
-        outbox: peerOutbox,
-        operations: operations,
-        qsos: qsos,
-        localDeviceId: settings.peerDeviceId,
-        localDeviceName: settings.peerDeviceName,
-        // Null on web. Constructing the gateway touches no radio; only the
-        // Bluetooth sub-switch wakes it.
-        bleGateway: createPeerBleGateway(),
-      );
+  late final PeerService peerService = closedOnExit(
+    'peer',
+    peerServiceIfBuilt =
+        _peerServiceOverride ??
+        PeerService(
+          db: db,
+          outbox: peerOutbox,
+          operations: operations,
+          qsos: qsos,
+          localDeviceId: settings.peerDeviceId,
+          localDeviceName: settings.peerDeviceName,
+          // Null on web. Constructing the gateway touches no radio; only the
+          // Bluetooth sub-switch wakes it.
+          bleGateway: createPeerBleGateway(),
+        ),
+    (peers) => peers.leave(),
+  );
 
   /// Routes the sessions' ephemeral channel (GPS, CAT next) between
   /// [peerService] and the app services that produce and consume it. Its
@@ -483,11 +488,15 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
 
   /// MIDI controllers (docs/design/cat.md § MIDI controllers). Started at
   /// boot, idle until `EXP MIDI` is on and a MIDI controller node exists.
-  late final MidiService midi = MidiService(
-    cat: cat,
-    settings: settings,
-    station: CatMidiStation(cat: cat, radio: radio, settings: settings),
-    shortcutFor: keyBindingsService.midiCommandFor,
+  late final MidiService midi = closedOnExit(
+    'midi',
+    MidiService(
+      cat: cat,
+      settings: settings,
+      station: CatMidiStation(cat: cat, radio: radio, settings: settings),
+      shortcutFor: keyBindingsService.midiCommandFor,
+    ),
+    (midi) => midi.closeForExit(),
   );
 
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
@@ -515,7 +524,7 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// drives the realtime path injects its own over a fake socket.
   final PushService? _pushOverride;
   @override
-  late final PushService? push = _pushOverride ?? _pushFromConfig();
+  late final PushService? push = closedOnExit('push', _pushOverride ?? _pushFromConfig(), (push) => push?.dispose());
 
   final DataFileManager? _dataFilesOverride;
   late final DataFileManager dataFiles =
@@ -607,16 +616,19 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// otherwise never bind the socket, even though the operator turned
   /// listening on in a previous session.
   final InboundQsoListenerService? _inboundQsosOverride;
-  late final InboundQsoListenerService inboundQsos =
-      _inboundQsosOverride ??
-      InboundQsoListenerService(
-        settings: settings,
-        captures: inboundCaptures,
-        qsos: qsos,
-        operations: operations,
-        lookupQueue: lookupQueue,
-        statusBar: statusBar,
-      );
+  late final InboundQsoListenerService inboundQsos = closedOnExit(
+    'inbound-qsos',
+    _inboundQsosOverride ??
+        InboundQsoListenerService(
+          settings: settings,
+          captures: inboundCaptures,
+          qsos: qsos,
+          operations: operations,
+          lookupQueue: lookupQueue,
+          statusBar: statusBar,
+        ),
+    (listener) => listener.closeForExit(),
+  );
 
   /// Touches [inboundQsos] if listening is already enabled, so a setting
   /// left on from a previous session resumes without the operator having to
@@ -630,9 +642,13 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
   /// through (docs/design/cat.md § CAT server). Lazy like [inboundQsos]:
   /// Settings touches it to show the server's status, and
   /// [maybeStartCatServer] once the settings ask for one.
-  late final CatServerService catServer = CatServerService(
-    settings: settings,
-    rig: StationCatServerRig(cat: cat, radio: radio, peerRadios: peerRemoteRadios, settings: settings),
+  late final CatServerService catServer = closedOnExit(
+    'cat-server',
+    CatServerService(
+      settings: settings,
+      rig: StationCatServerRig(cat: cat, radio: radio, peerRadios: peerRemoteRadios, settings: settings),
+    ),
+    (server) => server.closeForExit(),
   );
 
   /// Starts the CAT server once the settings ask for one — at boot for one
@@ -914,11 +930,15 @@ class HaLoServices with _Realtime, _TimeTravel, _SyncIdentity {
     // act on, and neither is an error. Keyed per device so two peers do not
     // overwrite each other's message, and both self-dismiss: the footer is
     // where the operator glances, not something they should have to tidy.
-    peerService.onPeerConnectionChanged = (deviceId, deviceName, {required connected}) {
+    peerService.onPeerConnectionChanged = (deviceId, deviceName, {required connected, left = false}) {
       statusBar.setMessage(
         key: 'peer:$deviceId',
         icon: connected ? 'lan-connect' : 'lan-disconnect',
-        text: connected ? t.settings.peers.statusConnected(device: deviceName) : t.settings.peers.statusLost(device: deviceName),
+        text: connected
+            ? t.settings.peers.statusConnected(device: deviceName)
+            : left
+            ? t.settings.peers.statusLeft(device: deviceName)
+            : t.settings.peers.statusLost(device: deviceName),
         dismissAfter: StatusBarService.completedDismissDelay,
       );
     };

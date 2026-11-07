@@ -69,6 +69,12 @@ class ExtensionDevClient extends ChangeNotifier {
 
   Future<void> disconnect() => _enqueue(_disconnect);
 
+  /// The app is quitting: drops the server's event stream and log
+  /// forwarding, and nothing else. Not [disconnect], which reboots the
+  /// extension runtime onto the shipped bundles — mid-quit, that throws away
+  /// the runtime the radios' last disconnects are reported to.
+  Future<void> closeForExit() => _enqueue(_teardown);
+
   /// Runs [operation] after whatever is already queued, never alongside it.
   ///
   /// Two details the obvious version gets wrong. The latch is by IDENTITY:

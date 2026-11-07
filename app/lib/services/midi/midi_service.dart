@@ -444,6 +444,17 @@ class MidiService extends ChangeNotifier {
     return true;
   }
 
+  /// The app is quitting: closes every MIDI port, and stops following the
+  /// settings and the radios, so nothing opens one again. Not [dispose]: the
+  /// controller's settings may still be listening as the window goes.
+  void closeForExit() {
+    if (_started) {
+      settings.removeListener(_sync);
+      cat.removeListener(_sync);
+    }
+    _stop();
+  }
+
   @override
   void dispose() {
     if (_started) {

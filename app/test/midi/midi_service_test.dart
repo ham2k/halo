@@ -162,6 +162,21 @@ void main() {
       expect(station.tunes, [closeTo(14200.01, 1e-9)]);
     });
 
+    test('closed for the quit, it lets the ports go and a later change opens nothing', () async {
+      // Not disposed: the controller's settings may still be listening as
+      // the window goes, so what keeps a late change from reopening a port is
+      // the close itself.
+      backend.plug('dev-1', 'Knobs');
+      await addController(device: 'Knobs');
+      await settle();
+      expect(opened, 1);
+
+      midi.closeForExit();
+      await addController(device: 'Pads');
+      await settle();
+      expect(opened, 1, reason: 'a change landing on the way out reopened MIDI the quit closed');
+    });
+
     test('a device plugged in later is found by its name', () async {
       final node = await addController(device: 'Knobs');
       await settle();

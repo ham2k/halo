@@ -1,8 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Leaving: tell the radios, then close SQLite, each step bounded so one
-// wedged device cannot hold the quit open with no window and no feedback.
+// Leaving: tell the radios and every other connection, then close SQLite,
+// each step bounded so one wedged device cannot hold the quit open with no
+// window and no feedback.
 
 import 'dart:async';
 
@@ -16,12 +17,16 @@ import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
 import 'unclean_quit.dart';
+import 'window_chrome_service.dart';
 
 import 'halo_services.dart';
 
 /// Kept alive for the process lifetime — an [AppLifecycleListener] stops
 /// observing when it is garbage collected.
 AppLifecycleListener? _shutdownLifecycle;
+
+/// The one teardown a process gets, however many ways the quit asks for it.
+Future<AppExitResponse>? _exitTeardown;
 
 /// Say goodbye to connected equipment, and to SQLite, before the app stops
 /// existing.
@@ -39,40 +44,61 @@ AppLifecycleListener? _shutdownLifecycle;
 /// reason above is the real one.
 ///
 /// `onExitRequested` is the desktop hook that can actually *await* cleanup
-/// before the process goes. `detached` is BEST EFFORT ONLY: onStateChange is
-/// synchronous, so the work cannot be awaited, and on a dying isolate a
-/// disconnect needing a 600ms ack will usually not complete. Deliberately NOT
-/// `paused`: on Android that fires every time the operator switches away to
-/// look something up. So an Android kill from the background still escapes
-/// this — see docs/design/cat.md.
+/// before the process goes — when the engine asks it. Windows asks only when
+/// it counts the closing window as the process's LAST top-level one, and
+/// counts every window a plugin creates, hidden or not; past one, the close
+/// goes straight through and nothing here runs. So the Windows runner asks
+/// too (`windowClosing`, windows/runner/flutter_window.cpp) for a close the
+/// engine let through, and both land on the same once-only teardown.
+///
+/// `detached` is BEST EFFORT ONLY: onStateChange is synchronous, so the work
+/// cannot be awaited, and on a dying isolate a disconnect needing a 600ms ack
+/// will usually not complete. Deliberately NOT `paused`: on Android that
+/// fires every time the operator switches away to look something up. So an
+/// Android kill from the background still escapes this — see
+/// docs/design/cat.md. And only what can be undone: a detached app is not
+/// always a dying one, so it disconnects the radios and PAUSES peer sync
+/// (each peer told this device is going), and a resume brings peer sync back.
+/// The rest of the closes are for a quit that is certain.
 void shutdownOnExit(HaLoServices services) {
+  Future<AppExitResponse> tearDownOnce() => _exitTeardown ??= () {
+    // Before any of the teardown below: from here on, a write that loses its
+    // race with the database close is expected rather than a defect, and
+    // ErrorPolicy's `database-closed-on-exit` rule reads this to tell the
+    // two apart.
+    ErrorPolicy.appIsExiting = true;
+    // Under the watchdog for the whole of it. Every step of the teardown is
+    // bounded, but only against an await — and the serial close inside
+    // `shutdown()` is synchronous FFI, which a `timeout` cannot reach. A
+    // quit that wedges there leaves a process that never dies and, on
+    // Windows, a window that makes every later launch a silent no-op
+    // (services/hang_watchdog.dart).
+    return HangWatchdog.guard(() => tearDownForExit(services));
+  }();
+
+  WindowChromeService.onWindowClosing = tearDownOnce;
   _shutdownLifecycle ??= AppLifecycleListener(
-    onExitRequested: () async {
-      // Before any of the teardown below: from here on, a write that loses its
-      // race with the database close is expected rather than a defect, and
-      // ErrorPolicy's `database-closed-on-exit` rule reads this to tell the
-      // two apart.
-      ErrorPolicy.appIsExiting = true;
-      // Under the watchdog for the whole of it. Every step of the teardown is
-      // bounded, but only against an await — and the serial close inside
-      // `shutdown()` is synchronous FFI, which a `timeout` cannot reach. A
-      // quit that wedges there leaves a process that never dies and, on
-      // Windows, a window that makes every later launch a silent no-op
-      // (services/hang_watchdog.dart).
-      return HangWatchdog.guard(() => tearDownForExit(services));
-    },
+    onExitRequested: tearDownOnce,
     onStateChange: (state) {
-      // Guarded like the exit hook: this reaches the same synchronous serial
-      // close, and a wedge here leaves the same process that will not die.
+      // The quit already said every goodbye; a desktop window reports
+      // detached as it goes, and saying them again would write through a
+      // closed database.
+      if (_exitTeardown != null) return;
+      final peers = services.peerServiceIfBuilt;
       if (state == AppLifecycleState.detached) {
-        unawaited(HangWatchdog.guard(() => services.cat.shutdown()));
+        // Guarded like the exit hook: this reaches the same synchronous serial
+        // close, and a wedge here leaves the same process that will not die.
+        unawaited(HangWatchdog.guard(() => Future.wait([services.cat.shutdown(), ?peers?.pause()])));
+      } else if (state == AppLifecycleState.resumed) {
+        unawaited(peers?.resume());
       }
     },
   );
 }
 
-/// Says goodbye to the radios and then to SQLite, in that order, and answers
-/// the framework's question.
+/// Says goodbye to the radios and every other open connection, then to the
+/// extension runtime and SQLite, in that order, and answers the framework's
+/// question.
 ///
 /// Its own function so [shutdownOnExit] reads as what it is — one guarded
 /// teardown — rather than as a block of steps wrapped in a closure.
@@ -83,17 +109,9 @@ Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
   // dies to be reported, and the next launch is a silent no-op rather than a
   // crash.
   await _markStage(services, QuitStage.cat);
-  try {
-    // Bounded. shutdown() awaits each node in turn, and while the Icom
-    // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
-    // has no such guarantee. Without a ceiling one stuck radio hangs
-    // Cmd-Q with no window and no feedback, and the force-quit that
-    // follows skips the very disconnect this exists to send.
-    await services.cat.shutdown().timeout(const Duration(seconds: 5));
-  } catch (e, st) {
-    // Never block the user's quit on a radio that will not let go.
-    ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
-  }
+  // Side by side: neither waits on the other, so the slowest of them — not
+  // their sum — is what the quit costs before the database's turn.
+  await Future.wait([_shutDownRadios(services), closeConnectionsForExit(services)]);
   // After CAT, whose disconnects are the last thing a hook may still react
   // to, and BEFORE the database, which hooks write through. The runtime has
   // to be gone before the VM's own teardown, or the process aborts on the way
@@ -110,6 +128,53 @@ Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
   _reportARefusedExit();
   return AppExitResponse.exit;
 }
+
+Future<void> _shutDownRadios(HaLoServices services) async {
+  try {
+    // Bounded. shutdown() awaits each node in turn, and while the Icom
+    // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
+    // has no such guarantee. Without a ceiling one stuck radio hangs
+    // Cmd-Q with no window and no feedback, and the force-quit that
+    // follows skips the very disconnect this exists to send.
+    await services.cat.shutdown().timeout(const Duration(seconds: 5));
+  } catch (e, st) {
+    // Never block the user's quit on a radio that will not let go.
+    ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
+  }
+}
+
+/// Lets go of every connection the session opened besides the radios: peer
+/// sync (each peer told this device is leaving), the DX cluster (logged out
+/// with a `bye`), LoFi's realtime socket, the CAT servers and the UDP
+/// listeners other programs talk to, MIDI ports, and the extension dev
+/// client.
+///
+/// A process that just ends closes every socket with it, so what this buys
+/// is the far side's understanding: a peer that hears `bye` drops this
+/// device instead of reporting it lost and redialling it, and a node logs
+/// a logout instead of a dropped connection. All at once, each on its own
+/// budget, and none can fail another or the quit.
+@visibleForTesting
+Future<void> closeConnectionsForExit(HaLoServices services) async {
+  await Future.wait([
+    for (final MapEntry(key: name, value: close) in services.exitClosers.entries.toList())
+      () async {
+        try {
+          // Running out of budget is the budget working, not a failure: the
+          // process ending closes whatever is still open.
+          await close().timeout(_connectionsBudget, onTimeout: () => debugPrint('[exit] $name still closing; the process ending closes it'));
+        } catch (e, st) {
+          ErrorReportingService.report(e, st, context: '$name:close-on-exit');
+        }
+      }(),
+  ]);
+}
+
+/// How long each connection may take to let go. Enough for a `bye` to cross
+/// a LAN or for queued Bluetooth frames to drain; the longest wait among
+/// them is a peer link's 5s Bluetooth disconnect, which this cuts short —
+/// the process ending closes it anyway.
+const _connectionsBudget = Duration(seconds: 2);
 
 /// How long the database step may take, split so the part that must happen
 /// still gets its turn if the part that merely should takes too long.

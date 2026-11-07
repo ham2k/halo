@@ -337,6 +337,18 @@ bool FlutterWindow::HandleForwardedArguments(COPYDATASTRUCT* cds) {
   return true;
 }
 
+void FlutterWindow::FinishClose() {
+  close_ready_ = true;
+  // Posted rather than destroying the window here, so the close takes the
+  // same path as any other: through the engine first, which may now count
+  // this as the last window and ask the app — answered at once, since its
+  // teardown runs only once.
+  if (HWND hwnd = GetHandle()) {
+    KillTimer(hwnd, kCloseFallbackTimer);
+    PostMessage(hwnd, WM_CLOSE, 0, 0);
+  }
+}
+
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
@@ -352,6 +364,47 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_CLOSE:
+      // Two closes reach here: the one the engine re-dispatches after the app
+      // agreed to exit, and one it let through without asking at all. It
+      // asks only when it counts this as the process's last top-level
+      // window, and it counts every window a plugin creates, hidden ones
+      // included. Let through unasked, the app never tears down
+      // (services/app_exit.dart): radios keep the sessions they hold, and the
+      // VM's own teardown aborts on the runtimes still alive. So the app is
+      // asked here either way — at once, for the close it already agreed
+      // to, since its teardown runs only once — and the window closes when
+      // it answers, whatever the answer: a quit is not the app's to refuse
+      // from here.
+      if (!close_ready_ && window_chrome_channel_) {
+        if (!close_pending_) {
+          close_pending_ = true;
+          // An app that never answers — its isolate wedged outside the
+          // watchdog — must not leave a window that cannot be closed.
+          SetTimer(hwnd, kCloseFallbackTimer, kCloseFallbackMs, nullptr);
+          window_chrome_channel_->InvokeMethod(
+              "windowClosing", nullptr,
+              std::make_unique<
+                  flutter::MethodResultFunctions<flutter::EncodableValue>>(
+                  [this](const flutter::EncodableValue*) { FinishClose(); },
+                  [this](const std::string&, const std::string&,
+                         const flutter::EncodableValue*) { FinishClose(); },
+                  [this]() { FinishClose(); }));
+        }
+        return 0;
+      }
+      break;
+
+    case WM_TIMER:
+      if (wparam == kCloseFallbackTimer) {
+        KillTimer(hwnd, kCloseFallbackTimer);
+        close_ready_ = true;
+        // Not through the engine: it would ask the app that is not answering.
+        DestroyWindow(hwnd);
+        return 0;
+      }
+      break;
+
     case WM_COPYDATA:
       // A second launch handed us its arguments and exited. Ours
       // only — app_links puts its own links through the same message with a
