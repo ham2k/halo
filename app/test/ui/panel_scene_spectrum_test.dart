@@ -29,11 +29,13 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => null;
   @override
+  int? minWidthHz(String uuid) => null;
+  @override
   bool canTune(String uuid) => false;
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
   @override
-  bool fitSpan(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) => false;
   int listening = 0;
   int subListening = 0;
   String? problemText;
@@ -813,9 +815,34 @@ void main() {
     expect(spectrumWindow(sweep, null), (14000000, 14100000));
     // Not whole bins: a window that moved by a bin at a time would pan in steps.
     expect(spectrumWindow(sweep, 50000, centerHz: 14050333), (14025333, 14075333));
-    // Held at the edge of a scope that stays put; past it where the scope follows.
-    expect(spectrumWindow(sweep, 50000, centerHz: 14090000), (14050000, 14100000));
+    // On a scope that stays put, its middle held within the sweep, the rest past it; anywhere where
+    // the scope follows. Stopped at the edge, nothing past a scope held on the dial could be seen.
+    expect(spectrumWindow(sweep, 50000, centerHz: 14090000), (14065000, 14115000));
+    expect(spectrumWindow(sweep, 50000, centerHz: 14130000), (14075000, 14125000));
     expect(spectrumWindow(sweep, 50000, centerHz: 14090000, held: false), (14065000, 14115000));
+    // A scene's own widest lets a window run past a scope that stays put, holding the sweep inside it
+    // instead: the live part never leaves the picture.
+    expect(spectrumWindow(sweep, 300000, widestHz: 200000), (13950000, 14150000));
+    expect(spectrumWindow(sweep, 200000, centerHz: 14300000, widestHz: 400000), (14000000, 14200000));
+    expect(spectrumWindow(sweep, 200000, centerHz: 14080000, widestHz: 400000), (13980000, 14180000));
+  });
+
+  test('the dial label\'s arrow takes a color and a size, or false for none', () {
+    final styled = SceneSpectrumVfoLabel({
+      'arrow': {'color': '#FF0000', 'size': 12},
+    });
+    expect((styled.arrowColor, styled.noArrow), (const Color(0xFFFF0000), false));
+    expect(SceneSpectrumVfoLabel({'arrow': false}).noArrow, isTrue);
+    expect(() => SceneSpectrumVfoLabel({'arrow': 'left'}), throwsFormatException);
+  });
+
+  test('a spectrum\'s zoom limits are a number of Hz or the radio\'s own', () {
+    SceneSpectrumSpec spec(Map<String, dynamic> extra) => SceneSpectrumSpec({'id': 'pan', 'kind': 'spectrum', ...extra});
+    expect((spec({}).minWidthHz, spec({}).maxWidthHz), (null, null));
+    final own = spec({'minWidthHz': 1000, 'maxWidthHz': 'radio'});
+    expect((own.minWidthHz, own.maxWidthHz), (1000, null));
+    expect(() => spec({'maxWidthHz': 'band'}), throwsFormatException);
+    expect(() => spec({'minWidthHz': 0}), throwsFormatException);
   });
 
   test('short ticks mark every 1 kHz on a wide window and every 100 Hz once labels are a kHz apart, never a solid bar', () {

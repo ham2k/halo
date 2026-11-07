@@ -266,11 +266,17 @@ class TestScope extends Fake implements SpectrumSession {
   String? unavailable;
   final requests = <SpectrumRequest>[];
   bool running = true;
+  SpectrumCapabilities capabilities = const SpectrumCapabilities(
+    spansHz: [25000, 50000],
+    refMinDb: -20,
+    refMaxDb: 20,
+    refStepDb: .5,
+    speeds: {SpectrumSpeed.slow, SpectrumSpeed.fast},
+  );
   @override
   String? get spectrumUnavailable => unavailable;
   @override
-  SpectrumCapabilities get spectrumCapabilities =>
-      const SpectrumCapabilities(spansHz: [25000, 50000], refMinDb: -20, refMaxDb: 20, refStepDb: .5, speeds: {SpectrumSpeed.slow, SpectrumSpeed.fast});
+  SpectrumCapabilities get spectrumCapabilities => capabilities;
   @override
   bool setSpectrum(SpectrumRequest request) {
     if (running) requests.add(request);
@@ -953,6 +959,14 @@ void main() {
       expect(bridge().setSpectrum({'id': 'a'})['reason'], 'invalid');
       expect(bridge().setSpectrum({'id': 'b', 'spanHz': 50000})['reason'], 'changed');
       expect(scope.requests, hasLength(1));
+    });
+
+    test("a scope whose settings are the operator's alone takes no span or REF", () {
+      // A driver offering none has nothing to snap them to, and would take them as sent.
+      scope.capabilities = const SpectrumCapabilities(spansHz: [], refMinDb: 0, refMaxDb: 0, refStepDb: .5, modes: {});
+      expect(bridge().setSpectrum({'id': 'a', 'spanHz': 50000})['reason'], 'invalid');
+      expect(bridge().setSpectrum({'id': 'a', 'refLevelDb': 5})['reason'], 'invalid');
+      expect(scope.requests, isEmpty);
     });
 
     test('a scope no display is running says so, rather than accepting a change it never sent', () {

@@ -153,7 +153,7 @@ enum SceneSpectrumLayerKind { rect, line, text, svg }
 /// the control is turned. A rect or artwork fills the box between the two
 /// corners; a line runs from one to the other; text sits at the first.
 class SceneSpectrumLayer {
-  static const maxCount = 128;
+  static const maxCount = 512;
 
   final String id;
   final SceneSpectrumLayerKind kind;

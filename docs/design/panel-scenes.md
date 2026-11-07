@@ -470,20 +470,53 @@ published panels name them; what API 17 added has the new names only.
   intact, instead of waiting for sweeps and starting the waterfall empty.
 - **Within the sweep it is a crop; past it, the radio's scope moves.** A pan
   past the sweep's edge recentres a scope the app may place, at most four
-  times a second, and stops at the edge of one it may not. A zoom past the
+  times a second. One it may not place goes on until the window's middle
+  reaches the sweep's edge, the rest drawn as filler: what lies past a scope
+  held on the dial — spots, the band plan — is still the operator's to look
+  at, and a window stopped at the edge would hide it. A zoom past the
   sweep asks for a wider scope: through `showWidth` where the app sizes it
   (`autoSpan`), as the radio's next span where the panel may command it
   (visible on the radio's own screen, hence the permission), and no further
-  elsewhere. Within the sweep a zoom crops while it moves; where it ends, a
-  radio whose span the panel commands goes to the narrowest that covers the
-  window where it sits and the widest window any other display of it shows,
-  since a few hundred points cropped to a narrow window draw a handful of
-  them. Narrowed as it went, the zoom would step the radio through every span
+  elsewhere. Within the sweep a zoom crops while it moves; where it ends
+  with the sweep's points more than 5 pixels apart, a radio whose span the
+  panel commands goes to the narrowest that covers the window where it sits
+  and the widest window any other display of it shows, since a few hundred
+  points cropped to a narrow window draw a handful of them. Closer than
+  that the span is left alone: each change jolts the radio's own screen and
+  restretches the waterfall. A zoom goes no narrower than the narrowest
+  sweep the scope can be made to send (`minWidthHz` on the source) with its
+  points 10 pixels apart, taken to have as many points as the one it sends
+  now: further apart, the trace is a few straight strokes. Pixels, not a
+  count of points: a count fit for a narrow pane spreads them coarse across
+  a wide one. Narrowed as it went, the zoom would step the radio through every span
   on the way. A display naming no width draws the whole sweep, so it holds
   the span from narrowing (`showWidth` 0); a scope in fixed mode, whose width
-  is its edges, is left alone; and the double click's reset widens back what
+  is its edges, is left alone unless the app places those edges itself
+  (`spanSetsEdges`) — an SDR tuned on its own would otherwise change its
+  sample rate and retune; and the double click's reset widens back what
   that display's zoom narrowed, which would otherwise leave it cropping the
   narrowed sweep.
+- **A scene may zoom past the scope.** `minWidthHz`/`maxWidthHz` replace the
+  radio's limits, so a band scope can show a whole band on a radio whose
+  scope covers part of it. Past what the scope can be made to show, the
+  picture covers the swept part, and past it a dashed line at the median of
+  the bins drawn, over the fill darkened, stands in for it, the two fading
+  into each other over the sweep's last pixels. The median, not the noise
+  estimate: that comes from the raw sweeps and settles slowly, so it stands
+  off the averaged trace the line carries on from. Left blank, a band past
+  the scope reads as silent; filled alike, as heard; and cut off sharp, as
+  falling silent.
+  The fade adds the two into one layer, since one laid over the other
+  thins both where they meet. A radio with no scope sends no sweeps, so it
+  gets no filler either. The window no
+  longer drags the scope with it: a pan stops where the sweep reaches the
+  window's edge, so the live part never leaves view, and the scope follows
+  the dial by `follow`'s margin of its own width, moved just far enough as
+  the window is. Following the window instead, a pan would leave the dial
+  unswept. The dial is measured against where the scope was last sent until
+  a sweep from there arrives (or a second passes, for a radio that lands it
+  nearby): against the sweeps still arriving from where it was, each would
+  send it again.
 - **A native gesture is still reported, once.** The extension owns the
   panel's preferences, so the host tells it where a zoom, pan or split ended
   — one `commit` at the end, not the stream an event-mode scene gets, since
@@ -494,6 +527,23 @@ published panels name them; what API 17 added has the new names only.
 - **A pan holds against `follow` until the dial moves.** Follow pulls the
   window back toward the dial, which would undo every pan the moment it
   ended; a moved dial is the operator going somewhere, and follow resumes.
+  Where follow moves the window, the window moves the scope. Where it
+  stands still, a scope the app places weighs two aims: covering the
+  window, and changing as seldom as it can, since each change redraws the
+  picture under the operator. So a spin of the dial leaves the sweep alone
+  unless the dial comes within `follow`'s share of the sweep's width of an
+  edge, and then moves as little as keeps the dial that far in, to where
+  it covers most of the window. A jump — a click, a spot — with the window
+  not covered, or landing that near an edge, moves it at once to cover the
+  window, and within that as near centred on the dial as it goes: the
+  operator has just said where they are looking, a dial left at the margin
+  is a step from moving it again, and centred regardless, the sweep would
+  leave part of the window bare. Recentred on every move, a sweep a
+  little short of a panned window would change with every knob step; left
+  alone after a click, it would show a partial picture until the next pan.
+  The scope's middle is taken from where
+  it was last sent until a sweep from there arrives, so a sweep still on
+  its way is not asked for again.
 - **Drags only along the frequency, except on the axis.** A drag across it
   is left in the arena for a scene that scrolls, but on the axis it moves the
   axis, resizing the spectrum against the waterfall: the strip is the

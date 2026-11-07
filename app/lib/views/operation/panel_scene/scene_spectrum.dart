@@ -100,6 +100,11 @@ abstract class SceneSpectrumSource {
   /// may command it. Null: no wider than the sweep.
   int? maxWidthHz(String uuid);
 
+  /// The narrowest sweep, in Hz, [uuid]'s scope can be made to send here:
+  /// where the app sizes the scope, or the panel may command its span. Null:
+  /// no narrower than the sweep it sends now.
+  int? minWidthHz(String uuid);
+
   /// Whether [tune] can reach the radio [uuid]'s sweeps are of: the panel
   /// may command it, and the radio is there to be told.
   bool canTune(String uuid);
@@ -113,11 +118,18 @@ abstract class SceneSpectrumSource {
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused});
 
   /// Sets a scope whose widths are the radio's own to the narrowest that
-  /// shows [widthHz] and every other display drawing it: wider for a zoom
-  /// past the sweep, narrower where a zoom in ends. False where the app sizes
-  /// the scope itself, or the panel may not command the radio.
-  bool fitSpan(String uuid, int widthHz);
+  /// shows a window [widthHz] wide and every other display drawing it: wider
+  /// for a zoom past the sweep, narrower where a zoom in ends. The window's
+  /// middle is [centerHz], [offCenterHz] from the sweep's: a scope whose
+  /// edges the app places goes there, and one that stays centred where it is
+  /// covers that much more either side to reach it. False where the app
+  /// sizes the scope itself, or the panel may not command the radio.
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0});
 }
+
+/// How far, in pixels, from where the panadapter meets the waterfall the
+/// axis shows the cursor that resizes them.
+const _splitReach = 5.0;
 
 /// How long a display goes without a sweep before it says it is waiting,
 /// rather than holding the last picture as though it were live.
@@ -258,6 +270,14 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// The pointer is over something dragged sideways: the axis, or the tuned frequency's line.
   bool _overHandle = false;
 
+  /// Where on the axis, in the spectrum's frame, the panadapter meets the
+  /// waterfall: the edge a drag across the axis moves, near which the pointer
+  /// says so. Null with only one of them shown.
+  double? _splitAt;
+
+  /// The pointer is on the axis near [_splitAt].
+  bool _overSplit = false;
+
   /// The gesture under way, as [scene_spectrum_gestures.dart] reads it.
   /// Held here, not in the recognizers' handlers, which every build replaces.
   _Grip? _grip, _pinch, _trackpad;
@@ -352,6 +372,15 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   int _lastPaintMillis = 0;
   int _lastRecenterMillis = 0;
 
+  /// Where [_keepSweepOnDial] last asked the scope's middle to go, and when:
+  /// what it measures the dial against until a sweep from there arrives.
+  double? _sweepAskedHz;
+  int _sweepAskedMillis = 0;
+
+  /// The dial's last move, not yet weighed by [_placeSweepForDial]: whether
+  /// it jumped rather than spun.
+  bool? _dialMove;
+
   /// The dial follow last saw, when it last moved, and whether that move
   /// was a step of a spin rather than a jump.
   double? _followedVfo;
@@ -396,6 +425,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// the pointer's cursor test against.
   final _annotationHits = <_AnnotationHit>[];
   bool _overClickable = false;
+
+  /// The collapsed annotation the pointer is on, drawn whole until it leaves.
+  String? _revealed;
 
   _AnnotationHit? _annotationAt(Offset at) {
     for (final hit in _annotationHits.reversed) {
@@ -533,7 +565,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   SpectrumFrame _window(SpectrumFrame sweep) {
     final span = _number(_spec.span);
     if (_viewWidth != null && span != _zoomedOverSpan) _viewWidth = null;
-    final (low, high) = spectrumWindow(sweep, _viewWidth ?? span, centerHz: _viewCenter, held: _recenters != true);
+    final (low, high) = spectrumWindow(sweep, _viewWidth ?? span, centerHz: _viewCenter, held: _recenters != true, widestHz: _spec.maxWidthHz);
     return SpectrumFrame(
       lowHz: low.round(),
       highHz: high.round(),
@@ -765,14 +797,31 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     return frame.lowHz + fraction * (frame.highHz - frame.lowHz);
   }
 
+  /// Draws the collapsed annotation [id] whole, or none.
+  void _reveal(String? id) {
+    if (id == _revealed) return;
+    _revealed = id;
+    _panRepaint.value++;
+  }
+
   void _hover(Offset at, Size size) {
-    final clickable = ((_annotationAt(at)?.annotation?.clickable ?? false) && widget.onAnnotation != null) || _layerAt(at) != null;
-    // The axis and the tuned frequency's line are dragged sideways.
-    final handle = (_onAxis(at) && _gestures.zoom != SceneSpectrumGesture.off) || _dialAt(at) != null;
-    if (clickable != _overClickable || handle != _overHandle) {
+    final hit = _annotationAt(at);
+    _reveal((hit?.annotation?.collapsed ?? false) ? hit!.annotation!.id : null);
+    final clickable =
+        ((hit?.annotation?.clickable ?? false) && widget.onAnnotation != null) ||
+        ((hit?.away ?? false) && _gestures.pan == SceneSpectrumGesture.native) ||
+        _layerAt(at) != null;
+    // The axis and the tuned frequency's line are dragged sideways; the axis by the edge where the
+    // panadapter meets the waterfall across, the cursor saying which. Either drag works anywhere on
+    // the axis whatever the cursor says.
+    final splitAt = _splitAt;
+    final split = splitAt != null && _onAxis(at) && _gestures.split != SceneSpectrumGesture.off && (_canonicalAt(at).dy - splitAt).abs() <= _splitReach;
+    final handle = !split && ((_onAxis(at) && _gestures.zoom != SceneSpectrumGesture.off) || _dialAt(at) != null);
+    if (clickable != _overClickable || handle != _overHandle || split != _overSplit) {
       setState(() {
         _overClickable = clickable;
         _overHandle = handle;
+        _overSplit = split;
       });
     }
     final sweep = _sweep, hz = _hzAt(at, size);
@@ -835,10 +884,13 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
           final spectrum = MouseRegion(
             cursor: _overClickable
                 ? SystemMouseCursors.click
+                : _overSplit
+                ? (_turned(way) ? SystemMouseCursors.resizeLeftRight : SystemMouseCursors.resizeUpDown)
                 : _overHandle
                 ? (_turned(way) ? SystemMouseCursors.resizeUpDown : SystemMouseCursors.resizeLeftRight)
                 : MouseCursor.defer,
             onHover: (e) => _hover(e.localPosition, size),
+            onExit: (_) => _reveal(null),
             // Outside the gesture arena: a pinch and the wheel take nothing a scrolling scene's own drag needs.
             child: Listener(
               behavior: HitTestBehavior.translucent,
@@ -876,6 +928,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                       // the panadapter, or atop the waterfall.
                       final base = over ? axisTop : (spec.pan ? panHeight : gap);
                       // The strip a drag zooms on: the axis, or a finger's width about the labels' base.
+                      _splitAt = spec.pan && spec.waterfall ? panHeight : null;
                       _axis = scale == null
                           ? null
                           : gap >= 12
@@ -1018,6 +1071,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                                   vfoDigits: () => spec.vfoLabel.hzDigits?.toDouble() ?? _labelDigits.value,
                                   vfoLabelHz: () => _labelHz,
                                   vfoLabelBackground: (spec.backgroundColor ?? scheme.surfaceContainerLowest).withValues(alpha: .7),
+                                  revealed: () => _revealed,
+                                  clear: levels == null || !levels.over ? null : _stripRect(size, strip, start: levels.start, turned: turned),
                                 ),
                               ),
                             ),
@@ -1276,17 +1331,18 @@ class _PanPainter extends CustomPainter {
 }
 
 /// The range a display shows over [sweep]: [widthHz] about [centerHz], each
-/// the sweep's own when null. [held] keeps it inside the sweep — no wider,
-/// and moved back within its edges — for a scope the app cannot move;
-/// otherwise it may run past them. Any width, any centre: not whole bins,
+/// the sweep's own when null. [held] keeps it on the sweep — no wider, its
+/// middle within the sweep's edges — for a scope the app cannot move; up to
+/// [widestHz] wider, the sweep is held inside it instead. Otherwise it may
+/// run past them. Any width, any centre: not whole bins,
 /// so a pan or zoom moves the picture by the pixel, not the bin.
 @visibleForTesting
-(double, double) spectrumWindow(SpectrumFrame sweep, double? widthHz, {double? centerHz, bool held = true}) {
+(double, double) spectrumWindow(SpectrumFrame sweep, double? widthHz, {double? centerHz, bool held = true, double? widestHz}) {
   final span = (sweep.highHz - sweep.lowHz).toDouble();
   var width = widthHz ?? span, center = centerHz ?? sweep.lowHz + span / 2;
   if (held) {
-    width = math.min(width, span);
-    center = center.clamp(sweep.lowHz + width / 2, sweep.highHz - width / 2);
+    width = math.min(width, math.max(span, widestHz ?? 0));
+    center = width <= span ? center.clamp(sweep.lowHz.toDouble(), sweep.highHz.toDouble()) : center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2);
   }
   return (center - width / 2, center + width / 2);
 }

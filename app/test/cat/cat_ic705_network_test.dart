@@ -484,7 +484,7 @@ void main() {
           for (final e in elements)
             if (e['type'] == 'field') e['key'],
         ],
-        ['host', 'controlPort', 'serialPort', 'username', 'password', telemetryIntervalConfigKey, pollIntervalConfigKey],
+        ['host', 'controlPort', 'serialPort', 'username', 'password', civScopeAdjustConfigKey, telemetryIntervalConfigKey, pollIntervalConfigKey],
       );
       final password = elements.firstWhere((e) => e['key'] == 'password');
       expect(password['fieldType'], 'secret', reason: 'obscured in the editor');

@@ -241,9 +241,10 @@ class PanelRadioService {
     final mode = pick(SpectrumMode.values, args['mode']), speed = pick(SpectrumSpeed.values, args['speed']);
     final caps = session.spectrumCapabilities;
     // A mode or a speed this radio does not have would be dropped by its
-    // driver and answered as accepted.
-    if ((span != null && (span is! num || !span.isFinite || span <= 0)) ||
-        (ref != null && (ref is! num || !ref.isFinite)) ||
+    // driver and answered as accepted; so would a span or a REF where it
+    // offers none, a scope whose settings are the operator's alone.
+    if ((span != null && (span is! num || !span.isFinite || span <= 0 || caps.spansHz.isEmpty)) ||
+        (ref != null && (ref is! num || !ref.isFinite || caps.refMaxDb <= caps.refMinDb)) ||
         (args['mode'] != null && (mode == null || !caps.modes.contains(mode))) ||
         (args['speed'] != null && (speed == null || !caps.speeds.contains(speed))) ||
         (span == null && ref == null && mode == null && speed == null)) {

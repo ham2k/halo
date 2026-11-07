@@ -51,6 +51,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => null;
   @override
+  int? minWidthHz(String uuid) => null;
+  @override
   bool canTune(String uuid) => true;
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) {
@@ -59,7 +61,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool fitSpan(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) => false;
 }
 
 /// A scene with one spectrum, 400 by 300 with no level strip: 100 kHz across 400 pixels, 250 Hz a
@@ -207,6 +209,14 @@ void main() {
     ]) {
       expect(() => SceneSpectrumAcross.parse({'y': bad}, 'y'), throwsFormatException, reason: bad);
     }
+  });
+
+  test('a band scope takes 512 layers: a busy band\'s spots, each a leader, a dot and a bar, beside the band plan', () {
+    List<Map<String, dynamic>> lines(int n) => [
+      for (var i = 0; i < n; i++) {'id': 'l$i', 'kind': 'line', 'x': 'vfo'},
+    ];
+    expect(PanelScene(_doc({'layers': lines(512)})), isNotNull);
+    expect(() => PanelScene(_doc({'layers': lines(513)})), throwsFormatException);
   });
 
   test('a layer is refused where it would draw nothing, or a scene could not tell it from another', () {

@@ -84,7 +84,22 @@ void main() {
     expect(tester.widget<InkWell>(plug).canRequestFocus, isFalse);
   });
 
-  testWidgets('no plug without a way to connect — connected, or a radio this device cannot reach', (tester) async {
+  testWidgets('a connected radio keeps its plug, plugged in and named for what a tap does: disconnect', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      host(
+        radio: baseRadio().copyWith(hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}, onConnectRadio: () => taps++),
+      ),
+    );
+    await openControl(tester, MdiIcons.cat);
+    expect(find.descendant(of: find.byKey(const ValueKey('connectRadioButton')), matching: find.byIcon(MdiIcons.powerPlug)), findsOneWidget);
+    expect(find.bySemanticsIdentifier('action.connectRadio'), findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsIdentifier('action.connectRadio')).label, t.settings.station.disconnect);
+    await tester.tap(find.byKey(const ValueKey('connectRadioButton')));
+    expect(taps, 1);
+  });
+
+  testWidgets('no plug without a way to connect — a radio this device cannot reach', (tester) async {
     await tester.pumpWidget(host(radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {})));
     await openControl(tester, MdiIcons.cat);
     expect(find.byKey(const ValueKey('connectRadioButton')), findsNothing);

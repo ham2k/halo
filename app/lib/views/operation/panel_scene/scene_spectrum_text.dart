@@ -179,11 +179,18 @@ InlineSpan spectrumAxisLabel(String mhz, TextStyle style) {
 /// same few strings at the same few styles, redrawn up to sixty times a
 /// second. Past [limit] the least recently used is let go, one at a time,
 /// never all at once: a paint still holding a painter from an earlier [get]
-/// would otherwise draw a disposed one.
+/// would otherwise draw a disposed one. The limit is over what one paint
+/// can ask for — 256 annotations, the text of 512 layers, the axis's and
+/// the level strip's labels — or each paint would let go of what it laid
+/// out a moment before, and lay everything out again every frame.
 @visibleForTesting
 class SpectrumTextCache {
-  static const limit = 256;
+  static const limit = 1024;
   final _painters = <(String, TextStyle, Object?), TextPainter>{};
+
+  /// How many are kept now.
+  @visibleForTesting
+  int get length => _painters.length;
 
   /// [span], where given, is what [text] is drawn as; [spanKey] names what
   /// else, beside [style], the span is built from.
@@ -208,7 +215,7 @@ class SpectrumTextCache {
 
 /// [annotation] is null for the dial's label: drawn over the annotations, it
 /// takes a click on what it covers.
-typedef _AnnotationHit = ({Rect rect, SceneSpectrumAnnotation? annotation, double hz});
+typedef _AnnotationHit = ({Rect rect, SceneSpectrumAnnotation? annotation, double hz, bool away});
 
 /// An annotation's box with its point at [x]: a corner drawn out to it for a
 /// box that starts or ends there, a notch in the middle of an edge for one
@@ -283,7 +290,16 @@ class _AnnotationPainter extends CustomPainter {
   /// The frequency the label shows, which may differ from the line's.
   final double? Function() vfoLabelHz;
 
+  /// The id of the collapsed annotation the pointer is on, drawn whole.
+  final String? Function() revealed;
+
+  /// A level strip lying over the picture, on screen, which the label keeps
+  /// to the window's side of.
+  final Rect? clear;
+
   _AnnotationPainter({
+    required this.revealed,
+    this.clear,
     required Listenable repaint,
     required this.vfoDigits,
     required this.vfoLabelHz,
@@ -326,7 +342,8 @@ class _AnnotationPainter extends CustomPainter {
     final number = marks.number;
     final (floor, range) = levels(current);
     final perPixel = secondsPerPixel();
-    for (final a in marks.spec.annotations) {
+    // Where an annotation's box goes, and what it is drawn with; null off the window or not known yet.
+    ({Rect rect, Path shape, TextPainter painter, double pad, double hz, double x, double near})? place(SceneSpectrumAnnotation a) {
       // Not drawn where its part is not shown, nor at a `y` not known yet: the noise before it is estimated.
       final part = a.onWaterfall ? waterfallTop : panBottom;
       final y = a.y;
@@ -350,9 +367,17 @@ class _AnnotationPainter extends CustomPainter {
         SceneSpectrumAnchor.absolute => 0.0,
       };
       final at = number(a.hz);
-      if (edge == null || anchor == null || at == null) continue;
+      if (edge == null || anchor == null || at == null) return null;
       final hz = anchor + at;
       final x = (hz - current.lowHz) / span * size.width;
+      final pointer = a.pointer;
+      final point = pointer == null ? 0.0 : (number(pointer.size) ?? 4);
+      final up = (pointer?.corner ?? (a.onWaterfall ? 'top' : 'bottom')) == 'top';
+      // The offset places the tip, so a box with a point stands that much
+      // further from the edge than one without.
+      final offset = number(a.offset) ?? 4;
+      // The border facing the edge it stands from, whatever the box's height.
+      final near = a.onWaterfall ? edge + offset + (up ? point : 0) : edge - offset - (up ? 0 : point);
       final style = text.copyWith(
         fontFamily: a.fontFamily,
         fontSize: number(a.size),
@@ -370,16 +395,15 @@ class _AnnotationPainter extends CustomPainter {
         'end' => x - width,
         _ => x - width / 2,
       };
-      if (left + width < 0 || left > size.width) continue;
-      final pointer = a.pointer;
-      final point = pointer == null ? 0.0 : (number(pointer.size) ?? 4);
-      final up = (pointer?.corner ?? (a.onWaterfall ? 'top' : 'bottom')) == 'top';
-      // The offset places the tip, so a box with a point stands that much
-      // further from the edge than one without.
-      final offset = number(a.offset) ?? 4;
-      final top = a.onWaterfall ? edge + offset + (up ? point : 0) : edge - offset - height - (up ? 0 : point);
+      if (left + width < 0 || left > size.width) return null;
+      final top = a.onWaterfall ? near : near - height;
       final rect = Rect.fromLTWH(left, top, width, height);
       final shape = _bubble(rect, number(a.radius) ?? 2, x: x, align: a.align, point: point, up: up).transform(toScreen.storage);
+      return (rect: rect, shape: shape, painter: painter, pad: pad, hz: hz, x: x, near: near);
+    }
+
+    void draw(SceneSpectrumAnnotation a, ({Rect rect, Path shape, TextPainter painter, double pad, double hz, double x, double near}) at) {
+      final (rect, shape) = (at.rect, at.shape);
       canvas.drawPath(shape, Paint()..color = a.background ?? background);
       final border = number(a.borderWidth) ?? (a.borderColor == null ? 0 : 1);
       if (a.borderColor != null && border > 0) {
@@ -389,11 +413,10 @@ class _AnnotationPainter extends CustomPainter {
           ..strokeWidth = border;
         if (a.borderNear) {
           // The edge facing the one it stands from: an underline on the spectrum, an overline on the waterfall.
-          final y = a.onWaterfall ? rect.top : rect.bottom;
           canvas.drawPath(
             (Path()
-                  ..moveTo(rect.left, y)
-                  ..lineTo(rect.right, y))
+                  ..moveTo(rect.left, at.near)
+                  ..lineTo(rect.right, at.near))
                 .transform(toScreen.storage),
             stroke,
           );
@@ -401,21 +424,61 @@ class _AnnotationPainter extends CustomPainter {
           canvas.drawPath(shape, stroke);
         }
       }
-      painter.paint(canvas, _toScreen(toScreen, rect).topLeft + Offset(pad, pad));
-      hits.add((rect: shape.getBounds(), annotation: a, hz: hz));
+      at.painter.paint(canvas, _toScreen(toScreen, rect).topLeft + Offset(at.pad, at.pad));
+      hits.add((rect: shape.getBounds(), annotation: a, hz: at.hz, away: false));
     }
+
+    // A collapsed one the pointer is on, drawn whole over the rest: those it would cover wait.
+    final shown = revealed();
+    final open = shown == null ? null : marks.spec.annotations.where((a) => a.id == shown && a.collapsed).firstOrNull;
+    final opened = open == null ? null : place(open);
+    for (final a in marks.spec.annotations) {
+      if (a == open) continue;
+      if (a.collapsed) {
+        final at = place(a);
+        if (at == null) continue;
+        final width = a.collapsedWidth ?? at.rect.width * .8, middle = at.rect.center.dx;
+        canvas.drawPath(
+          (Path()
+                ..moveTo(middle - width / 2, at.near)
+                ..lineTo(middle + width / 2, at.near))
+              .transform(toScreen.storage),
+          Paint()
+            ..color = a.borderColor ?? a.color ?? text.color ?? background
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = number(a.borderWidth) ?? 1,
+        );
+        // Mostly on the side away from the labels over it, which keep their own: the line is too
+        // thin to find, and a reach over it would take the labels' bottoms.
+        final (over, under) = a.onWaterfall ? (8.0, 3.0) : (3.0, 8.0);
+        hits.add((
+          rect: _toScreen(toScreen, Rect.fromLTRB(middle - width / 2, at.near - over, middle + width / 2, at.near + under)),
+          annotation: a,
+          hz: at.hz,
+          away: false,
+        ));
+        continue;
+      }
+      final at = place(a);
+      if (at == null || (opened != null && at.rect.overlaps(opened.rect))) continue;
+      draw(a, at);
+    }
+    // Laid out again to be drawn: what it was placed with may have been let go meanwhile.
+    if (open != null && opened != null) draw(open, place(open) ?? opened);
     // Last, so the tuned frequency stays readable over the annotations crowding the dial.
     _paintVfoLabel(canvas, size, toScreen, turned, current, span);
   }
 
   /// The tuned frequency, at the top of its line, over the passband — the
   /// first area the scene draws from the dial — where it sits above the
-  /// signals heard; centred over the line with no passband drawn.
+  /// signals heard; centred over the line with no passband drawn. With the
+  /// dial out of the window, at the edge it is past, an arrow on that side
+  /// in the line's color pointing the way: a click there brings it back.
   void _paintVfoLabel(Canvas canvas, Size size, Matrix4 toScreen, bool turned, SpectrumFrame current, double span) {
     final color = vfoLabel, line = marks.vfoHz(), vfo = vfoLabelHz();
     if (color == null || line == null || vfo == null || panBottom == null) return;
     final x = (line - current.lowHz) / span * size.width;
-    if (x < 0 || x > size.width) return;
+    final away = x < 0 ? -1 : (x > size.width ? 1 : 0);
     final settings = marks.spec.vfoLabel;
     final (mhz, khz, hz) = spectrumVfoLabelStyles(text.copyWith(color: color, fontSize: _vfoLabelSize), settings, marks.number);
     TextPainter labelled(int digits) {
@@ -431,15 +494,44 @@ class _AnnotationPainter extends CustomPainter {
     const pad = 2.0, gap = 3.0;
     final (along, across) = turned ? (painter.height, textWidth) : (textWidth, painter.height);
     final width = along + pad * 2, height = across + pad * 2;
+    final arrow = away == 0 || settings.noArrow ? 0.0 : marks.number(settings.arrowSize) ?? painter.height * .45;
+    final box = width + (arrow > 0 ? arrow + gap : 0);
     final side = spectrumPassbandSide(marks.spec, marks.number);
-    var left = side > 0 ? x + gap : (side < 0 ? x - gap - width : x - width / 2);
-    left = left.clamp(0.0, math.max(0.0, size.width - width));
-    final rect = Rect.fromLTWH(left, pad, width, height);
+    var left = switch (away) {
+      < 0 => 0.0,
+      > 0 => size.width - box,
+      _ => side > 0 ? x + gap : (side < 0 ? x - gap - width : x - width / 2),
+    };
+    // Short of a level strip over the picture at either end, rather than under it.
+    var (low, high) = (0.0, size.width);
+    final (strip, fromScreen) = (clear, Matrix4.tryInvert(toScreen));
+    if (strip != null && fromScreen != null) {
+      final along = MatrixUtils.transformRect(fromScreen, strip);
+      if (along.left <= 1) low = math.max(low, along.right);
+      if (along.right >= size.width - 1) high = math.min(high, along.left);
+    }
+    left = left.clamp(low, math.max(low, high - box));
+    final rect = Rect.fromLTWH(away < 0 && arrow > 0 ? left + arrow + gap : left, pad, width, height);
+    final whole = Rect.fromLTWH(left, pad, box, height);
     canvas.drawPath(
-      _bubble(rect, 2, x: x, align: 'center', point: 0, up: false).transform(toScreen.storage),
+      _bubble(whole, 2, x: x, align: 'center', point: 0, up: false).transform(toScreen.storage),
       Paint()..color = vfoLabelBackground ?? background,
     );
-    hits.add((rect: rect, annotation: null, hz: vfo));
+    if (arrow > 0) {
+      final (tip, base, middle) = away < 0
+          ? (left + pad, left + pad + arrow, pad + height / 2)
+          : (left + box - pad, left + box - pad - arrow, pad + height / 2);
+      final half = math.min(arrow * .5, height / 2 - pad);
+      final shape = Path()
+        ..moveTo(tip, middle)
+        ..lineTo(base, middle - half)
+        ..lineTo(base, middle + half)
+        ..close();
+      canvas.drawPath(shape.transform(toScreen.storage), Paint()..color = settings.arrowColor ?? color);
+    }
+    // On the screen, as every other hit is: in the spectrum's own frame, a turned one's label would
+    // shadow whatever lies where its box would be upright, and leave what it covers clickable.
+    hits.add((rect: _toScreen(toScreen, away == 0 ? rect : whole), annotation: null, hz: vfo, away: away != 0));
     final onScreen = _toScreen(toScreen, rect);
     canvas.save();
     canvas.clipRect(Rect.fromLTWH(onScreen.left + pad, onScreen.top + pad, textWidth, painter.height));

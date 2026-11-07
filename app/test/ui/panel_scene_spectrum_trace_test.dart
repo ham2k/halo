@@ -50,6 +50,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => null;
   @override
+  int? minWidthHz(String uuid) => null;
+  @override
   bool canTune(String uuid) => true;
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) {
@@ -58,7 +60,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool fitSpan(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) => false;
 }
 
 /// One spectrum over a 400 by 300 pane with no axis or level strip: its spectrum the top 120 pixels.
@@ -270,6 +272,32 @@ void main() {
     await _show(tester, const {'fillColor': '#80FF0000', 'fillColorBottom': '#80FF0000'}, level: 70);
     pixel = await _pixels(tester);
     expect(pixel(100, 100).a, closeTo(.5, .02));
+  });
+
+  testWidgets('past the sweep, a dashed line at the noise and a darker fill under it stand in for the picture', (tester) async {
+    // 200 kHz shown of the 100 kHz swept: the sweep across the middle 200 pixels, its bins at 20 of
+    // 0 to 80 dB, 90 pixels down the 120, but for a signal. The noise estimated from the raw sweeps,
+    // at 40, would leave the line standing above the trace it carries on from.
+    await _show(tester, const {'span': 200000, 'maxWidthHz': 400000, 'fillColor': '#FF0000'}, level: 20, spikes: {500: 70}, noise: 40);
+    final pixel = await _pixels(tester);
+    final (swept, unswept, above) = (pixel(200, 100), pixel(50, 100), pixel(50, 50));
+    expect(swept.r, greaterThan(.85));
+    expect(unswept.r, closeTo(.5, .02), reason: 'left blank, a band past the scope reads as silent; filled alike, as heard');
+    expect(unswept.a, greaterThan(.98));
+    expect(above.a, lessThan(.02), reason: 'nothing over the noise where nothing was heard');
+    final canvas = TestRecordingCanvas();
+    tester.widget<CustomPaint>(_pan).painter!.paint(canvas, tester.getSize(_pan));
+    final lines = [
+      for (final call in canvas.invocations)
+        if (call.invocation.memberName == #drawPath && (call.invocation.positionalArguments[1] as Paint).style == PaintingStyle.stroke)
+          call.invocation.positionalArguments[0] as Path,
+    ].where((path) => path.getBounds().height < 1 && path.getBounds().top > 15);
+    expect([for (final line in lines) line.getBounds().top.round()], [90], reason: 'level with the trace');
+    expect(lines.first.computeMetrics().length, greaterThan(5), reason: 'dashed, unlike a trace');
+    // Over the sweep's first pixels the two fade into each other: a cliff there reads as the band
+    // falling silent.
+    final edge = pixel(112, 100).r;
+    expect(edge, allOf(greaterThan(unswept.r + .1), lessThan(swept.r - .1)));
   });
 
   testWidgets('a smoothed trace averages across pixels of frequency, and a dashed one is drawn in pieces', (tester) async {

@@ -324,15 +324,16 @@ class RadioControlFields extends StatelessWidget {
                           ),
                         ),
                         // The way to connect a radio that is down, beside the
-                        // cat whose red says so. A control of its own inside
-                        // this one: its tap connects rather than opening the
+                        // cat whose red says so, or to drop one that is up. A
+                        // control of its own inside this one: its tap
+                        // connects or disconnects rather than opening the
                         // dialog, and its own node carries its name.
                         if (config.radio.onConnectRadio case final onConnectRadio?) ...[
                           const SizedBox(width: Space.md),
                           Semantics(
                             container: true,
                             identifier: 'action.connectRadio',
-                            label: t.settings.station.connect,
+                            label: config.radio.radioConnected ? t.settings.station.disconnect : t.settings.station.connect,
                             button: true,
                             enabled: !editing,
                             child: InkWell(
@@ -343,7 +344,7 @@ class RadioControlFields extends StatelessWidget {
                               onTap: editing ? null : onConnectRadio,
                               child: ExcludeSemantics(
                                 child: Icon(
-                                  MdiIcons.powerPlugOff,
+                                  config.radio.radioConnected ? MdiIcons.powerPlug : MdiIcons.powerPlugOff,
                                   size: stationConfigIconSize,
                                   color: _stationConfigIconColor(editing: editing),
                                 ),

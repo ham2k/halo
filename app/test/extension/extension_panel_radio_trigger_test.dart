@@ -134,11 +134,13 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => null;
   @override
+  int? minWidthHz(String uuid) => null;
+  @override
   bool canTune(String uuid) => false;
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) => false;
   @override
-  bool fitSpan(String uuid, int widthHz) => false;
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) => false;
   int _hz = 14074000;
   double _dbm = -70;
 

@@ -443,10 +443,13 @@ const axisGap = 26
 /** Room at the spectrum's top for the dial's own label. */
 const dialLabel = 26
 /**
- * The share of the spectrum's height above the spots' level: the radio's scale sets where it falls,
- * which the panel does not know, so the lanes are counted for about half.
+ * Where the app puts the noise on a spectrum that follows it — `NoiseFloor.belowNoiseDb` up a
+ * display 80 dB tall — which the level strip's floor and range then shift and stretch: what places
+ * the spots' level up the spectrum, and so the room over it for their lanes. A radio left to its own
+ * scale puts the noise where it will, and the count is a guess there.
  */
-const aboveSpots = 0.5
+const noiseOverFloorDb = 10,
+  displayRangeDb = 80
 
 /** Rows of the band plan's labels at the picture's top: the modes', then the windows' and the markers'. */
 const planRows: Record<PlanDetail, number> = { none: 0, edges: 0, modes: 2, all: 3 }
@@ -497,13 +500,16 @@ async function marksFor(
   // waterfall; with no spectrum, the plan's labels hang under it.
   const clear = settings.display === "both" ? 0 : axisGap + (part === "waterfall" ? labels : 0)
   const spectrumHeight = settings.display === "both" ? height * (view.split ?? 0.4) : height
-  const room = part === "spectrum" ? spectrumHeight * aboveSpots - Math.max(dialLabel, labels) : height - clear
+  // From the spots' level up to just under the dial's label, or the plan's.
+  const floor = view.floor ?? settings.floor
+  const spotsUp = Math.min(1, Math.max(0, (noiseOverFloorDb - floor + settings.spotLevel) / (view.range ?? displayRangeDb)))
+  const room = part === "spectrum" ? spectrumHeight * (1 - spotsUp) - Math.max(dialLabel, labels) : height - clear
   const { annotations, layers } = spotMarks(spots, {
     hzPerPx,
     lanes: Math.max(1, Math.floor((room - 4) / laneHeight)),
     part,
     clear,
-    layers: 128 - plan.length,
+    layers: 512 - plan.length,
     ...(part === "spectrum" ? { from: `noise${settings.spotLevel < 0 ? "-" : "+"}${Math.abs(settings.spotLevel)}db` } : {}),
     maxAgeMinutes: settings.age,
     ...(fontFamily ? { fontFamily } : {}),

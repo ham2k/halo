@@ -258,7 +258,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       readStatus: () => (connected: _radioBSignature().connected, transmitting: cat.isTransmitting('B')),
       onOpenStationConfig: () => _openStationConfigDialog(context),
       onConnectRadio: switch (cat.radio2) {
-        final uuid? when !radioB.connected => localRadioConnectAction(cat, uuid),
+        final uuid? => localRadioConnectAction(cat, uuid, connected: radioB.connected),
         _ => null,
       },
       radioName: radioB.name,
@@ -339,21 +339,22 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   }
 }
 
-/// What the Radio control's plug does while the main radio is down: connect
-/// it. Only for this station's own radio with somewhere to connect to — a
+/// What the Radio control's plug does: connect the main radio while it is
+/// down, disconnect it while it is up — offered either way, so a radio
+/// that has wedged can be dropped and brought back from the logging row.
+/// Only for this station's own radio with somewhere to connect to — a
 /// peer's session is the other device's, and a radio with no port or
 /// address has nothing to open. Null hides the plug.
 VoidCallback? radio1ConnectAction(CatService cat, {required bool connected}) {
-  if (connected) return null;
-  if (cat.radio1 case LocalRadio(:final uuid)) return localRadioConnectAction(cat, uuid);
+  if (cat.radio1 case LocalRadio(:final uuid)) return localRadioConnectAction(cat, uuid, connected: connected);
   return null;
 }
 
 /// [radio1ConnectAction] for a local rig by [uuid], Radio B's too.
-VoidCallback? localRadioConnectAction(CatService cat, String uuid) {
+VoidCallback? localRadioConnectAction(CatService cat, String uuid, {bool connected = false}) {
   final node = cat.nodeFor(uuid);
   if (node == null || (cat.typeFor(node)?.isUnconfigured(node.config) ?? true)) return null;
-  return () => unawaited(cat.connect(uuid));
+  return connected ? () => unawaited(cat.disconnect(uuid)) : () => unawaited(cat.connect(uuid));
 }
 
 /// Which of the two radios are on the air — firing only when that changes,

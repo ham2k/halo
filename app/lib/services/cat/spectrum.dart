@@ -15,7 +15,7 @@ import 'driver.dart';
 /// One sweep across [lowHz]..[highHz], left to right.
 ///
 /// [levels] are dB on the radio's own scale, which is not dBm on any radio
-/// here: an Icom reports 0..160 steps of its screen, and a Flex mirrored
+/// here: an Icom reports half-dB steps of its screen, and a Flex mirrored
 /// through DAX IQ is dB below full scale. [floorDb]..[ceilingDb] is the
 /// range for drawing them, reported by the radio or estimated locally when
 /// its display scale is unavailable. An operator's contrast setting moves
@@ -120,6 +120,11 @@ class SpectrumCapabilities {
   /// asks for, and each display crops it to its own width.
   final bool autoSpan;
 
+  /// Whether, in fixed mode, a span sets the edges' width about the window
+  /// the app places them on — an Icom whose Scroll-F edges the app writes.
+  /// Elsewhere a fixed scope's width is its own, and a zoom leaves it be.
+  final bool spanSetsEdges;
+
   const SpectrumCapabilities({
     required this.spansHz,
     required this.refMinDb,
@@ -129,6 +134,7 @@ class SpectrumCapabilities {
     this.speeds = const {},
     this.canRecenter = false,
     this.autoSpan = false,
+    this.spanSetsEdges = false,
   });
 
   int snapSpan(int hz) => spansHz.reduce((a, b) => (a - hz).abs() <= (b - hz).abs() ? a : b);
@@ -145,7 +151,8 @@ class SpectrumCapabilities {
       setEquals(other.modes, modes) &&
       setEquals(other.speeds, speeds) &&
       other.canRecenter == canRecenter &&
-      other.autoSpan == autoSpan;
+      other.autoSpan == autoSpan &&
+      other.spanSetsEdges == spanSetsEdges;
 
   @override
   int get hashCode => Object.hash(
@@ -157,6 +164,7 @@ class SpectrumCapabilities {
     Object.hashAllUnordered(speeds),
     canRecenter,
     autoSpan,
+    spanSetsEdges,
   );
 }
 

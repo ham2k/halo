@@ -563,10 +563,11 @@ class RadioHookup {
   /// [hasConfiguredRadio].
   final VoidCallback? onOpenStationConfig;
 
-  /// Connects the main VFO's radio — offered beside the Station Configuration
-  /// icon while [radioConnected] is false and the app can do something about
-  /// it from here. Null hides it: connected already, no radio, or one this
-  /// device cannot reach for (a peer's, or one with no port or address).
+  /// Connects the main VFO's radio while [radioConnected] is false, and
+  /// disconnects it while true — offered beside the Station Configuration
+  /// icon wherever the app can do either from here. Null hides it: no radio,
+  /// or one this device cannot reach for (a peer's, or one with no port or
+  /// address).
   final VoidCallback? onConnectRadio;
 
   /// [hasConfiguredRadio]'s display name — shown in small type below the

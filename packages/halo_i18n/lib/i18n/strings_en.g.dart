@@ -6261,6 +6261,18 @@ class Translations$settings$station$en {
 	/// en: 'The radio's scope cannot be shown on this band'
 	String get spectrumBandUnsupported => 'The radio\'s scope cannot be shown on this band';
 
+	/// en: 'Automatically adjust bandscope'
+	String get civScopeAdjust => 'Automatically adjust bandscope';
+
+	/// en: 'Lets this app set the radio's scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope's edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.'
+	String get civScopeAdjustDescription => 'Lets this app set the radio\'s scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope\'s edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.';
+
+	/// en: 'Let this app adjust the bandscope'
+	String get civScopeAdjustApp => 'Let this app adjust the bandscope';
+
+	/// en: 'Use the radio's bandscope settings as-is'
+	String get civScopeAdjustRadio => 'Use the radio\'s bandscope settings as-is';
+
 	/// en: 'Waiting for the linked radio's frequency…'
 	String get spectrumSdrNoRadio => 'Waiting for the linked radio\'s frequency…';
 
@@ -12774,6 +12786,10 @@ extension on Translations {
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
+			'settings.station.civScopeAdjust' => 'Automatically adjust bandscope',
+			'settings.station.civScopeAdjustDescription' => 'Lets this app set the radio\'s scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope\'s edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.',
+			'settings.station.civScopeAdjustApp' => 'Let this app adjust the bandscope',
+			'settings.station.civScopeAdjustRadio' => 'Use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
 			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
@@ -12943,12 +12959,12 @@ extension on Translations {
 			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one.\n- **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects.\n- **CW from the app needs the radio\'s internal keyer on.** With it off, the radio ignores what the app sends.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
 			'settings.station.tenTecNoCw' => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.tenTecKeyerOff' => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.thetisTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.thetisTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, not to the radio itself: an ANAN has no CAT of its own.\n\n- **Thetis\'s CAT server must be running.** In Thetis, Setup → Serial/Network/Midi CAT → Network, check **Server Running**. It is not the TCI server, which is a different thing.\n- **Port** is 13013 unless you changed it there.\n- **From another computer**, Thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **Rated power** is what full drive puts out: 100 W on most ANANs, 200 W on the 8000DLE, 10 W on the 10E. The app sets power as a share of it.\n- **CW messages go out through Thetis\'s CWX keyer.** If one does not, open the CWX window in Thetis and try again.\n\nThis entry was written from Thetis\'s published CAT reference and has not been run against a radio. If it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTciTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, over **TCI**, not to the radio itself: an ANAN has no CAT of its own. Thetis\'s **TCI server** must be running; it is set up in Thetis\'s Setup, apart from its TCP/IP CAT server. The band scope needs Thetis 2.10.3.13 or later.',
@@ -13457,12 +13473,12 @@ extension on Translations {
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
 			'commandDialog.goSettings' => 'Settings',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.blockedByPane' => 'Cannot use commands while a panel or dialog is open',
 			'sets.newFolder' => 'New Folder',
 			'sets.deleteFolder' => 'Delete Folder',

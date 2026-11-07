@@ -3899,6 +3899,68 @@ WiFi:
   0–160 — four a second at slow speed, thirty at fast. A serial radio splits it
   into divisions; `CivScopeAssembler` puts them back and drops a sweep with a
   gap rather than drawing two halves of different ones side by side.
+- **The amplitudes are screen steps, not dB.** Icom's guides say only that
+  the data range "is basically the same as the display size of the scope".
+  Each step is taken as half a dB, as measured on the IC-705 (a REF change of
+  20 dB moves the trace about 40 steps); 160 steps over 8 grid lines there and
+  200 over 10 on an IC-7610 are both 20 steps a line, which fits, but that is
+  an inference. The scale differs by model, and the entries pin it:
+  `civScopeTop` (0–160 where absent, 0–200 on the IC-7610/7760, 0–136 on the
+  IC-7850/7851) and `civScopeRefRange` (−20…+20 dB where absent, −30…+10 on
+  the IC-7610/7760, which refuse a REF past +10). The 7610/7760/7850 send 689
+  points a sweep, the rest 475; the assembler is length-agnostic.
+- **Automatically adjust bandscope** (`civScopeAdjust`, an advanced setting,
+  on by default). Left as the radio has it, HaLo sends the scope nothing: its
+  capabilities offer no span, REF, speed, mode or recentring, so a display
+  zooms and pans only within the sweep, and it draws the radio's own screen, 0
+  at its bottom, as REF leaves it. Adjusted, HaLo owns three things:
+  - *REF.* It moves REF until the noise sits `NoiseFloor.belowNoiseDb` up the
+    display, reading a second of sweeps at a time after a second's quiet
+    following each REF move or band change, and places the display by the
+    noise as every other radio's is placed. REF is still needed there: at the
+    REF an IC-705 is often left at, its noise reads 0 — clipped by the radio —
+    and on 40 m even +20 lifts it only about 6 dB. The target never goes below
+    5 dB, or a clipped reading would count as on target. A REF set through a
+    panel moves the target with it. The band is the dial's, not the sweep's
+    middle: a sweep panned across a band edge would start every reading over.
+    REF is read again on a new band, after the switch to Scroll-F, after a
+    change of the edges' width, and whenever steering holds at a limit: the
+    radio brings back the REF it keeps for the band (and maybe the mode), and
+    steered from the last one heard, an IC-705 sat at a REF it was not at,
+    its noise clipped, believing +20 was as far as it went. A new width also
+    starts the reading over, since the noise in each point moves with it.
+  - *The mode.* Centre mode moves the whole picture on every step of the dial.
+    The first sweep in any other mode than Scroll-F has its window written
+    into the selected fixed-edge preset (`27 16` reads which, `27 1E` writes
+    it), and then the scope is switched to Scroll-F, so the picture does not
+    jump. A switch back on the radio's panel is undone, at most once per 2 s,
+    and the preset (`27 16`) is asked again at that pace while its answer is
+    missing, since the edges are never written before it is known. A radio
+    that refuses the switch to Scroll-F or that read is left in its own mode
+    for the display, unreported: asked again every 2 s, its refusal would
+    flicker as a notice cleared by each sweep. Neighbouring band ranges
+    share their ends; the dial on one belongs to the range it begins.
+    The display's close gives the radio back the mode it had.
+  - *The edges.* The scope then `canRecenter`: a scene's `follow` moves the
+    window before the dial reaches its edge, where the radio would scroll it,
+    and a pan past the sweep moves it; a span asked for is the edges' width.
+    Edges are whole kHz, at most 1 MHz apart, and inside the band range of
+    the operating frequency, numbered per model (`civScopeEdgeRanges`, pinned
+    for the IC-705, IC-9700 and IC-905), with the dial a kHz inside them:
+    Scroll-F scrolls edges that leave the dial out back over it, nowhere near
+    the window they were placed for (observed on an IC-705), so a window
+    panned past the dial gets what of it edges about the dial can cover, the
+    rest drawn as filler. Edges the radio shows already are not written
+    again. A refused edge write is not reported, nor asked again:
+    a radio sold for narrower bands refuses at their ends, and its own scroll
+    still keeps the dial in view. A pan or zoom is said done only once edges
+    went to the radio (`spanSetsEdges` in its capabilities marks a span as
+    their width), so a window never runs off after a scope that did not
+    move.
+
+  The radio keeps the REF and edges it is left with, per band; on an IC-9700
+  or IC-7850/7851 the Main and Sub scopes share REF. In every mode but centre
+  a sweep's header carries its edges, Scroll-C's included.
 - **A sweep is never an answer.** It repeats the scope's command byte, and the
   session's one-command-on-the-wire discipline frees the wire on an answer: a
   sweep taken as the answer to a pending scope read would release a burst the

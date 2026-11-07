@@ -9,6 +9,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
+import 'drivers/civ_scope_codec.dart' show civScopeEdgeRangesIc705, civScopeEdgeRangesIc905, civScopeEdgeRangesIc9700;
 import 'drivers/icom_civ_driver.dart';
 import 'drivers/icom_lan_audio.dart' show civLanModConfigKey;
 import 'drivers/civ_power.dart' show civBandMaxWattsConfigKey;
@@ -434,6 +435,8 @@ const _ic7610Overrides = {
   cwKeyerConfigKey: true,
   voiceMemoriesConfigKey: civVoiceMemoryCount,
   civScopeConfigKey: true,
+  civScopeTopConfigKey: 200,
+  civScopeRefRangeConfigKey: [-30, 10],
   voiceCeilingConfigKey: _icomVoiceSeconds,
 };
 
@@ -485,6 +488,8 @@ const _ic7760Overrides = {
   cwKeyerConfigKey: true,
   voiceMemoriesConfigKey: civVoiceMemoryCount,
   civScopeConfigKey: true,
+  civScopeTopConfigKey: 200,
+  civScopeRefRangeConfigKey: [-30, 10],
   voiceCeilingConfigKey: _icomVoiceSeconds,
 };
 
@@ -537,6 +542,7 @@ const _ic9700Overrides = {
   cwKeyerConfigKey: true,
   voiceMemoriesConfigKey: civVoiceMemoryCount,
   civScopeConfigKey: true,
+  civScopeEdgeRangesConfigKey: civScopeEdgeRangesIc9700,
   voiceCeilingConfigKey: _icomVoiceSeconds,
 };
 
@@ -595,6 +601,7 @@ const _ic905Overrides = {
   cwKeyerConfigKey: true,
   voiceMemoriesConfigKey: civVoiceMemoryCount,
   civScopeConfigKey: true,
+  civScopeEdgeRangesConfigKey: civScopeEdgeRangesIc905,
   voiceCeilingConfigKey: _icomVoiceSeconds,
 };
 
@@ -617,6 +624,7 @@ const _ic785xOverrides = {
   cwKeyerConfigKey: true,
   voiceMemoriesConfigKey: civVoiceMemoryCount,
   civScopeConfigKey: true,
+  civScopeTopConfigKey: 136,
   voiceCeilingConfigKey: _icomVoiceSeconds,
 };
 
@@ -798,6 +806,7 @@ const ic705Model = EquipmentModel(
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         civScopeConfigKey: true,
+        civScopeEdgeRangesConfigKey: civScopeEdgeRangesIc705,
         voiceCeilingConfigKey: _icomVoiceSeconds,
         // DATA OFF MOD is CI-V setting 0118, and its WLAN is 3.
         civLanModConfigKey: [0x01, 0x18, 3],
@@ -828,6 +837,7 @@ const ic705Model = EquipmentModel(
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         civScopeConfigKey: true,
+        civScopeEdgeRangesConfigKey: civScopeEdgeRangesIc705,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       // The radio [_icomCatPort] was actually observed on: two ports under

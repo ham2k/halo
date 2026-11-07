@@ -149,6 +149,37 @@ test("spots too close to read apart go to separate lanes, and a zoom that spread
   assert.equal(narrow["spot:K1ABC"], narrow["spot:W2XYZ"])
 })
 
+test("FT8 and FT4 spots draw no passband bar: they all share the band's window", () => {
+  const spots: ScopeSpot[] = [
+    { call: "K1FT8", khz: 14074, mode: "FT8", refs: [], ageMinutes: 0, worked: false, isSelf: false, fresh: false },
+    { call: "K1FT4", khz: 14080, mode: "FT4", refs: [], ageMinutes: 0, worked: false, isSelf: false, fresh: false },
+    { call: "K1JS8", khz: 14078, mode: "JS8", refs: [], ageMinutes: 0, worked: false, isSelf: false, fresh: false },
+  ]
+  const ids = spotMarks(spots, { hzPerPx: 100, lanes: 3, part: "spectrum", clear: 0, maxAgeMinutes: 30, event: "spot:k4" }).layers.map((l) => l.id)
+  assert.deepEqual(
+    ids.filter((id) => id.startsWith("passband:")),
+    ["passband:K1JS8"],
+    "only the modes whose spots share one window lose their bar",
+  )
+  assert.ok(ids.includes("leader:K1FT8") && ids.includes("dot:K1FT4"), "the spot itself is still marked")
+})
+
+test("the spots' lanes take the room from their level up to the dial's label, wherever the level strip puts it", async () => {
+  // Eight within 400 Hz: at the whole sweep each wants a lane of its own.
+  const { render, event } = harness(Array.from({ length: 8 }, (_, i) => spot(`K${i}ABC`, 14030 + i * 0.05)))
+  const lanes = async () => new Set((await render({ plan: "none" })).annotations!.filter((a) => !a.collapsed).map((a) => a.offset)).size
+  const before = await lanes()
+  // The floor raised 20 dB moves the noise, and the spots over it, 20 dB down the display: counted as
+  // half the spectrum whatever the strip says, the room it opens would go unused.
+  await event({ action: "scope:k4", gesture: "floor", value: 20 })
+  const lowered = await lanes()
+  assert.ok(lowered > before, `${lowered} lanes after lowering the spots, ${before} before`)
+  // Twice the range squeezes the same dB into half the height: the spots' level comes down again.
+  await event({ action: "scope:k4", gesture: "floor", value: 0 })
+  await event({ action: "scope:k4", gesture: "range", value: 160 })
+  assert.ok((await lanes()) > before)
+})
+
 test("spots stand where the settings put them over the noise, 30 dB by default, on any radio's scale; on the waterfall only where there is no spectrum", async () => {
   const { render } = harness([spot("K1ABC", 14030)])
   const scope = await render()
@@ -209,9 +240,91 @@ test("when the lanes run out, something new keeps its place over the worked and 
   ]
   const marks = spotMarks(spots, { hzPerPx: 100, lanes: 2, part: "spectrum", clear: 0, maxAgeMinutes: 30, event: "spot:k4" })
   assert.deepEqual(
-    marks.annotations.map((a) => a.id),
+    marks.annotations.filter((a) => !a.collapsed).map((a) => a.id),
     ["spot:K9NEW", "spot:N0MID"],
     "a new one first, then the unworked: the worked one is what the operator can do without",
+  )
+})
+
+test("a spot with no room for its label keeps its leader, dot and bar, its label collapsed to a line under the others", () => {
+  const spots: ScopeSpot[] = [
+    { call: "K9NEW", khz: 14030, refs: [], ageMinutes: 0, worked: false, isSelf: false, fresh: true, mode: "CW" },
+    { call: "W1OLD", khz: 14030.1, refs: [], ageMinutes: 2, worked: true, isSelf: false, fresh: false, mode: "CW" },
+  ]
+  const { annotations, layers } = spotMarks(spots, {
+    hzPerPx: 100,
+    lanes: 1,
+    part: "spectrum",
+    clear: 0,
+    from: "noise+10db",
+    maxAgeMinutes: 30,
+    event: "spot:k4",
+  })
+  const [shown, hidden] = annotations
+  assert.equal(shown.collapsed, undefined)
+  // The first lane's border is 4 pixels up from the noise line; the hidden one's line 3 nearer the
+  // foot, where its leader ends, and its label there whole while the pointer is on it.
+  assert.deepEqual([hidden.id, hidden.collapsed, hidden.offset, hidden.event], ["spot:W1OLD", true, 1, "spot:k4"])
+  const ids = layers.map((l) => l.id)
+  for (const id of ["passband:W1OLD", "leader:W1OLD", "dot:W1OLD"]) assert.ok(ids.includes(id), `${id}: dropped whole, a crowded band looks empty`)
+  assert.equal(layers.find((l) => l.id === "leader:W1OLD")!.y2, "noise+10db-1px")
+})
+
+test("spots stop where the layers a band scope takes run out, the best kept", () => {
+  const spots: ScopeSpot[] = Array.from({ length: 10 }, (_, i) => ({
+    call: `K${i}AA`,
+    khz: 14000 + i * 10,
+    refs: [],
+    ageMinutes: i,
+    worked: false,
+    isSelf: false,
+    fresh: false,
+  }))
+  const { layers } = spotMarks(spots, { hzPerPx: 100, lanes: 1, part: "spectrum", clear: 0, layers: 7, maxAgeMinutes: 30, event: "spot:k4" })
+  assert.ok(layers.length <= 7)
+  assert.ok(layers.some((l) => l.id === "dot:K0AA") && !layers.some((l) => l.id === "dot:K9AA"), "the newest first")
+})
+
+test("a spot whose bar no longer fits does not keep out a later one that needs none", () => {
+  const spots: ScopeSpot[] = [
+    { call: "K1CW", khz: 14030, mode: "CW", refs: [], ageMinutes: 0, worked: false, isSelf: false, fresh: false },
+    { call: "K2CW", khz: 14040, mode: "CW", refs: [], ageMinutes: 1, worked: false, isSelf: false, fresh: false },
+    { call: "K3FT8", khz: 14074, mode: "FT8", refs: [], ageMinutes: 2, worked: false, isSelf: false, fresh: false },
+  ]
+  const ids = spotMarks(spots, { hzPerPx: 100, lanes: 3, part: "spectrum", clear: 0, layers: 5, maxAgeMinutes: 30, event: "spot:k4" }).layers.map((l) => l.id)
+  assert.ok(!ids.includes("dot:K2CW") && ids.includes("dot:K3FT8"), `K2CW's three layers do not fit; K3FT8's two do: ${ids}`)
+})
+
+test("spots take the Spots panel's colors: green for something new, its orange-brown for a multiplier, which wins", () => {
+  const annotated = (notices: string[]) => ({ annotations: { worked: false, isSelf: false, notices } })
+  const spots = scopeSpots(
+    [
+      spot("K1BND", 14010, annotated(["newBand"])),
+      spot("K1MLT", 14020, annotated(["newMult", "newBand"])),
+      spot("K1DXC", 14030, annotated(["newDXCC"])),
+      spot("K1PLN", 14040),
+      spot("K1PRK", 14050, annotated(["chase:pota:newRef:alert"])),
+      spot("K1QUT", 14060, annotated(["chase:pota:newRef"])),
+    ],
+    now,
+  )
+  const ink = Object.fromEntries(
+    spotMarks(spots, { hzPerPx: 100, lanes: 3, part: "spectrum", clear: 0, maxAgeMinutes: 30, event: "spot:k4" }).annotations.map((a) => [
+      a.id,
+      (a.color as string).slice(3),
+    ]),
+  )
+  assert.equal(ink["spot:K1BND"], "1AC81A")
+  assert.equal(ink["spot:K1MLT"], "FF8A4C")
+  // A new DXCC is about the call being typed: on a whole band it would light up most spots.
+  assert.equal(ink["spot:K1DXC"], ink["spot:K1PLN"])
+  // A chasing program's verdict the operator is alerted to greens the call in the Spots panel; one
+  // they are not, only orders the Chasing view.
+  assert.equal(ink["spot:K1PRK"], "1AC81A")
+  assert.equal(ink["spot:K1QUT"], ink["spot:K1PLN"])
+  assert.deepEqual(
+    spots.map((s) => s.fresh),
+    [true, true, false, false, true, false],
   )
 })
 

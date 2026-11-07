@@ -101,11 +101,6 @@ const civFilterWidthConfigKey = 'civFilterWidth';
 /// it can send, less the DATA ones where [civDataModeConfigKey] is off.
 const civRadioModesConfigKey = 'radioModes';
 
-/// Pinned `true` by an entry whose radio streams its scope over CI-V (0x27).
-/// Never a field: it is a fact about the model, and a radio without one
-/// answers every scope command with a NAK.
-const civScopeConfigKey = 'civScope';
-
 /// Pinned by an entry whose radio picks among its own antenna ports over
 /// CI-V (0x12): how many ANT ports it has — 2 on an IC-7610, 4 on an
 /// IC-7760, 1 on an IC-7300MK2, whose choice is its receive antenna
@@ -237,6 +232,7 @@ class IcomCivDriver extends EquipmentDriver {
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,
     civScopeConfigKey,
+    ...civScopeConfigKeys,
     civAntennaPortsConfigKey,
     civBandMaxWattsConfigKey,
     civLanModConfigKey,
@@ -259,6 +255,7 @@ class IcomCivDriver extends EquipmentDriver {
     // the generic Icom — and only of a developer (docs/design/cat.md
     // § Voice keying).
     ...keyerConfigElements(overrides),
+    if (overrides[civScopeConfigKey] == true) civScopeAdjustConfigElement(),
     telemetryConfigElement(),
     pollConfigElement(fallback: _defaultPollInterval),
   ];
@@ -359,6 +356,7 @@ class IcomCivSession
   /// The node's merged config, kept for [_telemetry]'s intervals — a `late
   /// final` field cannot be initialised from another field in the
   /// constructor's initialiser list.
+  @override
   final Map<String, dynamic> _config;
 
   /// Null on the network pairing, where there is no serial line to budget
@@ -785,8 +783,7 @@ class IcomCivSession
       // refusal was indistinguishable from silence and the app went on
       // believing the radio had moved.
       debugPrint('[cat] CI-V: radio rejected the last command');
-      // A scope that refuses is a display that would otherwise wait forever.
-      if (answering == civScopeCommand && _scopeWanted) _reportScopeProblem(t.settings.station.spectrumScopeRefused);
+      if (answering == civScopeCommand) _scopeRefused(answeringFrame);
       // A radio without an internal tuner, the width command or the antenna
       // ports its entry pins refuses the read on every poll, and will for as
       // long as it is connected. The width is only ever asked in a mode with

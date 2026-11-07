@@ -135,9 +135,10 @@ void main() {
     await until(() => services.radio.vfoA.mode == 'CW');
   });
 
-  test('the Radio control\'s plug is offered only for a radio this device can connect', () async {
-    // Hidden for a peer's radio (its session is the other device's), for one
-    // with no port (nothing to open) and for one already up.
+  test('the Radio control\'s plug connects or disconnects a radio this device can reach, and only one', () async {
+    // Hidden for a peer's radio (its session is the other device's) and for one
+    // with no port (nothing to open). Offered for one already up, to drop it:
+    // the way back for a radio that has stopped answering as it should.
     final services = (await makeHaLoServices()).services;
     final cat = services.cat;
 
@@ -147,11 +148,12 @@ void main() {
 
     final bench = await cat.addNode(typeKey: 'placeholder-radio', name: 'Bench', config: placeholderRadioModel.variants.single.defaultConfig);
     await cat.setRadio1(LocalRadio(bench.uuid));
-    expect(radio1ConnectAction(cat, connected: true), isNull, reason: 'already connected');
     final connect = radio1ConnectAction(cat, connected: false);
     expect(connect, isNotNull);
     connect!();
     await until(() => cat.stateFor(bench.uuid).status == EquipmentStatus.connected);
+    radio1ConnectAction(cat, connected: true)!();
+    await until(() => cat.stateFor(bench.uuid).status != EquipmentStatus.connected);
 
     await cat.setRadio1(const PeerRadio(PeerRadioSelection(deviceId: 'd', radioId: 'r', deviceName: 'Pad', radioName: 'FTDX10')));
     expect(radio1ConnectAction(cat, connected: false), isNull, reason: "a peer's radio");

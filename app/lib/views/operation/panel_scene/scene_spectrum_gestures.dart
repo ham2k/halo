@@ -10,6 +10,13 @@
 
 part of 'scene_spectrum.dart';
 
+/// How far apart, in pixels, a zoom spreads the sweep's points at most —
+/// further, the trace is a few straight strokes — and how far apart they
+/// may be where a zoom ends before the radio's span is narrowed: closer,
+/// the span is left alone, since each change jolts the radio's own screen
+/// and restretches the waterfall.
+const _zoomPixelsPerPoint = 10.0, _fitPixelsPerPoint = 5.0;
+
 /// Where a drag, a pinch or a trackpad gesture took hold: whether it zooms,
 /// where along the frequency axis (in the spectrum's own frame), and the
 /// window then — its width and its middle — with the frequency under the
@@ -29,9 +36,6 @@ typedef _Gestures = ({
   SceneSpectrumGesture levels,
   bool wheel,
 });
-
-/// A drag right zooms in by e for every this many pixels; left, out.
-const _zoomPixels = 150.0;
 
 /// How far either side of the tuned frequency's line a drag takes hold of
 /// it: a finger's width in all.
@@ -120,6 +124,15 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     return (offset: offset, x: x);
   }
 
+  /// Where across [grip]'s window a zoom drag holds still: the dial's line,
+  /// which the eye zooms about, or the middle where the line is out of the
+  /// window.
+  double _zoomPivot(_Grip grip) {
+    final vfo = _vfo;
+    final at = vfo == null ? .5 : (vfo - (grip.center - grip.width / 2)) / grip.width;
+    return at >= 0 && at <= 1 ? at : .5;
+  }
+
   _Grip? _gripAt(double x, {required bool zoom}) {
     final frame = _frame, width = _laidOut.width;
     if (frame == null || width <= 0 || frame.highHz <= frame.lowHz) return null;
@@ -134,7 +147,9 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         _tuneGoes ||
         (widget.onAnnotation != null && _spec.annotations.isNotEmpty) ||
         (widget.onLayer != null && _spec.layers.any((l) => l.clickable)) ||
-        (axis && g.zoom == SceneSpectrumGesture.native);
+        (axis && g.zoom == SceneSpectrumGesture.native) ||
+        // The dial's label waiting at an edge, which a click follows back to the dial.
+        (g.pan == SceneSpectrumGesture.native && _spec.pan && !_spec.noVfoLabel);
     // Measured from where the finger came down, not where the drag was recognised past its slop.
     void drag(DragGestureRecognizer r) => r
       ..dragStartBehavior = DragStartBehavior.down
@@ -181,12 +196,15 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     if (grip == null || _touches.length > 1) return;
     final dx = _canonicalAt(d.localPosition).dx - grip.x;
     if (grip.zoom) {
-      // Away from the middle narrows, from whichever side the drag began,
-      // and the frequency pressed on stays under the pointer: the axis is
-      // stretched or squeezed by it.
-      final outward = grip.fraction <= .5 ? -dx : dx;
-      final under = (zoom: true, x: grip.x, width: grip.width, center: grip.center, anchorHz: grip.anchorHz, fraction: (grip.x + dx) / _laidOut.width);
-      _zoom(under, grip.width / math.exp(outward / _zoomPixels));
+      // The dial's line holds still — the window's middle with the line out
+      // of it — and the frequency pressed on stays exactly under the
+      // pointer: the axis is stretched between the two, away from the line
+      // narrowing, toward it widening. On the line or past it no width does
+      // both, and the window waits for the pointer to come back.
+      final pivot = _zoomPivot(grip), pivotHz = grip.center + (pivot - .5) * grip.width;
+      final (hz, along) = (grip.anchorHz - pivotHz, (grip.x + dx) / _laidOut.width - pivot);
+      if (hz * along <= 0 || along.abs() * _laidOut.width < 2) return;
+      _zoom((zoom: true, x: grip.x, width: grip.width, center: grip.center, anchorHz: pivotHz, fraction: pivot), hz / along);
     } else {
       _pan(grip.center - dx * grip.width / _laidOut.width);
     }
@@ -353,7 +371,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         _toReport.add('zoom');
         _viewWidth = w;
         _zoomedOverSpan = _number(_spec.span);
-        _moveTo(center);
+        _moveTo(center, gesture: true);
         _showWidth();
         _fitSpan(w);
         _reframe();
@@ -373,7 +391,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         // The dial as drawn — what follow compares with — not the radio's last report, which a tune
         // just sent may not have reached: the pan would otherwise read as a dial moved, and be undone.
         _pannedAtVfo = uuid == null ? null : _vfo;
-        _moveTo(center);
+        _moveTo(center, gesture: true);
         _reframe();
     }
   }
@@ -394,7 +412,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       widget.onGesture?.call(gesture, 'commit', value);
       return;
     }
-    if (_viewCenter case final center?) _moveTo(center, last: true);
+    if (_viewCenter case final center?) _moveTo(center, last: true, gesture: true);
     final zoomed = _toReport.contains('zoom');
     // The scene told first: a driver throwing at the span would otherwise cost it where the zoom ended.
     _report();
@@ -424,26 +442,57 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     }
   }
 
-  /// The narrowest a zoom goes — a hundred hertz, or sixteen bins of the
-  /// sweep — and the widest: what the scope can be made to show, or else the sweep.
+  /// The narrowest a zoom goes — the scene's `minWidthHz`, or a hundred
+  /// hertz or the narrowest sweep the scope can be made to send spread
+  /// [_zoomPixelsPerPoint] apart, taken to have as many points as this one —
+  /// and the widest:
+  /// the scene's `maxWidthHz`, or what the scope can be made to show.
   double _clampWidth(double width) {
-    final sweep = _sweep, uuid = _uuid;
+    final (sweep, uuid) = (_sweep, _uuid);
     if (sweep == null) return width;
     final sweepWidth = (sweep.highHz - sweep.lowHz).toDouble();
-    final widest = math.max(sweepWidth, (uuid == null ? null : widget.source?.maxWidthHz(uuid))?.toDouble() ?? 0);
-    final narrowest = math.min(widest, math.max(100.0, 16 * sweepWidth / math.max(1, sweep.levels.length)));
+    final narrowestSweep = math.min(sweepWidth, (uuid == null ? null : widget.source?.minWidthHz(uuid))?.toDouble() ?? sweepWidth);
+    final widest = _spec.maxWidthHz ?? _scopeWidest(sweep);
+    final narrowest = math.min(
+      widest,
+      _spec.minWidthHz ?? math.max(100.0, _laidOut.width / _zoomPixelsPerPoint * narrowestSweep / math.max(1, sweep.levels.length)),
+    );
     return width.clamp(narrowest, widest);
+  }
+
+  /// The widest window [sweep]'s scope can be made to show: past the sweep where the app may widen it.
+  double _scopeWidest(SpectrumFrame sweep) {
+    final uuid = _uuid;
+    return math.max((sweep.highHz - sweep.lowHz).toDouble(), (uuid == null ? null : widget.source?.maxWidthHz(uuid))?.toDouble() ?? 0);
+  }
+
+  /// Whether a window [width] wide is past what the scope can be made to
+  /// show — a scene's `maxWidthHz` allowing it — so the sweep covers only
+  /// part of it, and follows the dial rather than the window.
+  bool _pastScope(double width) {
+    final sweep = _sweep;
+    return sweep != null && width > _scopeWidest(sweep);
   }
 
   /// Moves the window's middle to [center]. Within the sweep that is only a
   /// crop; past its edge the radio's scope moves too, where it will, at most
   /// four times a second — [last] sends the final move regardless — and
-  /// where it will not, the window stops at the edge.
-  void _moveTo(double center, {bool last = false}) {
+  /// where it will not, the window goes on until its middle reaches the
+  /// edge, the rest drawn as filler: what lies past a scope held on the dial
+  /// is still the operator's to look at, spots and band plan included. A window wider than
+  /// the scope can be made never moves the scope, which follows the dial
+  /// ([_keepSweepOnDial]); an operator's [gesture] there, and any move on a
+  /// scope that stays put, stops where the sweep reaches the window's edge.
+  void _moveTo(double center, {bool last = false, bool gesture = false}) {
     final sweep = _sweep;
     if (sweep == null) return;
     final sweepWidth = (sweep.highHz - sweep.lowHz).toDouble();
-    final half = math.min(_viewWidth ?? _number(_spec.span) ?? sweepWidth, sweepWidth) / 2;
+    final width = _viewWidth ?? _number(_spec.span) ?? sweepWidth;
+    if (_pastScope(width)) {
+      _viewCenter = gesture || _recenters != true ? center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2) : center;
+      return;
+    }
+    final half = math.min(width, sweepWidth) / 2;
     final (low, high) = (sweep.lowHz + half, sweep.highHz - half);
     if (center >= low && center <= high) {
       _viewCenter = center;
@@ -452,26 +501,30 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     final (uuid, source, now) = (_uuid, widget.source, realNowMillis());
     if (_recenters != false && uuid != null && source != null && (last || now - _lastRecenterMillis >= 250)) {
       final moved = _recenters = source.recenter(uuid, center.round());
-      if (moved) _lastRecenterMillis = now;
+      if (moved) {
+        _lastRecenterMillis = _sweepAskedMillis = now;
+        _sweepAskedHz = center;
+      }
     }
-    _viewCenter = _recenters == true ? center : center.clamp(low, math.max(low, high));
+    _viewCenter = _recenters == true ? center : center.clamp(sweep.lowHz.toDouble(), sweep.highHz.toDouble());
   }
 
   /// A radio whose scope widths are its own, fitted to a window [width]
   /// wide: widened for a zoom past the sweep, at most four times a second,
   /// and narrowed only where a zoom ends ([narrow]) — narrowed as it went, a
   /// zoom in would step the radio through every span on the way. Asked for
-  /// what covers the window where it sits: the radio's sweep is centred on
-  /// the dial, and a window off to one side needs more than its width.
+  /// the window where it sits, which a scope centred on the dial covers only
+  /// with more than its width.
   void _fitSpan(double width, {bool last = false, bool narrow = false}) {
     final (sweep, uuid, source, now) = (_sweep, _uuid, widget.source, realNowMillis());
     if (sweep == null || uuid == null || source == null) return;
     if (!narrow && width <= sweep.highHz - sweep.lowHz) return;
     if (!last && now - _lastFitMillis < 250) return;
     final (middle, swept) = ((sweep.lowHz + sweep.highHz) / 2, (sweep.highHz - sweep.lowHz).toDouble());
-    final covering = width + 2 * ((_viewCenter ?? middle) - middle).abs();
+    final center = _viewCenter ?? middle, covering = width + 2 * (center - middle).abs();
+    if (covering < swept && width / swept * sweep.levels.length >= _laidOut.width / _fitPixelsPerPoint) return;
     if (covering < swept) _sweepBeforeNarrowing ??= swept;
-    if (source.fitSpan(uuid, covering.round())) _lastFitMillis = now;
+    if (source.fitSpan(uuid, width.round(), centerHz: center.round(), offCenterHz: (center - middle).abs().round())) _lastFitMillis = now;
   }
 
   /// A double tap on the axis: the scene's width again, centred on the dial,
@@ -527,7 +580,12 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
 
   void _tap(TapUpDetails e) {
     final at = e.localPosition;
-    if (_annotationAt(at) case (:final annotation?, :final hz, rect: _) when annotation.clickable && widget.onAnnotation != null) {
+    if ((_annotationAt(at)?.away ?? false) && _gestures.pan == SceneSpectrumGesture.native) return _toVfo();
+    // A collapsed one is read before it is acted on: a touch, with no hover to open it, opens it first.
+    if (_annotationAt(at)?.annotation case final collapsed? when collapsed.collapsed && collapsed.id != _revealed) return _reveal(collapsed.id);
+    // And closes again with a touch anywhere else, which no pointer leaving it does.
+    if (_revealed != null && _annotationAt(at)?.annotation?.id != _revealed) _reveal(null);
+    if (_annotationAt(at) case (:final annotation?, :final hz, rect: _, away: _) when annotation.clickable && widget.onAnnotation != null) {
       return _click(annotation.event, annotation.menu, e, (action, details) => widget.onAnnotation!(annotation, action, hz, details));
     }
     if (_layerAt(at) case final layer?) {
@@ -550,6 +608,16 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       return;
     }
     _clickTune(at);
+  }
+
+  /// A click on the dial's label waiting at an edge: the window goes to the
+  /// dial, centred on it — at once from more than a few widths away.
+  void _toVfo() {
+    final (vfo, frame) = (_vfo, _frame);
+    if (vfo == null || frame == null) return;
+    _pannedAtVfo = null;
+    final width = (frame.highHz - frame.lowHz).toDouble();
+    _glideTo(vfo, jump: (vfo - (frame.lowHz + frame.highHz) / 2).abs() > _glideWidths * width);
   }
 
   /// Sends [event], or opens [menu] at the pointer and sends the item picked.

@@ -177,6 +177,15 @@ class CatSpectrumSource implements SceneSpectrumSource {
   }
 
   @override
+  int? minWidthHz(String uuid) {
+    final caps = cat.spectrumCapabilitiesFor(uuid);
+    if (caps == null || caps.spansHz.isEmpty || !(caps.autoSpan || canCommand)) return null;
+    // A fixed scope's width is its edges, which [fitSpan] leaves alone unless the app places them.
+    if (!caps.autoSpan && !caps.spanSetsEdges && cat.stateFor(uuid).spectrum?.mode == SpectrumMode.fixed) return null;
+    return 2 * caps.spansHz.first;
+  }
+
+  @override
   bool canTune(String uuid) => canCommand && radios != null && _radioOf(uuid) != null;
 
   @override
@@ -196,19 +205,28 @@ class CatSpectrumSource implements SceneSpectrumSource {
   /// in must not cut off another's wider window, and one naming no width
   /// draws the whole sweep, so it holds the span at least where it is.
   @override
-  bool fitSpan(String uuid, int widthHz) {
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) {
     final caps = cat.spectrumCapabilitiesFor(uuid);
     if (!canCommand || caps == null || caps.autoSpan || caps.spansHz.isEmpty) return false;
     final settings = cat.stateFor(uuid).spectrum;
-    // A fixed scope's width is its edges: a span set there changes nothing but the one centre mode keeps.
-    if (settings?.mode == SpectrumMode.fixed) return false;
-    var width = widthHz;
+    final fixed = settings?.mode == SpectrumMode.fixed;
+    // A fixed scope's width is its edges: a span set there changes nothing but the one centre mode
+    // keeps — unless the app places the edges itself, where a span is their width.
+    if (fixed && !caps.spanSetsEdges) return false;
+    final swept = switch (settings) {
+      SpectrumSettings(lowHz: final low?, highHz: final high?) when fixed => high - low,
+      _ => 2 * (settings?.spanHz ?? caps.spansHz.last),
+    };
+    // Edges the app places go to the window, so they need only its width; kept centred on the
+    // sweep's middle, a narrower scope would leave a window off to one side unswept.
+    final placed = fixed && centerHz != null;
+    var width = placed ? widthHz : widthHz + 2 * offCenterHz;
     for (final shown in cat.spectrumWidthsFor(uuid)) {
-      final needs = shown > 0 ? shown : 2 * (settings?.spanHz ?? caps.spansHz.last);
+      final needs = shown > 0 ? shown : swept;
       if (needs > width) width = needs;
     }
     final half = caps.spansHz.firstWhere((h) => 2 * h >= width, orElse: () => caps.spansHz.last);
-    return cat.setSpectrum(uuid, SpectrumRequest(spanHz: half));
+    return cat.setSpectrum(uuid, SpectrumRequest(spanHz: half, centerHz: placed ? centerHz : null));
   }
 
   @override

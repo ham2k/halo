@@ -63,6 +63,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => null;
   @override
+  int? minWidthHz(String uuid) => null;
+  @override
   bool canTune(String uuid) => true;
   @override
   bool tune(String uuid, double hz, {bool dial = false, void Function()? refused}) {
@@ -74,7 +76,7 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool fitSpan(String uuid, int widthHz) => true;
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) => true;
 }
 
 /// 14.000–14.100 MHz across a spectrum 400 wide and 300 deep, the dial at

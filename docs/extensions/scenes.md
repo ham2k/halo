@@ -32,6 +32,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 13 | the radio's dial in the values (`radio.frequencyHz` and the rest marked so below), `radio.mode`, `radio.tuner` and `radio.status` in `strings`, and `when` on layers and controls |
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
+| 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -426,7 +427,13 @@ a scope, the control says why instead. Placed like a native control, it takes:
   300) and the Hz is four fifths the kHz's size. `hzDigits` (0 to 3) always
   shows that many Hz digits, cut rather than rounded; `auto`, the default,
   shows as many as the frequency has, each sliding in or out as the dial
-  needs it and kept while the dial moves.
+  needs it and kept while the dial moves. With the dial out of the window
+  the label waits at the edge it is past, an arrow on that side pointing
+  the way, and a click on either brings the window back centered on the
+  dial where `pan` is native. `arrow` (API 20) styles it, `{ color, size }`
+  (the line's color, under half the text's height), or `false` for
+  none. A level strip lying over the picture at that edge keeps the label
+  to the window's side of it.
 - `levelScale` (API 17): a strip along the flow, `{ side, over, width,
   background, labels, ticks }`: dB along the spectrum, with no unit, and
   the waterfall's age in seconds along it, with theirs. `side` is `end`
@@ -448,6 +455,18 @@ a scope, the control says why instead. Placed like a native control, it takes:
   `autoSpan` (API 12) the app sizes the scope itself to the narrowest span
   covering the widest `span` on screen, so a panel there names its width
   here and leaves `setRadioSpectrum`'s `spanHz` alone.
+- `minWidthHz`, `maxWidthHz` (API 20): the narrowest and widest a zoom goes,
+  in Hz, or `radio`, as each is when omitted: a hundred Hz or the narrowest
+  sweep the scope can be made to send with its points 10 pixels apart, and
+  what it can be made to show. A window wider
+  than the scope can be made draws the spectrum and waterfall over the part
+  it sweeps; past it the waterfall is blank and the spectrum shows a dashed
+  line level with the trace's middle over its fill darkened, the two fading into each other
+  over the sweep's last pixels, and the axis, layers and annotations run across the whole. There a pan moves only the window, stopping where the
+  sweep reaches its edge, and with `follow` the scope follows the dial
+  instead of the window: where the radio lets the app place it, moved just
+  far enough to keep the dial that share of the sweep's own width from its
+  edges.
 - `follow` (0 to 0.45): keeps the tuned frequency at least this share of the
   width from either edge by moving the window just far enough — within the
   sweep a crop, past it the radio's scope — gliding there once the dial
@@ -455,7 +474,7 @@ a scope, the control says why instead. Placed like a native control, it takes:
   it. Only where
   the radio lets the app place its scope and the panel declares
   `requiresRadioWrite`; elsewhere it changes nothing.
-- `annotations`: up to 64 pieces of text at frequencies, each with a pointer.
+- `annotations`: up to 256 (64 before API 20) pieces of text at frequencies, each with a pointer.
   One with an `event` sends `activate` when clicked, its frequency as
   `value`, its `id` as `annotation` and where it was clicked as `at`, and
   does not tune. One with a `menu` (API 17, `[{ label, event }]` like a
@@ -468,8 +487,14 @@ a scope, the control says why instead. Placed like a native control, it takes:
   stands it that far above the noise on any radio, once the app has
   estimated it, and an app without `y` measures from the edge. With
   `borderEdges: "near"` its border is only the edge facing that one, an
-  underline on the spectrum.
-- `layers` (API 17): up to 128 rectangles, lines, text and artwork placed by
+  underline on the spectrum. With `collapsed` (API 20: `true`, or
+  `{ width }` in pixels, four fifths of the box by default) it is drawn as
+  a line that wide where that border would be, its hover reach mostly on
+  the side away from the box, and whole only while the pointer is on the
+  line or the box, over any annotation it would overlap, which waits
+  meanwhile. A click on the line opens it first where nothing hovered (a
+  touch), and is a click on the annotation once it is open.
+- `layers` (API 17): up to 512 (128 before API 20) rectangles, lines, text and artwork placed by
   frequency, drawn over the picture under the annotations and moving with
   every zoom, pan and glide. Each has an `id` and a `kind` — `rect`, `line`,
   `text` or `svg` — and corners `x`, `y` and `x2`, `y2`: a rect or an svg
@@ -550,25 +575,37 @@ a scope, the control says why instead. Placed like a native control, it takes:
     by how far it was drawn and how wide the window — up to 300 kHz — and
     never past the band's edge; the line
     flies off as the arrow, and the window chases it there to watch it land.
-  - `zoom` is a drag along the axis — away from the middle narrows the
-    window, toward it widens it, and the frequency pressed on follows the
-    pointer — or a pinch, by touch or on a trackpad, about the fingers.
+  - `zoom` is a drag along the axis — the tuned frequency's line holds
+    still (the window's middle, for a line out of view) and the frequency
+    pressed on stays exactly under the pointer, the axis stretched between
+    them: away from the line narrows the window, toward it widens it — or a
+    pinch, by touch or on a trackpad, about the fingers.
     Zooming past the sweep asks for a wider scope: the app's own where the
     radio's `spectrum` says `autoSpan`, the radio's next span where the panel
-    may command it, and no further elsewhere. Where a zoom ends, a radio span
-    the panel commands goes to the narrowest that covers the window and every
-    other display of that scope; one showing the whole sweep keeps it from
-    narrowing. A double click on the axis puts the window back, about the
+    may command it, and no further elsewhere unless `maxWidthHz` says. Where
+    a zoom ends with the sweep's points more than 5 pixels apart, a
+    radio span the panel commands goes to the narrowest that covers the
+    window and every other display of that scope; one showing the whole
+    sweep keeps it from narrowing. A double click on the axis puts the window back, about the
     dial, and widens back what the zoom narrowed.
   - `pan` is a drag along the frequency over the spectrum or the waterfall,
     or a scroll that pans, unless the scene scrolls that way, whose scroll
     takes it. Within the sweep it only moves the window;
     past it, it moves the radio's scope where the radio lets the app place it,
-    and stops at the edge where not. After a pan, `follow` leaves the window
-    alone until the dial moves.
+    and where not, goes on until the window's middle reaches the sweep's
+    edge, the part past it drawn as the filler below. After a pan, `follow` leaves the window
+    alone until the dial moves. With the window standing still, a scope the
+    app places moves when a turned dial comes within `follow`'s share of
+    its width of an edge, as little as keeps the dial that far in while
+    covering as much of the window as it can. A dial that jumps (a click, a
+    spot) with the window not covered, or that near an edge, moves it to
+    cover the window, as near centered on the dial as that allows. A knob
+    turned elsewhere leaves it be.
   - `split` is a drag across the axis, which moves it between the
     spectrum and the waterfall, between a tenth and nine tenths of their
-    height. Natively the operator's share holds until the scene changes its
+    height. Both drags start anywhere on the axis; the pointer shows the
+    resize cursor across it within a few pixels of where the spectrum meets
+    the waterfall, and the one along it elsewhere. Natively the operator's share holds until the scene changes its
     own `split`.
   - `levels` is a drag along the level strip. On the waterfall it changes
     the speed, the age taken hold of staying under the pointer. On the

@@ -831,7 +831,15 @@ class SceneSpectrumVfoLabel {
   /// many as the frequency has, each sliding in or out as the dial needs it.
   final int? hzDigits;
 
-  const SceneSpectrumVfoLabel.auto() : mhz = null, khz = null, hz = null, hzDigits = null;
+  /// With the dial out of the window, the label waits at the edge it is
+  /// past, an arrow beside it pointing the way: drawn in [arrowColor], the
+  /// line's where null, and [arrowSize] pixels long, under half the
+  /// label's text height where null; none with [noArrow].
+  final Color? arrowColor;
+  final SceneNumber? arrowSize;
+  final bool noArrow;
+
+  const SceneSpectrumVfoLabel.auto() : mhz = null, khz = null, hz = null, hzDigits = null, arrowColor = null, arrowSize = null, noArrow = false;
 
   SceneSpectrumVfoLabel(Map<dynamic, dynamic> json)
     : mhz = SceneSpectrumVfoLabelPart.parse(json['mhz']),
@@ -841,9 +849,14 @@ class SceneSpectrumVfoLabel {
         null || 'auto' => null,
         final int digits when digits >= 0 && digits <= 3 => digits,
         _ => throw const FormatException('Invalid scene spectrum vfoLabel hzDigits'),
-      };
+      },
+      noArrow = json['arrow'] == false,
+      arrowColor = json['arrow'] is Map ? _color(json['arrow'] as Map, 'color') : null,
+      arrowSize = json['arrow'] is Map ? SceneNumber.parse(json['arrow'] as Map, 'size', min: 2, max: 72) : null {
+    if (json['arrow'] case final arrow? when arrow != false && arrow is! Map) throw const FormatException('Invalid scene spectrum vfoLabel arrow');
+  }
 
-  Iterable<String> get valueNames => [...?mhz?.valueNames, ...?khz?.valueNames, ...?hz?.valueNames];
+  Iterable<String> get valueNames => [...?mhz?.valueNames, ...?khz?.valueNames, ...?hz?.valueNames, ?arrowSize?.value];
 }
 
 /// The text of one part of the tuned frequency's label. Null: the part
@@ -1013,6 +1026,12 @@ class SceneSpectrumAnnotation {
   /// raises no API level.
   final ({String name, Color? color})? icon;
 
+  /// Drawn as a line where the box's near border would be — [collapsedWidth]
+  /// pixels wide, or four fifths of the box — the box itself only while the
+  /// pointer is on the line or on it, over any it would overlap.
+  final bool collapsed;
+  final double? collapsedWidth;
+
   bool get clickable => event != null || menu != null;
 
   SceneSpectrumAnnotation(Map<dynamic, dynamic> json)
@@ -1048,6 +1067,15 @@ class SceneSpectrumAnnotation {
         null => null,
         final Map<dynamic, dynamic> icon => (name: string(icon, 'name'), color: _color(icon, 'color')),
         _ => throw const FormatException('Invalid spectrum annotation icon'),
+      },
+      collapsed = switch (json['collapsed']) {
+        null || false => false,
+        true || Map<dynamic, dynamic>() => true,
+        _ => throw const FormatException('Invalid spectrum annotation collapsed'),
+      },
+      collapsedWidth = switch (json['collapsed']) {
+        final Map<dynamic, dynamic> line when line['width'] != null => number(line, 'width', min: 1, max: 200),
+        _ => null,
       } {
     _clickable(id, event, menu);
   }
@@ -1168,6 +1196,8 @@ class SceneSpectrumSpec {
     'rising',
     'follow',
     'span',
+    'minWidthHz',
+    'maxWidthHz',
     'gestures',
     'vfoLabel',
     'levelScale',
@@ -1282,6 +1312,13 @@ class SceneSpectrumSpec {
   /// the whole sweep.
   final SceneNumber? span;
 
+  /// The narrowest and widest a zoom goes, in Hz; null for the radio's own:
+  /// a hundred Hz or its narrowest sweep with its points 10 pixels apart,
+  /// and what its scope can be made to show.
+  /// A window wider than the scope draws the picture over the swept part
+  /// only, and the sweep follows the dial rather than the window.
+  final double? minWidthHz, maxWidthHz;
+
   SceneSpectrumSpec(Map<dynamic, dynamic> json)
     : radio = json['radio'] == null ? null : string(json, 'radio'),
       flow = SceneSpectrumFlow.values.byName(_oneOf(json, 'flow', const ['down', 'up', 'right', 'left']) ?? 'down'),
@@ -1312,7 +1349,9 @@ class SceneSpectrumSpec {
       tuneStep = SceneNumber.parse(json, 'tuneStep', min: 1, max: 1e6),
       follow = json['follow'] == null ? null : number(json, 'follow', min: 0, max: .45),
       span = SceneNumber.parse(json, 'span', min: 100, max: 1e7),
-      annotations = json['annotations'] == null ? const [] : items(json['annotations'], 64, what: 'annotations').map(SceneSpectrumAnnotation.new).toList(),
+      minWidthHz = _widthLimit(json, 'minWidthHz'),
+      maxWidthHz = _widthLimit(json, 'maxWidthHz'),
+      annotations = json['annotations'] == null ? const [] : items(json['annotations'], 256, what: 'annotations').map(SceneSpectrumAnnotation.new).toList(),
       layers = json['layers'] == null
           ? const []
           : items(json['layers'], SceneSpectrumLayer.maxCount, what: 'spectrum layers').map(SceneSpectrumLayer.new).toList(),
@@ -1344,6 +1383,8 @@ class SceneSpectrumSpec {
         _ => throw const FormatException('Invalid scene spectrum center'),
       },
       overlays = json['overlays'] == null ? const [] : items(json['overlays'], 16, what: 'overlays').map(SceneSpectrumMark.new).toList();
+
+  static double? _widthLimit(Map<dynamic, dynamic> json, String key) => json[key] == null || json[key] == 'radio' ? null : number(json, key, min: 1, max: 1e8);
 
   static List<Color> _stops(Object? raw, String key) {
     if (raw is! List || raw.length < 2) throw FormatException('Invalid scene $key');

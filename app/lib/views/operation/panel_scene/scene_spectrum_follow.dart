@@ -76,7 +76,13 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
     if (margin == null || frame == null || vfo == null || _uuid == null || widget.source == null) return;
     final width = (frame.highHz - frame.lowHz).toDouble();
     if (width <= 0) return;
-    _noteDial(now, width);
+    _noteDial(now, frame);
+    if (_pastScope(width)) {
+      _keepSweepOnDial(now, vfo, margin);
+    } else if (_dialMove != null) {
+      // Where follow moves the window, the window moves the scope.
+      _keptCenter(vfo, frame, margin) == null ? _placeSweepForDial(now, vfo, frame, margin) : _dialMove = null;
+    }
     if (_pannedAtVfo != null) {
       if (vfo == _pannedAtVfo) return;
       _pannedAtVfo = null;
@@ -115,6 +121,84 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
     return null;
   }
 
+  /// [SceneSpectrumSpec.follow] for the scope under a window wider than it
+  /// can be made: the scope moves just far enough to keep [vfo] [margin] of
+  /// its own width in from its edges, at most four times a second, while the
+  /// window follows the dial by its own width. A scope the app cannot move
+  /// stays where the radio puts it.
+  void _keepSweepOnDial(int now, double vfo, double margin) {
+    final sweep = _sweep;
+    if (sweep == null || _recenters == false) return;
+    final width = (sweep.highHz - sweep.lowHz).toDouble(), middle = _sweptMiddle(sweep, now), edge = margin * width;
+    final center = vfo < middle - width / 2 + edge
+        ? vfo + (.5 - margin) * width
+        : vfo > middle + width / 2 - edge
+        ? vfo - (.5 - margin) * width
+        : null;
+    if (center != null) _askSweep(now, center);
+  }
+
+  /// Where the scope's middle is: where it was last sent until a sweep from
+  /// there arrives, or a second passes for a scope that lands nearby —
+  /// measured from the sweeps still arriving from where it was, each would
+  /// send it again.
+  double _sweptMiddle(SpectrumFrame sweep, int now) {
+    final (width, swept) = ((sweep.highHz - sweep.lowHz).toDouble(), (sweep.lowHz + sweep.highHz) / 2);
+    if (_sweepAskedHz case final asked? when (swept - asked).abs() <= width / 100 || now - _sweepAskedMillis > 1000) _sweepAskedHz = null;
+    return _sweepAskedHz ?? swept;
+  }
+
+  /// Sends the scope's middle to [center], at most four times a second;
+  /// false where it went nowhere — too soon, or a scope the app cannot move.
+  bool _askSweep(int now, double center) {
+    final (uuid, source) = (_uuid, widget.source);
+    if (uuid == null || source == null || now - _lastRecenterMillis < 250) return false;
+    final moved = _recenters = source.recenter(uuid, center.round());
+    if (!moved) return false;
+    _lastRecenterMillis = _sweepAskedMillis = now;
+    _sweepAskedHz = center;
+    return true;
+  }
+
+  /// A move of the dial the window stands still for, on a scope the app
+  /// places. A spin leaves the sweep where it is — each change of it redraws
+  /// the picture under the operator — unless the dial comes within [margin]
+  /// of its width of an edge (or past it, where the radio would scroll it
+  /// itself): then it moves as little as keeps the dial that far in, to
+  /// where it covers most of the window. A jump — a click, a spot — that
+  /// leaves the window not covered, or the dial that near an edge, moves it
+  /// at once to cover the window, and within that as near centred on the
+  /// dial as it goes: the operator has just said where they are looking,
+  /// and a dial left at the margin is a step from moving it again.
+  void _placeSweepForDial(int now, double vfo, SpectrumFrame frame, double margin) {
+    final (sweep, jumped) = (_sweep, _dialMove);
+    if (sweep == null || jumped == null || _recenters == false) {
+      _dialMove = null;
+      return;
+    }
+    final width = (sweep.highHz - sweep.lowHz).toDouble(), middle = _sweptMiddle(sweep, now);
+    final (low, bin) = (middle - width / 2, width / math.max(1, sweep.levels.length));
+    final covered = frame.lowHz >= low - bin && frame.highHz <= low + width + bin;
+    final edge = margin * width;
+    final nearEdge = vfo < low + edge || vfo > low + width - edge;
+    if (!(nearEdge || (jumped && !covered))) {
+      _dialMove = null;
+      return;
+    }
+    // Where the sweep's low edge may go: covering the window (centred on it, the window being the
+    // wider), and keeping the dial in — a jump anywhere inside, a spin [edge] in. Of those, a jump's
+    // centres the dial as near as it can, a spin's moves least; with none, the nearest that keeps the dial.
+    final (coverLow, coverHigh) = width >= frame.highHz - frame.lowHz
+        ? (frame.highHz - width, frame.lowHz.toDouble())
+        : (((frame.lowHz + frame.highHz) - width) / 2, ((frame.lowHz + frame.highHz) - width) / 2);
+    final keep = jumped ? 0.0 : edge;
+    final (keepLow, keepHigh) = (vfo - width + keep, vfo - keep);
+    final (from, to) = (math.max(keepLow, coverLow), math.min(keepHigh, coverHigh));
+    final placed = from <= to ? (jumped ? vfo - width / 2 : low).clamp(from, to) : (coverHigh < keepLow ? keepLow : keepHigh);
+    final target = placed + width / 2;
+    if (_askSweep(now, target) || _recenters == false) _dialMove = null;
+  }
+
   void _chase() {
     if (_glideSpan != null) {
       _glide.stop();
@@ -149,17 +233,19 @@ extension _SpectrumFollow on _SceneSpectrumViewState {
       _reframe();
     }
     // A window that was the radio's sweep is its sweeps' again once they arrive from where it was taken.
-    _releaseAt = _chaseFree && _recenters == true ? _viewCenter : null;
+    final frame = _frame;
+    _releaseAt = _chaseFree && _recenters == true && !(frame != null && _pastScope((frame.highHz - frame.lowHz).toDouble())) ? _viewCenter : null;
   }
 
   /// Marks when the dial last moved, as soon as the radio says so, for follow's rest.
-  void _noteDial(int now, double width) {
-    final (vfo, was) = (_vfo, _followedVfo);
+  void _noteDial(int now, SpectrumFrame frame) {
+    final (vfo, was, width) = (_vfo, _followedVfo, (frame.highHz - frame.lowHz).toDouble());
     if (vfo == was) return;
     _followedVfo = vfo;
     // The dial first seen has not moved: a panel opened on a dial off the window brings it in at once.
     if (vfo == null || was == null) return;
     _vfoMovedMillis = now;
     _spinning = (vfo - was).abs() <= _spinStepShare * width;
+    _dialMove = !_spinning;
   }
 }

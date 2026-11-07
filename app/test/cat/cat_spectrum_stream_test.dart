@@ -58,6 +58,7 @@ class _Scope implements TransceiverSession, SpectrumSession {
   @override
   SpectrumCapabilities get spectrumCapabilities => capabilities;
   final spans = <int?>[];
+  final centers = <int?>[];
   @override
   void startSpectrum() => log.add('start');
   @override
@@ -65,7 +66,10 @@ class _Scope implements TransceiverSession, SpectrumSession {
   bool running = false;
   @override
   bool setSpectrum(SpectrumRequest request) {
-    if (running) spans.add(request.spanHz);
+    if (running) {
+      spans.add(request.spanHz);
+      centers.add(request.centerHz);
+    }
     return running;
   }
 
@@ -321,5 +325,63 @@ void main() {
     scope.spans.clear();
     expect(source.fitSpan(uuid, 150000), isFalse);
     expect(scope.spans, isEmpty, reason: "a fixed scope's width is its edges: a span set rewrites only centre mode's");
+
+    // A scope that moves its fixed window but keeps its own width — an SDR tuned on its own — is left
+    // be: a span there would change its sample rate and retune it.
+    scope.capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, canRecenter: true);
+    expect(source.fitSpan(uuid, 30000), isFalse);
+    expect(source.minWidthHz(uuid), isNull);
+
+    // Where the app places the edges itself, a span is their width, and a display drawing the
+    // whole sweep holds them as far apart as they are — not as centre mode's span last had them.
+    scope.capabilities = const SpectrumCapabilities(
+      spansHz: [10000, 20000, 40000, 80000],
+      refMinDb: 0,
+      refMaxDb: 1,
+      refStepDb: 1,
+      canRecenter: true,
+      spanSetsEdges: true,
+    );
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, lowHz: 14000000, highHz: 14060000));
+    expect(source.fitSpan(uuid, 30000), isTrue);
+    expect(scope.spans.last, 40000);
+  });
+
+  test('a zoom that ends off to one side moves edges the app places to the window, and widens one centred where it is', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(
+        spansHz: [10000, 20000, 40000, 80000],
+        refMinDb: 0,
+        refMaxDb: 1,
+        refStepDb: 1,
+        canRecenter: true,
+        spanSetsEdges: true,
+      )
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final source = CatSpectrumSource(cat, canCommand: true);
+    // A 10 kHz window by the dial, 60 kHz from the middle of a 160 kHz sweep.
+    cat.wantSpectrumWidth(uuid, Object(), 10000);
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, lowHz: 7000000, highHz: 7160000));
+    expect(source.fitSpan(uuid, 10000, centerHz: 7140000, offCenterHz: 60000), isTrue);
+    expect((scope.spans.last, scope.centers.last), (10000, 7140000), reason: 'covering the window from the sweep\'s middle, it would never narrow');
+    scope.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.center, spanHz: 80000));
+    expect(source.fitSpan(uuid, 10000, centerHz: 7140000, offCenterHz: 60000), isTrue);
+    expect((scope.spans.last, scope.centers.last), (80000, null), reason: 'narrowed about the dial, the window would fall off its side');
+  });
+
+  test('a zoom may go as narrow as the narrowest sweep the panel can have the scope send', () async {
+    driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final source = CatSpectrumSource(cat, canCommand: true);
+    expect(source.minWidthHz(uuid), 20000);
+    expect(CatSpectrumSource(cat).minWidthHz(uuid), isNull, reason: 'a panel that may not command the radio cannot narrow it');
+    // A fixed scope's width is its edges, which no span narrows.
+    driver.sessions.single.sink.reportSpectrumSettings(const SpectrumSettings(mode: SpectrumMode.fixed, spanHz: 40000));
+    expect(source.minWidthHz(uuid), isNull);
   });
 }

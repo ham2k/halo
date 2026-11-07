@@ -19,8 +19,10 @@ export interface ScopeSpot {
   ageMinutes: number
   worked: boolean
   isSelf: boolean
-  /** Something new to work it for. */
+  /** Something new to work it for: a band, a mode, a day, a reference or a multiplier, as the Spots panel accents. */
   fresh: boolean
+  /** A new multiplier, which the Spots panel draws in its own color over the rest. */
+  multiplier?: boolean
   icon?: string
   iconColor?: string
   emoji?: string
@@ -65,7 +67,8 @@ export function scopeSpots(board: BoardSpot[], nowMillis: number): ScopeSpot[] {
       ageMinutes: Math.max(0, Math.round((nowMillis - s.spot.timeInMillis) / 60000)),
       worked: s.annotations?.worked ?? false,
       isSelf: s.annotations?.isSelf ?? false,
-      fresh: (s.annotations?.notices.length ?? 0) > 0,
+      fresh: (s.annotations?.notices ?? []).some((n) => accented.includes(n) || chaseAlert(n)),
+      ...(s.annotations?.notices.includes("newMult") ? { multiplier: true } : {}),
       ...(icon ? { icon, iconColor: shown.display?.iconColor } : {}),
       ...(shown.display?.emoji ? { emoji: shown.display.emoji } : {}),
     }
@@ -107,12 +110,29 @@ export function noteSpots(annotations: HeldBandAnnotation[]): ScopeSpot[] {
 /** Who keeps a place when the lanes are full: something new first, then the unworked, then the newest. */
 const rank = (s: ScopeSpot) => (s.fresh ? 0 : s.worked ? 2 : 1) * 1e6 + s.ageMinutes
 
-/** Over the scope's fixed dark picture: new ones gold, our own green, the worked grey. */
-const inks = { fresh: "#FFD166", self: "#8EE3A1", worked: "#7F8EA0", plain: "#E8EEF4" }
+/**
+ * The scorers' notices the Spots panel accents, and the scope after it. A new DXCC, state or
+ * province it leaves out: those are about the call being typed, and on a whole band they would
+ * light up most spots.
+ */
+const accented = ["newBand", "newMode", "newDay", "newRef", "newMult"]
+
+/**
+ * A chasing program's verdict the operator asked to be alerted to — `chase:<program>:<verdict>`
+ * then flags, `alert` among them — which the Spots panel accents on the call too.
+ */
+const chaseAlert = (notice: string) => notice.startsWith("chase:") && notice.split(":").slice(3).includes("alert")
+
+/**
+ * Over the scope's fixed dark picture: something new in the Spots panel's green and a multiplier in
+ * its orange-brown, their dark-theme shades (`HaLoColors.important` and `spotMultiplier`), our own a
+ * paler green, the worked grey.
+ */
+const inks = { fresh: "#1AC81A", multiplier: "#FF8A4C", self: "#8EE3A1", worked: "#7F8EA0", plain: "#E8EEF4" }
 /** The scope's own background; a spot's box is it, see-through, so it dims the picture rather than standing out from it. */
 export const scopeBackground = "#0B0E17"
 const leader = "#8FA3B8"
-const ink = (s: ScopeSpot) => s.color ?? (s.fresh ? inks.fresh : s.isSelf ? inks.self : s.worked ? inks.worked : inks.plain)
+const ink = (s: ScopeSpot) => s.color ?? (s.multiplier ? inks.multiplier : s.fresh ? inks.fresh : s.isSelf ? inks.self : s.worked ? inks.worked : inks.plain)
 /** The oldest asked for is drawn at this strength; a fresh one at full. */
 const faintest = 0.4
 
@@ -138,7 +158,7 @@ export interface SpotLayout {
    */
   from?: string
   maxAgeMinutes: number
-  /** The layers left for the spots, of the 128 a band scope takes. */
+  /** The layers left for the spots, of the 512 a band scope takes. */
   layers?: number
   fontFamily?: string
   /** What a click sends, with the annotation's id naming the station. */
@@ -161,8 +181,11 @@ function widthOf(s: ScopeSpot) {
 /** The annotation's id for a station; a click names it, and `spotFor` finds the station again. */
 export const spotId = (s: ScopeSpot) => `spot:${s.key ?? s.call}`
 
-/** A band scope takes 128 layers, and each spot draws three: its passband, its leader and its dot. */
-const layersPerSpot = 3
+/** A band scope takes 256 annotations, a spot's label hidden or not: past them, spots are left out. */
+const mostAnnotations = 256
+
+/** How far a hidden label's line sits nearer the part's edge than the first lane's border. */
+const hiddenInset = 3
 
 /** `±<n>px`, as a coordinate's offset is written. */
 const px = (n: number) => `${n < 0 ? "-" : "+"}${Math.abs(n)}px`
@@ -170,8 +193,12 @@ const px = (n: number) => `${n < 0 ? "-" : "+"}${Math.abs(n)}px`
 /**
  * Each spot in the first lane where its box clears every box already there, in rank order — the
  * best placed nearest the part's edge — each with a leader from that edge to its box, a dot where
- * it meets the edge, and a bar along the edge over the passband its mode takes. Those with no room
- * are left out, and past the layers a band scope takes.
+ * it meets the edge, and a bar along the edge over the passband its mode takes. One with no room
+ * for its box keeps its leader, dot and bar, and its label is collapsed to a short line a few
+ * pixels nearer the edge than the first lane's border, where its leader ends: dropped whole, a
+ * crowded stretch of band would look empty. The app draws the label whole while the pointer is on
+ * the line, over those it covers, and a zoom brings it out for good. Past the annotations and
+ * layers a band scope takes, the rest are left out.
  */
 export function spotMarks(spots: ScopeSpot[], layout: SpotLayout): { annotations: PanelSceneSpectrumAnnotation[]; layers: PanelSceneSpectrumLayer[] } {
   const taken: [number, number][][] = Array.from({ length: Math.max(0, layout.lanes) }, () => [])
@@ -180,15 +207,19 @@ export function spotMarks(spots: ScopeSpot[], layout: SpotLayout): { annotations
   const down = layout.part === "waterfall"
   // On the part's edge, past the axis lying over it, moved [dy] down the screen.
   const edge = (dy = 0) => (down ? `waterfall${px(layout.clear + dy)}` : `spectrum:bottom${px(dy - layout.clear)}`)
+  const budget = layout.layers ?? 512
   for (const s of [...spots].sort((a, b) => rank(a) - rank(b))) {
-    if (annotations.length >= Math.floor((layout.layers ?? 128) / layersPerSpot)) break
     const hz = Math.round(s.khz * 1000),
       half = ((widthOf(s) + gap) / 2) * layout.hzPerPx
+    const heard = s.heard ?? spotPassband(s.mode, s.khz)
     const lane = taken.findIndex((spans) => spans.every(([from, to]) => hz + half <= from || hz - half >= to))
-    if (lane < 0) continue
-    taken[lane].push([hz - half, hz + half])
+    if (annotations.length >= mostAnnotations) break
+    // One that needs its bar may not fit where one without does: the rest are still tried.
+    if (layers.length + (heard ? 3 : 2) > budget) continue
     const opacity = 1 - (1 - faintest) * Math.min(1, s.ageMinutes / Math.max(1, layout.maxAgeMinutes))
-    const offset = (layout.from ? 0 : layout.clear) + 4 + lane * laneHeight
+    const base = layout.from ? 0 : layout.clear
+    const offset = lane < 0 ? base + 4 - hiddenInset : base + 4 + lane * laneHeight
+    if (lane >= 0) taken[lane].push([hz - half, hz + half])
     annotations.push({
       id: spotId(s),
       text: s.emoji ? `${s.call} ${s.emoji}` : s.call,
@@ -208,10 +239,10 @@ export function spotMarks(spots: ScopeSpot[], layout: SpotLayout): { annotations
       borderWidth: 1,
       borderEdges: "near",
       ...(s.icon ? { icon: { name: s.icon, color: alpha(s.iconColor ?? ink(s), opacity) } } : {}),
+      ...(lane < 0 ? { collapsed: true } : {}),
       event: layout.event,
     })
     // Where the signal would be heard, a bar along the edge, under the leader and its dot.
-    const heard = s.heard ?? spotPassband(s.mode, s.khz)
     if (heard) {
       layers.push({
         id: `passband:${s.key ?? s.call}`,
@@ -261,12 +292,17 @@ const digital = ["FT8", "FT4", "JS8", "PSK", "PSK31", "DATA", "DIGI", "OLIVIA", 
 /** SSB's usual sideband: lower below 10 MHz, upper above and on 60 m. */
 const sidebandAt = (khz: number) => (khz < 10000 && !(khz >= 5330 && khz <= 5410) ? "LSB" : "USB")
 
+/** FT8 and FT4: every station on the band's one dial frequency, each somewhere in its 3 kHz. */
+const sharedWindow = ["FT8", "FT4"]
+
 /**
  * The stretch a spot's signal takes, in Hz either side of its frequency: phone 2.8 kHz on its
  * sideband, AM 2.8 kHz and FM 7 kHz either side, data 3 kHz above the dial, CW 250 Hz around it.
- * None for a spot that names no mode.
+ * None for a spot that names no mode, nor for FT8 and FT4, whose spots all share the band's window:
+ * a bar for each would paint the same 3 kHz over and over, marking no one station.
  */
 export function spotPassband(mode: string | undefined, khz: number): [number, number] | undefined {
+  if (mode && sharedWindow.includes(mode)) return undefined
   const sideband = mode === "SSB" ? sidebandAt(khz) : mode
   if (sideband === "USB") return [0, 2800]
   if (sideband === "LSB") return [-2800, 0]

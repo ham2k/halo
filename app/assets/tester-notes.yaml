@@ -8,6 +8,9 @@
   changes:
     - "New VFO tuning keys: Option/Alt with the Up and Down arrows"
     - "New postcard Save menu on phones: to Photos or Gallery, or to Files"
+    - "New Icom bandscope auto-adjust: brighter waterfall, steady picture while tuning"
+    - "Improved Band Scope spots: every spot marked, hover a dash to read it"
+    - "Band Scope points to an off-screen VFO; click the arrow to return"
 
 "191":
   changes:

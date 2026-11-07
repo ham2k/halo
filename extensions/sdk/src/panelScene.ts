@@ -314,6 +314,18 @@ export interface PanelSceneSpectrum {
    */
   span?: PanelSceneSpectrumNumber
   /**
+   * The narrowest a zoom goes, in Hz, or `'radio'` (omitted): a hundred Hz or the narrowest sweep
+   * the radio's scope can be made to send with its points 10 pixels apart. Extension API 20.
+   */
+  minWidthHz?: number | "radio"
+  /**
+   * The widest a zoom goes, in Hz, or `'radio'` (omitted): what the radio's scope can be made to
+   * show. Wider than that, the picture is drawn over the swept part only; a pan stops where the
+   * sweep reaches the window's edge, and with `follow` the scope follows the dial rather than the
+   * window, where the radio lets the app place it. Extension API 20.
+   */
+  maxWidthHz?: number | "radio"
+  /**
    * A click tunes to the nearest multiple of this many Hz, the wheel moves by it and a dragged line
    * lands on it. Omitted, steps that follow the zoom along 1, 2, 5, 10, 20, 50… Hz from the smallest
    * covering a pixel: a fine step one above it, which a dragged line lands on, a medium one and a coarse two above that
@@ -392,11 +404,11 @@ export interface PanelSceneSpectrum {
   center?: { spectrum?: PanelSceneSpectrumStyle; pan?: PanelSceneSpectrumStyle; waterfall?: PanelSceneSpectrumStyle }
   /** Up to 16 lines and areas at Hz offsets — a passband, a CW offset. */
   overlays?: PanelSceneSpectrumOverlay[]
-  /** Up to 64 pieces of text at frequencies — a spot, a net, a beacon. */
+  /** Up to 256 pieces of text at frequencies — a spot, a net, a beacon; 64 before extension API 20. */
   annotations?: PanelSceneSpectrumAnnotation[]
   /**
-   * Up to 128 rectangles, lines, text and artwork placed by frequency, over the picture under the
-   * annotations, moving with every zoom and pan. Extension API 17.
+   * Up to 512 rectangles, lines, text and artwork placed by frequency, over the picture under the
+   * annotations, moving with every zoom and pan. Extension API 17; 128 before API 20.
    */
   layers?: PanelSceneSpectrumLayer[]
 }
@@ -501,6 +513,13 @@ export interface PanelSceneSpectrumVfoLabel {
    * frequency has, each sliding in or out as the dial needs it, and kept while the dial moves.
    */
   hzDigits?: 0 | 1 | 2 | 3 | "auto"
+  /**
+   * With the dial out of the window the label waits at the edge it is past, an arrow on that side
+   * pointing the way; a click on either brings the window back to the dial. The arrow's `color`
+   * (the line's) and `size` in pixels (under half the text's height), or `false` for none.
+   * Extension API 20.
+   */
+  arrow?: false | { color?: string; size?: PanelSceneSpectrumNumber }
 }
 
 /** The text of one part of the tuned frequency's label. */
@@ -607,6 +626,13 @@ export interface PanelSceneSpectrumAnnotation {
    * text on the spectrum, over it on the waterfall. Default `all`; an app without it draws all.
    */
   borderEdges?: "all" | "near"
+  /**
+   * Drawn as a line `width` pixels wide (four fifths of the box with `true`) where the box's near border would be, the
+   * box itself only while the pointer is on the line or on it, over any annotation it would overlap,
+   * which waits meanwhile: a label there is no room for, shown on demand. A touch with nothing
+   * hovered opens it first; a click on it open is a click on the annotation. Extension API 20.
+   */
+  collapsed?: boolean | { width?: number }
   /** Default 2. */
   padding?: PanelSceneSpectrumNumber
   /** Default 2. */

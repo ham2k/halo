@@ -35,10 +35,105 @@ _Look _overlayLook(_Look base, SceneSpectrumTrace trace, double? Function(SceneN
   );
 }
 
-/// The sweep's [bins] across [size], [floor] to [floor] + [range] dB up it:
-/// each overlay with a trace look draws its frequencies, a later one over an
-/// earlier, and the control's look the rest.
+/// How many pixels the picture and the filler past the sweep take to fade
+/// one into the other, at most.
+const _unsweptFadePixels = 24.0;
+
+/// Darkens a paint's colors by half, its shader's included, keeping their alpha.
+const _darker = ColorFilter.matrix([.5, 0, 0, 0, 0, 0, .5, 0, 0, 0, 0, 0, .5, 0, 0, 0, 0, 0, 1, 0]);
+
+/// The sweep's [bins] across [size], [floor] to [floor] + [range] dB up it,
+/// and past the sweep — a window off to one side of a scope that stays on
+/// the dial, wider than the scope, or ahead of sweeps on their way — a
+/// dashed line at the trace's middle level — the median of the bins drawn,
+/// which carries on from the trace, as the noise estimated from the raw
+/// sweeps does not — over the fill darkened: the picture's level kept,
+/// marked as no reading. Left blank, a band past the scope reads as
+/// silent; drawn alike, as heard. The two fade one into the other over the
+/// sweep's last pixels, so its edge reads as the end of the reading rather
+/// than a cliff in the band.
 void _paintTrace(Canvas canvas, Size size, SpectrumFrame bins, SpectrumFrame window, double floor, double range, _Style style, _Marks marks) {
+  final span = (window.highHz - window.lowHz).toDouble();
+  double x(int hz) => (hz - window.lowHz) / span * size.width;
+  final (left, right, noise) = (x(bins.lowHz), x(bins.highHz), window.noiseDb ?? bins.noiseDb);
+  if (left <= 0 && right >= size.width) return _paintSweep(canvas, size, bins, window, floor, range, style, marks);
+  final whole = Offset.zero & size;
+  final fade = math.min(_unsweptFadePixels, (right - left) / 4);
+  final shown = right > 0 && left < size.width;
+  if (shown) {
+    // The picture and the filler, each masked to its share, added into one layer: over the fade
+    // their shares sum to the whole, where one laid over the other would thin both.
+    canvas.saveLayer(whole, Paint());
+    canvas.saveLayer(whole, Paint());
+    _paintSweep(canvas, size, bins, window, floor, range, style, marks);
+    canvas.drawRect(
+      whole,
+      Paint()
+        ..blendMode = BlendMode.dstIn
+        ..shader = _sweptMask(size, left, right, fade, swept: true),
+    );
+    canvas.restore();
+    canvas.saveLayer(whole, Paint()..blendMode = BlendMode.plus);
+  }
+  final middle = (Float32List.fromList(bins.levels)..sort())[bins.levels.length ~/ 2];
+  final level = size.height - ((middle - floor) / range).clamp(0.0, 1.0) * size.height;
+  final look = style.look;
+  canvas.drawRect(
+    Rect.fromLTRB(0, level, size.width, size.height),
+    _fillPaint(look, size, (stops) => _byLevel(stops, size, noise: noise, floor: floor, range: range))..colorFilter = _darker,
+  );
+  canvas.drawPath(
+    _dash(
+      Path()
+        ..moveTo(0, level)
+        ..lineTo(size.width, level),
+    ),
+    Paint()
+      ..color = look.trace
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = look.width,
+  );
+  if (shown) {
+    canvas.drawRect(
+      whole,
+      Paint()
+        ..blendMode = BlendMode.dstIn
+        ..shader = _sweptMask(size, left, right, fade, swept: false),
+    );
+    canvas.restore();
+    canvas.restore();
+  }
+}
+
+/// Opaque over the sweep between [left] and [right] where [swept], and
+/// past it where not, the two fading into each other over [fade] pixels
+/// inside each of its edges the window shows.
+Shader _sweptMask(Size size, double left, double right, double fade, {required bool swept}) {
+  const opaque = Color(0xFFFFFFFF), clear = Color(0x00FFFFFF);
+  final (on, off) = swept ? (opaque, clear) : (clear, opaque);
+  final stops = <double>[], colors = <Color>[];
+  void at(double x, Color color) {
+    stops.add((x / size.width).clamp(0.0, 1.0));
+    colors.add(color);
+  }
+
+  at(0, left > 0 ? off : on);
+  if (left > 0) {
+    at(left, off);
+    at(left + fade, on);
+  }
+  if (right < size.width) {
+    at(right - fade, on);
+    at(right, off);
+  }
+  at(size.width, right < size.width ? off : on);
+  return LinearGradient(colors: colors, stops: stops).createShader(Offset.zero & size);
+}
+
+/// The sweep's [bins] across [size]: each overlay with a trace look draws
+/// its frequencies, a later one over an earlier, and the control's look the
+/// rest.
+void _paintSweep(Canvas canvas, Size size, SpectrumFrame bins, SpectrumFrame window, double floor, double range, _Style style, _Marks marks) {
   final levels = bins.levels, span = (window.highHz - window.lowHz).toDouble();
   final n = levels.length, binHz = (bins.highHz - bins.lowHz) / (n - 1);
   double x(int i) => (bins.lowHz + i * binHz - window.lowHz) / span * size.width;
@@ -47,8 +142,8 @@ void _paintTrace(Canvas canvas, Size size, SpectrumFrame bins, SpectrumFrame win
   // all but one either side, which carries the line to the edge.
   final first = ((window.lowHz - bins.lowHz) / binHz).floor().clamp(0, n - 1);
   final last = ((window.highHz - bins.lowHz) / binHz).ceil().clamp(0, n - 1);
-  if (last <= first) return;
   double y(double level) => size.height - ((level - floor) / range).clamp(0.0, 1.0) * size.height;
+  if (last <= first) return;
   final smooth = style.smooth;
   final path = Path();
   if (smooth <= 0) {

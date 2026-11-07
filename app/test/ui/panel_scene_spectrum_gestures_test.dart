@@ -21,12 +21,12 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 import '../support/fake_clock.dart';
 
 class _Radio extends ChangeNotifier implements SceneSpectrumSource {
-  _Radio({this.nativeGestures = true, this.commands = true, this.recenters = false, this.maxWidth});
+  _Radio({this.nativeGestures = true, this.commands = true, this.recenters = false, this.maxWidth, this.minWidth});
 
   @override
   final bool nativeGestures;
   final bool commands, recenters;
-  final int? maxWidth;
+  final int? maxWidth, minWidth;
   double vfo = 14050000;
   final tunes = <(double, bool)>[];
   final recentered = <int>[];
@@ -70,6 +70,8 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   int? maxWidthHz(String uuid) => maxWidth;
   @override
+  int? minWidthHz(String uuid) => minWidth;
+  @override
   bool canTune(String uuid) => commands;
 
   /// Answers every tune with no, as a radio that is transmitting does.
@@ -83,15 +85,16 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   }
 
   @override
-  bool fitSpan(String uuid, int widthHz) {
-    if (commands) fitted.add(widthHz);
+  /// What a scope centred where it sweeps must cover to show the window.
+  bool fitSpan(String uuid, int widthHz, {int? centerHz, int offCenterHz = 0}) {
+    if (commands) fitted.add(widthHz + 2 * offCenterHz);
     return commands;
   }
 }
 
 /// 14.000–14.100 MHz in a thousand bins: fine enough to zoom well in.
-SpectrumFrame _sweep({int lowHz = 14000000}) =>
-    SpectrumFrame(lowHz: lowHz, highHz: lowHz + 100000, levels: Float32List(1000), floorDb: 0, ceilingDb: 80, atMillis: 0);
+SpectrumFrame _sweep({int lowHz = 14000000, int bins = 1000, int width = 100000}) =>
+    SpectrumFrame(lowHz: lowHz, highHz: lowHz + width, levels: Float32List(bins), floorDb: 0, ceilingDb: 80, atMillis: 0);
 
 /// [document], where given, lays the spectrum control out in a scene of its own making.
 Future<List<Map<String, dynamic>>> _show(
@@ -99,6 +102,7 @@ Future<List<Map<String, dynamic>>> _show(
   _Radio radio, {
   Map<String, dynamic> spectrum = const {},
   Map<String, dynamic> Function(Map<String, dynamic> control)? document,
+  double width = 400,
 }) async {
   final events = <Map<String, dynamic>>[];
   // No level strip unless a test asks: these measure across the whole box.
@@ -108,7 +112,7 @@ Future<List<Map<String, dynamic>>> _show(
       child: MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 400,
+            width: width,
             height: 300,
             child: DockPaneVisibility(
               visible: true,
@@ -117,7 +121,7 @@ Future<List<Map<String, dynamic>>> _show(
                   document?.call(control) ??
                       {
                         'version': 1,
-                        'width': 400,
+                        'width': width,
                         'height': 300,
                         'values': const <String, num>{},
                         'layers': const <Object>[],
@@ -198,14 +202,20 @@ Future<void> _tap(WidgetTester tester, Offset at) async {
   await tester.pump(const Duration(milliseconds: 300));
 }
 
-/// A drag left on the axis from the middle: zooms in by e, to 36.8 kHz, carrying 14.050 MHz to an
-/// eighth of the way across, which puts the window's middle at [_zoomed].
-Future<void> _zoomIn(WidgetTester tester) async {
-  await tester.dragFrom(_onAxis(tester, .5), const Offset(-150, 0));
+/// A drag on the axis from 14.075 MHz, carried out until it is as far from the dial at 14.050 as
+/// a window 36.8 kHz wide puts it: zoomed in by e about the dial, which holds still, so the
+/// window's middle is [_zoomed].
+Future<void> _zoomIn(WidgetTester tester) => _zoomTo(tester, 36788);
+
+/// A drag on the axis from 14.075 MHz, 25 kHz over the dial at 14.050 in the middle, to where a
+/// window [width] Hz wide about the dial puts it.
+Future<void> _zoomTo(WidgetTester tester, double width) async {
+  final w = _box(tester).width;
+  await tester.dragFrom(_onAxis(tester, .75), Offset(25000 / width * w - .25 * w, 0));
   await tester.pump();
 }
 
-const _zoomed = 14050000 + .375 * 36788;
+const _zoomed = 14050000.0;
 
 bool _drawsAxis(WidgetTester tester) => tester
     .widgetList<CustomPaint>(find.descendant(of: find.byType(SceneSpectrumView), matching: find.byType(CustomPaint)))
@@ -476,15 +486,16 @@ void main() {
     await _show(tester, radio);
     await _zoomIn(tester);
     final box = _box(tester);
-    // The finger left by 100 of 400 pixels: the window right by a quarter of its 36.8 kHz.
-    await tester.dragFrom(Offset(box.center.dx, box.bottom - 40), const Offset(-100, 0));
+    // The finger left by 100 of 400 pixels, clear of the dial's line: the window right by a quarter of its 36.8 kHz.
+    await tester.dragFrom(Offset(box.left + box.width * .3, box.bottom - 40), const Offset(-100, 0));
     await tester.pump();
     await _tap(tester, _onPan(tester, .5));
-    expect(radio.tunes.single.$1, closeTo(_zoomed + 36788 / 4, 100));
+    // On the click's coarse step.
+    expect(radio.tunes.single.$1, closeTo(_zoomed + 36788 / 4, 500));
     expect(radio.recentered, isEmpty, reason: 'a window inside the sweep is only a crop');
   });
 
-  testWidgets('a pan past the sweep moves the scope where the radio lets it, and stops at the edge where not', (tester) async {
+  testWidgets('a pan past the sweep moves the scope where the radio lets it, and stops with its middle at the edge where not', (tester) async {
     final moves = _Radio(recenters: true);
     await _show(tester, moves);
     await _zoomIn(tester);
@@ -498,64 +509,113 @@ void main() {
     await tester.dragFrom(_onPan(tester, .9), const Offset(-1000, 0));
     await tester.pump();
     await _tap(tester, _onPan(tester, .5));
-    // Half the window short of the sweep's top.
-    expect(stays.tunes.single.$1, closeTo(14100000 - 36788 / 2, 500));
+    // The window's middle on the sweep's top, its upper half past it.
+    expect(stays.tunes.single.$1, closeTo(14100000, 500));
   });
 
-  testWidgets(
-    'on the axis, away from the middle zooms in and toward it zooms out, whichever side the drag begins on, the pressed frequency under the pointer',
-    (tester) async {
-      // A direction fixed to the screen (one way always narrows) fails one of these two rightward drags.
-      final rightHalf = _Radio();
-      await _show(tester, rightHalf);
-      await tester.dragFrom(_onAxis(tester, .6), const Offset(150, 0));
-      await tester.pump();
-      expect(rightHalf.widths.last, closeTo(36788, 2));
-      // 14.060 MHz, pressed at 0.6, is carried along to where the pointer let go; held where it was
-      // pressed, a click there would land 13.8 kHz higher.
-      await _tap(tester, _onPan(tester, .975));
-      expect(rightHalf.tunes.single.$1, closeTo(14060000, 100));
+  testWidgets('a scene\'s own widest zooms past a scope that stays put, panning only until the sweep reaches the window\'s edge', (tester) async {
+    final radio = _Radio();
+    await _show(tester, radio, spectrum: const {'maxWidthHz': 400000});
+    await _zoomTo(tester, 400000);
+    expect(radio.widths.last, 400000, reason: 'bounded by the radio\'s sweep, the scene could not show the band around it');
+    // The window 400 kHz wide pans up the band no further than to hold 14.000 MHz at its low edge.
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-1000, 0));
+    await tester.pump();
+    expect(_shownMiddle(tester), 14200000);
+    expect(radio.recentered, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
+  });
 
-      final fromLeft = _Radio(maxWidth: 400000);
-      await _show(tester, fromLeft);
-      await tester.dragFrom(_onAxis(tester, .4), const Offset(150, 0));
-      await tester.pump();
-      expect(fromLeft.widths.last, closeTo(271828, 2));
-      await tester.pump(const Duration(seconds: 1));
-    },
-  );
+  testWidgets('under a window wider than the scope can be made, the scope follows the dial and not the window', (tester) async {
+    final radio = _Radio(recenters: true);
+    await _show(tester, radio, spectrum: const {'maxWidthHz': 400000, 'follow': .15});
+    await _zoomTo(tester, 400000);
+    await tester.pump(const Duration(seconds: 1));
+    final panned = radio.recentered.length;
+    // Clear of the dial's line in the middle, which a drag would tune.
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-100, 0));
+    await tester.pump(const Duration(seconds: 1));
+    expect(radio.recentered, hasLength(panned), reason: 'moved with the window, the sweep would leave the dial unswept');
+    // Into the sweep's top margin: the scope moves just far enough to put the dial 15% in from its edge.
+    radio.vfo = 14095000;
+    radio.notifyListeners();
+    radio.controller.add(_sweep());
+    await tester.pump();
+    expect(radio.recentered.last, 14095000 - 35000);
+    // Sweeps from where it was still arriving: the dial measured against where the scope was sent,
+    // not re-sent a step back at each of them.
+    await tester.pump(const Duration(milliseconds: 300));
+    radio.vfo = 14090000;
+    radio.notifyListeners();
+    radio.controller.add(_sweep());
+    await tester.pump();
+    expect(radio.recentered, hasLength(panned + 1));
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('on the axis the dial\'s line holds still and the frequency pressed on stays under the pointer', (tester) async {
+    // The dial at 0.8 across. 14.050, pressed at 0.5, carried to 0.2: 30 kHz over 0.6 of the window,
+    // which is 50 kHz wide, its middle 0.3 of that under the dial.
+    final offCenter = _Radio(maxWidth: 400000)..vfo = 14080000;
+    await _show(tester, offCenter);
+    await tester.dragFrom(_onAxis(tester, .5), const Offset(-120, 0));
+    await tester.pump();
+    expect(offCenter.widths.last, closeTo(50000, 2));
+    expect(_shownMiddle(tester), closeTo(14065000, 2), reason: 'the dial is where the operator\'s eye is: moved, the zoom would lose it');
+    await _tap(tester, _onPan(tester, .2));
+    expect(offCenter.tunes.single.$1, closeTo(14050000, 100), reason: 'the frequency taken hold of is under the pointer let go');
+    await tester.pump(const Duration(seconds: 1));
+
+    // Toward the line widens: 14.040, at 0.4, carried to 0.45 holds 10 kHz across a twentieth.
+    final toward = _Radio(maxWidth: 400000);
+    await _show(tester, toward);
+    await tester.dragFrom(_onAxis(tester, .4), const Offset(20, 0));
+    await tester.pump();
+    expect(toward.widths.last, closeTo(200000, 2));
+    await tester.pump(const Duration(seconds: 1));
+
+    // The dial off the window: the window's middle holds still in its place.
+    final away = _Radio(maxWidth: 400000)..vfo = 14300000;
+    await _show(tester, away);
+    await tester.dragFrom(_onAxis(tester, .6), Offset(10000 / 36788 * 400 - 40, 0));
+    await tester.pump();
+    expect(away.widths.last, closeTo(36788, 2));
+    expect(_shownMiddle(tester), closeTo(14050000, 2));
+    await tester.pump(const Duration(seconds: 1));
+  });
 
   testWidgets('zooming out past the sweep widens the scope as far as it goes, the radio\'s own only on command', (tester) async {
     final radio = _Radio(maxWidth: 400000);
     await _show(tester, radio);
-    await tester.dragFrom(_onAxis(tester, .5), const Offset(300, 0));
-    await tester.pump();
+    await _zoomTo(tester, 400000);
     expect(radio.widths.last, 400000);
     expect(radio.fitted.last, 400000);
 
     final narrow = _Radio(commands: false);
     await _show(tester, narrow);
-    await tester.dragFrom(_onAxis(tester, .5), const Offset(300, 0));
-    await tester.pump();
+    await _zoomTo(tester, 400000);
     expect(narrow.widths.last, 100000, reason: 'a scope the panel cannot widen bounds the zoom at the sweep');
     expect(narrow.fitted, isEmpty);
     await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('a zoom in narrows the radio\'s own scope once it ends, to cover the window where it sits', (tester) async {
-    // Cropped and never narrowed, a zoom in on a radio's widest span draws a handful of its points.
-    final radio = _Radio(maxWidth: 400000);
+    // Cropped and never narrowed, a zoom in on a radio's widest span draws a handful of its points:
+    // 36.8 of these hundred, over 400 pixels.
+    final radio = _Radio(maxWidth: 400000, minWidth: 5000);
     await _show(tester, radio);
-    final drag = await tester.startGesture(_onAxis(tester, .5));
+    radio.controller.add(_sweep(bins: 100));
+    await tester.pump();
+    final drag = await tester.startGesture(_onAxis(tester, .75));
     for (var i = 0; i < 5; i++) {
-      await drag.moveBy(const Offset(-30, 0));
+      await drag.moveBy(Offset((25000 / 36788 * 400 - 100) / 5, 0));
       await tester.pump();
     }
     expect(radio.fitted, isEmpty, reason: 'narrowed on the way in, the radio would step through every span');
     await drag.up();
     await tester.pump();
-    // The window's middle sits .375 of its width off the sweep's, which the dial centres.
-    expect(radio.fitted.single, closeTo(36788 * 1.75, 50));
+    // About the dial, which the sweep centres.
+    expect(radio.fitted.single, closeTo(36788, 50));
     await tester.pump(const Duration(seconds: 2));
     await tester.tapAt(_onAxis(tester, .9));
     await tester.pump(const Duration(milliseconds: 50));
@@ -565,8 +625,62 @@ void main() {
 
     final narrow = _Radio(commands: false);
     await _show(tester, narrow);
+    narrow.controller.add(_sweep(bins: 100));
+    await tester.pump();
     await _zoomIn(tester);
     expect(narrow.fitted, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
+
+    // 73.6 of 200 points in the window: 5.4 pixels apart across 400 pixels, and the radio narrowed;
+    // 2.7 across 200, close enough to leave its span alone.
+    for (final (pixels, narrows) in [(400.0, true), (200.0, false)]) {
+      final radio = _Radio(maxWidth: 400000, minWidth: 5000);
+      await _show(tester, radio, width: pixels);
+      radio.controller.add(_sweep(bins: 200));
+      await tester.pump();
+      await _zoomIn(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(radio.fitted.isNotEmpty, narrows, reason: 'every change of span jolts the radio\'s own screen and restretches the waterfall');
+    }
+  });
+
+  testWidgets('a zoom in stops with the narrowest sweep the scope can be made to send spread 10 pixels a point', (tester) async {
+    // 40 of a thousand points across 400 pixels: 200 Hz of a 5 kHz sweep the radio can be narrowed
+    // to, 4 kHz of the 100 kHz one a radio that cannot be is sending. Twice as wide, twice as many:
+    // a fixed count of points spreads them further apart the wider the panel.
+    for (final (minWidth, pixels, narrowest) in [(5000, 400.0, 200), (null, 400.0, 4000), (null, 800.0, 8000)]) {
+      final radio = _Radio(minWidth: minWidth);
+      await _show(tester, radio, width: pixels);
+      await _zoomTo(tester, 10);
+      await tester.pump();
+      expect(radio.widths.last, narrowest);
+      await tester.pump(const Duration(seconds: 1));
+    }
+  });
+
+  testWidgets('the axis says a drag resizes by the edge where spectrum meets waterfall and zooms elsewhere, and does both anywhere', (tester) async {
+    final radio = _Radio(maxWidth: 400000);
+    await _show(tester, radio);
+    MouseCursor cursor() => tester
+        .widgetList<MouseRegion>(find.descendant(of: find.byType(SceneSpectrumView), matching: find.byType(MouseRegion)))
+        .firstWhere((region) => region.onHover != null)
+        .cursor;
+    final box = _box(tester);
+    // The default axis is 20 pixels, under a panadapter taking 0.4 of the rest.
+    final edge = box.top + (box.height - 20) * .4;
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(Offset(box.left + 300, edge + 2));
+    await tester.pump();
+    expect(cursor(), SystemMouseCursors.resizeUpDown);
+    await mouse.moveTo(Offset(box.left + 300, edge + 12));
+    await tester.pump();
+    expect(cursor(), SystemMouseCursors.resizeLeftRight);
+    await mouse.removePointer();
+    // The cursor only says which way is likelier: a drag along the edge still zooms.
+    await tester.dragFrom(Offset(box.left + 300, edge + 2), Offset(25000 / 50000 * 400 - 100, 0));
+    await tester.pump();
+    expect(radio.widths.last, closeTo(50000, 2));
     await tester.pump(const Duration(seconds: 1));
   });
 
@@ -678,13 +792,143 @@ void main() {
     expect(label(), isNull);
   });
 
-  test('level labels sit far enough apart to read: dB on the panadapter, seconds down the waterfall', () {
-    // 112 pixels for 80 dB: 1.4 a dB, so every 20.
-    expect(spectrumLevelStep(112 / 80), 20);
-    expect(spectrumLevelStep(4), 5);
-    // Two rows a second, a pixel each: every 15 seconds; ten times faster, every 2.
-    expect(spectrumAgeStep(2), 15);
-    expect(spectrumAgeStep(20), 2);
+  testWidgets('a dial out of the window is labelled at the edge it is past, an arrow pointing the way; a click there brings it back', (tester) async {
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    final radio = _Radio();
+    await _show(tester, radio);
+    await _zoomIn(tester);
+    // The window 14.045–14.082 MHz; the dial below it, with nothing following it there.
+    radio.vfo = 14020000;
+    radio.notifyListeners();
+    await tester.pump();
+    final painter = tester.widget<CustomPaint>(labels).painter!;
+    final canvas = TestRecordingCanvas();
+    painter.paint(canvas, tester.getSize(labels));
+    final color = (painter as dynamic).vfoLabel as Color;
+    final arrows = [
+      for (final call in canvas.invocations)
+        if (call.invocation.memberName == #drawPath &&
+            (call.invocation.positionalArguments[1] as Paint).color.toARGB32() & 0xFFFFFF == color.toARGB32() & 0xFFFFFF)
+          (call.invocation.positionalArguments[0] as Path).getBounds(),
+    ];
+    expect(arrows.single.left, lessThan(4), reason: 'on the side the dial is past, in the line\'s color');
+    final away = ((painter as dynamic).hits as List).cast<dynamic>().where((hit) => hit.away as bool).single.rect as Rect;
+    expect(away.left, lessThan(1), reason: 'without it, a dial panned out of view leaves no sign where it went');
+    await tester.tapAt(tester.getTopLeft(labels) + away.center);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(_shownMiddle(tester), closeTo(14020000, 1));
+    expect(radio.tunes, isEmpty, reason: 'the click goes to the dial, not the dial to the click');
+
+    // Past the right edge, where a level strip 40 pixels wide lies over the picture: the label keeps
+    // to the window's side of it, rather than under it.
+    final strip = _Radio();
+    await _show(tester, strip, spectrum: const {'levelScale': true});
+    await _zoomIn(tester);
+    strip.vfo = 14095000;
+    strip.notifyListeners();
+    await tester.pump();
+    final labelled = tester.widget<CustomPaint>(labels).painter!;
+    labelled.paint(TestRecordingCanvas(), tester.getSize(labels));
+    final atEdge = ((labelled as dynamic).hits as List).cast<dynamic>().where((hit) => hit.away as bool).single.rect as Rect;
+    expect(atEdge.right, closeTo(360, 1));
+  });
+
+  testWidgets('the dial\'s label is found where it is drawn, upright or turned', (tester) async {
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    for (final flow in ['down', 'right']) {
+      await _show(tester, _Radio(), spectrum: {'flow': flow});
+      final painter = tester.widget<CustomPaint>(labels).painter!;
+      final canvas = TestRecordingCanvas();
+      painter.paint(canvas, tester.getSize(labels));
+      final background = ((painter as dynamic).vfoLabelBackground as Color).toARGB32() & 0xFFFFFF;
+      final drawn = [
+        for (final call in canvas.invocations)
+          if (call.invocation.memberName == #drawPath && (call.invocation.positionalArguments[1] as Paint).color.toARGB32() & 0xFFFFFF == background)
+            (call.invocation.positionalArguments[0] as Path).getBounds(),
+      ].single;
+      final hit = ((painter as dynamic).hits as List).cast<dynamic>().singleWhere((hit) => hit.annotation == null).rect as Rect;
+      // Found where it would be upright, a turned one would shadow what lies there and leave what it covers clickable.
+      final off = [hit.left - drawn.left, hit.top - drawn.top, hit.right - drawn.right, hit.bottom - drawn.bottom].map((d) => d.abs());
+      expect(off.reduce(math.max), lessThan(1), reason: '$flow: drawn at $drawn, found at $hit');
+    }
+  });
+
+  testWidgets('a collapsed annotation is a line until the pointer is on it, then whole over the labels it covers', (tester) async {
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    final radio = _Radio();
+    const spectrum = {
+      'vfoLabel': false,
+      'annotations': [
+        {'id': 'shown', 'text': 'K9NEW', 'hz': 14050000, 'offset': 20, 'event': 'spot', 'borderColor': '#FFFFFF'},
+        {'id': 'hidden', 'text': 'W1OLD', 'hz': 14050500, 'offset': 17, 'event': 'spot', 'borderColor': '#FFFFFF', 'collapsed': true},
+      ],
+    };
+    await _show(tester, radio, spectrum: spectrum);
+    List<String> drawn() {
+      final painter = tester.widget<CustomPaint>(labels).painter!;
+      final canvas = TestRecordingCanvas();
+      painter.paint(canvas, tester.getSize(labels));
+      return [
+        for (final call in canvas.invocations)
+          if (call.invocation.memberName == #drawParagraph) 'text',
+        for (final hit in ((painter as dynamic).hits as List).cast<dynamic>()) (hit.annotation as SceneSpectrumAnnotation).id,
+      ];
+    }
+
+    expect(drawn(), ['text', 'shown', 'hidden'], reason: 'the collapsed one is a line, no text');
+    final painter = tester.widget<CustomPaint>(labels).painter!;
+    final line =
+        ((painter as dynamic).hits as List).cast<dynamic>().firstWhere((hit) => (hit.annotation as SceneSpectrumAnnotation).id == 'hidden').rect as Rect;
+    // Reached mostly under the line, away from the labels over it, which keep their own.
+    final canvas = TestRecordingCanvas();
+    painter.paint(canvas, tester.getSize(labels));
+    final drawnLine = [
+      for (final call in canvas.invocations)
+        if (call.invocation.memberName == #drawPath) (call.invocation.positionalArguments[0] as Path).getBounds(),
+    ].firstWhere((b) => b.height == 0 && (b.width - line.width).abs() < .5);
+    expect((drawnLine.top - line.top, line.bottom - drawnLine.top), (3, 8));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getTopLeft(labels) + line.center);
+    await tester.pump();
+    expect(drawn(), ['text', 'hidden'], reason: 'drawn whole, over the label it would cover, which waits');
+    final box = ((tester.widget<CustomPaint>(labels).painter! as dynamic).hits as List).cast<dynamic>().single.rect as Rect;
+    expect(line.width, closeTo(box.width * .8, .5), reason: 'four fifths of the label it stands for');
+    await mouse.moveTo(tester.getTopLeft(labels) + const Offset(20, 5));
+    await tester.pump();
+    expect(drawn(), ['text', 'shown', 'hidden']);
+    await mouse.removePointer();
+
+    // A touch has no hover: the first tap opens it, so a station is never worked unseen; the next acts.
+    final events = await _show(tester, radio, spectrum: spectrum);
+    await tester.tapAt(tester.getTopLeft(labels) + line.center);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(drawn(), ['text', 'hidden']);
+    expect(events.where((e) => e['annotation'] == 'hidden'), isEmpty);
+    final opened = ((tester.widget<CustomPaint>(labels).painter! as dynamic).hits as List).cast<dynamic>().single.rect as Rect;
+    await tester.tapAt(tester.getTopLeft(labels) + opened.center);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(events.where((e) => e['annotation'] == 'hidden'), isNotEmpty);
+  });
+
+  testWidgets('a crowded band\'s text stays laid out from one frame to the next', (tester) async {
+    // 256 labels and the axis's, the level strip's and the dial's: kept to 256, the cache would let go
+    // of each frame's text before the next asked for it again, laying all of it out every frame.
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    await _show(
+      tester,
+      _Radio(),
+      spectrum: {
+        'levelScale': true,
+        'annotations': [
+          for (var i = 0; i < 256; i++) {'id': 'a$i', 'text': 'K${i}ABC', 'hz': 14000000 + i * 390, 'offset': 17, 'event': 'spot', 'collapsed': true},
+        ],
+      },
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final cache = (tester.widget<CustomPaint>(labels).painter! as dynamic).texts as SpectrumTextCache;
+    expect(cache.length, greaterThan(256));
   });
 
   testWidgets('the level strip sits at the end from API 17, at the start or nowhere as the scene says, upright or sideways', (tester) async {
@@ -1050,9 +1294,9 @@ void main() {
       for (final e in events.where((e) => e['gesture'] != null))
         '${e['gesture']} ${e['phase']} ${(e['value'] as num).toStringAsFixed(e['gesture'] == 'split' ? 2 : 0)}',
     ];
-    final drag = await tester.startGesture(_onAxis(tester, .5));
+    final drag = await tester.startGesture(_onAxis(tester, .75));
     for (var i = 0; i < 5; i++) {
-      await drag.moveBy(const Offset(-30, 0));
+      await drag.moveBy(Offset((25000 / 36788 * 400 - 100) / 5, 0));
       await tester.pump();
     }
     expect(told(), isEmpty, reason: 'a scene saving its preferences wants where the zoom ended, not every step of it');
@@ -1061,10 +1305,10 @@ void main() {
     expect(told(), ['zoom commit 36788']);
 
     events.clear();
-    await tester.dragFrom(Offset(_box(tester).center.dx, _box(tester).bottom - 40), const Offset(-100, 0));
+    await tester.dragFrom(Offset(_box(tester).left + _box(tester).width * .3, _box(tester).bottom - 40), const Offset(-100, 0));
     await tester.pump();
-    // A quarter of the window right of where the zoom left its middle.
-    expect(told(), ['pan commit 14072992']);
+    // A quarter of the window right of where the zoom left its middle, on the dial.
+    expect(told(), ['pan commit 14059197']);
 
     // A double click hands the width back: 0, for a scene keeping the operator's in its span to drop it.
     events.clear();
@@ -1385,6 +1629,76 @@ void main() {
     expect(_shownMiddle(tester), radio.vfo - 35000);
     expect(radio.recentered.last, radio.vfo - 35000);
     await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('with the window still, the scope moves for a dial jumping in from out of view or near its edge, not for every move', (tester) async {
+    final radio = _Radio(recenters: true);
+    Future<void> tune(int hz, {int sweptFrom = 14000000}) async {
+      radio.vfo = hz.toDouble();
+      radio.notifyListeners();
+      radio.controller.add(_sweep(lowHz: sweptFrom));
+      await tester.pump();
+    }
+
+    await _show(tester, radio, spectrum: const {'follow': .15});
+    await _zoomIn(tester);
+    // Panned 41.4 kHz up: the window 14.073–14.110 MHz, past the sweep's top. The fake's sweeps stay
+    // where the test puts them.
+    await tester.dragFrom(_onPan(tester, .3), const Offset(-450, 0));
+    await tester.pump(const Duration(seconds: 2));
+    final panned = radio.recentered.length;
+
+    // A jump from 14.050 to a spot in view, the window not covered: centred on the dial at once. Left
+    // at the margin, the dial would be a step from moving it again.
+    await tune(14080000);
+    expect(radio.recentered, hasLength(panned + 1));
+    expect(radio.recentered.last, 14080000);
+    radio.controller.add(_sweep(lowHz: 14030000));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // A click inside a sweep that covers the window: each change of it redraws the picture.
+    await tune(14090000, sweptFrom: 14030000);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(radio.recentered, hasLength(panned + 1));
+
+    // A click in view, nowhere near the sweep's edge, with the sweep back short of the window's top:
+    // left there, the click shows a partial picture until the next pan.
+    radio.controller.add(_sweep());
+    await tester.pump(const Duration(milliseconds: 300));
+    await tune(14082000);
+    expect(radio.recentered, hasLength(panned + 2));
+    expect(radio.recentered.last, 14082000);
+
+    // A spin, the sweep short of the window again (the radio never went), the dial well inside it:
+    // knob steps leave it be.
+    radio.controller.add(_sweep());
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tune(14084000);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(radio.recentered, hasLength(panned + 2));
+    radio.controller.add(_sweep(lowHz: 14009800));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Spun up in 2 kHz steps, the sweep covering: moved once, as the dial passes 15 kHz under its top,
+    // and only as far as keeps it 15 kHz in.
+    for (var hz = 14084000; hz <= 14096000; hz += 2000) {
+      await tune(hz, sweptFrom: 14009800);
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(radio.recentered, hasLength(panned + 3));
+    expect(radio.recentered.last, closeTo(14096000 - 35000, 500));
+    radio.controller.add(_sweep(lowHz: 14011000));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // A jump to 14.104, the scope narrowed to 40 kHz short of the window: centred on the dial, it would
+    // leave the window's low 11 kHz bare. Covering the window comes first; within that, as near
+    // centred as goes — its low edge on the window's.
+    radio.controller.add(_sweep(width: 40000));
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tune(14104000);
+    expect(radio.recentered, hasLength(panned + 4));
+    expect(radio.recentered.last, closeTo(14072992 + 20000, 500));
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('after a pan, follow leaves the window where the operator put it until the dial moves', (tester) async {

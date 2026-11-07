@@ -379,9 +379,9 @@ void main() {
       expect(() => PanelScene(scene(layers: [layer('a', '<svg/>')], strings: {'s': 'v0'}, controls: [dropdown])), refusedFor(PanelBudget.items, max: 64));
       expect(
         () => SceneSpectrumSpec({
-          'annotations': many(65, (i) => {'id': 'a$i'}),
+          'annotations': many(257, (i) => {'id': 'a$i'}),
         }),
-        refusedFor(PanelBudget.items, max: 64),
+        refusedFor(PanelBudget.items, max: 256),
       );
       expect(
         () => SceneSpectrumSpec({
