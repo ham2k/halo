@@ -48,6 +48,7 @@ import type {
   HistoryForCallOptions,
   GetSpotsOptions,
   BoardSpot,
+  HeldBandAnnotation,
 } from "./types.ts"
 import { isValidAccountKvKey, isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
@@ -489,6 +490,8 @@ const IDENTITY_HOST_METHODS = new Set([
   "statusBarDismissNotice",
   "fyiPost",
   "fyiClear",
+  "putBandAnnotations",
+  "removeBandAnnotations",
   "webSocketOpen",
   "webSocketSend",
   "webSocketClose",
@@ -749,6 +752,12 @@ function operationUuidOf(args: unknown): string | undefined {
   return typeof uuid === "string" && uuid !== "" ? uuid : undefined
 }
 
+/// The station call of the `operation` a hook was handed, if it was handed one.
+function stationOf(args: unknown): string | undefined {
+  const call = (args as { operation?: { stationCall?: unknown } } | null | undefined)?.operation?.stationCall
+  return typeof call === "string" && call.trim() !== "" ? call : undefined
+}
+
 async function callHookMethod(record: HookRecord, method: string, args: unknown, online = true): Promise<unknown> {
   const member = record.hook[method]
   // Plain data members don't get a ctx — skip the context fetches entirely.
@@ -822,6 +831,14 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
         operationUuid: options?.operationUuid ?? (options?.annotate === false ? undefined : operationUuidOf(args)),
         extensionKey: record.extensionKey,
       })) as BoardSpot[] | null) ?? [],
+    // The band's annotations, for the station of the operation this hook was
+    // handed unless told another — see HookContext.getBandAnnotations.
+    getBandAnnotations: async (options: { band: string; station?: string }) =>
+      ((await dispatchHostCall("getBandAnnotations", {
+        band: options?.band,
+        station: options?.station ?? stationOf(args),
+        extensionKey: record.extensionKey,
+      })) as HeldBandAnnotation[] | null) ?? [],
     // Cross-operation log read, backing `call-history` — see
     // HookContext.getHistoryForCall.
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>

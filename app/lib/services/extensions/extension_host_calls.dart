@@ -32,6 +32,9 @@ class _ExtensionHostCalls {
       'getQsoChanges' => _getQsoChanges(params),
       'getSpotsForCall' => _getSpotsForCall(params),
       'getSpots' => _getSpots(params),
+      'getBandAnnotations' => _getBandAnnotations(params),
+      'putBandAnnotations' => _putBandAnnotations(params),
+      'removeBandAnnotations' => _removeBandAnnotations(params),
       'suggestQso' => _suggestQso(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
@@ -345,6 +348,41 @@ class _ExtensionHostCalls {
     // the same everywhere rather than only where there are spots.
     SpotsQuery.fromParams(params);
     return const <Map<String, dynamic>>[];
+  }
+
+  /// Reads what is held and what the hooks already answered; a band read
+  /// for the first time asks them in the background (BandAnnotationsService).
+  Future<dynamic> _getBandAnnotations(Map<String, dynamic> params) async {
+    final band = params['band'], station = params['station'];
+    if (band is! String || band.trim().isEmpty) throw const FormatException('getBandAnnotations: `band` must be a band name');
+    if (station != null && station is! String) throw const FormatException('getBandAnnotations: `station` must be a callsign');
+    return _service.bandAnnotations.forBand(band, station: station as String?);
+  }
+
+  String _bandAnnotationSource(Map<String, dynamic> params) {
+    final ns = params['ns'] as String;
+    if (ns == userBandAnnotationSource) throw ExtensionHostException("band annotations refused: '$ns' is the operator's own");
+    return ns;
+  }
+
+  /// Under the calling extension's own key: no extension puts or takes
+  /// another's, or the operator's.
+  Future<dynamic> _putBandAnnotations(Map<String, dynamic> params) async {
+    final ns = _bandAnnotationSource(params);
+    final annotations = params['annotations'];
+    if (annotations is! List) throw const FormatException('putBandAnnotations: `annotations` must be a list');
+    _service.bandAnnotations.put(ns, annotations);
+    return null;
+  }
+
+  Future<dynamic> _removeBandAnnotations(Map<String, dynamic> params) async {
+    final ns = _bandAnnotationSource(params);
+    final keys = params['keys'];
+    if (keys != null && (keys is! List || keys.any((k) => k is! String))) {
+      throw const FormatException('removeBandAnnotations: `keys` must be a list of strings');
+    }
+    _service.bandAnnotations.remove(ns, (keys as List?)?.cast<String>());
+    return null;
   }
 
   Future<dynamic> _getHistoryForCall(Map<String, dynamic> params) async {

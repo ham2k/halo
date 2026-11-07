@@ -5,7 +5,7 @@
 // above the noise where a signal's peak would be, each with a leader up from the spectrum's foot. The app zooms and pans the picture itself, so the annotations are laid out in lanes by
 // frequency at the zoom the pane last reported: a pan leaves them right, and a zoom's `commit`
 // brings a render that lays them out again.
-import type { BoardSpot, PanelSceneSpectrumAnnotation, PanelSceneSpectrumLayer, SuggestedQso } from "@ham2k/extension-sdk"
+import type { BoardSpot, HeldBandAnnotation, PanelSceneSpectrumAnnotation, PanelSceneSpectrumLayer, SuggestedQso } from "@ham2k/extension-sdk"
 
 /** One station on the scope: its newest report, with the references of them all. */
 export interface ScopeSpot {
@@ -24,6 +24,12 @@ export interface ScopeSpot {
   icon?: string
   iconColor?: string
   emoji?: string
+  /** A `general` band annotation rather than a station: its label for a call, nothing to log. */
+  note?: boolean
+  /** Its ink, where it suggests one. */
+  color?: string
+  /** The stretch it covers in Hz either side of it, where its mode does not say. */
+  heard?: [number, number]
 }
 
 /**
@@ -35,9 +41,9 @@ export function scopeSpots(board: BoardSpot[], nowMillis: number): ScopeSpot[] {
   for (const s of board) {
     if (s.freq == null) continue
     const call = s.their.call.toUpperCase()
-    // A band tag ("QRM") or a call not fully copied ("W1A?") names no one station: two of them
-    // are two places on the band, each its own mark.
-    const key = s.spot.tag || call.includes("?") ? `${call}@${s.freq}` : call
+    // A call not fully copied ("W1A?") names no one station: two of them are two places on the
+    // band, each its own mark.
+    const key = call.includes("?") ? `${call}@${s.freq}` : call
     reports.set(key, [...(reports.get(key) ?? []), s])
   }
   return [...reports].map(([key, all]) => {
@@ -66,6 +72,38 @@ export function scopeSpots(board: BoardSpot[], nowMillis: number): ScopeSpot[] {
   })
 }
 
+/**
+ * The band's `general` annotations, as marks among the spots: each labelled, where it is or in the
+ * middle of the stretch it covers, in the ink it suggests, never fading.
+ */
+export function noteSpots(annotations: HeldBandAnnotation[]): ScopeSpot[] {
+  // A key said twice — a hook's answer and a put under one key — would be a duplicate mark, which
+  // the scene refuses whole.
+  const seen = new Map<string, number>()
+  return annotations
+    .filter((a) => a.type === "general")
+    .map((a, i) => {
+      const at = Math.round(a.toHz != null ? (a.fromHz + a.toHz) / 2 : a.fromHz)
+      const base = `note:${a.source}:${a.key ?? `${a.fromHz}:${i}`}`
+      const n = seen.get(base) ?? 0
+      seen.set(base, n + 1)
+      return {
+        call: a.label ?? "",
+        key: n ? `${base}#${n}` : base,
+        khz: at / 1000,
+        refs: [],
+        ageMinutes: 0,
+        worked: false,
+        isSelf: false,
+        fresh: false,
+        note: true,
+        ...(a.icon ? { icon: a.icon, iconColor: a.color } : {}),
+        ...(a.color ? { color: a.color } : {}),
+        ...(a.toHz != null && a.toHz > a.fromHz ? { heard: [a.fromHz - at, a.toHz - at] as [number, number] } : {}),
+      }
+    })
+}
+
 /** Who keeps a place when the lanes are full: something new first, then the unworked, then the newest. */
 const rank = (s: ScopeSpot) => (s.fresh ? 0 : s.worked ? 2 : 1) * 1e6 + s.ageMinutes
 
@@ -74,7 +112,7 @@ const inks = { fresh: "#FFD166", self: "#8EE3A1", worked: "#7F8EA0", plain: "#E8
 /** The scope's own background; a spot's box is it, see-through, so it dims the picture rather than standing out from it. */
 export const scopeBackground = "#0B0E17"
 const leader = "#8FA3B8"
-const ink = (s: ScopeSpot) => (s.fresh ? inks.fresh : s.isSelf ? inks.self : s.worked ? inks.worked : inks.plain)
+const ink = (s: ScopeSpot) => s.color ?? (s.fresh ? inks.fresh : s.isSelf ? inks.self : s.worked ? inks.worked : inks.plain)
 /** The oldest asked for is drawn at this strength; a fresh one at full. */
 const faintest = 0.4
 
@@ -173,7 +211,7 @@ export function spotMarks(spots: ScopeSpot[], layout: SpotLayout): { annotations
       event: layout.event,
     })
     // Where the signal would be heard, a bar along the edge, under the leader and its dot.
-    const heard = spotPassband(s.mode, s.khz)
+    const heard = s.heard ?? spotPassband(s.mode, s.khz)
     if (heard) {
       layers.push({
         id: `passband:${s.key ?? s.call}`,

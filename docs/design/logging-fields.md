@@ -1318,42 +1318,39 @@ hides; it deletes nothing. It happens on the board (`mergedSpotBoard`), after
 the operator's source filter, so switching the local source off, or taking a
 local spot back, brings back what it replaced, and an extension asking for
 one source's spots gets all of them. A spot posted after the local one is news the local one
-cannot speak for, and stays. Digital modes make no station's local spot
-(band tags, below, are the exception): every station
+cannot speak for, and stays. Digital modes make no local spot: every station
 in the passband shares one dial frequency, so a frequency says nothing about
 who is on it. Settings › Spotting turns the whole thing off, and takes down
-the local spots already up.
+the local spots and band tags already up.
 
-**A band tag** marks an area of the band rather than a station: any text
+**A band tag** marks a place on the band rather than a station: any text
 ending in `!` in the call field, and Enter ("QRM!", "NET!", "CONTEST!"), puts
-the text without its `!` on the board at the radio's frequency, band and mode,
-and empties the call field for the next call. **A lone `!`** and Enter clears
-the local spots there instead — every one within the window above on that
-band and family of modes, tags and stations, those hidden under the newest
-too. A command takes Enter first, so text that interprets as one runs as the
-command and tags nothing. Only a single entry tags: in a call stack or list
-(`//`, `,`) Enter is the logging path's, which keeps the queued calls.
+the text without its `!` at the radio's frequency as the operator's own band
+annotation (`general`, under the source `user`; `putBandTag`), and empties
+the call field for the next call. It is no spot: it is not on the Spots list
+and hides no spot, and panels that draw a band's annotations, the Band Scope
+among them, show it where it is. It stays as long as a local spot would.
+**A lone `!`** and Enter clears the local spots there instead — every one
+within the window above on that band and family of modes, those hidden under
+the newest too — and the band tags within that window on the band, whatever
+mode they were tagged in. A command takes Enter first, so text that
+interprets as one runs as the command and tags nothing. Only a single entry
+tags: in a call stack or list (`//`, `,`) Enter is the logging path's, which
+keeps the queued calls.
 
-When no spot can be made — no frequency, a time other than the live one, or
-local spots off in Settings — the text stays in the field and the message
-slot says why; emptied, the field would read as done.
+When no spot or tag can be made — no frequency, a time other than the live
+one, or local spots off in Settings — the text stays in the field and the
+message slot says why; emptied, the field would read as done.
 
-A tag is sent once under a key of its own that nothing follows. It replaces
-by frequency alone, as does a call not fully copied: the text names no
-station, and two "QRM"s, or two stations both copied as "W1A?", are two places
-on the band — nor does the board merge one with another spot by its text, so
-a tag reading "W1AW" never swallows the real W1AW's spot beside it. It is
-spotted in a digital mode too, where a frequency names a stretch of the
-passband even when it names no station. A tag, and a call not fully copied,
-name no operator (`spotOperatorCalls` answers none,
-`isLocalSpotWithoutStation`): on the board, but never looked up, scored,
-chased, counted on a continent or taken for our own call, each of which would
-act on text nobody heard as a callsign. A tag carries `spot.tag` to say so,
-rather than being judged by its text: "Q65" and "JT65" read as callsigns. Its
-row in the Spots list puts its text in the call field when tapped, like any
-row, but does not slide to log (`isBandTag`): an area of the band is no
-contact. Neither row offers Ignore, which keeps a verdict per operator; a lone
-`!` takes either down.
+Each tag is its own, under a key of its own, so two "QRM"s are two places on
+the band. A call not fully copied replaces by frequency alone: the text names
+no station, and two stations both copied as "W1A?" are two places on the
+band, nor does the board merge one with another spot by its text. It names no
+operator (`spotOperatorCalls` answers none, `isLocalSpotWithoutStation`): on
+the board, but never looked up, scored, chased, counted on a continent or
+taken for our own call, each of which would act on text nobody heard as a
+callsign. Its row offers no Ignore, which keeps a verdict per operator; a lone
+`!` takes it down.
 
 ## Focus and the secondary controls
 

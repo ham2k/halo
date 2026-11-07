@@ -1,0 +1,9 @@
+{
+  "key": "band-plan",
+  "name": "Band Plan",
+  "version": "0.1.0",
+  "api": 20,
+  "description": "The band plan where the station is, as band annotations: the bands' edges, their modes, the license levels' privileges, the FT8 and FT4 windows, and the frequencies known for something",
+  "keywords": ["band plan", "band edges", "license", "modes"],
+  "hooks": ["bandAnnotations"]
+}

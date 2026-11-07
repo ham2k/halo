@@ -5,6 +5,7 @@ import assert from "node:assert/strict"
 import type {
   BoardSpot,
   GetSpotsOptions,
+  HeldBandAnnotation,
   HookContext,
   PanelEnvironment,
   PanelRadioSet,
@@ -14,8 +15,9 @@ import type {
   PanelSceneEvent,
   SuggestedQso,
 } from "@ham2k/extension-sdk"
+import { annotationsFor } from "../../band-plan/src/plan.ts"
 import { createBandScope, type BandScopeHost } from "./band-scope.ts"
-import { scopeBackground, scopeSpots, spotMarks, type ScopeSpot } from "./spots.ts"
+import { noteSpots, scopeBackground, scopeSpots, spotMarks, type ScopeSpot } from "./spots.ts"
 
 const now = 1_800_000_000_000
 
@@ -71,8 +73,16 @@ function spot(call: string, khz: number, extra: Partial<BoardSpot> & { ageMinute
   return { their: { call }, freq: khz, band: "20m", spot: { timeInMillis: now - ageMinutes * 60000, source }, ...rest }
 }
 
-function harness(board: BoardSpot[]) {
+/** 20 m's plan as the host hands it over. */
+const plan20 = (): HeldBandAnnotation[] => annotationsFor("20m").map((a) => ({ ...a, band: "20m", importance: a.importance ?? "primary", source: "band-plan" }))
+
+function note(key: string, fromHz: number, extra: Partial<HeldBandAnnotation> = {}): HeldBandAnnotation {
+  return { type: "general", key, fromHz, band: "20m", importance: "primary", source: "user", ...extra }
+}
+
+function harness(board: BoardSpot[], said: HeldBandAnnotation[] = plan20()) {
   const asked: GetSpotsOptions[] = [],
+    askedAbout: { band: string; station?: string }[] = [],
     suggested: SuggestedQso[] = [],
     tuned: PanelRadioSet[] = []
   let accepts = true
@@ -87,6 +97,7 @@ function harness(board: BoardSpot[]) {
   const ctx = {
     online: false,
     getSpots: async (options?: GetSpotsOptions) => (asked.push(options ?? {}), await fetched, board),
+    getBandAnnotations: async (options: { band: string; station?: string }) => (askedAbout.push(options), said),
   } as unknown as HookContext
   const hook = createBandScope(host)
   const args = (config: PanelRenderArgs["config"] = {}): PanelRenderArgs => ({
@@ -112,7 +123,7 @@ function harness(board: BoardSpot[]) {
     fetched = new Promise((resolve) => (release = resolve))
     return () => ((fetched = undefined), release())
   }
-  return { render, event, asked, suggested, tuned, refuse: () => (accepts = false), hold }
+  return { render, event, asked, askedAbout, suggested, tuned, refuse: () => (accepts = false), hold }
 }
 
 const offsets = (scope: { annotations?: { id: string; offset?: unknown }[] }) => Object.fromEntries((scope.annotations ?? []).map((a) => [a.id, a.offset]))
@@ -249,21 +260,57 @@ test("a click on a spot works it as a Spots Panel tap; with no operation to take
   assert.deepEqual(tuned, [{ id: "k4", frequencyHz: 14250500, mode: "USB" }])
 })
 
-test("two band tags of one text, or two calls copied alike, are two places on the band, each worked where it is", async () => {
-  // Grouped by call like a station's reports, the second "QRM" would vanish under the first.
-  const tag = (khz: number, ageMinutes: number) => {
-    const s = spot("QRM", khz, { ageMinutes, source: "local" })
-    return { ...s, spot: { ...s.spot, tag: true } }
-  }
-  const { render, event, suggested } = harness([tag(14020, 1), tag(14250, 2), spot("W1A?", 14030, { mode: "CW" }), spot("W1A?", 14300, { mode: "SSB" })])
+test("two calls copied alike are two places on the band, each worked where it is", async () => {
+  // Grouped by call like a station's reports, the second "W1A?" would vanish under the first.
+  const { render, event, suggested } = harness([spot("W1A?", 14030, { mode: "CW" }), spot("W1A?", 14300, { mode: "SSB" })])
   const scope = await render({ plan: "none" })
   const ids = (scope.annotations ?? []).map((a) => a.id).sort()
-  assert.deepEqual(ids, ["spot:QRM@14020", "spot:QRM@14250", "spot:W1A?@14030", "spot:W1A?@14300"])
-  await event({ action: "spot:k4", phase: "activate", annotation: "spot:QRM@14250" })
+  assert.deepEqual(ids, ["spot:W1A?@14030", "spot:W1A?@14300"])
+  await event({ action: "spot:k4", phase: "activate", annotation: "spot:W1A?@14300" })
   assert.deepEqual(
     suggested.map((q) => [q.their?.call, q.freq]),
-    [["QRM", 14250]],
+    [["W1A?", 14300]],
   )
+})
+
+test("the band's general annotations stand among the spots, in their own ink, and a click tunes there with nothing to log", async () => {
+  // Two of one text are two places on the band: keyed by their text, one would hide the other.
+  const said = [...plan20(), note("qrm-1", 14020000, { label: "QRM" }), note("qrm-2", 14060000, { label: "QRM", color: "#FF4040", toHz: 14062000 })]
+  const { render, event, suggested, tuned } = harness([spot("K1ABC", 14030)], said)
+  const scope = await render({ plan: "none" })
+  const notes = (scope.annotations ?? []).filter((a) => a.id.startsWith("spot:note:"))
+  assert.deepEqual(
+    notes.map((a) => [a.id, a.text, a.hz]),
+    [
+      ["spot:note:user:qrm-1", "QRM", 14020000],
+      // A stretch is marked in its middle, its bar along the whole of it.
+      ["spot:note:user:qrm-2", "QRM", 14061000],
+    ],
+  )
+  assert.equal(notes[1].color, "#FFFF4040")
+  const bar = scope.layers?.find((l) => l.id === "passband:note:user:qrm-2")
+  assert.deepEqual([bar?.x, bar?.x2], ["freq:14060000", "freq:14062000"])
+  await event({ action: "spot:k4", phase: "activate", annotation: "spot:note:user:qrm-2" })
+  assert.deepEqual(suggested, [], "a note names no station for the logging fields")
+  assert.deepEqual(tuned, [{ id: "k4", frequencyHz: 14061000 }])
+  // The spots and the annotations are each the operator's to switch: off, either leaves the other.
+  const off = await render({ plan: "none", spots: false })
+  assert.deepEqual(
+    (off.annotations ?? []).map((a) => a.id),
+    ["spot:note:user:qrm-1", "spot:note:user:qrm-2"],
+  )
+  const quiet = await render({ plan: "none", notes: false })
+  assert.deepEqual(
+    (quiet.annotations ?? []).map((a) => a.id),
+    ["spot:K1ABC"],
+  )
+})
+
+test("the annotations asked for are the radio's band's, for the operation's station by default", async () => {
+  const { render, askedAbout } = harness([])
+  await render()
+  // The station is the kernel's to fill in from the operation the render was handed.
+  assert.deepEqual(askedAbout, [{ band: "20m" }])
 })
 
 test("a click while the spots are being fetched again works the spot on the screen", async () => {
@@ -296,6 +343,13 @@ test("the band plan is drawn across the whole band, not only about the dial", as
   const scope = await render({ plan: "edges" })
   assert.deepEqual(
     scope.layers?.filter((l) => l.id.startsWith("plan:edge:")).map((l) => l.id),
-    ["plan:edge:14000", "plan:edge:14350"],
+    ["plan:edge:14000000", "plan:edge:14350000"],
   )
+})
+
+test("one note key said twice, by a hook and by a put, is two marks with no key twice", () => {
+  // A duplicate mark id makes the scene refuse the whole picture.
+  const note = { type: "general" as const, fromHz: 14300000, band: "20m", importance: "primary" as const, source: "nets", key: "net" }
+  const keys = noteSpots([note, { ...note, label: "again" }]).map((s) => s.key)
+  assert.equal(new Set(keys).size, 2)
 })

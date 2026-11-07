@@ -93,79 +93,83 @@ void main() {
     });
   });
 
-  group('incomplete calls and band tags', () {
+  group('incomplete calls', () {
     test('a call not fully copied is spotted: someone is there', () {
       expect(callOfSpot(localSpotFromQso(draft('W1A?'), now: 0)!), 'W1A?');
       expect(localSpotFromQso(draft('W1A?', mode: 'FT8'), now: 0), isNull, reason: 'still a station, so still not in digital');
-    });
-
-    test('a tag is any text, and tags a digital passband too', () {
-      expect(localSpotFromQso(draft('QRM'), now: 0), isNull, reason: 'untagged, text that is no callsign is not spotted');
-      expect(callOfSpot(localSpotFromQso(draft('QRM'), now: 0, tag: true)!), 'QRM');
-      expect(localSpotFromQso(draft('CONTEST', mode: 'FT8'), now: 0, tag: true), isNotNull);
-    });
-
-    test('a tag replaces the spots on its frequency, as a station worked there does', () {
-      final tag = localSpotFromQso(draft('QRM'), now: nowMillis(), tag: true)!;
-      expect(localSpotReplaces(tag, fetched('K2ABC', freq: 14250.05)), isTrue);
+      expect(localSpotFromQso(draft('QRM'), now: 0), isNull, reason: 'text that is no callsign is not spotted');
     });
 
     test('isLocalSpotWithoutStation: the local spots whose call is no callsign', () {
-      expect(isLocalSpotWithoutStation(localSpotFromQso(draft('QRM'), now: 0, tag: true)!), isTrue);
       expect(isLocalSpotWithoutStation(localSpotFromQso(draft('W1A?'), now: 0)!), isTrue);
       expect(isLocalSpotWithoutStation(local('W1AW')), isFalse);
       // A network spot's call is the network's to vouch for.
-      expect(isLocalSpotWithoutStation(fetched('QRM')), isFalse);
-    });
-
-    test('a tag is one by its marker, not its text: Q65 and JT65 read as callsigns', () {
-      // Judged by shape, a digital-mode tag would be looked up and scored as a station.
-      for (final text in ['Q65', 'JT65', 'W1AW']) {
-        expect(isLocalSpotWithoutStation(localSpotFromQso(draft(text, mode: 'FT8'), now: 0, tag: true)!), isTrue, reason: text);
-      }
+      expect(isLocalSpotWithoutStation(fetched('W1A?')), isFalse);
     });
 
     test('a call stack or list is never one spot, a call not fully copied in it included', () {
       for (final text in ['K1ABC//W1A?', 'W1AW,K1A?']) {
         expect(localSpotFromQso(draft(text), now: 0), isNull, reason: text);
-        expect(localSpotFromQso(draft(text), now: 0, tag: true), isNull, reason: text);
       }
     });
 
-    test('tags and calls not fully copied replace by frequency only, never by their text', () {
+    test('calls not fully copied replace by frequency only, never by their text', () {
       Map<String, dynamic> older(Map<String, dynamic> spot) => {
         ...spot,
         'spot': {...spot['spot'] as Map, 'timeInMillis': nowMillis() - 60000},
       };
-      // Two QRMs, or two stations both copied as W1A?, are two places on the band.
-      final tag = localSpotFromQso(draft('QRM'), now: nowMillis(), tag: true)!;
-      expect(localSpotReplaces(tag, older(localSpotFromQso(draft('QRM', freq: 14200), now: 0, tag: true)!)), isFalse);
+      // Two stations both copied as W1A? are two places on the band.
       expect(localSpotReplaces(local('W1A?'), older(local('W1A?', freq: 14200))), isFalse);
-      // A tag that reads as a callsign is still no station that call could move.
-      expect(localSpotReplaces(local('W1AW'), older(localSpotFromQso(draft('W1AW', freq: 14200), now: 0, tag: true)!)), isFalse);
     });
 
     test('name no operator: nothing reads their text as a callsign', () {
-      // Read as one, "NET" is a US call and "Q65" a station to look up, score and chase.
-      expect(spotOperatorCalls(localSpotFromQso(draft('NET'), now: 0, tag: true)!), isEmpty);
-      expect(spotOperatorCalls(localSpotFromQso(draft('Q65', mode: 'FT8'), now: 0, tag: true)!), isEmpty);
       expect(spotOperatorCalls(local('W1A?')), isEmpty);
       expect(spotOperatorCalls(local('W1AW')), ['W1AW']);
     });
 
     test('on the board, never merged with a spot by their text', () {
-      Map<String, dynamic> tag(String text, double freq) => localSpotFromQso(draft(text, freq: freq), now: nowMillis(), tag: true)!;
       // Each within the call-merge pass's 0.5 kHz, beyond a signal's width.
       final board = mergedSpotBoard(
         {
-          localSpotSource: [tag('QRM', 14200.0), tag('QRM', 14200.3), tag('W1AW', 14230.0)],
+          localSpotSource: [local('W1A?', freq: 14200.0), local('W1A?', freq: 14200.3)],
           'pota': [fetched('W1AW', freq: 14230.3)],
         },
         const {},
         entityOf: (_) => 'K',
       );
-      expect(board, hasLength(4), reason: 'two QRMs are two places, and a tag reading W1AW must not swallow the station');
-      expect(board.where((spot) => spot['hookKey'] == 'pota'), hasLength(1));
+      expect(board, hasLength(3), reason: 'two stations copied as W1A? are two places');
+    });
+  });
+
+  group('band tags', () {
+    test('a tag marks the band where the radio is, as the operator\'s own annotation, for as long as a local spot stands', () {
+      final service = SpotsService(fetchSpots: feed(const []));
+      addTearDown(service.dispose);
+      expect(putBandTag(service, ' QRM ', {'freq': 14285.0, 'band': '20m', 'mode': 'SSB'}, enabled: true), isTrue);
+      final [tag] = service.bandAnnotations.forBand('20m');
+      expect(tag, containsPair('type', 'general'));
+      expect(tag, containsPair('fromHz', 14285000));
+      expect(tag, containsPair('label', 'QRM'));
+      expect(tag, containsPair('source', userBandAnnotationSource));
+      expect(tag['expiresAt'] as int, closeTo(nowMillis() + SpotsService.maxSpotAge.inMilliseconds, 1000));
+      // A place on the band, not a station: nothing on the Spots list, and no spot it hides.
+      expect(service.spotsBySource, isEmpty);
+    });
+
+    test('a tag in a digital mode, or two of one text, are each their own', () {
+      final service = SpotsService(fetchSpots: feed(const []));
+      addTearDown(service.dispose);
+      putBandTag(service, 'QRM', {'freq': 14074.0, 'band': '20m', 'mode': 'FT8'}, enabled: true);
+      putBandTag(service, 'QRM', {'freq': 14074.0, 'band': '20m', 'mode': 'FT8'}, enabled: true);
+      expect(service.bandAnnotations.forBand('20m'), hasLength(2));
+    });
+
+    test('none with the local spots off, or nowhere on a band', () {
+      final service = SpotsService(fetchSpots: feed(const []));
+      addTearDown(service.dispose);
+      expect(putBandTag(service, 'QRM', {'freq': 14285.0, 'band': '20m'}, enabled: false), isFalse);
+      expect(putBandTag(service, 'QRM', {'freq': 13000.0}, enabled: true), isFalse);
+      expect(service.bandAnnotations.forBand('20m'), isEmpty);
     });
   });
 
@@ -315,21 +319,24 @@ void main() {
       expect(notices, 2);
     });
 
-    test('clearLocalSpotsAt takes down every local spot within a signal of the radio, those hidden included', () {
+    test('clearLocalSpotsAt takes down every local spot and band tag within a signal of the radio, those hidden included', () {
       final service = SpotsService(fetchSpots: feed(const []));
       addTearDown(service.dispose);
       service.putLocalSpot('hidden', {
         ...local('W1AW'),
         'spot': {'timeInMillis': nowMillis() - 60000, 'source': localSpotSource},
       });
-      service.putLocalSpot('tag', localSpotFromQso(draft('QRM', freq: 14250.05), now: nowMillis(), tag: true)!);
       service.putLocalSpot('away', local('K2ABC', freq: 14300));
       service.putLocalSpot('cw', local('N3XYZ', freq: 14250.02, mode: 'CW'));
+      putBandTag(service, 'QRM', {'freq': 14250.05, 'band': '20m', 'mode': 'FT8'}, enabled: true);
+      putBandTag(service, 'NET', {'freq': 14300.0, 'band': '20m', 'mode': 'SSB'}, enabled: true);
 
       clearLocalSpotsAt(service, {'freq': 14250.0, 'band': null, 'mode': 'USB'});
 
       // Taking only the newest would bring W1AW back from under it.
       expect(callsOn(service, localSpotSource), unorderedEquals(['K2ABC', 'N3XYZ']));
+      // A tag within a voice's width goes too, whatever mode it was tagged in.
+      expect(service.bandAnnotations.forBand('20m').map((a) => a['label']), ['NET']);
     });
 
     test('clearLocalSpots takes every local spot down', () {

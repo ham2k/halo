@@ -448,6 +448,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // closing every operation stops the fetching.
     _spotBoardView = widget.services.spotBoard.subscribe();
     widget.services.spotBoard.addListener(_onSpotsChanged);
+    // The band annotations ride the same trigger: what draws a band's spots
+    // draws what is said about it.
+    widget.services.spots.bandAnnotations.addListener(_onSpotsChanged);
   }
 
   /// This view's hold on the spot board, and how it says what it shows.
@@ -672,6 +675,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.closeOperationContext(_commandContext);
     _spotBoardView.cancel();
     widget.services.spotBoard.removeListener(_onSpotsChanged);
+    widget.services.spots.bandAnnotations.removeListener(_onSpotsChanged);
     // "Listen for other apps" stops routing captures here once this view
     // closes — but only if THIS operation is still the one receiving; a
     // second OperationView may have taken over already. Unconditional,
@@ -714,6 +718,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     if (patched != null) _spotBoardView.show(patched, _runtime.latestQsos, logRevision: logFingerprintFor(_runtime.latestQsos));
     if (operation == null) return;
     widget.services.outlineGrid.prefetchFor(operation.refs); // kept on the device for the field
+    // The logging radio's band, asked about as the operation opens: a panel
+    // drawing the band's plan reads it at the operation's station, and finds
+    // the hooks' answer waiting rather than asking on its first frame.
+    if (previous == null) {
+      if (widget.services.radio.vfoA.band case final band?) widget.services.spots.bandAnnotations.forBand(band, station: operation.stationCall);
+    }
 
     // With no profile callsign yet (fresh install — no onboarding flow
     // exists), the callsign editor takes the Activities pane's place:

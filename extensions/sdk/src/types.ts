@@ -132,6 +132,16 @@ export interface HookContext {
   /// A malformed or unknown option rejects the promise. Absent on hosts
   /// older than it, so call it as `ctx.getSpots?.()`.
   getSpots?(options?: GetSpotsOptions): Promise<BoardSpot[]>
+  /// What is said about [options.band]: what extensions put
+  /// (`host.bandAnnotations.put`), the operator's band tags, and what the
+  /// `bandAnnotations` hooks answer for the band, at the location of
+  /// `options.station` — by default the station of the `operation` the
+  /// calling hook was handed. Never waits on those hooks: the first read of a
+  /// band asks them in the background, and a panel declaring `on: ['spots']`
+  /// is re-rendered when they answer, or when any annotation changes. Expired
+  /// ones are left out. Extension API 20; absent on hosts older than it, so
+  /// call it as `ctx.getBandAnnotations?.(…)`.
+  getBandAnnotations?(options: { band: string; station?: string }): Promise<HeldBandAnnotation[]>
   /// The most recent non-deleted contacts logged with [call]
   /// (case-insensitive), across every operation, newest first — the raw QSON
   /// `data` for each, same shape `getQsos` returns per-QSO, never event
@@ -309,11 +319,58 @@ export interface Spot {
     source: string
     label?: string
     sourceInfo?: Record<string, JSONValue>
-    /// Set by the app on a band tag the operator made on this device
-    /// (`hookKey: 'local'`): `their.call` is free text marking a stretch of
-    /// the band ("QRM", "NET"), not a station. A source never sets it.
-    tag?: boolean
   }
+}
+
+/// Something said about a stretch of a band, or a place on it. Extension API 20.
+export interface BandAnnotation {
+  /// `edge`: a stretch of the band that is allocated, from one of its edges to
+  /// the other. `plan`: a stretch of the band plan's modes, or of a license's
+  /// privileges. `known`: a window or a frequency known for something (FT8,
+  /// a calling frequency, emergency traffic). `general`: anything else.
+  type: "edge" | "plan" | "known" | "general"
+  fromHz: number
+  /// Where a stretch ends; omit for a place.
+  toHz?: number
+  /// Band names as the app spells them (`'20m'`); by default the band at
+  /// `fromHz`, or at `toHz`. Required where neither is on a band.
+  band?: string
+  /// Unique among the annotations you put: putting one with the same key
+  /// replaces it, and `host.bandAnnotations.remove` takes it by its key.
+  key?: string
+  label?: string
+  /// MDI or FontAwesome ('fa-') icon name.
+  icon?: string
+  /// `'primary'` (the default), `'secondary'` or `'tertiary'`: a display
+  /// short of room, or set to show less, leaves out the least first.
+  importance?: "primary" | "secondary" | "tertiary"
+  /// A suggestion, `#RRGGBB` and nothing else: a display may draw it
+  /// otherwise.
+  color?: string
+  /// When it stops being shown, epoch milliseconds on the app clock; omit
+  /// for one that stays until taken.
+  expiresAt?: number
+}
+
+/// A band annotation as the host holds it: its band worked out, its
+/// importance set, and the source that said it — an extension's key, or
+/// `'user'` for the operator's band tags.
+export interface HeldBandAnnotation extends BandAnnotation {
+  band: string
+  importance: "primary" | "secondary" | "tertiary"
+  source: string
+}
+
+/// What a band's annotations are asked of. Extension API 20.
+export interface BandAnnotationsHook {
+  /// Everything you say about [band], for a station at [station]'s location
+  /// where one is known. Asked once per band and station while the runtime
+  /// lasts, so give what does not change; put what does with
+  /// `host.bandAnnotations.put`. Asked as an operation opens, for its
+  /// radio's band. Asked again later when a hook failed or missed its time,
+  /// and when one of yours expires. An annotation's own
+  /// `band` is ignored: it is on the band it was asked about.
+  annotationsFor(args: { band: string; station?: string }, ctx: HookContext): Promise<BandAnnotation[]>
 }
 
 /// Options for `HookContext.getSpots`. Every one is optional; a
@@ -2534,6 +2591,7 @@ export type Hook =
   | LookupHook
   | LookupServiceHook
   | SpotsHook
+  | BandAnnotationsHook
   | ExportHook
   | ScoringHook
   | ChasingHook
@@ -3472,7 +3530,8 @@ export interface FyiMessageParams {
 ///   'qso'        the in-progress QSO changed (throttled, not per keystroke)
 ///   'qsoLogged'  a QSO was logged, deleted or edited
 ///   'lookup'     a callsign lookup resolved
-///   'spots'      the spots board changed (see HookContext.getSpots)
+///   'spots'      the spots board, or a band's annotations, changed (see
+///                HookContext.getSpots and getBandAnnotations)
 ///   'radio'      a radio's dial moved: frequency, mode, passband, transmit,
 ///                PTT or connection — never a meter. Needs requiresRadioRead.
 ///                Extension API 13.

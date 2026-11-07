@@ -564,16 +564,20 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
   /// Spots fetched once and shared by the Spots Panel and the `spot-history`
   /// lookup hook. Idle until something subscribes (see SpotsService).
   ///
-  /// Turning Local Spots off takes the ones up down, however it is turned
-  /// off: left standing they would hide what they replace for hours.
+  /// Turning Local Spots off takes the ones up down, and the band tags with
+  /// them, however it is turned off: left standing they would hide what they
+  /// replace for hours.
   late final SpotsService spots = () {
     final spots = SpotsService(
       fetchSpots: extensions.getSpots,
+      bandAnnotations: extensions.bandAnnotations,
       isOffline: () => ConnectivityService.isOffline,
       offlineChanges: ConnectivityService.offlineChanges,
     );
     settings.addListener(() {
-      if (!SpottingSettings.localSpots(settings)) spots.clearLocalSpots();
+      if (SpottingSettings.localSpots(settings)) return;
+      spots.clearLocalSpots();
+      spots.bandAnnotations.remove(userBandAnnotationSource);
     });
     return spots;
   }();

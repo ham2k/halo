@@ -18,6 +18,7 @@ abstract final class HookCategories {
   static const activity = 'activity';
   static const adifFields = 'adifFields';
   static const adifImport = 'adifImport';
+  static const bandAnnotations = 'bandAnnotations';
   static const callNotes = 'callNotes';
   static const chasing = 'chasing';
   static const cluster = 'cluster';
@@ -132,6 +133,8 @@ abstract final class Hooks {
   static const spotsPostOtherSpot = HookRef(HookCategories.spots, 'postOtherSpot');
 
   static const clusterOnLines = HookRef(HookCategories.cluster, 'onLines');
+
+  static const bandAnnotationsAnnotationsFor = HookRef(HookCategories.bandAnnotations, 'annotationsFor');
 
   static const syncTransportSync = HookRef(HookCategories.syncTransport, 'sync');
   static const syncTransportGetAccountData = HookRef(HookCategories.syncTransport, 'getAccountData');

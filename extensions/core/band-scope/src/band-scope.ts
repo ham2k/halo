@@ -9,7 +9,6 @@
 // plan and the spots on the band, a click on a spot working it as a Spots
 // Panel tap does.
 import { bandForFrequency } from "@ham2k/lib-operation-data"
-import { entityForCall, entityPrefixForCall, regionAndCountryForDxccCode } from "@ham2k/extension-sdk"
 import type {
   FormHeader,
   HookContext,
@@ -27,8 +26,8 @@ import type {
   SettingsField,
   SuggestedQso,
 } from "@ham2k/extension-sdk"
-import { bandEdges, bandPlan, licenseBreaksFor, markersFor, planLayers, planRow, type PlanDetail } from "./band-plan.ts"
-import { laneHeight, radioModeFor, scopeBackground, scopeSpots, spotId, spotMarks, suggestionFor, type ScopeSpot } from "./spots.ts"
+import { planLayers, planRow, type PlanDetail } from "./band-plan.ts"
+import { laneHeight, noteSpots, radioModeFor, scopeBackground, scopeSpots, spotId, spotMarks, suggestionFor, type ScopeSpot } from "./spots.ts"
 
 /** The host calls this panel makes, handed in so a test can stand in for them. */
 export interface BandScopeHost {
@@ -56,6 +55,8 @@ export interface Settings {
   speed?: Speed
   /** The spots on the band, no older than `age` minutes. */
   spots: boolean
+  /** The band's `general` annotations — the operator's band tags, what extensions mark — whether or not the spots show. */
+  notes: boolean
   age: number
   /** How far over the noise the spots stand on the spectrum, in dB; under it when negative. */
   spotLevel: number
@@ -101,6 +102,7 @@ const defaultSettings: Settings = {
   fps: 15,
   rows: 10,
   spots: true,
+  notes: true,
   age: 30,
   spotLevel: 30,
   plan: "modes",
@@ -123,6 +125,14 @@ const form: (SettingsField | FormHeader)[] = [
     ],
   },
   { type: "field", fieldType: "checkbox", key: "spots", label: "Show spots", value: true },
+  {
+    type: "field",
+    fieldType: "checkbox",
+    key: "notes",
+    label: "Show annotations",
+    value: true,
+    description: "What is marked on the band among the spots: your band tags (QRM!, NET!) and what extensions mark.",
+  },
   { type: "field", fieldType: "select", key: "age", label: "Spots no older than", value: 30, options: choices([10, 30, 60], (v) => `${v} minutes`) },
   {
     type: "field",
@@ -212,6 +222,7 @@ export function settingsFrom(config: Record<string, JSONValue>): Settings {
     ...(speed ? { speed } : {}),
     // A checkbox may have been stored as text.
     spots: config.spots !== false && config.spots !== "false",
+    notes: config.notes !== false && config.notes !== "false",
     age: [10, 30, 60].includes(numberIn(config.age) ?? 0) ? numberIn(config.age)! : defaultSettings.age,
     spotLevel: clamp(numberIn(config.spotLevel) ?? defaultSettings.spotLevel, -60, 120),
     plan: config.plan === "none" || config.plan === "edges" || config.plan === "all" ? config.plan : defaultSettings.plan,
@@ -441,10 +452,11 @@ const aboveSpots = 0.5
 const planRows: Record<PlanDetail, number> = { none: 0, edges: 0, modes: 2, all: 3 }
 
 /**
- * The band plan and the spots on [radio]'s band, laid out at the width its scope shows across a
- * pane [width] pixels wide and [height] tall: the plan's labels along the picture's top, and the
- * spots up the spectrum from the settings' level over the noise, or down the waterfall from under
- * the axis and the plan where the pane shows no spectrum. The plan is the station's, by its call.
+ * The band's annotations and the spots on [radio]'s band, laid out at the width its scope shows
+ * across a pane [width] pixels wide and [height] tall: the plan's labels along the picture's top,
+ * and the spots and the band's `general` annotations up the spectrum from the settings' level over
+ * the noise, or down the waterfall from under the axis and the plan where the pane shows no
+ * spectrum. The annotations are those for the station of the operation the panel was rendered for.
  */
 async function marksFor(
   ctx: HookContext,
@@ -452,7 +464,7 @@ async function marksFor(
   settings: Settings,
   view: RadioView,
   nowMillis: number,
-  { width, height, fontFamily, station }: { width: number; height: number; fontFamily?: string; station?: string },
+  { width, height, fontFamily }: { width: number; height: number; fontFamily?: string },
 ): Promise<{ marks: Marks; spots: ScopeSpot[] }> {
   const none = { marks: { annotations: [], layers: [] }, spots: [] }
   const shownHz = view.span ?? sweepWidth(radio)
@@ -461,32 +473,25 @@ async function marksFor(
   if (!band || band === "other") return none
   const part = settings.display === "waterfall" ? "waterfall" : "spectrum"
   const hzPerPx = shownHz / width
-  // The plan where the operation's station is, or the library's own where there is none.
-  const where = station ? regionAndCountryForDxccCode(entityForCall(station).dxccCode) : {}
-  // The whole band, and whatever else the sweep takes in: the operator pans and zooms natively,
-  // and the panel hears where only once a gesture ends, so drawn about the dial alone, an edge
-  // the picture was panned to would be missing.
-  const dial = radio.frequencyHz / 1000,
-    reach = Math.max(shownHz, sweepWidth(radio) ?? 0) / 1000
-  const [bandLo, bandHi] = bandEdges[band] ?? [dial, dial]
-  const sweep = radio.spectrum?.lowHz != null && radio.spectrum.highHz != null ? [radio.spectrum.lowHz / 1000, radio.spectrum.highHz / 1000] : [dial, dial]
-  const plan = planLayers(
-    bandPlan(band, where),
-    markersFor(band, station ? { entity: entityPrefixForCall(station), region: where.ituRegion } : {}),
-    settings.plan,
-    {
-      hzPerPx,
-      top: part === "spectrum" ? "spectrum" : `waterfall+${axisGap}px`,
-      rows: planRows[settings.plan],
-      window: [Math.min(bandLo, dial - reach, sweep[0]), Math.max(bandHi, dial + reach, sweep[1])],
-      most: 64,
-      height,
-    },
-    licenseBreaksFor(band, station ? { entity: entityPrefixForCall(station), region: where.ituRegion } : {}),
-  )
-  if (!settings.spots) return { marks: { annotations: [], layers: plan }, spots: [] }
-  const board = (await ctx.getSpots?.({ filter: "sources", band, maxAgeMinutes: settings.age })) ?? []
-  const spots = scopeSpots(board, nowMillis)
+  const said = (await ctx.getBandAnnotations?.({ band })) ?? []
+  // Whatever the sweep takes in, and the band's own edges: the operator pans and zooms natively,
+  // and the panel hears where only once a gesture ends, so drawn about the dial alone, an edge the
+  // picture was panned to would be missing.
+  const dial = radio.frequencyHz,
+    reach = Math.max(shownHz, sweepWidth(radio) ?? 0)
+  const edges = said.filter((a) => a.type === "edge").flatMap((a) => [a.fromHz, a.toHz ?? a.fromHz])
+  const sweep = radio.spectrum?.lowHz != null && radio.spectrum.highHz != null ? [radio.spectrum.lowHz, radio.spectrum.highHz] : [dial, dial]
+  const plan = planLayers(said, settings.plan, {
+    hzPerPx,
+    top: part === "spectrum" ? "spectrum" : `waterfall+${axisGap}px`,
+    rows: planRows[settings.plan],
+    window: [Math.min(...edges, dial - reach, sweep[0]), Math.max(...edges, dial + reach, sweep[1])],
+    most: 64,
+    height,
+  })
+  const board = settings.spots ? ((await ctx.getSpots?.({ filter: "sources", band, maxAgeMinutes: settings.age })) ?? []) : []
+  const spots = [...(settings.notes ? noteSpots(said) : []), ...scopeSpots(board, nowMillis)]
+  if (!spots.length) return { marks: { annotations: [], layers: plan }, spots: [] }
   const labels = planRows[settings.plan] * planRow
   // The axis lies over the waterfall's head, and over the spectrum's foot only where there is no
   // waterfall; with no spectrum, the plan's labels hang under it.
@@ -505,6 +510,19 @@ async function marksFor(
     event: `spot:${encodeURIComponent(radio.id ?? "")}`,
   })
   return { marks: { annotations, layers: [...plan, ...layers] }, spots }
+}
+
+/**
+ * The radio alone to [spot], in the spot's mode where [inItsMode] and the radio has one for it. A
+ * refusal is the host's to report, not a success.
+ */
+async function tuneAlone(host: BandScopeHost, id: string, spot: ScopeSpot, inItsMode: boolean) {
+  const radio = await host.readRadio(id)
+  if (!radio?.id) throw new Error("The radio is not connected")
+  const mode = inItsMode ? radioModeFor(spot.mode, spot.khz, radio.modes ?? []) : undefined
+  const result = await host.setRadio({ id: radio.id, frequencyHz: Math.round(spot.khz * 1000), ...(mode && mode !== radio.mode ? { mode } : {}) })
+  if (!result.accepted) throw new Error(`The radio did not take it${result.reason ? ` (${result.reason})` : ""}`)
+  return { values: {} }
 }
 
 export function createBandScope(host: BandScopeHost): PanelHook {
@@ -552,7 +570,7 @@ export function createBandScope(host: BandScopeHost): PanelHook {
       // Filled whole, then swapped in: a click arriving while a receiver's spots are still being
       // fetched finds the table the last render drew, not an empty one.
       const spots: typeof view.spots = {}
-      if ((settings.spots || settings.plan !== "none") && args.environment) {
+      if (args.environment) {
         const width = args.environment.width
         // Calls in the app's call face, as the Spots Panel shows them.
         const fontFamily = args.environment.typography.mono.fontFamily ?? undefined
@@ -563,7 +581,6 @@ export function createBandScope(host: BandScopeHost): PanelHook {
             width,
             height,
             fontFamily,
-            station: typeof args.operation?.stationCall === "string" ? args.operation.stationCall.trim().toUpperCase() || undefined : undefined,
           })
           marks[receiver.id] = found.marks
           const byId = new Map(found.spots.map((spot) => [spotId(spot), spot]))
@@ -593,18 +610,14 @@ export function createBandScope(host: BandScopeHost): PanelHook {
       if (command === "spot") {
         const spot = args.event.annotation ? view.spots[id]?.get(args.event.annotation) : undefined
         if (!spot) return { values: {} }
+        // Nothing to log at a note: the radio alone, to where it is, in the mode it is in.
+        if (spot.note) return await tuneAlone(host, id, spot, false)
         // As a Spots Panel tap: the station into this operation's logging fields, which move the
         // radio there too. With no such operation open, the radio alone.
         const operationUuid = typeof args.operation?.uuid === "string" ? args.operation.uuid : undefined
         const { accepted } = await host.suggestQso({ qso: suggestionFor(spot), operationUuid })
         if (accepted) return { values: {} }
-        const radio = await host.readRadio(id)
-        if (!radio?.id) throw new Error("The radio is not connected")
-        const mode = radioModeFor(spot.mode, spot.khz, radio.modes ?? [])
-        const result = await host.setRadio({ id: radio.id, frequencyHz: Math.round(spot.khz * 1000), ...(mode && mode !== radio.mode ? { mode } : {}) })
-        // A refusal is the host's to report, not a success.
-        if (!result.accepted) throw new Error(`The radio did not take it${result.reason ? ` (${result.reason})` : ""}`)
-        return { values: {} }
+        return await tuneAlone(host, id, spot, true)
       }
       if (command === "scope") {
         const preferences = (view.views[id] ??= {})

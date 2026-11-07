@@ -143,6 +143,11 @@ class CliHostCalls {
   /// stdout is JSON somebody is piping into jq.
   final bool verbose;
 
+  /// What the run's extensions put with `putBandAnnotations`, for the run
+  /// alone. A CLI asks no `bandAnnotations` hook on a read: invoke one by name
+  /// to see its answer.
+  final bandAnnotations = BandAnnotationStore();
+
   CliHostCalls({
     required this.config,
     required this.index,
@@ -247,6 +252,25 @@ class CliHostCalls {
         // malformed option rejects here as it does in the app.
         final query = SpotsQuery.fromParams(params);
         return query.narrow(log.spots)..sort((a, b) => _spotMillis(b).compareTo(_spotMillis(a)));
+
+      case 'getBandAnnotations':
+        final band = params['band'];
+        if (band is! String || band.trim().isEmpty) throw const FormatException('getBandAnnotations: `band` must be a band name');
+        return bandAnnotations.forBand(band.trim().toLowerCase(), now: nowMillis());
+
+      case 'putBandAnnotations':
+        final annotations = params['annotations'];
+        if (annotations is! List) throw const FormatException('putBandAnnotations: `annotations` must be a list');
+        bandAnnotations.put(_bandAnnotationSource(params), annotations);
+        return null;
+
+      case 'removeBandAnnotations':
+        final keys = params['keys'];
+        if (keys != null && (keys is! List || keys.any((k) => k is! String))) {
+          throw const FormatException('removeBandAnnotations: `keys` must be a list of strings');
+        }
+        bandAnnotations.remove(_bandAnnotationSource(params), (keys as List?)?.cast<String>());
+        return null;
 
       case 'getHistoryForCall':
         // Backs `call-history`'s `ctx.getHistoryForCall`. The app answers
@@ -386,6 +410,14 @@ class CliHostCalls {
   static int _startAtMillis(Map<String, Object?> qso) {
     final value = qso['startAtMillis'];
     return value is num ? value.toInt() : 0;
+  }
+
+  /// The caller's own key, as the app holds it: no extension writes as the
+  /// operator, whose band tags are `'user'`.
+  static String _bandAnnotationSource(Map<String, dynamic> params) {
+    final ns = params['ns'] as String;
+    if (ns == userBandAnnotationSource) throw HostCallRefused("band annotations refused: '$ns' is the operator's own");
+    return ns;
   }
 
   static String _briefly(Map<String, dynamic> params) {

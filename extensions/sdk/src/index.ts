@@ -25,6 +25,7 @@ import type {
   StatusBarProgressParams,
   StatusBarNoticeParams,
   FyiMessageParams,
+  BandAnnotation,
   VersionInfo,
   PanelRadioState,
   PanelRadioSpectrumSet,
@@ -53,7 +54,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 19
+export const API_VERSION = 20
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -626,6 +627,24 @@ export const host = {
     /// Takes down the message under `key`, if any.
     async clear(key: string): Promise<void> {
       await hostCallFn()("fyiClear", { key, ns: currentExtensionKey })
+    },
+  },
+
+  /// What you say about the bands, held for every panel that draws them
+  /// (`HookContext.getBandAnnotations`) until you take it, it expires, or the
+  /// runtime restarts — put it again from `onActivation`. Extension API 20.
+  bandAnnotations: {
+    /// Adds [annotations], replacing those you put before under the same
+    /// `key`; one without a `key` is only ever added, and goes only with a
+    /// `remove()` of all yours. You hold at most 1,000. A malformed one
+    /// rejects the call and puts none.
+    async put(annotations: BandAnnotation[]): Promise<void> {
+      await hostCallFn()("putBandAnnotations", { annotations, ns: currentExtensionKey })
+    },
+
+    /// Takes the ones you put under [keys], or every one you put.
+    async remove(keys?: string[]): Promise<void> {
+      await hostCallFn()("removeBandAnnotations", { keys, ns: currentExtensionKey })
     },
   },
 

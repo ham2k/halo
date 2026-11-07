@@ -3,6 +3,8 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import type { PanelEnvironment, PanelRadioSpectrum, PanelRadioState, PanelRenderArgs, PanelScene, PanelSceneLayoutNode } from "@ham2k/extension-sdk"
+import type { HookContext } from "@ham2k/extension-sdk"
+import { annotationsFor } from "../../band-plan/src/plan.ts"
 import { createBandScope, scene, settingsFrom, type BandScopeHost } from "./band-scope.ts"
 
 const spectrum: PanelRadioSpectrum = {
@@ -102,7 +104,7 @@ test("the scope is all the pane shows: its settings are behind the gear, with no
   assert.deepEqual(
     descriptor.form!.map((field) => ("key" in field ? field.key : field.title)),
     // The view and the spots up front; what the scope draws and asks of the radio folded under a heading.
-    ["display", "spots", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "ref", "speed"],
+    ["display", "spots", "notes", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "ref", "speed"],
   )
   // Each select's default must be one of its choices, or the form opens on a blank.
   for (const field of descriptor.form!) {
@@ -147,7 +149,12 @@ const args = (instanceId = "one", config: PanelRenderArgs["config"] = {}): Panel
   config,
   reason: "initial",
 })
-const context = { online: false }
+/** 20 m's plan as the host hands it over. */
+const context = {
+  online: false,
+  getBandAnnotations: async ({ band }: { band: string }) =>
+    annotationsFor(band).map((a) => ({ ...a, band, importance: a.importance ?? "primary", source: "band-plan" })),
+} as unknown as HookContext
 
 /** The app tunes on a click, so this panel never tunes. */
 const fakeHost = (radios: () => PanelRadioState[], designated: () => PanelRadioState): BandScopeHost => ({

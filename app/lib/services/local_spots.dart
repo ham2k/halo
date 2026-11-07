@@ -3,7 +3,8 @@
 //
 // Spots this device makes itself, from the station the operator is working
 // (docs/design/logging-fields.md § Local spots): what one is made of, and
-// which other spots it replaces.
+// which other spots it replaces. And the operator's band tags, which mark a
+// place on the band rather than a station: band annotations of their own.
 
 import 'package:halo_core/halo_core.dart';
 
@@ -26,22 +27,18 @@ const _cwWindowKHz = 0.02;
 /// station in the passband shares one dial frequency and a frequency says
 /// nothing about who is on it.
 ///
-/// A [tag] marks an area of the band rather than a station ("QRM", "NET"):
-/// its call is any text, the spot says it is a tag (`spot.tag`), and it is
-/// spotted in a digital mode too.
-///
 /// The draft's references go along when they name one (a park, a summit);
 /// a contest's received exchange, which rides the refs as values with no
 /// `ref`, becomes the spot's label.
-Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int now, bool tag = false}) {
+Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int now}) {
   final call = callOfSpot(qso);
   final freq = asSpotNum(qso['freq'])?.toDouble();
   final mode = asSpotString(qso['mode']);
   final band = asSpotString(qso['band']) ?? (freq == null ? null : bandForFrequency(freq));
   if (call == null || freq == null || band == null || call.contains(',') || call.contains('//')) return null;
-  if (!tag && !isLoggableCall(call)) return null;
+  if (!isLoggableCall(call)) return null;
   final superMode = superModeForMode(mode);
-  if (!tag && superMode != 'Phone' && superMode != 'CW') return null;
+  if (superMode != 'Phone' && superMode != 'CW') return null;
   final refs = <Map<String, dynamic>>[];
   final exchange = <String>[];
   for (final ref in (qso['refs'] as List?) ?? const []) {
@@ -63,30 +60,24 @@ Map<String, dynamic>? localSpotFromQso(Map<String, dynamic> qso, {required int n
     'band': band,
     'mode': mode,
     if (refs.isNotEmpty) 'refs': refs,
-    'spot': {'timeInMillis': now, 'source': localSpotSource, if (tag) 'tag': true, if (exchange.isNotEmpty) 'label': exchange.join(' ')},
+    'spot': {'timeInMillis': now, 'source': localSpotSource, if (exchange.isNotEmpty) 'label': exchange.join(' ')},
     'hookKey': localSpotSource,
   };
 }
 
-/// Whether [spot] is a band tag ("QRM!" and Enter): an area of the band, not
-/// a contact to log.
-bool isBandTag(Map<String, dynamic> spot) => spot['hookKey'] == localSpotSource && (spot['spot'] as Map?)?['tag'] == true;
-
 /// Whether [spot] is a local one whose call names no station to look up or
-/// work: a band tag, or a call not fully copied. On the board like any spot;
-/// never asked about, scored or chased, which would act on text nobody heard
-/// as a callsign. A tag says so rather than being judged by its text: "Q65"
-/// and "JT65" read as callsigns.
-bool isLocalSpotWithoutStation(Map<String, dynamic> spot) =>
-    isBandTag(spot) || (spot['hookKey'] == localSpotSource && !looksLikeCallsign(callOfSpot(spot) ?? ''));
+/// work: a call not fully copied ("W1A?"). On the board like any spot; never
+/// asked about, scored or chased, which would act on text nobody heard as a
+/// callsign.
+bool isLocalSpotWithoutStation(Map<String, dynamic> spot) => spot['hookKey'] == localSpotSource && !looksLikeCallsign(callOfSpot(spot) ?? '');
 
 /// Whether [local] replaces [other]: posted no later, on the same band and
 /// in the same family of modes, and either the same station anywhere there
 /// or any station within a signal's width of it — a local spot says who is
 /// on that frequency now, and that the station is no longer where an older
-/// spot put it. A tag or a call not fully copied replaces by frequency only:
-/// its text names no station, and two "QRM"s, or two stations both copied
-/// as "W1A?", are two places on the band.
+/// spot put it. A call not fully copied replaces by frequency only: its text
+/// names no station, and two stations both copied as "W1A?" are two places
+/// on the band.
 bool localSpotReplaces(Map<String, dynamic> local, Map<String, dynamic> other) {
   if ((timeOfSpot(other) ?? 0) > (timeOfSpot(local) ?? 0)) return false;
   if (!_sameBandAndModes(local, other)) return false;
@@ -194,22 +185,63 @@ class _LocalSpotIndex {
   }
 }
 
-/// A logging panel's draft spot or band tag (`LoggingSession.onDraftSpot`)
-/// onto [spots]: put while the draft makes one and [enabled] holds, taken off
-/// otherwise. True when a spot stands under [key] afterwards.
-bool updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled, bool tag = false}) {
-  final spot = qso == null || !enabled ? null : localSpotFromQso(qso, now: nowMillis(), tag: tag);
+/// A logging panel's draft spot (`LoggingSession.onDraftSpot`) onto [spots]:
+/// put while the draft makes one and [enabled] holds, taken off otherwise.
+/// True when a spot stands under [key] afterwards.
+bool updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled}) {
+  final spot = qso == null || !enabled ? null : localSpotFromQso(qso, now: nowMillis());
   spot == null ? spots.removeLocalSpot(key) : spots.putLocalSpot(key, spot);
   return spot != null;
 }
 
+/// A logging panel's band tag (`LoggingSession.onBandTag`): [text] marks
+/// the band at [at] (`freq` in kHz, `band`), as the operator's own `general`
+/// annotation, for as long as a local spot would stand. False when
+/// [enabled] does not hold — band tags go with the local spots — or [at]
+/// names no place on a band.
+bool putBandTag(SpotsService spots, String text, Map<String, dynamic> at, {required bool enabled}) {
+  final freq = asSpotNum(at['freq'])?.toDouble();
+  final band = asSpotString(at['band']) ?? (freq == null ? null : bandForFrequency(freq));
+  if (!enabled || freq == null || band == null || text.trim().isEmpty) return false;
+  spots.bandAnnotations.put(userBandAnnotationSource, [
+    {
+      'type': 'general',
+      'key': uuidGenerator.v4(),
+      'fromHz': (freq * 1000).round(),
+      'band': band,
+      // Cut to what an annotation holds: a long paste ending in `!` is still
+      // a tag, and refused whole it would escape the field's Enter.
+      'label': _cutToFit(text.trim()),
+      'expiresAt': nowMillis() + SpotsService.maxSpotAge.inMilliseconds,
+    },
+  ]);
+  return true;
+}
+
+/// [text] cut to [maxBandAnnotationTextChars], never inside a character.
+String _cutToFit(String text) {
+  if (text.length <= maxBandAnnotationTextChars) return text;
+  final cut = StringBuffer();
+  for (final rune in text.runes) {
+    final char = String.fromCharCode(rune);
+    if (cut.length + char.length > maxBandAnnotationTextChars) break;
+    cut.write(char);
+  }
+  return cut.toString();
+}
+
 /// A logging panel's lone `!` (`LoggingSession.onClearLocalSpots`): every
 /// local spot within a signal's width of [at] on its band and family of
-/// modes comes down — tags and stations, those hidden under the newest too,
-/// which taking only that one would bring back.
+/// modes comes down, those hidden under the newest too, which taking only
+/// that one would bring back. The band tags within it on
+/// the band come down with them, whatever their mode.
 void clearLocalSpotsAt(SpotsService spots, Map<String, dynamic> at) {
   final freq = asSpotNum(at['freq'])?.toDouble();
   if (freq == null) return;
   final here = {...at, 'band': asSpotString(at['band']) ?? bandForFrequency(freq)};
   spots.removeLocalSpotsWhere((spot) => _sameBandAndModes(here, spot) && _withinSignal(here, spot));
+  spots.bandAnnotations.removeWhere(
+    userBandAnnotationSource,
+    (tag) => tag['band'] == here['band'] && _withinSignal(here, {'freq': (tag['fromHz'] as int) / 1000}),
+  );
 }

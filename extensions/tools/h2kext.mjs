@@ -65,8 +65,10 @@ import yazl from "yazl"
 /// optional (`chars.min: 0`) fields; 19 adds a
 /// radio's logging `set` and operating `opStyle` to `readRadio`, which takes
 /// `A` or `B` for a set's radio, and the operation's `uuid` to
-/// `processQsoBeforeSave`, and `getSpots`' `filter: 'sources'`.
-export const H2KEXT_API_VERSION = 19
+/// `processQsoBeforeSave`, and `getSpots`' `filter: 'sources'`; 20 adds band
+/// annotations — the `bandAnnotations` hook category,
+/// `host.bandAnnotations.put`/`remove` and `ctx.getBandAnnotations`.
+export const H2KEXT_API_VERSION = 20
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -241,6 +243,7 @@ SHARED_MODULES_BY_API[16] = SHARED_MODULES_BY_API[15]
 SHARED_MODULES_BY_API[17] = SHARED_MODULES_BY_API[16]
 SHARED_MODULES_BY_API[18] = SHARED_MODULES_BY_API[17]
 SHARED_MODULES_BY_API[19] = SHARED_MODULES_BY_API[18]
+SHARED_MODULES_BY_API[20] = SHARED_MODULES_BY_API[19]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

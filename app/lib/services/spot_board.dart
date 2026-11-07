@@ -43,8 +43,8 @@ int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['ti
 Iterable<String> spotCallsIn(String? call) => (call ?? '').split(',').map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty);
 
 /// [spotCallsIn] for [spot]'s `their.call`; none for a local spot that names
-/// no station ([isLocalSpotWithoutStation]), whose text ("QRM", "Q65",
-/// "W1A?") is no operator to look up, score, chase, or take for our own call.
+/// no station ([isLocalSpotWithoutStation]), whose text ("W1A?") is no
+/// operator to look up, score, chase, or take for our own call.
 Iterable<String> spotOperatorCalls(Map<String, dynamic> spot) => isLocalSpotWithoutStation(spot) ? const [] : spotCallsIn(_callOf(spot));
 
 /// Modes excluded from the callsign-merge pass (SpotsPanel.jsx: too many
@@ -114,9 +114,8 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
   final byCall = <String, Map<String, dynamic>>{};
   final merged = <Map<String, dynamic>>[];
   for (final spot in sorted) {
-    // A tag or a call not fully copied is a place on the band, not a station:
-    // merged by its text, two "QRM"s would be one, and a tag reading "W1AW"
-    // would swallow the real W1AW's spot beside it.
+    // A call not fully copied is a place on the band, not a station: merged
+    // by its text, two stations both copied as "W1A?" would be one.
     final call = isLocalSpotWithoutStation(spot) ? null : _callOf(spot);
     if (call == null) {
       // Copy, like the merged-copy branch below — `spot` is the same Map

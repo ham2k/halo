@@ -1071,8 +1071,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         onQsoChanged: active ? widget.onQsoChanged : null,
         onPeerDraftChanged: active ? widget.onPeerDraftChanged : null,
         // Every set's: each works its own station.
-        onDraftSpot: (key, qso, {tag = false}) =>
-            updateLocalSpot(widget.services.spots, key, qso, enabled: SpottingSettings.localSpots(widget.services.settings), tag: tag),
+        onDraftSpot: (key, qso) => updateLocalSpot(widget.services.spots, key, qso, enabled: SpottingSettings.localSpots(widget.services.settings)),
+        onBandTag: (text, at) => putBandTag(widget.services.spots, text, at, enabled: SpottingSettings.localSpots(widget.services.settings)),
         onClearLocalSpots: (at) => clearLocalSpotsAt(widget.services.spots, at),
       ),
       radio: radio == 'B'

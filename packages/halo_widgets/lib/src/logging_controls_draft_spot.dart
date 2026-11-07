@@ -68,9 +68,9 @@ extension _DraftSpot on _LoggingControlsState {
   }
 
   /// Enter on one entry ending in `!` that no command took: the rest of it,
-  /// any text at all, goes on the board as a band tag at the radio's
-  /// frequency — "QRM!", "NET!", "CONTEST!" — and a lone `!` clears the local
-  /// spots there. Either way the call field empties for the next call. A
+  /// any text at all, marks the band at the radio's frequency as a band tag —
+  /// "QRM!", "NET!", "CONTEST!" — and a lone `!` clears the local spots and
+  /// tags there. Either way the call field empties for the next call. A
   /// stack or a call list is the logging path's: taken whole, the calls
   /// queued in it would go on the board as one tag and leave the field.
   ///
@@ -96,11 +96,7 @@ extension _DraftSpot on _LoggingControlsState {
     } else if (!_spotsNow) {
       _command.showError(t.loggingControls.localSpotNeedsLiveTime);
       return true;
-    } else if (!(widget.session.onDraftSpot?.call(uuidGenerator.v4(), {
-          'their': {'call': tag},
-          ...at,
-        }, tag: true) ??
-        false)) {
+    } else if (!(widget.session.onBandTag?.call(tag, at) ?? false)) {
       _command.showError(t.loggingControls.localSpotsOff);
       return true;
     }

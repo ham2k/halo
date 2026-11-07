@@ -122,6 +122,7 @@ log, and a write throws. Copy what you mean to change.
 | `lookupService` | [Lookups](lookups.md) | The orchestrator itself; the app's core registers it | one hook |
 | `spots` | [Spots](spots.md) | A spot source, and posting spots | every hook |
 | `cluster` | [Spots](spots.md) | Lines from the app's DX cluster connection | the hook under your key |
+| `bandAnnotations` | [Spots](spots.md) | What is said about a band: its plan, its windows, anything worth marking | every hook, once per band and station |
 | `activity` | [Activities](activities.md) | Logging controls, operation setup, suggestions, a last look at a QSO before it saves | every hook |
 | `ref:<type>` | [Activities](activities.md) | Validate, decorate, link and outline one kind of reference | one hook per type, batched |
 | `dataFile` | [Activities](activities.md) | An offline dataset the app downloads and indexes for you | your registration |

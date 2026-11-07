@@ -142,7 +142,7 @@ The extension API is numbered, and your manifest's `api` is the **lowest**
 level that has everything you use. An app speaking an older level refuses
 the bundle at install and says so; the catalog offers each app the newest
 release it can run. The SDK's minor version is the level it describes
-(SDK 1.19 is API 19) and `API_VERSION` exports it.
+(SDK 1.20 is API 20) and `API_VERSION` exports it.
 
 | Level | Adds |
 | --- | --- |
@@ -165,6 +165,7 @@ release it can run. The SDK's minor version is the level it describes
 | 17 | a spectrum's own gestures: the host tunes on a click or the wheel, zooms and pans, and draws an axis, unless the scene's `gestures` and `scale` say otherwise; a spectrum's `layers`, placed by frequency |
 | 18 | logging fields drawn as one control (`group`), typed straight through (`autoadvanceWhen`, `autoadvanceBefore`), with a `suffix` after the value and our exchange beside it (`ourExchange`); a serial's `placeholder`; display-only fields (`editable: false`, `value`) and optional ones (`chars.min: 0`) |
 | 19 | a radio's logging `set` and operating `opStyle` in `readRadio` and `listRadios`, its `reportedFrequencyHz` in `readRadio` and the scene's `radio.reportedFrequencyHz`, and `readRadio('A')` / `readRadio('B')` for a set's radio; the operation's `uuid` in `processQsoBeforeSave`; a command's `setOpStyle`; `ctx.opStyle`; templates' `keyer.opStyle`; `getSpots`' `filter: 'sources'` |
+| 20 | band annotations: the `bandAnnotations` hook, `host.bandAnnotations.put` and `remove`, `ctx.getBandAnnotations`; the operator's band tags leave `getSpots` for it |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook

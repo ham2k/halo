@@ -48,6 +48,7 @@ import 'radio_host_calls.dart';
 import 'settings_placement.dart';
 import 'spot_command_sources.dart';
 import '../settings_service.dart';
+import '../band_annotations_service.dart';
 import '../spots_service.dart';
 import '../status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -197,6 +198,12 @@ class ExtensionService
   /// service references — a host without it answers with an empty list, so
   /// the hook simply contributes nothing.
   SpotsService? spots;
+
+  /// What extensions put and the hooks answer about the bands, read through
+  /// [spots] too. Here, not on [spots], because the runtime starts before the
+  /// services exist: an extension putting its annotations as it activates
+  /// would otherwise find nowhere to put them, and be told it had.
+  late final bandAnnotations = BandAnnotationsService(fetch: getBandAnnotations, hooksSettled: runtimeGeneration);
 
   /// Where a withdrawn built-in's twin is fetched from. Null before
   /// HaLoServices wires it, which simply means nothing is adopted.
@@ -826,6 +833,10 @@ class ExtensionService
         // generation's set is known.
         // Every runtime goes, so does what was posted under no extension's name.
         _dropHeldFor({...dying, _ExtensionHostCalls.unattributedNamespace});
+        // Every extension's band annotations too, before the new runtime
+        // activates: its extensions put theirs again, and one taken out of
+        // the set leaves nothing behind.
+        bandAnnotations.forgetExtensions();
         clearGenerationStatus(
           statusBar: statusBar,
           fyi: fyi,
@@ -868,6 +879,10 @@ class ExtensionService
   void _dropHeldFor(Iterable<String> keys) {
     _hostCalls.dropHeld(keys);
     dialogs.drop(keys);
+    // A dev bundle reloaded alone comes through here only: without it, the
+    // old code's annotations stay beside what the new code puts, and its
+    // hook's old answers stand for the new one's.
+    bandAnnotations.forgetExtensions(keys);
   }
 
   /// [_ExtensionHostCalls.handle] for tests — the runtime credential path has

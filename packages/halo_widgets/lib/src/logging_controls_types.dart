@@ -132,10 +132,13 @@ typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
 
 /// The local spot for the station being worked: [key] names it for as long
 /// as the panel follows it, and [qso] is the draft it is made from, or null
-/// to take the spot back — see [LoggingSession.onDraftSpot]. [tag] marks a
-/// band tag: [qso]'s call is whatever the operator typed, not a callsign.
-/// True when a spot stands under [key] afterwards.
-typedef DraftSpotChanged = bool Function(String key, Map<String, dynamic>? qso, {bool tag});
+/// to take the spot back — see [LoggingSession.onDraftSpot]. True when a
+/// spot stands under [key] afterwards.
+typedef DraftSpotChanged = bool Function(String key, Map<String, dynamic>? qso);
+
+/// A band tag: [text] marks the band at [at] (`freq`, `band`, `mode`) — see
+/// [LoggingSession.onBandTag]. True when the host took it.
+typedef BandTagPosted = bool Function(String text, Map<String, dynamic> at);
 
 /// Takes down the local spots within a signal's width of [at] (`freq`,
 /// `band`, `mode`) — see [LoggingSession.onClearLocalSpots].
@@ -294,6 +297,7 @@ class LoggingSession {
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.onDraftSpot,
+    this.onBandTag,
     this.onClearLocalSpots,
     this.controller,
   });
@@ -472,14 +476,16 @@ class LoggingSession {
   /// and ends the follow, as any other wipe does: the key is never sent
   /// again, and the host keeps what it last had.
   ///
-  /// A band tag ("QRM!" and Enter) is sent once, `tag: true`, under a key of
-  /// its own that nothing follows: the text without its `!`, at the radio's
-  /// frequency, band and mode. A false answer to it means the host made no
-  /// spot, and the panel says so rather than empty the field for nothing.
   final DraftSpotChanged? onDraftSpot;
 
-  /// A lone `!` and Enter: the operator clears the local spots at the
-  /// radio's frequency, band and mode.
+  /// A band tag, "QRM!" and Enter: the text without its `!`, at the radio's
+  /// frequency, band and mode, marking that place on the band rather than a
+  /// station. A false answer means the host took none, and the panel says so
+  /// rather than empty the field for nothing.
+  final BandTagPosted? onBandTag;
+
+  /// A lone `!` and Enter: the operator clears the local spots and band tags
+  /// at the radio's frequency, band and mode.
   final LocalSpotsCleared? onClearLocalSpots;
 
   /// Optional imperative handle for driving the controls from outside (set the

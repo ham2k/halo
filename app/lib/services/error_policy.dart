@@ -49,7 +49,8 @@ import 'sets/set_category.dart' show SetFileException;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
-import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
+import 'extensions/extension_service.dart'
+    show ExtensionTimersSuspended, MalformedBandAnnotationException, MalformedLookupDataException, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'midi/midi_backend.dart' show MidiUnavailable;
@@ -542,6 +543,15 @@ class ErrorPolicy {
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedSpotDataException,
+    ),
+    ErrorRule(
+      id: 'malformed-band-annotation',
+      reason:
+          'a bandAnnotations hook answered an annotation the app cannot read (extension_hook_api.dart\'s '
+          '_heldBandAnnotation) — a defect in that one extension, not something the operator can act on, '
+          'and only that annotation is left out',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is MalformedBandAnnotationException,
     ),
     ErrorRule(
       id: 'malformed-lookup-data',

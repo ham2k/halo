@@ -47,6 +47,19 @@ class MalformedSpotDataException implements Exception {
   String toString() => 'MalformedSpotDataException: hook "$hookKey" field "$field" is ${value.runtimeType}';
 }
 
+/// A `bandAnnotations` hook answered an annotation [bandAnnotationFrom]
+/// refuses, dropped by [_ExtensionHookApi._heldBandAnnotation]. Classified
+/// `report` in [ErrorPolicy], like [MalformedSpotDataException]: a defect in
+/// that one extension, its other annotations and every other hook's drawn.
+class MalformedBandAnnotationException implements Exception {
+  MalformedBandAnnotationException(this.hookKey, this.problem);
+  final String hookKey;
+  final String problem;
+
+  @override
+  String toString() => 'MalformedBandAnnotationException: hook "$hookKey": $problem';
+}
+
 /// A callsign lookup answered a field of the wrong type, dropped by
 /// [normalizeLookupResult] on the way out of [ExtensionService.lookupCall].
 /// The guess is the lookup pipeline's merged answer, so this names the field
@@ -445,6 +458,50 @@ mixin _ExtensionHookApi {
       failureThreshold: _spotSourceFailureThreshold,
     );
     return (items: validSpots(parts.items), succeeded: parts.succeeded, unreachable: parts.unreachable, failed: parts.failed);
+  }
+
+  /// Every annotation every `bandAnnotations` hook gives for [band], at
+  /// [station]'s location where one is known, as held: on [band] whatever
+  /// its frequencies, since that is what was asked, with the `source` that
+  /// gave it. Partial on timeout, like the spots: one slow provider must not
+  /// cost the band the others' annotations. Not [BandAnnotationsAnswer.complete]
+  /// when a hook failed, missed its time or could not be asked at all: kept
+  /// for good, that answer would leave the band without what it lacks until
+  /// the runtime restarts. Null when no hook was there to ask — no runtime,
+  /// none registered yet, or the fan-out failing whole: the band waits for
+  /// the hooks to change (BandAnnotationsService.hooksSettled) rather than
+  /// asking nobody again on a timer.
+  Future<BandAnnotationsAnswer?> getBandAnnotations({required String band, String? station}) async {
+    final parts = await _collectHookResults(
+      Hooks.bandAnnotationsAnnotationsFor,
+      args: {'band': band, 'station': ?station},
+      debugLabel: 'getBandAnnotations',
+      partialOnTimeout: true,
+    );
+    if (parts.succeeded.isEmpty && parts.failed.isEmpty && parts.unreachable.isEmpty) return null;
+    return (items: [for (final item in parts.items) ?_heldBandAnnotation(item, band)], complete: parts.failed.isEmpty && parts.unreachable.isEmpty);
+  }
+
+  /// A hook's answer for [band] as held, or null for a malformed one: left
+  /// out, the hook's other answers standing, and reported like a malformed
+  /// spot ([MalformedBandAnnotationException]).
+  static Map<String, dynamic>? _heldBandAnnotation(Map<String, dynamic> item, String band) {
+    final source = item['hookKey'] as String? ?? 'unknown';
+    try {
+      return {
+        ...bandAnnotationFrom({...item, 'band': band}..remove('hookKey'), context: "'$source' band annotation"),
+        'source': source,
+      };
+    } on FormatException catch (e) {
+      ErrorReportingService.reportIfRepeated(
+        'getBandAnnotations:malformed:$source',
+        MalformedBandAnnotationException(source, e.message),
+        null,
+        context: 'getBandAnnotations:malformed:$source',
+        threshold: 1,
+      );
+      return null;
+    }
   }
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's

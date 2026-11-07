@@ -2,8 +2,9 @@
 
 A spot source feeds the Spots Panel and lets the operator spot themselves
 and others. The DX cluster is a connection the app holds and extensions
-share. [How hooks work](hooks.md) covers registration, keys, priority and
-`ctx`.
+share. Band annotations say what is on a band besides its stations: its
+plan, its windows, anything worth marking. [How hooks work](hooks.md) covers
+registration, keys, priority and `ctx`.
 
 ## `spots`
 
@@ -126,3 +127,64 @@ node can keep a self-spot local and still echo it.
 
 **Example:** `ham2k-cluster-spots` in
 [ham2k/extensions](https://github.com/ham2k/extensions).
+
+## `bandAnnotations`
+
+Extension API 20. What is said about a stretch of a band, or a place on it,
+held by the app beside the spots for every panel that draws a band: the Band
+Scope draws them over its picture. They come three ways, and a reader gets
+them all from `ctx.getBandAnnotations({ band })`, each with the `source` that
+said it:
+
+- a `bandAnnotations` hook, asked for a band the first time one is read;
+- `host.bandAnnotations.put`, for what changes while you run;
+- the operator's band tags ("QRM!" in the call field), under `source: 'user'`.
+
+```ts
+interface BandAnnotationsHook {
+  annotationsFor(args: { band, station? }, ctx): Promise<BandAnnotation[]>
+}
+// BandAnnotation: { type, fromHz, toHz?, band?, key?, label?, icon?,
+//                   importance?, color?, expiresAt? }
+```
+
+**`type`** says what it marks:
+
+| `type` | Marks | The Band Scope draws it |
+| --- | --- | --- |
+| `edge` | A stretch of the band that is allocated, edge to edge | as barriers at its ends, what lies outside dimmed |
+| `plan` | A stretch of the band plan's modes; at `secondary` and below, of a license's privileges | a mode's start labeled on a gold tag; a license's start and end in gray |
+| `known` | A window or a frequency known for something: FT8, a calling frequency, emergency traffic | veiled, its label boxed over it |
+| `general` | Anything else | as a spot is, in its lanes, its label for a call |
+
+**Frequencies** are in Hz: `fromHz`, and `toHz` where it covers a stretch;
+omit `toHz` for a place. `band` is the band at `fromHz` (or at `toHz`) unless
+you name it. **`importance`** is `primary` (the default), `secondary` or
+`tertiary`: a display short of room, or set to show less, leaves out the
+least first. The Band Scope's Edges & Modes leaves out only the tertiary.
+**`color`** is a suggestion, `#RRGGBB` and no other form, a display may
+draw otherwise, and **`icon`** an MDI or FontAwesome (`fa-`) name.
+**`expiresAt`**, epoch milliseconds on the app clock, takes it down then;
+without it, it stays.
+
+**`annotationsFor`** answers for one band, for a station at `station`'s
+location where one is known. It is asked once per band and station while the
+runtime lasts, in the background, so give what does not change: the band
+plan, which the app's own `band-plan` extension gives, is the model. An
+operation opening asks about its radio's band, ahead of any panel. A band a
+hook failed or missed its time for is asked again once the extensions have
+all activated, or else some time later, and as soon as one of the hook's
+annotations expires. An annotation's own `band` is
+ignored: it is on the band asked about. A malformed one is left out, and the
+rest stand.
+
+**`host.bandAnnotations.put(annotations)`** adds yours, replacing any you put
+under the same **`key`**; one without a key is only ever added.
+`remove(keys?)` takes them by key, or all of yours. A key is yours alone: no
+extension reaches another's, or the operator's. A malformed annotation
+rejects the whole put. You hold at most 1,000, and they last until you take
+them, they expire, or the runtime restarts, so put them again from
+`onActivation`.
+
+A panel declaring `on: ['spots']` is rendered again whenever a band's
+annotations may have changed.

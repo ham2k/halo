@@ -109,7 +109,7 @@ costs a bridge call each time it fires.
 | --- | --- |
 | `operation` | when the operation's data changes |
 | `qsoLogged` | on every change to the log: a contact logged, edited or deleted, or one a sync brought in |
-| `spots` | whenever `ctx.getSpots()`'s answer may have moved: a refresh, new verdicts, the operator's filters or bands, the radio's band or mode |
+| `spots` | whenever `ctx.getSpots()`'s answer may have moved: a refresh, new verdicts, the operator's filters or bands, the radio's band or mode; and whenever `ctx.getBandAnnotations()`'s may have |
 | `lookup` | when the panel is shown a callsign that **has** a lookup answer, including opening a QSO whose record already carries one; never when a lookup starts, fails or times out |
 | `qso` | as the draft contact changes, debounced to one wake per pause in typing |
 | `radio` | when any radio's dial moves: frequency, mode, passband, transmit state, PTT or connection, or a logging set's `opStyle` (API 19); never for a meter. Extension API 13; needs `requiresRadioRead` |

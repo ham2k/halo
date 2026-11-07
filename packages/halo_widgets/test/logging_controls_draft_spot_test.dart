@@ -22,7 +22,7 @@ void main() {
   installLoggingHarness();
 
   late List<_Sent> sent;
-  late List<({String key, Map<String, dynamic> qso})> tags;
+  late List<({String text, Map<String, dynamic> at})> tags;
   late List<Map<String, dynamic>> cleared;
   setUp(() {
     sent = [];
@@ -31,9 +31,13 @@ void main() {
   });
 
   LoggingSession session({bool hostSpots = true}) => LoggingSession(
-    onDraftSpot: (key, qso, {tag = false}) {
-      tag ? tags.add((key: key, qso: qso!)) : sent.add((key: key, call: (qso?['their'] as Map?)?['call'] as String?));
+    onDraftSpot: (key, qso) {
+      sent.add((key: key, call: (qso?['their'] as Map?)?['call'] as String?));
       return hostSpots && qso != null;
+    },
+    onBandTag: (text, at) {
+      tags.add((text: text, at: at));
+      return hostSpots;
     },
     onClearLocalSpots: cleared.add,
   );
@@ -215,12 +219,8 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
-      expect(tags.single.qso, {
-        'their': {'call': 'QRM'},
-        'freq': 14285.0,
-        'band': '20m',
-        'mode': 'SSB',
-      });
+      expect(tags.single.text, 'QRM');
+      expect(tags.single.at, {'freq': 14285.0, 'band': '20m', 'mode': 'SSB'});
       expect(tester.widget<TextField>(field('Their call')).controller!.text, isEmpty);
       expect(await qsosAfterWaiting(tester), isEmpty, reason: 'a tag is not a contact');
       expect(sent, isEmpty, reason: 'a tag is not an entry the panel follows');
@@ -229,7 +229,7 @@ void main() {
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
-      expect(tags.last.key, isNot(tags.first.key), reason: 'under one key the second tag would move the first');
+      expect(tags.map((t) => t.text), ['QRM', 'NET'], reason: 'each tag is one of its own, not a draft the second moves');
     });
 
     testWidgets('a command ending in ! runs as the command, and tags nothing', (tester) async {

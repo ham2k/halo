@@ -16,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
-import 'package:ham2k_logger/services/local_spots.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
@@ -200,52 +199,6 @@ void main() {
     await slide('K1ABC', 400);
     expect(logged, hasLength(1), reason: 'ordinary rows keep the slide-to-log');
     expect((logged.single['their'] as Map)['call'], 'K1ABC');
-
-    await services.radio.flushPendingWrites();
-  });
-
-  testWidgets('a band tag row slides to log nothing, offers no ignore, and its tap still offers its text', (tester) async {
-    // "Q65" reads as a callsign: slid, it would log a contact with an area of the band.
-    final services = await servicesWith([_spot('K1ABC', freq: 14050.0)]);
-    services.spots.putLocalSpot(
-      'tag',
-      localSpotFromQso(
-        {
-          'their': {'call': 'Q65'},
-          'freq': 14285.0,
-          'band': '20m',
-          'mode': 'SSB',
-        },
-        now: nowMillis(),
-        tag: true,
-      )!,
-    );
-    final suggested = <Map<String, dynamic>>[];
-    final logged = <Map<String, dynamic>>[];
-    await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso), onLogQso: logged.add);
-
-    final gesture = await tester.startGesture(tester.getCenter(find.text('Q65').first));
-    for (var i = 0; i < 10; i++) {
-      await gesture.moveBy(const Offset(40, 0));
-      await tester.pump();
-    }
-    await gesture.up();
-    await tester.pumpAndSettle();
-    expect(logged, isEmpty);
-
-    // A row naming no operator keeps no verdict: an ignore there would do nothing.
-    final back = await tester.startGesture(tester.getCenter(find.text('Q65').first));
-    for (var i = 0; i < 4; i++) {
-      await back.moveBy(const Offset(-30, 0));
-      await tester.pump();
-    }
-    expect(find.byIcon(MdiIcons.backspace), findsNothing);
-    await back.up();
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Q65').first);
-    await tester.pump();
-    expect((suggested.single['their'] as Map)['call'], 'Q65');
 
     await services.radio.flushPendingWrites();
   });

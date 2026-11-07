@@ -149,10 +149,8 @@ mixin _SpotsList on State<SpotsPanel> {
                                     background: theme.colorScheme.surface,
                                     // Our own station is not a contact to log — no
                                     // slide-to-log on a row that is ours alone, same
-                                    // reasoning as the tap below — and neither is a
-                                    // band tag, whose tap still puts its text in the
-                                    // call field (logging-fields.md § Local spots).
-                                    leading: widget.onLogQso == null || selfOnly || isBandTag(spot)
+                                    // reasoning as the tap below.
+                                    leading: widget.onLogQso == null || selfOnly
                                         ? null
                                         : _SlideAction(
                                             icon: MdiIcons.upload,

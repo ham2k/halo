@@ -141,7 +141,7 @@ anything.
 | [Text and locale](localization.md) | Translating your strings, numbers and dates, what the engine lacks |
 | [How hooks work](hooks.md) | Registration, keys and priority, invocation shapes, isolation, the category list |
 | [Lookups](lookups.md) | `lookup`, `recentContextLookup`, and how answers merge |
-| [Spots](spots.md) | `spots`, `cluster` |
+| [Spots](spots.md) | `spots`, `cluster`, `bandAnnotations` |
 | [Activities](activities.md) | `activity`, `ref:<type>`, `dataFile`, the `referenceActivity` factory |
 | [Import & export](import-export.md) | `export`, `adifFields`, `adifImport` |
 | [Scoring & chasing](scoring.md) | `scoring`, `chasing` |
@@ -179,7 +179,7 @@ it.
 The extension API is a number. Each level adds calls, hook methods or
 manifest fields, and a bundle declares in its manifest the lowest level that
 has what it uses, so every app that can run it is offered it. The SDK and the
-tools follow the same numbering: SDK 1.19 describes API 19 and exports it as
+tools follow the same numbering: SDK 1.20 describes API 20 and exports it as
 `API_VERSION`. [Packaging](packaging.md#api-levels) lists what each level
 added.
 

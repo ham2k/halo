@@ -4,6 +4,7 @@ import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import 'band_annotations_service.dart';
 import 'local_spots.dart';
 
 /// One fan-out across every spot source: the spots that came back, the hook
@@ -34,7 +35,14 @@ typedef SpotsFetch = Future<({List<Map<String, dynamic>> items, List<String> suc
 /// looked up against spots whether or not the Spots Panel was ever opened,
 /// which is the whole point of the lookup.
 class SpotsService extends ChangeNotifier {
-  SpotsService({required this._fetchSpots, this.refreshInterval = const Duration(minutes: 2), this.isOffline, Stream<bool>? offlineChanges}) {
+  SpotsService({
+    required this._fetchSpots,
+    BandAnnotationsService? bandAnnotations,
+    this.refreshInterval = const Duration(minutes: 2),
+    this.isOffline,
+    Stream<bool>? offlineChanges,
+  }) : bandAnnotations = bandAnnotations ?? BandAnnotationsService(),
+       _ownsBandAnnotations = bandAnnotations == null {
     // Straight away on recovery rather than up to a whole refreshInterval
     // later: the board an operator comes back to is stale by exactly the
     // length of the outage, and that is the moment they look at it.
@@ -44,6 +52,15 @@ class SpotsService extends ChangeNotifier {
   }
 
   StreamSubscription<bool>? _offlineSubscription;
+
+  /// What is said about the bands beside the spots on them: their plans,
+  /// the operator's band tags, and whatever extensions mark. Its own
+  /// listeners: an annotation changing judges no spot again. The app's is
+  /// ExtensionService's, there from boot: the runtime starts before the
+  /// services do, and what an extension puts as it activates would
+  /// otherwise have nowhere to go.
+  final BandAnnotationsService bandAnnotations;
+  final bool _ownsBandAnnotations;
 
   final SpotsFetch _fetchSpots;
 
@@ -358,6 +375,7 @@ class SpotsService extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    if (_ownsBandAnnotations) bandAnnotations.dispose();
     _timer?.cancel();
     _timer = null;
     _offlineSubscription?.cancel();
