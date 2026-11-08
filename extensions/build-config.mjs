@@ -130,6 +130,7 @@ export const bundles = [
   { key: "operation-commands", entry: "core/operation-commands/src/index.ts", kind: "extension" },
   { key: "navigation-commands", entry: "core/navigation-commands/src/index.ts", kind: "extension" },
   { key: "time-commands", entry: "core/time-commands/src/index.ts", kind: "extension" },
+  { key: "update-commands", entry: "core/update-commands/src/index.ts", kind: "extension" },
   { key: "templates", entry: "core/templates/src/index.ts", kind: "extension" },
   { key: "band-plan", entry: "core/band-plan/src/index.ts", kind: "extension" },
   { key: "band-scope", entry: "core/band-scope/src/index.ts", kind: "extension" },

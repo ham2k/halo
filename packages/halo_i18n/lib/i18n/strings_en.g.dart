@@ -1902,6 +1902,51 @@ class Translations$commands$en {
 	/// en: 'Reloading ${target} data files…'
 	String reloadingTarget({required Object target}) => 'Reloading ${target} data files…';
 
+	/// en: 'Checking every data file for updates…'
+	String get updatingAllDataFiles => 'Checking every data file for updates…';
+
+	/// en: 'Checking ${names} for updates…'
+	String updatingDataFiles({required Object names}) => 'Checking ${names} for updates…';
+
+	/// en: 'Update failed: ${error}'
+	String updateDataFilesFailed({required Object error}) => 'Update failed: ${error}';
+
+	/// en: 'This build doesn’t check for updates'
+	String get appUpdatesNotChecked => 'This build doesn’t check for updates';
+
+	/// en: 'The app is up to date'
+	String get appUpToDate => 'The app is up to date';
+
+	/// en: 'Couldn’t check for app updates'
+	String get appUpdateCheckFailed => 'Couldn’t check for app updates';
+
+	/// en: 'An update is available, but its store page didn’t open'
+	String get appUpdateNotOpened => 'An update is available, but its store page didn’t open';
+
+	/// en: 'No extensions installed from the catalog'
+	String get noCatalogExtensions => 'No extensions installed from the catalog';
+
+	/// en: 'Couldn’t reach the extension catalog'
+	String get extensionCheckFailed => 'Couldn’t reach the extension catalog';
+
+	/// en: 'Already checking the extension catalog — try again in a moment'
+	String get extensionCheckUnderWay => 'Already checking the extension catalog — try again in a moment';
+
+	/// en: 'Extensions are up to date'
+	String get extensionsUpToDate => 'Extensions are up to date';
+
+	/// en: '(one) {An installed extension has been replaced — see its notice} (other) {${count} installed extensions have been replaced — see their notices}'
+	String extensionsReplaced({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'An installed extension has been replaced — see its notice',
+		other: '${count} installed extensions have been replaced — see their notices',
+	);
+
+	/// en: '(one) {${count} extension update found} (other) {${count} extension updates found}'
+	String extensionUpdatesFound({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} extension update found',
+		other: '${count} extension updates found',
+	);
+
 	/// en: 'Unknown experiment "${token}"'
 	String unknownExperiment({required Object token}) => 'Unknown experiment "${token}"';
 
@@ -2457,6 +2502,9 @@ class Translations$dataFiles$en {
 	/// en: 'Downloading…'
 	String get downloading => 'Downloading…';
 
+	/// en: 'Already up to date'
+	String get upToDate => 'Already up to date';
+
 	/// en: 'Couldn't download ${name}'
 	String downloadFailedTitle({required Object name}) => 'Couldn\'t download ${name}';
 
@@ -2555,6 +2603,9 @@ class Translations$updates$en {
 
 	/// en: 'Up to date'
 	String get upToDate => 'Up to date';
+
+	/// en: 'Couldn’t check for updates'
+	String get checkFailed => 'Couldn’t check for updates';
 
 	/// en: 'Check automatically'
 	String get automaticChecks => 'Check automatically';
@@ -13406,6 +13457,19 @@ extension on Translations {
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
+			'commands.updatingAllDataFiles' => 'Checking every data file for updates…',
+			'commands.updatingDataFiles' => ({required Object names}) => 'Checking ${names} for updates…',
+			'commands.updateDataFilesFailed' => ({required Object error}) => 'Update failed: ${error}',
+			'commands.appUpdatesNotChecked' => 'This build doesn’t check for updates',
+			'commands.appUpToDate' => 'The app is up to date',
+			'commands.appUpdateCheckFailed' => 'Couldn’t check for app updates',
+			'commands.appUpdateNotOpened' => 'An update is available, but its store page didn’t open',
+			'commands.noCatalogExtensions' => 'No extensions installed from the catalog',
+			'commands.extensionCheckFailed' => 'Couldn’t reach the extension catalog',
+			'commands.extensionCheckUnderWay' => 'Already checking the extension catalog — try again in a moment',
+			'commands.extensionsUpToDate' => 'Extensions are up to date',
+			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'An installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
+			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
@@ -13460,6 +13524,8 @@ extension on Translations {
 			'commands.swapNoRadioB' => 'Nothing swapped: pick a Radio B in Station Configuration',
 			'commands.swapEditing' => 'Nothing swapped: finish editing the contact first',
 			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',
 			'commands.swapDone' => 'Radios A and B swapped',
@@ -13473,8 +13539,6 @@ extension on Translations {
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
 			'commandDialog.goSettings' => 'Settings',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
@@ -13645,6 +13709,7 @@ extension on Translations {
 			'spotting.noDestination' => 'Spot not sent: no destination takes it — see Destinations in the Spotting settings.',
 			'spotting.noAutoDestination' => 'No destination takes auto re-spots — see Destinations in the Spotting settings.',
 			'dataFiles.downloading' => 'Downloading…',
+			'dataFiles.upToDate' => 'Already up to date',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
@@ -13673,6 +13738,7 @@ extension on Translations {
 			'updates.checkForUpdates' => 'Check for Updates',
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
+			'updates.checkFailed' => 'Couldn’t check for updates',
 			'updates.automaticChecks' => 'Check automatically',
 			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',

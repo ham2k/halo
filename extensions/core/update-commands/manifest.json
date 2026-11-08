@@ -1,0 +1,7 @@
+{
+  "key": "update-commands",
+  "name": "Update Commands",
+  "version": "0.0.1",
+  "description": "UPDATE — fetches what changed: data files by name, the app, or installed extensions",
+  "hooks": ["command"]
+}

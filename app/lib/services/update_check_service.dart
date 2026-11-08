@@ -29,7 +29,11 @@ import 'update_service.dart';
 /// implementation — OSS or distribution-specific — can report through the
 /// same small set of outcomes, each already mapped to its own existing
 /// updates.* i18n string in update_check_row.dart.
-enum UpdateCheckOutcome { upToDate, updateAvailable, restartToApply, reloadToUpdate }
+///
+/// [checkFailed] is a check that got no answer (offline, a timeout, a server
+/// error). It is never folded into [upToDate]: an operator told "up to date"
+/// by a check that could not reach anything keeps running a stale build.
+enum UpdateCheckOutcome { upToDate, updateAvailable, restartToApply, reloadToUpdate, checkFailed }
 
 abstract class UpdateCheckService {
   /// Subclasses [extend] rather than implement, so they inherit
@@ -67,7 +71,10 @@ class WebFreshnessUpdateCheckService extends UpdateCheckService {
 
   @override
   Future<UpdateCheckOutcome> check({required UpdateService updates, required StatusBarService statusBar}) async {
-    final result = await BuildFreshnessService(statusBar: statusBar).check();
-    return result == BuildCheckResult.updateAvailable ? UpdateCheckOutcome.reloadToUpdate : UpdateCheckOutcome.upToDate;
+    return switch (await BuildFreshnessService(statusBar: statusBar).check()) {
+      BuildCheckResult.upToDate => UpdateCheckOutcome.upToDate,
+      BuildCheckResult.updateAvailable => UpdateCheckOutcome.reloadToUpdate,
+      BuildCheckResult.unknown => UpdateCheckOutcome.checkFailed,
+    };
   }
 }

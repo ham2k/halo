@@ -988,6 +988,48 @@ void main() {
     expect(dispatched.single.value, {'target': 'ALL'});
   });
 
+  testWidgets("UPDATE's actions typed in the call field forward to onCommandAction", (tester) async {
+    // The same trap as reloadDataFiles above: a branch missing from
+    // _dispatchActions makes UPDATE interpret fine and do nothing.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeUpdateCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      if (input.trim().toUpperCase() != 'UPDATEALL') return null;
+      return {
+        'describe': 'Update everything',
+        'commands': [
+          {
+            'updateDataFiles': {
+              'matching': ['POTA'],
+            },
+          },
+          {'updateApp': <String, dynamic>{}},
+          {'updateExtensions': <String, dynamic>{}},
+        ],
+      };
+    }
+
+    await tester.pumpWidget(
+      host(
+        commands: CommandHooks(
+          interpretCommand: fakeUpdateCommand,
+          onCommandAction: (action, [params]) async {
+            dispatched.add(MapEntry(action, params));
+          },
+        ),
+      ),
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'UPDATEALL');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched.map((e) => e.key).toList(), ['updateDataFiles', 'updateApp', 'updateExtensions']);
+    expect(dispatched.first.value, {
+      'matching': ['POTA'],
+    });
+  });
+
   testWidgets('a settings write from a command is the app\'s to make, like every other named action', (tester) async {
     // The trap: the panel holds no settings engine, so a command whose
     // `updateSettings` it kept for itself would write nothing and say

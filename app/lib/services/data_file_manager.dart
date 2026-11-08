@@ -122,6 +122,22 @@ class DataFileUnavailable implements Exception {
       : 'DataFileUnavailable: $host timed out waiting for the ${timedOut!.name} of $key';
 }
 
+/// Whether the data file [def] answers to every one of [words]: each is a
+/// whole word of its `category`, `key` or `name`, ignoring case — so `NOTES`
+/// names the `call-notes` files, `POTA` and `PARKS` both name
+/// `ham2k-pota-all-parks`, and `CALL NOTES` narrows to what has both. No
+/// words names nothing.
+bool dataFileAnswersTo(Map<String, dynamic> def, List<String> words) {
+  if (words.isEmpty) return false;
+  final own = {
+    for (final field in [def['category'], def['key'], def['name']])
+      if (field is String) ...field.toUpperCase().split(_nonWordCharacters).where((word) => word.isNotEmpty),
+  };
+  return words.every((word) => own.contains(word.toUpperCase()));
+}
+
+final _nonWordCharacters = RegExp(r'[^\p{L}\p{N}]+', unicode: true);
+
 class DataFileManager {
   final LookupRepository lookups;
   final ExtensionService extensions;
@@ -295,16 +311,19 @@ class DataFileManager {
   /// The serializable definitions every enabled extension contributes
   /// through the `dataFile`/`getDefinition` hook. Malformed or failed
   /// entries are dropped rather than throwing, same as [syncAllDataFiles].
-  Future<List<Map<String, dynamic>>> _fetchDefinitions() async {
+  Future<List<Map<String, dynamic>>> _fetchDefinitions() async => await _tryFetchDefinitions() ?? const [];
+
+  /// [_fetchDefinitions], but null when there is no runtime or the hook call fails, for a caller that must not read that as "no data files".
+  Future<List<Map<String, dynamic>>?> _tryFetchDefinitions() async {
     final host = extensions.host;
-    if (host == null) return const [];
+    if (host == null) return null;
     final List<dynamic> entries;
     try {
       entries = await host.invokeAll(Hooks.dataFileGetDefinition);
     } catch (e, st) {
       debugPrint('[data-file] failed to fetch definitions: $e');
       ErrorReportingService.report(e, st, context: 'data-files:fetch-definitions');
-      return const [];
+      return null;
     }
     final defs = <Map<String, dynamic>>[];
     for (final entry in entries) {
@@ -323,6 +342,19 @@ class DataFileManager {
       }
     }
     return defs;
+  }
+
+  /// The names of the data files that answer to all of [words]
+  /// ([dataFileAnswersTo]), sorted — what an UPDATE naming them is about to
+  /// fetch. Null when the runtime cannot be asked: "nothing matched" then
+  /// would be a guess.
+  Future<List<String>?> dataFilesAnswering(List<String> words) async {
+    final defs = await _tryFetchDefinitions();
+    if (defs == null) return null;
+    return [
+      for (final def in defs)
+        if (def['key'] case final String key when dataFileAnswersTo(def, words)) _labelFor(key, def),
+    ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   }
 
   /// Lists every registered data file with its last-download time (read
@@ -613,6 +645,11 @@ class DataFileManager {
   /// changed, not the source data, so an unchanged server response still
   /// needs reprocessing. Returns how many data files matched the filter.
   ///
+  /// [matching] narrows the pass the way UPDATE names files: to those
+  /// [dataFileAnswersTo] all of its words. [ignoreAge] fetches every file the
+  /// pass covers whatever its age, but keeps the ETag check, so a file the
+  /// server says is unchanged is neither downloaded nor reprocessed.
+  ///
   /// [notifyOnFailure] forwards to [processDataFile] — the boot and reconnect
   /// callers of this method pass `false` so an offline device doesn't raise a
   /// persistent notice on every single unattended sync; an attended caller
@@ -620,7 +657,7 @@ class DataFileManager {
   /// The same flag marks the pass unattended for progress purposes: known
   /// files refresh silently on such a pass, while a first download still
   /// shows its progress (see [processDataFile]'s `showProgress`).
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) {
+  Future<int> syncAllDataFiles({bool force = false, bool ignoreAge = false, String? categoryFilter, List<String>? matching, bool notifyOnFailure = true}) {
     // One pass at a time, whoever started it. [_runSerializedSync] only
     // coalesces its own listener triggers; direct callers (boot, RELOAD,
     // Update All, onboarding) land here too, and without this chain a
@@ -628,14 +665,22 @@ class DataFileManager {
     // same not-yet-stamped timestamps and double-download every stale file,
     // and their interleaved [_batchWriteToDatabase] stale sweeps delete
     // each other's freshly written rows.
-    final pass = _syncTurn.then((_) => _syncAllDataFilesLocked(force: force, categoryFilter: categoryFilter, notifyOnFailure: notifyOnFailure));
+    final pass = _syncTurn.then(
+      (_) => _syncAllDataFilesLocked(force: force, ignoreAge: ignoreAge, categoryFilter: categoryFilter, matching: matching, notifyOnFailure: notifyOnFailure),
+    );
     _syncTurn = pass.then((_) {}, onError: (_) {});
     return pass;
   }
 
   Future<void> _syncTurn = Future.value();
 
-  Future<int> _syncAllDataFilesLocked({required bool force, String? categoryFilter, required bool notifyOnFailure}) async {
+  Future<int> _syncAllDataFilesLocked({
+    required bool force,
+    required bool ignoreAge,
+    String? categoryFilter,
+    List<String>? matching,
+    required bool notifyOnFailure,
+  }) async {
     final host = extensions.host;
     if (host == null) {
       debugPrint('[data-file] Extension host not ready');
@@ -669,6 +714,7 @@ class DataFileManager {
           final key = def['key'] as String;
           final category = (def['category'] as String? ?? key).toUpperCase();
           if (categoryFilter != null && category != categoryFilter) return;
+          if (matching != null && !dataFileAnswersTo(def, matching)) return;
           matched++;
 
           // Remember which extension owns this data file (and its lookup
@@ -699,14 +745,27 @@ class DataFileManager {
           final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
           final healing = !force && !isStale && lastUpdateTime != 0 && await _lostItsRows(key, def, lastUpdateTime);
 
-          if (force || isStale || lastUpdateTime == 0 || healing) {
+          final due = isStale || lastUpdateTime == 0 || healing;
+          if (force || ignoreAge || due) {
             // Unattended passes (boot, reconnect — the notifyOnFailure:false
             // callers) refresh quietly; a first download still narrates itself
             // even then, because until it lands its feature simply isn't there.
             final showProgress = notifyOnFailure || lastUpdateTime == 0;
             // A heal fetches unconditionally: the server still has what the
             // stored ETag names, and a 304 would import nothing again.
-            if (await processDataFile(key, def, force: force || healing, notifyOnFailure: notifyOnFailure, showProgress: showProgress)) ingested = true;
+            //
+            // A file fetched only because [ignoreAge] asked is not one the
+            // restart's own pass would fetch again, so a restart cutting its
+            // import has to be said (see processDataFile's `redoneOnRestart`).
+            final imported = await processDataFile(
+              key,
+              def,
+              force: force || healing,
+              notifyOnFailure: notifyOnFailure,
+              showProgress: showProgress,
+              redoneOnRestart: due,
+            );
+            if (imported) ingested = true;
             // Stamped REAL while the age above is judged on the app clock, which
             // is what makes travel useful here without leaving a mess: travelling
             // forward makes files look stale and refetches them, and the stamp it
@@ -778,7 +837,19 @@ class DataFileManager {
   /// progress even unattended ([syncAllDataFiles] decides per file): until it
   /// lands, its feature is missing, which is worth narrating. Failure notices
   /// are [notifyOnFailure]'s to gate, never this.
-  Future<bool> processDataFile(String key, Map<String, dynamic> def, {bool force = false, bool notifyOnFailure = true, bool showProgress = true}) async {
+  ///
+  /// [redoneOnRestart] says whether the sync pass a runtime restart starts
+  /// would fetch this file again — false for a file the caller fetched while
+  /// it was still fresh (UPDATE). Only then may a restart cutting its import
+  /// go unsaid.
+  Future<bool> processDataFile(
+    String key,
+    Map<String, dynamic> def, {
+    bool force = false,
+    bool notifyOnFailure = true,
+    bool showProgress = true,
+    bool redoneOnRestart = true,
+  }) async {
     final label = _labelFor(key, def);
     final statusKey = 'dataFile:$key';
     // A manager with no status bar shows no notices, failures included.
@@ -820,8 +891,12 @@ class DataFileManager {
       rethrow;
     }
     if (body == null) {
-      // Unchanged 304.
-      statusBar?.clear(statusKey);
+      // Unchanged 304, said where the fetch was narrated: otherwise an UPDATE that finds nothing new reads as one that did nothing.
+      if (showProgress) {
+        statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.upToDate, value: 1.0);
+      } else {
+        statusBar?.clear(statusKey);
+      }
       return false;
     }
 
@@ -834,7 +909,7 @@ class DataFileManager {
     // is not a restart, and the import may be what caused it. Any other failure
     // (a parse, a mapper) is this file's, restart or not.
     final host = extensions.host;
-    bool cutByRestart(Object error) => !force && error is ExtensionHostException && (host == null || !identical(extensions.host, host));
+    bool cutByRestart(Object error) => !force && redoneOnRestart && error is ExtensionHostException && (host == null || !identical(extensions.host, host));
 
     try {
       if (fetchType == 'csv') {

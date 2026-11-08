@@ -866,6 +866,9 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
 
   bool _checking = false;
 
+  /// A [check] is under way; another one now returns false without asking.
+  bool get isChecking => _checking;
+
   void start() {
     WidgetsBinding.instance.addObserver(this);
     unawaited(check());

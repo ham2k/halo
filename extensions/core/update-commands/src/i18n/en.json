@@ -1,0 +1,11 @@
+{
+  "catalogCategory": "Updates",
+  "choose": "Update DATA, APP, EXT, or data files by name (POTA, NOTES…)",
+  "data": "Check every data file for updates",
+  "dataMatching": "Check data files matching {{words}} for updates",
+  "app": "Check for app updates",
+  "appChecking": "Checking for app updates…",
+  "extensions": "Update installed extensions",
+  "extensionsChecking": "Checking extensions for updates…",
+  "dataFileParam": "<data file>"
+}

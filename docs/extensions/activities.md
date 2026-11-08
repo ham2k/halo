@@ -500,5 +500,7 @@ refused download, or a page that no longer has the shape the app reads
 fails the download; the operator sees a notice on a refresh they asked for,
 and a background pass fails quietly.
 
-The operator can force a refresh from the Data Files screen or by typing
-`RELOAD <program>` in the call field, which bypasses the cache.
+The operator can refresh it from the Data Files screen, or by typing
+`UPDATE` and any word of its `category`, `key` or `name` in the call field
+(`UPDATE POTA`), which fetches it whatever its age if the server has changed
+it. `RELOAD <category>` bypasses the cache and reprocesses it regardless.

@@ -2904,6 +2904,25 @@
     "reloadFailed": "Reload failed: ${error}",
     "reloadingAll": "Reloading all data files…",
     "reloadingTarget": "Reloading ${target} data files…",
+    "updatingAllDataFiles": "Checking every data file for updates…",
+    "updatingDataFiles": "Checking ${names} for updates…",
+    "updateDataFilesFailed": "Update failed: ${error}",
+    "appUpdatesNotChecked": "This build doesn’t check for updates",
+    "appUpToDate": "The app is up to date",
+    "appUpdateCheckFailed": "Couldn’t check for app updates",
+    "appUpdateNotOpened": "An update is available, but its store page didn’t open",
+    "noCatalogExtensions": "No extensions installed from the catalog",
+    "extensionCheckFailed": "Couldn’t reach the extension catalog",
+    "extensionCheckUnderWay": "Already checking the extension catalog — try again in a moment",
+    "extensionsUpToDate": "Extensions are up to date",
+    "extensionsReplaced": {
+      "one": "An installed extension has been replaced — see its notice",
+      "other": "${count} installed extensions have been replaced — see their notices"
+    },
+    "extensionUpdatesFound": {
+      "one": "${count} extension update found",
+      "other": "${count} extension updates found"
+    },
     "unknownExperiment": "Unknown experiment \"${token}\"",
     "experimentEnabled": "${name} enabled",
     "experimentDisabled": "${name} disabled",
@@ -3178,6 +3197,7 @@
   },
   "dataFiles": {
     "downloading": "Downloading…",
+    "upToDate": "Already up to date",
     "downloadFailedTitle": "Couldn't download ${name}",
     "downloadFailedWebHint": "This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.",
     "downloadTimedOut": "The server took too long to respond. Try again later.",
@@ -3214,6 +3234,7 @@
     "checkForUpdates": "Check for Updates",
     "checkingForUpdates": "Checking for updates…",
     "upToDate": "Up to date",
+    "checkFailed": "Couldn’t check for updates",
     "automaticChecks": "Check automatically",
     "automaticChecksDescription": "Look for new versions in the background, from the next time you start the app"
   },

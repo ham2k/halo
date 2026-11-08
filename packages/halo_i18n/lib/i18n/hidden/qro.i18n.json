@@ -2904,6 +2904,25 @@
     "reloadFailed": "RELOAD FAILED: ${error}",
     "reloadingAll": "RELOADING ALL DATA FILES…",
     "reloadingTarget": "RELOADING ${target} DATA FILES…",
+    "updatingAllDataFiles": "CHECKING EVERY DATA FILE FOR UPDATES…",
+    "updatingDataFiles": "CHECKING ${names} FOR UPDATES…",
+    "updateDataFilesFailed": "UPDATE FAILED: ${error}",
+    "appUpdatesNotChecked": "THIS BUILD DOESN’T CHECK FOR UPDATES",
+    "appUpToDate": "THE APP IS UP TO DATE",
+    "appUpdateCheckFailed": "COULDN’T CHECK FOR APP UPDATES",
+    "appUpdateNotOpened": "AN UPDATE IS AVAILABLE, BUT ITS STORE PAGE DIDN’T OPEN",
+    "noCatalogExtensions": "NO EXTENSIONS INSTALLED FROM THE CATALOG",
+    "extensionCheckFailed": "COULDN’T REACH THE EXTENSION CATALOG",
+    "extensionCheckUnderWay": "ALREADY CHECKING THE EXTENSION CATALOG — TRY AGAIN IN A MOMENT",
+    "extensionsUpToDate": "EXTENSIONS ARE UP TO DATE",
+    "extensionsReplaced": {
+      "one": "AN INSTALLED EXTENSION HAS BEEN REPLACED — SEE ITS NOTICE",
+      "other": "${count} INSTALLED EXTENSIONS HAVE BEEN REPLACED — SEE THEIR NOTICES"
+    },
+    "extensionUpdatesFound": {
+      "one": "${count} EXTENSION UPDATE FOUND",
+      "other": "${count} EXTENSION UPDATES FOUND"
+    },
     "unknownExperiment": "UNKNOWN EXPERIMENT \"${token}\"",
     "experimentEnabled": "${name} ENABLED",
     "experimentDisabled": "${name} DISABLED",
@@ -3178,6 +3197,7 @@
   },
   "dataFiles": {
     "downloading": "DOWNLOADING…",
+    "upToDate": "ALREADY UP TO DATE",
     "downloadFailedTitle": "COULDN'T DOWNLOAD ${name}",
     "downloadFailedWebHint": "THIS COULD BE A NETWORK ISSUE, OR THIS LINK'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.",
     "downloadTimedOut": "THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.",
@@ -3214,6 +3234,7 @@
     "checkForUpdates": "CHECK FOR UPDATES",
     "checkingForUpdates": "CHECKING FOR UPDATES…",
     "upToDate": "UP TO DATE",
+    "checkFailed": "COULDN’T CHECK FOR UPDATES",
     "automaticChecks": "CHECK AUTOMATICALLY",
     "automaticChecksDescription": "LOOK FOR NEW VERSIONS IN THE BACKGROUND, FROM THE NEXT TIME YOU START THE APP"
   },

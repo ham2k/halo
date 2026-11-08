@@ -17,13 +17,17 @@ mixin _ExtensionCommandGate on _ExtensionHookApi {
 
   /// The actions that write a setting, which need `requiresSettingsWrite`;
   /// the ones that drive the radio, which need `requiresRadioWrite`; and the
-  /// developer's, which run only for the app's own extensions. An action not
-  /// listed here is one any command may carry; list it here when it writes a
-  /// setting, drives the radio, or belongs to the developer.
+  /// developer's and the app's own upkeep (UPDATE), which run only for the
+  /// app's own extensions. An action not listed here is one any command may
+  /// carry; list it here when it writes a setting, drives the radio, or
+  /// belongs to the developer or the app.
   static const _settingsActions = {'updateSetting', 'updateSettings', 'toggleExperiment', 'setEnterSends', 'setOpStyle', 'setKeyerSpeed', 'showKeyer'};
   static const _radioActions = {'setPower', 'swapRadios'};
   static const _developerActions = {
     'reloadDataFiles',
+    'updateDataFiles',
+    'updateApp',
+    'updateExtensions',
     'devNotice',
     'devStatus',
     'devFyi',

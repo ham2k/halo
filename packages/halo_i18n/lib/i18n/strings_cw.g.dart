@@ -856,6 +856,25 @@ class _Translations$commands$cw extends Translations$commands$en {
 	@override String reloadFailed({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
 	@override String get reloadingAll => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …';
 	@override String reloadingTarget({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …';
+	@override String get updatingAllDataFiles => '—·—· ···· · —·—· —·— ·· —· ——· / · ···— · ·—· —·—— / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …';
+	@override String updatingDataFiles({required Object names}) => '—·—· ···· · —·—· —·— ·· —· ——· / ${names} / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …';
+	@override String updateDataFilesFailed({required Object error}) => '··— ·——· —·· ·— — · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}';
+	@override String get appUpdatesNotChecked => '— ···· ·· ··· / —··· ··— ·· ·—·· —·· / —·· ——— · ··· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···';
+	@override String get appUpToDate => '— ···· · / ·— ·——· ·——· / ·· ··· / ··— ·——· / — ——— / —·· ·— — ·';
+	@override String get appUpdateCheckFailed => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— ·——· ·——· / ··— ·——· —·· ·— — · ···';
+	@override String get appUpdateNotOpened => '·— —· / ··— ·——· —·· ·— — · / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ——··—— / —··· ··— — / ·· — ··· / ··· — ——— ·—· · / ·——· ·— ——· · / —·· ·· —·· —· ’ — / ——— ·——· · —·';
+	@override String get noCatalogExtensions => '—· ——— / · —··— — · —· ··· ·· ——— —· ··· / ·· —· ··· — ·— ·—·· ·—·· · —·· / ··—· ·—· ——— —— / — ···· · / —·—· ·— — ·— ·—·· ——— ——·';
+	@override String get extensionCheckFailed => '—·—· ——— ··— ·—·· —·· —· ’ — / ·—· · ·— —·—· ···· / — ···· · / · —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·';
+	@override String get extensionCheckUnderWay => '·— ·—·· ·—· · ·— —·· —·—— / —·—· ···· · —·—· —·— ·· —· ——· / — ···· · / · —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——· / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —';
+	@override String get extensionsUpToDate => '· —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / ··— ·——· / — ——— / —·· ·— — ·';
+	@override String extensionsReplaced({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '·— —· / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· / ···· ·— ··· / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / ·· — ··· / —· ——— — ·· —·—· ·',
+		other: '${count} / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· / ···· ·— ···— · / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / — ···· · ·· ·—· / —· ——— — ·· —·—· · ···',
+	);
+	@override String extensionUpdatesFound({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · / ··—· ——— ··— —· —··',
+		other: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · ··· / ··—· ——— ··— —· —··',
+	);
 	@override String unknownExperiment({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·';
 	@override String experimentEnabled({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··';
 	@override String experimentDisabled({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··';
@@ -1093,6 +1112,7 @@ class _Translations$dataFiles$cw extends Translations$dataFiles$en {
 
 	// Translations
 	@override String get downloading => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …';
+	@override String get upToDate => '·— ·—·· ·—· · ·— —·· —·—— / ··— ·——· / — ——— / —·· ·— — ·';
 	@override String downloadFailedTitle({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}';
 	@override String get downloadFailedWebHint => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—';
 	@override String get downloadTimedOut => '— ···· · / ··· · ·—· ···— · ·—· / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·—· · ··· ·——· ——— —· —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—';
@@ -1136,6 +1156,7 @@ class _Translations$updates$cw extends Translations$updates$en {
 	@override String get checkForUpdates => '—·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···';
 	@override String get checkingForUpdates => '—·—· ···· · —·—· —·— ·· —· ——· / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …';
 	@override String get upToDate => '··— ·——· / — ——— / —·· ·— — ·';
+	@override String get checkFailed => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···';
 	@override String get automaticChecks => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——';
 	@override String get automaticChecksDescription => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·';
 }
@@ -7414,6 +7435,19 @@ extension on TranslationsCw {
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
+			'commands.updatingAllDataFiles' => '—·—· ···· · —·—· —·— ·· —· ——· / · ···— · ·—· —·—— / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
+			'commands.updatingDataFiles' => ({required Object names}) => '—·—· ···· · —·—· —·— ·· —· ——· / ${names} / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
+			'commands.updateDataFilesFailed' => ({required Object error}) => '··— ·——· —·· ·— — · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
+			'commands.appUpdatesNotChecked' => '— ···· ·· ··· / —··· ··— ·· ·—·· —·· / —·· ——— · ··· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
+			'commands.appUpToDate' => '— ···· · / ·— ·——· ·——· / ·· ··· / ··— ·——· / — ——— / —·· ·— — ·',
+			'commands.appUpdateCheckFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ·— ·——· ·——· / ··— ·——· —·· ·— — · ···',
+			'commands.appUpdateNotOpened' => '·— —· / ··— ·——· —·· ·— — · / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ——··—— / —··· ··— — / ·· — ··· / ··· — ——— ·—· · / ·——· ·— ——· · / —·· ·· —·· —· ’ — / ——— ·——· · —·',
+			'commands.noCatalogExtensions' => '—· ——— / · —··— — · —· ··· ·· ——— —· ··· / ·· —· ··· — ·— ·—·· ·—·· · —·· / ··—· ·—· ——— —— / — ···· · / —·—· ·— — ·— ·—·· ——— ——·',
+			'commands.extensionCheckFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / ·—· · ·— —·—· ···· / — ···· · / · —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
+			'commands.extensionCheckUnderWay' => '·— ·—·· ·—· · ·— —·· —·—— / —·—· ···· · —·—· —·— ·· —· ——· / — ···· · / · —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——· / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —',
+			'commands.extensionsUpToDate' => '· —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / ··— ·——· / — ——— / —·· ·— — ·',
+			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·— —· / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· / ···· ·— ··· / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / ·· — ··· / —· ——— — ·· —·—· ·', other: '${count} / ·· —· ··· — ·— ·—·· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· / ···· ·— ···— · / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —·· / — / ··· · · / — ···· · ·· ·—· / —· ——— — ·· —·—· · ···', ), 
+			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · / ··—· ——— ··— —· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· / ··— ·——· —·· ·— — · ··· / ··—· ——— ··— —· —··', ), 
 			'commands.unknownExperiment' => ({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··',
@@ -7468,6 +7502,8 @@ extension on TranslationsCw {
 			'commands.swapNoRadioB' => '—· ——— — ···· ·· —· ——· / ··· ·—— ·— ·——· ·——· · —·· ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'commands.swapEditing' => '—· ——— — ···· ·· —· ——· / ··· ·—— ·— ·——· ·——· · —·· ———··· / ··—· ·· —· ·· ··· ···· / · —·· ·· — ·· —· ——· / — ···· · / —·—· ——— —· — ·— —·—· — / ··—· ·· ·—· ··· —',
 			'commands.swapOnAir' => ({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· ·—— ·— ·——· ·——· · —·· ———··· / ·—· ·— —·· ·· ——— / ${radio} / ·· ··· / ——— —· / — ···· · / ·— ·· ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapKeyerBusy' => ({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· ·—— ·— ·——· ·——· · —·· ———··· / ·—· ·— —·· ·· ——— / ${radio} / ···· ·— ··· / —— · ··· ··· ·— ——· · ··· / ——· ——— ·· —· ——· / ——— ·—· / ·—— ·— ·· — ·· —· ——·',
 			'commands.swapLocked' => '—· ——— — ···· ·· —· ——· / ··· ·—— ·— ·——· ·——· · —·· ———··· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· / —·—· ·— —· ·————· — / — ·— —·— · / —·—· ···· ·— —· ——· · ··· / ·—· ·· ——· ···· — / —· ——— ·——',
 			'commands.swapDone' => '·—· ·— —·· ·· ——— ··· / ·— / ·— —· —·· / —··· / ··· ·—— ·— ·——· ·——· · —··',
@@ -7481,8 +7517,6 @@ extension on TranslationsCw {
 			'commandDialog.sectionOperations' => '——— ·——· · ·—· ·— — ·· ——— —· ···',
 			'commandDialog.goHome' => '···· ——— —— ·',
 			'commandDialog.goSettings' => '··· · — — ·· —· ——· ···',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goNewOperation' => '—· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'commandDialog.runTyped' => ({required Object text}) => '·—· ··— —· / “ ${text} ”',
 			'commandDialog.sectionSuggestions' => '— ·—· —·——',
@@ -7653,6 +7687,7 @@ extension on TranslationsCw {
 			'spotting.noDestination' => '··· ·——· ——— — / —· ——— — / ··· · —· — ———··· / —· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·· — / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'spotting.noAutoDestination' => '—· ——— / —·· · ··· — ·· —· ·— — ·· ——— —· / — ·— —·— · ··· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — ··· / — / ··· · · / —·· · ··· — ·· —· ·— — ·· ——— —· ··· / ·· —· / — ···· · / ··· ·——· ——— — — ·· —· ——· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'dataFiles.downloading' => '—·· ——— ·—— —· ·—·· ——— ·— —·· ·· —· ——· …',
+			'dataFiles.upToDate' => '·— ·—·· ·—· · ·— —·· —·—— / ··— ·——· / — ——— / —·· ·— — ·',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ${name}',
 			'dataFiles.downloadFailedWebHint' => '— ···· ·· ··· / —·—· ——— ··— ·—·· —·· / —··· · / ·— / —· · — ·—— ——— ·—· —·— / ·· ··· ··· ··— · ——··—— / ——— ·—· / — ···· ·· ··· / ·—·· ·· —· —·— ·————· ··· / ···· ——— ··· — / —— ·— —·—— / —· ——— — / ··· ··— ·——· ·——· ——— ·—· — / —·· ·· ·—· · —·—· — / —·· ——— ·—— —· ·—·· ——— ·— —·· ··· / ··—· ·—· ——— —— / ·— / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—· ·—·—·— / — ·—· —·—— / — ···· · / —·· · ··· —·— — ——— ·——· / ——— ·—· / —— ——— —··· ·· ·—·· · / ·— ·——· ·——· ——··—— / ——— ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ···· ——— ··· — ·· —· ——· / ·—·· ——— —·—· ·— — ·· ——— —· ·—·—·—',
 			'dataFiles.downloadTimedOut' => '— ···· · / ··· · ·—· ···— · ·—· / — ——— ——— —·— / — ——— ——— / ·—·· ——— —· ——· / — ——— / ·—· · ··· ·——· ——— —· —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
@@ -7681,6 +7716,7 @@ extension on TranslationsCw {
 			'updates.checkForUpdates' => '—·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
 			'updates.checkingForUpdates' => '—·—· ···· · —·—· —·— ·· —· ——· / ··—· ——— ·—· / ··— ·——· —·· ·— — · ··· …',
 			'updates.upToDate' => '··— ·——· / — ——— / —·· ·— — ·',
+			'updates.checkFailed' => '—·—· ——— ··— ·—·· —·· —· ’ — / —·—· ···· · —·—· —·— / ··—· ——— ·—· / ··— ·——· —·· ·— — · ···',
 			'updates.automaticChecks' => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'updates.automaticChecksDescription' => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·',
 			'extensionService.runtimeNotReady' => '· —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / —· ——— — / ·—· · ·— —·· —·—— ·—·—·—',

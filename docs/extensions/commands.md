@@ -48,7 +48,8 @@ never arbitrary state:
 
 A command carrying an action its extension may not run is refused before it
 runs, and the command bar says so. The developer actions (`dev…`,
-`reloadDataFiles`) run only for the app's own extensions.
+`reloadDataFiles`) and the app's own upkeep (`updateDataFiles`, `updateApp`,
+`updateExtensions`) run only for the app's own extensions.
 
 **Rules of the field:**
 

@@ -132,6 +132,12 @@ extension _ActionDispatch on _LoggingControlsState {
         await widget.commands.onCommandAction?.call('devIdle');
       } else if (map['reloadDataFiles'] is Map) {
         await widget.commands.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+      } else if (map['updateDataFiles'] is Map) {
+        await widget.commands.onCommandAction?.call('updateDataFiles', (map['updateDataFiles'] as Map).cast<String, dynamic>());
+      } else if (map['updateApp'] is Map) {
+        await widget.commands.onCommandAction?.call('updateApp');
+      } else if (map['updateExtensions'] is Map) {
+        await widget.commands.onCommandAction?.call('updateExtensions');
       } else if (map['toggleExperiment'] is Map) {
         await widget.commands.onCommandAction?.call('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
       } else if (map['updateSetting'] is Map) {

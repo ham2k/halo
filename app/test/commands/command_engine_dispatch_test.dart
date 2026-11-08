@@ -148,6 +148,27 @@ void main() {
     expect(dispatched.map((e) => e.key).toList(), ['devStatus', 'devHammer', 'reloadDataFiles']);
   });
 
+  test("UPDATE's three actions each reach runAction, the words intact", () async {
+    // Each needs its own branch here: one missing drops the action into the
+    // `else`, where it is printed and UPDATE does nothing at all.
+    final (commandEngine, dispatched) = await engine();
+
+    await commandEngine.dispatchActions([
+      {
+        'updateDataFiles': {
+          'matching': ['CALL', 'NOTES'],
+        },
+      },
+      {'updateApp': <String, dynamic>{}},
+      {'updateExtensions': <String, dynamic>{}},
+    ]);
+
+    expect(dispatched.map((e) => e.key).toList(), ['updateDataFiles', 'updateApp', 'updateExtensions']);
+    expect(dispatched.first.value, {
+      'matching': ['CALL', 'NOTES'],
+    });
+  });
+
   test('the branches that bypass runAction still take effect', () async {
     // updateSettings never reaches runAction — it writes the setting directly —
     // so the dispatched list cannot see it, and deleting its branch drops the

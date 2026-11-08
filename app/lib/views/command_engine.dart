@@ -138,15 +138,15 @@ class CollapseWhitespaceFormatter extends TextInputFormatter {
 ///
 /// [upcaseParams] lists the commands whose parameter is uppercased along
 /// with the word: those whose parameter is a name the field shows as an
-/// uppercase token everywhere else (an experiment key), never one that could
-/// be prose. Static because a rule here cannot consult the catalog either —
+/// uppercase token everywhere else (an experiment key, UPDATE's target), never
+/// one that could be prose. Static because a rule here cannot consult the catalog either —
 /// the Home bar never loads it.
 class CommandWordCaseFormatter extends TextInputFormatter {
   const CommandWordCaseFormatter();
 
   static final _whitespace = RegExp(r'\s');
 
-  static const upcaseParams = {'EXP'};
+  static const upcaseParams = {'EXP', 'UPDATE', 'UPD'};
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -897,6 +897,12 @@ Future<void> dispatchCommandActions(
       await runAction('devIdle', null);
     } else if (map['reloadDataFiles'] is Map) {
       await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+    } else if (map['updateDataFiles'] is Map) {
+      await runAction('updateDataFiles', (map['updateDataFiles'] as Map).cast<String, dynamic>());
+    } else if (map['updateApp'] is Map) {
+      await runAction('updateApp', null);
+    } else if (map['updateExtensions'] is Map) {
+      await runAction('updateExtensions', null);
     } else if (map['toggleExperiment'] is Map) {
       await runAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
     } else if (map['updateSetting'] is Map) {

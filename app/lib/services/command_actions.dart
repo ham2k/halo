@@ -3,12 +3,15 @@
 //
 // Runs one command action and makes sure its answer reaches someone: the bar
 // that asked, or failing that the status bar. The actions that need the UI —
-// two that confirm in a dialog, and GO's navigation — are intercepted here;
+// two that confirm in a dialog, GO's navigation, and UPDATE's app and
+// extension checks, which open a store page or a dialog — are intercepted here,
+// with UPDATE's data files kept beside those two;
 // the rest go through HaLoServices.handleCommandAction.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:halo_core/halo_core.dart' show asQsonString;
 
 import '../config/navigation.dart';
@@ -17,6 +20,7 @@ import '../views/app_shell/home_rail_state.dart';
 import '../views/operation_dialogs.dart';
 
 import 'error_reporting_service.dart';
+import 'update_check_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'halo_services.dart';
@@ -66,6 +70,12 @@ Future<bool> runCommandAction(HaLoServices services, String action, [Map<String,
       outcome = await _runSyncAll(services, context);
     case 'navigate':
       outcome = await _runNavigate(services, asQsonString(params?['to']) ?? '');
+    case 'updateDataFiles':
+      outcome = await _runUpdateDataFiles(services, [for (final word in (params?['matching'] as List?) ?? const []) '$word']);
+    case 'updateApp':
+      outcome = await _runUpdateApp(services);
+    case 'updateExtensions':
+      outcome = await _runUpdateExtensions(services);
     default:
       outcome = await services.handleCommandAction(action, params);
   }
@@ -172,6 +182,128 @@ Future<CommandActionOutcome?> _runSyncAll(HaLoServices services, BuildContext? c
     return (text: 'A full resync needs the real clock — run DEVTT first', failed: true);
   }
   return (text: t.commands.fullResyncStarted, failed: false);
+}
+
+/// UPDATE and its data-file words (`update-commands`): every file the
+/// [words] name, or every file without any, whatever its age but past the
+/// ETag check, so only what the server changed is fetched. The names are
+/// settled before anything runs, so a word that names nothing is refused on
+/// the bar that typed it; the files then report their own progress, as
+/// RELOAD's do.
+Future<CommandActionOutcome?> _runUpdateDataFiles(HaLoServices services, List<String> words) async {
+  // Bypasses handleCommandAction's switch, so it fires the same usage event.
+  services.track('command_executed', {'command': 'updateDataFiles'});
+  final dataFiles = services.dataFiles;
+  // Without a runtime the pass below finds no definitions and does nothing.
+  if (services.extensions.host == null) return (text: t.extensionService.runtimeNotReady, failed: true);
+  List<String>? names;
+  if (words.isNotEmpty) {
+    names = await dataFiles.dataFilesAnswering(words);
+    if (names == null) return (text: t.extensionService.runtimeNotReady, failed: true);
+    if (names.isEmpty) return (text: t.commands.noDataFilesMatched(target: words.join(' ')), failed: true);
+  }
+  unawaited(
+    dataFiles
+        .syncAllDataFiles(ignoreAge: true, matching: words.isEmpty ? null : words)
+        .then((matched) {
+          // The pass waits its turn behind any other and asks the runtime
+          // again, which by then may be restarting: without this, the bar's
+          // "Updating…" would be the last word on a pass that did nothing.
+          if (matched > 0) return;
+          services.statusBar.setProgress(
+            key: 'command:updateDataFiles',
+            text: services.extensions.host == null
+                ? t.extensionService.runtimeNotReady
+                : t.commands.noDataFilesMatched(target: words.isEmpty ? 'DATA' : words.join(' ')),
+            value: 1.0,
+          );
+        })
+        .catchError((Object e, StackTrace st) {
+          // syncAllDataFiles isolates and reports each file's own failure; this
+          // is anything that slips past those.
+          ErrorReportingService.report(
+            e,
+            st,
+            context: 'command:updateDataFiles',
+            notice: ErrorNotice(
+              services.statusBar,
+              key: 'command:updateDataFiles',
+              text: t.commands.updateDataFilesFailed(error: ErrorReportingService.messageOf(e)),
+            ),
+          );
+        }),
+  );
+  return (text: names == null ? t.commands.updatingAllDataFiles : t.commands.updatingDataFiles(names: names.join(', ')), failed: false);
+}
+
+/// UPDATE APP (`update-commands`): the About panel's Check for Updates, with
+/// its answer said here. Where the check leaves somewhere to go (a store
+/// page) it goes there; Sparkle and WinSparkle put up their own prompt.
+Future<CommandActionOutcome?> _runUpdateApp(HaLoServices services) async {
+  // Bypasses handleCommandAction's switch, so it fires the same usage event.
+  services.track('command_executed', {'command': 'updateApp'});
+  final check = services.updateCheck;
+  if (!check.isApplicable(updates: services.updates)) return (text: t.commands.appUpdatesNotChecked, failed: true);
+  // The check and the store lookup behind updateDestination reach
+  // distribution-specific APIs and can throw; launchUrl has a try of its own,
+  // as in UpdateCheckRow, so a store that will not open is not a failed check.
+  try {
+    switch (await check.check(updates: services.updates, statusBar: services.statusBar)) {
+      case UpdateCheckOutcome.upToDate:
+        return (text: t.commands.appUpToDate, failed: false);
+      case UpdateCheckOutcome.restartToApply:
+        return (text: t.updates.restartToApply, failed: false);
+      case UpdateCheckOutcome.reloadToUpdate:
+        return (text: t.updates.reloadToUpdate, failed: false);
+      case UpdateCheckOutcome.checkFailed:
+        return (text: t.commands.appUpdateCheckFailed, failed: true);
+      case UpdateCheckOutcome.updateAvailable:
+        // Launched directly for the reason UpdateCheckRow gives: this URL is the
+        // check's own, not one openExternalUrl's allowlist fences.
+        if (await check.updateDestination() case final destination?) {
+          try {
+            if (!await launchUrl(destination, mode: LaunchMode.externalApplication)) {
+              return (text: t.commands.appUpdateNotOpened, failed: true);
+            }
+          } catch (e, st) {
+            ErrorReportingService.report(e, st, context: 'command:updateApp:open', told: true);
+            return (text: t.commands.appUpdateNotOpened, failed: true);
+          }
+        }
+        return (text: t.updates.updateAvailable, failed: false);
+    }
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'command:updateApp', told: true);
+    return (text: t.commands.appUpdateCheckFailed, failed: true);
+  }
+}
+
+/// UPDATE EXT (`update-commands`): asks the catalog now rather than when the
+/// daily check is due, then offers every update it names through the update
+/// notice's own Update all — whose dialog lists them before anything installs.
+Future<CommandActionOutcome?> _runUpdateExtensions(HaLoServices services) async {
+  // Bypasses handleCommandAction's switch, so it fires the same usage event.
+  services.track('command_executed', {'command': 'updateExtensions'});
+  if (!services.extensions.availableExtensions.any((info) => info.isInstalled)) {
+    return (text: t.commands.noCatalogExtensions, failed: false);
+  }
+  final check = services.catalogUpdateCheck;
+  // A check already running makes this one return false at once; that is no
+  // network failure.
+  if (check.isChecking) return (text: t.commands.extensionCheckUnderWay, failed: false);
+  // Announced: the bar is not the Extensions panel these notices point at,
+  // and a replacement (which Update all never takes) has nowhere else to be
+  // said. The updates notice also outlives a Cancel in the dialog below.
+  if (!await check.check(force: true)) return (text: t.commands.extensionCheckFailed, failed: true);
+  final pending = check.pendingUpdates.values.toList();
+  if (pending.isEmpty) {
+    final replaced = check.pendingRedirects.length;
+    return (text: replaced > 0 ? t.commands.extensionsReplaced(count: replaced) : t.commands.extensionsUpToDate, failed: false);
+  }
+  // Not awaited: the installs outlast the command bar that asked, and the
+  // dialog and the installs report for themselves.
+  unawaited(check.updateAll?.call(pending, const {}));
+  return (text: t.commands.extensionUpdatesFound(count: pending.length), failed: false);
 }
 
 /// The Settings panels GO can open — the keys `SettingsView` selects by.

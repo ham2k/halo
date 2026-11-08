@@ -136,6 +136,20 @@ void main() {
     expect(find.text('An update has been downloaded. Restart to apply it.'), findsOneWidget);
   });
 
+  testWidgets('a check that got no answer says so, never "up to date"', (tester) async {
+    // The web freshness check answers this when offline or timed out; read as
+    // "up to date", it keeps the operator on a stale build.
+    final updateCheck = _FakeUpdateCheckService(outcome: UpdateCheckOutcome.checkFailed);
+    final services = await _makeServices(updateCheck: updateCheck);
+    addTearDown(services.db.close);
+
+    await pumpRow(tester, services);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Couldn’t check for updates'), findsOneWidget);
+    expect(find.text('Up to date'), findsNothing);
+  });
+
   testWidgets('an unexpected exception from a check does not leave the row stuck on "Checking…" forever', (tester) async {
     final updateCheck = _FakeUpdateCheckService(throwOnCheck: true);
     final services = await _makeServices(updateCheck: updateCheck);
@@ -146,10 +160,10 @@ void main() {
 
     expect(updateCheck.checkCalls, 1);
     expect(find.text('Checking for updates…'), findsNothing);
-    // Falls back to "up to date" rather than crashing or hanging — the row
-    // stays usable, and the exception itself is reported, not swallowed
-    // silently (see ErrorReportingService.report in _check()).
-    expect(find.text('Up to date'), findsOneWidget);
+    // Says the check failed: "Up to date" from a check that never answered
+    // would keep the operator on a stale build.
+    expect(find.text('Couldn’t check for updates'), findsOneWidget);
+    expect(find.text('Up to date'), findsNothing);
 
     // The tap target must not stay disabled after the failure.
     await tester.tap(find.byType(ListTile));

@@ -413,12 +413,13 @@ const ReloadCommand = {
     }
   },
 
-  catalog: devCatalog("RELOAD", "Re-sync data files", {
-    always: true,
+  // Listed only in developer mode: UPDATE (`update-commands`) is the
+  // operator's way to fresh data, and RELOAD's forced reprocess is for
+  // mapping logic that changed under data that didn't.
+  catalog: devCatalog("RELOAD", "Re-download and reprocess data files", {
     params: "<POTA|SOTA|ALL>",
-    keywords: ["RELOADALL", "DATA FILES", "REFRESH", "DOWNLOAD"],
+    keywords: ["RELOADALL", "DATA FILES"],
     expectsParams: true,
-    suggest: true,
   }),
 }
 

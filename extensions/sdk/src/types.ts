@@ -2098,6 +2098,17 @@ export interface CommandAction {
   /// logic changed, not the source data. `target` is `'ALL'` or a
   /// case-insensitive match against a data file's `category` (e.g. `'POTA'`).
   reloadDataFiles?: { target: string }
+  /// UPDATE (`update-commands`): fetches `dataFile`s whatever their age,
+  /// keeping the ETag check, so only what the server changed is downloaded.
+  /// `matching` narrows it to the files answering to all of its words — each
+  /// a whole word of the file's `category`, `key` or `name`, ignoring case;
+  /// absent, every file. A word no file answers to is refused as an error.
+  updateDataFiles?: { matching?: string[] }
+  /// UPDATE APP: the build's own update check, as About's Check for Updates.
+  updateApp?: Record<string, never>
+  /// UPDATE EXT: asks the catalog for updates to the installed extensions now,
+  /// and offers every one it names, as the update notice's Update all does.
+  updateExtensions?: Record<string, never>
   /// Developer-only: posts a notice via `host.statusBar.showNotice` (see
   /// `dev-commands`'s DEVNOTICE). Dispatched by the app, not the extension
   /// itself, so it goes through the same confirm/preview flow as any other

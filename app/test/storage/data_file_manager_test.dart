@@ -1811,7 +1811,13 @@ class _SyncCountingDataFileManager extends DataFileManager {
   _SyncCountingDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.offlineChanges, super.isOffline});
 
   @override
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+  Future<int> syncAllDataFiles({
+    bool force = false,
+    bool ignoreAge = false,
+    String? categoryFilter,
+    List<String>? matching,
+    bool notifyOnFailure = true,
+  }) async {
     syncCalls++;
     notifyFlags.add(notifyOnFailure);
     final block = blockNextSync;
@@ -1886,7 +1892,13 @@ class _RecordingDataFileManager extends DataFileManager {
   }
 
   @override
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+  Future<int> syncAllDataFiles({
+    bool force = false,
+    bool ignoreAge = false,
+    String? categoryFilter,
+    List<String>? matching,
+    bool notifyOnFailure = true,
+  }) async {
     calls.add('sync');
     final blocker = blockNextSync;
     if (blocker != null) await blocker.future;

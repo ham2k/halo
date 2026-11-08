@@ -235,7 +235,13 @@ class _FakeDataFiles extends DataFileManager {
   }
 
   @override
-  Future<int> syncAllDataFiles({bool force = false, String? categoryFilter, bool notifyOnFailure = true}) async {
+  Future<int> syncAllDataFiles({
+    bool force = false,
+    bool ignoreAge = false,
+    String? categoryFilter,
+    List<String>? matching,
+    bool notifyOnFailure = true,
+  }) async {
     syncAllForce = force;
     await _syncGate.future;
     return files.length;

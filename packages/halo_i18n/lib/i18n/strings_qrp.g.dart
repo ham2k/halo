@@ -856,6 +856,25 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String reloadFailed({required Object error}) => 'reload failed: ${error}';
 	@override String get reloadingAll => 'reloading all data files…';
 	@override String reloadingTarget({required Object target}) => 'reloading ${target} data files…';
+	@override String get updatingAllDataFiles => 'checking every data file for updates…';
+	@override String updatingDataFiles({required Object names}) => 'checking ${names} for updates…';
+	@override String updateDataFilesFailed({required Object error}) => 'update failed: ${error}';
+	@override String get appUpdatesNotChecked => 'this build doesn’t check for updates';
+	@override String get appUpToDate => 'the app is up to date';
+	@override String get appUpdateCheckFailed => 'couldn’t check for app updates';
+	@override String get appUpdateNotOpened => 'an update is available, but its store page didn’t open';
+	@override String get noCatalogExtensions => 'no extensions installed from the catalog';
+	@override String get extensionCheckFailed => 'couldn’t reach the extension catalog';
+	@override String get extensionCheckUnderWay => 'already checking the extension catalog — try again in a moment';
+	@override String get extensionsUpToDate => 'extensions are up to date';
+	@override String extensionsReplaced({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: 'an installed extension has been replaced — see its notice',
+		other: '${count} installed extensions have been replaced — see their notices',
+	);
+	@override String extensionUpdatesFound({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
+		one: '${count} extension update found',
+		other: '${count} extension updates found',
+	);
 	@override String unknownExperiment({required Object token}) => 'unknown experiment "${token}"';
 	@override String experimentEnabled({required Object name}) => '${name} enabled';
 	@override String experimentDisabled({required Object name}) => '${name} disabled';
@@ -1093,6 +1112,7 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 
 	// Translations
 	@override String get downloading => 'downloading…';
+	@override String get upToDate => 'already up to date';
 	@override String downloadFailedTitle({required Object name}) => 'couldn\'t download ${name}';
 	@override String get downloadFailedWebHint => 'this could be a network issue, or this link\'s host may not support direct downloads from a web browser. try the desktop or mobile app, or a different hosting location.';
 	@override String get downloadTimedOut => 'the server took too long to respond. try again later.';
@@ -1136,6 +1156,7 @@ class _Translations$updates$qrp extends Translations$updates$en {
 	@override String get checkForUpdates => 'check for updates';
 	@override String get checkingForUpdates => 'checking for updates…';
 	@override String get upToDate => 'up to date';
+	@override String get checkFailed => 'couldn’t check for updates';
 	@override String get automaticChecks => 'check automatically';
 	@override String get automaticChecksDescription => 'look for new versions in the background, from the next time you start the app';
 }
@@ -7414,6 +7435,19 @@ extension on TranslationsQrp {
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
 			'commands.reloadingAll' => 'reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
+			'commands.updatingAllDataFiles' => 'checking every data file for updates…',
+			'commands.updatingDataFiles' => ({required Object names}) => 'checking ${names} for updates…',
+			'commands.updateDataFilesFailed' => ({required Object error}) => 'update failed: ${error}',
+			'commands.appUpdatesNotChecked' => 'this build doesn’t check for updates',
+			'commands.appUpToDate' => 'the app is up to date',
+			'commands.appUpdateCheckFailed' => 'couldn’t check for app updates',
+			'commands.appUpdateNotOpened' => 'an update is available, but its store page didn’t open',
+			'commands.noCatalogExtensions' => 'no extensions installed from the catalog',
+			'commands.extensionCheckFailed' => 'couldn’t reach the extension catalog',
+			'commands.extensionCheckUnderWay' => 'already checking the extension catalog — try again in a moment',
+			'commands.extensionsUpToDate' => 'extensions are up to date',
+			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'an installed extension has been replaced — see its notice', other: '${count} installed extensions have been replaced — see their notices', ), 
+			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension update found', other: '${count} extension updates found', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
@@ -7468,6 +7502,8 @@ extension on TranslationsQrp {
 			'commands.swapNoRadioB' => 'nothing swapped: pick a radio b in station configuration',
 			'commands.swapEditing' => 'nothing swapped: finish editing the contact first',
 			'commands.swapOnAir' => ({required Object radio}) => 'nothing swapped: radio ${radio} is on the air',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'nothing swapped: radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'nothing swapped: this operation can\'t take changes right now',
 			'commands.swapDone' => 'radios a and b swapped',
@@ -7481,8 +7517,6 @@ extension on TranslationsQrp {
 			'commandDialog.sectionOperations' => 'operations',
 			'commandDialog.goHome' => 'home',
 			'commandDialog.goSettings' => 'settings',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goNewOperation' => 'new operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'run “${text}”',
 			'commandDialog.sectionSuggestions' => 'try',
@@ -7653,6 +7687,7 @@ extension on TranslationsQrp {
 			'spotting.noDestination' => 'spot not sent: no destination takes it — see destinations in the spotting settings.',
 			'spotting.noAutoDestination' => 'no destination takes auto re-spots — see destinations in the spotting settings.',
 			'dataFiles.downloading' => 'downloading…',
+			'dataFiles.upToDate' => 'already up to date',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'this could be a network issue, or this link\'s host may not support direct downloads from a web browser. try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
@@ -7681,6 +7716,7 @@ extension on TranslationsQrp {
 			'updates.checkForUpdates' => 'check for updates',
 			'updates.checkingForUpdates' => 'checking for updates…',
 			'updates.upToDate' => 'up to date',
+			'updates.checkFailed' => 'couldn’t check for updates',
 			'updates.automaticChecks' => 'check automatically',
 			'updates.automaticChecksDescription' => 'look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'extension runtime not ready.',

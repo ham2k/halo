@@ -325,7 +325,7 @@ void main() {
           }
         }
       }
-      expect(commands, contains('RELOAD'), reason: 'sanity: the catalog fan-out answered — absence below is real, not an empty read');
+      expect(commands, contains('SET'), reason: 'sanity: the catalog fan-out answered — absence below is real, not an empty read');
       expect(commands, isNot(contains('DEVTT')));
       expect(commands, isNot(contains('DEVTIMETRAVEL')));
     });

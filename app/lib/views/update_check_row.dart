@@ -76,7 +76,8 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
       // failure there must not leave the row stuck on "Checking…" forever
       // with the tap disabled.
       debugPrint('[update-check] a check failed unexpectedly: $e');
-      ErrorReportingService.report(e, st, context: 'update-check-row');
+      ErrorReportingService.report(e, st, context: 'update-check-row', told: true);
+      outcome = UpdateCheckOutcome.checkFailed;
     }
 
     if (!mounted) return;
@@ -117,6 +118,7 @@ class _UpdateCheckRowState extends State<UpdateCheckRow> {
             UpdateCheckOutcome.updateAvailable => context.t.updates.updateAvailable,
             UpdateCheckOutcome.restartToApply => context.t.updates.restartToApply,
             UpdateCheckOutcome.reloadToUpdate => context.t.updates.reloadToUpdate,
+            UpdateCheckOutcome.checkFailed => context.t.updates.checkFailed,
           };
 
     final destination = _destination;

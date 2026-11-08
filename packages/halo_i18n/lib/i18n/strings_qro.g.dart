@@ -856,6 +856,25 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String reloadFailed({required Object error}) => 'RELOAD FAILED: ${error}';
 	@override String get reloadingAll => 'RELOADING ALL DATA FILES…';
 	@override String reloadingTarget({required Object target}) => 'RELOADING ${target} DATA FILES…';
+	@override String get updatingAllDataFiles => 'CHECKING EVERY DATA FILE FOR UPDATES…';
+	@override String updatingDataFiles({required Object names}) => 'CHECKING ${names} FOR UPDATES…';
+	@override String updateDataFilesFailed({required Object error}) => 'UPDATE FAILED: ${error}';
+	@override String get appUpdatesNotChecked => 'THIS BUILD DOESN’T CHECK FOR UPDATES';
+	@override String get appUpToDate => 'THE APP IS UP TO DATE';
+	@override String get appUpdateCheckFailed => 'COULDN’T CHECK FOR APP UPDATES';
+	@override String get appUpdateNotOpened => 'AN UPDATE IS AVAILABLE, BUT ITS STORE PAGE DIDN’T OPEN';
+	@override String get noCatalogExtensions => 'NO EXTENSIONS INSTALLED FROM THE CATALOG';
+	@override String get extensionCheckFailed => 'COULDN’T REACH THE EXTENSION CATALOG';
+	@override String get extensionCheckUnderWay => 'ALREADY CHECKING THE EXTENSION CATALOG — TRY AGAIN IN A MOMENT';
+	@override String get extensionsUpToDate => 'EXTENSIONS ARE UP TO DATE';
+	@override String extensionsReplaced({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: 'AN INSTALLED EXTENSION HAS BEEN REPLACED — SEE ITS NOTICE',
+		other: '${count} INSTALLED EXTENSIONS HAVE BEEN REPLACED — SEE THEIR NOTICES',
+	);
+	@override String extensionUpdatesFound({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} EXTENSION UPDATE FOUND',
+		other: '${count} EXTENSION UPDATES FOUND',
+	);
 	@override String unknownExperiment({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"';
 	@override String experimentEnabled({required Object name}) => '${name} ENABLED';
 	@override String experimentDisabled({required Object name}) => '${name} DISABLED';
@@ -1093,6 +1112,7 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 
 	// Translations
 	@override String get downloading => 'DOWNLOADING…';
+	@override String get upToDate => 'ALREADY UP TO DATE';
 	@override String downloadFailedTitle({required Object name}) => 'COULDN\'T DOWNLOAD ${name}';
 	@override String get downloadFailedWebHint => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.';
 	@override String get downloadTimedOut => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.';
@@ -1136,6 +1156,7 @@ class _Translations$updates$qro extends Translations$updates$en {
 	@override String get checkForUpdates => 'CHECK FOR UPDATES';
 	@override String get checkingForUpdates => 'CHECKING FOR UPDATES…';
 	@override String get upToDate => 'UP TO DATE';
+	@override String get checkFailed => 'COULDN’T CHECK FOR UPDATES';
 	@override String get automaticChecks => 'CHECK AUTOMATICALLY';
 	@override String get automaticChecksDescription => 'LOOK FOR NEW VERSIONS IN THE BACKGROUND, FROM THE NEXT TIME YOU START THE APP';
 }
@@ -7414,6 +7435,19 @@ extension on TranslationsQro {
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
+			'commands.updatingAllDataFiles' => 'CHECKING EVERY DATA FILE FOR UPDATES…',
+			'commands.updatingDataFiles' => ({required Object names}) => 'CHECKING ${names} FOR UPDATES…',
+			'commands.updateDataFilesFailed' => ({required Object error}) => 'UPDATE FAILED: ${error}',
+			'commands.appUpdatesNotChecked' => 'THIS BUILD DOESN’T CHECK FOR UPDATES',
+			'commands.appUpToDate' => 'THE APP IS UP TO DATE',
+			'commands.appUpdateCheckFailed' => 'COULDN’T CHECK FOR APP UPDATES',
+			'commands.appUpdateNotOpened' => 'AN UPDATE IS AVAILABLE, BUT ITS STORE PAGE DIDN’T OPEN',
+			'commands.noCatalogExtensions' => 'NO EXTENSIONS INSTALLED FROM THE CATALOG',
+			'commands.extensionCheckFailed' => 'COULDN’T REACH THE EXTENSION CATALOG',
+			'commands.extensionCheckUnderWay' => 'ALREADY CHECKING THE EXTENSION CATALOG — TRY AGAIN IN A MOMENT',
+			'commands.extensionsUpToDate' => 'EXTENSIONS ARE UP TO DATE',
+			'commands.extensionsReplaced' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'AN INSTALLED EXTENSION HAS BEEN REPLACED — SEE ITS NOTICE', other: '${count} INSTALLED EXTENSIONS HAVE BEEN REPLACED — SEE THEIR NOTICES', ), 
+			'commands.extensionUpdatesFound' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION UPDATE FOUND', other: '${count} EXTENSION UPDATES FOUND', ), 
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
@@ -7468,6 +7502,8 @@ extension on TranslationsQro {
 			'commands.swapNoRadioB' => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION',
 			'commands.swapEditing' => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST',
 			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
 			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
 			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
@@ -7481,8 +7517,6 @@ extension on TranslationsQro {
 			'commandDialog.sectionOperations' => 'OPERATIONS',
 			'commandDialog.goHome' => 'HOME',
 			'commandDialog.goSettings' => 'SETTINGS',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goNewOperation' => 'NEW OPERATION',
 			'commandDialog.runTyped' => ({required Object text}) => 'RUN “${text}”',
 			'commandDialog.sectionSuggestions' => 'TRY',
@@ -7653,6 +7687,7 @@ extension on TranslationsQro {
 			'spotting.noDestination' => 'SPOT NOT SENT: NO DESTINATION TAKES IT — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
 			'spotting.noAutoDestination' => 'NO DESTINATION TAKES AUTO RE-SPOTS — SEE DESTINATIONS IN THE SPOTTING SETTINGS.',
 			'dataFiles.downloading' => 'DOWNLOADING…',
+			'dataFiles.upToDate' => 'ALREADY UP TO DATE',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'COULDN\'T DOWNLOAD ${name}',
 			'dataFiles.downloadFailedWebHint' => 'THIS COULD BE A NETWORK ISSUE, OR THIS LINK\'S HOST MAY NOT SUPPORT DIRECT DOWNLOADS FROM A WEB BROWSER. TRY THE DESKTOP OR MOBILE APP, OR A DIFFERENT HOSTING LOCATION.',
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
@@ -7681,6 +7716,7 @@ extension on TranslationsQro {
 			'updates.checkForUpdates' => 'CHECK FOR UPDATES',
 			'updates.checkingForUpdates' => 'CHECKING FOR UPDATES…',
 			'updates.upToDate' => 'UP TO DATE',
+			'updates.checkFailed' => 'COULDN’T CHECK FOR UPDATES',
 			'updates.automaticChecks' => 'CHECK AUTOMATICALLY',
 			'updates.automaticChecksDescription' => 'LOOK FOR NEW VERSIONS IN THE BACKGROUND, FROM THE NEXT TIME YOU START THE APP',
 			'extensionService.runtimeNotReady' => 'EXTENSION RUNTIME NOT READY.',
