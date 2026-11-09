@@ -135,6 +135,7 @@ log, and a write throws. Copy what you mean to change.
 | `chasing` | [Scoring & chasing](scoring.md) | What a contact counts toward in an award | every program |
 | `command` | [Commands & templates](commands.md) | Text typed in the call field | every hook, first non-null answer wins |
 | `template` | [Commands & templates](commands.md) | Rendering a template on the app's behalf; the app's core registers it | one hook |
+| `keyerSets` | [Commands & templates](commands.md#keyersets) | CW and voice message sets the operator can pick for the keyer | every hook, as the extensions activate |
 | `panel` | [Panels](panels.md) | A pane in a view | your registration, per panel |
 | `account` | [Accounts & sync](accounts.md) | A login the operator keeps in the keychain | your registration |
 | `syncTransport` | [Accounts & sync](accounts.md) | Moving a sync payload over the network | one hook |

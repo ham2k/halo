@@ -13,6 +13,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../views/dock_layouts/yaml_writer.dart' as yaml_writer;
 import '../settings_service.dart';
+import 'offered_keyer_sets.dart';
 import 'set_category.dart';
 
 class CwMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
@@ -37,28 +38,39 @@ class CwMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
   String get manageLabel => t.settings.radio.cwMessages.manageSets;
 
   @override
-  List<SetSummary> get sets => [for (final set in settings.cwMessageSets) (id: set.id, name: set.name)];
+  List<SetSummary> get sets => [
+    for (final set in settings.cwMessageSets) (id: set.id, name: set.name),
+    for (final (:set, owner: _, ownerName: _) in settings.offeredKeyerSets.cw) (id: set.id, name: set.name),
+  ];
+
+  @override
+  List<OfferedSetPlace> get offered => [
+    for (final (:set, :owner, :ownerName) in settings.offeredKeyerSets.cw) (id: set.id, owner: owner, ownerName: ownerName),
+  ];
 
   @override
   String get activeId => settings.cwMessageSetId;
 
   @override
-  bool canRename(String id) => true;
+  bool canRename(String id) => !isOffered(id);
 
-  /// Any but the last: the function keys have to have somewhere to read
-  /// from.
+  /// Any of the operator's but their last: the function keys have to have
+  /// somewhere to read from, and an extension's set can go with it.
   @override
-  bool canDelete(String id) => settings.cwMessageSets.length > 1;
+  bool canDelete(String id) => !isOffered(id) && settings.cwMessageSets.length > 1;
 
+  /// A copy of an extension's set is the operator's: at the end of their
+  /// sets, at the top level.
   @override
   Future<String?> duplicate(String id, String name) async {
     final sets = settings.cwMessageSets;
     final index = sets.indexWhere((set) => set.id == id);
-    if (index < 0) return null;
-    final copy = sets[index].copiedAs(id: uuidGenerator.v4(), name: uniqueName(name));
-    await settings.setCwMessageSets([...sets]..insert(index + 1, copy), active: settings.cwMessageSetId);
+    final source = index >= 0 ? sets[index] : settings.offeredCwMessageSet(id);
+    if (source == null) return null;
+    final copy = source.copiedAs(id: uuidGenerator.v4(), name: uniqueName(name));
+    await settings.setCwMessageSets([...sets]..insert(index >= 0 ? index + 1 : sets.length, copy), active: settings.cwMessageSetId);
     final folder = tree.folderOf(id);
-    if (folder != null) await setTree(tree.moveSet(copy.id, folder));
+    if (folder != null && !isOffered(folder)) await setTree(tree.moveSet(copy.id, folder));
     return copy.id;
   }
 
@@ -89,7 +101,7 @@ class CwMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
 
   @override
   Future<SetFileOut> export(String id) async {
-    final set = settings.cwMessageSets.firstWhere((set) => set.id == id);
+    final set = settings.offeredCwMessageSet(id) ?? settings.cwMessageSets.firstWhere((set) => set.id == id);
     final body = yaml_writer.toYaml(setFileDocument(kind, {'name': set.name, 'messages': set.messages, 'labels': set.labels}));
     return (
       filename: '${setFileStem(t.settings.radio.cwMessages.fileStem, set.name)}.$fileExtension',

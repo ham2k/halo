@@ -5,6 +5,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart' show EsmMessage;
 
 import 'settings_service.dart';
+import 'sets/offered_keyer_sets.dart';
 
 /// One named set of CW messages: eight templates and eight labels, the same
 /// eight function keys under a name the operator picked. Sets are the
@@ -144,35 +145,41 @@ extension CwMessageSetSettings on SettingsService {
     return CwMessageSet(id: 'saved', name: t.settings.radio.cwMessages.setSaved, messages: messages, labels: labels);
   }
 
-  /// The id of the set F1-F8 key. Falls back to the first set rather than
-  /// to an id: a stored id whose set was deleted would otherwise leave the
-  /// keys with nothing to send.
+  /// The id of the set F1-F8 key: one of the operator's, or one an
+  /// extension offers. Falls back to the first set rather than to an id: a
+  /// stored id whose set was deleted, or whose extension is off, would
+  /// otherwise leave the keys with nothing to send. The stored id is kept,
+  /// so an extension turned back on has its set in use again.
   String get cwMessageSetId {
     final sets = cwMessageSets;
     final stored = settingValue(SettingsService.radioGroup, CwMessageSet.activeKey);
-    if (stored is String && sets.any((set) => set.id == stored)) return stored;
+    if (stored is String && (sets.any((set) => set.id == stored) || offeredCwMessageSet(stored) != null)) return stored;
     return sets.first.id;
   }
 
   CwMessageSet get activeCwMessageSet {
     final id = cwMessageSetId;
     final sets = cwMessageSets;
-    return sets.firstWhere((set) => set.id == id, orElse: () => sets.first);
+    return offeredCwMessageSet(id) ?? sets.firstWhere((set) => set.id == id, orElse: () => sets.first);
   }
 
   /// Writes the sets and, when given, which one is in use — one write, so a
-  /// pick that arrives with edits cannot land half-applied.
+  /// pick that arrives with edits cannot land half-applied. [sets] are the
+  /// operator's own; [active] may name an offered one.
   Future<void> setCwMessageSets(List<CwMessageSet> sets, {String? active}) async {
     if (sets.isEmpty) return;
-    final id = active != null && sets.any((set) => set.id == active) ? active : sets.first.id;
+    final id = active != null && (sets.any((set) => set.id == active) || offeredCwMessageSet(active) != null) ? active : sets.first.id;
     await updateSettingsGroup(SettingsService.radioGroup, {
       CwMessageSet.setsKey: [for (final set in sets) set.toJson()],
       CwMessageSet.activeKey: id,
     });
   }
 
-  Future<void> editActiveCwMessageSet(CwMessageSet Function(CwMessageSet) edit) {
+  /// Changes nothing while the set in use is an extension's: SET reads the
+  /// message back after writing it, and says it was not stored.
+  Future<void> editActiveCwMessageSet(CwMessageSet Function(CwMessageSet) edit) async {
     final id = cwMessageSetId;
+    if (isOfferedSetId(id)) return;
     final sets = [for (final set in cwMessageSets) set.id == id ? edit(set) : set];
     return setCwMessageSets(sets, active: id);
   }

@@ -5,7 +5,7 @@ A command is text the operator types into the call field: `20m`, `14.285`,
 advances focus; the ⌘K palette lists the commands that exist. `template` is
 the hook through which the app renders Liquid templates, registered by the
 app's core; it is documented so you know how a template you hand the app is
-filled in. [How hooks work](hooks.md) covers registration, keys, priority
+filled in. `keyerSets` offers the keyer sets of those templates. [How hooks work](hooks.md) covers registration, keys, priority
 and `ctx`.
 
 ## `command`
@@ -169,3 +169,41 @@ with the same `templateContext`, so a placeholder means the same wherever
 the app renders it. A template that does not parse comes back as `error`
 carrying the renderer's message, which is a typo of the operator's to show
 them, not a failure to report.
+
+## `keyerSets`
+
+**For:** message sets the operator can pick for the keyer: a contest's
+exchange laid out on the function keys, an activity's CQ. Extension API 21.
+
+**Called:** every hook, each time the extensions activate. Answer what does
+not change while the runtime runs.
+
+```ts
+interface KeyerSetsHook {
+  getSets(args: {}, ctx): Promise<KeyerSet[]>
+}
+
+type KeyerSet =
+  | { kind: "cw"; id: string; name: string; messages: string[]; labels?: string[] }
+  | { kind: "voice"; id: string; name: string; templates: string[]; labels?: string[] }
+```
+
+Your sets are listed in the set picker under **Extensions**, in a folder
+named for your extension. The operator picks one as they pick their own,
+and cannot change it: they duplicate it to make a copy of their own to
+edit. A `cw` set's `messages` and a `voice` set's `templates` are
+[templates](templates.md), up to eight each, F1 first; a missing one is
+empty. A voice set has no recordings, so its messages are said in the
+operator's recorded words, and only when the operator has phone messages
+said with words.
+
+A set's `id` is yours to choose, without a `:`, and each kind has its own:
+a `cw` set and a `voice` set may share one. Keep it from one version to the
+next. The operator's pick is
+stored by it, so a set whose `id` changes is no longer picked, and the keys
+go back to the operator's first set. They do the same while your extension
+is disabled, and come back to your set when it is enabled again, unless the
+operator changed their own sets in the meantime.
+
+A set that is not one of these shapes is left out and reported against your
+key; your other sets are still offered.

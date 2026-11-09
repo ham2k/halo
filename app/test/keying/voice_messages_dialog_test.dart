@@ -314,9 +314,10 @@ void main() {
     Future<List<String?>> pickerMenu(WidgetTester tester) async {
       await tester.tap(find.byType(SetPickerField));
       await tester.pumpAndSettle();
+      final menu = find.ancestor(of: find.byType(Divider).last, matching: find.byType(Material)).first;
       return [
-        for (final button in tester.widgetList<MenuItemButton>(find.byType(MenuItemButton)))
-          tester.widget<Text>(find.descendant(of: find.byWidget(button), matching: find.byType(Text)).first).data,
+        for (final row in tester.widgetList<InkWell>(find.descendant(of: menu, matching: find.byType(InkWell))))
+          tester.widget<Text>(find.descendant(of: find.byWidget(row), matching: find.byType(Text)).first).data,
       ];
     }
 

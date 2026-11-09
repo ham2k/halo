@@ -1004,6 +1004,8 @@ class _Translations$sets$qrp extends Translations$sets$en {
 	@override String get problemWrongKind => 'it holds a different kind of set';
 	@override String get problemNewerVersion => 'it was written by a newer version of the app';
 	@override String get problemMalformed => 'parts of it are damaged';
+	@override String get extensionsFolder => 'extensions';
+	@override String offeredLocked({required Object name, required Object extension, required Object manage}) => '${name} comes from the ${extension} extension.\nto make changes, duplicate it in ${manage} and use the copy.';
 }
 
 // Path: keyboardShortcuts
@@ -7567,6 +7569,8 @@ extension on TranslationsQrp {
 			'sets.problemWrongKind' => 'it holds a different kind of set',
 			'sets.problemNewerVersion' => 'it was written by a newer version of the app',
 			'sets.problemMalformed' => 'parts of it are damaged',
+			'sets.extensionsFolder' => 'extensions',
+			'sets.offeredLocked' => ({required Object name, required Object extension, required Object manage}) => '${name} comes from the ${extension} extension.\nto make changes, duplicate it in ${manage} and use the copy.',
 			'keyboardShortcuts.title' => 'keyboard shortcuts',
 			'keyboardShortcuts.description' => 'customize key mappings',
 			'keyboardShortcuts.search' => 'search commands and keys',

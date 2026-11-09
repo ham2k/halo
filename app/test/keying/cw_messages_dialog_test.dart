@@ -49,6 +49,25 @@ void main() {
     expect(top(find.text('Repeat M1')), lessThan(top(find.text('Message Set'))));
   });
 
+  // The trap: on a phone, the speed and the repeat side by side leave the
+  // cooldown no room to read, or overflow.
+  testWidgets('the repeat sits beside the speed where it fits, and under it on a phone', (tester) async {
+    double top(Finder finder) => tester.getTopLeft(finder.first).dy;
+    addTearDown(tester.view.reset);
+
+    for (final (size, beside) in [(const Size(1200, 900), true), (const Size(360, 780), false)]) {
+      tester.view
+        ..physicalSize = size
+        ..devicePixelRatio = 1;
+      await tester.pumpWidget(host());
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'nothing overflows at ${size.width}');
+      expect(top(find.text('Repeat M1')) > top(find.text('Keyer speed')) + 24, !beside, reason: 'at ${size.width}');
+      await tester.pumpWidget(const SizedBox());
+    }
+  });
+
   // The row is where an operator looks for which key sends a message, so it
   // is where changing that key is found — once Keyboard Shortcuts is on;
   // without it the keys are fixed, and the caps only say which they are.

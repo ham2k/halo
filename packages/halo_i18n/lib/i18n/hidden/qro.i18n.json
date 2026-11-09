@@ -3035,7 +3035,9 @@
     "problemUnreadable": "IT IS NOT A SET FILE",
     "problemWrongKind": "IT HOLDS A DIFFERENT KIND OF SET",
     "problemNewerVersion": "IT WAS WRITTEN BY A NEWER VERSION OF THE APP",
-    "problemMalformed": "PARTS OF IT ARE DAMAGED"
+    "problemMalformed": "PARTS OF IT ARE DAMAGED",
+    "extensionsFolder": "EXTENSIONS",
+    "offeredLocked": "$name COMES FROM THE $extension EXTENSION.\nTO MAKE CHANGES, DUPLICATE IT IN $manage AND USE THE COPY."
   },
   "keyboardShortcuts": {
     "title": "KEYBOARD SHORTCUTS",

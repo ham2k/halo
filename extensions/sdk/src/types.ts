@@ -376,6 +376,39 @@ export interface BandAnnotationsHook {
   annotationsFor(args: { band: string; station?: string }, ctx: HookContext): Promise<BandAnnotation[]>
 }
 
+/// One set of keyer messages an extension offers: eight function keys under
+/// a name. Extension API 21.
+export type KeyerSet =
+  | {
+      kind: "cw"
+      /// Yours to pick, and kept: it is what the operator's pick of this set
+      /// is stored as, so a set that keeps its `id` across versions stays
+      /// picked.
+      id: string
+      name: string
+      /// Up to eight templates, F1 first ([Templates](templates.md)).
+      messages: string[]
+      /// Up to eight; one left empty is labelled with its message.
+      labels?: string[]
+    }
+  | {
+      kind: "voice"
+      id: string
+      name: string
+      /// Up to eight; one left empty is labelled with its template.
+      labels?: string[]
+      /// Up to eight templates, each said in the operator's own recorded
+      /// words. An offered set carries no recordings.
+      templates: string[]
+    }
+
+/// The message sets an extension offers the keyer. Extension API 21.
+export interface KeyerSetsHook {
+  /// Every set you offer, of either kind. Asked once each time the
+  /// extensions are activated, so answer what does not change while they run.
+  getSets(args: Record<string, never>, ctx: HookContext): Promise<KeyerSet[]>
+}
+
 /// Options for `HookContext.getSpots`. Every one is optional; a
 /// `string | string[]` option matches any of the values listed.
 export interface GetSpotsOptions {
@@ -2616,6 +2649,7 @@ export type Hook =
   | LookupServiceHook
   | SpotsHook
   | BandAnnotationsHook
+  | KeyerSetsHook
   | ExportHook
   | ScoringHook
   | ChasingHook

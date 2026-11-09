@@ -60,6 +60,19 @@ class MalformedBandAnnotationException implements Exception {
   String toString() => 'MalformedBandAnnotationException: hook "$hookKey": $problem';
 }
 
+/// A `keyerSets` hook answered a set [OfferedKeyerSets.parse] refuses, left
+/// out by [_ExtensionHookApi.refreshOfferedKeyerSets]. Classified `report` in
+/// [ErrorPolicy], like [MalformedBandAnnotationException]: a defect in that
+/// one extension, and its other sets are offered.
+class MalformedKeyerSetException implements Exception {
+  MalformedKeyerSetException(this.hookKey, this.problem);
+  final String hookKey;
+  final String problem;
+
+  @override
+  String toString() => 'MalformedKeyerSetException: hook "$hookKey": $problem';
+}
+
 /// A callsign lookup answered a field of the wrong type, dropped by
 /// [normalizeLookupResult] on the way out of [ExtensionService.lookupCall].
 /// The guess is the lookup pipeline's merged answer, so this names the field
@@ -260,6 +273,9 @@ class TemplateError implements Exception {
 }
 
 mixin _ExtensionHookApi {
+  /// Counts [refreshOfferedKeyerSets] calls, so only the latest one writes.
+  int _keyerSetsRefreshes = 0;
+
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;
 
@@ -274,6 +290,7 @@ mixin _ExtensionHookApi {
   Map<String, dynamic> _attributedCommand(Map<String, dynamic> interpretation, String? extensionKey);
   String _describedByOwner(String describe, String? extensionKey);
   bool get activationIncomplete;
+  Set<String> get _loadedExtensionKeys;
   ValueNotifier<int> get runtimeGeneration;
   void invalidateHookContext();
   Future<void> presentResultMessage(Map<String, dynamic> message, {String ns});
@@ -296,11 +313,11 @@ mixin _ExtensionHookApi {
   /// nothing about whether the code behind it is broken, so counting it would
   /// upload one report per source every time an operator drives out of range.
   ///
-  /// `succeeded` names the hooks that answered at all. All three lists empty
-  /// means the fan-out never happened — no host, or `invokeHookAll` itself
-  /// throwing — which a caller cannot otherwise tell from every hook
-  /// answering with nothing.
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> _collectHookResults(
+  /// `succeeded` names the hooks that answered at all. `ran` is false when
+  /// the fan-out never happened — no host, or `invokeHookAll` itself
+  /// throwing — which the lists alone cannot tell from no hook being
+  /// registered.
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed, bool ran})> _collectHookResults(
     HookRef hook, {
     required Object? args,
     required String debugLabel,
@@ -309,11 +326,13 @@ mixin _ExtensionHookApi {
   }) async {
     final host = this.host;
     if (host == null) {
-      return (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const <String>[], failed: const <String>[]);
+      return (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const <String>[], failed: const <String>[], ran: false);
     }
     var parts = emptyHookPartition;
+    var ran = false;
     try {
       parts = partitionHookEntries(await host.invokeAll(hook, args: args, timeout: const Duration(seconds: 10), partialOnTimeout: partialOnTimeout));
+      ran = true;
     } catch (e) {
       debugPrint('[extensions] $debugLabel failed: $e');
     }
@@ -342,7 +361,7 @@ mixin _ExtensionHookApi {
         threshold: failureThreshold,
       );
     }
-    return (items: parts.items, succeeded: parts.succeeded, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key]);
+    return (items: parts.items, succeeded: parts.succeeded, unreachable: parts.unreachable, failed: [for (final f in parts.failed) f.key], ran: ran);
   }
 
   /// Consecutive failures before a spot source is worth uploading, well above
@@ -502,6 +521,77 @@ mixin _ExtensionHookApi {
       );
       return null;
     }
+  }
+
+  /// Asks every `keyerSets` hook for its sets, and keeps what they answer as
+  /// the sets offered (offered_keyer_sets.dart), each under the extension
+  /// that registered its hook. A hook that failed, missed its time, or — while
+  /// activation is still under way — has not answered yet keeps what it
+  /// offered before: a set in use must not drop to the first set for a slow
+  /// start. Nothing changes with no runtime to ask, nor when the asking
+  /// itself fails, the runtime is replaced meanwhile, or a later refresh has
+  /// begun: none of them says what is offered now.
+  Future<void> refreshOfferedKeyerSets() async {
+    final settings = this.settings;
+    final host = this.host;
+    if (settings == null || host == null) return;
+    final refresh = ++_keyerSetsRefreshes;
+    // As it was when the hooks were asked: one activated since was not.
+    final incomplete = activationIncomplete;
+    // Reported on the first failure: asked once per runtime, a threshold of
+    // three would wait out three restarts.
+    final parts = await _collectHookResults(
+      Hooks.keyerSetsGetSets,
+      args: const <String, dynamic>{},
+      debugLabel: 'getKeyerSets',
+      partialOnTimeout: true,
+      failureThreshold: 1,
+    );
+    if (!parts.ran || refresh != _keyerSetsRefreshes || !identical(this.host, host)) return;
+    final answered = parts.succeeded.toSet();
+    final silent = {...parts.failed, ...parts.unreachable};
+    // A hook key may hold a ':', a set's own id never does (parse).
+    bool kept(String id, String owner) {
+      final hookKey = id.substring(offeredSetIdPrefix.length, id.lastIndexOf(':'));
+      // Not yet answered only counts for an extension in this runtime: one
+      // disabled or removed will never answer.
+      return silent.contains(hookKey) || (incomplete && !answered.contains(hookKey) && _loadedExtensionKeys.contains(owner));
+    }
+
+    final before = settings.offeredKeyerSets;
+    final grants = CapabilityGrant.among(availableExtensions, (_) => false);
+    final cw = [
+      for (final offered in before.cw)
+        if (kept(offered.set.id, offered.owner)) offered,
+    ];
+    final voice = [
+      for (final offered in before.voice)
+        if (kept(offered.set.id, offered.owner)) offered,
+    ];
+    // By kind: a CW set and a voice set may share an id, each picked in
+    // its own list.
+    final taken = {...cw.map((o) => 'cw:${o.set.id}'), ...voice.map((o) => 'voice:${o.set.id}')};
+    for (final item in parts.items) {
+      final hookKey = item['hookKey'] as String? ?? 'unknown';
+      final owner = grants.ownerOf(hookKey) ?? hookKey;
+      final ownerName = availableExtensions.where((info) => info.key == owner).firstOrNull?.nameFor(LocaleSettings.currentLocale.languageCode) ?? owner;
+      try {
+        final (cw: cwSet, voice: voiceSet) = OfferedKeyerSets.parse(item, hookKey: hookKey);
+        final id = (cwSet?.id ?? voiceSet?.id)!;
+        if (!taken.add('${cwSet != null ? 'cw' : 'voice'}:$id')) throw FormatException('two sets with the id "${id.split(':').last}"');
+        if (cwSet != null) cw.add((set: cwSet, owner: owner, ownerName: ownerName));
+        if (voiceSet != null) voice.add((set: voiceSet, owner: owner, ownerName: ownerName));
+      } on FormatException catch (e) {
+        ErrorReportingService.reportIfRepeated(
+          'getKeyerSets:malformed:$hookKey',
+          MalformedKeyerSetException(hookKey, e.message),
+          null,
+          context: 'getKeyerSets:malformed:$hookKey',
+          threshold: 1,
+        );
+      }
+    }
+    await settings.setOfferedKeyerSets(OfferedKeyerSets(cw: cw, voice: voice));
   }
 
   /// `{hookKey: sourceName}` for every `spots` hook, for the Spots Panel's

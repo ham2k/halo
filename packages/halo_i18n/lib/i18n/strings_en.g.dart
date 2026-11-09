@@ -2277,6 +2277,12 @@ class Translations$sets$en {
 
 	/// en: 'parts of it are damaged'
 	String get problemMalformed => 'parts of it are damaged';
+
+	/// en: 'Extensions'
+	String get extensionsFolder => 'Extensions';
+
+	/// en: '$name comes from the $extension extension. To make changes, duplicate it in $manage and use the copy.'
+	String offeredLocked({required Object name, required Object extension, required Object manage}) => '${name} comes from the ${extension} extension.\nTo make changes, duplicate it in ${manage} and use the copy.';
 }
 
 // Path: keyboardShortcuts
@@ -13603,6 +13609,8 @@ extension on Translations {
 			'sets.problemWrongKind' => 'it holds a different kind of set',
 			'sets.problemNewerVersion' => 'it was written by a newer version of the app',
 			'sets.problemMalformed' => 'parts of it are damaged',
+			'sets.extensionsFolder' => 'Extensions',
+			'sets.offeredLocked' => ({required Object name, required Object extension, required Object manage}) => '${name} comes from the ${extension} extension.\nTo make changes, duplicate it in ${manage} and use the copy.',
 			'keyboardShortcuts.title' => 'Keyboard Shortcuts',
 			'keyboardShortcuts.description' => 'Customize key mappings',
 			'keyboardShortcuts.search' => 'Search commands and keys',

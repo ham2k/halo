@@ -26,6 +26,7 @@ abstract final class HookCategories {
   static const dataFile = 'dataFile';
   static const export = 'export';
   static const form = 'form';
+  static const keyerSets = 'keyerSets';
   static const lookup = 'lookup';
   static const lookupService = 'lookupService';
   static const panel = 'panel';
@@ -135,6 +136,8 @@ abstract final class Hooks {
   static const clusterOnLines = HookRef(HookCategories.cluster, 'onLines');
 
   static const bandAnnotationsAnnotationsFor = HookRef(HookCategories.bandAnnotations, 'annotationsFor');
+
+  static const keyerSetsGetSets = HookRef(HookCategories.keyerSets, 'getSets');
 
   static const syncTransportSync = HookRef(HookCategories.syncTransport, 'sync');
   static const syncTransportGetAccountData = HookRef(HookCategories.syncTransport, 'getAccountData');

@@ -9,6 +9,16 @@
 
 import 'package:halo_core/halo_core.dart' show uuidGenerator;
 
+/// The start of the id of every set an extension offers, and of the folders
+/// they are listed in (offered_keyer_sets.dart) — never the start of an id
+/// the operator's own sets or folders get.
+const offeredSetIdPrefix = 'ext:';
+
+bool isOfferedSetId(String id) => id.startsWith(offeredSetIdPrefix);
+
+/// An offered set as the tree files it: by the extension that offers it.
+typedef OfferedSetPlace = ({String id, String owner, String ownerName});
+
 class SetFolder {
   final String id;
   final String name;
@@ -168,6 +178,36 @@ class SetTree {
   /// Drops set [setId]'s entry — for a set that was deleted.
   SetTree forgetSet(String setId) => moveSet(setId, null);
 
+  /// This tree with [offered] — the sets extensions offer — in a folder
+  /// named [rootName], and in it a folder for each extension, named for it.
+  /// Neither folder is the operator's: nothing stores them
+  /// ([withoutOffered]), and with no set offered there is no folder at all.
+  SetTree withOffered(List<OfferedSetPlace> offered, {required String rootName}) {
+    if (offered.isEmpty) return this;
+    final owners = {for (final set in offered) set.owner: set.ownerName};
+    return _with(
+      folders: [
+        ...folders,
+        SetFolder(id: offeredSetIdPrefix, name: rootName),
+        for (final MapEntry(key: owner, value: name) in owners.entries) SetFolder(id: '$offeredSetIdPrefix$owner', name: name, parent: offeredSetIdPrefix),
+      ],
+      placement: {...placement, for (final set in offered) set.id: '$offeredSetIdPrefix${set.owner}'},
+    );
+  }
+
+  /// This tree as it is stored: without the extensions' folders, their sets,
+  /// or anything filed into those folders.
+  SetTree withoutOffered() => _with(
+    folders: [
+      for (final f in folders)
+        if (!isOfferedSetId(f.id)) f.parent != null && isOfferedSetId(f.parent!) ? SetFolder(id: f.id, name: f.name) : f,
+    ],
+    placement: {
+      for (final MapEntry(:key, :value) in placement.entries)
+        if (!isOfferedSetId(key) && !isOfferedSetId(value)) key: value,
+    },
+  );
+
   /// [setIds], in the order given, laid out as a list: the top level's sets
   /// first, then each folder — by name — with its sets and its own folders
   /// under it, one [SetTreeRow.depth] further in. Every set appears exactly
@@ -184,7 +224,9 @@ class SetTree {
       final children = [
         for (final f in folders)
           if (f.parent == folderId) f,
-      ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        // The extensions' folder after the operator's own: theirs are what
+        // they filed, and it is only what came with the extensions.
+      ]..sort((a, b) => isOfferedSetId(a.id) != isOfferedSetId(b.id) ? (isOfferedSetId(a.id) ? 1 : -1) : a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       for (final child in children) {
         out.add(SetTreeFolderRow(child, depth));
         if (open == null || open.contains(child.id)) walk(child.id, depth + 1);

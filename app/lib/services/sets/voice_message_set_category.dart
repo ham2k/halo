@@ -19,6 +19,7 @@ import '../../views/dock_layouts/yaml_writer.dart' as yaml_writer;
 import '../cat/cat_service.dart';
 import '../cat/computer_voice_keyer.dart' show VoiceAudioFailure, isVoiceAudioFailure;
 import '../settings_service.dart';
+import 'offered_keyer_sets.dart';
 import 'set_category.dart';
 
 /// A voice set's file, unpacked: its id is the importer's to give.
@@ -44,18 +45,27 @@ class VoiceMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
   String get manageLabel => t.settings.radio.voiceMessages.manageSets;
 
   @override
-  List<SetSummary> get sets => [for (final set in settings.voiceMessageSets) (id: set.id, name: set.name)];
+  List<SetSummary> get sets => [
+    for (final set in settings.voiceMessageSets) (id: set.id, name: set.name),
+    for (final (:set, owner: _, ownerName: _) in settings.offeredKeyerSets.voice) (id: set.id, name: set.name),
+  ];
+
+  @override
+  List<OfferedSetPlace> get offered => [
+    for (final (:set, :owner, :ownerName) in settings.offeredKeyerSets.voice) (id: set.id, owner: owner, ownerName: ownerName),
+  ];
 
   @override
   String get activeId => settings.voiceMessageSetId;
 
   /// The default set is where sound files go before anyone has made a set,
-  /// and is neither renamed nor deleted (VoiceMessageSet.defaultId).
+  /// and is neither renamed nor deleted (VoiceMessageSet.defaultId); an
+  /// extension's set is not the operator's to change.
   @override
-  bool canRename(String id) => id != VoiceMessageSet.defaultId;
+  bool canRename(String id) => id != VoiceMessageSet.defaultId && !isOffered(id);
 
   @override
-  bool canDelete(String id) => id != VoiceMessageSet.defaultId;
+  bool canDelete(String id) => id != VoiceMessageSet.defaultId && !isOffered(id);
 
   /// [run], with a file failure under it rethrown as the voice keyer reports
   /// one — its reason, never its path, which names the operator's OS account
@@ -74,12 +84,14 @@ class VoiceMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
     final copy = await _files('duplicate', () => cat.addVoiceMessageSet(uniqueName(name), from: id, select: false));
     if (copy == null) return null;
     final folder = tree.folderOf(id);
-    if (folder != null) await setTree(tree.moveSet(copy.id, folder));
+    if (folder != null && !isOffered(folder)) await setTree(tree.moveSet(copy.id, folder));
     return copy.id;
   }
 
   @override
-  Future<void> rename(String id, String name) => cat.renameVoiceMessageSet(id, uniqueName(name, except: id));
+  Future<void> rename(String id, String name) async {
+    if (canRename(id)) await cat.renameVoiceMessageSet(id, uniqueName(name, except: id));
+  }
 
   @override
   Future<void> delete(String id) async {
@@ -108,7 +120,7 @@ class VoiceMessageSetCategory extends SetCategory with SetTreeInSettingsGroup {
 
   @override
   Future<SetFileOut> export(String id) async {
-    final set = settings.voiceMessageSets.firstWhere((set) => set.id == id);
+    final set = settings.offeredVoiceMessageSet(id) ?? settings.voiceMessageSets.firstWhere((set) => set.id == id);
     final yaml =
         '# Ham2K Logger voice messages\n${yaml_writer.toYaml(setFileDocument(kind, {'name': set.name, 'labels': set.labels, 'templates': set.templates}))}';
     final recordings = await _files('export', () => cat.voiceMessageRecordings(id));

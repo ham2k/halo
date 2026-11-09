@@ -503,6 +503,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
     required this.report,
     this.prepare,
     this.following,
+    this.recordable,
   }) {
     if (ptt == null) return;
     if (_toRadio) {
@@ -620,8 +621,12 @@ class ComputerVoiceKeyer implements VoiceKeyer {
   @override
   int get voiceMemoryCount => maxVoiceMemories;
 
+  /// Whether the set the messages come from takes recordings now; always,
+  /// when not given.
+  final bool Function()? recordable;
+
   @override
-  bool get canRecordVoice => true;
+  bool get canRecordVoice => recordable?.call() ?? true;
 
   @override
   Duration get voiceMemoryCeiling => computerVoiceRecordingCeiling;
@@ -796,6 +801,7 @@ class ComputerVoiceKeyer implements VoiceKeyer {
 
   @override
   void recordVoiceMemory(int n) {
+    if (!canRecordVoice) return;
     _problem = null;
     _problemDetail = null;
     _quiet();

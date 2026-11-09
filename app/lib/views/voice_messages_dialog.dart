@@ -47,6 +47,7 @@ import '../services/cat/computer_voice_keyer.dart';
 import '../services/cat/voice_words.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
+import '../services/sets/offered_keyer_sets.dart';
 import '../services/sets/voice_message_set_category.dart';
 import 'settings/keyboard_shortcuts_panel.dart' show KeyerMessageKeys;
 import 'keying_pickers.dart' show phoneKeyingParts;
@@ -169,6 +170,17 @@ class _VoiceMessagesPane extends StatelessWidget {
                             value: active.id,
                             onChanged: (id) => unawaited(cat.selectVoiceMessageSet(id)),
                           ),
+                          if (settings.offeredKeyerSets.voice.where((offered) => offered.set.id == active.id).firstOrNull case final offered?)
+                            Padding(
+                              padding: const EdgeInsets.only(top: Space.sm),
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: Text(
+                                  context.t.sets.offeredLocked(name: active.name, extension: offered.ownerName, manage: m.manageSets),
+                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                ),
+                              ),
+                            ),
                         ],
                       ],
                     ),
@@ -274,6 +286,10 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
   late final _opened = widget.services.cat.keyer(widget.radio).voiceMessageLabel(widget.n);
   late final _label = TextEditingController(text: _opened);
   late final _template = TextEditingController(text: widget.services.cat.keyer(widget.radio).voiceMessageTemplate(widget.n));
+
+  /// Whether the message is one of an extension's set — shown, played,
+  /// never changed: not its label, its words, nor a recording.
+  bool get _offered => widget.services.cat.keyer(widget.radio).voiceMessagesFromComputer && isOfferedSetId(widget.services.settings.voiceMessageSetId);
 
   /// Whether this message can be said from the operator's words: this
   /// radio's recordings on this computer, said with words too.
@@ -432,6 +448,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
         children: [
           TextField(
             controller: _template,
+            readOnly: _offered,
             minLines: 1,
             maxLines: 3,
             style: const TextStyle(fontFamily: 'RobotoMono'),
@@ -499,8 +516,8 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                   // the label describes THAT radio's recording, and one
                   // typed here would be saved against this station's own
                   // memories, which are not what the row above is showing.
-                  readOnly: !keyer.voiceMessagesAreLocal,
-                  autofocus: keyer.voiceMessagesAreLocal,
+                  readOnly: !keyer.voiceMessagesAreLocal || _offered,
+                  autofocus: keyer.voiceMessagesAreLocal && !_offered,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: poloFieldDecoration(context, m.labelField),
                   onSubmitted: (_) => _save(),
@@ -547,7 +564,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                       )
                     else
                       FilledButton.tonalIcon(
-                        onPressed: busy || !keyer.canRecordVoice || saidWithWords
+                        onPressed: busy || !keyer.canRecordVoice || saidWithWords || _offered
                             ? null
                             : () async {
                                 if (!keyerOrSay(context, widget.services, keyer, () => keyer.canRecordVoice)) return;
@@ -607,7 +624,9 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
               // Why the button above is disabled, before anything about how
               // to use it: an operator who cannot record from here needs to
               // know that first.
-              if (!keyer.canRecordVoice)
+              // An extension's set takes no recordings anywhere, which the
+              // read-only fields above already say.
+              if (!keyer.canRecordVoice && !_offered)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.xl),
                   child: Text(m.recordOnRadio, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
@@ -637,15 +656,18 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
           // The folder rather than the file: opening the file would play it
           // on whatever the system plays sound files with, and the folder is
           // where a sound file is put in or taken out.
-          secondary: keyer.voiceMessagesFromComputer ? TextButton(onPressed: () => keyer.revealVoiceMessage(widget.n), child: Text(m.openFileButton)) : null,
+          secondary: keyer.voiceMessagesFromComputer && !_offered
+              ? TextButton(onPressed: () => keyer.revealVoiceMessage(widget.n), child: Text(m.openFileButton))
+              : null,
           help: _voiceable
               ? TextButton(
                   onPressed: () => showHaloDialog<void>(context: context, builder: (context) => const _VoiceTemplateHelpDialog()),
                   child: Text(m.help),
                 )
               : null,
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-          actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+          // An extension's set has nothing to save, as in the CW message dialog.
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(_offered ? context.t.common.done : context.t.common.cancel)),
+          actions: [if (!_offered) FilledButton(onPressed: _save, child: Text(context.t.common.save))],
         );
       },
     );

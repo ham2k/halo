@@ -123,7 +123,14 @@ extension ComputerVoiceKeying on CatKeying {
   /// Where message [n] of the set in use is recorded.
   String _voiceFile(int n) => _setFile(settings.voiceMessageSetId, n);
 
-  String _setFile(String setId, int n) => '$voiceMessagesDir/$setId/$n.wav';
+  /// An extension's set takes no recordings: it is never changed, here or
+  /// from a peer's Record.
+  bool _recordable() => !isOfferedSetId(settings.voiceMessageSetId);
+
+  /// An offered set's id is the extension's to pick, and may hold anything:
+  /// escaped, it names a directory inside this one, and on every system —
+  /// where nothing is recorded ([_recordable]).
+  String _setFile(String setId, int n) => '$voiceMessagesDir/${isOfferedSetId(setId) ? Uri.encodeComponent(setId) : setId}/$n.wav';
 
   /// Where this radio's phone messages come from, and the keyers that
   /// follow from it — which stops a message playing from the source being
@@ -149,7 +156,9 @@ extension ComputerVoiceKeying on CatKeying {
   /// it in use unless [select] is false, as the set manager's Duplicate does.
   Future<VoiceMessageSet?> addVoiceMessageSet(String name, {String? from, bool select = true}) async {
     final (audio, dir) = _recordingsHome();
-    final source = from == null ? settings.activeVoiceMessageSet : settings.voiceMessageSets.where((set) => set.id == from).firstOrNull;
+    final source = from == null
+        ? settings.activeVoiceMessageSet
+        : settings.offeredVoiceMessageSet(from) ?? settings.voiceMessageSets.where((set) => set.id == from).firstOrNull;
     if (source == null) return null;
     final id = uuidGenerator.v4();
     final set = VoiceMessageSet(id: id, name: name, labels: source.labels, templates: source.templates);
@@ -275,6 +284,7 @@ extension ComputerVoiceKeying on CatKeying {
         audio: voiceAudio!,
         config: () => station.nodeFor(uuid)?.config ?? const {},
         fileFor: _voiceFile,
+        recordable: _recordable,
         report: (activity) => noteVoiceActivity(uuid, activity),
         prepare: _prepareVoice,
         following: _takeQueuedVoice,
@@ -324,6 +334,7 @@ extension ComputerVoiceKeying on CatKeying {
         null => const {},
       },
       fileFor: _voiceFile,
+      recordable: _recordable,
       // Never offered to a peer and never repeated: only shown.
       report: (activity) {
         voiceActivity.value = activity;

@@ -49,6 +49,7 @@ import 'radio_host_calls.dart';
 import 'settings_placement.dart';
 import 'spot_command_sources.dart';
 import '../settings_service.dart';
+import '../sets/offered_keyer_sets.dart';
 import '../band_annotations_service.dart';
 import '../spots_service.dart';
 import '../status_bar_service.dart';
@@ -163,6 +164,9 @@ class ExtensionService
     _settings = value;
     value?.addListener(_pushDeveloperMode);
     _pushDeveloperMode();
+    // A runtime that activated before this had nowhere to keep the keyer
+    // sets its extensions offer. One still activating asks once it has.
+    if (value != null && runtimeGeneration.value > 0) unawaited(refreshOfferedKeyerSets());
   }
 
   LookupRepository? lookups;
@@ -680,8 +684,11 @@ class ExtensionService
 
   /// Bumped after every successful runtime (re)start — panels listen to
   /// re-fetch extension-contributed content (settings panels, listings).
+  /// The keyer sets the extensions offer are asked again on each, a single
+  /// extension's dev reload included: they say what is in the picker until
+  /// the next.
   @override
-  final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
+  late final ValueNotifier<int> runtimeGeneration = ValueNotifier(0)..addListener(() => unawaited(refreshOfferedKeyerSets()));
 
   /// Completes once the first boot catch-up has settled — the pre-load and
   /// any shipped extensions put back — so what is still missing after it is

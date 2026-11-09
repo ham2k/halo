@@ -70,7 +70,8 @@ import yazl from "yazl"
 /// `host.bandAnnotations.put`/`remove` and `ctx.getBandAnnotations`; 21
 /// adds spots pushed as they happen — `host.spots.replace`/`put`/`remove`
 /// and a spot's `key` — and `match` on `host.clusterSubscribe` and
-/// `clusterLines`.
+/// `clusterLines`, and the `keyerSets` hook category, CW and voice message
+/// sets an extension offers.
 export const H2KEXT_API_VERSION = 21
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`

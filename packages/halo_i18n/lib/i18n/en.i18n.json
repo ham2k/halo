@@ -3035,7 +3035,9 @@
     "problemUnreadable": "it is not a set file",
     "problemWrongKind": "it holds a different kind of set",
     "problemNewerVersion": "it was written by a newer version of the app",
-    "problemMalformed": "parts of it are damaged"
+    "problemMalformed": "parts of it are damaged",
+    "extensionsFolder": "Extensions",
+    "offeredLocked": "$name comes from the $extension extension.\nTo make changes, duplicate it in $manage and use the copy."
   },
   "keyboardShortcuts": {
     "title": "Keyboard Shortcuts",

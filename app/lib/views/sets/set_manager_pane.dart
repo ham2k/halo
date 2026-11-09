@@ -135,8 +135,8 @@ class _SetManagerPaneState extends State<_SetManagerPane> {
       true;
 
   /// Where to move [name] to: the top level, or a folder — never a folder
-  /// into itself or one inside it ([folderId]). Null for no choice; the
-  /// empty string for the top level.
+  /// into itself or one inside it ([folderId]), nor among the extensions'
+  /// sets. Null for no choice; the empty string for the top level.
   Future<String?> _askFolder({required String name, String? folderId, String? current}) {
     final tree = category.tree;
     final excluded = folderId == null ? const <String>{} : tree.folderAndDescendants(folderId);
@@ -144,7 +144,8 @@ class _SetManagerPaneState extends State<_SetManagerPane> {
     final choices = [
       (id: '', label: m.topLevel),
       for (final row in tree.rows(const []))
-        if (row is SetTreeFolderRow && !excluded.contains(row.folder.id)) (id: row.folder.id, label: tree.pathOf(row.folder.id).join(' / ')),
+        if (row is SetTreeFolderRow && !excluded.contains(row.folder.id) && !category.isOffered(row.folder.id))
+          (id: row.folder.id, label: tree.pathOf(row.folder.id).join(' / ')),
     ];
     return showHaloDialog<String>(
       context: context,
@@ -253,10 +254,12 @@ class _SetManagerPaneState extends State<_SetManagerPane> {
         icon: MdiIcons.folderMoveOutline,
         label: m.moveTo,
         destructive: false,
-        onPressed: () async {
-          final to = await _askFolder(name: name, current: category.tree.folderOf(id));
-          if (to != null) await category.setTree(category.tree.moveSet(id, to.isEmpty ? null : to));
-        },
+        onPressed: category.isOffered(id)
+            ? null
+            : () async {
+                final to = await _askFolder(name: name, current: category.tree.folderOf(id));
+                if (to != null) await category.setTree(category.tree.moveSet(id, to.isEmpty ? null : to));
+              },
       ),
       if (category.fileType != null) (icon: MdiIcons.fileExportOutline, label: m.export, destructive: false, onPressed: () => _export(id)),
       (
@@ -273,8 +276,18 @@ class _SetManagerPaneState extends State<_SetManagerPane> {
     ];
   }
 
+  /// None of them for an extensions' folder, which holds what the
+  /// extensions offer and nothing the operator files.
   List<_Action> _folderActions(SetFolder folder) {
     final m = context.t.sets;
+    if (category.isOffered(folder.id)) {
+      return [
+        (icon: MdiIcons.pencilOutline, label: m.rename, destructive: false, onPressed: null),
+        (icon: MdiIcons.folderPlusOutline, label: m.newFolder, destructive: false, onPressed: null),
+        (icon: MdiIcons.folderMoveOutline, label: m.moveTo, destructive: false, onPressed: null),
+        (icon: MdiIcons.trashCanOutline, label: m.delete, destructive: true, onPressed: null),
+      ];
+    }
     return [
       (icon: MdiIcons.pencilOutline, label: m.rename, destructive: false, onPressed: () => setState(() => _renaming = folder.id)),
       (icon: MdiIcons.folderPlusOutline, label: m.newFolder, destructive: false, onPressed: () => _newFolder(parent: folder.id)),
@@ -325,25 +338,23 @@ class _SetManagerPaneState extends State<_SetManagerPane> {
         ),
       );
     }
-    return _dragAndDrop(
-      dragged: (id: id, folder: folder),
-      name: name,
-      leading: leading,
-      dropFolder: folder ? id : category.tree.folderOf(id),
-      child: _RowMenu(
-        actions: actions,
-        label: context.t.sets.actions(name: name),
-        builder: (open, menu) => ListTile(
-          contentPadding: padding,
-          leading: leading,
-          title: Text(name, style: titleStyle),
-          subtitle: subtitle,
-          trailing: menu,
-          onTap: open,
-          mouseCursor: SystemMouseCursors.click,
-        ),
+    final menu = _RowMenu(
+      actions: actions,
+      label: context.t.sets.actions(name: name),
+      builder: (open, menu) => ListTile(
+        contentPadding: padding,
+        leading: leading,
+        title: Text(name, style: titleStyle),
+        subtitle: subtitle,
+        trailing: menu,
+        onTap: open,
+        mouseCursor: SystemMouseCursors.click,
       ),
     );
+    // Neither dragged nor dropped on: an extension's set or folder stays
+    // where the extensions put it, and holds nothing the operator files.
+    if (category.isOffered(id)) return menu;
+    return _dragAndDrop(dragged: (id: id, folder: folder), name: name, leading: leading, dropFolder: folder ? id : category.tree.folderOf(id), child: menu);
   }
 
   /// Whether [dragged] dropped into [folder] (null: the top level) moves it

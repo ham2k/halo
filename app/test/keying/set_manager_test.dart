@@ -19,6 +19,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/sets/cw_message_set_category.dart';
 import 'package:ham2k_logger/services/sets/set_tree.dart';
 import 'package:ham2k_logger/views/sets/set_manager_pane.dart';
+import 'package:ham2k_logger/views/sets/set_picker_field.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -132,6 +133,59 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), to);
     }
+
+    testWidgets('the picked set is shown with the folders it is filed in, so a name repeated in another folder reads apart', (tester) async {
+      await category.setTree(category.tree.moveSet('pota', inner.id));
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SetPickerField(services: services, category: category, label: 'Sets', value: 'pota', onChanged: (_) {}),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Contests / CQ WW / POTA', findRichText: true), findsOneWidget);
+    });
+
+    // The trap: a list left up over the dialog while the field beside it
+    // takes the click meant to close it.
+    testWidgets('the open list is modal: a folder opens in it, and a tap outside closes it and reaches nothing under it', (tester) async {
+      var reached = false;
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Column(
+                children: [
+                  TextButton(onPressed: () => reached = true, child: const Text('beside')),
+                  SetPickerField(services: services, category: category, label: 'Sets', value: 'pota', onChanged: (_) {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(SetPickerField));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Contests'));
+      await tester.pumpAndSettle();
+      expect(find.text(category.manageLabel), findsOneWidget, reason: 'a folder is no choice to close on');
+      expect(find.text('CQ WW'), findsOneWidget);
+
+      await tester.tap(find.text('beside'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text(category.manageLabel), findsNothing);
+      expect(reached, isFalse);
+
+      // Placed against the field when it opened, it would be left adrift.
+      await tester.tap(find.byType(SetPickerField));
+      await tester.pumpAndSettle();
+      tester.view.physicalSize = tester.view.physicalSize * 0.9;
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpAndSettle();
+      expect(find.text(category.manageLabel), findsNothing, reason: 'a window resized under the list closes it');
+    });
 
     testWidgets('a set dropped on a folder goes into it; a folder dropped on its own subfolder stays put', (tester) async {
       await open(tester);

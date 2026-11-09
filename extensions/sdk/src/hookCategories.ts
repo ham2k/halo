@@ -31,6 +31,7 @@ export const HOOK_CATEGORIES = [
   "dataFile",
   "export",
   "form",
+  "keyerSets",
   "lookup",
   "lookupService",
   "panel",

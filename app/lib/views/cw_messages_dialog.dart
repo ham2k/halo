@@ -31,6 +31,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat/cat_service.dart';
 import '../services/halo_services.dart';
 import '../services/sets/cw_message_set_category.dart';
+import '../services/sets/offered_keyer_sets.dart';
 import '../services/settings_service.dart';
 import 'sets/set_picker_field.dart';
 import 'keying_pickers.dart';
@@ -67,13 +68,13 @@ Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {
 
 /// Message [n] of the set in use, on its own — what a long press or a
 /// right click on its keyer button opens. Saved into that set on the
-/// dialog's Save.
+/// dialog's Save; only shown, where the set is an extension's.
 Future<void> showCwMessageDialog(BuildContext context, HaLoServices services, int n) async {
   final settings = services.settings;
   final set = settings.activeCwMessageSet;
   final edited = await showHaloDialog<({String message, String label})>(
     context: context,
-    builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
+    builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n), readOnly: isOfferedSetId(set.id)),
   );
   if (edited == null) return;
   // The sets as they are now, not as the dialog opened on.
@@ -98,6 +99,11 @@ class _CwMessagesDialog extends StatefulWidget {
 /// the set on screen, which would leave the ones the operator moved away
 /// from edited.
 class _CwMessagesDialogState extends State<_CwMessagesDialog> {
+  /// The width the speed field, the gap and message 1's repeat need side
+  /// by side with the cooldown still readable; narrower, the repeat goes
+  /// under the speed.
+  static const _repeatBesideSpeedWidth = 440.0;
+
   late final _settings = widget.services.settings;
   late final _category = CwMessageSetCategory(_settings);
 
@@ -110,6 +116,9 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
 
   Future<void> _pick(String id) => _settings.setCwMessageSets(_settings.cwMessageSets, active: id);
 
+  /// The name of the extension set [id] comes with; null for the operator's.
+  String? _offeredBy(String id) => _settings.offeredKeyerSets.cw.where((offered) => offered.set.id == id).firstOrNull?.ownerName;
+
   Future<void> _edit(int n, ({String message, String label}) edited) {
     final set = _settings.activeCwMessageSet;
     _before.putIfAbsent(set.id, () => set);
@@ -120,9 +129,12 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
   /// deleted leaves the one in use now. The copies are let go only once the
   /// write has landed: a write that fails leaves them there to try again.
   Future<void> _revert() async {
-    await _settings.setCwMessageSets([
-      for (final set in _settings.cwMessageSets) _before[set.id]?.renamed(set.name) ?? set,
-    ], active: _settings.cwMessageSets.any((set) => set.id == _activeBefore) ? _activeBefore : _settings.cwMessageSetId);
+    await _settings.setCwMessageSets(
+      [for (final set in _settings.cwMessageSets) _before[set.id]?.renamed(set.name) ?? set],
+      active: _settings.cwMessageSets.any((set) => set.id == _activeBefore) || _settings.offeredCwMessageSet(_activeBefore) != null
+          ? _activeBefore
+          : _settings.cwMessageSetId,
+    );
     if (mounted) setState(_before.clear);
   }
 
@@ -189,41 +201,69 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                       builder: (context, _) =>
                           widget.services.cat.keyer(widget.radio).designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
                     ),
-                    // How the messages go out first — speed and ESM, then message
-                    // 1's repeat on a row of its own, the switch and its cooldown
-                    // needing the width — then which set of them is being edited.
-                    Row(
-                      children: [
+                    // How the messages go out first — speed with message 1's
+                    // repeat beside it where the cooldown still reads, under
+                    // it where it would not, then ESM — then which set of
+                    // them is being edited.
+                    LayoutBuilder(
+                      builder: (context, constraints) {
                         // The speed messages go out at, first: it is what an
                         // operator adjusts most between contacts.
-                        _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio)),
-                        if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
-                          const SizedBox(width: Space.md),
-                          Expanded(child: EnterSendsField(cat: widget.services.cat)),
-                        ],
-                      ],
+                        final speed = _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio));
+                        final repeat = ListenableBuilder(
+                          listenable: widget.services.settings,
+                          builder: (context, _) => RepeatFields(
+                            on: widget.services.settings.cwRepeat,
+                            cooldown: widget.services.settings.cwRepeatCooldown,
+                            onToggled: (on) {
+                              // Off ends a chain already counting down — on
+                              // either radio, since the repeat is theirs both.
+                              if (!on) {
+                                for (final radio in ['A', 'B']) {
+                                  widget.services.cat.keyer(radio).cancelKeyerRepeat();
+                                }
+                              }
+                              unawaited(widget.services.settings.setCwRepeat(on));
+                            },
+                            onCooldown: (seconds) => unawaited(widget.services.settings.setCwRepeatCooldown(seconds)),
+                          ),
+                        );
+                        if (constraints.maxWidth >= _repeatBesideSpeedWidth) {
+                          return Row(
+                            children: [
+                              speed,
+                              const SizedBox(width: Space.xxl),
+                              Expanded(child: repeat),
+                            ],
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            speed,
+                            const SizedBox(height: Space.md),
+                            repeat,
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: Space.md),
-                    ListenableBuilder(
-                      listenable: widget.services.settings,
-                      builder: (context, _) => RepeatFields(
-                        on: widget.services.settings.cwRepeat,
-                        cooldown: widget.services.settings.cwRepeatCooldown,
-                        onToggled: (on) {
-                          // Off ends a chain already counting down — on
-                          // either radio, since the repeat is theirs both.
-                          if (!on) {
-                            for (final radio in ['A', 'B']) {
-                              widget.services.cat.keyer(radio).cancelKeyerRepeat();
-                            }
-                          }
-                          unawaited(widget.services.settings.setCwRepeat(on));
-                        },
-                        onCooldown: (seconds) => unawaited(widget.services.settings.setCwRepeatCooldown(seconds)),
-                      ),
-                    ),
+                    if (widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */ ) ...[
+                      const SizedBox(height: Space.md),
+                      EnterSendsField(cat: widget.services.cat),
+                    ],
                     const SizedBox(height: Space.md),
                     SetPickerField(services: widget.services, category: _category, label: m.sets, value: set.id, onChanged: (id) => unawaited(_pick(id))),
+                    if (_offeredBy(set.id) case final extension?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: Space.sm),
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            context.t.sets.offeredLocked(name: set.name, extension: extension, manage: _category.manageLabel),
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -259,7 +299,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                             onTap: () async {
                               final edited = await showHaloDialog<({String message, String label})>(
                                 context: context,
-                                builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n)),
+                                builder: (context) => _CwMessageDialog(n: n, message: set.message(n), label: set.label(n), readOnly: isOfferedSetId(set.id)),
                               );
                               if (edited == null || !mounted) return;
                               await _edit(n, edited);
@@ -503,13 +543,15 @@ class SetNameDialogState extends State<SetNameDialog> {
 
 /// One message: the template first, then its label under a Details band.
 /// Hands its two values back through `pop` rather than storing them — the
-/// caller knows which set they belong to.
+/// caller knows which set they belong to. [readOnly] shows a message of a
+/// set nobody here changes (an extension's), and hands nothing back.
 class _CwMessageDialog extends StatefulWidget {
   final int n;
   final String message;
   final String label;
+  final bool readOnly;
 
-  const _CwMessageDialog({required this.n, required this.message, required this.label});
+  const _CwMessageDialog({required this.n, required this.message, required this.label, this.readOnly = false});
 
   @override
   State<_CwMessageDialog> createState() => _CwMessageDialogState();
@@ -535,7 +577,7 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
     super.dispose();
   }
 
-  void _save() => Navigator.of(context).pop((message: _message.text.trim(), label: _label.text.trim()));
+  void _save() => Navigator.of(context).pop(widget.readOnly ? null : (message: _message.text.trim(), label: _label.text.trim()));
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +600,8 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
             padding: rowInset.copyWith(top: Space.xl, bottom: Space.xl),
             child: TextField(
               controller: _message,
-              autofocus: true,
+              readOnly: widget.readOnly,
+              autofocus: !widget.readOnly,
               // Not uppercased: Liquid's `{{ qso.call }}` is case-sensitive,
               // and the queue uppercases what is keyed anyway.
               decoration: poloFieldDecoration(context, m.key(n: widget.n)),
@@ -570,6 +613,7 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
             padding: rowInset.copyWith(top: Space.lg, bottom: Space.xl),
             child: TextField(
               controller: _label,
+              readOnly: widget.readOnly,
               textCapitalization: TextCapitalization.sentences,
               // Left blank, the key is labelled with its message.
               decoration: poloFieldDecoration(context, m.labelField, hintText: _message.text.trim()),
@@ -578,8 +622,10 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
           ),
         ],
       ),
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+      // Done, not Cancel, where there is nothing to save
+      // (dialog_footer_convention_test.dart).
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(widget.readOnly ? context.t.common.done : context.t.common.cancel)),
+      actions: [if (!widget.readOnly) FilledButton(onPressed: _save, child: Text(context.t.common.save))],
     );
   }
 }

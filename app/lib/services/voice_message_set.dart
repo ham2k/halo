@@ -5,6 +5,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'cat/voice_words.dart';
 import 'settings_service.dart';
+import 'sets/offered_keyer_sets.dart';
 
 /// One named set of voice messages recorded on this computer
 /// (docs/design/cat.md § The computer's voice keyer): eight labels under a
@@ -161,15 +162,18 @@ extension VoiceMessageSetSettings on SettingsService {
   Future<void> setVoiceKeyingSource(VoiceKeyingSource source, {String radio = 'A'}) =>
       updateSettingsGroup(SettingsService.radioGroup, {VoiceMessageSet.sourceKeyFor(radio): source.name});
 
-  /// The default set for a stored id whose set is gone, or none stored.
+  /// The set in use: one of the operator's, or one an extension offers. The
+  /// default set for a stored id whose set is gone, or whose extension is
+  /// off, or none stored.
   String get voiceMessageSetId {
     final stored = _voiceSettings.group[VoiceMessageSet.activeKey];
-    return stored is String && voiceMessageSets.any((set) => set.id == stored) ? stored : VoiceMessageSet.defaultId;
+    if (stored is! String) return VoiceMessageSet.defaultId;
+    return voiceMessageSets.any((set) => set.id == stored) || offeredVoiceMessageSet(stored) != null ? stored : VoiceMessageSet.defaultId;
   }
 
   VoiceMessageSet get activeVoiceMessageSet {
     final id = voiceMessageSetId;
-    return voiceMessageSets.firstWhere((set) => set.id == id);
+    return offeredVoiceMessageSet(id) ?? voiceMessageSets.firstWhere((set) => set.id == id);
   }
 
   /// The phrases of each operator's word set (docs/design/cat.md § Voiced
@@ -211,9 +215,13 @@ extension VoiceMessageSetSettings on SettingsService {
 
   Future<void> setVoiceTryText(String text) => updateSettingsGroup(SettingsService.radioGroup, {voiceTryTextKey: text});
 
-  /// Writes the sets and which one is in use, in one write.
+  /// Writes the sets and which one is in use, in one write. [sets] are the
+  /// operator's own; [active] may name an offered one.
   Future<void> setVoiceMessageSets(List<VoiceMessageSet> sets, {required String active}) => updateSettingsGroup(SettingsService.radioGroup, {
-    VoiceMessageSet.setsKey: [for (final set in sets) set.toJson()],
-    VoiceMessageSet.activeKey: sets.any((set) => set.id == active) ? active : null,
+    VoiceMessageSet.setsKey: [
+      for (final set in sets)
+        if (!isOfferedSetId(set.id)) set.toJson(),
+    ],
+    VoiceMessageSet.activeKey: sets.any((set) => set.id == active) || offeredVoiceMessageSet(active) != null ? active : null,
   });
 }

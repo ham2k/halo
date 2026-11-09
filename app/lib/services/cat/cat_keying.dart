@@ -26,6 +26,7 @@ import 'package:halo_core/halo_core.dart';
 
 import '../error_reporting_service.dart';
 import '../settings_service.dart';
+import '../sets/offered_keyer_sets.dart';
 import 'computer_voice_keyer.dart';
 import 'driver.dart';
 import 'drivers/cw_send_queue.dart' show CwSendProgress;

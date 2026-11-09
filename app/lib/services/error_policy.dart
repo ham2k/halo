@@ -50,7 +50,7 @@ import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate
 import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart'
-    show ExtensionTimersSuspended, MalformedBandAnnotationException, MalformedLookupDataException, MalformedSpotDataException;
+    show ExtensionTimersSuspended, MalformedBandAnnotationException, MalformedKeyerSetException, MalformedLookupDataException, MalformedSpotDataException;
 import 'update_check_service.dart' show UpdateServerUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -563,6 +563,15 @@ class ErrorPolicy {
           'and only that annotation is left out',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedBandAnnotationException,
+    ),
+    ErrorRule(
+      id: 'malformed-keyer-set',
+      reason:
+          'a keyerSets hook answered a set the app cannot read (extension_hook_api.dart\'s '
+          'refreshOfferedKeyerSets) — a defect in that one extension, not something the operator can act on, '
+          'and only that set is left out',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is MalformedKeyerSetException,
     ),
     ErrorRule(
       id: 'malformed-lookup-data',

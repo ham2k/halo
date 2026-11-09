@@ -7,6 +7,7 @@
 // against this.
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:yaml/yaml.dart';
 
 import '../../views/dock_layouts/yaml_reader.dart';
@@ -108,6 +109,15 @@ abstract class SetCategory {
   /// The set in use.
   String get activeId;
 
+  /// The sets extensions offer, which [sets] lists too and [tree] files in
+  /// the extensions' folders. Never renamed, moved or deleted, and nothing
+  /// is filed among them: a duplicate of one is the operator's own.
+  List<OfferedSetPlace> get offered => const [];
+
+  /// Whether [id] — a set's or a folder's — is an extension's, and so not
+  /// the operator's to change.
+  bool isOffered(String id) => isOfferedSetId(id);
+
   /// The folders, kept beside the sets they file.
   SetTree get tree;
   Future<void> setTree(SetTree tree);
@@ -187,13 +197,14 @@ abstract class SetCategory {
 }
 
 /// The folders of a kind whose sets are kept in a settings group, under
-/// [treeKey] in that same group.
+/// [treeKey] in that same group, with the [offered] sets' folders beside
+/// them and never stored.
 mixin SetTreeInSettingsGroup on SetCategory {
   String get settingsGroup;
 
   @override
-  SetTree get tree => SetTree.fromJson(settings.settingValue(settingsGroup, treeKey));
+  SetTree get tree => SetTree.fromJson(settings.settingValue(settingsGroup, treeKey)).withOffered(offered, rootName: t.sets.extensionsFolder);
 
   @override
-  Future<void> setTree(SetTree tree) => settings.updateSettingsGroup(settingsGroup, {treeKey: tree.toJson()});
+  Future<void> setTree(SetTree tree) => settings.updateSettingsGroup(settingsGroup, {treeKey: tree.withoutOffered().toJson()});
 }

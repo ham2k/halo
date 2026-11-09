@@ -1004,6 +1004,8 @@ class _Translations$sets$cw extends Translations$sets$en {
 	@override String get problemWrongKind => '·· — / ···· ——— ·—·· —·· ··· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / —·— ·· —· —·· / ——— ··—· / ··· · —';
 	@override String get problemNewerVersion => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·';
 	@override String get problemMalformed => '·——· ·— ·—· — ··· / ——— ··—· / ·· — / ·— ·—· · / —·· ·— —— ·— ——· · —··';
+	@override String get extensionsFolder => '· —··— — · —· ··· ·· ——— —· ···';
+	@override String offeredLocked({required Object name, required Object extension, required Object manage}) => '${name} / —·—· ——— —— · ··· / ··—· ·—· ——— —— / — ···· · / ${extension} / · —··— — · —· ··· ·· ——— —· ·—·—·—\n— ——— / —— ·— —·— · / —·—· ···· ·— —· ——· · ··· ——··—— / —·· ··— ·——· ·—·· ·· —·—· ·— — · / ·· — / ·· —· / ${manage} / ·— —· —·· / ··— ··· · / — ···· · / —·—· ——— ·——· —·—— ·—·—·—';
 }
 
 // Path: keyboardShortcuts
@@ -7567,6 +7569,8 @@ extension on TranslationsCw {
 			'sets.problemWrongKind' => '·· — / ···· ——— ·—·· —·· ··· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / —·— ·· —· —·· / ——— ··—· / ··· · —',
 			'sets.problemNewerVersion' => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·',
 			'sets.problemMalformed' => '·——· ·— ·—· — ··· / ——— ··—· / ·· — / ·— ·—· · / —·· ·— —— ·— ——· · —··',
+			'sets.extensionsFolder' => '· —··— — · —· ··· ·· ——— —· ···',
+			'sets.offeredLocked' => ({required Object name, required Object extension, required Object manage}) => '${name} / —·—· ——— —— · ··· / ··—· ·—· ——— —— / — ···· · / ${extension} / · —··— — · —· ··· ·· ——— —· ·—·—·—\n— ——— / —— ·— —·— · / —·—· ···· ·— —· ——· · ··· ——··—— / —·· ··— ·——· ·—·· ·· —·—· ·— — · / ·· — / ·· —· / ${manage} / ·— —· —·· / ··— ··· · / — ···· · / —·—· ——— ·——· —·—— ·—·—·—',
 			'keyboardShortcuts.title' => '—·— · —·—— —··· ——— ·— ·—· —·· / ··· ···· ——— ·—· — —·—· ··— — ···',
 			'keyboardShortcuts.description' => '—·—· ··— ··· — ——— —— ·· ——·· · / —·— · —·—— / —— ·— ·——· ·——· ·· —· ——· ···',
 			'keyboardShortcuts.search' => '··· · ·— ·—· —·—· ···· / —·—· ——— —— —— ·— —· —·· ··· / ·— —· —·· / —·— · —·—— ···',
