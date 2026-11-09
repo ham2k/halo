@@ -121,7 +121,8 @@ Two consequences worth stating, because both are load-bearing:
   unreachable. A registry self-check forbids it, because there is no run-time symptom.
 - **Every real transceiver also runs as the placeholder.** The registry derives one more variant
   per model with a maker (key `<model>-placeholder`, `placeholderVariantFor`): the model's name on
-  the placeholder radio's driver and transport, offered last in the editor's connection choice. It is
+  the placeholder radio's driver and transport, offered after the model's own pairings in the
+  editor's connection choice. It is
   how an operator puts their own rig on the log before there is a cable or an address for it —
   except on iOS, where a radio with no other pairing is left out of the catalogue (§ Bluetooth LE serial).
   Bridges and the stand-alone placeholder get none. The keys are derived but still persisted, so
@@ -131,6 +132,14 @@ Two consequences worth stating, because both are load-bearing:
   the row says "Not configured" and its plug is disabled, and `_connect` answers
   `_ConnectOutcome.unconfigured` without trying — which the retry ladders treat as done, not as a
   failure to retry.
+- **The editor's tabs are the model's own pairings; the derived ones wait behind Other.** The
+  connection choice shows the variants a model declares, then the placeholder, as tabs. A variant
+  the registry derives for every radio of its kind (`EquipmentModel.offersBehindOther` — Bluetooth
+  LE today) sits in the menu of a last **Other…** tab instead: the same few on every radio would
+  otherwise bury the ways this one is connected. The menu opens under its tab. A pick from it
+  becomes a tab, ahead of the placeholder, for as long as the editor is open, and a node already
+  on one opens with it as a tab. The menu lists only what is not a tab yet, and Other goes once nothing is left behind it — or
+  never shows, for a model with none to offer (`EXP 500MP` off, say).
 - **Bluetooth serial is the serial transport under another name.** A paired radio's SPP profile is
   one more serial port to the OS, so `BluetoothSerialTransport` subclasses `SerialTransport` and
   changes only its key and which ports it ranks first (those with no USB identity). A model offers
@@ -456,9 +465,19 @@ by nothing — and a radio's own CDC port that refuses line-state requests would
 unusable. On desktop the open itself still raises both lines for the few milliseconds before the
 configuration lands; nothing in libserialport can open a port with them held.
 
-The lines and both cadences are fields most operators never touch, so the equipment editor folds
-every field a transport or driver marks `advanced` under an **Advanced Settings** disclosure,
-closed by default (FormRenderer's `type: 'disclosure'`; an error inside it opens it).
+The lines and both cadences are fields most operators never touch, and the equipment editor keeps
+them out of the way by what they configure. Under the name come the category's own questions (an
+antenna's bands, a receiver's radio), then two category bands. **Connection**, only for equipment
+that is connected at all, holds the transport tabs (labelled for a screen reader, not on screen:
+the band shows it), the chosen pairing's own fields, and an **Advanced Settings** disclosure,
+closed by default, over the fields its TRANSPORT marks `advanced` — the serial lines, the USB
+driver (FormRenderer's `type: 'disclosure'`; an error inside it opens it). Which fields those are
+is read from each transport's `recognizedConfigKeys`, never from its elements: building those
+enumerates serial ports, and the open editor rebuilds every few seconds. **More** holds the fields
+its DRIVER marks `advanced` — the poll and meter cadences, a rotator's limits — and the
+troubleshooting notes. A switch's or a rotator's live state and wiring bring bands of their own
+and stand between the two. Either band goes when the chosen pairing leaves nothing under it
+(FormRenderer's `hideWhenEmpty`).
 
 ### A protocol with no framing at all
 

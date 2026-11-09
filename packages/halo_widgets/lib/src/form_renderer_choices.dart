@@ -17,6 +17,97 @@ mixin _ChoiceFields on State<FormRenderer> {
   Color? _devModeColor(Map<String, dynamic> el);
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value);
 
+  /// Per `segmented` field, the `moreOptions` that have become segments
+  /// while this form is up — the one it opened on, and each one picked from
+  /// the menu since.
+  Map<String, Set<Object?>> get _segmentedPromoted;
+
+  /// A `fieldType: 'segmented'` field's control. `options` are always
+  /// segments; `moreOptions` wait behind a last segment labelled `moreLabel`,
+  /// which opens a menu of them, under itself, instead of being selected. A
+  /// pick from that menu becomes a segment of its own for as long as the
+  /// form is up, so switching to it and back costs no second trip through
+  /// the menu — and so does a `moreOptions` value the form opens on, since
+  /// that one is already this record's choice. The menu lists only what is
+  /// not a segment yet, and its segment goes once every `moreOptions` value
+  /// is one. A picked value's segment goes ahead of the option named by
+  /// `moreBefore`, or after them all.
+  Widget _buildSegmentedButton(Map<String, dynamic> el, List<Map<String, dynamic>> options) {
+    final key = el['key'] as String;
+    final more = (el['moreOptions'] is List) ? (el['moreOptions'] as List).cast<Map<String, dynamic>>() : const <Map<String, dynamic>>[];
+    final current = _values[key];
+    // Whatever put a `moreOptions` value here — the form opening on it, a
+    // menu pick, an onChange's update — it is a segment from then on: a
+    // value with no segment shows nothing selected.
+    final promoted = _segmentedPromoted.putIfAbsent(key, () => {});
+    if (more.any((opt) => opt['value'] == current)) promoted.add(current);
+    // Picks go ahead of the `moreBefore` option where there is one (the
+    // equipment editor's "no control"), else after every option.
+    final picked = [...more.where((opt) => promoted.contains(opt['value']))];
+    final before = options.indexWhere((opt) => el['moreBefore'] != null && opt['value'] == el['moreBefore']);
+    final segments = before < 0 ? [...options, ...picked] : [...options.take(before), ...picked, ...options.skip(before)];
+    final waiting = [...more.where((opt) => !promoted.contains(opt['value']))];
+
+    void choose(dynamic val) {
+      setState(() {
+        _values[key] = val;
+        _errors.remove(key);
+      });
+      _handleFieldBlurOrInteraction(key, val);
+    }
+
+    Widget button(BuildContext anchor, MenuController? menu) => SegmentedButton<dynamic>(
+      segments: [
+        for (final opt in segments) ButtonSegment<dynamic>(value: opt['value'], label: Text(opt['label'] as String)),
+        if (menu != null) ButtonSegment<dynamic>(value: _moreSegment, label: Text(el['moreLabel'] as String? ?? '…')),
+      ],
+      selected: {?current},
+      emptySelectionAllowed: current == null,
+      showSelectedIcon: false,
+      onSelectionChanged: _isSubmitting
+          ? null
+          : (selection) {
+              if (selection.isEmpty) return;
+              final val = selection.first;
+              if (!identical(val, _moreSegment)) {
+                // The menu counts its anchor as inside itself, so a tap on
+                // another segment would otherwise leave it open.
+                menu?.close();
+                return choose(val);
+              }
+              if (menu!.isOpen) return menu.close();
+              // Under the menu's own segment, the last. Every segment is as
+              // wide as the widest, so its edge is a fraction of the
+              // control's width; from the left edge in a right-to-left
+              // layout, where the last segment is the leftmost.
+              final box = anchor.findRenderObject() as RenderBox?;
+              if (box == null || !box.hasSize) return menu.open();
+              final rtl = Directionality.of(anchor) == TextDirection.rtl;
+              final count = segments.length + 1;
+              menu.open(position: Offset(rtl ? 0 : box.size.width * (count - 1) / count, box.size.height));
+            },
+    );
+
+    if (waiting.isEmpty) return Builder(builder: (context) => button(context, null));
+    return MenuAnchor(
+      menuChildren: [
+        for (final opt in waiting)
+          MenuItemButton(
+            // As the segments are: a pick mid-submit would show one pairing
+            // and save another.
+            onPressed: _isSubmitting
+                ? null
+                : () {
+                    setState(() => promoted.add(opt['value']));
+                    choose(opt['value']);
+                  },
+            child: Text(opt['label'] as String),
+          ),
+      ],
+      builder: (context, menu, _) => button(context, menu),
+    );
+  }
+
   /// A `fieldType: 'checkboxGroup'` field: every option checked or unchecked
   /// inline, in one wrapping row — unlike `multiselect`, there is no summary
   /// row and no dialog, because the vocabulary this is for (a station's own
@@ -378,3 +469,7 @@ mixin _ChoiceFields on State<FormRenderer> {
     searchController?.dispose();
   }
 }
+
+/// The `segmented` field's menu segment's value: never an option's, so a
+/// tap on it can never be mistaken for a choice.
+const _moreSegment = #formRendererMoreSegment;

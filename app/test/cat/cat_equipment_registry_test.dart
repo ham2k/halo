@@ -25,6 +25,7 @@ import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart' show yae
 import 'package:ham2k_logger/services/cat/equipment_brands.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transports/ble_serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' as native show SerialTransport;
@@ -226,6 +227,32 @@ void main() {
   test('every type key is unique', () {
     final keys = registry.types.map((t) => t.key).toList();
     expect(keys.toSet().length, keys.length, reason: 'a duplicate key makes typeFor() find the wrong one');
+  });
+
+  test("the editor can tell a link's advanced fields from its driver's by key", () {
+    // The editor folds a transport's `advanced` fields into Connection and
+    // puts a driver's under More, by each transport's declared keys. A
+    // transport field missing from its own declaration would land under
+    // More; a driver key some transport declares would fold into Connection.
+    final linkKeys = {for (final type in registry.types) ...type.transport.recognizedConfigKeys};
+    for (final type in registry.types) {
+      for (final element in type.transport.configElements(overrides: type.variant.overrides, restrictions: type.variant.restrictions)) {
+        if (element['advanced'] == true) expect(type.transport.recognizedConfigKeys, contains(element['key']), reason: type.key);
+      }
+      for (final element in type.driver.configElements(overrides: type.variant.overrides, restrictions: type.variant.restrictions)) {
+        if (element['advanced'] == true) expect(linkKeys, isNot(contains(element['key'])), reason: '${type.key}: ${element['key']}');
+      }
+    }
+  });
+
+  test("only the pairings derived for every radio of a kind wait behind the editor's Other", () {
+    // The traps: a model's own pairing hidden in a menu (a 705's WiFi), or
+    // the placeholder — a choice on every radio — moved out of sight with
+    // the derived ones it shares a mechanism with.
+    for (final type in registry.types) {
+      final behindOther = type.model.offersBehindOther(type.variant);
+      expect(behindOther, type.transportKey == BleSerialTransport.transportKey, reason: type.key);
+    }
   });
 
   // A variant key is what a configured node stores. Renaming one does not

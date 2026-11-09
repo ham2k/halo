@@ -245,6 +245,15 @@ class EquipmentModel {
     }
     return null;
   }
+
+  /// Whether [variant] is one the catalogue derives for every radio of its
+  /// kind (Bluetooth LE for each serial radio) rather than one this model
+  /// declares. The editor keeps these behind its Other menu: they are the
+  /// same handful on every radio, and as tabs they would bury the ways this
+  /// one is actually connected. The placeholder is derived too but is not
+  /// one of these — it is how a radio is logged with no CAT at all, a choice
+  /// on every radio.
+  bool offersBehindOther(EquipmentVariant variant) => !_variants.contains(variant) && variant.transportKey != PlaceholderTransport.transportKey;
 }
 
 /// A real transceiver's serial pairing, reached through a Bluetooth LE serial

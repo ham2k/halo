@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The equipment editor's Advanced Settings fold, as an operator adding a
-// radio meets it.
+// The equipment editor's layout — Connection, then More — and its Other
+// menu, as an operator adding a radio meets them.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,7 +28,7 @@ void main() {
   /// arrives.
   Future<void> showPanel(WidgetTester tester) async {
     // Tall enough that the whole form fits above the pane's footer, which
-    // otherwise sits over the fold at the test's default 800x600.
+    // otherwise sits over More at the test's default 800x600.
     tester.view.physicalSize = const Size(1000, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -81,14 +81,21 @@ void main() {
     return tester.widget<Switch>(find.descendant(of: row.first, matching: find.byType(Switch)).first).value;
   }
 
-  testWidgets('a serial radio folds its lines and cadences away, closed', (tester) async {
+  testWidgets('a serial radio folds its lines into the connection, closed, and keeps its cadences under More', (tester) async {
     await pick(tester, 'FT-817', t.settings.station.models.ft817);
     final st = t.settings.station;
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
 
-    expect(find.text(st.advancedSettings), findsOneWidget);
+    expect(find.text(st.transport), findsOneWidget, reason: 'the Connection band');
+    expect(find.text(st.moreBand), findsOneWidget);
+    // The trap: the lines filed with the driver's cadences, away from the
+    // port they configure — or More folded shut over cadences again.
+    expect(top(st.serialPort), lessThan(top(st.advancedSettings)));
+    expect(top(st.advancedSettings), lessThan(top(st.moreBand)));
+    expect(top(st.moreBand), lessThan(top(st.pollInterval)));
+    expect(reachable(st.serialPort), findsOneWidget);
+    expect(reachable(st.pollInterval), findsOneWidget, reason: 'More is a band, not a fold');
     expect(reachable(st.serialRtsHigh), findsNothing, reason: 'closed until the operator asks');
-    expect(reachable(st.pollInterval), findsNothing);
-    expect(reachable(st.serialPort), findsOneWidget, reason: 'what every operator fills in stays out of the fold');
 
     await openAdvanced(tester);
     expect(reachable(st.serialRtsHigh), findsOneWidget);
@@ -145,17 +152,90 @@ void main() {
     expect(checked(tester, t.settings.station.serialRtsHigh), isTrue);
   });
 
-  testWidgets('the troubleshooting notes close the form, after the fold', (tester) async {
-    // The notes arrive among the always-shown fields, so a form that only
-    // pulls the fold's members out leaves them sitting ABOVE Advanced
-    // Settings, between the fields the operator is filling in.
+  testWidgets('the troubleshooting notes close the form, under More', (tester) async {
+    // The notes arrive among the connection's own fields, so a form that
+    // only pulls the advanced ones out leaves them sitting between the
+    // fields the operator is filling in.
     await pick(tester, 'FT-891', t.settings.station.models.ft891);
     final st = t.settings.station;
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
-    expect(top(st.troubleshootingNotes), greaterThan(top(st.advancedSettings)));
+    expect(top(st.troubleshootingNotes), greaterThan(top(st.moreBand)));
+    expect(top(st.troubleshootingNotes), greaterThan(top(st.pollInterval)), reason: "below More's fields too, not just its band");
+  });
 
-    await openAdvanced(tester);
-    expect(top(st.troubleshootingNotes), greaterThan(top(st.pollInterval)), reason: "below the fold's contents too, not just its header");
+  group('the connection tabs', () {
+    String label(String typeKey) => services.cat.registry.typeFor(typeKey)!.transportLabel;
+
+    testWidgets('a radio offers its own ways in and the placeholder; Bluetooth LE waits behind Other', (tester) async {
+      // The trap: every pairing the catalogue derives as a tab of its own,
+      // the same few on every radio, burying the ways this one connects.
+      await services.settings.setExperimentEnabled('500mp' /* stored key, see experiments.yaml */, true);
+      await pick(tester, 'FT-817', t.settings.station.models.ft817);
+      final st = t.settings.station;
+
+      expect(find.text(label('ft817-serial')), findsOneWidget);
+      expect(find.text(label('ft817-placeholder')), findsOneWidget);
+      expect(find.text(st.transportOther), findsOneWidget);
+      expect(find.text(label('ft817-ble')), findsNothing, reason: 'in the menu, not a tab');
+
+      await tester.tap(find.text(st.transportOther));
+      // The menu is placed a frame after it opens; a tap before then lands
+      // on the barrier and only closes it.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text(label('ft817-ble')).last);
+      // A menu item acts after its menu closes, a frame later.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text(label('ft817-ble')), findsOneWidget, reason: 'the pick is a tab now');
+      double left(String text) => tester.getTopLeft(find.text(text)).dx;
+      expect(left(label('ft817-ble')), lessThan(left(label('ft817-placeholder'))), reason: 'among the real connections, ahead of "no control"');
+      expect(find.text(st.transportOther), findsNothing, reason: 'nothing is left behind it');
+
+      // Back to USB: the picked pairing stays a tab, so a second look at it
+      // costs no second trip through the menu.
+      await tester.tap(find.text(label('ft817-serial')));
+      await tester.pump();
+      expect(find.text(label('ft817-ble')), findsOneWidget);
+      expect(reachable(st.serialPort), findsOneWidget);
+    });
+
+    testWidgets('a radio already on Bluetooth LE opens with it as a tab', (tester) async {
+      await services.settings.setExperimentEnabled('500mp' /* stored key, see experiments.yaml */, true);
+      await services.cat.addNode(typeKey: 'ft817-ble', name: 'Trail Rig', config: const {});
+      await showPanel(tester);
+      await tester.tap(find.text('Trail Rig').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text(label('ft817-ble')), findsOneWidget);
+      expect(find.text(t.settings.station.transportOther), findsNothing, reason: 'its one extra is already a tab');
+    });
+
+    testWidgets("an antenna's bands come straight after its name, under no band", (tester) async {
+      // The trap: an antenna's one real question under a band called More,
+      // with nothing before it to be more than.
+      await services.cat.addNode(typeKey: 'antenna-none', name: 'Dipole', config: const {});
+      await showPanel(tester);
+      // The inventory's section opens folded; its row, not the antenna-in-use
+      // picker's copy of the name, opens the editor.
+      await tester.tap(find.text(t.settings.station.sectionAntennas(count: 1)));
+      await tester.pump();
+      await tester.pump(collapseDuration);
+      await tester.tap(find.text('Dipole').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final st = t.settings.station;
+      expect(find.text(st.antennaBands), findsOneWidget);
+      expect(find.text(st.transport), findsNothing);
+      expect(find.text(st.moreBand), findsNothing);
+    });
+
+    testWidgets('with EXP 500MP off there is no Other, since nothing waits behind it', (tester) async {
+      await pick(tester, 'FT-817', t.settings.station.models.ft817);
+      expect(find.text(t.settings.station.transportOther), findsNothing);
+      expect(find.text(label('ft817-ble')), findsNothing);
+    });
   });
 }

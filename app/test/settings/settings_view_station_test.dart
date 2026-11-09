@@ -794,12 +794,11 @@ void main() {
       expect(tester.getRect(box('Elevation offset')).top, tester.getRect(box('Azimuth offset')).top, reason: 'the two offsets share a row');
     });
 
-    // The limits sit in a row inside the Advanced fold — a group in a
-    // group. A renderer that registers only one level down draws the boxes
-    // and saves nothing typed into them.
-    testWidgets('limits inside Advanced save like any field', (tester) async {
+    // The limits share a row under More: a row whose members are drawn but
+    // not registered as fields saves nothing typed into them.
+    testWidgets('limits under More save like any field', (tester) async {
       final services = await openTower(tester, axes: 'az');
-      await tester.tap(find.text('Advanced Settings').last);
+      await tester.ensureVisible(box('Highest azimuth'));
       await tester.pumpAndSettle();
       expect(tester.getRect(box('Highest azimuth')).top, tester.getRect(box('Lowest azimuth')).top);
 

@@ -22,6 +22,7 @@ import 'add_equipment_dialog.dart';
 import 'midi_controller_pane.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
+import '../services/cat/transports/placeholder_transport.dart' show PlaceholderTransport;
 import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/drivers/icom_civ_driver.dart' show civScopeAdjustConfigKey, civScopeConfigKey;
@@ -48,8 +49,8 @@ part 'station_panel_annotations.dart';
 /// A fixed count, deliberately. Matching the real length would leak it.
 const _storedSecretPlaceholder = '••••••••';
 
-/// The equipment editor's Advanced Settings fold: every field a transport or
-/// driver marks `'advanced': true` folds under it.
+/// The equipment editor's Advanced Settings fold, inside Connection: the
+/// link's own fields marked `'advanced': true` fold under it.
 const _advancedDisclosureKey = 'advanced';
 
 /// How often an open equipment editor looks again for serial ports — a
@@ -313,6 +314,15 @@ class StationPanel extends StatelessWidget {
     final ticksPerPrepare = _portRefresh.inMilliseconds ~/ refreshEvery.inMilliseconds;
     var refreshTicks = 0;
 
+    // The link's own rarely-touched fields — the serial lines, the USB
+    // driver — belong with the connection they configure; the driver's —
+    // the poll and meter cadences, a rotator's limits — with the rest. Told
+    // apart by key, since the editor sees one merged list per pairing, and
+    // by each transport's declared keys rather than its elements: building
+    // those enumerates serial ports, and the form rebuilds every few seconds.
+    final linkKeys = {for (final candidate in variants) ...candidate.transport.recognizedConfigKeys};
+    final connects = choosable || linkKeys.isNotEmpty;
+
     // Reused whenever an action changes what's available to pick (a newly
     // granted USB device, say) — configElements() reflects the transport's
     // CURRENT state each time it's called, so rebuilding from it is enough;
@@ -360,35 +370,13 @@ class StationPanel extends StatelessWidget {
       // wrong, so they close the form rather than sit between the fields.
       bool isNote(Map<String, dynamic> element) => element['type'] == 'markdown' && element['collapsible'] == true;
       bool isAdvanced(Map<String, dynamic> element) => element['advanced'] == true && !isNote(element);
+      bool isLinkAdvanced(Map<String, dynamic> element) => isAdvanced(element) && linkKeys.contains(element['key']);
+      List<Map<String, dynamic>> rotatorRows(List<Map<String, dynamic>> rows) => model.category == kCategoryRotator ? _addressRows(rows) : rows;
       return [
         {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
-        if (choosable)
-          {
-            'type': 'field',
-            'fieldType': 'segmented',
-            'key': 'transport',
-            'label': st.transport,
-            'options': [
-              for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
-            ],
-          },
-        ...switch (connection.where((element) => !isAdvanced(element) && !isNote(element)).toList()) {
-          final main when model.category == kCategoryRotator => _addressRows(main),
-          final main => main,
-        },
-        // Everything most operators never touch — the serial lines, the
-        // poll and meter cadences — folded away after what they do, closed
-        // until asked for. FormRenderer hides the fold whenever the chosen
-        // pairing has nothing in it.
-        {
-          'type': 'disclosure',
-          'key': _advancedDisclosureKey,
-          'title': st.advancedSettings,
-          'elements': switch (connection.where(isAdvanced).toList()) {
-            final advanced when model.category == kCategoryRotator => _addressRows(advanced),
-            final advanced => advanced,
-          },
-        },
+        // What the category itself asks first — an antenna's bands, a
+        // receiver's radio — right under the name, ahead of Connection: an
+        // antenna has no connection, and its bands are its main question.
         // Which of the operator's own enabled bands (Preferences → Bands)
         // this antenna covers. Lives here rather than in AntennaDriver's
         // own configElements(): a driver is pure data with no settings
@@ -404,17 +392,6 @@ class StationPanel extends StatelessWidget {
               for (final band in services.settings.enabledBands) {'value': band, 'label': band},
             ],
           },
-        // Which of the operator's own antennas is on each of the switch's
-        // antenna ports. Here rather than in the driver's own
-        // configElements() for exactly the reason the antenna bands above
-        // are: a driver is pure catalogue data with no access to the
-        // station's inventory, and this list is the operator's equipment,
-        // not the switch's.
-        // What the switch is doing now, before how it is set up: an
-        // operator opening this dialog mid-operation is looking for the
-        // former, and the latter is answered once and rarely revisited.
-        if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
-        if (model.category == kCategoryRotator) ..._rotatorCurrentState(context, node),
         // Which radio this receiver shows the spectrum for. Here rather than
         // in the driver for the antenna bands' reason: the choices are the
         // station's own radios, which a driver cannot see.
@@ -431,6 +408,58 @@ class StationPanel extends StatelessWidget {
                 if (_cat.typeFor(candidate)?.category == kCategoryTransceiver) {'value': candidate.uuid, 'label': _displayName(candidate)},
             ],
           },
+        // The FILLED band: the editor's own top-level groups, with nothing
+        // above them to say so (docs/design/user-interface.md § Settings
+        // lists). Only for equipment that is connected at all — an antenna's
+        // own fields are not a connection — and gone when the chosen pairing
+        // asks nothing.
+        if (connects) {'type': 'header', 'style': 'category', 'title': st.transport, 'hideWhenEmpty': true},
+        if (choosable)
+          {
+            'type': 'field',
+            'fieldType': 'segmented',
+            'key': 'transport',
+            // Announced, not drawn: the band above already shows it.
+            'label': st.transport,
+            'hideLabel': true,
+            // The model's own ways in, then the placeholder, as segments;
+            // the pairings derived for every radio of its kind behind Other
+            // (EquipmentModel.offersBehindOther).
+            'options': [
+              for (final candidate in variants)
+                if (!model.offersBehindOther(candidate.variant)) {'value': candidate.transportKey, 'label': candidate.transportLabel},
+            ],
+            'moreOptions': [
+              for (final candidate in variants)
+                if (model.offersBehindOther(candidate.variant)) {'value': candidate.transportKey, 'label': candidate.transportLabel},
+            ],
+            'moreLabel': st.transportOther,
+            // A pick joins the model's own ways in, ahead of "no control".
+            'moreBefore': PlaceholderTransport.transportKey,
+          },
+        ...rotatorRows(connection.where((element) => !isAdvanced(element) && !isNote(element)).toList()),
+        // Closed until asked for: holding a serial line high can key a
+        // transmitter, and most operators never need to. FormRenderer hides
+        // the fold whenever the chosen pairing has nothing in it, and opens
+        // it on an error inside.
+        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings, 'elements': rotatorRows(connection.where(isLinkAdvanced).toList())},
+        // Which of the operator's own antennas is on each of the switch's
+        // antenna ports. Here rather than in the driver's own
+        // configElements(): a driver is pure catalogue data with no access
+        // to the station's inventory, and this list is the operator's
+        // equipment, not the switch's.
+        // What the switch is doing now, before how it is set up: an
+        // operator opening this dialog mid-operation is looking for the
+        // former, and the latter is answered once and rarely revisited.
+        // Both bring their own bands, so they stand between Connection and
+        // More rather than inside either.
+        if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+        if (model.category == kCategoryRotator) ..._rotatorCurrentState(context, node),
+        // Everything else, last: the driver's rarely-touched fields — the
+        // poll and meter cadences — and the pairing's troubleshooting
+        // notes. Gone when the chosen pairing leaves nothing under it.
+        {'type': 'header', 'style': 'category', 'title': st.moreBand, 'hideWhenEmpty': true},
+        ...rotatorRows(connection.where((element) => isAdvanced(element) && !isLinkAdvanced(element)).toList()),
         ...connection.where(isNote),
       ];
     }

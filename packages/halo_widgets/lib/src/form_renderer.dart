@@ -320,6 +320,9 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   @override
   final Set<String> _openDisclosures = {};
 
+  @override
+  final Map<String, Set<Object?>> _segmentedPromoted = {};
+
   /// The sections opened or shut while this form is up, by
   /// [_sectionName]. Ahead of [FormRenderer.sectionFolds], so a section
   /// opened to show an error stays open without becoming the operator's
@@ -408,10 +411,21 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
   /// holds — a fold with nothing in it would open onto nothing, and an empty
   /// row would still take its gap. Its members are filtered by the same
   /// rules when it renders.
-  List<Map<String, dynamic>> get _visibleElements => [
-    for (final el in _elements)
-      if (_visibleWhenHolds(el) && (!_isGroup(el) || _members(el).any(_visibleWhenHolds))) el,
-  ];
+  ///
+  /// A band marked `hideWhenEmpty` goes too while nothing under it shows: a
+  /// form whose rows hang on a choice made in it (the equipment editor's
+  /// transport) would otherwise leave a heading over nothing.
+  List<Map<String, dynamic>> get _visibleElements {
+    final shown = [
+      for (final el in _elements)
+        if (_visibleWhenHolds(el) && (!_isGroup(el) || _members(el).any(_visibleWhenHolds))) el,
+    ];
+    bool heads(int index) => index + 1 < shown.length && !_isBand(shown[index + 1]) && shown[index + 1]['type'] != 'sectionEnd';
+    return [
+      for (final (index, el) in shown.indexed)
+        if (el['hideWhenEmpty'] != true || !_isBand(el) || heads(index)) el,
+    ];
+  }
 
   /// Whether [el]'s `visibleWhen` holds. `equals` may be a single value or a
   /// list meaning "any of"; a list of conditions must all hold, so a host can
@@ -1314,25 +1328,16 @@ class FormRendererState extends State<FormRenderer> with _ListFields, _Elements,
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(label, style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant)),
-                const SizedBox(height: Space.sm),
-                SegmentedButton<dynamic>(
-                  segments: [for (final opt in options) ButtonSegment<dynamic>(value: opt['value'], label: Text(opt['label'] as String))],
-                  selected: {if (_values[key] != null) _values[key]},
-                  emptySelectionAllowed: _values[key] == null,
-                  showSelectedIcon: false,
-                  onSelectionChanged: _isSubmitting
-                      ? null
-                      : (selection) {
-                          if (selection.isEmpty) return;
-                          final val = selection.first;
-                          setState(() {
-                            _values[key] = val;
-                            _errors.remove(key);
-                          });
-                          _handleFieldBlurOrInteraction(key, val);
-                        },
-                ),
+                // `hideLabel` where a band above already shows what this
+                // picks: the label is still announced, and a gap of its own
+                // keeps the control off the band.
+                if (el['hideLabel'] == true)
+                  const SizedBox(height: Space.md)
+                else ...[
+                  Text(label, style: theme.textTheme.labelMedium?.copyWith(color: devModeColor ?? theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: Space.sm),
+                ],
+                Semantics(label: el['hideLabel'] == true ? label : null, container: el['hideLabel'] == true, child: _buildSegmentedButton(el, options)),
                 if (description != null && description.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: Space.xs),

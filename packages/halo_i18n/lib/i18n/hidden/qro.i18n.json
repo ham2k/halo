@@ -2149,6 +2149,8 @@
       "name": "NAME",
       "nameDescription": "WHAT YOU CALL IT — \"LEFT RADIO\". OPTIONAL.",
       "transport": "CONNECTION",
+      "transportOther": "OTHER…",
+      "moreBand": "MORE",
       "host": "ADDRESS",
       "hostDescription": "THE RADIO'S HOSTNAME OR IP ADDRESS ON YOUR NETWORK.",
       "port": "PORT",

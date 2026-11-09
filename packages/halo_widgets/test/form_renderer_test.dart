@@ -96,6 +96,195 @@ void main() {
       expect(changes, ['serial']);
     });
 
+    group('a segmented field with moreOptions', () {
+      Future<List<Object?>> pump(WidgetTester tester, {Object? initial = 'usb', String? before, bool hideLabel = false}) async {
+        final changes = <Object?>[];
+        await tester.pumpWidget(
+          TranslationProvider(
+            child: MaterialApp(
+              home: Scaffold(
+                body: FormRenderer(
+                  formDefinition: {
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'segmented',
+                        'key': 'transport',
+                        'label': 'Connection',
+                        'hideLabel': hideLabel,
+                        'moreBefore': ?before,
+                        'options': const [
+                          {'label': 'USB', 'value': 'usb'},
+                          {'label': 'Placeholder', 'value': 'none'},
+                        ],
+                        'moreOptions': const [
+                          {'label': 'Bluetooth LE', 'value': 'ble'},
+                          {'label': 'Serial over TCP', 'value': 'tcp'},
+                        ],
+                        'moreLabel': 'Other…',
+                      },
+                    ],
+                  },
+                  initialState: {'transport': initial},
+                  showActions: false,
+                  showTitle: false,
+                  onChange: (key, value, values) async {
+                    changes.add(value);
+                    return null;
+                  },
+                  onSubmit: (_) {},
+                  onCancel: () {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        return changes;
+      }
+
+      List<Object?> segments(WidgetTester tester) => [
+        for (final s in tester.widget<SegmentedButton<dynamic>>(find.byType(SegmentedButton<dynamic>)).segments) s.value,
+      ];
+
+      testWidgets('keeps them behind its last segment until one is picked, which then stays a segment', (tester) async {
+        // The trap: the menu's pick selected but not kept, so switching away
+        // and back means another trip through the menu.
+        final changes = await pump(tester);
+        expect(find.text('Bluetooth LE'), findsNothing);
+        expect(find.text('Other…'), findsOneWidget);
+
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        expect(find.text('Bluetooth LE'), findsOneWidget, reason: 'the menu lists what waits');
+        await tester.tap(find.text('Bluetooth LE'));
+        await tester.pumpAndSettle();
+        expect(changes, ['ble']);
+        expect(segments(tester).take(3), ['usb', 'none', 'ble']);
+
+        await tester.tap(find.text('USB'));
+        await tester.pumpAndSettle();
+        expect(changes, ['ble', 'usb']);
+        expect(find.text('Bluetooth LE'), findsOneWidget, reason: 'still a segment');
+        expect(find.text('Other…'), findsOneWidget, reason: 'one more still waits');
+        expect(find.text('Serial over TCP'), findsNothing);
+
+        // The trap: a menu still offering what is a segment beside it.
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        expect(find.text('Serial over TCP'), findsOneWidget);
+        expect(find.text('Bluetooth LE'), findsOneWidget, reason: 'the segment alone, not a menu item too');
+        expect(find.ancestor(of: find.text('Bluetooth LE'), matching: find.byType(MenuItemButton)), findsNothing);
+      });
+
+      testWidgets('opens on a value from the menu as a segment, and drops the menu once every value is one', (tester) async {
+        // The trap: a menu segment left over nothing, or one offering what
+        // is already a segment beside it.
+        await pump(tester, initial: 'ble');
+        expect(find.text('Bluetooth LE'), findsOneWidget);
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Serial over TCP'));
+        await tester.pumpAndSettle();
+        expect(segments(tester), ['usb', 'none', 'ble', 'tcp']);
+        expect(find.text('Other…'), findsNothing);
+      });
+
+      testWidgets('puts a pick ahead of the moreBefore option, not after it', (tester) async {
+        // The trap: the equipment editor's "no control" left between two
+        // real connections once one is picked from the menu.
+        await pump(tester, before: 'none');
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Bluetooth LE'));
+        await tester.pumpAndSettle();
+        expect(segments(tester), ['usb', 'ble', 'none', isA<Symbol>()]);
+      });
+
+      testWidgets('still announces a label it does not draw', (tester) async {
+        // The trap: a control whose band names it on screen, read out by a
+        // screen reader as a bare row of options.
+        final handle = tester.ensureSemantics();
+        await pump(tester, hideLabel: true);
+        expect(find.text('Connection'), findsNothing);
+        expect(find.bySemanticsLabel(RegExp('Connection')), findsOneWidget);
+        handle.dispose();
+      });
+
+      testWidgets('closes its menu when another segment is picked instead', (tester) async {
+        // The trap: the menu counts the whole control as inside itself, so
+        // a pick beside it leaves the menu hanging open over the form.
+        final changes = await pump(tester);
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        expect(find.text('Bluetooth LE'), findsOneWidget);
+        await tester.tap(find.text('Placeholder'));
+        await tester.pumpAndSettle();
+        expect(changes, ['none']);
+        expect(find.text('Bluetooth LE'), findsNothing);
+      });
+
+      testWidgets('opens its menu under its own segment, not beside the control', (tester) async {
+        await pump(tester);
+        await tester.tap(find.text('Other…'));
+        await tester.pumpAndSettle();
+        final segment = tester.getRect(find.ancestor(of: find.text('Other…'), matching: find.byType(TextButton)).first);
+        final item = tester.getRect(find.ancestor(of: find.text('Bluetooth LE'), matching: find.byType(MenuItemButton)));
+        expect(item.top, greaterThanOrEqualTo(segment.bottom - 1), reason: 'below the control');
+        expect(item.left, closeTo(segment.left, 8), reason: 'starting where the segment does');
+      });
+    });
+
+    testWidgets('a band marked hideWhenEmpty goes while nothing under it shows', (tester) async {
+      // The trap: a heading left over nothing once the choice above it hides
+      // every row it had.
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: FormRenderer(
+                formDefinition: const {
+                  'elements': [
+                    {
+                      'type': 'field',
+                      'fieldType': 'segmented',
+                      'key': 'transport',
+                      'label': '',
+                      'options': [
+                        {'label': 'USB', 'value': 'usb'},
+                        {'label': 'Placeholder', 'value': 'none'},
+                      ],
+                    },
+                    {'type': 'header', 'style': 'category', 'title': 'More', 'hideWhenEmpty': true},
+                    {
+                      'type': 'field',
+                      'fieldType': 'number',
+                      'key': 'poll',
+                      'label': 'Poll',
+                      'visibleWhen': {'field': 'transport', 'equals': 'usb'},
+                    },
+                    {'type': 'header', 'style': 'category', 'title': 'Always'},
+                  ],
+                },
+                initialState: const {'transport': 'usb'},
+                showActions: false,
+                showTitle: false,
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('More'), findsOneWidget);
+
+      await tester.tap(find.text('Placeholder'));
+      await tester.pumpAndSettle();
+      expect(find.text('More'), findsNothing);
+      expect(find.text('Always'), findsOneWidget, reason: 'an unmarked band stays, rows or not');
+    });
+
     testWidgets('disposing a settings-list form does not finish another field\'s autofill context', (tester) async {
       final showSettings = ValueNotifier(true);
       addTearDown(showSettings.dispose);

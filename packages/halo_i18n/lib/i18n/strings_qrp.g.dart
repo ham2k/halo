@@ -2819,6 +2819,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get name => 'name';
 	@override String get nameDescription => 'what you call it — "left radio". optional.';
 	@override String get transport => 'connection';
+	@override String get transportOther => 'other…';
+	@override String get moreBand => 'more';
 	@override String get host => 'address';
 	@override String get hostDescription => 'the radio\'s hostname or ip address on your network.';
 	@override String get port => 'port';
@@ -6765,6 +6767,8 @@ extension on TranslationsQrp {
 			'settings.station.name' => 'name',
 			'settings.station.nameDescription' => 'what you call it — "left radio". optional.',
 			'settings.station.transport' => 'connection',
+			'settings.station.transportOther' => 'other…',
+			'settings.station.moreBand' => 'more',
 			'settings.station.host' => 'address',
 			'settings.station.hostDescription' => 'the radio\'s hostname or ip address on your network.',
 			'settings.station.port' => 'port',
@@ -7022,10 +7026,10 @@ extension on TranslationsQrp {
 			'settings.station.transports.placeholder' => 'placeholder',
 			'settings.station.transports.usb' => 'usb',
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
-			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
-			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts off at the radio, or hold rts high on.** with **cat rts** on (ft-891 menu **05-08**), the radio stays silent while rts is low — it may answer once as the port opens, then nothing. picking the radio\'s own usb port turns on **hold rts high** under advanced settings. on a digirig, signalink or most home-brew cables rts is ptt, and holding it high keys your transmitter: turn cat rts off at the radio instead.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
+			'settings.station.yaesuBinaryTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'this radio speaks yaesu\'s older five-byte cat, and it does not respond at all when something is off. almost always one of:\n\n- **the cable must convert levels.** the cat jack on the back is not rs-232 and not usb; it needs a ct-62 or an equivalent adapter. a plain audio or data cable won\'t work for cat.\n- **speed must match** the radio\'s cat rate menu (**#14** on an ft-817, **#19** on an ft-857 or ft-897). with a mismatch, the radio sends nothing back, and never an error.\n- **never let anything raise rts or dtr on this port.** on most cables for these radios those lines are ptt and keying. an older interface powered from dtr is the exception: turn on **hold dtr high** under advanced settings for that one.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis driver was written from yaesu\'s published cat chart and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **the usb-b port on the back is the cat link.** the radio shows up as a usb serial port; on windows it needs ten-tec\'s usb to uart driver, which appears in device manager as "usb to uart (comx)".\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open, and so does ten-tec\'s firmware updater.\n- **setting the filter width from the app takes it away from the bw knob** until the radio is switched off and on again. that is how the radio works.\n\nthis driver was written from ten-tec\'s programmer\'s reference guide. if it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
@@ -7536,10 +7540,10 @@ extension on TranslationsQrp {
 			'commands.opStyleUnknown' => ({required Object opStyle}) => 'not an operating style: ${opStyle}',
 			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.swapExperimentOff' => 'so2r is off — turn it on with exp so2r',
-			'commands.swapNeedsOperation' => 'open an operation to swap radios',
-			'commands.swapNoRadioB' => 'nothing swapped: pick a radio b in station configuration',
 			_ => null,
 		} ?? switch (path) {
+			'commands.swapNeedsOperation' => 'open an operation to swap radios',
+			'commands.swapNoRadioB' => 'nothing swapped: pick a radio b in station configuration',
 			'commands.swapEditing' => 'nothing swapped: finish editing the contact first',
 			'commands.swapOnAir' => ({required Object radio}) => 'nothing swapped: radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'nothing swapped: radio ${radio} has messages going or waiting',
