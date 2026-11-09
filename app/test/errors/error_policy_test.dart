@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/cat/computer_voice_keyer.dart' show VoiceA
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
 import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
+import 'package:ham2k_logger/services/update_check_service.dart' show UpdateServerUnreachable;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
 // conditional export resolves to the web stub under the analyzer, and these
 // exceptions — the concrete CatUnreachable implementations this rule has to
@@ -632,6 +633,29 @@ void main() {
       final decision = ErrorPolicy.decide(ExtensionHostException('LoFi request failed: HTTP 503'));
       expect(decision.rule, isNull);
       expect(decision.disposition, ErrorDisposition.notify);
+    });
+  });
+
+  group('update server unreachable', () {
+    // Check for Updates already says it couldn't check; a notice on top would
+    // say it twice. The streak still uploads, so a dead server is seen.
+    final url = Uri.parse('https://updates.example/approved.json');
+
+    test('a transport failure or an error status is reported, not noticed', () {
+      for (final error in [
+        UpdateServerUnreachable(url, cause: ClientException('connection refused')),
+        UpdateServerUnreachable(url, cause: TimeoutException('20s')),
+        UpdateServerUnreachable(url, cause: const HandshakeException('captive portal')),
+        UpdateServerUnreachable(url, status: 403),
+      ]) {
+        final decision = ErrorPolicy.decide(error);
+        expect(decision.rule?.id, 'update-server-unreachable', reason: '$error');
+        expect(decision.disposition, ErrorDisposition.report, reason: '$error');
+      }
+    });
+
+    test('the wrapper does not launder anything else — a non-transport cause stays loud', () {
+      expect(dispositionFor(UpdateServerUnreachable(url, cause: const FormatException('not json'))), ErrorDisposition.notify);
     });
   });
 

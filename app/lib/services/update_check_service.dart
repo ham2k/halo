@@ -35,6 +35,22 @@ import 'update_service.dart';
 /// by a check that could not reach anything keeps running a stale build.
 enum UpdateCheckOutcome { upToDate, updateAvailable, restartToApply, reloadToUpdate, checkFailed }
 
+/// An update server that did not answer: a transport failure ([cause]) or an
+/// error [status]. An [UpdateCheckService] reports it as a failure streak; the
+/// wrapper is what lets ErrorPolicy's `update-server-unreachable` keep this
+/// one path out of the operator's notices while the bare causes stay loud
+/// everywhere else.
+class UpdateServerUnreachable implements Exception {
+  final Uri url;
+  final Object? cause;
+  final int? status;
+
+  UpdateServerUnreachable(this.url, {this.cause, this.status});
+
+  @override
+  String toString() => status != null ? 'UpdateServerUnreachable: $url returned $status' : 'UpdateServerUnreachable: $url: $cause';
+}
+
 abstract class UpdateCheckService {
   /// Subclasses [extend] rather than implement, so they inherit
   /// [updateDestination]'s default instead of each restating "nowhere to go".

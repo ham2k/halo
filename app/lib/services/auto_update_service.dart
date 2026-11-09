@@ -35,6 +35,11 @@ enum SparkleCheckResult { upToDate, updateAvailable, error }
 
 /// One-shot [UpdaterListener] that resolves [result] on the first terminal
 /// Sparkle/WinSparkle event and ignores the rest.
+///
+/// First wins, which matters on macOS: Sparkle reports an up-to-date check
+/// as `updaterDidNotFindUpdate` and then aborts with `SUNoUpdateError`, and
+/// the plugin forwards that abort as an `error`. Resolving on the second
+/// would read every up-to-date Mac as "couldn't check".
 class _SilentCheckListener with UpdaterListener {
   final _result = Completer<SparkleCheckResult>();
   Future<SparkleCheckResult> get result => _result.future;
@@ -48,7 +53,11 @@ class _SilentCheckListener with UpdaterListener {
   @override
   void onUpdaterUpdateNotAvailable(UpdaterError? error) => _resolve(SparkleCheckResult.upToDate);
   @override
-  void onUpdaterError(UpdaterError? error) => _resolve(SparkleCheckResult.error);
+  void onUpdaterError(UpdaterError? error) {
+    if (!_result.isCompleted) debugPrint('[auto-update] silent check failed: ${error?.message ?? 'no message'}');
+    _resolve(SparkleCheckResult.error);
+  }
+
   @override
   void onUpdaterCheckingForUpdate(Appcast? appcast) {}
   @override
@@ -226,9 +235,19 @@ class AutoUpdateService {
   @visibleForTesting
   static Future<void> Function(String logTag)? debugQuitForUpdate;
 
+  /// How long [checkSilently] waits for the native updater's reply.
+  @visibleForTesting
+  static Duration silentCheckTimeout = const Duration(seconds: 20);
+
+  /// The last reply a [checkSilently] got in this process, for a later one
+  /// that gets none.
+  static SparkleCheckResult? _lastReply;
+
   @visibleForTesting
   static void debugResetConfiguration() {
     _configureCall = null;
+    _lastReply = null;
+    silentCheckTimeout = const Duration(seconds: 20);
     _automaticChecks = true;
     if (_quitListener != null) autoUpdater.removeListener(_quitListener!);
     _quitListener = null;
@@ -286,6 +305,9 @@ class AutoUpdateService {
   /// one first. In practice the reported status is still accurate (it
   /// reflects the feed's real current state); this just isn't a guarantee
   /// that the result came from *this specific* request.
+  ///
+  /// Throws what the plugin throws, for the caller to report: whether the
+  /// operator is told about it depends on what the caller's other checks find.
   Future<SparkleCheckResult> checkSilently() async {
     if (!isSupported) return SparkleCheckResult.upToDate;
     final listener = _SilentCheckListener();
@@ -293,15 +315,24 @@ class AutoUpdateService {
     try {
       await _ensureConfigured();
       await autoUpdater.checkForUpdates(inBackground: true);
-      // The native updater always fires a terminal event, but don't hang
-      // forever on a wedged plugin/offline box.
-      return await listener.result.timeout(const Duration(seconds: 20), onTimeout: () => SparkleCheckResult.error);
-    } catch (e, st) {
+      final reply = await listener.result.timeout(silentCheckTimeout, onTimeout: () => _noReply());
+      if (reply != SparkleCheckResult.error) _lastReply = reply;
+      return reply;
+    } catch (e) {
       debugPrint('[auto-update] silent check failed for $feedUrl: $e');
-      ErrorReportingService.report(e, st, context: 'auto-update:check-silently');
-      return SparkleCheckResult.error;
+      rethrow;
     } finally {
       autoUpdater.removeListener(listener);
     }
+  }
+
+  /// No terminal event in [silentCheckTimeout]. Sparkle ignores a background
+  /// check while a session is open — the update window an earlier check put
+  /// up is one — and never replies, so an update this process already saw is
+  /// still the answer. Anything else is no answer: WinSparkle's dead event
+  /// sink (see [_ensureConfigured]) is silent in exactly this way.
+  SparkleCheckResult _noReply() {
+    debugPrint('[auto-update] silent check for $feedUrl got no reply in ${silentCheckTimeout.inSeconds}s');
+    return _lastReply == SparkleCheckResult.updateAvailable ? SparkleCheckResult.updateAvailable : SparkleCheckResult.error;
   }
 }

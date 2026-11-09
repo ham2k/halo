@@ -51,6 +51,7 @@ import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart'
     show ExtensionTimersSuspended, MalformedBandAnnotationException, MalformedLookupDataException, MalformedSpotDataException;
+import 'update_check_service.dart' show UpdateServerUnreachable;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'midi/midi_backend.dart' show MidiUnavailable;
@@ -514,6 +515,16 @@ class ErrorPolicy {
           'and a captive portal is not noticed',
       disposition: ErrorDisposition.report,
       matches: _isCatalogUnreachable,
+    ),
+    ErrorRule(
+      id: 'update-server-unreachable',
+      reason:
+          'an update check\'s server did not answer (a connection or TLS failure, or the request '
+          'timeout) or answered with an error status; Check for Updates and UPDATE APP already say '
+          'they could not check, and the service reports it only as a failure streak, so a dead '
+          'server is seen in aggregate',
+      disposition: ErrorDisposition.report,
+      matches: _isUpdateServerUnreachable,
     ),
     ErrorRule(
       id: 'map-offline',
@@ -1059,6 +1070,12 @@ class ErrorPolicy {
   static bool _isCatalogUnreachable(Object error, FlutterErrorDetails? details) =>
       error is CatalogRefused ||
       (error is CatalogUnreachable && (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException));
+
+  /// [UpdateServerUnreachable] with an error status, or wrapping a transport
+  /// failure — kept as narrow as [_isCatalogUnreachable] for the same reason.
+  static bool _isUpdateServerUnreachable(Object error, FlutterErrorDetails? details) =>
+      error is UpdateServerUnreachable &&
+      (error.status != null || error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException);
 
   /// A [MapError] stamped offline at arrival. The stamp is the whole match:
   /// with no network there is nothing a map backend can fetch, so every

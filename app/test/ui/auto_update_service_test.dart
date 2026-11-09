@@ -44,7 +44,12 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
   /// Fails the next [setFeedURL], as an offline box would at boot.
   bool failNextFeedUrl = false;
 
+  /// The terminal event each check fires, or null for none at all — Sparkle
+  /// with a session already open, or WinSparkle with a dead event sink.
+  String? reply = 'update-not-available';
+
   void reset() {
+    reply = 'update-not-available';
     feedUrls.clear();
     intervals.clear();
     events.clear();
@@ -73,7 +78,8 @@ class _FakeAutoUpdaterPlatform extends AutoUpdaterPlatform with MockPlatformInte
   @override
   Future<void> checkForUpdates({bool? inBackground}) async {
     checkCalls++;
-    _events.add({'type': 'update-not-available'});
+    final type = reply;
+    if (type != null) _events.add({'type': type});
   }
 
   @override
@@ -392,6 +398,39 @@ void main() {
       await service.checkForUpdatesInteractively();
 
       expect(platform.events.where((e) => e == 'winSparkleConfig'), hasLength(1));
+    });
+  });
+
+  group('a silent check that gets no reply', () {
+    setUp(() => AutoUpdateService.silentCheckTimeout = const Duration(milliseconds: 20));
+
+    test('is no answer when nothing was heard before', () async {
+      // WinSparkle with a dead event sink is silent exactly like this; read
+      // as up to date, the About row hides every release from that install.
+      const service = AutoUpdateService();
+      platform.reply = null;
+
+      expect(await service.checkSilently(), SparkleCheckResult.error);
+    });
+
+    test('still reports an update this process already found', () async {
+      // Sparkle ignores a background check while the update window an
+      // earlier check put up is still open, and never replies; that is not
+      // a failure to check.
+      const service = AutoUpdateService();
+      platform.reply = 'update-available';
+      expect(await service.checkSilently(), SparkleCheckResult.updateAvailable);
+
+      platform.reply = null;
+      expect(await service.checkSilently(), SparkleCheckResult.updateAvailable);
+    });
+
+    test('is no answer after an up-to-date one', () async {
+      const service = AutoUpdateService();
+      expect(await service.checkSilently(), SparkleCheckResult.upToDate);
+
+      platform.reply = null;
+      expect(await service.checkSilently(), SparkleCheckResult.error);
     });
   });
 }
