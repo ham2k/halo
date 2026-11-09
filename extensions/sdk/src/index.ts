@@ -37,6 +37,8 @@ import type {
   ExtensionWebSocket,
   WebSocketOptions,
   ClusterLine,
+  ClusterMatch,
+  Spot,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -54,7 +56,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 20
+export const API_VERSION = 21
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -168,6 +170,12 @@ export function defineExtension(def: ExtensionDefinition): void {
 /// packages/halo_extension_host/lib/src/extension_sockets.dart), checked here
 /// too so an oversized send throws at the caller instead of failing into a log.
 const MAX_FRAME_SIZE = 1024 * 1024
+
+/// [match] as it crosses the bridge, where a `RegExp` cannot: its source
+/// and flags.
+function clusterMatchParams(match: ClusterMatch): (string | { source: string; flags: string })[] {
+  return match.map((pattern) => (pattern instanceof RegExp ? { source: pattern.source, flags: pattern.flags } : pattern))
+}
 
 function utf8Length(text: string): number {
   let length = 0
@@ -382,13 +390,22 @@ export const host = {
   async clusterStatus(): Promise<ClusterStatus> {
     return (await hostCallFn()("clusterStatus", {})) as ClusterStatus
   },
-  /** The node's recent lines after `after`, oldest first, at most `limit` of the newest. Needs `requiresClusterRead` and extension API 10. */
-  async clusterLines(args: { after?: number; limit?: number } = {}): Promise<ClusterLine[]> {
-    return (await hostCallFn()("clusterLines", { ...args })) as ClusterLine[]
+  /**
+   * The node's recent lines after `after`, oldest first, at most `limit` of the newest — of those
+   * `match` finds something in, where given (extension API 21). Needs `requiresClusterRead` and
+   * extension API 10.
+   */
+  async clusterLines(args: { after?: number; limit?: number; match?: ClusterMatch } = {}): Promise<ClusterLine[]> {
+    const { match, ...rest } = args
+    return (await hostCallFn()("clusterLines", { ...rest, ...(match ? { match: clusterMatchParams(match) } : {}) })) as ClusterLine[]
   },
-  /** Connects if need be and delivers every new line to this extension's `cluster` hook until `clusterUnsubscribe`. Needs `requiresClusterRead` and extension API 10. */
-  async clusterSubscribe(): Promise<ClusterStatus> {
-    return (await hostCallFn()("clusterSubscribe", {})) as ClusterStatus
+  /**
+   * Connects if need be and delivers every new line to this extension's `cluster` hook until
+   * `clusterUnsubscribe` — only those `match` finds something in, where given (extension API 21).
+   * Subscribing again changes only which lines. Needs `requiresClusterRead` and extension API 10.
+   */
+  async clusterSubscribe(args: { match?: ClusterMatch } = {}): Promise<ClusterStatus> {
+    return (await hostCallFn()("clusterSubscribe", args.match ? { match: clusterMatchParams(args.match) } : {})) as ClusterStatus
   },
   async clusterUnsubscribe(): Promise<ClusterStatus> {
     return (await hostCallFn()("clusterUnsubscribe", {})) as ClusterStatus
@@ -645,6 +662,36 @@ export const host = {
     /// Takes the ones you put under [keys], or every one you put.
     async remove(keys?: string[]): Promise<void> {
       await hostCallFn()("removeBandAnnotations", { keys, ns: currentExtensionKey })
+    },
+  },
+
+  /// Spots pushed onto the board as they happen, rather than waiting for the
+  /// app's next `fetchSpots` (every two minutes). Each goes under `source`, a
+  /// key one of your `spots` hooks is registered under — your extension's own
+  /// key by default — whose `sourceName` names them in the Spots Panel. A
+  /// source of yours that `fetchSpots` answers for is replaced by that answer
+  /// at each fetch, with what you pushed while it was out applied on top; one
+  /// with no `fetchSpots` holds what you push until your extension is
+  /// unloaded or reloaded. Either way, a spot goes once it is three hours
+  /// old. A push that would leave a source over 5,000 spots is refused (a
+  /// removal never is), as is a malformed spot, and any push before the app
+  /// has a spots board. Extension API 21.
+  spots: {
+    /// All of `source`'s spots: these replace whatever it held.
+    async replace(spots: Spot[], options: { source?: string } = {}): Promise<void> {
+      await hostCallFn()("replaceSpots", { spots, ...options, ns: currentExtensionKey })
+    },
+
+    /// Adds [spots], each replacing the one held under the same `key`; one
+    /// without a `key` is only ever added, and goes only with a `remove()` of
+    /// all of `source`'s.
+    async put(spots: Spot[], options: { source?: string } = {}): Promise<void> {
+      await hostCallFn()("putSpots", { spots, ...options, ns: currentExtensionKey })
+    },
+
+    /// Takes the spots held under [keys], or every one of `source`'s.
+    async remove(keys?: string[], options: { source?: string } = {}): Promise<void> {
+      await hostCallFn()("removeSpots", { keys, ...options, ns: currentExtensionKey })
     },
   },
 

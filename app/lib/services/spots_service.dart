@@ -41,6 +41,7 @@ class SpotsService extends ChangeNotifier {
     this.refreshInterval = const Duration(minutes: 2),
     this.isOffline,
     Stream<bool>? offlineChanges,
+    this.pushNoticeDelay = const Duration(milliseconds: 250),
   }) : bandAnnotations = bandAnnotations ?? BandAnnotationsService(),
        _ownsBandAnnotations = bandAnnotations == null {
     // Straight away on recovery rather than up to a whole refreshInterval
@@ -52,6 +53,10 @@ class SpotsService extends ChangeNotifier {
   }
 
   StreamSubscription<bool>? _offlineSubscription;
+
+  /// How long the listeners wait after a push, so a burst of them — a source
+  /// putting its spots a few at a time — repaints the board once.
+  final Duration pushNoticeDelay;
 
   /// What is said about the bands beside the spots on them: their plans,
   /// the operator's band tags, and whatever extensions mark. Its own
@@ -84,7 +89,25 @@ class SpotsService extends ChangeNotifier {
   /// failing source keep furnishing a board nobody can see it on.
   static const maxSpotAge = Duration(minutes: 180);
 
+  /// The most spots one source may hold through pushes. A cluster on a
+  /// contest weekend announces thousands an hour; past this, a source is
+  /// expected to keep its own newest.
+  static const maxPushedSpots = 5000;
+
   final Map<String, List<Map<String, dynamic>>> _bySource = {};
+
+  /// The sources that pushed spots, until their extension is unloaded
+  /// ([forgetPushers]). Their spots stand through a fetch that did not ask
+  /// them — a source that only pushes has no `fetchSpots` to ask — where any
+  /// other source's go.
+  final Set<String> _pushers = {};
+  Timer? _pushNotice;
+
+  /// The pushes made while a fetch is out, in order. That fetch answers with
+  /// what each source held when it was asked, so these are made again on its
+  /// answer: dropped, they would be lost until the next fetch; standing in
+  /// for the answer, the answer's pruning would be lost instead.
+  List<(String, _SpotsChange)>? _pushedDuringFetch;
 
   /// Uppercased callsign -> that call's spots, rebuilt on every fetch. An
   /// index rather than a scan because the lookup path runs per keystroke
@@ -168,6 +191,115 @@ class SpotsService extends ChangeNotifier {
 
   void _rebuildBoard() {
     _board = Map.unmodifiable({..._bySource, if (_local.isNotEmpty) localSpotSource: List<Map<String, dynamic>>.unmodifiable(_local.values)});
+  }
+
+  /// [source]'s spots, all of them: what it pushes replaces what it held, as
+  /// an answer to a fetch does. Each spot is tagged with [source] as its
+  /// `hookKey`.
+  void replaceSpots(String source, List<Map<String, dynamic>> spots) {
+    final tagged = [for (final spot in spots) _fromSource(source, spot)];
+    _push(source, (_) => tagged);
+  }
+
+  /// Adds [spots] to [source]'s, each replacing the one it holds under the
+  /// same `key`; one without a `key` is only ever added.
+  void putSpots(String source, List<Map<String, dynamic>> spots) {
+    final tagged = [for (final spot in spots) _fromSource(source, spot)];
+    _push(source, (held) => _withPut(held, tagged));
+  }
+
+  /// Takes [source]'s spots under [keys] off the board, or every one of its
+  /// spots without [keys].
+  void removeSpots(String source, {List<String>? keys}) {
+    final taken = keys?.toSet();
+    _push(
+      source,
+      (held) => taken == null
+          ? const []
+          : [
+              for (final spot in held)
+                if (!taken.contains(spot['key'])) spot,
+            ],
+    );
+  }
+
+  /// Forgets that the sources of the extensions under [extensionKeys] — every
+  /// extension's, without them — pushed: their extensions are being unloaded,
+  /// and one that does not come back never pushes again, so the next fetch
+  /// takes its spots away. One that does pushes again.
+  void forgetPushers([Iterable<String>? extensionKeys]) {
+    if (extensionKeys == null) {
+      _pushers.clear();
+      return;
+    }
+    final keys = extensionKeys.toSet();
+    _pushers.removeWhere((source) => keys.contains(source) || keys.any((key) => source.startsWith('${key}_')));
+  }
+
+  static Map<String, dynamic> _fromSource(String source, Map<String, dynamic> spot) => {...spot, 'hookKey': source};
+
+  static List<Map<String, dynamic>> _withPut(List<Map<String, dynamic>> held, List<Map<String, dynamic>> spots) {
+    final result = [...held];
+    final at = <String, int>{
+      for (var i = 0; i < result.length; i++)
+        if (result[i]['key'] case final String key) key: i,
+    };
+    for (final spot in spots) {
+      final index = spot['key'] is String ? at[spot['key']] : null;
+      if (index != null) {
+        result[index] = spot;
+      } else {
+        if (spot['key'] case final String key) at[key] = result.length;
+        result.add(spot);
+      }
+    }
+    return result;
+  }
+
+  /// [spots] without those past [maxSpotAge]; one whose time cannot be read
+  /// stays, as a fetched one does.
+  static List<Map<String, dynamic>> _fresh(List<Map<String, dynamic>> spots) {
+    final cutoff = nowMillis() - maxSpotAge.inMilliseconds;
+    return [
+      for (final spot in spots)
+        if ((timeOfSpot(spot) ?? cutoff) >= cutoff) spot,
+    ];
+  }
+
+  /// Applies [change] to [source]'s spots. One that would leave the source
+  /// more than [maxPushedSpots], and more than it held, throws
+  /// [SpotsPushRefused] and changes nothing: a removal is never refused.
+  void _push(String source, _SpotsChange change) {
+    if (_disposed) return;
+    final held = _bySource[source] ?? const <Map<String, dynamic>>[];
+    final after = _fresh(change(held));
+    if (after.length > maxPushedSpots && after.length > held.length) {
+      throw SpotsPushRefused("'$source' would hold ${after.length} spots, and a source holds at most $maxPushedSpots");
+    }
+    _pushers.add(source);
+    _pushedDuringFetch?.add((source, change));
+    if (after.isEmpty) {
+      _bySource.remove(source);
+    } else {
+      _bySource[source] = after;
+    }
+    _rebuildBoard();
+    _reindex();
+    _pushNotice ??= Timer(pushNoticeDelay, () {
+      _pushNotice = null;
+      if (!_disposed) notifyListeners();
+    });
+  }
+
+  /// [_byCall], from what [_bySource] holds now.
+  void _reindex() {
+    _byCall.clear();
+    for (final list in _bySource.values) {
+      for (final spot in list) {
+        final call = callOfSpot(spot);
+        if (call != null) _byCall.putIfAbsent(call, () => []).add(spot);
+      }
+    }
   }
 
   /// False until the first fetch settles, so the panel can tell "no spots
@@ -261,8 +393,10 @@ class SpotsService extends ChangeNotifier {
       return;
     }
     _lastRefreshWasSkipped = false;
+    final pushedDuringFetch = _pushedDuringFetch = [];
     try {
       final fetched = await _fetchSpots();
+      _pushedDuringFetch = null;
       final spots = fetched.items;
       // Recorded only if somebody is still subscribed when this lands, which
       // is exactly the condition under which a later fetch can retract it. A
@@ -287,6 +421,20 @@ class SpotsService extends ChangeNotifier {
       for (final spot in spots) {
         answered.putIfAbsent(spot['hookKey'] as String? ?? 'unknown', () => []).add(spot);
       }
+      // A source that pushed while the fan-out waited on the others (a slow
+      // feed holds it for seconds) answered with what it held before those
+      // pushes, so they are made again on its answer. One that answered with
+      // nothing starts from nothing.
+      final answeredOk = fetched.succeeded.toSet();
+      for (final (source, change) in pushedDuringFetch) {
+        if (!answered.containsKey(source) && !answeredOk.contains(source)) continue;
+        final after = change(answered[source] ?? const []);
+        if (after.isEmpty) {
+          answered.remove(source);
+        } else {
+          answered[source] = [...after];
+        }
+      }
       // A source in none of the three lists was not consulted this cycle —
       // one the operator has just switched off — and its spots go, or they
       // would sit on the board for the rest of the session.
@@ -303,9 +451,17 @@ class SpotsService extends ChangeNotifier {
       // takes to replace the runtime, which happens on every extension
       // enable/disable and on every dead-host recovery, and a fan-out that
       // throws degrades to the same empty answer.
+      //
+      // A source that pushes its spots ([_pushers]) and was not asked keeps
+      // them: it has no `fetchSpots`, or one the fan-out skipped, and what it
+      // pushed is its word on its band. One that was asked is replaced by its
+      // answer like any other — that answer is its whole list.
+      final consulted = <String>{...fetched.succeeded, ...outOfTouch};
       final retained = {
         for (final entry in _bySource.entries)
-          if (!answered.containsKey(entry.key) && (askedNothing || outOfTouch.contains(entry.key))) entry.key: entry.value,
+          if (!answered.containsKey(entry.key) &&
+              (askedNothing || outOfTouch.contains(entry.key) || (_pushers.contains(entry.key) && !consulted.contains(entry.key))))
+            entry.key: entry.value,
       };
       // Nothing older than [maxSpotAge] is kept, whoever offered it. Spots
       // have no open-ended life here: a source that goes on failing empties
@@ -334,16 +490,11 @@ class SpotsService extends ChangeNotifier {
       // Rebuilt from the merged map, not from the fetch: retained spots have
       // to stay findable by [spotsForCall], which is the whole point of
       // keeping them.
-      _byCall.clear();
-      for (final list in _bySource.values) {
-        for (final spot in list) {
-          final call = callOfSpot(spot);
-          if (call != null) _byCall.putIfAbsent(call, () => []).add(spot);
-        }
-      }
+      _reindex();
       _loaded = true;
       _error = null;
     } catch (e) {
+      _pushedDuringFetch = null;
       _error = e;
       _loaded = true;
       // The whole fetch failed, so last cycle's per-source lists describe
@@ -380,8 +531,23 @@ class SpotsService extends ChangeNotifier {
     _timer = null;
     _offlineSubscription?.cancel();
     _offlineSubscription = null;
+    _pushNotice?.cancel();
+    _pushNotice = null;
     super.dispose();
   }
+}
+
+/// A change a push makes to one source's spots: from what it holds, what it
+/// holds after.
+typedef _SpotsChange = List<Map<String, dynamic>> Function(List<Map<String, dynamic>> held);
+
+/// A push the board refused, with why, for the extension that pushed it.
+class SpotsPushRefused implements Exception {
+  const SpotsPushRefused(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 /// A value only if it is already the target type, or null — spot maps arrive

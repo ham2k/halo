@@ -153,3 +153,116 @@ String sanitizeClusterText(String text) =>
 List<int> encodeClusterLine(String line) => [
   for (final byte in latin1.encode('${sanitizeClusterText(line)}\r\n')) ...(byte == 0xFF ? const [0xFF, 0xFF] : [byte]),
 ];
+
+/// The lines a reader asked for: those any of [patterns] finds something in,
+/// or every line when there are none. What an extension subscribes with
+/// (`host.clusterSubscribe({ match })`), so the lines it has no use for —
+/// thousands an hour from the skimmers on a contest weekend — never cross to
+/// the extension runtime at all.
+class ClusterLineFilter {
+  ClusterLineFilter(this.patterns);
+
+  final List<RegExp> patterns;
+
+  /// Bounds on what an extension may ask for: every pattern runs on every
+  /// line the node sends.
+  static const maxPatterns = 20;
+  static const maxPatternLength = 200;
+
+  /// The most of a line a pattern looks at. A node's lines are 80 columns;
+  /// past this is not a line worth matching, and a pattern's time grows with
+  /// what it is run on.
+  static const maxMatchedLength = 256;
+
+  bool matches(String text) {
+    if (patterns.isEmpty) return true;
+    final line = text.length > maxMatchedLength ? text.substring(0, maxMatchedLength) : text;
+    return patterns.any((pattern) => pattern.hasMatch(line));
+  }
+
+  /// The filter `match` describes, or null for none (every line). Each
+  /// pattern is a regular expression's source, as a string, or as
+  /// `{source, flags}` — the SDK sends a `RegExp` that way. Of the flags,
+  /// `i`, `m`, `s` and `u` mean what they do in JavaScript; `g` and `y` say
+  /// nothing about whether a line matches and are ignored. A malformed one
+  /// throws [FormatException].
+  static ClusterLineFilter? fromJson(Object? match) {
+    if (match == null) return null;
+    if (match is! List) throw const FormatException('cluster: `match` must be a list of patterns');
+    if (match.length > maxPatterns) throw const FormatException('cluster: `match` takes at most $maxPatterns patterns');
+    if (match.isEmpty) return null;
+    return ClusterLineFilter([for (final pattern in match) _pattern(pattern)]);
+  }
+
+  static RegExp _pattern(Object? pattern) {
+    final (source, flags) = switch (pattern) {
+      String source => (source, ''),
+      {'source': String source, 'flags': String flags} => (source, flags),
+      {'source': String source} => (source, ''),
+      _ => throw const FormatException('cluster: a `match` pattern must be a string or a RegExp'),
+    };
+    if (source.isEmpty || source.length > maxPatternLength) {
+      throw const FormatException('cluster: a `match` pattern must be 1 to $maxPatternLength characters');
+    }
+    final risk = _backtrackingRisk(source);
+    if (risk != null) throw FormatException('cluster: `match` pattern /$source/ $risk');
+    final unknown = flags.split('').where((flag) => !'imsugy'.contains(flag));
+    if (unknown.isNotEmpty) throw FormatException("cluster: unknown flag '${unknown.first}' on `match` pattern /$source/");
+    try {
+      return RegExp(source, caseSensitive: !flags.contains('i'), multiLine: flags.contains('m'), dotAll: flags.contains('s'), unicode: flags.contains('u'));
+    } on FormatException catch (e) {
+      throw FormatException('cluster: `match` pattern /$source/ is not a regular expression: ${e.message}');
+    }
+  }
+
+  /// Why [source] could take a regular expression engine without a time
+  /// limit — the app's, on its main isolate — exponentially long on one
+  /// line, or null. A group that itself repeats or alternates, repeated
+  /// without bound (`(a+)+`, `(a|ab)*`), and a backreference; anything else
+  /// is at worst polynomial in a line [maxMatchedLength] long.
+  static String? _backtrackingRisk(String source) {
+    // Per open group: whether something inside it repeats or alternates.
+    final groups = <bool>[];
+    var inClass = false;
+    for (var i = 0; i < source.length; i++) {
+      final c = source[i];
+      if (c == r'\') {
+        final next = i + 1 < source.length ? source[i + 1] : '';
+        if (!inClass && (RegExp(r'[1-9]').hasMatch(next) || next == 'k')) return 'refers back to a group, which can take a line forever';
+        i++;
+        continue;
+      }
+      if (inClass) {
+        if (c == ']') inClass = false;
+        continue;
+      }
+      switch (c) {
+        case '[':
+          inClass = true;
+        case '(':
+          groups.add(false);
+        case ')':
+          if (groups.isEmpty) continue;
+          final risky = groups.removeLast();
+          final unbounded = _unboundedAt(source, i + 1);
+          if (risky && unbounded) return 'repeats, without bound, a group that repeats or alternates, which can take a line forever';
+          if (groups.isNotEmpty && (risky || _quantifiedAt(source, i + 1))) groups[groups.length - 1] = true;
+        case '|':
+          if (groups.isNotEmpty) groups[groups.length - 1] = true;
+        case '*' || '+' || '{':
+          if (groups.isNotEmpty) groups[groups.length - 1] = true;
+      }
+    }
+    return null;
+  }
+
+  /// Whether a quantifier with no upper bound — `*`, `+`, `{n,}` — starts at [i].
+  static bool _unboundedAt(String source, int i) {
+    if (i >= source.length) return false;
+    if (source[i] == '*' || source[i] == '+') return true;
+    return source[i] == '{' && RegExp(r'^\{\d+,\}').hasMatch(source.substring(i));
+  }
+
+  /// Whether any quantifier starts at [i].
+  static bool _quantifiedAt(String source, int i) => i < source.length && '*+?{'.contains(source[i]);
+}

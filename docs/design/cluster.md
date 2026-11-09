@@ -110,7 +110,11 @@ line. The scrollback keeps 500 to 5,000 lines (Settings; default 1,000).
 
 **Subscribers.** A subscriber gets new lines through its `cluster` hook's
 `onLines`, at most once a second, whatever the node's rate. A failed delivery
-is not retried; the lines stay readable through `clusterLines`.
+is not retried; the lines stay readable through `clusterLines`. A subscriber
+that names patterns (`match`) is handed only the lines they match, filtered
+here rather than in the runtime, so the skimmers' thousands of lines an hour
+never cross to an extension that wants a few; a batch with none of them is
+passed over without a call.
 
 **Replies.** Commands go out one at a time. A command's reply is whatever the
 node sent between the command and its next `<call> de <node> … >` prompt,

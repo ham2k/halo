@@ -320,6 +320,9 @@ export interface Spot {
     label?: string
     sourceInfo?: Record<string, JSONValue>
   }
+  /// Unique among one source's spots, for `host.spots.put` to replace it and
+  /// `host.spots.remove` to take it. Extension API 21.
+  key?: string
 }
 
 /// Something said about a stretch of a band, or a place on it. Extension API 20.
@@ -575,12 +578,22 @@ export interface ClusterPostSpotRequest {
   comment?: string
 }
 
+/// Which of the node's lines an extension asks for: those any of these
+/// regular expressions finds something in. A string is a pattern's source
+/// (`"^DX de "`); of a `RegExp`'s flags, `i`, `m`, `s` and `u` count. At most
+/// 20 patterns of at most 200 characters, each run on the first 256
+/// characters of every line the node sends. One that repeats without bound a
+/// group that itself repeats or alternates (`(a+)+`), or refers back to a
+/// group, is refused. Extension API 21.
+export type ClusterMatch = (string | RegExp)[]
+
 /// Lines from the node, for an extension that called
 /// `host.clusterSubscribe()`. Registered under the extension's own key (the
 /// default): that is the key the host delivers to.
 export interface ClusterHook {
   /// The lines since the last batch, oldest first — at most one call a
-  /// second, however busy the node.
+  /// second, however busy the node — and only those the subscription's
+  /// `match` asked for; no call for a batch with none of them.
   onLines(args: { lines: ClusterLine[] }, ctx: HookContext): Promise<void>
 }
 

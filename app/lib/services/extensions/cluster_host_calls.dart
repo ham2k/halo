@@ -3,6 +3,7 @@
 
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import '../cluster/cluster_protocol.dart';
 import '../cluster/cluster_service.dart';
 import 'extension_info.dart';
 
@@ -73,8 +74,15 @@ class ClusterHostCalls {
     if (service == null) return method == 'clusterLines' ? const [] : const {'ok': false, 'error': 'unsupported'};
     return switch (method) {
       'clusterStatus' => service.status.toJson(),
-      'clusterLines' => [for (final line in service.lines(after: (params['after'] as num?)?.toInt(), limit: (params['limit'] as num?)?.toInt())) line.toJson()],
-      'clusterSubscribe' => (await service.subscribe(extensionKey!)).toJson(),
+      'clusterLines' => [
+        for (final line in service.lines(
+          after: (params['after'] as num?)?.toInt(),
+          limit: (params['limit'] as num?)?.toInt(),
+          filter: ClusterLineFilter.fromJson(params['match']),
+        ))
+          line.toJson(),
+      ],
+      'clusterSubscribe' => (await service.subscribe(extensionKey!, filter: ClusterLineFilter.fromJson(params['match']))).toJson(),
       'clusterUnsubscribe' => _unsubscribe(service, extensionKey!),
       'clusterPostSpot' => (await service.postSpot(
         freqKHz: (params['freq'] as num?)?.toDouble() ?? 0,

@@ -497,6 +497,86 @@ void main() {
     });
   });
 
+  test('a subscriber that names patterns gets only the lines they match, and no call for a batch of none', () {
+    runOnFakeClock((async) async {
+      await start();
+      final delivered = <String, List<List<String>>>{};
+      service.deliver = (subscriber, lines) async => delivered.putIfAbsent(subscriber, () => []).add([for (final l in lines) l.text]);
+      await service.subscribe('spots', filter: ClusterLineFilter.fromJson(['^DX de ']));
+      await service.subscribe(
+        'solar',
+        filter: ClusterLineFilter.fromJson([
+          {'source': '^wwv de ', 'flags': 'i'},
+        ]),
+      );
+      await service.subscribe('everything');
+      await Future<void>.delayed(service.batchDelay * 2);
+      delivered.clear();
+
+      nodes.single
+        ..broadcast('DX de W3LPL:  14025.0  JA1ABC  cq  0400Z')
+        ..broadcast('WWV de W0MU <12>:   SFI=150, A=5, K=1')
+        ..broadcast('To ALL de K1TTT: contest this weekend');
+      await Future<void>.delayed(service.batchDelay * 2);
+      expect(delivered['spots'], [
+        ['DX de W3LPL:  14025.0  JA1ABC  cq  0400Z'],
+      ]);
+      expect(delivered['solar'], [
+        ['WWV de W0MU <12>:   SFI=150, A=5, K=1'],
+      ]);
+      expect(delivered['everything']!.single, hasLength(3));
+
+      nodes.single.broadcast('To ALL de K1TTT: QRT');
+      await Future<void>.delayed(service.batchDelay * 2);
+      expect(delivered['spots'], hasLength(1), reason: 'a batch with nothing asked for makes no call');
+
+      // Subscribing again changes only the patterns: nothing is delivered twice.
+      await service.subscribe('spots');
+      nodes.single.broadcast('To ALL de NC7J: hello');
+      await Future<void>.delayed(service.batchDelay * 2);
+      expect(delivered['spots']!.last, ['To ALL de NC7J: hello']);
+
+      expect(service.lines(filter: ClusterLineFilter.fromJson(['^WWV'])).map((l) => l.text), ['WWV de W0MU <12>:   SFI=150, A=5, K=1']);
+    });
+  });
+
+  test('line patterns are regular expressions, bounded, and a malformed one says so', () {
+    expect(ClusterLineFilter.fromJson(null), isNull);
+    expect(ClusterLineFilter.fromJson(const []), isNull, reason: 'no patterns is every line');
+    expect(ClusterLineFilter.fromJson(['^DX de '])!.matches('dx de W3LPL'), isFalse);
+    expect(
+      ClusterLineFilter.fromJson([
+        {'source': '^DX de ', 'flags': 'gi'},
+      ])!.matches('dx de W3LPL'),
+      isTrue,
+    );
+    for (final bad in [
+      'DX',
+      ['('],
+      [''],
+      ['x' * (ClusterLineFilter.maxPatternLength + 1)],
+      [for (var i = 0; i <= ClusterLineFilter.maxPatterns; i++) 'x'],
+      [
+        {'source': 'x', 'flags': 'q'},
+      ],
+      [7],
+      // Patterns that can backtrack for as long as they like on one line.
+      ['(a+)+b'],
+      ['(.*.*)*X'],
+      ['(a|ab)*c'],
+      ['(x+){2,}y'],
+      [r'(a)\1'],
+    ]) {
+      expect(() => ClusterLineFilter.fromJson(bad), throwsFormatException, reason: '$bad');
+    }
+    // Repetition that cannot run away: bounded, or of a group that does not repeat.
+    for (final good in [r'^[\x00-\x20]*\d+(?:\.\d+)?\s+\S+\s+\d{1,2}-[A-Za-z]{3}-\d{4}', r'(ab)+c', r'(a+){1,3}b', r'[(a+)+]x']) {
+      expect(ClusterLineFilter.fromJson([good]), isNotNull, reason: good);
+    }
+    final filter = ClusterLineFilter.fromJson([r'X$'])!;
+    expect(filter.matches('${'.' * (ClusterLineFilter.maxMatchedLength + 10)}X'), isFalse, reason: 'past the length a pattern looks at');
+  });
+
   test('line numbers keep counting across a reconnect, and the scrollback keeps its size', () {
     runOnFakeClock((async) async {
       await start(cluster: {ClusterSettings.scrollbackKey: 500});

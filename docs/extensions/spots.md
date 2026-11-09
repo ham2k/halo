@@ -25,7 +25,7 @@ interface SpotsHook {
   postOtherSpot?(args: PostOtherSpotRequest, ctx): Promise<PostResult>
 }
 // Spot:                 { their: { call }, freq?, band?, mode?, refs?: Ref[], icon?,
-//                         spot: { timeInMillis, source, label?, sourceInfo? } }
+//                         spot: { timeInMillis, source, label?, sourceInfo? }, key? }
 // SpotEligibility:      { enabled, icon? }
 // PostSelfSpotRequest:  { operation, freq, mode?, comment? }
 // PostOtherSpotRequest: { qso, comment?, spotterCall? }
@@ -36,6 +36,31 @@ interface SpotsHook {
 the frequency, the mode, the references it carries, and when it was
 spotted. Filter QRT and stale entries at the source. `icon` is a Material
 Design Icons name or a FontAwesome `fa-` name, drawn on the row.
+
+**Pushing** (extension API 21) puts spots on the board as they happen,
+instead of at the next refresh, two minutes away at most. A feed that
+learns of spots on its own (a cluster, a socket) pushes them:
+
+```ts
+host.spots.replace(spots, { source? })   // all of the source's spots
+host.spots.put(spots, { source? })       // add, or replace by `key`
+host.spots.remove(keys?, { source? })    // by `key`, or all of them
+```
+
+`source` is the key of one of your `spots` hooks, your extension's own key
+by default; its `sourceName` labels the spots, and the operator's source
+filter applies to them. A spot's `key` is unique within its source: `put`
+replaces the spot under the same `key`, and one without a `key` is only
+ever added. A source that also answers `fetchSpots` is replaced by that
+answer at each refresh, with whatever it pushed while the fetch was out
+applied on top, so answer with everything you would push: the answer is
+where spots you no longer hold leave the board. A source with no
+`fetchSpots` keeps what it pushed until it removes it, or until your
+extension is unloaded or reloaded; push again from `onActivation`. Either
+way, spots go once they are three hours old. A push that would leave a
+source more than 5,000 spots is refused, a removal never is, and a
+malformed spot rejects the call and pushes none. Before the app has a
+spots board (early in its start) a push is refused rather than lost.
 
 **Posting** is optional method by method. A source that omits the posting
 methods never appears in the Spotting control's icon row. The eligibility
@@ -97,8 +122,8 @@ interface ClusterHook {
 
 ```ts
 host.clusterStatus(): Promise<ClusterStatus>
-host.clusterLines({ after?, limit? }): Promise<ClusterLine[]>
-host.clusterSubscribe(): Promise<ClusterStatus>     // then onLines, until
+host.clusterLines({ after?, limit?, match? }): Promise<ClusterLine[]>
+host.clusterSubscribe({ match? }): Promise<ClusterStatus>  // then onLines, until
 host.clusterUnsubscribe(): Promise<ClusterStatus>   // this
 host.clusterPostSpot({ freq, call, comment? }): Promise<ClusterReply>
 host.clusterSend(command): Promise<ClusterReply>
@@ -113,7 +138,16 @@ screen names the grant; declare the least you need.
 
 **Reading.** `onLines` is called only for an extension that called
 `clusterSubscribe()`, with the lines since the last batch, at most once a
-second. Register the hook under your extension's own key (the default): that
+second. With `match` (extension API 21), only the lines one of its regular
+expressions finds something in reach the hook, and a batch with none of
+them makes no call: `clusterSubscribe({ match: [/^DX de /, /^WWV de /i] })`.
+A string is a pattern's source; at most 20 patterns of 200 characters each,
+each run against the first 256 characters of every line. A pattern that
+repeats without bound a group that itself repeats or alternates (`(a+)+`,
+`(a|b)*`), or refers back to a group, is refused: the app runs them, and
+those can take one line forever. Subscribing again changes only the patterns, and
+subscribing without them asks for every line again. `clusterLines` takes
+`match` too. Register the hook under your extension's own key (the default): that
 is the key the app delivers to. A subscription lasts until
 `clusterUnsubscribe()` or the runtime restarts, and keeps the session open
 while it lasts. A reader that only polls `clusterLines({ after })` holds

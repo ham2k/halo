@@ -41,6 +41,7 @@ import 'extension_chasing.dart';
 import 'extension_scoring.dart';
 import 'installed_extensions.dart';
 import 'preloaded_extensions.dart';
+import '../local_spots.dart' show localSpotSource;
 import '../location_service.dart';
 import '../panel_service.dart';
 import 'cluster_host_calls.dart';
@@ -837,6 +838,9 @@ class ExtensionService
         // activates: its extensions put theirs again, and one taken out of
         // the set leaves nothing behind.
         bandAnnotations.forgetExtensions();
+        // And every source's having pushed spots: one whose extension comes
+        // back pushes again, and the next fetch takes the rest's away.
+        spots?.forgetPushers();
         clearGenerationStatus(
           statusBar: statusBar,
           fyi: fyi,
@@ -883,6 +887,7 @@ class ExtensionService
     // old code's annotations stay beside what the new code puts, and its
     // hook's old answers stand for the new one's.
     bandAnnotations.forgetExtensions(keys);
+    spots?.forgetPushers(keys);
   }
 
   /// [_ExtensionHostCalls.handle] for tests — the runtime credential path has

@@ -251,6 +251,9 @@ class ClusterService extends ChangeNotifier {
 
   /// Each subscriber's newest delivered [ClusterLine.seq].
   final _subscribers = <String, int>{};
+
+  /// The lines each subscriber asked for, where it asked for fewer than all.
+  final _filters = <String, ClusterLineFilter>{};
   Timer? _flushTimer;
   bool _flushing = false;
 
@@ -288,24 +291,32 @@ class ClusterService extends ChangeNotifier {
   Iterable<String> get subscribers => _subscribers.keys;
 
   /// The scrollback after [after], oldest first, at most [limit] of the
-  /// newest.
-  List<ClusterLine> lines({int? after, int? limit}) {
+  /// newest of those [filter] passes.
+  List<ClusterLine> lines({int? after, int? limit, ClusterLineFilter? filter}) {
     final picked = [
       for (final line in _lines)
-        if (after == null || line.seq > after) line,
+        if ((after == null || line.seq > after) && (filter == null || filter.matches(line.text))) line,
     ];
     if (limit == null || limit >= picked.length) return picked;
     return picked.sublist(picked.length - limit);
   }
 
-  /// Starts sending [subscriber] every line from now on, connecting if need
-  /// be; it stays subscribed until [unsubscribe], across reconnects.
-  Future<ClusterStatus> subscribe(String subscriber) {
+  /// Starts sending [subscriber] every line from now on that [filter] passes
+  /// (every line, without one), connecting if need be; it stays subscribed
+  /// until [unsubscribe], across reconnects. Subscribing again changes only
+  /// the filter, from the next line delivered.
+  Future<ClusterStatus> subscribe(String subscriber, {ClusterLineFilter? filter}) {
     _subscribers.putIfAbsent(subscriber, () => _lastSeq);
+    if (filter == null) {
+      _filters.remove(subscriber);
+    } else {
+      _filters[subscriber] = filter;
+    }
     return _keepUp();
   }
 
   void unsubscribe(String subscriber) {
+    _filters.remove(subscriber);
     if (_subscribers.remove(subscriber) == null) return;
     if (!_wanted) {
       _reconnectTimer?.cancel();
@@ -683,8 +694,18 @@ class ClusterService extends ChangeNotifier {
     // Moved before the delivery: a subscriber whose hook fails must not be
     // handed the same lines again on every flush after it.
     _subscribers[subscriber] = batch.last.seq;
+    // Past the lines the filter leaves out too: a batch with nothing asked
+    // for is passed over, not held for a later one.
+    final filter = _filters[subscriber];
+    final asked = filter == null
+        ? batch
+        : [
+            for (final line in batch)
+              if (filter.matches(line.text)) line,
+          ];
+    if (asked.isEmpty) return;
     try {
-      await deliver(subscriber, batch);
+      await deliver(subscriber, asked);
     } catch (e) {
       debugPrint('[cluster] delivery to $subscriber failed: $e');
     }

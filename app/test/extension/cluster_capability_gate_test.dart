@@ -12,6 +12,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:ham2k_logger/services/cluster/cluster_protocol.dart';
 import 'package:ham2k_logger/services/cluster/cluster_service.dart';
 import 'package:ham2k_logger/services/cluster/cluster_settings.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
@@ -51,10 +52,10 @@ class FakeCluster extends Fake implements ClusterService {
   ClusterStatus get status => _status;
 
   @override
-  List<ClusterLine> lines({int? after, int? limit}) => [const ClusterLine(1, 0, 'DX de W3LPL: 14025.0 JA1ABC')];
+  List<ClusterLine> lines({int? after, int? limit, ClusterLineFilter? filter}) => [const ClusterLine(1, 0, 'DX de W3LPL: 14025.0 JA1ABC')];
 
   @override
-  Future<ClusterStatus> subscribe(String subscriber) async {
+  Future<ClusterStatus> subscribe(String subscriber, {ClusterLineFilter? filter}) async {
     subscribed.add(subscriber);
     return _status;
   }

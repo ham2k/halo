@@ -35,6 +35,9 @@ class _ExtensionHostCalls {
       'getBandAnnotations' => _getBandAnnotations(params),
       'putBandAnnotations' => _putBandAnnotations(params),
       'removeBandAnnotations' => _removeBandAnnotations(params),
+      'replaceSpots' => _replaceSpots(params),
+      'putSpots' => _putSpots(params),
+      'removeSpots' => _removeSpots(params),
       'suggestQso' => _suggestQso(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
@@ -382,6 +385,81 @@ class _ExtensionHostCalls {
       throw const FormatException('removeBandAnnotations: `keys` must be a list of strings');
     }
     _service.bandAnnotations.remove(ns, (keys as List?)?.cast<String>());
+    return null;
+  }
+
+  /// The spots source a push is for: `source`, by default the caller's own
+  /// key, and only ever one of the caller's — a key any of its hooks could be
+  /// registered under (its own, or prefixed `<key>_`), never another
+  /// extension's source or the operator's own spots.
+  String _spotSource(String method, Map<String, dynamic> params) {
+    final ns = params['ns'] as String;
+    final source = params['source'] ?? ns;
+    if (source is! String || source.isEmpty) throw FormatException('$method: `source` must be a spots hook key');
+    if ((source != ns && !source.startsWith('${ns}_')) || source == localSpotSource) {
+      throw ExtensionHostException("$method refused: '$source' is not a spots source of '$ns'");
+    }
+    return source;
+  }
+
+  /// [params]' `spots`, each a spot as `fetchSpots` answers one; a malformed
+  /// one rejects the call and pushes none.
+  List<Map<String, dynamic>> _pushedSpots(String method, Map<String, dynamic> params) {
+    final spots = params['spots'];
+    if (spots is! List) throw FormatException('$method: `spots` must be a list');
+    return [
+      for (final spot in spots)
+        if (spot is! Map)
+          throw FormatException('$method: every spot must be an object')
+        else if (_malformedSpotField(spot.cast<String, dynamic>()) case final String field)
+          throw FormatException("$method: a spot's `$field` is malformed")
+        else if (spot['key'] != null && spot['key'] is! String)
+          throw FormatException("$method: a spot's `key` must be a string")
+        else
+          spot.cast<String, dynamic>(),
+    ];
+  }
+
+  /// The board a push lands on, or a refusal: before the services are wired
+  /// there is none, and a push the extension was told had landed would be
+  /// lost without a word.
+  SpotsService _spotsBoard(String method) {
+    final spots = _service.spots;
+    if (spots == null) throw ExtensionHostException('$method refused: there is no spots board yet');
+    return spots;
+  }
+
+  /// Runs [push], a refusal from the board named for [method].
+  void _pushSpots(String method, void Function(SpotsService spots) push) {
+    final spots = _spotsBoard(method);
+    try {
+      push(spots);
+    } on SpotsPushRefused catch (e) {
+      throw ExtensionHostException('$method refused: ${e.message}');
+    }
+  }
+
+  Future<dynamic> _replaceSpots(Map<String, dynamic> params) async {
+    final source = _spotSource('replaceSpots', params);
+    final spots = _pushedSpots('replaceSpots', params);
+    _pushSpots('replaceSpots', (board) => board.replaceSpots(source, spots));
+    return null;
+  }
+
+  Future<dynamic> _putSpots(Map<String, dynamic> params) async {
+    final source = _spotSource('putSpots', params);
+    final spots = _pushedSpots('putSpots', params);
+    _pushSpots('putSpots', (board) => board.putSpots(source, spots));
+    return null;
+  }
+
+  Future<dynamic> _removeSpots(Map<String, dynamic> params) async {
+    final source = _spotSource('removeSpots', params);
+    final keys = params['keys'];
+    if (keys != null && (keys is! List || keys.any((k) => k is! String))) {
+      throw const FormatException('removeSpots: `keys` must be a list of strings');
+    }
+    _pushSpots('removeSpots', (board) => board.removeSpots(source, keys: (keys as List?)?.cast<String>()));
     return null;
   }
 

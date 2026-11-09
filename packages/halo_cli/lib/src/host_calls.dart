@@ -272,6 +272,13 @@ class CliHostCalls {
         bandAnnotations.remove(_bandAnnotationSource(params), (keys as List?)?.cast<String>());
         return null;
 
+      // The CLI holds no spots board for a push to land on: invoke a hook
+      // by name to see what it answers.
+      case 'replaceSpots':
+      case 'putSpots':
+      case 'removeSpots':
+        return null;
+
       case 'getHistoryForCall':
         // Backs `call-history`'s `ctx.getHistoryForCall`. The app answers
         // across every operation; the CLI only ever has the one log handed

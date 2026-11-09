@@ -323,6 +323,17 @@ hook that answers for a band.
 They last until you take them, they expire, or the runtime restarts: put
 them again from `onActivation`.
 
+## Spots
+
+Extension API 21. Spots on the board as they happen, rather than at the
+next `fetchSpots`: [Spots](spots.md#spots) has when each one goes.
+
+| Call | Does |
+| --- | --- |
+| `host.spots.replace(spots, { source? })` | Replaces every spot `source` holds (your extension's key by default; any key one of your `spots` hooks is registered under) |
+| `host.spots.put(spots, { source? })` | Adds them, replacing any held under the same `key`; one without a `key` is only ever added. A push that would leave a source over 5,000 is refused; a malformed spot rejects the call and pushes none |
+| `host.spots.remove(keys?, { source? })` | Takes the ones held under `keys`, or every one `source` holds |
+
 ## Calling other extensions
 
 ```ts
