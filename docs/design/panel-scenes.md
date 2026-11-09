@@ -517,6 +517,18 @@ published panels name them; what API 17 added has the new names only.
   a sweep from there arrives (or a second passes, for a radio that lands it
   nearby): against the sweeps still arriving from where it was, each would
   send it again.
+- **A scene may name its window.** Over a sweep, `window` is where the
+  window centres until the operator pans: a band map shows its band, not
+  wherever the radio's scope happens to sit. While no sweep comes it stands a
+  sweep with no levels in for the radio's, so a band map is one
+  control whether the radio has a scope or not: the axis, marks and gestures
+  all work on the window shown, which the stand-in provides as a sweep does.
+  It is a scope the app cannot move, so a zoom and a pan stay within it and
+  nothing is asked of the radio; the trace and the level strip have nothing
+  to draw and are left out. A sweep that arrives takes its place, and the
+  operator's zoom with it, since a window chosen over the band is not one
+  over the sweep; one that stops gives it back after the 3 seconds that
+  would otherwise say the display is waiting.
 - **A native gesture is still reported, once.** The extension owns the
   panel's preferences, so the host tells it where a zoom, pan or split ended
   — one `commit` at the end, not the stream an event-mode scene gets, since

@@ -390,6 +390,34 @@ void main() {
       await expectLater(extensions.debugHandleHostCall('removeBandAnnotations', from(userBandAnnotationSource, {})), throwsA(isA<ExtensionHostException>()));
     });
 
+    test("an extension takes the operator's band tags only by key, and only theirs", () async {
+      final (extensions, spots, _) = harness((_) => const []);
+      spots.bandAnnotations.put(userBandAnnotationSource, [
+        {'type': 'general', 'key': 'qrm', 'fromHz': 14200000, 'label': 'QRM!'},
+        {'type': 'general', 'key': 'net', 'fromHz': 14300000, 'label': 'NET!'},
+      ]);
+      spots.bandAnnotations.put('nets', [
+        {'type': 'general', 'key': 'qrm', 'fromHz': 14250000, 'label': 'Theirs'},
+      ]);
+      Future<dynamic> remove(Map<String, dynamic> rest) => extensions.debugHandleHostCall('removeBandAnnotations', from('map', rest));
+      await remove({
+        'keys': ['qrm'],
+        'source': 'user',
+      });
+      expect(spots.bandAnnotations.forBand('20m').map((a) => a['label']), unorderedEquals(['NET!', 'Theirs']));
+      // Never all of them at once, and never another extension's.
+      await expectLater(remove({'source': 'user'}), throwsFormatException);
+      await expectLater(remove({'keys': <String>[], 'source': 'user'}), throwsFormatException);
+      await expectLater(
+        remove({
+          'keys': ['qrm'],
+          'source': 'nets',
+        }),
+        throwsFormatException,
+      );
+      expect(spots.bandAnnotations.forBand('20m').map((a) => a['label']), unorderedEquals(['NET!', 'Theirs']));
+    });
+
     test('none outlives the runtime that put it, but the operator\'s band tags stay', () async {
       final (_, spots, _) = harness((_) => const []);
       spots.bandAnnotations.put('nets', [

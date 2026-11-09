@@ -326,6 +326,22 @@ export interface PanelSceneSpectrum {
    */
   maxWidthHz?: number | "radio"
   /**
+   * The window shown until the operator pans, in Hz: a band map's band, for one. Over a sweep, its
+   * middle, `span` its width, the picture over the part the sweep covers. While no sweep comes — no
+   * radio, a radio without a scope or with it off, or before the first sweep — the whole of it: the
+   * axis, overlays, annotations and layers are drawn and the gestures work over a blank picture, as
+   * over a sweep that wide from a scope the app cannot move, so a zoom and a pan stay within it, and
+   * no message says why there is no picture. A sweep that arrives takes its place, and one that
+   * stops for 3 seconds gives it back, unzoomed. Extension API 22.
+   */
+  window?: { lowHz: number; highHz: number }
+  /**
+   * The window's middle in Hz until the operator pans: a panel keeping where the operator left the
+   * window (a pan's `commit`, which a zoom also sends) names it here. One that changes it takes the
+   * window back there. Omitted, `window`'s middle, or the sweep's. Extension API 22.
+   */
+  centerHz?: number
+  /**
    * A click tunes to the nearest multiple of this many Hz, the wheel moves by it and a dragged line
    * lands on it. Omitted, steps that follow the zoom along 1, 2, 5, 10, 20, 50… Hz from the smallest
    * covering a pixel: a fine step one above it, which a dragged line lands on, a medium one and a coarse two above that
@@ -557,8 +573,15 @@ export interface PanelSceneSpectrumScale {
         weight?: PanelSceneSpectrumNumber
         italic?: boolean
         color?: string
-        /** To the top of the text. Omitted, centered in the gap. */
+        /** To the edge of the text `align` names, its top by default. Omitted, centered in the gap. */
         offset?: PanelSceneSpectrumNumber
+        /**
+         * Which edge of each label, across the axis as if flowing down, is at `offset`: `start` its
+         * top, `end` its bottom, `center` its middle; with no `offset`, the gap's edge on that side,
+         * or its middle. Turned sideways, `end` lines the labels up on the gap's waterfall side, each
+         * reaching back over the spectrum as far as its text runs. Extension API 22.
+         */
+        align?: "start" | "center" | "end"
       }
   /**
    * Off by default. From extension API 17 a label's tick is taller and heavier, with half-length ones
@@ -576,6 +599,12 @@ export interface PanelSceneSpectrumScale {
         offset?: PanelSceneSpectrumNumber
         /** Default 4. */
         length?: PanelSceneSpectrumNumber
+        /**
+         * Which end of each tick is at `offset`, across the axis as if flowing down: its top
+         * (`start`, the default), each growing toward the waterfall, or its bottom (`end`), each
+         * growing back over the spectrum. Extension API 22.
+         */
+        align?: "start" | "end"
       }
 }
 
@@ -627,19 +656,61 @@ export interface PanelSceneSpectrumAnnotation {
    */
   borderEdges?: "all" | "near"
   /**
-   * Drawn as a line `width` pixels wide (four fifths of the box with `true`) where the box's near border would be, the
+   * The box runs from the tops of the text's capitals to its baseline, rather than over its whole
+   * line: `align` and `offset` place the baseline or the capitals' tops, and descenders hang past
+   * the box. An app without it boxes the whole line. Extension API 22.
+   */
+  baseline?: boolean
+  /**
+   * Hz from `hz` the box covers at the least — a spot's passband: where they lie further apart than
+   * the box is long, the box runs from one to the other and the text is centered in it; otherwise
+   * `align` places it. An app without it draws the box as `align` places it. Extension API 22.
+   */
+  stretch?: { from: PanelSceneSpectrumNumber; to: PanelSceneSpectrumNumber }
+  /**
+   * Drawn as a line `width` pixels wide (four fifths of the box with `true`; the box's whole width
+   * with `'box'`, extension API 22) where the box's near border would be, the
    * box itself only while the pointer is on the line or on it, over any annotation it would overlap,
    * which waits meanwhile: a label there is no room for, shown on demand. A touch with nothing
    * hovered opens it first; a click on it open is a click on the annotation. Extension API 20.
    */
-  collapsed?: boolean | { width?: number }
-  /** Default 2. */
-  padding?: PanelSceneSpectrumNumber
+  collapsed?: boolean | { width?: number | "box" }
+  /**
+   * Default 2. `{ x, y }` (extension API 22) pads across the text and above and below it, upright
+   * on the screen, apart; an app without it pads by 2.
+   */
+  padding?: PanelSceneSpectrumNumber | { x?: PanelSceneSpectrumNumber; y?: PanelSceneSpectrumNumber }
+  /**
+   * Up to 32 lines shown under the text while the pointer is on it, or a touch has opened it — the
+   * spots a label stands for — hanging down the screen from where the box stands, over any
+   * annotation it would overlap. A line may have an icon, as the annotation's own; where any line
+   * has one, every line's text starts past an icon's room, so the lines' text lines up. Extension
+   * API 22.
+   */
+  more?: (string | { text: string; icon?: { name: string; color?: string } })[]
+  /**
+   * A short count or tag after the text, a little smaller, in a pill: `color` its ink (the text's
+   * by default), `background` the pill's fill (a translucent gray by default). Extension API 22.
+   */
+  badge?: { text: string; color?: string; background?: string }
+  /**
+   * A border on the edge facing the one `offset` measures from — the axis's side — drawn while it is
+   * open with its `more` lines. Width default 2. Extension API 22.
+   */
+  openBorder?: { color: string; width?: PanelSceneSpectrumNumber }
+  /** Its box's fill while it is open with its `more` lines, in place of `background`. Extension API 22. */
+  openBackground?: string
   /** Default 2. */
   radius?: PanelSceneSpectrumNumber
   event?: string
   /** Opened where it is clicked, in place of an `event`. Extension API 17. */
   menu?: { label: string; event: string }[]
+  /**
+   * Sent as a click sends `event` when it is right-clicked, with the same `at` (its `line` on an
+   * open list): what the scene does to it there, such as take it down. An app without it does
+   * nothing on a right-click. Extension API 22.
+   */
+  secondaryEvent?: string
   /**
    * An MDI or `fa-` icon before the text, at its size, in `color` or the text's. An app without it
    * draws the text alone.
@@ -849,6 +920,11 @@ export interface PanelSceneSpectrumClick {
   ageSeconds?: number
   /** On the waterfall, when the row clicked was taken, on the app's clock. */
   atMillis?: number
+  /**
+   * On an annotation open with its `more` lines, the line clicked: 0 its own text, 1 the first of
+   * `more`. Extension API 22.
+   */
+  line?: number
 }
 
 /** Patch only named scene values and strings. The host ignores stale responses. */

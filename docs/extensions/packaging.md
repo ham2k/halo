@@ -142,7 +142,7 @@ The extension API is numbered, and your manifest's `api` is the **lowest**
 level that has everything you use. An app speaking an older level refuses
 the bundle at install and says so; the catalog offers each app the newest
 release it can run. The SDK's minor version is the level it describes
-(SDK 1.21 is API 21) and `API_VERSION` exports it.
+(SDK 1.22 is API 22) and `API_VERSION` exports it.
 
 | Level | Adds |
 | --- | --- |
@@ -167,6 +167,7 @@ release it can run. The SDK's minor version is the level it describes
 | 19 | a radio's logging `set` and operating `opStyle` in `readRadio` and `listRadios`, its `reportedFrequencyHz` in `readRadio` and the scene's `radio.reportedFrequencyHz`, and `readRadio('A')` / `readRadio('B')` for a set's radio; the operation's `uuid` in `processQsoBeforeSave`; a command's `setOpStyle`; `ctx.opStyle`; templates' `keyer.opStyle`; `getSpots`' `filter: 'sources'` |
 | 20 | band annotations: the `bandAnnotations` hook, `host.bandAnnotations.put` and `remove`, `ctx.getBandAnnotations`; the operator's band tags leave `getSpots` for it; the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
 | 21 | spots pushed as they happen: `host.spots.replace`, `put` and `remove`, and a spot's `key`; `match` on `host.clusterSubscribe` and `clusterLines`, so only the lines asked for reach an extension; an operation's `ownerCall`; the `keyerSets` hook; the `assistant` hook category; spot marks (`host.spots.mark` and `unmark`) and a board spot's `id` and `ids` |
+| 22 | the band scope's `window`: where it centers over a sweep, and its axis, marks and gestures over a blank picture while no sweep comes; its `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed annotation's `width: 'box'`, a zoom's commit of its middle, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click; `host.bandAnnotations.remove(keys, { source: 'user' })`, the operator's band tags by key |
 
 The packer enforces the levels it can tell from the manifest alone:
 `webSockets` needs 2, `chasing` needs 9, a cluster grant or a `cluster` hook

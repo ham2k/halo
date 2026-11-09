@@ -380,13 +380,21 @@ class _ExtensionHostCalls {
     return null;
   }
 
+  /// With `source: 'user'` (API 22), the operator's band tags under `keys`: what the operator sees
+  /// on an extension's panel and takes down there. Only by key, never all of them at once.
   Future<dynamic> _removeBandAnnotations(Map<String, dynamic> params) async {
-    final ns = _bandAnnotationSource(params);
     final keys = params['keys'];
     if (keys != null && (keys is! List || keys.any((k) => k is! String))) {
       throw const FormatException('removeBandAnnotations: `keys` must be a list of strings');
     }
-    _service.bandAnnotations.remove(ns, (keys as List?)?.cast<String>());
+    final named = (keys as List?)?.cast<String>();
+    if (params['source'] case final source?) {
+      if (source != userBandAnnotationSource) throw const FormatException("removeBandAnnotations: `source` may only be 'user', the operator's band tags");
+      if (named == null || named.isEmpty) throw const FormatException("removeBandAnnotations: the operator's band tags are taken by key");
+      _service.bandAnnotations.remove(userBandAnnotationSource, named);
+      return null;
+    }
+    _service.bandAnnotations.remove(_bandAnnotationSource(params), named);
     return null;
   }
 

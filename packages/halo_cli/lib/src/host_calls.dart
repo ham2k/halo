@@ -269,7 +269,15 @@ class CliHostCalls {
         if (keys != null && (keys is! List || keys.any((k) => k is! String))) {
           throw const FormatException('removeBandAnnotations: `keys` must be a list of strings');
         }
-        bandAnnotations.remove(_bandAnnotationSource(params), (keys as List?)?.cast<String>());
+        final named = (keys as List?)?.cast<String>();
+        // The operator's band tags, by key only (API 22), as the app takes them.
+        if (params['source'] case final source?) {
+          if (source != userBandAnnotationSource) throw const FormatException("removeBandAnnotations: `source` may only be 'user', the operator's band tags");
+          if (named == null || named.isEmpty) throw const FormatException("removeBandAnnotations: the operator's band tags are taken by key");
+          bandAnnotations.remove(userBandAnnotationSource, named);
+          return null;
+        }
+        bandAnnotations.remove(_bandAnnotationSource(params), named);
         return null;
 
       // The CLI holds no spots board for a push to land on: invoke a hook

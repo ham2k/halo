@@ -31,6 +31,7 @@ part 'scene_spectrum_layers.dart';
 part 'scene_spectrum_levels.dart';
 part 'scene_spectrum_text.dart';
 part 'scene_spectrum_trace.dart';
+part 'scene_spectrum_window.dart';
 
 /// Where a scene's spectrum controls get their sweeps, and its `radio.` values
 /// their readings. Null on the scene view for a panel that may not read the
@@ -223,6 +224,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// The last sweep in full, its levels averaged.
   SpectrumFrame? _sweep;
 
+  /// [_sweep] is the scene's `window` standing in for one, with no levels:
+  /// see [_standIn].
+  bool _sweepless = false;
+
   /// The window shown — the scene's `span`, or the operator's zoom and pan —
   /// which the trace, labels, marks and clicks all work on. Its range only:
   /// its levels are empty, and the trace draws [_sweep]'s bins where their
@@ -354,6 +359,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   Timer? _staleTimer;
   int _lastFrameMillis = 0;
   final _texts = SpectrumTextCache();
+  final _vfoLabelBox = _VfoLabelBox();
   bool _stale = true;
 
   /// Bumped to repaint without rebuilding the tree — each part on its own
@@ -486,6 +492,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
       widget.source?.changes.addListener(_onSourceChanged);
     }
     final was = old.control.spectrum!;
+    // A scene that moves the window's middle takes it back from the operator's pan.
+    if (was.centerHz != _spec.centerHz) _viewCenter = null;
     // A dial held for one radio is not another's.
     if (old.source != widget.source || was.radio != _spec.radio) _heldVfo = null;
     if (was.palette != _spec.palette || !listEquals(was.waterfallColors, _spec.waterfallColors)) {
@@ -506,7 +514,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
 
   void _onSourceChanged() {
     // A scope that would not move may now: a radio reconnected, its capabilities reported.
-    if (_recenters == false) _recenters = null;
+    if (_recenters == false && !_sweepless) _recenters = null;
     _follow();
     if (!mounted) return;
     _labelDial();
@@ -519,6 +527,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   void _follow() {
     _subscribe();
     _showWidth();
+    _standIn();
   }
 
   /// Tells the source the width this control crops its sweeps to while it
@@ -554,27 +563,13 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     });
     _staleTimer?.cancel();
     _staleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && !_stale && realNowMillis() - _lastFrameMillis > _staleAfter.inMilliseconds) setState(() => _stale = true);
+      if (mounted && !_stale && realNowMillis() - _lastFrameMillis > _staleAfter.inMilliseconds) {
+        setState(() {
+          _stale = true;
+          _standIn();
+        });
+      }
     });
-  }
-
-  /// The window shown over [sweep]. Held inside it, except where the radio
-  /// moves its scope: there the window runs ahead of the sweeps, its unswept
-  /// part blank until they catch up, so a pan or zoom keeps the pointer's
-  /// pace rather than waiting on the radio's.
-  SpectrumFrame _window(SpectrumFrame sweep) {
-    final span = _number(_spec.span);
-    if (_viewWidth != null && span != _zoomedOverSpan) _viewWidth = null;
-    final (low, high) = spectrumWindow(sweep, _viewWidth ?? span, centerHz: _viewCenter, held: _recenters != true, widestHz: _spec.maxWidthHz);
-    return SpectrumFrame(
-      lowHz: low.round(),
-      highHz: high.round(),
-      levels: Float32List(0),
-      floorDb: sweep.floorDb,
-      ceilingDb: sweep.ceilingDb,
-      noiseDb: sweep.noiseDb,
-      atMillis: sweep.atMillis,
-    );
   }
 
   /// Redraws the window shown now, between sweeps: a gesture moves it at the pointer's pace.
@@ -606,6 +601,12 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   void _onFrame(SpectrumFrame sweep) {
     if (!mounted) return;
     final wasStale = _stale;
+    if (_sweepless) {
+      // The window was the stand-in's, and its scope one the app could not move.
+      _sweepless = false;
+      _sweep = null;
+      _viewWidth = _viewCenter = _pannedAtVfo = _recenters = null;
+    }
     _sweep = _averaged(sweep);
     if (_releaseAt case final at?
         when _glideSpan == null && !_chaser.isActive && ((sweep.lowHz + sweep.highHz) / 2 - at).abs() <= (sweep.highHz - sweep.lowHz) / 100) {
@@ -735,6 +736,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   void _clearHistory() {
     _clearRows();
     _sweep = null;
+    _sweepless = false;
     _frame = null;
     _viewWidth = null;
     _viewCenter = null;
@@ -806,7 +808,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
 
   void _hover(Offset at, Size size) {
     final hit = _annotationAt(at);
-    _reveal((hit?.annotation?.collapsed ?? false) ? hit!.annotation!.id : null);
+    _reveal((hit?.annotation?.opens ?? false) ? hit!.annotation!.id : null);
     final clickable =
         ((hit?.annotation?.clickable ?? false) && widget.onAnnotation != null) ||
         ((hit?.away ?? false) && _gestures.pan == SceneSpectrumGesture.native) ||
@@ -841,7 +843,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   Widget build(BuildContext context) {
     final source = widget.source;
     final uuid = _uuid ?? source?.resolve(_spec.radio);
-    final message = source == null
+    final message = _sweepless
+        ? null
+        : source == null
         ? context.t.settings.station.spectrumUnavailable
         : uuid == null
         ? source.noRadio
@@ -986,6 +990,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                       // A painter no longer drawn leaves its last hits: clicks there would reach layers that are gone.
                       if (!front) _layerHits.clear();
                       if (!back) _behindLayerHits.clear();
+                      // With no annotations' painter there is no dial label for the axis to keep clear of.
+                      if (spec.annotations.isEmpty && vfoLabel == null) _vfoLabelBox.rect = null;
                       return [
                         if (back) layers(behind: true),
                         if (spec.pan)
@@ -996,7 +1002,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                                 painter: _PanPainter(
                                   repaint: _panRepaint,
                                   way: way,
-                                  frame: () => _stale ? null : _frame,
+                                  frame: () => _stale && !_sweepless ? null : _frame,
                                   sweep: () => _sweep,
                                   scale: _panScale,
                                   marks: marks,
@@ -1065,6 +1071,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                                   levels: _panScale,
                                   secondsPerPixel: _secondsPerPixel,
                                   hits: _annotationHits,
+                                  vfoLabelBox: _vfoLabelBox,
                                   text: labelStyle.copyWith(color: scheme.onSurface),
                                   background: scheme.surface.withValues(alpha: .8),
                                   vfoLabel: vfoLabel,
@@ -1083,6 +1090,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
                               child: CustomPaint(
                                 painter: _ScalePainter(
                                   styled: widget.source?.nativeGestures ?? true,
+                                  vfoLabel: _vfoLabelBox,
                                   texts: _texts,
                                   repaint: _panRepaint,
                                   way: way,

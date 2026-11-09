@@ -68,6 +68,8 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
 
   /// The strip in force: the scene's, or from API 17 the host's.
   SceneSpectrumLevelScale? _levelScaleFor(_Way way) {
+    // A stand-in for a sweep has no levels to scale.
+    if (_sweepless) return null;
     return _spec.levelScale ?? (_spec.noLevelScale || !(widget.source?.nativeGestures ?? true) ? null : _defaultLevelScale);
   }
 

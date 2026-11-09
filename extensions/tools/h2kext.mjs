@@ -71,8 +71,11 @@ import yazl from "yazl"
 /// adds spots pushed as they happen — `host.spots.replace`/`put`/`remove`
 /// and a spot's `key` — and `match` on `host.clusterSubscribe` and
 /// `clusterLines`, and the `keyerSets` hook category, CW and voice message
-/// sets an extension offers; and the `assistant` hook category.
-export const H2KEXT_API_VERSION = 21
+/// sets an extension offers; and the `assistant` hook category; 22 adds a
+/// band scope's `window`, shown over a blank picture while no sweep comes,
+/// and its `centerHz`, its annotations' `baseline`, `stretch`, `more` and
+/// `badge` among others (docs/extensions/packaging.md lists them).
+export const H2KEXT_API_VERSION = 22
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -253,6 +256,7 @@ SHARED_MODULES_BY_API[18] = SHARED_MODULES_BY_API[17]
 SHARED_MODULES_BY_API[19] = SHARED_MODULES_BY_API[18]
 SHARED_MODULES_BY_API[20] = SHARED_MODULES_BY_API[19]
 SHARED_MODULES_BY_API[21] = SHARED_MODULES_BY_API[20]
+SHARED_MODULES_BY_API[22] = SHARED_MODULES_BY_API[21]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

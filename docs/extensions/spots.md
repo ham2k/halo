@@ -250,7 +250,11 @@ rest stand.
 **`host.bandAnnotations.put(annotations)`** adds yours, replacing any you put
 under the same **`key`**; one without a key is only ever added.
 `remove(keys?)` takes them by key, or all of yours. A key is yours alone: no
-extension reaches another's, or the operator's. A malformed annotation
+extension reaches another's, or puts the operator's. The operator's band
+tags (`source: 'user'`) are theirs to take down, and from API 22 a panel
+that shows them may do it for them: `remove(keys, { source: 'user' })`
+takes the operator's under `keys`, only ever by key — say, the tag the
+operator right-clicked on your band map. A malformed annotation
 rejects the whole put. You hold at most 1,000, and they last until you take
 them, they expire, or the runtime restarts, so put them again from
 `onActivation`.

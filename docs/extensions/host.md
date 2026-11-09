@@ -318,7 +318,7 @@ hook that answers for a band.
 | Call | Does |
 | --- | --- |
 | `host.bandAnnotations.put(annotations)` | Adds them, replacing any you put under the same `key`; one without a `key` is only ever added. You hold at most 1,000; a malformed one rejects the call and puts none |
-| `host.bandAnnotations.remove(keys?)` | Takes the ones you put under `keys`, or every one you put |
+| `host.bandAnnotations.remove(keys?, { source? })` | Takes the ones you put under `keys`, or every one you put; with `source: 'user'` (API 22), the operator's band tags under `keys`, only by key |
 
 They last until you take them, they expire, or the runtime restarts: put
 them again from `onActivation`.

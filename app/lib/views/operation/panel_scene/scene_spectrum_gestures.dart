@@ -163,7 +163,13 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       ..onEnd = ((_) => _dragEnd())
       ..onCancel = _dragEnd;
     return {
-      if (taps) TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(TapGestureRecognizer.new, (r) => r.onTapUp = _tap),
+      if (taps)
+        TapGestureRecognizer: GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+          TapGestureRecognizer.new,
+          (r) => r
+            ..onTapUp = _tap
+            ..onSecondaryTapUp = widget.onAnnotation != null && _spec.annotations.any((a) => a.secondaryEvent != null) ? _secondaryTap : null,
+        ),
       // Along the frequency axis only, so a drag across it still scrolls a scene that scrolls.
       if (g.zoom != off || g.pan != off || _wheelTunes)
         if (_turned(_way))
@@ -425,7 +431,8 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// range in dB, the waterfall's rows a second. Not to a bundle before API 17,
   /// whose commits are its clicks.
   void _report() {
-    final reports = {..._toReport};
+    // A zoom moves the window's middle too, which a panel keeping it hears as a pan.
+    final reports = {..._toReport, if (_toReport.contains('zoom') && _viewCenter != null) 'pan'};
     _toReport.clear();
     if (!(widget.source?.nativeGestures ?? true)) return;
     final frame = _frame;
@@ -451,6 +458,10 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     final (sweep, uuid) = (_sweep, _uuid);
     if (sweep == null) return width;
     final sweepWidth = (sweep.highHz - sweep.lowHz).toDouble();
+    if (_sweepless) {
+      final widest = _spec.maxWidthHz ?? sweepWidth;
+      return width.clamp(math.min(widest, _spec.minWidthHz ?? 100.0), widest);
+    }
     final narrowestSweep = math.min(sweepWidth, (uuid == null ? null : widget.source?.minWidthHz(uuid))?.toDouble() ?? sweepWidth);
     final widest = _spec.maxWidthHz ?? _scopeWidest(sweep);
     final narrowest = math.min(
@@ -463,6 +474,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// The widest window [sweep]'s scope can be made to show: past the sweep where the app may widen it.
   double _scopeWidest(SpectrumFrame sweep) {
     final uuid = _uuid;
+    if (_sweepless) return (sweep.highHz - sweep.lowHz).toDouble();
     return math.max((sweep.highHz - sweep.lowHz).toDouble(), (uuid == null ? null : widget.source?.maxWidthHz(uuid))?.toDouble() ?? 0);
   }
 
@@ -488,6 +500,11 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     if (sweep == null) return;
     final sweepWidth = (sweep.highHz - sweep.lowHz).toDouble();
     final width = _viewWidth ?? _number(_spec.span) ?? sweepWidth;
+    // Within a scene's own window, the scope left where it is: follow keeps it on the dial.
+    if (_home != null) {
+      _viewCenter = _homeCenter(center, width);
+      return;
+    }
     if (_pastScope(width)) {
       _viewCenter = gesture || _recenters != true ? center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2) : center;
       return;
@@ -517,7 +534,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// with more than its width.
   void _fitSpan(double width, {bool last = false, bool narrow = false}) {
     final (sweep, uuid, source, now) = (_sweep, _uuid, widget.source, realNowMillis());
-    if (sweep == null || uuid == null || source == null) return;
+    if (sweep == null || uuid == null || source == null || _sweepless) return;
     if (!narrow && width <= sweep.highHz - sweep.lowHz) return;
     if (!last && now - _lastFitMillis < 250) return;
     final (middle, swept) = ((sweep.lowHz + sweep.highHz) / 2, (sweep.highHz - sweep.lowHz).toDouble());
@@ -544,8 +561,10 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       _sweepBeforeNarrowing = null;
       _fitSpan(back, last: true, narrow: true);
     }
+    // Within a scene's own window, its middle (or `centerHz`) again, rather than the dial's: the
+    // scene hears only the zoom, and its view is the one it gave.
     final uuid = _uuid;
-    if (uuid != null) {
+    if (uuid != null && _home == null) {
       if (_vfo case final vfo?) _moveTo(vfo, last: true);
     }
     _reframe();
@@ -582,11 +601,12 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
     final at = e.localPosition;
     if ((_annotationAt(at)?.away ?? false) && _gestures.pan == SceneSpectrumGesture.native) return _toVfo();
     // A collapsed one is read before it is acted on: a touch, with no hover to open it, opens it first.
-    if (_annotationAt(at)?.annotation case final collapsed? when collapsed.collapsed && collapsed.id != _revealed) return _reveal(collapsed.id);
+    if (_annotationAt(at)?.annotation case final collapsed? when collapsed.opens && collapsed.id != _revealed) return _reveal(collapsed.id);
     // And closes again with a touch anywhere else, which no pointer leaving it does.
     if (_revealed != null && _annotationAt(at)?.annotation?.id != _revealed) _reveal(null);
-    if (_annotationAt(at) case (:final annotation?, :final hz, rect: _, away: _) when annotation.clickable && widget.onAnnotation != null) {
-      return _click(annotation.event, annotation.menu, e, (action, details) => widget.onAnnotation!(annotation, action, hz, details));
+    if (_annotationAt(at) case (:final annotation?, :final hz, :final lines, rect: _, away: _) when annotation.clickable && widget.onAnnotation != null) {
+      final line = _lineAt(lines, at);
+      return _click(annotation.event, annotation.menu, e, (action, details) => widget.onAnnotation!(annotation, action, hz, {...details, 'line': ?line}));
     }
     if (_layerAt(at) case final layer?) {
       final hz = _hzAt(at, _screen);
@@ -608,6 +628,25 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
       return;
     }
     _clickTune(at);
+  }
+
+  /// A right-click on an annotation with a `secondaryEvent` sends it, as a click sends its `event`,
+  /// naming the line of an open list. Anywhere else it does nothing: the picture has no menu of its own.
+  void _secondaryTap(TapUpDetails e) {
+    final at = e.localPosition;
+    if (_annotationAt(at) case (:final annotation?, :final hz, :final lines, rect: _, away: _)) {
+      final (event, send) = (annotation.secondaryEvent, widget.onAnnotation);
+      if (event == null || send == null) return;
+      final line = _lineAt(lines, at);
+      send(annotation, event, hz, {..._clickAt(e), 'line': ?line});
+    }
+  }
+
+  /// On an annotation open with more lines, the one at [at]: 0 its own, 1 the first of `more`.
+  int? _lineAt(List<double>? lines, Offset at) {
+    if (lines == null || lines.isEmpty) return null;
+    final below = lines.indexWhere((bottom) => at.dy < bottom);
+    return below < 0 ? lines.length - 1 : below;
   }
 
   /// A click on the dial's label waiting at an edge: the window goes to the

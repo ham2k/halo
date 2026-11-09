@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -912,6 +913,498 @@ void main() {
     expect(events.where((e) => e['annotation'] == 'hidden'), isNotEmpty);
   });
 
+  testWidgets('a label with more lines opens them down from where it stands, and a click names the line', (tester) async {
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    const spectrum = {
+      'vfoLabel': false,
+      'annotations': [
+        {
+          'id': 'group',
+          'text': 'K9NEW+ 2',
+          'hz': 14050000,
+          'offset': 20,
+          'event': 'spot',
+          'more': ['W1OLD', 'N2XYZ'],
+          'openBorder': {'color': '#FFFF0000'},
+          'background': '#CCFFFFFF',
+          'openBackground': '#FF00FF00',
+          'pointer': false,
+        },
+      ],
+    };
+    final events = await _show(tester, _Radio(), spectrum: spectrum);
+    Rect box() => ((tester.widget<CustomPaint>(labels).painter! as dynamic).hits as List).cast<dynamic>().single.rect as Rect;
+    bool filledOpen() {
+      final painter = tester.widget<CustomPaint>(labels).painter!;
+      final canvas = TestRecordingCanvas();
+      painter.paint(canvas, tester.getSize(labels));
+      return canvas.invocations.any(
+        (call) => call.invocation.memberName == #drawPath && (call.invocation.positionalArguments[1] as Paint).color.toARGB32() == 0xFF00FF00,
+      );
+    }
+
+    List<Rect> bordered() {
+      final painter = tester.widget<CustomPaint>(labels).painter!;
+      final canvas = TestRecordingCanvas();
+      painter.paint(canvas, tester.getSize(labels));
+      return [
+        for (final call in canvas.invocations)
+          if (call.invocation.memberName == #drawPath && (call.invocation.positionalArguments[1] as Paint).color.toARGB32() == 0xFFFF0000)
+            (call.invocation.positionalArguments[0] as Path).getBounds(),
+      ];
+    }
+
+    final closed = box();
+    expect(bordered(), isEmpty, reason: 'no border while closed');
+    expect(filledOpen(), isFalse, reason: 'its own background while closed');
+    // A touch opens it first, acting on nothing.
+    await tester.tapAt(tester.getTopLeft(labels) + closed.center);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(events.where((e) => e['annotation'] == 'group'), isEmpty);
+    final open = box();
+    expect((open.top, open.left), (closed.top, closed.left), reason: 'its first line stays where it stood');
+    expect(open.height, greaterThan(closed.height * 2), reason: "three lines");
+    // On its edge facing the spectrum's foot it stands from: the bottom, along its whole width.
+    expect(filledOpen(), isTrue, reason: 'the open fill');
+    final border = bordered().single;
+    expect((border.left, border.right, border.top), (open.left, open.right, open.bottom));
+    // The last line clicked: the second of `more`.
+    await tester.tapAt(tester.getTopLeft(labels) + Offset(open.center.dx, open.bottom - 4));
+    await tester.pump(const Duration(milliseconds: 300));
+    final click = events.lastWhere((e) => e['annotation'] == 'group');
+    expect((click['at'] as Map)['line'], 2);
+  });
+
+  testWidgets('a right-click on a label sends its secondaryEvent, naming the line; on one without, nothing', (tester) async {
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+    const spectrum = {
+      'vfoLabel': false,
+      'annotations': [
+        {
+          'id': 'group',
+          'text': 'K9NEW',
+          'hz': 14030000,
+          'offset': 20,
+          'event': 'spot',
+          'secondaryEvent': 'forget',
+          'more': ['W1OLD', 'N2XYZ'],
+          'pointer': false,
+        },
+        {'id': 'plain', 'text': 'K1ABC', 'hz': 14070000, 'offset': 20, 'event': 'spot', 'pointer': false},
+      ],
+    };
+    final events = await _show(tester, _Radio(), spectrum: spectrum);
+    Rect box(String id) =>
+        ((tester.widget<CustomPaint>(labels).painter! as dynamic).hits as List).cast<dynamic>().firstWhere((h) => h.annotation.id == id).rect as Rect;
+    Future<void> rightClick(Offset at) async {
+      await tester.tapAt(tester.getTopLeft(labels) + at, buttons: kSecondaryButton);
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    await rightClick(box('plain').center);
+    expect(events.where((e) => e['annotation'] == 'plain'), isEmpty, reason: 'no secondaryEvent: a right-click does nothing, nor tunes');
+    // Opened by a touch, then the last of its lines right-clicked.
+    await tester.tapAt(tester.getTopLeft(labels) + box('group').center);
+    await tester.pump(const Duration(milliseconds: 300));
+    final open = box('group');
+    await rightClick(Offset(open.center.dx, open.bottom - 4));
+    final click = events.singleWhere((e) => e['annotation'] == 'group');
+    expect((click['action'], (click['at'] as Map)['line']), ('forget', 2));
+  });
+
+  group('an annotation\'s box', () {
+    // 14.000–14.100 MHz across 400 pixels: 250 Hz a pixel, 14.050 MHz at 200.
+    final labels = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter');
+
+    /// The annotations' layer painted again: what it drew, and where its clicks land.
+    (TestRecordingCanvas, List<dynamic>) painted(WidgetTester tester) {
+      final painter = tester.widget<CustomPaint>(labels).painter!;
+      final canvas = TestRecordingCanvas();
+      painter.paint(canvas, tester.getSize(labels));
+      return (canvas, ((painter as dynamic).hits as List).cast<dynamic>());
+    }
+
+    /// Each text drawn: its paragraph and where its top left is.
+    List<(ui.Paragraph, Offset)> texts(TestRecordingCanvas canvas) => [
+      for (final call in canvas.invocations)
+        if (call.invocation.memberName == #drawParagraph)
+          (call.invocation.positionalArguments[0] as ui.Paragraph, call.invocation.positionalArguments[1] as Offset),
+    ];
+
+    /// One annotation at 14.050 MHz, with no point, so its click box is its box: that box, and its
+    /// text where it draws one.
+    Future<(Rect, (ui.Paragraph, Offset)?, TestRecordingCanvas)> shown(WidgetTester tester, Map<String, dynamic> annotation) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'annotations': [
+            {'id': 'spot', 'hz': 14050000, 'offset': 20, 'pointer': false, ...annotation},
+          ],
+        },
+      );
+      final (canvas, hits) = painted(tester);
+      return (hits.single.rect as Rect, texts(canvas).singleOrNull, canvas);
+    }
+
+    testWidgets('with baseline it runs from the capitals\' tops to the baseline, the descenders hanging below it', (tester) async {
+      const spot = {'text': 'Kg', 'size': 20};
+      final (whole, (wholeText, wholeAt)!, _) = await shown(tester, spot);
+      final (capped, (cappedText, cappedAt)!, _) = await shown(tester, {...spot, 'baseline': true});
+      expect(capped.bottom, whole.bottom, reason: 'the offset places the foot of either');
+      expect(capped.height, closeTo(20 * .71 + 4, .5), reason: 'the capitals\' height and the padding above and below');
+      expect(capped.height, lessThan(whole.height));
+      // The baseline on the box's padding, where over the whole line it stands the descent higher.
+      expect(cappedAt.dy + cappedText.alphabeticBaseline, closeTo(capped.bottom - 2, .5));
+      expect(cappedAt.dy + cappedText.height, greaterThan(capped.bottom), reason: 'the descenders hang past the box');
+      expect(wholeAt.dy + wholeText.alphabeticBaseline, lessThan(whole.bottom - 3));
+    });
+
+    testWidgets('stretched over a passband wider than it, it covers the passband with its text in the middle; narrower, it is as it was', (tester) async {
+      const spot = {'text': 'K', 'align': 'start'};
+      final (alone, _, _) = await shown(tester, spot);
+      expect(alone.left, closeTo(200, .5), reason: 'starting at its frequency');
+      // 10 kHz is 40 pixels, wider than one letter and its padding.
+      final (stretched, (text, at)!, _) = await shown(tester, {
+        ...spot,
+        'stretch': {'from': -5000, 'to': 5000},
+      });
+      expect(stretched.left, closeTo(180, .5));
+      expect(stretched.right, closeTo(220, .5));
+      expect(stretched.height, alone.height);
+      expect(at.dx + text.longestLine / 2, closeTo(200, 1), reason: 'the text centred in the passband, not at its start');
+      final (narrow, _, _) = await shown(tester, {
+        ...spot,
+        'stretch': {'from': -100, 'to': 100},
+      });
+      expect(narrow, alone);
+    });
+
+    testWidgets('padding as {x, y} grows it by x either side of the text and y above and below; a number by as much all round', (tester) async {
+      const spot = {'text': 'K1ABC'};
+      final (none, _, _) = await shown(tester, {...spot, 'padding': 0});
+      final (even, _, _) = await shown(tester, {...spot, 'padding': 5});
+      final (apart, (_, at)!, _) = await shown(tester, {
+        ...spot,
+        'padding': {'x': 10, 'y': 3},
+      });
+      expect(even.width - none.width, closeTo(10, .01));
+      expect(even.height - none.height, closeTo(10, .01));
+      expect(apart.width - none.width, closeTo(20, .01));
+      expect(apart.height - none.height, closeTo(6, .01));
+      expect(at.dx - apart.left, closeTo(10, .01), reason: 'the text x in from the box\'s edge');
+      expect(at.dy - apart.top, closeTo(3, .01), reason: 'and y down from its top');
+      expect(apart.bottom, none.bottom, reason: 'standing on its offset either way');
+      final (across, _, _) = await shown(tester, {
+        ...spot,
+        'padding': {'x': 10},
+      });
+      expect(across.height - none.height, closeTo(4, .01), reason: 'above and below, the default 2');
+    });
+
+    testWidgets('a badge follows the text in a pill, widening the label', (tester) async {
+      const spot = {'text': 'K1ABC', 'align': 'start'};
+      final (alone, _, _) = await shown(tester, spot);
+      final (badged, (_, at)!, canvas) = await shown(tester, {
+        ...spot,
+        'badge': {'text': '3', 'background': '#FF0000FF'},
+      });
+      expect(badged.left, alone.left);
+      expect(badged.width, greaterThan(alone.width));
+      final pill = [
+        for (final call in canvas.invocations)
+          if (call.invocation.memberName == #drawRRect && (call.invocation.positionalArguments[1] as Paint).color.toARGB32() == 0xFF0000FF)
+            (call.invocation.positionalArguments[0] as RRect).outerRect,
+      ].single;
+      // The text alone is the box less its padding: the pill starts past it, and ends inside the box.
+      expect(pill.left, greaterThan(at.dx + alone.width - 4));
+      expect(pill.right, lessThanOrEqualTo(badged.right + .5));
+    });
+
+    testWidgets('open, where one of its lines has an icon, every line\'s text starts past an icon\'s room', (tester) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'annotations': [
+            {
+              'id': 'group',
+              'text': 'K9NEW',
+              'hz': 14050000,
+              'offset': 20,
+              'event': 'spot',
+              'pointer': false,
+              'more': [
+                {
+                  'text': 'W1OLD',
+                  'icon': {'name': 'pine-tree'},
+                },
+                'N2XYZ',
+              ],
+            },
+          ],
+        },
+      );
+      final closed = painted(tester).$2.single.rect as Rect;
+      await tester.tapAt(tester.getTopLeft(labels) + closed.center);
+      await tester.pump(const Duration(milliseconds: 300));
+      final (text, _) = texts(painted(tester).$1).single;
+      // The lines as laid out: each an icon's glyph, or the same glyph unseen, and a space before its text.
+      final glyph = String.fromCharCode(resolveIconName('pine-tree').codePoint);
+      final plain = [
+        for (final line in ['K9NEW', 'W1OLD', 'N2XYZ']) '$glyph $line',
+      ].join('\n');
+      final starts = [
+        for (final line in ['K9NEW', 'W1OLD', 'N2XYZ']) text.getBoxesForRange(plain.indexOf(line), plain.indexOf(line) + 1).single.left,
+      ];
+      expect(starts.toSet(), hasLength(1), reason: 'lined up: $starts');
+      expect(starts.first, greaterThan(0), reason: 'past the icon\'s room, on the lines without one too');
+    });
+
+    testWidgets('collapsed, its line is as wide as the box with width box, or the pixels it names', (tester) async {
+      const spot = {'text': 'K1ABC', 'event': 'spot'};
+      final (box, _, _) = await shown(tester, spot);
+      Future<Rect> line(Object collapsed) async => (await shown(tester, {...spot, 'collapsed': collapsed})).$1;
+      expect((await line({'width': 'box'})).width, closeTo(box.width, .01));
+      expect((await line({'width': 30})).width, closeTo(30, .01));
+      expect((await line(true)).width, closeTo(box.width * .8, .01), reason: 'four fifths of it by default');
+      expect((await line({'width': 'box'})).center.dx, closeTo(box.center.dx, .01));
+    });
+
+    // A spot's call over its 10 kHz passband: the box 180–220 pixels, the text in its middle.
+    const stretchedGroup = {
+      'id': 'group',
+      'text': 'K',
+      'hz': 14050000,
+      'offset': 20,
+      'event': 'spot',
+      'pointer': false,
+      'stretch': {'from': -5000, 'to': 5000},
+      'more': ['W1OLD', 'N2XYZ'],
+    };
+
+    testWidgets('stretched over a passband and opened, its first line stays where its text stood closed', (tester) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'annotations': [stretchedGroup],
+        },
+      );
+      final (closedCanvas, closedHits) = painted(tester);
+      final closed = closedHits.single.rect as Rect;
+      final (_, shut) = texts(closedCanvas).single;
+      expect(shut.dx, greaterThan(closed.left + 10), reason: 'centred in the passband, well in from its start');
+      await tester.tapAt(tester.getTopLeft(labels) + closed.center);
+      await tester.pump(const Duration(milliseconds: 300));
+      final (openCanvas, _) = painted(tester);
+      final (text, at) = texts(openCanvas).single;
+      expect(text.numberOfLines, 3, reason: 'open');
+      expect(at.dx, closeTo(shut.dx, .5), reason: 'not at the start of the passband the closed box covered');
+      expect(at.dy, closeTo(shut.dy, .5));
+    });
+
+    testWidgets('stretched and opened, the pointer on the part of the closed box the open one leaves keeps it open', (tester) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'annotations': [stretchedGroup],
+        },
+      );
+      final closed = painted(tester).$2.single.rect as Rect;
+      bool open() => texts(painted(tester).$1).single.$1.numberOfLines > 1;
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getTopLeft(labels) + closed.center);
+      await tester.pump();
+      expect(open(), isTrue);
+      // The passband's low end, which the open box, starting where the text stood, does not reach.
+      final end = Offset(closed.left + 2, closed.center.dy);
+      expect(painted(tester).$2.single.rect.contains(end), isTrue, reason: 'its hit holds the closed box');
+      await mouse.moveTo(tester.getTopLeft(labels) + end);
+      await tester.pump();
+      expect(open(), isTrue, reason: 'still on the label');
+      await mouse.moveTo(tester.getTopLeft(labels) + Offset(closed.left - 20, closed.center.dy));
+      await tester.pump();
+      expect(open(), isFalse, reason: 'off it, it closes');
+      await mouse.removePointer();
+    });
+
+    testWidgets('opened near the screen\'s edges, its lines move up and left only as far as they must to stay on it', (tester) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'annotations': [
+            {
+              'id': 'group',
+              'text': 'K9NEW',
+              'hz': 14099000,
+              'align': 'start',
+              'offset': 4,
+              'event': 'spot',
+              'pointer': false,
+              // Hanging down from just over the spectrum's foot, sixteen lines would run past the control's.
+              'more': [for (var i = 0; i < 15; i++) 'W${i}OLD'],
+            },
+          ],
+        },
+      );
+      final screen = Offset.zero & tester.getSize(labels);
+      final closed = painted(tester).$2.single.rect as Rect;
+      expect(closed.right, greaterThan(screen.right), reason: 'starting 4 pixels short of the edge, it runs past it');
+      await tester.tapAt(tester.getTopLeft(labels) + Offset(closed.left + 2, closed.center.dy));
+      await tester.pump(const Duration(milliseconds: 300));
+      final (canvas, hits) = painted(tester);
+      final (text, at) = texts(canvas).single;
+      expect(text.numberOfLines, 16);
+      expect(text.height + 4, lessThan(screen.height), reason: 'it fits once moved');
+      final open = Rect.fromLTWH(at.dx - 2, at.dy - 2, text.longestLine + 4, text.height + 4);
+      expect(open.bottom, closeTo(screen.bottom, 1), reason: 'moved up just enough');
+      expect(open.top, lessThan(closed.top));
+      expect(open.right, closeTo(screen.right, 1), reason: 'and left just enough');
+      expect(open.left, lessThan(closed.left));
+      expect((hits.single.rect as Rect).top, closeTo(open.top, .5), reason: 'found where it is drawn');
+    });
+  });
+
+  group('the frequency axis', () {
+    final scales = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_ScalePainter');
+
+    TestRecordingCanvas painted(WidgetTester tester) {
+      final canvas = TestRecordingCanvas();
+      tester.widget<CustomPaint>(scales).painter!.paint(canvas, tester.getSize(scales));
+      return canvas;
+    }
+
+    /// Each label drawn on the screen, as wide and tall as its text.
+    List<Rect> labelBoxes(TestRecordingCanvas canvas) => [
+      for (final call in canvas.invocations)
+        if (call.invocation.memberName == #drawParagraph)
+          (call.invocation.positionalArguments[1] as Offset) &
+              Size((call.invocation.positionalArguments[0] as ui.Paragraph).longestLine, (call.invocation.positionalArguments[0] as ui.Paragraph).height),
+    ];
+
+    testWidgets('its labels stand on their offset by the edge align names, or on that edge of the gap with none', (tester) async {
+      Future<(List<Rect>, double)> axis(Map<String, dynamic> labels) async {
+        await _show(
+          tester,
+          _Radio(),
+          spectrum: {
+            'vfoLabel': false,
+            'scale': {'gap': 30, 'labels': labels},
+          },
+        );
+        final drawn = labelBoxes(painted(tester));
+        expect(drawn, isNotEmpty);
+        return (drawn, _panHeight(tester));
+      }
+
+      // Offsets measure from the spectrum's foot, where the gap starts.
+      final (starts, base) = await axis({'align': 'start'});
+      expect(starts.map((r) => r.top), everyElement(closeTo(base, .01)));
+      final (ends, _) = await axis({'align': 'end'});
+      expect(ends.map((r) => r.bottom), everyElement(closeTo(base + 30, .01)), reason: 'the gap\'s far edge');
+      final (centres, _) = await axis({'align': 'center'});
+      expect(centres.map((r) => r.center.dy), everyElement(closeTo(base + 15, .01)));
+      final (startsAt, _) = await axis({'align': 'start', 'offset': 10});
+      expect(startsAt.map((r) => r.top), everyElement(closeTo(base + 10, .01)));
+      final (endsAt, _) = await axis({'align': 'end', 'offset': 10});
+      expect(endsAt.map((r) => r.bottom), everyElement(closeTo(base + 10, .01)));
+    });
+
+    testWidgets('turned sideways, labels that align to the end line up on the gap\'s waterfall side', (tester) async {
+      await _show(
+        tester,
+        _Radio(),
+        spectrum: {
+          'vfoLabel': false,
+          'flow': 'right',
+          'scale': {
+            'gap': 30,
+            'labels': {'align': 'end'},
+          },
+        },
+      );
+      // Flowing right, the spectrum is on the left and the gap runs down the screen beside it.
+      final base = tester.getSize(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_PanPainter')).width;
+      final drawn = labelBoxes(painted(tester));
+      expect(drawn, isNotEmpty);
+      expect(drawn.map((r) => r.right), everyElement(closeTo(base + 30, 1)));
+      expect(drawn.map((r) => r.left), everyElement(lessThan(base + 30)));
+    });
+
+    testWidgets('its ticks grow from their offset toward the waterfall, or back over the spectrum with end', (tester) async {
+      Future<(List<(double, double)>, double)> ticks(Map<String, dynamic> ticks) async {
+        await _show(
+          tester,
+          _Radio(),
+          spectrum: {
+            'vfoLabel': false,
+            'scale': {'gap': 30, 'labels': false, 'ticks': ticks},
+          },
+        );
+        final drawn = [
+          for (final call in painted(tester).invocations)
+            if (call.invocation.memberName == #drawLine)
+              ((call.invocation.positionalArguments[0] as Offset).dy, (call.invocation.positionalArguments[1] as Offset).dy),
+        ];
+        expect(drawn, isNotEmpty);
+        return (drawn, _panHeight(tester));
+      }
+
+      final (down, base) = await ticks({'offset': 4, 'length': 6});
+      expect(down.map((t) => t.$1), everyElement(closeTo(base + 4, .01)));
+      expect(down.map((t) => t.$2 - t.$1), everyElement(greaterThan(0)));
+      final (up, _) = await ticks({'offset': 4, 'length': 6, 'align': 'end'});
+      expect(up.map((t) => t.$1), everyElement(closeTo(base + 4, .01)));
+      expect(up.map((t) => t.$2 - t.$1), everyElement(lessThan(0)));
+    });
+
+    testWidgets('a label under the dial\'s is dimmed so the dial reads over it; those clear of it are not', (tester) async {
+      Future<(List<Rect>, int, Rect?)> axis(Map<String, dynamic> labels) async {
+        await _show(
+          tester,
+          _Radio(),
+          spectrum: {
+            'scale': {'labels': labels},
+          },
+        );
+        final canvas = painted(tester);
+        final dimmed = [
+          for (final call in canvas.invocations)
+            if (call.invocation.memberName == #saveLayer) call.invocation.positionalArguments[0] as Rect,
+        ];
+        final dial =
+            ((tester.widget<CustomPaint>(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_AnnotationPainter')).painter!
+                                as dynamic)
+                            .hits
+                        as List)
+                    .cast<dynamic>()
+                    .where((hit) => hit.annotation == null)
+                    .singleOrNull
+                    ?.rect
+                as Rect?;
+        return (dimmed, labelBoxes(canvas).length, dial);
+      }
+
+      // Raised to the top of the panadapter, the labels about 14.050 MHz lie under the dial's.
+      final (under, drawn, dial) = await axis({'offset': -100});
+      expect(under, isNotEmpty);
+      expect(under.every((box) => box.overlaps(dial!)), isTrue, reason: 'only those the dial\'s label covers');
+      expect(under.length, lessThan(drawn));
+      // In the gap, where they stand by default, nothing covers them.
+      final (clear, _, _) = await axis(const {});
+      expect(clear, isEmpty);
+    });
+  });
+
   testWidgets('a crowded band\'s text stays laid out from one frame to the next', (tester) async {
     // 256 labels and the axis's, the level strip's and the dial's: kept to 256, the cache would let go
     // of each frame's text before the next asked for it again, laying all of it out every frame.
@@ -1275,6 +1768,38 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
   });
 
+  testWidgets('in a scene\'s own window, a double tap on the axis after a zoom and a pan puts back its middle or centerHz, not the dial', (tester) async {
+    // The sweep, 14.000–14.100 MHz, inside the window, 14.000–14.200 shown 100 kHz at a time; the dial well below its middle.
+    Future<double> reset(Map<String, dynamic> spectrum) async {
+      final radio = _Radio()..vfo = 14030000;
+      await _show(
+        tester,
+        radio,
+        spectrum: {
+          'window': {'lowHz': 14000000, 'highHz': 14200000},
+          'span': 100000,
+          ...spectrum,
+        },
+      );
+      final middle = _shownMiddle(tester);
+      await _zoomIn(tester);
+      final box = _box(tester);
+      await tester.dragFrom(Offset(box.left + box.width * .5, box.bottom - 40), const Offset(-100, 0));
+      await tester.pump();
+      expect(_shownMiddle(tester), isNot(closeTo(middle, 100)), reason: 'zoomed and panned');
+      await tester.tapAt(_onAxis(tester, .3));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tapAt(_onAxis(tester, .3));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(radio.tunes, isEmpty);
+      return _shownMiddle(tester);
+    }
+
+    expect(await reset(const {}), closeTo(14100000, 1));
+    expect(await reset(const {'centerHz': 14060000}), closeTo(14060000, 1));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
   testWidgets('a double tap on the axis puts the scene\'s window back, about the dial', (tester) async {
     final radio = _Radio();
     await _show(tester, radio);
@@ -1302,7 +1827,8 @@ void main() {
     expect(told(), isEmpty, reason: 'a scene saving its preferences wants where the zoom ended, not every step of it');
     await drag.up();
     await tester.pump();
-    expect(told(), ['zoom commit 36788']);
+    // A zoom moves the middle too, which a scene keeping where it was left needs.
+    expect(told(), ['zoom commit 36788', 'pan commit 14050000']);
 
     events.clear();
     await tester.dragFrom(Offset(_box(tester).left + _box(tester).width * .3, _box(tester).bottom - 40), const Offset(-100, 0));
@@ -1322,6 +1848,40 @@ void main() {
     await tester.dragFrom(_onAxis(tester, .5), const Offset(0, 56));
     await tester.pump();
     expect(told(), ['split commit 0.60']);
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('a scene\'s centerHz is the window\'s middle until the operator pans or zooms; one that changes takes it back there', (tester) async {
+    final radio = _Radio();
+    Future<void> show(double centerHz) => _show(tester, radio, spectrum: {'span': 40000, 'centerHz': centerHz});
+    double shownWidth() {
+      final frame =
+          (tester.widgetList<CustomPaint>(find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_PanPainter')).single.painter
+                      as dynamic)
+                  .frame()
+              as SpectrumFrame;
+      return (frame.highHz - frame.lowHz).toDouble();
+    }
+
+    await show(14030000);
+    expect(_shownMiddle(tester), 14030000, reason: 'not the sweep\'s middle, 14.050');
+    // 40 kHz across 400 pixels: the finger left by 100, clear of the dial's line at the right edge, the window right by 10 kHz.
+    final box = _box(tester);
+    await tester.dragFrom(Offset(box.left + box.width * .3, box.bottom - 40), const Offset(-100, 0));
+    await tester.pump();
+    expect(_shownMiddle(tester), closeTo(14040000, 1));
+    await show(14030000);
+    expect(_shownMiddle(tester), closeTo(14040000, 1), reason: 'the same centerHz again leaves the window where the operator put it');
+    await show(14070000);
+    expect(_shownMiddle(tester), 14070000, reason: 'a panel putting the window back where it was left');
+
+    // Away from the axis's middle: in.
+    await tester.dragFrom(_onAxis(tester, .75), const Offset(60, 0));
+    await tester.pump();
+    expect(shownWidth(), lessThan(40000), reason: 'zoomed in');
+    expect(_shownMiddle(tester), isNot(closeTo(14070000, 1)), reason: 'about the frequency pressed on, the middle moves too');
+    await show(14060000);
+    expect(_shownMiddle(tester), closeTo(14060000, 1));
     await tester.pump(const Duration(seconds: 1));
   });
 

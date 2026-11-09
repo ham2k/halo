@@ -33,6 +33,7 @@ that must reach an app older than API 5 keeps that name and the lower level.
 | 17 | `bandScope` as the band scope's kind, `spectrum` for its upper section where it took `pan`, and its `gestures`, default axis and `levelScale`, `vfoLabel`, `widthHz`, `stepHz` and `vfoHz`, `layers`, and a click's step that follows the zoom |
 | 19 | `radio.reportedFrequencyHz`, the radio's own report beside the dial |
 | 20 | the band scope's `minWidthHz` and `maxWidthHz`, its `vfoLabel`'s `arrow`, up to 512 of its `layers` and 256 `annotations`, and an annotation's `collapsed` |
+| 22 | the band scope's `window` and `centerHz`, an annotation's `baseline`, `stretch`, `more`, `badge`, `openBorder`, `openBackground` and `padding: { x, y }`, a collapsed one's `width: 'box'`, a zoom's `commit` of its middle as a pan, and its axis labels' and ticks' `align`; an annotation's `secondaryEvent`, sent on a right-click |
 
 A bundle declares the highest level it uses; an app speaking less refuses it
 at install rather than showing the panel as an unknown kind.
@@ -412,7 +413,14 @@ a scope, the control says why instead. Placed like a native control, it takes:
   frequency in the app: MHz in bold, kHz at the labels' `weight`, Hz smaller.
   `labels: false` draws none; `labels.decimals` (0 to 6) fixes the decimals
   of MHz every label shows (omitted, every kHz digit and as many Hz as tell
-  one label from the next). From API 17 a label's tick is taller and heavier,
+  one label from the next). `labels.align` (API 22) says which edge of each
+  label, across the axis as if flowing down, is at its `offset`: `start` its
+  top, `end` its bottom, `center` its middle; with no `offset`, the gap's
+  edge on that side. Turned sideways, `end` lines the labels up on the gap's
+  waterfall side, each reaching back over the spectrum as far as it runs, so
+  the gap can be as narrow as its ticks. `ticks.align` (API 22) is `start`
+  (the default), each tick growing from its `offset` toward the waterfall, or
+  `end`, growing back over the spectrum. From API 17 a label's tick is taller and heavier,
   with half-length ones between: every 100 Hz once labels are 1 kHz apart or
   closer and those are 4 pixels apart, else every 1 kHz where those are.
   A click on the axis tunes as one on the picture once no second click
@@ -467,6 +475,21 @@ a scope, the control says why instead. Placed like a native control, it takes:
   instead of the window: where the radio lets the app place it, moved just
   far enough to keep the dial that share of the sweep's own width from its
   edges.
+- `window` (API 22): `{lowHz, highHz}`, the window shown until the operator
+  pans. Over a sweep it is where the window centers, `span` its width, the
+  picture over the part the sweep covers. While no sweep comes — no radio, a
+  radio without a scope or with it off, or before the first sweep — it is the
+  whole window: the axis, overlays, annotations and layers are drawn and the
+  gestures work over a blank picture, as over a sweep that wide from a scope
+  the app cannot move, so a zoom and a pan stay within it; the level strip is
+  left out, and no message says why there is no picture. A sweep takes its
+  place as it arrives; one that stops for 3 seconds gives it back, unzoomed.
+  A band map names its band here and works the same with a scope or without.
+- `centerHz` (API 22): the window's middle until the operator pans, for a
+  panel keeping where the operator left it — a pan's `commit` says where, and
+  from API 22 a zoom sends one too, since it moves the middle. One that
+  changes takes the window back there. Omitted, `window`'s middle, or the
+  sweep's.
 - `follow` (0 to 0.45): keeps the tuned frequency at least this share of the
   width from either edge by moving the window just far enough — within the
   sweep a crop, past it the radio's scope — gliding there once the dial
@@ -479,7 +502,9 @@ a scope, the control says why instead. Placed like a native control, it takes:
   `value`, its `id` as `annotation` and where it was clicked as `at`, and
   does not tune. One with a `menu` (API 17, `[{ label, event }]` like a
   button's, and no `event` beside it) opens it where it was clicked, and
-  sends the item picked the same way. An `icon` (`{ name, color? }`, an MDI
+  sends the item picked the same way. One with a `secondaryEvent` (API 22)
+  sends it the same way when right-clicked — taking it down, say; without
+  one a right-click does nothing. An `icon` (`{ name, color? }`, an MDI
   or `fa-` name) is drawn before the text at its size, in the text's color
   unless it names its own; an app without it draws the text alone. Its
   `offset` is pixels up from the spectrum's foot or down from the
@@ -487,8 +512,26 @@ a scope, the control says why instead. Placed like a native control, it takes:
   stands it that far above the noise on any radio, once the app has
   estimated it, and an app without `y` measures from the edge. With
   `borderEdges: "near"` its border is only the edge facing that one, an
-  underline on the spectrum. With `collapsed` (API 20: `true`, or
-  `{ width }` in pixels, four fifths of the box by default) it is drawn as
+  underline on the spectrum. With `baseline` (API 22) its box runs from the
+  tops of the capitals to the baseline rather than over the whole line, so
+  `align` and `offset` place those, descenders hanging past it. With
+  `stretch` (API 22, `{ from, to }` in Hz from its frequency, a passband) the
+  box covers that span where it is longer than the box, the text centered in
+  it. Its `padding` (API 22) may be `{ x, y }`, across the text and above
+  and below it apart. Its `more` (API 22, up to 32 lines) shows under the
+  text while the pointer is on it, or a touch has opened it, hanging down the
+  screen from where the box stands, over any annotation it would overlap —
+  the spots a label stands for; a click on it open says which line in its
+  `at`'s `line`, 0 its own text, 1 the first of `more`. A line may be
+  `{ text, icon }`; where any line has an icon, every line's text starts past
+  an icon's room. A `badge` (API 22, `{ text, color?, background? }`) is a
+  short count or tag after the text, a little smaller, in a pill. An
+  `openBorder` (API 22, `{ color, width? }`) is drawn on the edge facing the
+  one `offset` measures from while it is open, and an `openBackground`
+  (API 22) fills its box then in place of its `background`. With `collapsed`
+  (API 20: `true`, or
+  `{ width }` in pixels, four fifths of the box by default, or from API 22
+  `'box'`, the box's own width) it is drawn as
   a line that wide where that border would be, its hover reach mostly on
   the side away from the box, and whole only while the pointer is on the
   line or the box, over any annotation it would overlap, which waits

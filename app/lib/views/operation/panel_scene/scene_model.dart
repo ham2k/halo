@@ -10,6 +10,7 @@ import '../panel_environment.dart';
 part 'scene_model_spectrum_layers.dart';
 part 'scene_model_spectrum_gestures.dart';
 part 'scene_model_spectrum_trace.dart';
+part 'scene_model_spectrum_annotations.dart';
 
 /// The values a scene that names a [PanelScene.radio] is given, live, by the
 /// host: its meters and whether it is transmitting (1 or 0). A missing reading
@@ -805,6 +806,12 @@ class SceneSpectrumLabels {
   final bool italic;
   final Color? color;
 
+  /// Which edge of each label, across the axis as if flowing down, is at
+  /// [offset]: `start` its top, `end` its bottom, `center` its middle. With
+  /// no offset, the gap's edge on that side, or its middle. Null: the top at
+  /// [offset], or the label centred in the gap.
+  final String? align;
+
   SceneSpectrumLabels(Map<dynamic, dynamic> json)
     : interval = SceneNumber.parse(json, 'interval', min: 1, max: 1e9),
       size = SceneNumber.parse(json, 'size', min: 4, max: 72),
@@ -813,7 +820,8 @@ class SceneSpectrumLabels {
       decimals = json['decimals'] == null ? null : number(json, 'decimals', min: 0, max: 6).round(),
       fontFamily = json['fontFamily'] == null ? null : string(json, 'fontFamily'),
       italic = json['italic'] == true,
-      color = _color(json, 'color');
+      color = _color(json, 'color'),
+      align = _oneOf(json, 'align', const ['start', 'center', 'end']);
 
   Iterable<String> get valueNames => [
     for (final n in [interval, size, weight, offset]) ?n?.value,
@@ -893,12 +901,18 @@ class SceneSpectrumTicks {
   final SceneNumber? interval, width, offset, length;
   final Color? color;
 
+  /// Which end of each tick is at [offset], across the axis as if flowing
+  /// down: its top (`start`, null), each tick growing toward the waterfall,
+  /// or its bottom (`end`), growing back toward the spectrum.
+  final String? align;
+
   SceneSpectrumTicks(Map<dynamic, dynamic> json)
     : interval = SceneNumber.parse(json, 'interval', min: 1, max: 1e9),
       width = SceneNumber.parse(json, 'width', min: .25, max: 20),
       offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
       length = SceneNumber.parse(json, 'length', min: 0, max: 2000),
-      color = _color(json, 'color');
+      color = _color(json, 'color'),
+      align = _oneOf(json, 'align', const ['start', 'end']);
 
   Iterable<String> get valueNames => [
     for (final n in [interval, width, offset, length]) ?n?.value,
@@ -984,150 +998,6 @@ class SceneSpectrumScale {
   Iterable<String> get valueNames => [?gap?.value, ?borderTop?.width?.value, ?borderBottom?.width?.value, ...?labels?.valueNames, ...?ticks?.valueNames];
 }
 
-/// Text at a frequency on the panadapter or the waterfall, drawn by the host
-/// and clickable: with an [event], a click sends `activate` carrying the
-/// frequency as `value` and [id] as `annotation`, and does not tune; with a
-/// [menu], it opens the menu there, and the item picked is sent the same way.
-class SceneSpectrumAnnotation {
-  final String id, text;
-  final SceneNumber hz;
-  final SceneSpectrumAnchor anchor;
-  final bool onWaterfall;
-
-  /// Pixels from the panadapter's bottom up to the text's, or from the
-  /// waterfall's top down to the text's.
-  final SceneNumber? offset;
-
-  /// Where [offset] measures from in place of that edge, in a layer's
-  /// coordinates across the frequency — `noise+30db` stands a spot that far
-  /// above the noise whatever the radio's scale. An app without it measures
-  /// from the edge.
-  final SceneSpectrumAcross? y;
-
-  /// Which end of the text sits at [hz].
-  final String align;
-
-  /// The point on the box that marks [hz]: its [SceneSpectrumPointer.size],
-  /// and whether it leaves the box's top or bottom edge. Null: none.
-  final SceneSpectrumPointer? pointer;
-  final SceneNumber? size, weight, padding, borderWidth, radius;
-  final String? fontFamily, event;
-  final SceneMenu? menu;
-  final bool italic;
-  final Color? color, background, borderColor;
-
-  /// The border on only the edge facing the one [offset] measures from — under
-  /// the text on the spectrum, over it on the waterfall — rather than all
-  /// around. An app without it draws the whole border.
-  final bool borderNear;
-
-  /// A named icon (MDI or `fa-`) before the text, at its size, in its own
-  /// color or the text's. An app without it draws the text alone, so it
-  /// raises no API level.
-  final ({String name, Color? color})? icon;
-
-  /// Drawn as a line where the box's near border would be — [collapsedWidth]
-  /// pixels wide, or four fifths of the box — the box itself only while the
-  /// pointer is on the line or on it, over any it would overlap.
-  final bool collapsed;
-  final double? collapsedWidth;
-
-  bool get clickable => event != null || menu != null;
-
-  SceneSpectrumAnnotation(Map<dynamic, dynamic> json)
-    : id = string(json, 'id'),
-      text = _short(json, 'text'),
-      hz = SceneNumber.parse(json, 'hz', min: -1e12, max: 1e12) ?? (throw const FormatException('A spectrum annotation needs hz')),
-      anchor = SceneSpectrumAnchor.values.byName(_oneOf(json, 'anchor', const ['vfo', 'center', 'absolute']) ?? 'absolute'),
-      // `pan` is the spectrum's name before extension API 17.
-      onWaterfall = (_oneOf(json, 'part', const ['spectrum', 'pan', 'waterfall']) ?? 'spectrum') == 'waterfall',
-      offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
-      y = SceneSpectrumAcross.parse(json, 'y'),
-      align = _oneOf(json, 'align', const ['start', 'center', 'end']) ?? 'center',
-      pointer = switch (json['pointer']) {
-        false => null,
-        null || true => SceneSpectrumPointer(const {}),
-        final Map<dynamic, dynamic> pointer => pointer['show'] == false ? null : SceneSpectrumPointer(pointer),
-        _ => throw const FormatException('Invalid scene spectrum pointer'),
-      },
-      size = SceneNumber.parse(json, 'size', min: 4, max: 72),
-      weight = SceneNumber.parse(json, 'weight', min: 100, max: 900),
-      padding = SceneNumber.parse(json, 'padding', min: 0, max: 40),
-      borderWidth = SceneNumber.parse(json, 'borderWidth', min: 0, max: 10),
-      radius = SceneNumber.parse(json, 'radius', min: 0, max: 40),
-      fontFamily = json['fontFamily'] == null ? null : string(json, 'fontFamily'),
-      event = json['event'] == null ? null : string(json, 'event'),
-      menu = sceneMenu(json),
-      italic = json['italic'] == true,
-      color = _color(json, 'color'),
-      background = _color(json, 'background'),
-      borderColor = _color(json, 'borderColor'),
-      borderNear = (_oneOf(json, 'borderEdges', const ['all', 'near']) ?? 'all') == 'near',
-      icon = switch (json['icon']) {
-        null => null,
-        final Map<dynamic, dynamic> icon => (name: string(icon, 'name'), color: _color(icon, 'color')),
-        _ => throw const FormatException('Invalid spectrum annotation icon'),
-      },
-      collapsed = switch (json['collapsed']) {
-        null || false => false,
-        true || Map<dynamic, dynamic>() => true,
-        _ => throw const FormatException('Invalid spectrum annotation collapsed'),
-      },
-      collapsedWidth = switch (json['collapsed']) {
-        final Map<dynamic, dynamic> line when line['width'] != null => number(line, 'width', min: 1, max: 200),
-        _ => null,
-      } {
-    _clickable(id, event, menu);
-  }
-
-  /// A click opens a menu where there is one, so an event beside it would never be sent.
-  static void _clickable(String id, String? event, SceneMenu? menu) {
-    if (menu != null && (menu.isEmpty || event != null)) throw FormatException('A spectrum menu needs entries and no event beside it: $id');
-  }
-
-  static String _short(Map<dynamic, dynamic> json, String key) {
-    final text = string(json, key);
-    if (text.length > 256) throw _overLength('annotation $key', text.length, 256);
-    return text;
-  }
-
-  Iterable<String> get valueNames => [
-    for (final n in [hz, offset, size, weight, padding, borderWidth, radius, pointer?.size]) ?n?.value,
-  ];
-}
-
-/// The point an annotation's box makes at its frequency.
-class SceneSpectrumPointer {
-  final SceneNumber? size;
-
-  /// `top` or `bottom`; null points toward the part's edge the annotation
-  /// is measured from — down on the panadapter, up on the waterfall.
-  final String? corner;
-
-  SceneSpectrumPointer(Map<dynamic, dynamic> json)
-    : size = SceneNumber.parse(json, 'size', min: 0, max: 40),
-      corner = _oneOf(json, 'corner', const ['top', 'bottom']) {
-    if (json['show'] != null && json['show'] is! bool) throw const FormatException('Invalid scene spectrum pointer');
-  }
-}
-
-/// The direction a spectrum's waterfall moves. Everything is laid out for
-/// `down` and then mirrored or turned, text excepted, which stays upright.
-enum SceneSpectrumFlow { down, up, right, left }
-
-/// What a mark's numbers are measured from.
-enum SceneSpectrumAnchor {
-  /// The tuned frequency.
-  vfo,
-
-  /// The middle of the sweep — on a Flex the panadapter's center, which is
-  /// not its slice.
-  center,
-
-  /// Nothing: the numbers are frequencies.
-  absolute,
-}
-
 /// The tuned-frequency line, or a line or area at [at] / [from]..[to] Hz from
 /// its [anchor], styled separately on the panadapter and the waterfall. A
 /// part with no style is not drawn on.
@@ -1198,6 +1068,8 @@ class SceneSpectrumSpec {
     'span',
     'minWidthHz',
     'maxWidthHz',
+    'window',
+    'centerHz',
     'gestures',
     'vfoLabel',
     'levelScale',
@@ -1319,6 +1191,20 @@ class SceneSpectrumSpec {
   /// only, and the sweep follows the dial rather than the window.
   final double? minWidthHz, maxWidthHz;
 
+  /// The window shown until the operator pans, as `(low, high)` in Hz: over
+  /// a sweep, its middle, [span] its width; while no sweep comes — no radio,
+  /// a radio without a scope or with it off, or before the first sweep — the
+  /// whole of it, the axis, overlays, annotations and layers drawn and the
+  /// gestures working over a blank picture, as over a sweep that wide. Null:
+  /// the sweep's middle, and with no sweep the control says why there is
+  /// nothing to draw.
+  final (double, double)? window;
+
+  /// The window's middle in Hz until the operator pans: a scene keeping
+  /// where the operator left it names it here. One that changes it takes the
+  /// window back there. Null: [window]'s middle, or the sweep's.
+  final double? centerHz;
+
   SceneSpectrumSpec(Map<dynamic, dynamic> json)
     : radio = json['radio'] == null ? null : string(json, 'radio'),
       flow = SceneSpectrumFlow.values.byName(_oneOf(json, 'flow', const ['down', 'up', 'right', 'left']) ?? 'down'),
@@ -1351,6 +1237,8 @@ class SceneSpectrumSpec {
       span = SceneNumber.parse(json, 'span', min: 100, max: 1e7),
       minWidthHz = _widthLimit(json, 'minWidthHz'),
       maxWidthHz = _widthLimit(json, 'maxWidthHz'),
+      window = _window(json['window']),
+      centerHz = json['centerHz'] == null ? null : number(json, 'centerHz', min: 0, max: 1e12),
       annotations = json['annotations'] == null ? const [] : items(json['annotations'], 256, what: 'annotations').map(SceneSpectrumAnnotation.new).toList(),
       layers = json['layers'] == null
           ? const []
@@ -1383,6 +1271,14 @@ class SceneSpectrumSpec {
         _ => throw const FormatException('Invalid scene spectrum center'),
       },
       overlays = json['overlays'] == null ? const [] : items(json['overlays'], 16, what: 'overlays').map(SceneSpectrumMark.new).toList();
+
+  static (double, double)? _window(Object? raw) {
+    if (raw == null) return null;
+    if (raw is! Map<dynamic, dynamic>) throw const FormatException('Invalid scene spectrum window');
+    final (low, high) = (number(raw, 'lowHz', min: 0, max: 1e12), number(raw, 'highHz', min: 0, max: 1e12));
+    if (high - low < 1) throw const FormatException('A scene spectrum window needs highHz above lowHz');
+    return (low, high);
+  }
 
   static double? _widthLimit(Map<dynamic, dynamic> json, String key) => json[key] == null || json[key] == 'radio' ? null : number(json, key, min: 1, max: 1e8);
 

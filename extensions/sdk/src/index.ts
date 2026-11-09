@@ -57,7 +57,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
  * `^1.<api>.0` range names the oldest API an extension needs and admits every
  * later one.
  */
-export const API_VERSION = 21
+export const API_VERSION = 22
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
@@ -660,9 +660,11 @@ export const host = {
       await hostCallFn()("putBandAnnotations", { annotations, ns: currentExtensionKey })
     },
 
-    /// Takes the ones you put under [keys], or every one you put.
-    async remove(keys?: string[]): Promise<void> {
-      await hostCallFn()("removeBandAnnotations", { keys, ns: currentExtensionKey })
+    /// Takes the ones you put under [keys], or every one you put. With
+    /// `source: 'user'`, the operator's band tags under [keys] instead — those
+    /// the operator takes down on your panel; only by key. Extension API 22.
+    async remove(keys?: string[], options?: { source?: "user" }): Promise<void> {
+      await hostCallFn()("removeBandAnnotations", { keys, ns: currentExtensionKey, ...(options?.source ? { source: options.source } : {}) })
     },
   },
 

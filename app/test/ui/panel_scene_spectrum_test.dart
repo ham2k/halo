@@ -555,6 +555,140 @@ void main() {
       expect(range.resolve({'floor': 500}), 200);
     });
 
+    test('the axis\'s labels align by their start, center or end, its ticks by their start or end; nothing else', () {
+      SceneSpectrumScale scale(Map<String, dynamic> json) => PanelScene(_doc(spectrum: {'scale': json})).controlsById['pan']!.spectrum!.scale!;
+      expect(scale(const {}).labels!.align, isNull, reason: 'the gap\'s middle, or the top at an offset');
+      for (final align in ['start', 'center', 'end']) {
+        expect(
+          scale({
+            'labels': {'align': align},
+          }).labels!.align,
+          align,
+        );
+      }
+      for (final align in ['start', 'end']) {
+        expect(
+          scale({
+            'ticks': {'align': align},
+          }).ticks!.align,
+          align,
+        );
+      }
+      expect(scale({'ticks': true}).ticks!.align, isNull, reason: 'growing toward the waterfall');
+      expect(
+        () => scale({
+          'labels': {'align': 'middle'},
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => scale({
+          'ticks': {'align': 'center'},
+        }),
+        throwsFormatException,
+        reason: 'a tick has two ends, no middle to stand on',
+      );
+    });
+
+    test('a centerHz is a frequency in Hz, or none', () {
+      expect(SceneSpectrumSpec(const {}).centerHz, isNull);
+      expect(SceneSpectrumSpec(const {'centerHz': 14074000}).centerHz, 14074000);
+      expect(() => SceneSpectrumSpec(const {'centerHz': -1}), throwsFormatException);
+      expect(() => SceneSpectrumSpec(const {'centerHz': '14074000'}), throwsFormatException);
+    });
+
+    test('an annotation\'s baseline, stretch, padding, badge, more and collapsed width are checked as it loads', () {
+      SceneSpectrumAnnotation annotation(Map<String, dynamic> json) => SceneSpectrumAnnotation({'id': 'a', 'text': 'K1ABC', 'hz': 14074000, ...json});
+      expect(annotation(const {}).baseline, isFalse);
+      expect(annotation(const {'baseline': true}).baseline, isTrue);
+      expect((annotation(const {'secondaryEvent': 'forget'}).secondaryEvent, annotation(const {}).secondaryEvent), ('forget', null));
+      expect(() => annotation(const {'secondaryEvent': 3}), throwsFormatException);
+      expect(() => annotation(const {'baseline': 'yes'}), throwsFormatException);
+
+      final stretch = annotation(const {
+        'stretch': {'from': -1500, 'to': 1500},
+      }).stretch!;
+      expect((stretch.from.literal, stretch.to.literal), (-1500, 1500));
+      expect(
+        () => annotation(const {
+          'stretch': {'from': -1500},
+        }),
+        throwsFormatException,
+        reason: 'a passband has two edges',
+      );
+      expect(() => annotation(const {'stretch': 3000}), throwsFormatException);
+
+      final even = annotation(const {'padding': 4});
+      expect((even.padding!.literal, even.paddingY!.literal), (4, 4));
+      final apart = annotation(const {
+        'padding': {'x': 6, 'y': 1},
+      });
+      expect((apart.padding!.literal, apart.paddingY!.literal), (6, 1));
+      final across = annotation(const {
+        'padding': {'x': 6},
+      });
+      expect((across.padding!.literal, across.paddingY), (6, null), reason: 'the default above and below');
+      // Named values, as every other number of a spectrum's: one the scene does not have refuses it at load.
+      final named = annotation(const {
+        'padding': {'x': 2, 'y': 'tall'},
+        'stretch': {'from': 'low', 'to': 'high'},
+        'openBorder': {'color': '#FF000000', 'width': 'edge'},
+      });
+      expect(named.valueNames, containsAll(['tall', 'low', 'high', 'edge']));
+      expect(
+        () => annotation(const {
+          'padding': {'x': 41},
+        }),
+        throwsFormatException,
+      );
+
+      final badge = annotation(const {
+        'badge': {'text': '3', 'color': '#FFFFFF', 'background': '#FF0000'},
+      }).badge!;
+      expect((badge.text, badge.color, badge.background), ('3', const Color(0xFFFFFFFF), const Color(0xFFFF0000)));
+      expect(
+        annotation(const {
+          'badge': {'text': '+2'},
+        }).badge!.background,
+        isNull,
+        reason: 'the app\'s own pill',
+      );
+      expect(() => annotation(const {'badge': '3'}), throwsFormatException);
+
+      final more = annotation(const {
+        'more': [
+          'W1OLD',
+          {
+            'text': 'N2XYZ',
+            'icon': {'name': 'pine-tree'},
+          },
+        ],
+      }).more!;
+      expect([for (final line in more) (line.text, line.icon?.name)], [('W1OLD', null), ('N2XYZ', 'pine-tree')]);
+      expect(() => annotation({'more': List.filled(33, 'K1ABC')}), throwsFormatException, reason: 'up to 32 lines');
+      expect(
+        () => annotation(const {
+          'more': [42],
+        }),
+        throwsFormatException,
+      );
+
+      final box = annotation(const {
+        'collapsed': {'width': 'box'},
+      });
+      expect((box.collapsed, box.collapsedBox, box.collapsedWidth), (true, true, null));
+      final pixels = annotation(const {
+        'collapsed': {'width': 30},
+      });
+      expect((pixels.collapsed, pixels.collapsedBox, pixels.collapsedWidth), (true, false, 30));
+      expect(
+        () => annotation(const {
+          'collapsed': {'width': 'half'},
+        }),
+        throwsFormatException,
+      );
+    });
+
     test("is refused for a spectrum's fields on another kind of control", () {
       final doc = _doc();
       (doc['controls'] as List).add({'id': 'b', 'kind': 'nativeButton', 'label': 'B', 'event': 'b', 'palette': 'heat'});
@@ -1581,5 +1715,113 @@ void main() {
     // The spot carries its own frequency, so it never acted on the value
     // the extension refused.
     expect(events.map((e) => e['action']), ['tune', 'spot']);
+  });
+
+  group('window', () {
+    const band = {'lowHz': 14000000, 'highHz': 14350000};
+
+    Future<List<Map<String, dynamic>>> clicks(WidgetTester tester, {SceneSpectrumSource? source, Map<String, dynamic> spectrum = const {}}) async {
+      final events = <Map<String, dynamic>>[];
+      await _show(
+        tester,
+        source: source,
+        spectrum: {'window': band, ...spectrum},
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      return events;
+    }
+
+    Future<void> clickAt(WidgetTester tester, double share) async {
+      final box = tester.getRect(find.byType(SceneSpectrumView));
+      await tester.tapAt(Offset(box.left + box.width * share, box.top + box.height * .7));
+      await tester.pump();
+    }
+
+    testWidgets('with no radio, the window is the band: no message, and a click is at its frequency', (tester) async {
+      final events = await clicks(tester);
+      expect(find.text(t.settings.station.spectrumUnavailable), findsNothing);
+      await clickAt(tester, .5);
+      expect(events.single['action'], 'tune');
+      expect(events.single['value'] as double, closeTo(14175000, 2000));
+    });
+
+    testWidgets('a radio with no scope says nothing either, and its annotations take their clicks', (tester) async {
+      final source = _Source()..problemText = 'This radio has no scope';
+      final events = await clicks(
+        tester,
+        source: source,
+        spectrum: {
+          'display': 'spectrum',
+          'annotations': [
+            {'id': 'spot-1', 'text': 'K1ABC', 'hz': 14175000, 'event': 'spot'},
+          ],
+        },
+      );
+      await tester.pump();
+      expect(find.text('This radio has no scope'), findsNothing);
+      expect(find.text('waiting'), findsNothing);
+      final box = tester.getRect(find.byType(SceneSpectrumView));
+      // Just above the spectrum's foot, where an annotation stands.
+      await tester.tapAt(Offset(box.center.dx, box.bottom - 10));
+      await tester.pump();
+      expect(events.single['action'], 'spot');
+      expect(events.single['annotation'], 'spot-1');
+    });
+
+    testWidgets('a sweep takes its place, and one that stops gives it back', (tester) async {
+      // The silence watch reads the real clock, which this has follow the test's.
+      followFakeClock();
+      final source = _Source();
+      final events = await clicks(tester, source: source);
+      await clickAt(tester, .5);
+      expect(events.last['value'] as double, closeTo(14175000, 2000), reason: 'before the first sweep');
+      source.controller.add(_frame());
+      await tester.pump();
+      await tester.pump();
+      await clickAt(tester, .5);
+      // The sweep's own width, still about the band's middle: the window stays where the scene put it.
+      expect(events.last['value'] as double, closeTo(14175000, 1000), reason: 'over the sweep');
+      await clickAt(tester, .1);
+      expect(events.last['value'] as double, closeTo(14135000, 1000), reason: 'the sweep\'s width across');
+      expect(find.text('waiting'), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+      expect(find.text('waiting'), findsNothing, reason: 'the band stands in, rather than a message');
+      await clickAt(tester, .5);
+      expect(events.last['value'] as double, closeTo(14175000, 2000), reason: 'the band again');
+    });
+
+    testWidgets('over a sweep, the window centres on it until the operator pans', (tester) async {
+      final source = _Source();
+      final events = await clicks(tester, source: source, spectrum: {'span': 350000, 'maxWidthHz': 350000});
+      source.controller.add(_frame());
+      await tester.pump();
+      await tester.pump();
+      await clickAt(tester, .5);
+      expect(events.last['value'] as double, closeTo(14175000, 2000), reason: 'the band\'s middle, not the sweep\'s');
+      await clickAt(tester, .1);
+      expect(events.last['value'] as double, closeTo(14035000, 2000));
+    });
+
+    testWidgets('a scene that drops it says why there is nothing to draw again', (tester) async {
+      final source = _Source();
+      await clicks(tester, source: source);
+      expect(find.text('waiting'), findsNothing);
+      await _show(tester, source: source);
+      expect(find.text('waiting'), findsOneWidget);
+    });
+
+    test('is refused unless its high edge is above its low', () {
+      expect(
+        () => SceneSpectrumSpec({
+          'window': {'lowHz': 14350000, 'highHz': 14000000},
+        }),
+        throwsFormatException,
+      );
+      expect(() => SceneSpectrumSpec({'window': 14000000}), throwsFormatException);
+      expect(SceneSpectrumSpec({'window': band}).window, (14000000.0, 14350000.0));
+    });
   });
 }
