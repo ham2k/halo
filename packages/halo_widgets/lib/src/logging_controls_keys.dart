@@ -79,6 +79,9 @@ extension _SpaceAndNumbers on _LoggingControlsState {
         }
       }
 
+      // Ahead of the advance: the leave it causes spots no untouched spot-row
+      // call, and only Space may.
+      _onCallFieldLeft(bySpace: true);
       _ladder.advancePrimaryFocus();
     } else if (_radio.freqFocus.hasFocus) {
       _callFocus.requestFocus();

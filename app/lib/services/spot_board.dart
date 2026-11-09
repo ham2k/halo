@@ -13,7 +13,7 @@ import 'package:collection/collection.dart' show mergeSort;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart' show controlForRef, refCodeOf;
 
-import 'local_spots.dart' show isLocalSpotWithoutStation, withoutReplacedSpots;
+import 'local_spots.dart' show isLocalSpotWithoutStation, withLocalSpots;
 import 'settings_service.dart';
 import 'spots_service.dart';
 
@@ -32,6 +32,23 @@ List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
 }
 
 int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
+
+/// How far apart in time two spots of one call can be and still be one
+/// sighting of the station, for [mergeSpotsByCallAndFreq] and for a local
+/// spot taking in its station's ([withLocalSpots]). Further apart, the older
+/// one's park or label may be the station's last outing, not this one.
+const spotMergeWindowMs = 30 * 60 * 1000;
+
+/// Adds the references of [spot] to [into], one per type and code: one
+/// already there keeps its own fields and takes from [spot]'s only those it
+/// lacks. Every merge of one station's spots goes through here, so a row
+/// reads the same whichever merge built it.
+void addRefsOfSpot(List<Map<String, dynamic>> into, Map<String, dynamic> spot) {
+  for (final ref in _refsOf(spot)) {
+    final at = into.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
+    at < 0 ? into.add(ref) : into[at] = {...ref, ...into[at]};
+  }
+}
 
 /// The individual operator callsigns within a `their.call`: a comma-joined
 /// compound for a spot [mergeSpotsByFreqAndRefs] combined, a single call
@@ -136,7 +153,7 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
         freq != null &&
         existingFreq != null &&
         (freq - existingFreq).abs() <= 0.5 &&
-        (_timeOf(spot) - _timeOf(existing)).abs() <= 30 * 60 * 1000;
+        (_timeOf(spot) - _timeOf(existing)).abs() <= spotMergeWindowMs;
     if (!closeEnough) {
       final copy = {
         ...spot,
@@ -145,11 +162,7 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
       byCall[call] = copy;
       merged.add(copy);
     } else {
-      final existingRefs = existing['refs'] as List<Map<String, dynamic>>;
-      for (final ref in _refsOf(spot)) {
-        final dup = existingRefs.any((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
-        if (!dup) existingRefs.add(ref);
-      }
+      addRefsOfSpot(existing['refs'] as List<Map<String, dynamic>>, spot);
     }
   }
   return merged;
@@ -450,20 +463,21 @@ class SpotBoardFilters {
   }
 }
 
-/// Every held spot from a source the operator has not switched off, less
-/// what a local spot replaces, combined by both merge passes — the board
-/// before any band/mode/age narrowing. [entityOf] resolves a single callsign
-/// to its DXCC entity prefix, as `SpotBoardService.callInfo` holds it.
+/// Every held spot from a source the operator has not switched off, with
+/// the local spots applied ([withLocalSpots]), combined by both merge passes
+/// — the board before any band/mode/age narrowing. [entityOf] resolves a
+/// single callsign to its DXCC entity prefix, as `SpotBoardService.callInfo`
+/// holds it.
 ///
-/// Replaced after the source filter, never before: with the local spots
-/// switched off, what they replaced is the board.
+/// Applied after the source filter, never before: with the local spots
+/// switched off, what they hid or took in is the board.
 List<Map<String, dynamic>> mergedSpotBoard(
   Map<String, List<Map<String, dynamic>>> spotsBySource,
   Set<String> disabledSources, {
   required String? Function(String call) entityOf,
 }) => mergeSpotsByFreqAndRefs(
   mergeSpotsByCallAndFreq(
-    withoutReplacedSpots([
+    withLocalSpots([
       for (final entry in spotsBySource.entries)
         if (!disabledSources.contains(entry.key)) ...entry.value,
     ]),

@@ -35,7 +35,10 @@ interface SpotsHook {
 **`fetchSpots`** maps the upstream feed into `Spot` objects: the station,
 the frequency, the mode, the references it carries, and when it was
 spotted. Filter QRT and stale entries at the source. `icon` is a Material
-Design Icons name or a FontAwesome `fa-` name, drawn on the row.
+Design Icons name or a FontAwesome `fa-` name, drawn on the row. A spot
+without a `mode`, fetched or pushed, takes the band plan's for its
+frequency as the app takes it in, where the plan names one, and is held and handed to `getSpots` that
+way: give the mode when the feed knows it.
 
 **Pushing** (extension API 21) puts spots on the board as they happen,
 instead of at the next refresh, two minutes away at most. A feed that

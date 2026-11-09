@@ -137,8 +137,8 @@ class SpotsService extends ChangeNotifier {
 
   /// Spots grouped by the `hookKey` of the source that offered them — what
   /// the Spots Panel filters and groups on. Every spot held, those a local
-  /// spot replaces too: that is decided on the board, after the operator's
-  /// source filter ([withoutReplacedSpots]).
+  /// spot hides or takes in too: that is decided on the board, after the
+  /// operator's source filter ([withLocalSpots]).
   Map<String, List<Map<String, dynamic>>> get spotsBySource => _board;
 
   /// Puts the local spot under [key] on the board, or moves it there.
@@ -236,7 +236,8 @@ class SpotsService extends ChangeNotifier {
     _pushers.removeWhere((source) => keys.contains(source) || keys.any((key) => source.startsWith('${key}_')));
   }
 
-  static Map<String, dynamic> _fromSource(String source, Map<String, dynamic> spot) => {...spot, 'hookKey': source};
+  /// [spot] as [source]'s, with a mode as a fetched one has ([withBandPlanMode]).
+  static Map<String, dynamic> _fromSource(String source, Map<String, dynamic> spot) => withBandPlanMode({...spot, 'hookKey': source});
 
   static List<Map<String, dynamic>> _withPut(List<Map<String, dynamic>> held, List<Map<String, dynamic>> spots) {
     final result = [...held];
@@ -418,8 +419,9 @@ class SpotsService extends ChangeNotifier {
       // three-minute-old spot loses it for no reason. A source that answered
       // with no spots is a genuinely empty band and correctly clears.
       final answered = <String, List<Map<String, dynamic>>>{};
+      final guesses = <double, String?>{};
       for (final spot in spots) {
-        answered.putIfAbsent(spot['hookKey'] as String? ?? 'unknown', () => []).add(spot);
+        answered.putIfAbsent(spot['hookKey'] as String? ?? 'unknown', () => []).add(withBandPlanMode(spot, guesses));
       }
       // A source that pushed while the fan-out waited on the others (a slow
       // feed holds it for seconds) answered with what it held before those
@@ -558,6 +560,23 @@ class SpotsPushRefused implements Exception {
 Map<String, dynamic>? asSpotMap(dynamic value) => value is Map ? value.cast<String, dynamic>() : null;
 String? asSpotString(dynamic value) => value is String ? value : null;
 num? asSpotNum(dynamic value) => value is num ? value : null;
+
+/// [spot], or a copy with the band plan's mode for its frequency when its
+/// source names none. Without a mode a spot is in no family of modes: the
+/// mode filter cannot place it, and a local spot of the same station cannot
+/// take it in. Read from the worldwide band plan, not the operator's own
+/// region: the spotted station may be anywhere. Where the plan settles on
+/// no mode, the spot stays without one.
+///
+/// [guesses] holds the plan's answers across one fetch: a busy band has many
+/// spots on one frequency, and each lookup walks the whole plan.
+Map<String, dynamic> withBandPlanMode(Map<String, dynamic> spot, [Map<double, String?>? guesses]) {
+  final mode = asSpotString(spot['mode']);
+  if (mode != null && mode.trim().isNotEmpty) return spot;
+  final freq = asSpotNum(spot['freq'])?.toDouble();
+  final guess = freq == null ? null : (guesses ?? {}).putIfAbsent(freq, () => modeForFrequency(freq));
+  return guess == null ? spot : {...spot, 'mode': guess};
+}
 
 /// The spotted callsign, uppercased, or null when the spot has none.
 String? callOfSpot(Map<String, dynamic> spot) {

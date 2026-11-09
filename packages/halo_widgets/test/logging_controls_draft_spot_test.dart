@@ -30,7 +30,9 @@ void main() {
     cleared = [];
   });
 
-  LoggingSession session({bool hostSpots = true}) => LoggingSession(
+  LoggingSession session({bool hostSpots = true, Map<String, dynamic>? suggestion, bool peek = false}) => LoggingSession(
+    suggestedQso: suggestion,
+    suggestedQsoIsTentative: peek,
     onDraftSpot: (key, qso) {
       sent.add((key: key, call: (qso?['their'] as Map?)?['call'] as String?));
       return hostSpots && qso != null;
@@ -43,6 +45,17 @@ void main() {
   );
 
   Finder field(String label) => find.widgetWithText(TextField, label);
+
+  // A spot row's fill, as a tap on the Spots list hands it over.
+  final tapped = <String, dynamic>{
+    'their': {'call': 'N6LY'},
+    'freq': 14266.0,
+    'band': '20m',
+    'mode': 'SSB',
+    'refs': [
+      {'type': 'potaHunter', 'ref': 'US-1131'},
+    ],
+  };
 
   Future<void> typeCallAndLeave(WidgetTester tester, String call) async {
     await tester.enterText(field('Their call'), call);
@@ -209,6 +222,82 @@ void main() {
     await tester.pump();
 
     expect(sent, isEmpty, reason: 'a record in the log is not a station on the air now');
+  });
+
+  testWidgets('a spot tapped and left untouched is not spotted again, until it is logged', (tester) async {
+    await tester.pumpWidget(host(session: session()));
+    await tester.pumpWidget(host(session: session(suggestion: tapped)));
+    await tester.pump();
+    await tester.tap(field('Their call'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    // Already on the board: spotted again, the row restamps as heard now, and
+    // so does every station the operator clicks past.
+    expect(sent, isEmpty);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 1);
+    expect(sent.single.call, 'N6LY');
+  });
+
+  testWidgets('Space on a tapped spot spots it, and logging it moves that spot rather than adding one', (tester) async {
+    await tester.pumpWidget(host(session: session()));
+    await tester.pumpWidget(host(session: session(suggestion: tapped)));
+    await tester.pump();
+    await tester.tap(field('Their call'));
+    await tester.pump();
+    // Space is the operator going on to work the station: without it, a tapped
+    // call never reaches the board until it is logged.
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(sent.single.call, 'N6LY');
+    final key = sent.single.key;
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 1);
+    expect(sent.last.call, 'N6LY');
+    expect(sent.last.key, key, reason: 'under a new key the logged contact would sit on the board beside its own spot');
+  });
+
+  testWidgets('Space on a peeked spot spots it, and closing the peek takes it back down', (tester) async {
+    await tester.pumpWidget(host(session: session()));
+    await tester.pumpWidget(host(session: session(suggestion: tapped, peek: true)));
+    await tester.pump();
+    await tester.tap(field('Their call'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(sent.single.call, 'N6LY');
+
+    await tester.pumpWidget(host(session: session()));
+    await tester.pump();
+    // The peek's wipe only ends the follow: without the retraction the spot
+    // stands, freshly stamped, for a station the operator let go, and nothing
+    // holds its key to take it down.
+    expect(sent.last, (key: sent.first.key, call: null));
+  });
+
+  testWidgets('a station typed in keeps its spot when a spot is tapped, and the next one gets its own', (tester) async {
+    await tester.pumpWidget(host(session: session()));
+    await typeCallAndLeave(tester, 'W1AW');
+    final typed = sent.single.key;
+
+    await tester.pumpWidget(host(session: session(suggestion: tapped)));
+    await tester.pump();
+    await tester.pump();
+    // Followed on, the W1AW spot would move to N6LY: the board loses a station
+    // that was there and restamps one it already had.
+    expect(sent, hasLength(1));
+
+    await tester.tap(field('Their call'));
+    await tester.pump();
+    await tester.enterText(field('Their call'), 'K2ABC');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    expect(sent.last.call, 'K2ABC');
+    expect(sent.last.key, isNot(typed));
   });
 
   group('band tags', () {

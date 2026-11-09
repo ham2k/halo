@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Spots this device makes from the station being worked: what a draft turns
-// into, and which spots one replaces on the board
+// into, and what one does to the spots on the board — another local one it
+// replaces, another station's it hides, its own station's it takes in
 // (docs/design/logging-fields.md § Local spots).
 
 import 'dart:math';
@@ -10,7 +11,8 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/local_spots.dart';
-import 'package:ham2k_logger/services/spot_board.dart' show mergedSpotBoard, spotOperatorCalls;
+import 'package:collection/collection.dart';
+import 'package:ham2k_logger/services/spot_board.dart' show mergedSpotBoard, spotCallsIn, spotOperatorCalls;
 import 'package:ham2k_logger/services/spots_service.dart';
 import 'package:ham2k_logger/services/spotting_settings.dart';
 
@@ -24,19 +26,32 @@ Map<String, dynamic> draft(String call, {double freq = 14250, String mode = 'SSB
   'refs': refs,
 };
 
-Map<String, dynamic> fetched(String call, {double freq = 14250, String mode = 'SSB', int ageMinutes = 5, String source = 'pota'}) => {
+Map<String, dynamic> fetched(
+  String call, {
+  double freq = 14250,
+  String? mode = 'SSB',
+  int ageMinutes = 5,
+  String source = 'pota',
+  List<Map<String, dynamic>>? refs,
+  String? label,
+}) => {
   'their': {'call': call},
   'freq': freq,
   'band': bandForFrequency(freq),
-  'mode': mode,
+  'mode': ?mode,
+  'refs': ?refs,
   'hookKey': source,
-  'spot': {'timeInMillis': nowMillis() - Duration(minutes: ageMinutes).inMilliseconds, 'source': source},
+  'spot': {'timeInMillis': nowMillis() - Duration(minutes: ageMinutes).inMilliseconds, 'source': source, 'label': ?label},
 };
 
-Map<String, dynamic> local(String call, {double freq = 14250, String mode = 'SSB'}) => localSpotFromQso(
-  draft(call, freq: freq, mode: mode),
-  now: nowMillis(),
-)!;
+Map<String, dynamic> local(String call, {double freq = 14250, String mode = 'SSB', List<Map<String, dynamic>> refs = const [], int ageMinutes = 0}) =>
+    localSpotFromQso(
+      draft(call, freq: freq, mode: mode, refs: refs),
+      now: nowMillis() - Duration(minutes: ageMinutes).inMilliseconds,
+    )!;
+
+const park = {'type': 'potaHunter', 'ref': 'US-1131'};
+const parkLine = 'US-1131: CA • Bothe-Napa Valley State Park';
 
 SpotsFetch feed(List<Map<String, dynamic>> spots) =>
     () async =>
@@ -173,31 +188,49 @@ void main() {
     });
   });
 
-  group('localSpotReplaces', () {
+  group('localSpotReplaces, between local spots', () {
     test('a voice within 100 Hz, a CW note within 20 Hz', () {
-      expect(localSpotReplaces(local('W1AW'), fetched('K2ABC', freq: 14250.1)), isTrue);
-      expect(localSpotReplaces(local('W1AW'), fetched('K2ABC', freq: 14250.2)), isFalse);
-      expect(localSpotReplaces(local('W1AW', freq: 14030, mode: 'CW'), fetched('K2ABC', freq: 14030.02, mode: 'CW')), isTrue);
+      expect(localSpotReplaces(local('W1AW'), local('K2ABC', freq: 14250.1, ageMinutes: 5)), isTrue);
+      expect(localSpotReplaces(local('W1AW'), local('K2ABC', freq: 14250.2, ageMinutes: 5)), isFalse);
+      expect(localSpotReplaces(local('W1AW', freq: 14030, mode: 'CW'), local('K2ABC', freq: 14030.02, mode: 'CW', ageMinutes: 5)), isTrue);
       // 50 Hz is inside the phone window, so this fails if CW is held to it.
-      expect(localSpotReplaces(local('W1AW', freq: 14030, mode: 'CW'), fetched('K2ABC', freq: 14030.05, mode: 'CW')), isFalse);
+      expect(localSpotReplaces(local('W1AW', freq: 14030, mode: 'CW'), local('K2ABC', freq: 14030.05, mode: 'CW', ageMinutes: 5)), isFalse);
     });
 
     test('the same station anywhere on the band and mode, but not on another band or mode', () {
-      expect(localSpotReplaces(local('W1AW'), fetched('W1AW', freq: 14320)), isTrue);
-      expect(localSpotReplaces(local('W1AW'), fetched('W1AW', freq: 7200)), isFalse);
-      expect(localSpotReplaces(local('W1AW'), fetched('W1AW', mode: 'CW')), isFalse);
-      // USB and SSB are one family: the same voice, spelled by another source.
-      expect(localSpotReplaces(local('W1AW'), fetched('W1AW', freq: 14320, mode: 'USB')), isTrue);
+      expect(localSpotReplaces(local('W1AW'), local('W1AW', freq: 14320, ageMinutes: 5)), isTrue);
+      expect(localSpotReplaces(local('W1AW'), local('W1AW', freq: 7200, ageMinutes: 5)), isFalse);
+      expect(localSpotReplaces(local('W1AW'), local('W1AW', mode: 'CW', ageMinutes: 5)), isFalse);
+      // USB and SSB are one family: the same voice, spelled another way.
+      expect(localSpotReplaces(local('W1AW'), local('W1AW', freq: 14320, mode: 'USB', ageMinutes: 5)), isTrue);
     });
 
-    test('never a spot posted after it', () {
-      // Someone else on that frequency since, or the station back again, is
-      // news the local spot cannot speak for.
-      expect(localSpotReplaces(local('W1AW'), fetched('K2ABC', ageMinutes: -1)), isFalse);
+    test('never one posted after it', () {
+      expect(localSpotReplaces(local('W1AW', ageMinutes: 5), local('K2ABC')), isFalse);
     });
   });
 
-  group('withoutReplacedSpots', () {
+  group('localSpotHides, a spot from another source', () {
+    test('another station within a signal of it, posted no later', () {
+      expect(localSpotHides(local('W1AW'), fetched('K2ABC', freq: 14250.1)), isTrue);
+      expect(localSpotHides(local('W1AW'), fetched('K2ABC', freq: 14250.2)), isFalse);
+      expect(localSpotHides(local('W1AW', freq: 14030, mode: 'CW'), fetched('K2ABC', freq: 14030.05, mode: 'CW')), isFalse);
+      // Someone else on that frequency since is news the local spot cannot speak for.
+      expect(localSpotHides(local('W1AW'), fetched('K2ABC', ageMinutes: -1)), isFalse);
+    });
+
+    test('never its own station, anywhere: that one is taken in', () {
+      // Hidden, the network's park and status for the station would be gone
+      // from the board while the operator is working it.
+      expect(localSpotHides(local('W1AW'), fetched('W1AW')), isFalse);
+      expect(localSpotHides(local('W1AW'), fetched('W1AW', freq: 14320)), isFalse);
+      expect(localSpotSameStation(local('W1AW'), fetched('W1AW', freq: 14320, mode: 'USB')), isTrue);
+      expect(localSpotSameStation(local('W1AW'), fetched('W1AW', freq: 7200)), isFalse);
+      expect(localSpotSameStation(local('W1AW'), fetched('W1AW', mode: 'CW')), isFalse);
+    });
+  });
+
+  group('withLocalSpots', () {
     List<String> calls(List<Map<String, dynamic>> spots) => [for (final spot in spots) callOfSpot(spot)!];
 
     test('a newer local spot hides an older one on its frequency, and the older one is still held', () {
@@ -205,15 +238,15 @@ void main() {
         ...local('W1AW'),
         'spot': {'timeInMillis': nowMillis() - 60000, 'source': localSpotSource},
       };
-      expect(calls(withoutReplacedSpots([older, local('K2ABC', freq: 14250.05)])), ['K2ABC'], reason: 'K2ABC is who is on 14250 now');
+      expect(calls(withLocalSpots([older, local('K2ABC', freq: 14250.05)])), ['K2ABC'], reason: 'K2ABC is who is on 14250 now');
       // A tie at one millisecond must not hide both.
-      expect(calls(withoutReplacedSpots([local('W1AW'), local('W1AW', freq: 14300)])), hasLength(1));
+      expect(calls(withLocalSpots([local('W1AW'), local('W1AW', freq: 14300)])), hasLength(1));
     });
 
     test('agrees with each spot asked against each local spot', () {
       // The index narrows by band, mode, call and frequency before asking;
-      // a bound off by a window, or a bucket keyed apart from what
-      // localSpotReplaces compares, shows here as a spot kept or hidden wrongly.
+      // a bound off by a window, or a bucket keyed apart from what the
+      // predicates compare, shows here as a spot kept, hidden or taken in wrongly.
       // Tags, some reading as callsigns, and calls not fully copied replace by
       // frequency alone, which the index's call bucket must leave to the scan.
       final random = Random(7);
@@ -227,8 +260,13 @@ void main() {
           'freq': freq,
           'band': bandForFrequency(freq),
           'mode': modes[random.nextInt(modes.length)],
+          if (random.nextBool())
+            'refs': [
+              {'type': 'potaHunter', 'ref': 'US-${random.nextInt(3)}'},
+            ],
           'hookKey': source,
-          'spot': {'timeInMillis': 1000 + random.nextInt(20) * 1000, 'source': source, if (source == localSpotSource && random.nextBool()) 'tag': true},
+          // Minutes apart, some past the merge window either way.
+          'spot': {'timeInMillis': 1000 + random.nextInt(20) * 3 * 60000, 'source': source, if (source == localSpotSource && random.nextBool()) 'tag': true},
         };
       }
 
@@ -239,12 +277,211 @@ void main() {
         for (final l in locals) {
           if (!kept.any((k) => localSpotReplaces(k, l))) kept.add(l);
         }
-        final expected = [
-          for (final spot in spots)
-            if (spot['hookKey'] == localSpotSource ? kept.any((k) => identical(k, spot)) : !kept.any((k) => localSpotReplaces(k, spot))) spot,
-        ];
-        expect(withoutReplacedSpots(spots), orderedEquals(expected), reason: 'round $round');
+        Map<String, dynamic>? stationOf(Map<String, dynamic> spot) {
+          for (final call in spotCallsIn(callOfSpot(spot))) {
+            for (final k in kept) {
+              if (callOfSpot(k) == call && localSpotTakesIn(k, spot)) return k;
+            }
+          }
+          return null;
+        }
+
+        final takenIn = Map<Map<String, dynamic>, List<Map<String, dynamic>>>.identity();
+        for (final spot in spots) {
+          if (spot['hookKey'] != localSpotSource) {
+            if (stationOf(spot) case final station?) takenIn.putIfAbsent(station, () => []).add(spot);
+          }
+        }
+        bool moved(Map<String, dynamic> k) => (takenIn[k] ?? const []).any(
+          (s) =>
+              timeOfSpot(s)! > timeOfSpot(k)! &&
+              ((s['freq'] as double) - (k['freq'] as double)).abs() > (superModeForMode(k['mode'] as String) == 'CW' ? 0.02 : 0.1) + 1e-9,
+        );
+        final expected = <Map<String, dynamic>>[];
+        for (final spot in spots) {
+          if (spot['hookKey'] == localSpotSource) {
+            if (kept.any((k) => identical(k, spot))) expected.add(spot);
+          } else if (stationOf(spot) == null && !kept.any((k) => !moved(k) && localSpotHides(k, spot))) {
+            expected.add(spot);
+          }
+        }
+        final actual = withLocalSpots(spots);
+        expect(actual, hasLength(expected.length), reason: 'round $round');
+        for (var i = 0; i < expected.length; i++) {
+          final want = expected[i];
+          if (want['hookKey'] != localSpotSource) {
+            expect(actual[i], same(want), reason: 'round $round, row $i');
+          } else {
+            // A local spot's row is built anew, from the newest of what it
+            // took in: its time and its frequency are that one's, never
+            // another row's, and never left behind at the local spot's.
+            final group = [want, ...?takenIn[want]];
+            final newest = group.map((s) => timeOfSpot(s)!).reduce(max);
+            expect(timeOfSpot(actual[i]), newest, reason: 'round $round, row $i');
+            expect(group.where((s) => timeOfSpot(s) == newest).map((s) => s['freq']), contains(actual[i]['freq']), reason: 'round $round, row $i');
+            expect(spotCallsIn(callOfSpot(actual[i])), containsAll(spotCallsIn(callOfSpot(want))), reason: 'round $round, row $i');
+            // Every reference of every spot it took in, and no other row's.
+            expect(
+              [for (final r in (actual[i]['refs'] as List?) ?? const []) r['ref']],
+              unorderedEquals({
+                for (final s in group)
+                  for (final r in (s['refs'] as List?) ?? const []) r['ref'],
+              }),
+              reason: 'round $round, row $i',
+            );
+          }
+        }
       }
+    });
+
+    test("a local spot takes in its station's spots: every reference, and where, when and how from the newest", () {
+      final row = withLocalSpots([
+        fetched('N6LY', freq: 14266, refs: [park], label: parkLine, ageMinutes: 2),
+        fetched(
+          'N6LY',
+          freq: 14262,
+          source: 'cluster',
+          ageMinutes: 10,
+          refs: [
+            {'type': 'sotaActivation', 'ref': 'W6/NC-001'},
+          ],
+        ),
+        local('N6LY', freq: 14266.2),
+      ]).single;
+      expect(row['freq'], 14266.2);
+      expect(row['hookKey'], localSpotSource);
+      expect((row['refs'] as List).map((r) => r['ref']), unorderedEquals(['US-1131', 'W6/NC-001']));
+      // The park line still says what the station is doing; the local spot has none.
+      expect((row['spot'] as Map)['label'], parkLine);
+    });
+
+    test("a spot of its station from another outing is not taken in, and stays a row of its own", () {
+      // Taken in, a park activated hours ago would ride on a row stamped now,
+      // and the age filter, which reads the row's time, could never drop it.
+      final rows = withLocalSpots([
+        fetched('N6LY', refs: [park], label: parkLine, ageMinutes: 31),
+        local('N6LY'),
+      ]);
+      expect(rows, hasLength(2));
+      final row = rows.firstWhere((r) => r['hookKey'] == localSpotSource);
+      expect(row.containsKey('refs'), isFalse);
+      expect((row['spot'] as Map).containsKey('label'), isFalse);
+    });
+
+    test('a row moved by a newer spot of its station no longer hides the frequency it left', () {
+      // The network says N6LY is on 14310 now; K2ABC hidden on 14266 would
+      // leave a frequency where the board shows nobody.
+      final rows = withLocalSpots([
+        local('N6LY', freq: 14266, ageMinutes: 3),
+        fetched('K2ABC', freq: 14266.05, ageMinutes: 5),
+        fetched('N6LY', freq: 14310, ageMinutes: 1),
+      ]);
+      expect(rows.map(callOfSpot), unorderedEquals(['N6LY', 'K2ABC']));
+      // Moved only within its own signal, it still says who is there.
+      expect(
+        withLocalSpots([
+          local('N6LY', freq: 14266, ageMinutes: 3),
+          fetched('K2ABC', freq: 14266.05, ageMinutes: 5),
+          fetched('N6LY', freq: 14266.02, ageMinutes: 1),
+        ]).map(callOfSpot),
+        ['N6LY'],
+      );
+    });
+
+    test('spots of one moment make the same row in whatever order the sources arrive', () {
+      final pota = fetched('N6LY', freq: 14266, ageMinutes: 1);
+      final cluster = {...fetched('N6LY', freq: 14262, source: 'cluster'), 'spot': pota['spot']};
+      final mine = local('N6LY', ageMinutes: 3);
+      expect(withLocalSpots([mine, pota, cluster]).single['freq'], withLocalSpots([mine, cluster, pota]).single['freq']);
+    });
+
+    test('a spot posted after the local one gives the row its frequency and its word', () {
+      final row = withLocalSpots([
+        local('N6LY', freq: 14266, refs: [park], ageMinutes: 3),
+        fetched('N6LY', freq: 14310, ageMinutes: 1, label: 'QRT'),
+      ]).single;
+      expect(row['freq'], 14310);
+      expect(row['hookKey'], 'pota');
+      expect((row['spot'] as Map)['label'], 'QRT');
+      expect((row['refs'] as List).single, park, reason: "the local spot's park stays on the row");
+    });
+
+    test("a reference both name keeps the newer spot's fields, and the older one's that the newer lacks", () {
+      final row = withLocalSpots([
+        fetched(
+          'N6LY',
+          refs: [
+            {...park, 'location': 'US-CA'},
+          ],
+        ),
+        local('N6LY', refs: [park]),
+      ]).single;
+      expect(row['refs'], [
+        {...park, 'location': 'US-CA'},
+      ]);
+    });
+
+    test('a local spot standing alone names its references when it has no label', () {
+      expect(
+        (withLocalSpots([
+              local('N6LY', refs: [park]),
+            ]).single['spot']
+            as Map)['label'],
+        'US-1131',
+      );
+      expect((withLocalSpots([local('N6LY')]).single['spot'] as Map).containsKey('label'), isFalse);
+    });
+
+    test('held spots are never changed in place', () {
+      // They are SpotsService's own lists; a row built into one would stay
+      // on the board after its local spot is gone.
+      final held = fetched('N6LY', refs: [park], label: parkLine);
+      final before = const DeepCollectionEquality().hash(held);
+      withLocalSpots([
+        held,
+        local(
+          'N6LY',
+          refs: [
+            {'type': 'sotaActivation', 'ref': 'W6/NC-001'},
+          ],
+        ),
+      ]);
+      expect(const DeepCollectionEquality().hash(held), before);
+    });
+  });
+
+  group('a fetched spot that names no mode', () {
+    test("takes the band plan's for its frequency, where the plan settles on one", () {
+      expect(withBandPlanMode(fetched('W1AW', freq: 14074, mode: null))['mode'], 'FT8');
+      expect(withBandPlanMode(fetched('W1AW', freq: 14030, mode: null))['mode'], 'CW');
+      expect(withBandPlanMode(fetched('W1AW', freq: 14250, mode: null))['mode'], 'SSB');
+      // Blank reads as Digital to the mode filter, which is worse than none.
+      expect(withBandPlanMode(fetched('W1AW', freq: 14250, mode: ''))['mode'], 'SSB');
+      expect(withBandPlanMode(fetched('W1AW', freq: 5332, mode: null)).containsKey('mode'), isFalse, reason: 'a channel the plan leaves to any mode');
+      expect(withBandPlanMode(fetched('W1AW', freq: 14250, mode: 'CW'))['mode'], 'CW', reason: "a source's own word stands");
+    });
+
+    test('has it as it arrives, so the mode filter can place it and a local spot of its station can take it in', () async {
+      final service = SpotsService(
+        fetchSpots: feed([
+          fetched('N6LY', freq: 14266, mode: null, refs: [park], label: parkLine),
+        ]),
+      );
+      addTearDown(service.dispose);
+      await service.refresh();
+      expect(service.spotsBySource['pota']!.single['mode'], 'SSB');
+
+      service.putLocalSpot('a', local('N6LY', freq: 14266));
+      final [row] = mergedSpotBoard(service.spotsBySource, const {}, entityOf: (_) => null);
+      expect((row['spot'] as Map)['label'], parkLine);
+    });
+
+    test('a pushed one has it too: a cluster that pushes is where most spots without one come from', () {
+      final service = SpotsService(fetchSpots: feed(const []));
+      addTearDown(service.dispose);
+      service.replaceSpots('cluster', [fetched('N6LY', freq: 14030, mode: null)]);
+      service.putSpots('cluster', [fetched('K2ABC', freq: 14074, mode: null)]);
+      expect([for (final spot in service.spotsBySource['cluster']!) spot['mode']], ['CW', 'FT8']);
     });
   });
 
@@ -253,13 +490,22 @@ void main() {
       for (final spot in mergedSpotBoard(service.spotsBySource, disabled, entityOf: (_) => null)) callOfSpot(spot)!,
     ];
 
-    test('a local spot hides what it replaces, which comes back when it goes, and is never deleted', () async {
-      final service = SpotsService(fetchSpots: feed([fetched('K2ABC'), fetched('W1AW', freq: 14300), fetched('N3XYZ', freq: 14280)]));
+    test('a local spot hides another station on its frequency and takes in its own, both back as they were when it goes', () async {
+      final service = SpotsService(
+        fetchSpots: feed([
+          fetched('K2ABC'),
+          fetched('W1AW', freq: 14300, refs: [park], label: parkLine),
+          fetched('N3XYZ', freq: 14280),
+        ]),
+      );
       addTearDown(service.dispose);
       await service.refresh();
 
       service.putLocalSpot('a', local('W1AW'));
       expect(board(service), unorderedEquals(['W1AW', 'N3XYZ']));
+      final w1aw = mergedSpotBoard(service.spotsBySource, const {}, entityOf: (_) => null).firstWhere((s) => callOfSpot(s) == 'W1AW');
+      expect(w1aw['freq'], 14250);
+      expect((w1aw['spot'] as Map)['label'], parkLine);
       // Held, so the lookup still finds the park K2ABC was spotted at.
       expect(callsOn(service, 'pota'), hasLength(3));
       expect(service.spotsForCall('K2ABC', maxAge: const Duration(hours: 1)), hasLength(1));
@@ -268,8 +514,8 @@ void main() {
       expect(board(service), unorderedEquals(['K2ABC', 'W1AW', 'N3XYZ']));
     });
 
-    test('with the local source switched off, what it replaced is the board', () async {
-      // Replaced before the source filter, the station would vanish from both.
+    test('with the local source switched off, what it hid is the board', () async {
+      // Hidden before the source filter, the station would vanish from both.
       final service = SpotsService(fetchSpots: feed([fetched('K2ABC')]));
       addTearDown(service.dispose);
       await service.refresh();

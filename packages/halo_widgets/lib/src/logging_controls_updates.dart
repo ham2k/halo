@@ -308,6 +308,10 @@ extension _WidgetUpdates on _LoggingControlsState {
     // that started it closing may not take it away.
     if (!_suggestionWasTentative || !_callIsUntouchedSuggestion) return;
     _suggestionWasTentative = false;
+    // A spot this fill has is Space's on the peek ([_onCallFieldLeft]): the
+    // operator has let the station go, and the wipe below only ends its
+    // follow, which would leave it on the board with nothing to take it down.
+    _retractDraftSpot();
     // Focus stays where it is: pulling it here would raise the mobile keyboard
     // over the list the operator is still working. And behind [QsoDraft.populate],
     // which is what stops the clear from reaching `onCallEdited`: this runs
@@ -506,6 +510,9 @@ extension _WidgetUpdates on _LoggingControlsState {
   /// one still clears the manual time — a spot says nothing about when, and
   /// must not inherit the last link's timestamp.
   void _applySuggestedQso(Map<String, dynamic> data) {
+    // The entry this replaces was a station on the air, so its spot stands,
+    // as after a QSY. Followed on, it would move to the station suggested.
+    _releaseDraftSpot();
     _draft.populate(() {
       _applyFieldsFromData(data);
       // Read from `data`, since `_applyFieldsFromData` strips the key rather

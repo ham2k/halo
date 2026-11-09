@@ -14,11 +14,15 @@ extension _DraftSpot on _LoggingControlsState {
   /// else. A call left behind in a new contact starts its spot, or moves
   /// the one it already has.
   ///
-  /// Not an untouched tentative suggestion: that fill is a spot row being
-  /// peeked at, already on the board, and it goes when the row closes.
-  void _onCallFieldLeft() {
+  /// Not a call a suggestion put there and nobody typed over, unless Space
+  /// leaves it ([bySpace]): that is a spot row tapped or peeked at, already
+  /// on the board. Spotted again, it would only restamp the row as heard now,
+  /// and every station clicked past would look freshly heard. Space is the
+  /// operator moving on to work it — the station is there now — and so is
+  /// logging it ([_spotLogged]).
+  void _onCallFieldLeft({bool bySpace = false}) {
     if (widget.session.onDraftSpot == null || widget.session.editingQso != null || _fieldsLocked) return;
-    if (_suggestionWasTentative && _callIsUntouchedSuggestion) return;
+    if (!bySpace && _callIsUntouchedSuggestion) return;
     if (_spotKey == null && _call.isEmpty) return;
     _spotKey ??= uuidGenerator.v4();
     _emitDraftSpot();

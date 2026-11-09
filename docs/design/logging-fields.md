@@ -1295,7 +1295,13 @@ exchange as its label. **Logging a new contact** makes one too, from the
 record as logged, so a call entered and logged straight from the call field
 is on the board as well. A call not fully copied ("W1A?") is spotted like a
 whole one: someone is on that frequency. Text that is neither makes no spot
-when the field is left; a callsign half typed is not news. Only a new contact
+when the field is left; a callsign half typed is not news. Nor does a call a
+spot row put there, tapped or peeked at, while nobody has typed over it,
+unless the field is left by Space: that station is on the board already, and
+spotted again on any leave it would only be restamped as heard now, as would
+every station the operator clicks past. Space is the operator going on to
+work it, and makes the spot; logging it does too. A peeked row let go
+takes back the spot Space made of it. Only a new contact
 at the live time makes one: an
 earlier contact being edited is a record, not a station on the air, and so is
 one under manual time entry or with a start time of its own.
@@ -1309,20 +1315,39 @@ wrong call or a station gone, so the spot goes too, and the wipe's undo puts
 it back, taking down the spot of any entry it replaces. **Logging the contact** sends it once more, as logged, then ends the
 follow, as **a QSY wipe** does too, and either leaves the spot standing, since
 the station really was there. The next contact
-starts a spot of its own. An entry moved to the other SO2R set, or a panel
-closed, ends the follow the same way.
+starts a spot of its own. An entry moved to the other SO2R set, a panel
+closed, or a spot row's fill taking the entry's place ends the follow the
+same way.
 
 The app holds these spots beside the fetched ones, under the `local` source
 (`app/lib/services/local_spots.dart`, `SpotsService.putLocalSpot`), on this
-device only. They age out with the rest of the board. A local spot
-**replaces** every spot posted no later than it on the same band and in the
-same family of modes, when it is either the same call, anywhere there, or
-within 100 Hz in phone or 20 Hz in CW, older local spots included. Replacing
-hides; it deletes nothing. It happens on the board (`mergedSpotBoard`), after
-the operator's source filter, so switching the local source off, or taking a
-local spot back, brings back what it replaced, and an extension asking for
-one source's spots gets all of them. A spot posted after the local one is news the local one
-cannot speak for, and stays. Digital modes make no local spot: every station
+device only. They age out with the rest of the board. On the board
+(`withLocalSpots`, in `mergedSpotBoard`) a local spot does three things, each
+on its own band and family of modes:
+
+- It **takes in** every spot of its own station posted within 30 minutes of
+  it, the window the board merges one call's spots by, from any source and at
+  any frequency there, as one row: where, in what mode, when and with what word
+  (a QRT, say) from the newest of them, and the references of all. The label
+  is the newest one given, since a local spot's is a contest exchange at most
+  and the network's park line still says what the station is doing; a row
+  with none names its reference codes. It never hides its own station: that
+  would take the network's park and status off the board while the operator
+  works it. Nor does it take in one from further off: that may be another
+  outing, whose park would ride on a row stamped now that the age filter
+  never drops. It stays a row of its own.
+- It **hides** another station's spot within 100 Hz in phone or 20 Hz in CW,
+  posted no later than it: it says who is on that frequency now. A spot
+  posted after it is news it cannot speak for, and stays. So does every one,
+  once a newer spot of its own station has moved its row more than that
+  window away: the network says the station has left the frequency.
+- It **replaces** an older local spot of its own station, or of any station
+  within that window: the operator's own entries say who is there now.
+
+None of it deletes anything. It happens after the operator's source filter,
+so switching the local source off, or taking a local spot back, brings back
+what it hid or took in as it was, and an extension asking for one source's
+spots gets all of them. Digital modes make no local spot: every station
 in the passband shares one dial frequency, so a frequency says nothing about
 who is on it. Settings › Spotting turns the whole thing off, and takes down
 the local spots and band tags already up.
@@ -1347,7 +1372,8 @@ one, or local spots off in Settings — the text stays in the field and the
 message slot says why; emptied, the field would read as done.
 
 Each tag is its own, under a key of its own, so two "QRM"s are two places on
-the band. A call not fully copied replaces by frequency alone: the text names
+the band. A call not fully copied hides and replaces by frequency alone, and
+takes nothing in: the text names
 no station, and two stations both copied as "W1A?" are two places on the
 band, nor does the board merge one with another spot by its text. It names no
 operator (`spotOperatorCalls` answers none, `isLocalSpotWithoutStation`): on
