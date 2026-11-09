@@ -2837,9 +2837,6 @@ class _Translations$settings$station$de extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Trenne…';
 	@override String get statusError => 'Verbindung fehlgeschlagen';
 	@override String get currentRadioSettings => 'Aktuelle Funkgeräteeinstellungen';
-	@override String get notSupportedByThisRadio => 'Von diesem Funkgerät nicht unterstützt';
-	@override String get cwMessagesButton => 'CW-Nachrichten';
-	@override String get voiceMessagesButton => 'Phone-Nachrichten';
 	@override String voiceKeyerAvailable({required Object count}) => 'Sprach-Keyer: ${count} Speicher im Funkgerät';
 	@override String get antennaBands => 'Bänder';
 	@override String get antennaType => 'Antennentyp';
@@ -6475,9 +6472,6 @@ extension on TranslationsDe {
 			'settings.station.statusDisconnecting' => 'Trenne…',
 			'settings.station.statusError' => 'Verbindung fehlgeschlagen',
 			'settings.station.currentRadioSettings' => 'Aktuelle Funkgeräteeinstellungen',
-			'settings.station.notSupportedByThisRadio' => 'Von diesem Funkgerät nicht unterstützt',
-			'settings.station.cwMessagesButton' => 'CW-Nachrichten',
-			'settings.station.voiceMessagesButton' => 'Phone-Nachrichten',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Sprach-Keyer: ${count} Speicher im Funkgerät',
 			'settings.station.antennaBands' => 'Bänder',
 			'settings.station.antennaType' => 'Antennentyp',
@@ -6520,11 +6514,11 @@ extension on TranslationsDe {
 			'settings.station.placeholderDropAfterDescription' => 'Die Verbindung von selbst schließen, um das Wiederverbinden zu testen. Leer oder 0 trennt nie.',
 			'settings.station.placeholderFailConnect' => 'Verbindung immer fehlschlagen lassen',
 			'settings.station.placeholderConnectFailure' => 'Das Platzhalter-Funkgerät wurde angewiesen, diese Verbindung abzulehnen',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frequenz (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Wo das Platzhalter-Funkgerät startet. Danach meldet es zurück, worauf die App es abstimmt.',
 			'settings.station.placeholderMode' => 'Modus',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Der Modus, mit dem das Platzhalter-Funkgerät startet, z. B. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Leistung (Watt)',
 			'settings.station.placeholderPurpose' => 'Verwende dieses Funkgerät, um für das Log festzuhalten, welches Gerät du benutzt',
@@ -7034,11 +7028,11 @@ extension on TranslationsDe {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} konnte nicht importiert werden: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Es konnte keine Datei zum Importieren geöffnet werden: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} ist kein UTF-8-Text, also keine QSON-Datei',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} ist keine JSON-Datei, also keine QSON-Datei',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} enthält keinen QSON-Betrieb',
 			'qsonImport.busy' => 'Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'QSOs aus ADIF importieren',
 			'adifImport.reading' => ({required Object filename}) => 'Lese ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} QSO in dieser Datei', other: '${formatted} QSOs in dieser Datei', ), 

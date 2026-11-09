@@ -9,6 +9,8 @@
     - "New UPDATE (or UPD) command: DATA, POTA, NOTES, APP or EXT"
     - "New file opening: ADIF, QSON, layouts, shortcut and message sets, from Files or by drop"
     - "New Station Owner Callsign in Operation Details, for guest operators"
+    - "Improved Station settings: connect buttons and live readings on inventory radios"
+    - "Icom bandscope auto-adjust moved under the current radio's More details"
 
 "192":
   changes:

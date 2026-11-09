@@ -18,6 +18,7 @@ import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
+import 'package:ham2k_logger/views/station_rows.dart';
 
 import '../support/fake_voice_audio.dart';
 import '../support/halo_test_support.dart';
@@ -39,6 +40,13 @@ void main() {
   Widget wrap(Widget child) => TranslationProvider(
     child: MaterialApp(home: Scaffold(body: child)),
   );
+
+  // The keying lines sit under More details, folded until it is opened: a
+  // finder that skips offstage widgets sees none of them before this.
+  Future<void> openMoreDetails(WidgetTester tester) async {
+    await tester.tap(find.text('More details'));
+    await tester.pumpAndSettle();
+  }
 
   testWidgets('shows only the current rig, not other radios, and no Add Equipment', (tester) async {
     await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
@@ -120,10 +128,11 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      // Anchored on the peer's own row: with no local radio and the keyer
-      // experiment off, a bare findsNothing for the plug passes just as well
-      // when the row is not built at all.
-      final row = find.ancestor(of: find.text('FTDX10'), matching: find.byType(ListTile));
+      // Anchored on the peer's own row — its frame, which holds the buttons
+      // in the margins beside the tile, not the tile itself: with no local
+      // radio and the keyer experiment off, a bare findsNothing for the plug
+      // passes just as well when the row is not built at all.
+      final row = find.ancestor(of: find.text('FTDX10'), matching: find.byType(CurrentRowFrame));
       expect(row, findsOneWidget);
 
       // The rig is plugged into the other device. A plug icon here would
@@ -146,6 +155,7 @@ void main() {
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
+      await openMoreDetails(tester);
 
       expect(find.text('CW Keying'), findsOneWidget);
       expect(find.text("Key on VE1SK's iPad"), findsOneWidget);
@@ -159,13 +169,14 @@ void main() {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
+      expect(find.text('More details'), findsNothing, reason: 'with no key row there is nothing to fold');
       expect(find.text('CW Keying'), findsNothing, reason: 'a bare row with nothing selectable in it');
     });
   });
 
   // Recordings on this computer are recorded before the rig is on the desk:
   // a Phone Keying line that waits for a radio leaves nowhere to record them.
-  testWidgets('with no radio, Phone Keying offers the computer, and its messages open', (tester) async {
+  testWidgets('with no radio, Phone Keying offers the computer', (tester) async {
     final audio = FakeVoiceAudio();
     services = (await makeHaLoServices(
       cat: (settings) => CatService(settings, voiceAudio: audio, voiceMessagesDirectory: () async => '/v'),
@@ -174,8 +185,8 @@ void main() {
     await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.computer);
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
+    await openMoreDetails(tester);
     expect(find.text('Audio in this computer'), findsOneWidget);
-    expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNotNull);
   });
 
   // Words picked without their experiment are the audio they come with:
@@ -190,6 +201,7 @@ void main() {
     await services.cat.selectVoiceKeyingSource(VoiceKeyingSource.words);
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
+    await openMoreDetails(tester);
     expect(find.text('Audio in this computer'), findsOneWidget);
     await tester.tap(find.text('Audio in this computer'));
     await tester.pumpAndSettle();
@@ -200,6 +212,7 @@ void main() {
     await services.settings.setExperimentEnabled('words', true);
     await tester.pumpWidget(wrap(StationPanel(key: UniqueKey(), services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
+    await openMoreDetails(tester);
     expect(find.text('Audio and words in this computer'), findsOneWidget);
   });
 
@@ -221,13 +234,13 @@ void main() {
     await cat.keyer('B').selectVoiceKeyingSource(VoiceKeyingSource.computer);
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
+    await openMoreDetails(tester);
 
     expect(find.text('A: Phone Keying'), findsOneWidget);
     expect(find.text('B: Phone Keying'), findsOneWidget);
     expect(find.text('Memories in Left Rig'), findsOneWidget, reason: "radio1's pick: its own memories");
     expect(find.text('Audio in this computer'), findsOneWidget, reason: "Radio B's pick: the computer");
     expect(find.bySemanticsLabel('Computer Audio'), findsOneWidget, reason: "the way to Radio B's sound devices, and only Radio B's");
-    expect(find.widgetWithText(TextButton, 'Phone Messages'), findsNWidgets(2));
   });
 
   testWidgets('under SO2R, the switcher is picked beside the button to its settings, which hold stereo and listening', (tester) async {
@@ -239,10 +252,13 @@ void main() {
     await cat.setRadio1(LocalRadio(left.uuid));
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
-    expect(find.text('SO2R Switcher'), findsNothing, reason: 'two radios to switch between, or none');
+    // No More details at all, so the switcher is absent rather than folded.
+    expect(find.text('More details'), findsNothing, reason: 'two radios to switch between, or none');
+    expect(find.text('SO2R Switcher'), findsNothing);
 
     await cat.setRadio2(right.uuid);
     await tester.pumpAndSettle();
+    await openMoreDetails(tester);
     expect(find.text('SO2R Switcher'), findsOneWidget);
     final settingsButton = find.widgetWithIcon(IconButton, MdiIcons.tune).last;
     expect(tester.widget<IconButton>(settingsButton).onPressed, isNull, reason: 'with None picked there is nothing to set');
@@ -266,22 +282,6 @@ void main() {
   });
 
   group('CW keyer row', () {
-    testWidgets('is not there at all without the keyer experiment', (tester) async {
-      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
-      await tester.pumpAndSettle();
-      expect(find.byType(DropdownButtonFormField<int>), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
-    });
-
-    testWidgets('a radio that cannot key, as the only key, shows no keyer row', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
-      await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
-      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
-      await tester.pumpAndSettle();
-      expect(find.byType(DropdownButtonFormField<int>), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
-    });
-
     testWidgets('a capable radio, never connected, drives the whole row from what it CAN do', (tester) async {
       await services.settings.setExperimentEnabled('keyer', true);
       // Added, never connected — auto-designated as the key in use because
@@ -291,57 +291,10 @@ void main() {
       await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Rig', config: placeholderRadioModel.variants.single.defaultConfig);
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
+      await openMoreDetails(tester);
 
-      final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
-      expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
-      expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed,
-        isNotNull,
-        reason: 'the messages are settings, editable without a radio',
-      );
-      expect(
-        tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed,
-        isNotNull,
-        reason: 'the rig holds memories whether or not it is plugged in',
-      );
       expect(find.text('Memories in Bench Rig'), findsOneWidget, reason: "Phone Keying offers the rig's own memories");
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
-    });
-
-    testWidgets('a side the station cannot send on is disabled, and says why where it can be said', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
-      // A keyer of its own beside a rig that keys neither: CW can go out, no
-      // voice memory can. Disabling on capability is the point — a hover
-      // tooltip is not available to say so (docs/design/user-interface.md),
-      // so the reason has to reach a screen reader or nowhere.
-      final keyer = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Bench Keyer', config: placeholderRadioModel.variants.single.defaultConfig);
-      await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
-      await services.cat.setDesignated(kCategoryKey, keyer.uuid);
-      expect(services.cat.radio1HasVoiceMemories, isFalse, reason: 'sanity: a generic Kenwood pins no memory count');
-
-      // The reason lives ONLY in the semantics tree, which is off by default
-      // in a widget test — without this handle the label search below cannot
-      // fail, whatever the widget says.
-      final semantics = tester.ensureSemantics();
-      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull);
-      expect(
-        find.bySemanticsLabel('CW Messages. Not supported by this radio'),
-        findsNothing,
-        reason: 'a button that works must not carry a reason it does not',
-      );
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Phone Messages')).onPressed, isNull);
-      expect(find.bySemanticsLabel('Phone Messages. Not supported by this radio'), findsOneWidget);
-
-      // A key that cannot key: the CW Messages button stays, disabled, and
-      // says why to a screen reader.
-      await services.cat.setDesignated(kCategoryKey, null);
-      await tester.pumpAndSettle();
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNull);
-      expect(find.bySemanticsLabel('CW Messages. Not supported by this radio'), findsOneWidget);
-      semantics.dispose();
     });
 
     testWidgets('a radio keying through its own CAT session draws ONE equipment row', (tester) async {
@@ -376,39 +329,142 @@ void main() {
       expect(find.text('Bench Keyer'), findsOneWidget, reason: 'its equipment row; the key pick names it as CAT Keyer in ...');
       expect(find.byIcon(MdiIcons.powerPlugOff), findsNWidgets(2), reason: 'rig and keyer each connect from their own row');
     });
+  });
 
-    testWidgets('a connected keyer-capable radio enables the pick at the speed the radio reported', (tester) async {
-      await services.settings.setExperimentEnabled('keyer', true);
-      // The placeholder rig keys nothing but reports a speed like a real
-      // one — the same path an IC-7300's 0x14 0x0C answer takes.
-      final node = await services.cat.addNode(
-        typeKey: 'placeholder-radio',
-        name: 'Bench Rig',
-        // The Add dialog prefills these; a bare node fails its own validators.
-        config: placeholderRadioModel.variants.single.defaultConfig,
+  group('the current transceiver', () {
+    // An IC-7300 on a USB serial adapter: its scope is the radio's own screen,
+    // and its port is a long device path. Held disconnected: there is no such
+    // port here, and its retries would outlive the test.
+    Future<EquipmentNode> addIc7300(WidgetTester tester) async {
+      final cat = services.cat;
+      final node = await cat.addNode(
+        typeKey: 'ic7300-serial',
+        name: 'Shack 7300',
+        config: {...cat.registry.typeFor('ic7300-serial')!.defaultConfig, 'port': '/dev/cu.usbserial-00F8E1EB0', 'baudRate': 19200},
       );
-      await tester.runAsync(() => services.cat.connect(node.uuid));
-      expect(services.cat.canKeyCw, isTrue, reason: 'sanity: the placeholder rig is a CwKeyerSession');
+      await tester.runAsync(() => cat.disconnect(node.uuid));
+      return node;
+    }
 
+    testWidgets('a serial port is clipped from the front, keeping the end that tells adapters apart', (tester) async {
+      await addIc7300(tester);
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      // Clipped from the end, two adapters on one machine read alike as
+      // "/dev/cu.usbse…"; the end of the path is what differs between them.
+      // And only the port is clipped: clipping the whole line would spend
+      // the cap on the driver's CI-V address and show no port at all.
+      expect(find.text('…E1EB0 @ 19200 · CI-V 94'), findsOneWidget);
+    });
+
+    testWidgets('an Icom, whose scope is its own screen, offers bandscope adjustment under More details', (tester) async {
+      final node = await addIc7300(tester);
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      await openMoreDetails(tester);
+
+      expect(find.text('Automatically adjust bandscope'), findsOneWidget);
+      await tester.tap(find.text('Let this app adjust the bandscope'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Use the radio's bandscope settings as-is").last);
+      await tester.pumpAndSettle();
+      // Stored on the radio's own node, where its session reads it at connect.
+      expect(services.cat.nodeFor(node.uuid)!.config['civScopeAdjust'], 'radio');
+    });
+
+    testWidgets('under SO2R, Radio B offers its own bandscope adjustment', (tester) async {
+      // Both radios in use draw their scopes, and B's is an Icom's own screen
+      // as much as A's would be: with A's choice alone, B's could only be
+      // changed by making it the Main VFO.
+      await services.settings.setExperimentEnabled('so2r', true);
+      final rigB = await addIc7300(tester);
+      final rigA = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Left Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+      await services.cat.setRadio1(LocalRadio(rigA.uuid));
+      await services.cat.setRadio2(rigB.uuid);
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      await openMoreDetails(tester);
+
+      expect(find.text('B: Automatically adjust bandscope'), findsOneWidget);
+      expect(find.text('A: Automatically adjust bandscope'), findsNothing, reason: 'the placeholder has no scope of its own');
+    });
+
+    testWidgets('a radio with a scope of its own has no bandscope adjustment, nor an empty More details', (tester) async {
+      // A Flex streams a panadapter apart from its front panel: nothing HaLo
+      // does to it shows on the radio, so there is no choice to offer. With
+      // no key either, More details would open onto nothing.
+      final node = await services.cat.addNode(typeKey: 'flexradio-tcp', name: 'Shack Flex', config: {'host': 'flex.invalid', 'port': 4992});
+      await tester.runAsync(() => services.cat.disconnect(node.uuid));
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
 
-      final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
-      expect(pick.onChanged, isNotNull);
-      expect(find.text('22 WPM'), findsOneWidget, reason: 'the placeholder rig comes up at 22 WPM');
-      expect(find.text('Connect a radio that can key CW to send messages from here.'), findsNothing);
-
-      // Picking a speed is a set on the radio, and what shows is what the
-      // radio says back — not the picked value assumed.
-      await tester.tap(find.byType(DropdownButtonFormField<int>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('25 WPM').last);
-      await tester.pumpAndSettle();
-      expect(services.cat.keyerSpeed, 25);
-      expect(find.text('25 WPM'), findsOneWidget);
-
-      await tester.runAsync(() => services.cat.disconnect(node.uuid));
+      expect(find.text('More details'), findsNothing);
+      expect(find.text('Automatically adjust bandscope', skipOffstage: false), findsNothing);
     });
+
+    testWidgets('the CW key sits beside the antenna when it is tracked, and under More details when it is not', (tester) async {
+      // A key logged with every QSO changes as often as the antenna does; one
+      // that is not is set once, and folded away with the rest.
+      await services.cat.addNode(typeKey: 'key-none', name: 'Paddle');
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      expect(find.text('CW Keying'), findsNothing, reason: 'folded until More details opens');
+      await openMoreDetails(tester);
+      expect(find.text('CW Keying'), findsOneWidget);
+
+      await services.settings.setTrackStationInfo(true);
+      await services.settings.setStationInfoTrackedFields({'rig', 'key'});
+      await tester.pumpWidget(wrap(StationPanel(key: UniqueKey(), services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      expect(find.text('CW Keying'), findsOneWidget, reason: 'out of the fold, with nothing opened');
+    });
+  });
+
+  testWidgets('an inventory radio says why its plug cannot connect, and is silent when there is nothing to say', (tester) async {
+    // The inventory's plug connects radios that are not the current one,
+    // whose failures show nowhere else: ErrorPolicy keeps an unreachable
+    // radio off the screen because its row says so.
+    final cat = services.cat;
+    await cat.addNode(typeKey: 'kenwood-serial', name: 'Spare Rig');
+    final failing = await cat.addNode(
+      typeKey: 'placeholder-radio',
+      name: 'Dead Rig',
+      config: {...placeholderRadioModel.variants.single.defaultConfig, 'placeholderFailConnect': true},
+    );
+    final main = await cat.addNode(typeKey: 'placeholder-radio', name: 'Main Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await tester.runAsync(() => cat.disconnect(main.uuid));
+    await tester.runAsync(() => cat.connect(failing.uuid));
+    expect(cat.stateFor(failing.uuid).status, EquipmentStatus.error, reason: 'sanity: the connect failed');
+
+    await tester.pumpWidget(wrap(StationPanel(services: services)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3 transceivers'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not configured'), findsOneWidget, reason: "Spare Rig's row: why its plug is disabled");
+    expect(find.text(cat.stateFor(failing.uuid).error!), findsOneWidget, reason: "Dead Rig's row: why its connect failed");
+    final mainRow = find.ancestor(of: find.text('Main Rig').last, matching: find.byType(ListTile));
+    expect(tester.widget<ListTile>(mainRow).subtitle, isNull, reason: 'nothing to say, so the name centres');
+  });
+
+  testWidgets('every plug lines up in the trailing margin, the current transceiver\'s and the inventory\'s', (tester) async {
+    // The plugs sit in the margin, not at the end of each row's text: a plug
+    // at the end of a row moves with whatever that row says, and two rows
+    // for the same radio put its plug in two places.
+    final cat = services.cat;
+    for (final name in ['Rig A', 'Rig B']) {
+      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+      await tester.runAsync(() => cat.disconnect(node.uuid));
+    }
+    await tester.pumpWidget(wrap(StationPanel(services: services)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2 transceivers'));
+    await tester.pumpAndSettle();
+
+    final plugs = find.byIcon(MdiIcons.powerPlugOff);
+    expect(plugs, findsNWidgets(3), reason: 'the current row, and each inventory radio');
+    final lefts = {for (var i = 0; i < 3; i++) tester.getRect(plugs.at(i)).left};
+    expect(lefts, hasLength(1));
   });
 
   testWidgets('Power field persists to the VFO on submit', (tester) async {

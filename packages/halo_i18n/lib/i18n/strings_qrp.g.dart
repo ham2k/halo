@@ -2891,7 +2891,6 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spectrumOutOfRange => 'the radio\'s scope is set outside the range it can show';
 	@override String get spectrumBandUnsupported => 'the radio\'s scope cannot be shown on this band';
 	@override String get civScopeAdjust => 'automatically adjust bandscope';
-	@override String get civScopeAdjustDescription => 'lets this app set the radio\'s scope while it shows it: the reference level (ref) on each band so the noise shows as on other radios, and the scope\'s edges, in scroll-f mode, so the picture holds still while you tune. the radio keeps the ref and edges it was left with, and gets its own mode back.';
 	@override String get civScopeAdjustApp => 'let this app adjust the bandscope';
 	@override String get civScopeAdjustRadio => 'use the radio\'s bandscope settings as-is';
 	@override String get spectrumSdrNoRadio => 'waiting for the linked radio\'s frequency…';
@@ -3028,7 +3027,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get keyerNotSupported => 'not supported by current radio';
 	@override String get catControlPreferences => 'cat control preferences';
 	@override String get chooseTransceiver => 'choose transceiver';
-	@override String get configurationSection => 'configuration';
+	@override String get configurationSection => 'more details';
 	@override String get noTransceiverSelected => 'no transceiver selected';
 	@override String makeMainVfo({required Object name}) => 'use ${name} for the main vfo';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
@@ -3095,9 +3094,6 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get statusDisconnecting => 'disconnecting…';
 	@override String get statusError => 'connection failed';
 	@override String get currentRadioSettings => 'current radio settings';
-	@override String get notSupportedByThisRadio => 'not supported by this radio';
-	@override String get cwMessagesButton => 'cw messages';
-	@override String get voiceMessagesButton => 'phone messages';
 	@override String voiceKeyerAvailable({required Object count}) => 'voice keyer: ${count} memories in the radio';
 	@override String get antennaBands => 'bands';
 	@override String get antennaType => 'antenna type';
@@ -6833,7 +6829,6 @@ extension on TranslationsQrp {
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'the radio\'s scope cannot be shown on this band',
 			'settings.station.civScopeAdjust' => 'automatically adjust bandscope',
-			'settings.station.civScopeAdjustDescription' => 'lets this app set the radio\'s scope while it shows it: the reference level (ref) on each band so the noise shows as on other radios, and the scope\'s edges, in scroll-f mode, so the picture holds still while you tune. the radio keeps the ref and edges it was left with, and gets its own mode back.',
 			'settings.station.civScopeAdjustApp' => 'let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
@@ -7007,9 +7002,9 @@ extension on TranslationsQrp {
 			'settings.station.tenTecNoCw' => 'this radio\'s firmware does not take cw from the app. ten-tec added it in orion firmware 1.366.',
 			'settings.station.tenTecKeyerOff' => 'the radio\'s internal keyer is off, so it ignores cw sent from the app. turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
+			'settings.station.guohetecTroubleshooting' => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.guohetecTroubleshooting' => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.thetisTroubleshootingTitle' => 'if the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTroubleshooting' => 'this connects to **thetis**, the program that runs the radio, not to the radio itself: an anan has no cat of its own.\n\n- **thetis\'s cat server must be running.** in thetis, setup → serial/network/midi cat → network, check **server running**. it is not the tci server, which is a different thing.\n- **port** is 13013 unless you changed it there.\n- **from another computer**, thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **rated power** is what full drive puts out: 100 w on most anans, 200 w on the 8000dle, 10 w on the 10e. the app sets power as a share of it.\n- **cw messages go out through thetis\'s cwx keyer.** if one does not, open the cwx window in thetis and try again.\n\nthis entry was written from thetis\'s published cat reference and has not been run against a radio. if it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'if the radio does not connect, or connects but does not follow',
@@ -7060,7 +7055,7 @@ extension on TranslationsQrp {
 			'settings.station.keyerNotSupported' => 'not supported by current radio',
 			'settings.station.catControlPreferences' => 'cat control preferences',
 			'settings.station.chooseTransceiver' => 'choose transceiver',
-			'settings.station.configurationSection' => 'configuration',
+			'settings.station.configurationSection' => 'more details',
 			'settings.station.noTransceiverSelected' => 'no transceiver selected',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'use ${name} for the main vfo',
 			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, zero: 'no transceivers', one: '${count} transceiver', other: '${count} transceivers', ), 
@@ -7117,9 +7112,6 @@ extension on TranslationsQrp {
 			'settings.station.statusDisconnecting' => 'disconnecting…',
 			'settings.station.statusError' => 'connection failed',
 			'settings.station.currentRadioSettings' => 'current radio settings',
-			'settings.station.notSupportedByThisRadio' => 'not supported by this radio',
-			'settings.station.cwMessagesButton' => 'cw messages',
-			'settings.station.voiceMessagesButton' => 'phone messages',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'bands',
 			'settings.station.antennaType' => 'antenna type',
@@ -7521,12 +7513,12 @@ extension on TranslationsQrp {
 			'commands.swapOnAir' => ({required Object radio}) => 'nothing swapped: radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'nothing swapped: radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'nothing swapped: this operation can\'t take changes right now',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapDone' => 'radios a and b swapped',
 			'commands.swapNotConnected' => ({required Object radio}) => 'swapped, but radio ${radio} is not connected and did not move',
 			'commands.swapNoneConnected' => 'swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'commands',

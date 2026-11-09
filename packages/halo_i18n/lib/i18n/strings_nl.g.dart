@@ -2837,9 +2837,6 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Verbinding verbreken…';
 	@override String get statusError => 'Verbinding mislukt';
 	@override String get currentRadioSettings => 'Huidige radio-instellingen';
-	@override String get notSupportedByThisRadio => 'Niet ondersteund door deze radio';
-	@override String get cwMessagesButton => 'CW-berichten';
-	@override String get voiceMessagesButton => 'Spraakberichten';
 	@override String voiceKeyerAvailable({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio';
 	@override String get antennaBands => 'Banden';
 	@override String get antennaType => 'Antennetype';
@@ -6475,9 +6472,6 @@ extension on TranslationsNl {
 			'settings.station.statusDisconnecting' => 'Verbinding verbreken…',
 			'settings.station.statusError' => 'Verbinding mislukt',
 			'settings.station.currentRadioSettings' => 'Huidige radio-instellingen',
-			'settings.station.notSupportedByThisRadio' => 'Niet ondersteund door deze radio',
-			'settings.station.cwMessagesButton' => 'CW-berichten',
-			'settings.station.voiceMessagesButton' => 'Spraakberichten',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Spraakkeyer: ${count} geheugens in de radio',
 			'settings.station.antennaBands' => 'Banden',
 			'settings.station.antennaType' => 'Antennetype',
@@ -6520,11 +6514,11 @@ extension on TranslationsNl {
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
 			'settings.station.placeholderFailConnect' => 'Verbinden altijd laten mislukken',
 			'settings.station.placeholderConnectFailure' => 'De tijdelijke radio is opgedragen deze verbinding te weigeren',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frequentie (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Waar de tijdelijke radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.',
 			'settings.station.placeholderMode' => 'Mode',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'De mode waarmee de tijdelijke radio begint, bijv. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Vermogen (watt)',
 			'settings.station.placeholderPurpose' => 'Gebruik deze radio om bij te houden welke rig je gebruikt, voor je logboek',
@@ -7034,11 +7028,11 @@ extension on TranslationsNl {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is geen UTF-8-tekst, dus geen QSON-bestand',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bevat geen QSON-activatie',
 			'qsonImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'QSO\'s importeren uit ADIF',
 			'adifImport.reading' => ({required Object filename}) => '${filename} lezen…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in dit bestand', other: '${formatted} QSO\'s in dit bestand', ), 

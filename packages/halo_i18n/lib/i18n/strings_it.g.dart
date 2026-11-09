@@ -2837,9 +2837,6 @@ class _Translations$settings$station$it extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Disconnessione in corso…';
 	@override String get statusError => 'Connessione non riuscita';
 	@override String get currentRadioSettings => 'Impostazioni attuali della radio';
-	@override String get notSupportedByThisRadio => 'Non supportato da questa radio';
-	@override String get cwMessagesButton => 'Messaggi CW';
-	@override String get voiceMessagesButton => 'Messaggi in Fonia';
 	@override String voiceKeyerAvailable({required Object count}) => 'Keyer vocale: ${count} memorie nella radio';
 	@override String get antennaBands => 'Bande';
 	@override String get antennaType => 'Tipo di antenna';
@@ -6475,9 +6472,6 @@ extension on TranslationsIt {
 			'settings.station.statusDisconnecting' => 'Disconnessione in corso…',
 			'settings.station.statusError' => 'Connessione non riuscita',
 			'settings.station.currentRadioSettings' => 'Impostazioni attuali della radio',
-			'settings.station.notSupportedByThisRadio' => 'Non supportato da questa radio',
-			'settings.station.cwMessagesButton' => 'Messaggi CW',
-			'settings.station.voiceMessagesButton' => 'Messaggi in Fonia',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Keyer vocale: ${count} memorie nella radio',
 			'settings.station.antennaBands' => 'Bande',
 			'settings.station.antennaType' => 'Tipo di antenna',
@@ -6520,11 +6514,11 @@ extension on TranslationsIt {
 			'settings.station.placeholderDropAfterDescription' => 'Chiude la connessione da sola, per provare il percorso di riconnessione. Vuoto o 0 non si disconnette mai.',
 			'settings.station.placeholderFailConnect' => 'Fallisci sempre la connessione',
 			'settings.station.placeholderConnectFailure' => 'Alla radio segnaposto è stato detto di rifiutare questa connessione',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frequenza (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Dove parte la radio segnaposto. In seguito riporta qualunque frequenza l\'app imposti.',
 			'settings.station.placeholderMode' => 'Modo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Il modo con cui parte la radio segnaposto, ad es. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potenza (watt)',
 			'settings.station.placeholderPurpose' => 'Usa questa radio per tenere traccia di quale apparato stai usando ai fini del logging',
@@ -7034,11 +7028,11 @@ extension on TranslationsIt {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Impossibile importare ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Impossibile aprire un file da importare: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} non è testo UTF-8, quindi non è un file QSON',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} non è un file JSON, quindi non è un file QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} non contiene un\'operazione QSON',
 			'qsonImport.busy' => 'È già in corso un\'importazione. Attendi che finisca prima di avviarne un\'altra.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importa QSO da ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Lettura di ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} QSO in questo file', other: '${formatted} QSO in questo file', ), 

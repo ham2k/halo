@@ -11,7 +11,6 @@
 // new type contributes its settings without touching this file.
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -21,19 +20,17 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'add_equipment_dialog.dart';
 import 'midi_controller_pane.dart';
-import 'equipment_glyphs.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
 import '../services/cat/transports/serial_transport.dart' show SerialTransportConfig, serialDtrHighConfigKey, serialRtsHighConfigKey;
 import '../services/cat/drivers/antenna_genius_driver.dart';
+import '../services/cat/drivers/icom_civ_driver.dart' show civScopeAdjustConfigKey, civScopeConfigKey;
 import '../services/cat/drivers/rotator_config.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/cat_service.dart';
 import '../services/peer/peer_remote_radios.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
-import 'cw_messages_dialog.dart';
-import 'voice_messages_dialog.dart';
 import 'equipment_report.dart';
 import 'keying_pickers.dart';
 import 'so2r_switch_dialog.dart';
@@ -654,6 +651,52 @@ class StationPanel extends StatelessWidget {
     );
   }
 
+  /// Stores [value] on [node], then reconnects it if it is connected: its
+  /// session reads the setting when it starts, and a choice that waited for
+  /// the next connect would leave HaLo driving the radio's front panel after
+  /// the operator had told it to stop.
+  Future<void> _applyScopeAdjust(EquipmentNode node, String value) async {
+    await _cat.updateNode(node.copyWith(config: {...node.config, civScopeAdjustConfigKey: value}));
+    if (_cat.stateFor(node.uuid).status != EquipmentStatus.connected) return;
+    await _cat.disconnect(node.uuid);
+    await _cat.connect(node.uuid);
+  }
+
+  /// [uuid]'s bandscope choice as a details row, when it is an Icom whose
+  /// scope is its own screen; [radio] names it under SO2R.
+  Widget? _scopeAdjustRow(BuildContext context, String? uuid, {required String? radio, required EdgeInsets inset}) {
+    final node = uuid == null ? null : _cat.nodeFor(uuid);
+    if (node == null || _cat.typeFor(node)?.overrides[civScopeConfigKey] != true) return null;
+    final st = context.t.settings.station;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: ScopeAdjustField(
+        node: node,
+        label: radio == null ? st.civScopeAdjust : st.so2rRadioName(radio: radio, name: st.civScopeAdjust),
+        onChanged: (value) => unawaited(_applyScopeAdjust(node, value)),
+      ),
+    );
+  }
+
+  /// [node]'s plug on its inventory row — disabled, not absent, while it has
+  /// nowhere to connect to, so the row keeps its shape.
+  RowPlug _plugFor(EquipmentNode node) {
+    final state = _cat.stateFor(node.uuid);
+    final unconfigured = _cat.typeFor(node)?.isUnconfigured(node.config) ?? false;
+    return RowPlug(
+      busy: state.status == EquipmentStatus.connecting || state.status == EquipmentStatus.disconnecting,
+      // A radio that has stopped answering reads as the loss it is, as on
+      // the current transceiver's row: the plug pulled, its tap reconnecting.
+      connected: state.status == EquipmentStatus.connected && !state.stale,
+      onConnect: unconfigured ? null : () => _cat.connect(node.uuid),
+      onDisconnect: () => _cat.disconnect(node.uuid),
+    );
+  }
+
+  /// [StationExpansionScope]'s key for the folding details section — not a
+  /// category, so it cannot collide with the inventory's.
+  static const _detailsSection = 'details';
+
   /// The dropdown's value for a peer radio. Namespaced because the list is
   /// shared with local nodes and both are keyed by a uuid — one that means
   /// "a node in THIS station" and one that does not.
@@ -717,7 +760,7 @@ class StationPanel extends StatelessWidget {
           return PeerVfoTile(
             selection: selection,
             available: absentSelection == null,
-            trailing: picker,
+            picker: picker,
             onTap: () => showPeerRadioElsewhere(
               context,
               radio: selection.radioName.isEmpty ? selection.radioId : selection.radioName,
@@ -729,12 +772,14 @@ class StationPanel extends StatelessWidget {
         final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
         if (node == null) {
           // Nothing to edit, so the whole row is the way to pick one.
-          return ListTile(
-            leading: Icon(iconForCategory(kCategoryTransceiver)),
-            title: Text(st.noTransceiverSelected),
-            trailing: picker,
-            onTap: toggle,
-            mouseCursor: SystemMouseCursors.click,
+          return CurrentRowFrame(
+            leading: picker,
+            child: ListTile(
+              leading: const TransceiverGlyph.bare(inUse: false),
+              title: Text(st.noTransceiverSelected),
+              onTap: toggle,
+              mouseCursor: SystemMouseCursors.click,
+            ),
           );
         }
         return CurrentTransceiverTile(
@@ -746,7 +791,7 @@ class StationPanel extends StatelessWidget {
           onEdit: () => _editEquipment(context, node),
           onConnect: () => _cat.connect(node.uuid),
           onDisconnect: () => _cat.disconnect(node.uuid),
-          trailing: picker,
+          picker: picker,
         );
       },
     );
@@ -790,12 +835,14 @@ class StationPanel extends StatelessWidget {
         final uuid = _cat.radio2;
         final node = uuid == null ? null : _cat.nodeFor(uuid);
         if (node == null) {
-          return ListTile(
-            leading: Icon(iconForCategory(kCategoryTransceiver)),
-            title: Text(st.noRadioBSelected),
-            trailing: picker,
-            onTap: toggle,
-            mouseCursor: SystemMouseCursors.click,
+          return CurrentRowFrame(
+            leading: picker,
+            child: ListTile(
+              leading: const TransceiverGlyph.bare(inUse: false),
+              title: Text(st.noRadioBSelected),
+              onTap: toggle,
+              mouseCursor: SystemMouseCursors.click,
+            ),
           );
         }
         return CurrentTransceiverTile(
@@ -807,7 +854,7 @@ class StationPanel extends StatelessWidget {
           onEdit: () => _editEquipment(context, node),
           onConnect: () => _cat.connect(node.uuid),
           onDisconnect: () => _cat.disconnect(node.uuid),
-          trailing: picker,
+          picker: picker,
         );
       },
     );
@@ -862,6 +909,11 @@ class StationPanel extends StatelessWidget {
       listenable: Listenable.merge([_cat, services.settings, services.peerRemoteRadios]),
       builder: (context, _) {
         final rowInset = _rowInset(context);
+        final detailsInset = EdgeInsets.only(left: currentRowDetailsInset(context), right: rowInset.right);
+        // The current rig's ground, half way back to the surface, so the rig
+        // reads as the band's content rather than more heading — and its
+        // details, under it, as the rig's.
+        final rigGround = Color.lerp(Theme.of(context).colorScheme.surface, haloCategoryBandColor(context), 0.5)!;
         final nodes = _cat.nodes;
         final antennas = [
           for (final node in nodes)
@@ -917,6 +969,45 @@ class StationPanel extends StatelessWidget {
                 ),
               );
 
+        final keyOutside = services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.contains('key');
+        final keyLine = _keyingLine(
+          picker: cwKeyPicker(
+            context,
+            services,
+            keys: keys,
+            label: so2r ? st.so2rRadioName(radio: 'A', name: st.keyInUse) : st.keyInUse,
+          ),
+          controls: [if (keyerExperiment) cwKeyingOptionsButton(context)],
+        );
+        final details = [
+          // Whether HaLo adjusts each radio in use's bandscope — only where the
+          // scope it draws is the radio's own screen (an Icom's), so what HaLo
+          // does to it shows on the front panel too.
+          ?_scopeAdjustRow(context, localRadio1, radio: so2r ? 'A' : null, inset: detailsInset),
+          // The key when it is not tracked, and under it what keys phone.
+          if ((!keyOutside && offersKey) || offersPhone)
+            Padding(
+              padding: EdgeInsets.fromLTRB(detailsInset.left, 0, detailsInset.right, Space.md),
+              child: Column(
+                spacing: Space.md,
+                children: [
+                  if (!keyOutside && offersKey) keyLine,
+                  if (offersPhone) _phoneKeyingLine(context, radio: 'A'),
+                ],
+              ),
+            ),
+          if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
+            _radio2Picks(context, antennas: antennas, keys: keys, inset: detailsInset),
+          if (so2r) ?_scopeAdjustRow(context, _cat.radio2, radio: 'B', inset: detailsInset),
+          if (so2r && _cat.radio2 != null && offersPhoneB)
+            Padding(
+              padding: EdgeInsets.fromLTRB(detailsInset.left, 0, detailsInset.right, Space.md),
+              child: _phoneKeyingLine(context, radio: 'B'),
+            ),
+          if (so2r && _cat.radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: detailsInset),
+          if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: detailsInset),
+        ];
+
         return StationExpansionScope(
           builder: (context, expanded, toggle) => SectionedListView(
             padding: const EdgeInsets.only(bottom: Space.md),
@@ -928,10 +1019,8 @@ class StationPanel extends StatelessWidget {
               // the page scrolls under it.
               CategoryBand(
                 so2r ? st.currentTransceivers : st.currentTransceiver,
-                // A ground of its own, half way back to the surface, so the
-                // rig reads as the band's content rather than more heading.
                 below: Material(
-                  color: Color.lerp(Theme.of(context).colorScheme.surface, haloCategoryBandColor(context), 0.5),
+                  color: rigGround,
                   child: so2r
                       ? Column(
                           mainAxisSize: MainAxisSize.min,
@@ -943,68 +1032,69 @@ class StationPanel extends StatelessWidget {
                       : _currentTransceiverRow(context, localRadio1: localRadio1, selection: selection, absentSelection: absentSelection),
                 ),
               ),
-              SectionHeader(st.configurationSection),
               // Which antenna and key a QSO's captured station info should
-              // credit, each on its own line and only once there is
-              // something to choose between: the key with its speed, options
-              // and messages beside it, and under it what keys phone, with
-              // its own. The key row also offers a
-              // peer's key, though it is no node of this station: the phone
-              // this is for has no key inventory of its own, and without it
-              // its operator could not step off the peer's key.
-              if (antennas.isNotEmpty || offersKey || offersPhone)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(rowInset.left, Space.md, rowInset.right, Space.md),
-                  child: Column(
-                    spacing: Space.md,
-                    children: [
-                      if (antennas.isNotEmpty)
-                        DesignationDropdown(
-                          key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
-                          label: so2r ? st.so2rRadioName(radio: 'A', name: st.antennaInUse) : st.antennaInUse,
-                          nodes: antennas,
-                          selected: _cat.designatedFor(kCategoryAntenna),
-                          displayName: _displayName,
-                          noneLabel: st.noneSelected,
-                          onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
-                        ),
-                      if (offersKey)
-                        _keyingLine(
-                          picker: cwKeyPicker(
-                            context,
-                            services,
-                            keys: keys,
-                            label: so2r ? st.so2rRadioName(radio: 'A', name: st.keyInUse) : st.keyInUse,
+              // credit, on the rig's ground under it — out of the fold: the
+              // antenna always, the key when the operator tracks it, since
+              // then it changes as often as the antenna does. The key row also
+              // offers a peer's key, though it is no node of this station: the
+              // phone this is for has no key inventory of its own, and without
+              // it its operator could not step off the peer's key.
+              if (antennas.isNotEmpty || (keyOutside && offersKey))
+                ColoredBox(
+                  color: rigGround,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(detailsInset.left, Space.md, detailsInset.right, Space.md),
+                    child: Column(
+                      spacing: Space.md,
+                      children: [
+                        if (antennas.isNotEmpty)
+                          DesignationDropdown(
+                            key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
+                            label: so2r ? st.so2rRadioName(radio: 'A', name: st.antennaInUse) : st.antennaInUse,
+                            nodes: antennas,
+                            selected: _cat.designatedFor(kCategoryAntenna),
+                            displayName: _displayName,
+                            noneLabel: st.noneSelected,
+                            onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
                           ),
-                          controls: [
-                            if (keyerExperiment && _cat.designatedKeyIsKeyer) _keyerSpeed(context),
-                            if (keyerExperiment) cwKeyingOptionsButton(context),
-                          ],
-                          messages: keyerExperiment
-                              ? MessagesButton(
-                                  label: st.cwMessagesButton,
-                                  enabled: _cat.designatedKeyIsKeyer,
-                                  disabledReason: st.notSupportedByThisRadio,
-                                  onPressed: () => showCwMessagesDialog(context, services),
-                                )
-                              : null,
-                        ),
-                      if (offersPhone) _phoneKeyingLine(context, radio: 'A'),
-                    ],
+                        if (keyOutside && offersKey) keyLine,
+                      ],
+                    ),
                   ),
                 ),
-              if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
-                _radio2Picks(context, antennas: antennas, keys: keys, inset: rowInset),
-              if (so2r && _cat.radio2 != null && offersPhoneB)
-                Padding(
-                  padding: EdgeInsets.fromLTRB(rowInset.left, 0, rowInset.right, Space.md),
-                  child: _phoneKeyingLine(context, radio: 'B'),
+              // The rest of the rig's details, on its ground, indented under
+              // it and folded until asked for. Absent when there is nothing to
+              // fold: a heading over no rows opens onto nothing.
+              if (details.isNotEmpty) ...[
+                SectionHeader(
+                  st.configurationSection,
+                  indent: detailsInset.left - rowInset.left,
+                  background: rigGround,
+                  expanded: expanded.contains(_detailsSection),
+                  onTap: () => toggle(_detailsSection),
                 ),
-              if (so2r && _cat.radio2 != null && (_cat.so2rSwitchNodes.isNotEmpty || _cat.so2rAudioRadio != null)) _so2rSwitchLine(context, inset: rowInset),
-              if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: rowInset),
-
-              // The same break between categories as before CAT Control Preferences.
-              const SizedBox(height: Space.xl * 2),
+                ColoredBox(
+                  color: rigGround,
+                  // The gap under the heading is the column's, and every row
+                  // brings only the gap below it: whichever row comes first.
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: Space.md),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: details),
+                  ),
+                ),
+              ],
+              // Room at the foot of the rig's ground, before the inventory —
+              // slivers of its own, so folding the details does not fold it.
+              SectionedSlivers(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: ColoredBox(
+                      color: rigGround,
+                      child: const SizedBox(height: Space.lg),
+                    ),
+                  ),
+                ],
+              ),
               // What the station is made OF. Compact shows only what is in use
               // — the rig driving the main VFO, and the key if it is a device
               // of its own — as quick-glance connect/status rows, not the whole
@@ -1076,6 +1166,9 @@ class StationPanel extends StatelessWidget {
                         selected: _cat.isRadio1(node.uuid),
                         onSelect: () => unawaited(_onMainVfoPicked(node.uuid)),
                         onEdit: () => _editEquipment(context, node),
+                        plug: _plugFor(node),
+                        state: _cat.stateFor(node.uuid),
+                        unconfigured: _cat.typeFor(node)?.isUnconfigured(node.config) ?? false,
                       )
                     else
                       EquipmentTile(
@@ -1261,106 +1354,19 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// The speed the designated keyer sends at, sized to its value ("30 WPM")
-  /// rather than stretched across the row it shares with the key.
-  Widget _keyerSpeed(BuildContext context) {
-    final canKey = _cat.canKeyCw;
-    final range = _cat.keyerSpeedRange;
-    final speed = _cat.keyerSpeed;
-    final inRange = speed != null && range != null && speed >= range.min && speed <= range.max;
-    final ks = context.t.settings.radio.keyerSpeed;
-    final theme = Theme.of(context);
-    final valueStyle = theme.textTheme.titleMedium ?? const TextStyle();
-    final labelStyle = theme.textTheme.bodySmall ?? const TextStyle();
-    // The wider of the value and the floating label, plus the field's
-    // content padding and the dropdown's trailing icon.
-    final width = math.max(textWidth(context, '30 ${ks.unit}', valueStyle), textWidth(context, ks.title, labelStyle)) + 16 + 32;
-    return SizedBox(
-      width: width,
-      child: DropdownButtonFormField<int>(
-        // Keyed on the value: FormFieldState reads initialValue once, and the
-        // radio's answer arrives after the first build.
-        key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
-        isExpanded: true,
-        initialValue: inRange ? speed : null,
-        icon: dropdownTrailingIcon,
-        decoration: poloFieldDecoration(context, ks.title),
-        menuMaxHeight: dropdownMenuMaxHeight(context),
-        items: [
-          if (range != null)
-            for (var wpm = range.min; wpm <= range.max; wpm++) DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${ks.unit}')),
-        ],
-        onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
-      ),
-    );
-  }
-
-  /// A keying line: its picker, the controls that go with it, then the way
-  /// to its messages — on the line itself where there is room, on one of its
-  /// own under the controls where there is not.
-  ///
-  /// The messages button is there whenever the line is, and disabled only
-  /// where that side cannot send at all — laid out from CAPABILITY, never
-  /// from the link: a control that came and went with the connection would
-  /// move under the operator every time the radio blinked, and "this rig has
-  /// no voice memories" must not look like "the rig is unplugged". No hover
-  /// tooltips (docs/design/user-interface.md), so a disabled button says why
-  /// in [Semantics] or nowhere.
-  ///
-  /// On the line, both lines' buttons take the width of the wider and start
-  /// at its left, so their icons line up down the column.
-  Widget _keyingLine({required Widget picker, required List<Widget> controls, Widget? messages}) => LayoutBuilder(
-    builder: (context, constraints) {
-      final narrow = constraints.maxWidth < _keyingLineNarrow;
-      final row = Row(
-        children: [
-          Expanded(child: picker),
-          for (final control in controls) ...[const SizedBox(width: Space.sm), control],
-          if (messages != null && !narrow) ...[
-            const SizedBox(width: Space.sm),
-            SizedBox(
-              width: _messagesButtonWidth(context),
-              child: Align(alignment: AlignmentDirectional.centerStart, child: messages),
-            ),
-          ],
-        ],
-      );
-      if (messages == null || !narrow) return row;
-      return Column(crossAxisAlignment: CrossAxisAlignment.end, spacing: Space.sm, children: [row, messages]);
-    },
+  /// A keying line: its picker, then the controls that go with it.
+  Widget _keyingLine({required Widget picker, required List<Widget> controls}) => Row(
+    children: [
+      Expanded(child: picker),
+      for (final control in controls) ...[const SizedBox(width: Space.sm), control],
+    ],
   );
 
-  /// The wider of the two messages buttons: its label, plus the icon and
-  /// padding a [TextButton.icon] puts around it.
-  double _messagesButtonWidth(BuildContext context) {
-    final st = context.t.settings.station;
-    final style = Theme.of(context).textTheme.labelLarge ?? const TextStyle();
-    final label = math.max(textWidth(context, st.cwMessagesButton, style), textWidth(context, st.voiceMessagesButton, style));
-    // 12 + 16 of padding, an 18 icon and the 8 between it and the label.
-    return label.ceilToDouble() + 12 + 18 + 8 + 16;
-  }
-
-  /// Below this, a keying line's messages button takes a line of its own:
-  /// beside the picker, the speed and the options it would leave the picker
-  /// too narrow to read.
-  static const _keyingLineNarrow = 520.0;
-
-  /// Where [radio]'s (`A` or `B`) phone messages come from, and the way to
-  /// its messages ([phoneKeyingParts]).
+  /// Where [radio]'s (`A` or `B`) phone messages come from
+  /// ([phoneKeyingParts]).
   Widget _phoneKeyingLine(BuildContext context, {required String radio}) {
-    final st = context.t.settings.station;
-    final keyer = _cat.keyer(radio);
     final parts = phoneKeyingParts(context, services, radio: radio);
-    return _keyingLine(
-      picker: parts.picker,
-      controls: parts.controls,
-      messages: MessagesButton(
-        label: st.voiceMessagesButton,
-        enabled: keyer.radio1HasVoiceMemories,
-        disabledReason: keyer.phoneKeyingOff ? st.phoneKeyingOff : st.notSupportedByThisRadio,
-        onPressed: () => showVoiceMessagesDialog(context, services, radio: radio),
-      ),
-    );
+    return _keyingLine(picker: parts.picker, controls: parts.controls);
   }
 
   /// "More Settings" (leading) and "Done" (trailing) — [destructive] is used

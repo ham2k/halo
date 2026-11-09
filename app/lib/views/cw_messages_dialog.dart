@@ -55,16 +55,23 @@ const cwMessageNumberIcons = [
 /// [radio] is the radio whose speed and Run / S&P the dialog shows, `A` or
 /// `B` — a keyer area's own; null for the operator's. The messages are the
 /// same for both radios.
-Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showModalPane<void>(
-  context,
-  title: context.t.settings.radio.cwMessages.title,
-  closeLabel: context.t.common.close,
-  // The rows scroll under a pinned picker and a pinned footer, whose Done is
-  // the way out — so no X in the header (haloDialogFooterBand).
-  scrollable: false,
-  closeButton: false,
-  builder: (_) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
-);
+Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) {
+  final keyingRadio = radio ?? services.cat.operatorRadio;
+  // The speed field shows a value the radio never volunteers — see
+  // CatService.refreshKeyerSpeed. Asked as the dialog opens, so the answer
+  // is on screen by the time the operator reads the field.
+  services.cat.keyer(keyingRadio).refreshKeyerSpeed();
+  return showModalPane<void>(
+    context,
+    title: context.t.settings.radio.cwMessages.title,
+    closeLabel: context.t.common.close,
+    // The rows scroll under a pinned picker and a pinned footer, whose Done is
+    // the way out — so no X in the header (haloDialogFooterBand).
+    scrollable: false,
+    closeButton: false,
+    builder: (_) => _CwMessagesDialog(services: services, radio: keyingRadio),
+  );
+}
 
 /// Message [n] of the set in use, on its own — what a long press or a
 /// right click on its keyer button opens. Saved into that set on the

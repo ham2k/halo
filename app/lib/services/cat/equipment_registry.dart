@@ -403,6 +403,11 @@ class EquipmentType {
     return '${transport.describeTarget(merged)}$suffix';
   }
 
+  /// The transport's half of [describeTarget] — the port or address, without
+  /// what the driver adds after it — for a row that has to shorten the one
+  /// without losing the other.
+  String describeTransportTarget(Map<String, dynamic> config) => transport.describeTarget(_merged(config));
+
   /// Which channel of a multi-channel radio this node is — see
   /// [EquipmentDriver.describeChannel].
   String? describeChannel(Map<String, dynamic> config) => driver.describeChannel(_merged(config), overrides: overrides);

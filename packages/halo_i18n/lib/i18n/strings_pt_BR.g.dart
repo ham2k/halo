@@ -2838,9 +2838,6 @@ class _Translations$settings$station$pt_BR extends Translations$settings$station
 	@override String get statusDisconnecting => 'Desconectando…';
 	@override String get statusError => 'Falha na conexão';
 	@override String get currentRadioSettings => 'Configurações atuais do rádio';
-	@override String get notSupportedByThisRadio => 'Não suportado por este rádio';
-	@override String get cwMessagesButton => 'Mensagens de CW';
-	@override String get voiceMessagesButton => 'Mensagens de fonia';
 	@override String voiceKeyerAvailable({required Object count}) => 'Memórias de voz: ${count} no rádio';
 	@override String get antennaBands => 'Bandas';
 	@override String get antennaType => 'Tipo de antena';
@@ -6476,9 +6473,6 @@ extension on TranslationsPtBr {
 			'settings.station.statusDisconnecting' => 'Desconectando…',
 			'settings.station.statusError' => 'Falha na conexão',
 			'settings.station.currentRadioSettings' => 'Configurações atuais do rádio',
-			'settings.station.notSupportedByThisRadio' => 'Não suportado por este rádio',
-			'settings.station.cwMessagesButton' => 'Mensagens de CW',
-			'settings.station.voiceMessagesButton' => 'Mensagens de fonia',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Memórias de voz: ${count} no rádio',
 			'settings.station.antennaBands' => 'Bandas',
 			'settings.station.antennaType' => 'Tipo de antena',
@@ -6521,11 +6515,11 @@ extension on TranslationsPtBr {
 			'settings.station.placeholderDropAfterDescription' => 'Fecha a conexão sozinho, para testar a reconexão. Vazio ou 0 nunca cai.',
 			'settings.station.placeholderFailConnect' => 'Sempre falhar ao conectar',
 			'settings.station.placeholderConnectFailure' => 'O rádio provisório foi instruído a recusar esta conexão',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frequência (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Onde o rádio provisório começa. Depois ele informa a frequência que o app sintonizar.',
 			'settings.station.placeholderMode' => 'Modo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'O modo em que o rádio provisório começa, por exemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potência (watts)',
 			'settings.station.placeholderPurpose' => 'Use este rádio para registrar qual equipamento você está usando nos seus logs',
@@ -7035,11 +7029,11 @@ extension on TranslationsPtBr {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Não foi possível importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Não foi possível abrir um arquivo para importar: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} não é texto UTF-8, então não é um arquivo QSON',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} não é um arquivo JSON, então não é um arquivo QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} não contém uma operação QSON',
 			'qsonImport.busy' => 'Uma importação já está em andamento. Aguarde terminar antes de iniciar outra.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importar QSOs de ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Lendo ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} QSO neste arquivo', other: '${formatted} QSOs neste arquivo', ), 

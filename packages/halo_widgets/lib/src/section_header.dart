@@ -73,7 +73,23 @@ class SectionHeader extends StatelessWidget {
   /// its own.
   final Color? background;
 
-  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.leading, this.onTap, this.expanded, this.background});
+  /// More inset on the left, on top of the row inset — for a section
+  /// that belongs under one row's label rather than to the list as a whole.
+  /// The caller indents the section's rows by the same amount.
+  final double indent;
+
+  const SectionHeader(
+    this.title, {
+    super.key,
+    this.subtitle,
+    this.color,
+    this.trailing,
+    this.leading,
+    this.onTap,
+    this.expanded,
+    this.background,
+    this.indent = 0,
+  });
 
   /// The band title's face, public so a hand-built HEADING that cannot be a
   /// [SectionHeader] — one carrying its own controls and geometry — still
@@ -172,7 +188,7 @@ class SectionHeader extends StatelessWidget {
     // rather than running out to the pane's edges the way a filled band (the
     // Settings panel's categories) does.
     final band = Padding(
-      padding: EdgeInsets.only(left: padding.left, right: padding.right),
+      padding: EdgeInsets.only(left: padding.left + indent, right: padding.right),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.only(top: padding.top, bottom: padding.bottom),

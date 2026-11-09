@@ -2837,9 +2837,6 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String get statusDisconnecting => '切断中…';
 	@override String get statusError => '接続に失敗しました';
 	@override String get currentRadioSettings => '現在の無線機の設定';
-	@override String get notSupportedByThisRadio => 'この無線機では未対応';
-	@override String get cwMessagesButton => 'CWメッセージ';
-	@override String get voiceMessagesButton => '電話メッセージ';
 	@override String voiceKeyerAvailable({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件';
 	@override String get antennaBands => 'バンド';
 	@override String get antennaType => 'アンテナの種類';
@@ -6475,9 +6472,6 @@ extension on TranslationsJa {
 			'settings.station.statusDisconnecting' => '切断中…',
 			'settings.station.statusError' => '接続に失敗しました',
 			'settings.station.currentRadioSettings' => '現在の無線機の設定',
-			'settings.station.notSupportedByThisRadio' => 'この無線機では未対応',
-			'settings.station.cwMessagesButton' => 'CWメッセージ',
-			'settings.station.voiceMessagesButton' => '電話メッセージ',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'ボイスキーヤー：無線機内のメモリー${count}件',
 			'settings.station.antennaBands' => 'バンド',
 			'settings.station.antennaType' => 'アンテナの種類',
@@ -6520,11 +6514,11 @@ extension on TranslationsJa {
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
 			'settings.station.placeholderFailConnect' => '常に接続に失敗する',
 			'settings.station.placeholderConnectFailure' => 'プレースホルダー無線機はこの接続を拒否するよう設定されています',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '周波数（kHz）',
 			'settings.station.placeholderFreqDescription' => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
 			'settings.station.placeholderMode' => 'モード',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'プレースホルダー無線機の初期モード（例：USB、CW、FT8）。',
 			'settings.station.placeholderPower' => 'パワー（ワット）',
 			'settings.station.placeholderPurpose' => 'ロギングのために、使用中のリグを記録するための無線機です',
@@ -7034,11 +7028,11 @@ extension on TranslationsJa {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'インポートするファイルを開けませんでした：${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename}はUTF-8テキストではないため、QSONファイルではありません',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません',
 			'qsonImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'ADIFからQSOをインポート',
 			'adifImport.reading' => ({required Object filename}) => '${filename}を読み込み中…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルのQSO：${count}件', other: 'このファイルのQSO：${formatted}件', ), 

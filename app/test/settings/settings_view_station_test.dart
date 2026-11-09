@@ -20,7 +20,9 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/add_equipment_dialog.dart';
+import 'package:ham2k_logger/views/equipment_glyphs.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:ham2k_logger/views/station_rows.dart';
 
 import '../support/fake_gs232_line.dart';
 import '../support/fake_serial_ports.dart';
@@ -126,7 +128,7 @@ void main() {
     });
   }
 
-  testWidgets('the Configuration fields start where the list rows do', (tester) async {
+  testWidgets('the current transceiver\'s fields sit a step in from its row, where a wide pane centres it', (tester) async {
     // On a wide pane the rows are centred to the ideal reading width by an
     // inset that rides the ambient ListTileTheme. A hand-built row that names
     // a spacing rung instead spans the whole pane, and the fields sit a
@@ -151,13 +153,14 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = tester.getRect(find.widgetWithText(DropdownButtonFormField<String?>, 'Antenna in Use'));
-    // The leading control of a ListTile in the same list — the current
-    // transceiver's plug button — is where a row's contents actually start.
+    // The current transceiver's glyph is where its row's contents start, and
+    // the fields under it are the rig's: a step in from there.
     final rowFinder = find.widgetWithText(ListTile, 'Left Radio');
     final row = tester.getRect(rowFinder.first);
-    final rowContentLeft = tester.getRect(find.ancestor(of: find.byIcon(MdiIcons.powerPlugOff), matching: find.byType(IconButton))).left;
+    final glyph = find.descendant(of: find.byType(CurrentRowFrame), matching: find.byIcon(iconForCategory(kCategoryTransceiver)));
+    final rowContentLeft = tester.getRect(glyph).left;
 
-    expect(field.left, rowContentLeft);
+    expect(field.left, rowContentLeft + Space.xxl);
     // And that both of them are where a WIDE pane puts them. Comparing the
     // field to a sibling row alone would stay green with the panel's centring
     // gone altogether — the row moves with it.
@@ -258,7 +261,6 @@ void main() {
     for (final title in ['Current Transceiver', 'Equipment Inventory', 'CAT Control Preferences']) {
       expect(find.widgetWithText(CategoryBand, title), findsOneWidget, reason: '"$title" is a category');
     }
-    expect(find.widgetWithText(SectionHeader, 'Configuration'), findsOneWidget);
     // The inventory's own kinds, as sections under it, counted.
     expect(find.widgetWithText(SectionHeader, '1 transceiver'), findsOneWidget);
     expect(find.widgetWithText(SectionHeader, '1 antenna'), findsOneWidget);
@@ -1404,9 +1406,10 @@ void main() {
     final name = tester.getRect(find.text('Shack Flex').last);
     expect(pill.left, greaterThan(name.left), reason: 'after the name');
 
-    // And gone from the ADDRESS, which says only where the radio is — on the
-    // inventory row and on the current transceiver's alike.
-    expect(find.text('flex.local:4992'), findsNWidgets(2), reason: 'the slice is not tacked onto it');
+    // And gone from the ADDRESS, which says only where the radio is. Only the
+    // current transceiver's row states one: an inventory row says what its
+    // radio is doing instead.
+    expect(find.text('flex.local:4992'), findsOneWidget, reason: 'the slice is not tacked onto it');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {

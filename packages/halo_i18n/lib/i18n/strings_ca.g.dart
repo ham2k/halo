@@ -2837,9 +2837,6 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Desconnectant…';
 	@override String get statusError => 'La connexió ha fallat';
 	@override String get currentRadioSettings => 'Configuració actual de la ràdio';
-	@override String get notSupportedByThisRadio => 'Aquesta ràdio no ho admet';
-	@override String get cwMessagesButton => 'Missatges CW';
-	@override String get voiceMessagesButton => 'Missatges de fonia';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de veu: ${count} memòries a la ràdio';
 	@override String get antennaBands => 'Bandes';
 	@override String get antennaType => 'Tipus d\'antena';
@@ -6475,9 +6472,6 @@ extension on TranslationsCa {
 			'settings.station.statusDisconnecting' => 'Desconnectant…',
 			'settings.station.statusError' => 'La connexió ha fallat',
 			'settings.station.currentRadioSettings' => 'Configuració actual de la ràdio',
-			'settings.station.notSupportedByThisRadio' => 'Aquesta ràdio no ho admet',
-			'settings.station.cwMessagesButton' => 'Missatges CW',
-			'settings.station.voiceMessagesButton' => 'Missatges de fonia',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de veu: ${count} memòries a la ràdio',
 			'settings.station.antennaBands' => 'Bandes',
 			'settings.station.antennaType' => 'Tipus d\'antena',
@@ -6520,11 +6514,11 @@ extension on TranslationsCa {
 			'settings.station.placeholderDropAfterDescription' => 'Tanca la connexió per si sola, per provar el camí de reconnexió. En blanc o 0 no es desconnecta mai.',
 			'settings.station.placeholderFailConnect' => 'Falla sempre en connectar',
 			'settings.station.placeholderConnectFailure' => 'S\'ha indicat a la ràdio provisional que rebutgi aquesta connexió',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Freqüència (kHz)',
 			'settings.station.placeholderFreqDescription' => 'On comença la ràdio provisional. Després informa de qualsevol freqüència a la qual la sintonitzi l\'aplicació.',
 			'settings.station.placeholderMode' => 'Mode',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'El mode amb què comença la ràdio provisional, p. ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potència (watts)',
 			'settings.station.placeholderPurpose' => 'Utilitza aquesta ràdio per tenir constància de quin equip fas servir a efectes de registre',
@@ -7034,11 +7028,11 @@ extension on TranslationsCa {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'No s\'ha pogut obrir cap fitxer per importar: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} no és text UTF-8, així que no és un fitxer QSON',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} no és un fitxer JSON, així que no és un fitxer QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} no conté cap operació QSON',
 			'qsonImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importa QSOs des d\'ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Llegint ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO en aquest fitxer', other: '${formatted} QSOs en aquest fitxer', ), 

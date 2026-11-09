@@ -2837,9 +2837,6 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Bağlantı kesiliyor…';
 	@override String get statusError => 'Bağlantı başarısız';
 	@override String get currentRadioSettings => 'Mevcut radyo ayarları';
-	@override String get notSupportedByThisRadio => 'Bu radyo desteklemiyor';
-	@override String get cwMessagesButton => 'CW Mesajları';
-	@override String get voiceMessagesButton => 'Telefon Mesajları';
 	@override String voiceKeyerAvailable({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza';
 	@override String get antennaBands => 'Bantlar';
 	@override String get antennaType => 'Anten türü';
@@ -6475,9 +6472,6 @@ extension on TranslationsTr {
 			'settings.station.statusDisconnecting' => 'Bağlantı kesiliyor…',
 			'settings.station.statusError' => 'Bağlantı başarısız',
 			'settings.station.currentRadioSettings' => 'Mevcut radyo ayarları',
-			'settings.station.notSupportedByThisRadio' => 'Bu radyo desteklemiyor',
-			'settings.station.cwMessagesButton' => 'CW Mesajları',
-			'settings.station.voiceMessagesButton' => 'Telefon Mesajları',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Ses keyer\'ı: radyoda ${count} hafıza',
 			'settings.station.antennaBands' => 'Bantlar',
 			'settings.station.antennaType' => 'Anten türü',
@@ -6520,11 +6514,11 @@ extension on TranslationsTr {
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
 			'settings.station.placeholderFailConnect' => 'Bağlantı her zaman başarısız olsun',
 			'settings.station.placeholderConnectFailure' => 'Yer tutucu radyoya bu bağlantıyı reddetmesi söylendi',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekans (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Yer tutucu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.',
 			'settings.station.placeholderMode' => 'Mod',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Yer tutucu radyonun başladığı mod, örn. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Güç (watt)',
 			'settings.station.placeholderPurpose' => 'Kayıt amacıyla hangi cihazı kullandığınızı takip etmek için bu radyoyu kullanın',
@@ -7034,11 +7028,11 @@ extension on TranslationsTr {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} UTF-8 metin değil, dolayısıyla bir QSON dosyası değil',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bir QSON operasyonu içermiyor',
 			'qsonImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'ADIF\'ten QSO İçe Aktar',
 			'adifImport.reading' => ({required Object filename}) => '${filename} okunuyor…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosyada ${count} QSO', other: 'Bu dosyada ${formatted} QSO', ), 

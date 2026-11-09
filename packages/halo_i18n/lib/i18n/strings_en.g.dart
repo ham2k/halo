@@ -6352,9 +6352,6 @@ class Translations$settings$station$en {
 	/// en: 'Automatically adjust bandscope'
 	String get civScopeAdjust => 'Automatically adjust bandscope';
 
-	/// en: 'Lets this app set the radio's scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope's edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.'
-	String get civScopeAdjustDescription => 'Lets this app set the radio\'s scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope\'s edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.';
-
 	/// en: 'Let this app adjust the bandscope'
 	String get civScopeAdjustApp => 'Let this app adjust the bandscope';
 
@@ -6760,8 +6757,8 @@ class Translations$settings$station$en {
 	/// en: 'Choose transceiver'
 	String get chooseTransceiver => 'Choose transceiver';
 
-	/// en: 'Configuration'
-	String get configurationSection => 'Configuration';
+	/// en: 'More details'
+	String get configurationSection => 'More details';
 
 	/// en: 'No transceiver selected'
 	String get noTransceiverSelected => 'No transceiver selected';
@@ -6940,15 +6937,6 @@ class Translations$settings$station$en {
 
 	/// en: 'Current radio settings'
 	String get currentRadioSettings => 'Current radio settings';
-
-	/// en: 'Not supported by this radio'
-	String get notSupportedByThisRadio => 'Not supported by this radio';
-
-	/// en: 'CW Messages'
-	String get cwMessagesButton => 'CW Messages';
-
-	/// en: 'Phone Messages'
-	String get voiceMessagesButton => 'Phone Messages';
 
 	/// en: 'Voice keyer: $count memories in the radio'
 	String voiceKeyerAvailable({required Object count}) => 'Voice keyer: ${count} memories in the radio';
@@ -12873,7 +12861,6 @@ extension on Translations {
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
 			'settings.station.civScopeAdjust' => 'Automatically adjust bandscope',
-			'settings.station.civScopeAdjustDescription' => 'Lets this app set the radio\'s scope while it shows it: the reference level (REF) on each band so the noise shows as on other radios, and the scope\'s edges, in Scroll-F mode, so the picture holds still while you tune. The radio keeps the REF and edges it was left with, and gets its own mode back.',
 			'settings.station.civScopeAdjustApp' => 'Let this app adjust the bandscope',
 			'settings.station.civScopeAdjustRadio' => 'Use the radio\'s bandscope settings as-is',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
@@ -13047,9 +13034,9 @@ extension on Translations {
 			'settings.station.tenTecNoCw' => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.',
 			'settings.station.tenTecKeyerOff' => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.thetisTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, not to the radio itself: an ANAN has no CAT of its own.\n\n- **Thetis\'s CAT server must be running.** In Thetis, Setup → Serial/Network/Midi CAT → Network, check **Server Running**. It is not the TCI server, which is a different thing.\n- **Port** is 13013 unless you changed it there.\n- **From another computer**, Thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **Rated power** is what full drive puts out: 100 W on most ANANs, 200 W on the 8000DLE, 10 W on the 10E. The app sets power as a share of it.\n- **CW messages go out through Thetis\'s CWX keyer.** If one does not, open the CWX window in Thetis and try again.\n\nThis entry was written from Thetis\'s published CAT reference and has not been run against a radio. If it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
@@ -13100,7 +13087,7 @@ extension on Translations {
 			'settings.station.keyerNotSupported' => 'Not supported by current radio',
 			'settings.station.catControlPreferences' => 'CAT Control Preferences',
 			'settings.station.chooseTransceiver' => 'Choose transceiver',
-			'settings.station.configurationSection' => 'Configuration',
+			'settings.station.configurationSection' => 'More details',
 			'settings.station.noTransceiverSelected' => 'No transceiver selected',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Use ${name} for the Main VFO',
 			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, zero: 'No transceivers', one: '${count} transceiver', other: '${count} transceivers', ), 
@@ -13157,9 +13144,6 @@ extension on Translations {
 			'settings.station.statusDisconnecting' => 'Disconnecting…',
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
-			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
-			'settings.station.cwMessagesButton' => 'CW Messages',
-			'settings.station.voiceMessagesButton' => 'Phone Messages',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
@@ -13561,12 +13545,12 @@ extension on Translations {
 			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapDone' => 'Radios A and B swapped',
 			'commands.swapNotConnected' => ({required Object radio}) => 'Swapped, but Radio ${radio} is not connected and did not move',
 			'commands.swapNoneConnected' => 'Swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

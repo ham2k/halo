@@ -29,28 +29,15 @@ const civScopeEdgeRangesConfigKey = 'civScopeEdgeRanges';
 /// default: its reference level (REF) so the noise shows as on every other
 /// radio, and its mode and edges so a tune moves the dial, not the picture —
 /// or leaves every setting of it as the operator has it ([civScopeAdjustRadio]).
-/// Offered only where [civScopeConfigKey] is pinned.
+/// Not a field of the equipment editor: the Station panel offers it under the
+/// current transceiver, where [civScopeConfigKey] is pinned — what the radio's
+/// own screen shows is a choice about the radio in use, not a wiring detail.
 const civScopeAdjustConfigKey = 'civScopeAdjust';
 const civScopeAdjustApp = 'app';
 const civScopeAdjustRadio = 'radio';
 
 /// The scope's keys beyond [civScopeConfigKey], for the driver's `recognizedConfigKeys`.
 const civScopeConfigKeys = {civScopeAdjustConfigKey, civScopeTopConfigKey, civScopeRefRangeConfigKey, civScopeEdgeRangesConfigKey};
-
-/// The [civScopeAdjustConfigKey] field, an advanced setting.
-Map<String, dynamic> civScopeAdjustConfigElement() => {
-  'type': 'field',
-  'fieldType': 'select',
-  'key': civScopeAdjustConfigKey,
-  'label': t.settings.station.civScopeAdjust,
-  'description': t.settings.station.civScopeAdjustDescription,
-  'value': civScopeAdjustApp,
-  'options': [
-    {'value': civScopeAdjustApp, 'label': t.settings.station.civScopeAdjustApp},
-    {'value': civScopeAdjustRadio, 'label': t.settings.station.civScopeAdjustRadio},
-  ],
-  'advanced': true,
-};
 
 const _civSpeeds = {SpectrumSpeed.fast: 0x00, SpectrumSpeed.mid: 0x01, SpectrumSpeed.slow: 0x02};
 

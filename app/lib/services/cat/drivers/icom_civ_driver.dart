@@ -255,7 +255,6 @@ class IcomCivDriver extends EquipmentDriver {
     // the generic Icom — and only of a developer (docs/design/cat.md
     // § Voice keying).
     ...keyerConfigElements(overrides),
-    if (overrides[civScopeConfigKey] == true) civScopeAdjustConfigElement(),
     telemetryConfigElement(),
     pollConfigElement(fallback: _defaultPollInterval),
   ];

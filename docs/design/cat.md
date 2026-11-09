@@ -1653,19 +1653,15 @@ take the value, so the WPM command fails out loud ("No connected radio can key C
 confirming a change nothing heard.
 
 The Station dialog's **keying lines are laid out from CAPABILITY, never from the link**: CW Keying
-with its speed, options and CW Messages button, and Phone Keying with its source
-(`VoiceKeyingSource`: none, the radio's memories, recordings on this computer, or those and words)
-and Phone Messages
-button. Each messages button is disabled only where its own side cannot send at all
-(`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories` for voice — the session-free counterpart,
-off `EquipmentDriver.voiceMemoryCountWith`), a peer's radio answering both of those from its OFFER,
-since there is no entry here to ask; Phone Keying set to None says so ("Phone keying is off") rather
-than blaming the radio. The two message dialogs open with the same picker as their first row
-(keying_pickers.dart). A
-control that came and went with the connection would move under the operator every time the radio
-blinked, and "this rig has no voice memories" must not look like "the rig is unplugged". A disabled
-button says why in `Semantics` or nowhere — the app has no hover tooltips
-([user-interface.md](user-interface.md)). Four sessions implement it — the Icom CI-V driver, the Yaesu one,
+with its options, and Phone Keying with its source (`VoiceKeyingSource`: none, the radio's memories,
+recordings on this computer, or those and words). A control that came and went with the connection
+would move under the operator every time the radio blinked. Keyer speed and the two message dialogs
+are the keyer area's, not the Station dialog's: the dialog picks what keys, and the keyer is where it
+is used. The two message dialogs open with the same picker as their first row (keying_pickers.dart).
+CW Keying sits beside the antenna above the current transceiver's More details when the operator
+tracks the key in a QSO's station info (`stationInfoTrackedFields`), and inside it otherwise.
+
+Four sessions implement `CwKeyerSession` — the Icom CI-V driver, the Yaesu one,
 FlexRadio's and the WinKeyer's — so the IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, the
 FLEX-6000 line and a K1EL WinKeyer — plus the placeholder radio, which keys nothing but remembers a
 speed, so the surfaces can be driven on a web build with no rig. A fifth, the Kenwood driver, keys
@@ -1696,7 +1692,7 @@ sessions read it once at connect and never poll it (neither protocol announces a
 question the radio almost never has a new answer to does not belong in the poll), and every set is
 followed by a read-back so what shows is what the radio took — the CI-V level rounds to a WPM and
 both radios clamp. The one moment a fresh value matters is the dialog opening, so
-`showStationConfigDialog` calls `refreshKeyerSpeed` first. No echo guard, unlike power: a set is
+`showCwMessagesDialog`, which holds the speed field, calls `refreshKeyerSpeed` first. No echo guard, unlike power: a set is
 only ever the operator's explicit ask, and neither radio announces a knob turn, so the last value
 the app saw is not the value the radio is on.
 
@@ -3909,8 +3905,13 @@ WiFi:
   IC-7850/7851) and `civScopeRefRange` (−20…+20 dB where absent, −30…+10 on
   the IC-7610/7760, which refuse a REF past +10). The 7610/7760/7850 send 689
   points a sweep, the rest 475; the assembler is length-agnostic.
-- **Automatically adjust bandscope** (`civScopeAdjust`, an advanced setting,
-  on by default). Left as the radio has it, HaLo sends the scope nothing: its
+- **Automatically adjust bandscope** (`civScopeAdjust`, on by default), under
+  More details in the Station panel for the radios in use — the current
+  transceiver, and SO2R's Radio B — not in the equipment editor: on an Icom
+  the scope HaLo draws is the radio's own screen, so the choice is about what
+  the radio in use shows. The session reads it when it starts, so a change
+  reconnects a connected radio. A Flex, an SDR or a K4 streams a scope of its own that leaves the
+  radio's front panel alone, and has no such choice. Left as the radio has it, HaLo sends the scope nothing: its
   capabilities offer no span, REF, speed, mode or recentring, so a display
   zooms and pans only within the sweep, and it draws the radio's own screen, 0
   at its bottom, as REF leaves it. Adjusted, HaLo owns three things:

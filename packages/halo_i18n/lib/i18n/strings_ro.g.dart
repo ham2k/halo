@@ -2837,9 +2837,6 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Se deconectează…';
 	@override String get statusError => 'Conectarea a eșuat';
 	@override String get currentRadioSettings => 'Setările curente ale stației';
-	@override String get notSupportedByThisRadio => 'Nu este acceptat de această stație';
-	@override String get cwMessagesButton => 'Mesaje CW';
-	@override String get voiceMessagesButton => 'Mesaje fonie';
 	@override String voiceKeyerAvailable({required Object count}) => 'Keyer vocal: ${count} memorii în stație';
 	@override String get antennaBands => 'Benzi';
 	@override String get antennaType => 'Tip de antenă';
@@ -6475,9 +6472,6 @@ extension on TranslationsRo {
 			'settings.station.statusDisconnecting' => 'Se deconectează…',
 			'settings.station.statusError' => 'Conectarea a eșuat',
 			'settings.station.currentRadioSettings' => 'Setările curente ale stației',
-			'settings.station.notSupportedByThisRadio' => 'Nu este acceptat de această stație',
-			'settings.station.cwMessagesButton' => 'Mesaje CW',
-			'settings.station.voiceMessagesButton' => 'Mesaje fonie',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Keyer vocal: ${count} memorii în stație',
 			'settings.station.antennaBands' => 'Benzi',
 			'settings.station.antennaType' => 'Tip de antenă',
@@ -6520,11 +6514,11 @@ extension on TranslationsRo {
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
 			'settings.station.placeholderFailConnect' => 'Eșuează mereu la conectare',
 			'settings.station.placeholderConnectFailure' => 'Stația substituent a fost instruită să refuze această conexiune',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frecvență (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Unde pornește stația substituent. Ulterior raportează orice frecvență setează aplicația.',
 			'settings.station.placeholderMode' => 'Mod',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Modul în care pornește stația substituent, de ex. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Putere (wați)',
 			'settings.station.placeholderPurpose' => 'Folosiți această stație pentru a ține evidența aparatului folosit, în scopul înregistrării',
@@ -7034,11 +7028,11 @@ extension on TranslationsRo {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nu s-a putut deschide un fișier pentru import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} nu este text UTF-8, deci nu este un fișier QSON',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} nu este un fișier JSON, deci nu este un fișier QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} nu conține o operațiune QSON',
 			'qsonImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importă QSO-uri din ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Se citește ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO în acest fișier', other: '${formatted} QSO-uri în acest fișier', ), 

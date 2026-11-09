@@ -2837,9 +2837,6 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Odpája sa…';
 	@override String get statusError => 'Pripojenie zlyhalo';
 	@override String get currentRadioSettings => 'Aktuálne nastavenia rádiostanice';
-	@override String get notSupportedByThisRadio => 'Táto rádiostanica to nepodporuje';
-	@override String get cwMessagesButton => 'CW správy';
-	@override String get voiceMessagesButton => 'Fóniové správy';
 	@override String voiceKeyerAvailable({required Object count}) => 'Hlasový kľúčovač: pamäte v rádiostanici (${count})';
 	@override String get antennaBands => 'Pásma';
 	@override String get antennaType => 'Typ antény';
@@ -6475,9 +6472,6 @@ extension on TranslationsSk {
 			'settings.station.statusDisconnecting' => 'Odpája sa…',
 			'settings.station.statusError' => 'Pripojenie zlyhalo',
 			'settings.station.currentRadioSettings' => 'Aktuálne nastavenia rádiostanice',
-			'settings.station.notSupportedByThisRadio' => 'Táto rádiostanica to nepodporuje',
-			'settings.station.cwMessagesButton' => 'CW správy',
-			'settings.station.voiceMessagesButton' => 'Fóniové správy',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Hlasový kľúčovač: pamäte v rádiostanici (${count})',
 			'settings.station.antennaBands' => 'Pásma',
 			'settings.station.antennaType' => 'Typ antény',
@@ -6520,11 +6514,11 @@ extension on TranslationsSk {
 			'settings.station.placeholderDropAfterDescription' => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.',
 			'settings.station.placeholderFailConnect' => 'Vždy zlyhať pri pripájaní',
 			'settings.station.placeholderConnectFailure' => 'Zástupná rádiostanica má nastavené toto pripojenie odmietnuť',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekvencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Kde zástupná rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.',
 			'settings.station.placeholderMode' => 'Mód',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Mód, na ktorom zástupná rádiostanica začína, napr. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Výkon (watty)',
 			'settings.station.placeholderPurpose' => 'Použite túto rádiostanicu, aby sa pri logovaní zaznamenávalo, ktorú rádiostanicu práve používate',
@@ -7034,11 +7028,11 @@ extension on TranslationsSk {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} nie je text v UTF-8, takže to nie je súbor QSON',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} nie je súbor JSON, takže to nie je súbor QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} neobsahuje prevádzku QSON',
 			'qsonImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importovať QSO z ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Číta sa ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO v tomto súbore', other: '${formatted} QSO v tomto súbore', ), 

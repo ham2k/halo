@@ -2837,9 +2837,6 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String get statusDisconnecting => '연결 해제 중…';
 	@override String get statusError => '연결 실패';
 	@override String get currentRadioSettings => '현재 무전기 설정';
-	@override String get notSupportedByThisRadio => '이 무전기에서 지원하지 않음';
-	@override String get cwMessagesButton => 'CW 메시지';
-	@override String get voiceMessagesButton => '보이스 메시지';
 	@override String voiceKeyerAvailable({required Object count}) => '보이스 키어: 무전기에 메모리 ${count}개';
 	@override String get antennaBands => '밴드';
 	@override String get antennaType => '안테나 유형';
@@ -6475,9 +6472,6 @@ extension on TranslationsKo {
 			'settings.station.statusDisconnecting' => '연결 해제 중…',
 			'settings.station.statusError' => '연결 실패',
 			'settings.station.currentRadioSettings' => '현재 무전기 설정',
-			'settings.station.notSupportedByThisRadio' => '이 무전기에서 지원하지 않음',
-			'settings.station.cwMessagesButton' => 'CW 메시지',
-			'settings.station.voiceMessagesButton' => '보이스 메시지',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '보이스 키어: 무전기에 메모리 ${count}개',
 			'settings.station.antennaBands' => '밴드',
 			'settings.station.antennaType' => '안테나 유형',
@@ -6520,11 +6514,11 @@ extension on TranslationsKo {
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
 			'settings.station.placeholderFailConnect' => '항상 연결 실패',
 			'settings.station.placeholderConnectFailure' => '임시 무전기가 이 연결을 거부하도록 설정되었습니다',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '주파수 (kHz)',
 			'settings.station.placeholderFreqDescription' => '임시 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.',
 			'settings.station.placeholderMode' => '모드',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => '임시 무전기의 시작 모드. 예: USB, CW, FT8.',
 			'settings.station.placeholderPower' => '출력 (와트)',
 			'settings.station.placeholderPurpose' => '로깅을 위해 어떤 장비를 사용 중인지 기록하는 데 이 무전기를 사용하세요',
@@ -7034,11 +7028,11 @@ extension on TranslationsKo {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '가져올 파일을 열 수 없습니다: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename}은(는) UTF-8 텍스트가 아니므로 QSON 파일이 아닙니다',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename}은(는) JSON 파일이 아니므로 QSON 파일이 아닙니다',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename}에는 QSON 운용이 들어 있지 않습니다',
 			'qsonImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'ADIF에서 QSO 가져오기',
 			'adifImport.reading' => ({required Object filename}) => '${filename} 읽는 중…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 파일의 QSO ${count}개', other: '이 파일의 QSO ${formatted}개', ), 

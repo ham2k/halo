@@ -2837,9 +2837,6 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String get statusDisconnecting => '正在断开…';
 	@override String get statusError => '连接失败';
 	@override String get currentRadioSettings => '当前电台设置';
-	@override String get notSupportedByThisRadio => '此电台不支持';
-	@override String get cwMessagesButton => 'CW 消息';
-	@override String get voiceMessagesButton => '话音消息';
 	@override String voiceKeyerAvailable({required Object count}) => '语音键控器：电台中有 ${count} 个存储';
 	@override String get antennaBands => '频段';
 	@override String get antennaType => '天线类型';
@@ -6475,9 +6472,6 @@ extension on TranslationsZh {
 			'settings.station.statusDisconnecting' => '正在断开…',
 			'settings.station.statusError' => '连接失败',
 			'settings.station.currentRadioSettings' => '当前电台设置',
-			'settings.station.notSupportedByThisRadio' => '此电台不支持',
-			'settings.station.cwMessagesButton' => 'CW 消息',
-			'settings.station.voiceMessagesButton' => '话音消息',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => '语音键控器：电台中有 ${count} 个存储',
 			'settings.station.antennaBands' => '频段',
 			'settings.station.antennaType' => '天线类型',
@@ -6520,11 +6514,11 @@ extension on TranslationsZh {
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
 			'settings.station.placeholderFailConnect' => '总是连接失败',
 			'settings.station.placeholderConnectFailure' => '占位电台被设置为拒绝此连接',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '频率（kHz）',
 			'settings.station.placeholderFreqDescription' => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
 			'settings.station.placeholderMode' => '模式',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => '占位电台的起始模式，例如 USB、CW、FT8。',
 			'settings.station.placeholderPower' => '功率（瓦）',
 			'settings.station.placeholderPurpose' => '用它来记下您正在使用哪台电台，以便记入日志',
@@ -7034,11 +7028,11 @@ extension on TranslationsZh {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '无法打开要导入的文件：${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} 不是 UTF-8 文本，因此不是 QSON 文件',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} 不包含 QSON 操作',
 			'qsonImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => '从 ADIF 导入 QSO',
 			'adifImport.reading' => ({required Object filename}) => '正在读取 ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件中有 ${count} 个 QSO', other: '此文件中有 ${formatted} 个 QSO', ), 

@@ -2837,9 +2837,6 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Kobler fra…';
 	@override String get statusError => 'Tilkoblingen mislyktes';
 	@override String get currentRadioSettings => 'Gjeldende radioinnstillinger';
-	@override String get notSupportedByThisRadio => 'Støttes ikke av denne radioen';
-	@override String get cwMessagesButton => 'CW-meldinger';
-	@override String get voiceMessagesButton => 'Talemeldinger';
 	@override String voiceKeyerAvailable({required Object count}) => 'Talekeyer: ${count} minner i radioen';
 	@override String get antennaBands => 'Bånd';
 	@override String get antennaType => 'Antennetype';
@@ -6475,9 +6472,6 @@ extension on TranslationsNb {
 			'settings.station.statusDisconnecting' => 'Kobler fra…',
 			'settings.station.statusError' => 'Tilkoblingen mislyktes',
 			'settings.station.currentRadioSettings' => 'Gjeldende radioinnstillinger',
-			'settings.station.notSupportedByThisRadio' => 'Støttes ikke av denne radioen',
-			'settings.station.cwMessagesButton' => 'CW-meldinger',
-			'settings.station.voiceMessagesButton' => 'Talemeldinger',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Talekeyer: ${count} minner i radioen',
 			'settings.station.antennaBands' => 'Bånd',
 			'settings.station.antennaType' => 'Antennetype',
@@ -6520,11 +6514,11 @@ extension on TranslationsNb {
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
 			'settings.station.placeholderFailConnect' => 'Mislykkes alltid med å koble til',
 			'settings.station.placeholderConnectFailure' => 'Plassholderradioen ble bedt om å avvise denne tilkoblingen',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekvens (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Hvor plassholderradioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.',
 			'settings.station.placeholderMode' => 'Modus',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'Modusen plassholderradioen starter på, f.eks. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Effekt (watt)',
 			'settings.station.placeholderPurpose' => 'Bruk denne radioen til å holde rede på hvilken rigg du bruker, for loggformål',
@@ -7034,11 +7028,11 @@ extension on TranslationsNb {
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} er ikke UTF-8-tekst, så det er ikke en QSON-fil',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} inneholder ingen QSON-operasjon',
 			'qsonImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.title' => 'Importer QSOer fra ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leser ${filename}…',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO i denne filen', other: '${formatted} QSOer i denne filen', ), 
