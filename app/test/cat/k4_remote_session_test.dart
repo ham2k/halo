@@ -520,11 +520,13 @@ void main() {
       var baseline = sink.sent.length;
       async.elapse(const Duration(minutes: 1));
       expect(sink.sent, hasLength(baseline));
-      for (final tx in [true, false, true, false]) {
-        owner.handleData(Uint8List.fromList(ascii.encode(tx ? 'TX;' : 'RX;')));
+      // Both ways the radio reports a transition: an IF snapshot and an AI4
+      // TX/RX notification.
+      for (final frame in [_info(tx: true), _info(), 'TX;', 'RX;']) {
+        owner.handleData(Uint8List.fromList(ascii.encode(frame)));
         baseline = sink.sent.length;
         async.elapse(const Duration(seconds: 20));
-        expect(sink.sent, hasLength(baseline), reason: 'TX transition $tx must not arm the telemetry poller');
+        expect(sink.sent, hasLength(baseline), reason: 'TX transition $frame must not arm the telemetry poller');
       }
       expect(sink.transmitting, [false, true, false, true, false]);
       owner.handleData(Uint8List.fromList(ascii.encode('TQ1;TQ0;')));
