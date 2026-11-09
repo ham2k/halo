@@ -25,7 +25,7 @@ void main() {
   Widget harness(List<LayoutPanelEntry> available, {void Function(String)? onAdd}) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
-        body: LayoutSheet(available: available, onAdd: onAdd),
+        body: LayoutSheet(available: available, onAdd: onAdd, operatorGeo: null),
       ),
     ),
   );
@@ -175,6 +175,7 @@ void main() {
           body: LayoutSheet(
             available: available,
             onAdd: (_) {},
+            operatorGeo: null,
             enableable: const [scratchpad],
             installable: [almanac],
             onSearch: onSearch,
@@ -206,6 +207,49 @@ void main() {
       await tester.pump();
       expect(find.text(t.activitiesView.installExtension(name: 'Almanac')), findsOneWidget);
       expect(find.text(t.activitiesView.enableExtension(name: 'Scratchpad')), findsNothing);
+    });
+
+    testWidgets('offers are ranked by how well the search matched them, not listed as given', (tester) async {
+      // The host hands the rows over in its own order; without the sheet
+      // ranking them, a blurb's passing mention sits above the extension the
+      // operator named.
+      CatalogEntry entry(String key, String name, {String? description, List<String> keywords = const []}) => CatalogEntry(
+        key: key,
+        name: name,
+        version: '1.0.0',
+        sha256: 'a' * 64,
+        bundleUrl: Uri.parse('https://catalog.example/$key.js'),
+        description: description,
+        keywords: keywords,
+      );
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: LayoutSheet(
+                onAdd: (_) {},
+                operatorGeo: null,
+                enableable: const [
+                  ExtensionInfo(key: 'tides', file: 'tides.js', core: false, name: 'Aardvark Tides', description: 'Tides and sunrise times'),
+                  ExtensionInfo(key: 'daylight', file: 'daylight.js', core: false, name: 'Daylight', keywords: ['sunrise']),
+                ],
+                onEnableExtension: (_) async => true,
+                installable: [
+                  entry('weather', 'Aardvark Weather', description: 'Sunrise, sunset and more'),
+                  entry('almanac', 'Almanac', keywords: const ['sunrise']),
+                ],
+                onInstallExtension: (_) async => true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField), 'sunrise');
+      await tester.pump();
+      double top(String name) => tester.getTopLeft(find.text(t.activitiesView.installExtension(name: name))).dy;
+      expect(top('Almanac'), lessThan(top('Aardvark Weather')));
+      double enableTop(String name) => tester.getTopLeft(find.text(t.activitiesView.enableExtension(name: name))).dy;
+      expect(enableTop('Daylight'), lessThan(enableTop('Aardvark Tides')));
     });
 
     testWidgets("gaining one lands the search on the extension's panels", (tester) async {

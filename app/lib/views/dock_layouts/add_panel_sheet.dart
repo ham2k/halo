@@ -125,16 +125,13 @@ extension AddPanelSheet<T extends StatefulWidget> on DockHost<T> {
                     info,
               ],
               installable: switch (catalogTier.entries) {
-                final entries? => orderedCatalogEntries(
-                  [
-                    for (final entry in entries)
-                      if (entry.hooks.contains(HookCategories.panel) && !extensions.availableExtensions.any((info) => info.key == entry.key)) entry,
-                  ],
-                  dockServices.flags.operatorGeo,
-                  locale,
-                ),
+                final entries? => [
+                  for (final entry in entries)
+                    if (entry.hooks.contains(HookCategories.panel) && !extensions.availableExtensions.any((info) => info.key == entry.key)) entry,
+                ],
                 null => const [],
               },
+              operatorGeo: dockServices.flags.operatorGeo,
               onSearch: () => catalogTier.ensureFetched(dockServices, bumpSheet),
               onEnableExtension: (info) => _gainPanelExtension(() async {
                 await extensions.setExtensionEnabled(info.key, true);

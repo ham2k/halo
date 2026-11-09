@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../../services/extensions/extension_relevance.dart' show OperatorGeo;
 import '../../services/extensions/extension_service.dart';
 
 /// How [input] should be matched against an extension the operator has NOT
@@ -52,18 +53,30 @@ bool _offered(ExtensionService extensions, ExtensionInfo info) => !info.core && 
 
 /// Extensions the tier offers that match [input] — by a scope word alone
 /// (a `ref:` type they declare, or their key: [activityScopeWordsOf]) when
-/// [keyOnly], else by the loose search as well.
-List<ExtensionInfo> notRunningExtensionsMatching(ExtensionService extensions, String input, {bool keyOnly = false}) {
+/// [keyOnly], else by the loose search as well. Ranked as every extension
+/// search is ([rankSearchHits]), a scope word counting as an exact match.
+List<ExtensionInfo> notRunningExtensionsMatching(
+  ExtensionService extensions,
+  String input, {
+  bool keyOnly = false,
+  required OperatorGeo? operatorGeo,
+  required DateTime now,
+}) {
   final candidates = extensionSearchCandidates(input);
   if (candidates.search.isEmpty) return const [];
   final locale = LocaleSettings.currentLocale.languageCode;
-  return [
-    for (final info in extensions.availableExtensions)
-      if (_offered(extensions, info) &&
-          (activityScopeWordsOf(key: info.key, hooks: info.hooks).contains(candidates.key) ||
-              (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
-        info,
-  ];
+  return rankSearchHits(
+    [
+      for (final info in extensions.availableExtensions)
+        if (_offered(extensions, info)) info,
+    ],
+    (info) => activityScopeWordsOf(key: info.key, hooks: info.hooks).contains(candidates.key)
+        ? 0
+        : (keyOnly ? null : info.searchRank(candidates.search, locale: locale)),
+    operator: operatorGeo,
+    now: now,
+    locale: locale,
+  );
 }
 
 /// Extensions the tier offers that claim one of [unhandled] — the extension

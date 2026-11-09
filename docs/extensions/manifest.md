@@ -93,14 +93,16 @@ language.
 | `category` | Where the Extensions panel groups it: `activity`, `award`, `contest`, `lookup`, `spots` or `dashboard`, in that display order. A value outside the list lands under *Other*. Required in a distributed bundle: without one an extension is treated as part of the app's core, always on and never listed, which is a status only the app's own extensions have. |
 | `icon` | A [Material Design Icons](https://pictogrammers.com/library/mdi/) name (`pine-tree`), or a FontAwesome solid name prefixed `fa-` (`fa-tree`). An unknown name draws a placeholder. |
 | `accentColor` | `#RRGGBB`, the program's own color; the app tints the extension's icon and its references' chips with it. |
-| `keywords` | Extra search terms for the panel and the catalog, beyond name and description. |
+| `keywords` | Extra search terms for the panel and the catalog, beyond name and description. They rank above both: a search that is exactly a keyword lists the extension first. |
 | `relevance` | Where, when and for whom the extension matters; below. |
 
 ### Relevance
 
 `relevance` ranks; it never hides. The catalog orders its listing by it for
 the operator's own callsign, and the Extensions panel's catalog section
-shows that order. A manifest without one is worldwide and undated.
+shows that order. In a search it orders the matches that answer the query
+equally well; how well they answer it comes first. A manifest without one
+is worldwide and undated.
 
 ```json
 "relevance": {

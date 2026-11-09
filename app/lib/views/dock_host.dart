@@ -26,7 +26,6 @@ import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
-import '../services/extensions/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';

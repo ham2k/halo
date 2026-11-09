@@ -265,6 +265,78 @@ void main() {
     expect(switchValue('sota'), isFalse);
   });
 
+  testWidgets('a search ranks by how well it matched, and opens on the category holding the best match', (tester) async {
+    // Grouped by category in a fixed order, "ss" would open on Activities,
+    // whose only hit is a word in a blurb, with Sweepstakes' own keyword a
+    // screen further down behind a contest that merely mentions SSB.
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final HaLoHarness(:services, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(key: 'nets', file: 'nets.js', core: false, name: 'Phone Nets', category: 'activity', description: 'SSB check-ins'),
+      ExtensionInfo(key: 'cqww', file: 'cqww.js', core: false, name: 'CQ World Wide', category: 'contest', description: 'CW, SSB and RTTY weekends'),
+      ExtensionInfo(key: 'arrl-ss', file: 'arrl-ss.js', core: false, name: 'Sweepstakes', category: 'contest', keywords: ['sweepstakes', 'ss']),
+    ]);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top(extensionCategoryTitle('activity')), lessThan(top(extensionCategoryTitle('contest'))), reason: 'the categories\' own order, unsearched');
+
+    await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'ss');
+    await tester.pumpAndSettle();
+    expect(top(extensionCategoryTitle('contest')), lessThan(top(extensionCategoryTitle('activity'))));
+    expect(top('Sweepstakes'), lessThan(top('CQ World Wide')), reason: 'by match, where the alphabet would say otherwise');
+  });
+
+  testWidgets('a search lists every offer it matched in match order, suggested or not', (tester) async {
+    // Split into Suggested and a More available under it, Sweepstakes — not
+    // a suggestion, being undated and worldwide — would sit below a contest
+    // that only mentions SSB but happens to be on this week.
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    Map<String, Object?> contest(String key, String name, {String? description, List<String> keywords = const [], Map<String, Object?>? relevance}) => {
+      ..._entry(key, name, relevance: relevance),
+      'category': 'contest',
+      'description': ?description,
+      'keywords': keywords,
+    };
+    final catalog = _catalog(
+      (_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            contest('aa-sprint', 'Aardvark Sprint', description: 'A short SSB sprint', relevance: _soon()),
+            contest('zz-sweepstakes', 'Zulu Sweepstakes', keywords: const ['ss']),
+          ],
+        }),
+        200,
+      ),
+    );
+    final HaLoHarness(:services, :extensions) = await makeHaLoServices(catalog: catalog);
+    extensions.debugSetAvailableExtensions(const []);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_catalogRowKeys(tester), ['catalog-aa-sprint'], reason: 'unsearched, only the suggestion is out');
+
+    await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'ss');
+    await tester.pumpAndSettle();
+    expect(_catalogRowKeys(tester), ['catalog-zz-sweepstakes', 'catalog-aa-sprint']);
+  });
+
   testWidgets('panel hides experiment-gated extensions until the experiment is enabled', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -419,11 +491,11 @@ void main() {
         // it heads the list in Pending Updates as well as carrying its badge.
         'pending:k2hrc-llota',
         // Every offer, More available's shut ones included: Suggested, then
-        // the rest.
+        // the rest, worldwide ahead of what is addressed to somewhere else.
         'catalog:aa-world',
         'catalog:k-only',
-        'catalog:ce-only',
         'catalog:zz-world',
+        'catalog:ce-only',
         // Which sections are open moves every row under them: left out of the
         // key, a fold would remount nothing and the clicks would land on the
         // old geometry.
@@ -585,7 +657,8 @@ void main() {
 
     // Five days out and three days past are inside the window; six months out
     // and four days past are not, and their K geography does not save them.
-    expect(_catalogRowKeys(tester), ['catalog-tx-just-ran', 'catalog-tx-soon']);
+    // What is still ahead leads what has begun.
+    expect(_catalogRowKeys(tester), ['catalog-tx-soon', 'catalog-tx-just-ran']);
     // The two that are out of season are still THERE, under More available
     // — held back from the suggestions, not hidden from the panel.
     expect(find.text('More available (2)'), findsOneWidget);

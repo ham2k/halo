@@ -17,13 +17,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart' show nowUtc;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_relevance.dart';
-import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksClaimRef;
+import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksClaimRef, rankSearchHits;
 import '../../services/halo_services.dart';
 import '../extension_install_flow.dart';
 import '../extension_screenshots.dart';
@@ -66,12 +67,12 @@ class CatalogTier {
             refs.any((ref) => hooksClaimRef(entry.hooks, type: ref.type, code: ref.code)))
           entry,
     ];
-    return orderedCatalogEntries(matched, services.flags.operatorGeo, LocaleSettings.currentLocale.languageCode);
+    return orderedCatalogEntries(matched, services.flags.operatorGeo, LocaleSettings.currentLocale.languageCode, now: nowUtc());
   }
 
   /// What [input] matches, or empty while the listing has not arrived. The
   /// candidates are read off the box exactly as the two tiers above read it.
-  List<CatalogEntry> matching(HaLoServices services, ({String search, String key}) candidates, {required bool keyOnly}) {
+  List<CatalogEntry> matching(HaLoServices services, ({String search, String key}) candidates, {required bool keyOnly, required DateTime now}) {
     final listing = entries;
     if (listing == null) return const [];
     return catalogExtensionsMatching(
@@ -82,6 +83,7 @@ class CatalogTier {
       availableKeys: {for (final info in services.extensions.availableExtensions) info.key},
       locale: LocaleSettings.currentLocale.languageCode,
       operatorGeo: services.flags.operatorGeo,
+      now: now,
     );
   }
 
@@ -115,8 +117,10 @@ class CatalogTier {
 /// what they already have — which for a built-in key the install flow would
 /// then refuse, after the consent screen.
 ///
-/// Ordered by the catalog's own geographic rule, so an operator in Texas is
-/// offered the Texas party ahead of Vermont's.
+/// Ranked as every extension search is ([rankSearchHits]), with a scope
+/// word counting as an exact match: an operator in Texas is offered the
+/// Texas party ahead of Vermont's, and `ss` offers Sweepstakes ahead of
+/// every contest that merely mentions SSB.
 List<CatalogEntry> catalogExtensionsMatching(
   List<CatalogEntry> entries, {
   required String search,
@@ -124,16 +128,20 @@ List<CatalogEntry> catalogExtensionsMatching(
   required bool keyOnly,
   required Set<String> availableKeys,
   required String locale,
+  required DateTime now,
   OperatorGeo? operatorGeo,
 }) {
   if (search.isEmpty) return const [];
-  final matched = [
-    for (final entry in entries)
-      if (!availableKeys.contains(entry.key) &&
-          (activityScopeWordsOf(key: entry.key, hooks: entry.hooks).contains(key) || (!keyOnly && entry.matchesSearch(search, locale: locale))))
-        entry,
-  ];
-  return orderedCatalogEntries(matched, operatorGeo, locale);
+  return rankSearchHits(
+    [
+      for (final entry in entries)
+        if (!availableKeys.contains(entry.key)) entry,
+    ],
+    (entry) => activityScopeWordsOf(key: entry.key, hooks: entry.hooks).contains(key) ? 0 : (keyOnly ? null : entry.searchRank(search, locale: locale)),
+    operator: operatorGeo,
+    now: now,
+    locale: locale,
+  );
 }
 
 /// An "Install X" row of the Activity Types section, for a catalog extension

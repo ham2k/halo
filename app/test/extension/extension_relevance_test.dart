@@ -472,4 +472,76 @@ void main() {
       );
     });
   });
+
+  group('relevanceOrder', () {
+    // relevanceBand's ties, broken for a list: without it, everything inside
+    // a band falls back to the alphabet, and the contest this weekend sorts
+    // behind the one in a fortnight because of its name.
+    final now = DateTime.utc(2026, 11, 8);
+    const kilo = OperatorGeo(entityPrefix: 'K', countryCode: 'us', continent: 'NA', ituRegion: 2);
+    String day(int inDays) {
+      final at = now.add(Duration(days: inDays));
+      return '${at.year}-${at.month.toString().padLeft(2, '0')}-${at.day.toString().padLeft(2, '0')}';
+    }
+
+    int order(ExtensionRelevance? r) => relevanceOrder(r, operator: kilo, now: now);
+    int compare(ExtensionRelevance? a, ExtensionRelevance? b) => order(a).compareTo(order(b));
+
+    test('the bands still decide first', () {
+      expect(compare(ExtensionRelevance(dates: [day(13)]), const ExtensionRelevance(entities: ['K'])), lessThan(0));
+      expect(compare(const ExtensionRelevance(entities: ['K']), null), lessThan(0));
+    });
+
+    test('inside Soon, the nearest start ahead leads', () {
+      expect(compare(ExtensionRelevance(dates: [day(2)]), ExtensionRelevance(dates: [day(9)])), lessThan(0));
+      expect(
+        compare(ExtensionRelevance(dates: [day(0)]), ExtensionRelevance(dates: [day(1)])),
+        lessThan(0),
+        reason: 'today is ahead',
+      );
+      // A far-off occurrence of the same event must not count against it.
+      expect(compare(ExtensionRelevance(dates: [day(300), day(1)]), ExtensionRelevance(dates: [day(4)])), lessThan(0));
+    });
+
+    test('what began in the last few days follows everything still ahead', () {
+      // By distance alone, Saturday's contest seen on Tuesday (-3) would beat
+      // this Saturday's party (+4) — though it is most likely over.
+      expect(compare(ExtensionRelevance(dates: [day(14)]), ExtensionRelevance(dates: [day(-1)])), lessThan(0));
+      expect(
+        compare(ExtensionRelevance(dates: [day(-1)]), ExtensionRelevance(dates: [day(-3)])),
+        lessThan(0),
+        reason: 'nearest first among them too',
+      );
+      expect(
+        compare(ExtensionRelevance(dates: [day(-3), day(5)]), ExtensionRelevance(dates: [day(6)])),
+        lessThan(0),
+        reason: 'its next start counts',
+      );
+    });
+
+    test('inside Neither, worldwide leads what is addressed to somewhere else', () {
+      // The Vermont party is band 2 for a Texan exactly like a worldwide
+      // contest is, and it is the one of the two that cannot be for them.
+      expect(compare(null, const ExtensionRelevance(entities: ['VE'])), lessThan(0));
+      expect(compare(const ExtensionRelevance(interests: ['cw']), const ExtensionRelevance(countries: ['de'])), lessThan(0));
+      expect(compare(null, const ExtensionRelevance()), 0);
+    });
+
+    test('a date that is no real day is not soon, and does not throw', () {
+      // Catalog rows reach the reader unvalidated. A looser parse would read
+      // 2026-11-31 as 1 December — soon, on a typo — and DateTime.utc throws
+      // outright on a year past its range, taking the whole list with it.
+      expect(order(const ExtensionRelevance(dates: ['2026-11-31'])), order(null));
+      expect(order(const ExtensionRelevance(dates: ['300000-01-01'])), order(null));
+      expect(
+        order(ExtensionRelevance(dates: ['2026-13-01', day(2)])),
+        order(ExtensionRelevance(dates: [day(2)])),
+        reason: 'the readable date still counts',
+      );
+    });
+
+    test('two matches of the operator\'s own region tie, for the name to settle', () {
+      expect(compare(const ExtensionRelevance(entities: ['K']), const ExtensionRelevance(countries: ['us'])), 0);
+    });
+  });
 }

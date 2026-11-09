@@ -28,7 +28,7 @@ import '../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../error_reporting_service.dart';
 import 'extension_relevance.dart';
-import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable;
+import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable, rankSearchHits;
 import 'installed_extensions.dart';
 import '../settings_service.dart';
 import '../status_bar_service.dart';
@@ -127,6 +127,7 @@ class CatalogEntry with ExtensionSearchable {
 
   /// Where, when and for whom the extension is relevant; null is worldwide
   /// and undated.
+  @override
   final ExtensionRelevance? relevance;
   @override
   final Map<String, Map<String, Object?>> translations;
@@ -240,29 +241,13 @@ class CatalogEntry with ExtensionSearchable {
   }
 }
 
-/// The three tiers of the catalog's own ordering rule: what the operator's
-/// callsign is in the audience of, what is for everyone, and the rest —
-/// alphabetical within each. With no callsign known yet there is no first
-/// tier: worldwide leads, and every gated entry follows.
-///
-/// One copy, because two places rank catalog entries for the same operator —
-/// the Extensions panel's Catalog section and the operation sheet's activity
-/// search — and a Texan offered the Texas party first in one place and third
-/// in the other would be reading two different catalogs.
-List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo? operator, String locale) {
-  int tier(CatalogEntry entry) {
-    final relevance = entry.relevance;
-    if (relevance == null || relevance.isWorldwide) return 1;
-    return operator != null && relevance.matchesOperator(operator) ? 0 : 2;
-  }
-
-  final tiers = {for (final entry in entries) entry.key: tier(entry)};
-  return [...entries]..sort((a, b) {
-    final byTier = tiers[a.key]!.compareTo(tiers[b.key]!);
-    if (byTier != 0) return byTier;
-    return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-  });
-}
+/// [entries] in the one order extensions are listed in
+/// ([rankSearchHits]): what is on soon, what the operator's callsign is
+/// in the audience of, what is for everyone, and the rest — soonest first
+/// within the first, alphabetical within the others. With no callsign known yet there is no "here": worldwide
+/// leads, and every gated entry follows.
+List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo? operator, String locale, {required DateTime now}) =>
+    rankSearchHits(entries, (_) => 0, operator: operator, now: now, locale: locale);
 
 /// One version of `GET /api/v1/extensions/:key` — the hash a deep link's
 /// bytes are checked against, and the channel it is released on.

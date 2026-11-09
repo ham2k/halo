@@ -187,16 +187,29 @@ class ExtensionRelevance {
   /// A date that cannot be read is not soon. The shape is refused upstream,
   /// so anything unreadable here came from a stale index rather than an
   /// author, and guessing at it would rank an extension by a typo.
-  bool startsWithin(Duration window, DateTime now) {
+  bool startsWithin(Duration window, DateTime now) => soonness(window, now) != null;
+
+  /// How soon, among the starts [startsWithin] counts, lower being sooner;
+  /// null when none is. Today and what is ahead come first, nearest first,
+  /// then what began in the last [kRelevanceJustPast] — nearest first too.
+  /// An event that started on Saturday is most likely over by Tuesday, and
+  /// the one starting this weekend is the one still worth getting ready for.
+  int? soonness(Duration window, DateTime now) {
     final today = DateTime.utc(now.year, now.month, now.day);
+    int? soonest;
     for (final date in dates) {
-      final parts = date.split('-').map(int.tryParse).toList();
-      if (parts.length != 3 || parts.any((p) => p == null)) continue;
-      final at = DateTime.utc(parts[0]!, parts[1]!, parts[2]!);
+      // The packer's own check, not a looser parse: catalog rows reach here
+      // unvalidated, and `DateTime.utc` throws on a year past its range and
+      // rolls 31 February into March rather than refusing it.
+      if (_dateProblem(date) != null) continue;
+      final parts = date.split('-').map(int.parse).toList();
+      final at = DateTime.utc(parts[0], parts[1], parts[2]);
       final days = at.difference(today).inDays;
-      if (days >= -kRelevanceJustPast.inDays && days <= window.inDays) return true;
+      if (days < -kRelevanceJustPast.inDays || days > window.inDays) continue;
+      final key = days >= 0 ? days : window.inDays - days;
+      if (soonest == null || key < soonest) soonest = key;
     }
-    return false;
+    return soonest;
   }
 
   /// No geographic list gates — the same audience as no `relevance` at all.
@@ -249,6 +262,25 @@ int relevanceBand(ExtensionRelevance? relevance, {required OperatorGeo? operator
   // matches under everything.
   if (!relevance.isWorldwide && relevance.matchesOperator(operator)) return 1;
   return 2;
+}
+
+/// Where [relevance] places an extension in a list, lower first:
+/// [relevanceBand] with its ties broken. Inside Soon the soonest start
+/// ([ExtensionRelevance.soonness]), and inside Neither whatever is for
+/// everyone ahead of what is addressed to somewhere else — a Texan gains
+/// nothing from Vermont's party, but may from a worldwide contest. Equal
+/// for two as relevant, which the caller settles by name.
+///
+/// A number rather than a comparator so a sort reads every date once per
+/// extension, not once per comparison.
+int relevanceOrder(ExtensionRelevance? relevance, {required OperatorGeo? operator, required DateTime now}) {
+  final band = relevanceBand(relevance, operator: operator, now: now);
+  final within = switch (band) {
+    0 => relevance!.soonness(kRelevanceSoon, now)!,
+    2 => relevance != null && !relevance.isWorldwide ? 1 : 0,
+    _ => 0,
+  };
+  return band * 1000 + within;
 }
 
 /// How far ahead an extension's next event counts as soon.

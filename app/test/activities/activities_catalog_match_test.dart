@@ -22,6 +22,8 @@ import 'package:ham2k_logger/services/extensions/extension_relevance.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart' show CatalogChannel;
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/activities_catalog_tier.dart' show catalogExtensionsMatching;
+import 'package:ham2k_logger/views/operation/activities_enable_tier.dart' show notRunningExtensionsMatching;
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -133,7 +135,7 @@ void main() {
       final worldwide = _entry('ww', 'Worldwide');
       final operator = const OperatorGeo(entityPrefix: 'K');
 
-      expect(orderedCatalogEntries([vermont, worldwide, texas], operator, 'en').map((e) => e.key), ['tx', 'ww', 'vt']);
+      expect(orderedCatalogEntries([vermont, worldwide, texas], operator, 'en', now: DateTime.utc(2026, 11, 8)).map((e) => e.key), ['tx', 'ww', 'vt']);
     });
 
     test('with no operator geo there is no first tier — worldwide leads', () {
@@ -145,8 +147,59 @@ void main() {
         }),
       );
       final worldwide = _entry('ww', 'Worldwide');
-      expect(orderedCatalogEntries([texas, worldwide], null, 'en').map((e) => e.key), ['ww', 'tx']);
+      expect(orderedCatalogEntries([texas, worldwide], null, 'en', now: DateTime.utc(2026, 11, 8)).map((e) => e.key), ['ww', 'tx']);
     });
+  });
+
+  group('catalogExtensionsMatching', () {
+    final now = DateTime.utc(2026, 11, 8);
+    const kilo = OperatorGeo(entityPrefix: 'K');
+    List<String> keysFor(List<CatalogEntry> entries, String input) {
+      final words = input.split(' ');
+      return catalogExtensionsMatching(
+        entries,
+        search: input,
+        key: words.first,
+        keyOnly: false,
+        availableKeys: const {},
+        locale: 'en',
+        now: now,
+        operatorGeo: kilo,
+      ).map((e) => e.key).toList();
+    }
+
+    test('the extension the search names leads, however relevant the rest', () {
+      // The sprint is on this week and in the operator's region, Sweepstakes
+      // is neither — and "ss" is still Sweepstakes' own keyword.
+      final sprint = _entry(
+        'ki2d-ssb-sprint',
+        'NA SSB Sprint',
+        keywords: const ['ssb'],
+        relevance: const ExtensionRelevance(entities: ['K'], dates: ['2026-11-09']),
+      );
+      final sweepstakes = _entry('ham2k-arrl-ss', 'ARRL Sweepstakes', keywords: const ['ss']);
+      expect(keysFor([sprint, sweepstakes], 'ss'), ['ham2k-arrl-ss', 'ki2d-ssb-sprint']);
+    });
+
+    test('a scope word ranks as an exact match, ahead of a keyword that only starts with it', () {
+      final parks = _entry('ham2k-pota', 'Parks on the Air', hooks: const ['ref:pota']);
+      final blurb = _entry('aa-potato', 'Aardvark', keywords: const ['potato']);
+      expect(keysFor([blurb, parks], 'pota'), ['ham2k-pota', 'aa-potato']);
+    });
+  });
+
+  test('the enable rows rank as the install rows do', () async {
+    // Its own call site: reverted to the unranked list, the switched-off
+    // Sweepstakes would sit under a contest that only mentions SSB.
+    SharedPreferences.setMockInitialValues(const {});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(key: 'aa-cqww', file: 'a.js', core: false, name: 'Aardvark World Wide', description: 'CW, SSB and RTTY', enabledByDefault: false),
+      ExtensionInfo(key: 'zz-ss', file: 'z.js', core: false, name: 'Zulu Sweepstakes', keywords: ['ss'], enabledByDefault: false),
+    ]);
+    final matched = notRunningExtensionsMatching(extensions, 'ss', operatorGeo: null, now: DateTime.utc(2026, 11, 8));
+    expect(matched.map((e) => e.key), ['zz-ss', 'aa-cqww']);
   });
 
   testWidgets('a catalog extension the app does not have is offered as an install', (tester) async {

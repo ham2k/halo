@@ -11,6 +11,7 @@
 
 import 'dart:async';
 
+import 'package:collection/collection.dart' show mergeSort;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -537,12 +538,18 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
             .toList();
         final locale = LocaleSettings.currentLocale.languageCode;
         // Search matches both the localized and the English name/description,
-        // so a user can find an extension by either.
+        // so a user can find an extension by either. How well each row
+        // matched ranks it ahead of its relevance ([rankSearchHits]); with no
+        // query every row ranks alike.
+        final listedRanks = {
+          if (query.isNotEmpty)
+            for (final info in listed) info.key: ?info.searchRank(query, locale: locale),
+        };
         final visible = query.isEmpty
             ? listed
             : [
                 for (final info in listed)
-                  if (info.matchesSearch(query, locale: locale)) info,
+                  if (listedRanks.containsKey(info.key)) info,
               ];
 
         // The operator's own geography and the clock, resolved once for the
@@ -580,14 +587,40 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // With a query it is what the query matched, because then the
         // operator has said what they are looking for.
         final offers = <CatalogEntry>[];
+        final offerRanks = <String, int>{};
         if (_catalogShown && _catalog != null) {
           for (final entry in _catalog!) {
             if (installedVersions.containsKey(entry.key) || builtInKeys.contains(entry.key)) continue;
-            if (query.isEmpty || entry.matchesSearch(query, locale: locale)) offers.add(entry);
+            if (query.isEmpty) {
+              offers.add(entry);
+            } else if (entry.searchRank(query, locale: locale) case final rank?) {
+              offers.add(entry);
+              offerRanks[entry.key] = rank;
+            }
           }
         }
 
-        final categories = extensionCategoriesIn({for (final info in visible) info.category ?? 'other', for (final entry in offers) entry.category ?? 'other'});
+        // Each category's rows, best first ([rankSearchHits]). Every row here
+        // passed the query, so with one standing each has a rank.
+        List<T> ranked<T extends ExtensionSearchable>(Iterable<T> items, Map<String, int> ranks) =>
+            rankSearchHits(items, (item) => query.isEmpty ? 0 : ranks[item.key]!, operator: operatorGeo, now: now, locale: locale);
+
+        // A search puts the category holding its best match first — `ss`
+        // opens on Contests, where Sweepstakes is — and otherwise keeps the
+        // categories' own order.
+        var categories = extensionCategoriesIn({for (final info in visible) info.category ?? 'other', for (final entry in offers) entry.category ?? 'other'});
+        if (query.isNotEmpty) {
+          final best = <String, int>{};
+          void note(String? category, int rank) => best.update(category ?? 'other', (r) => r < rank ? r : rank, ifAbsent: () => rank);
+          for (final info in visible) {
+            note(info.category, listedRanks[info.key]!);
+          }
+          for (final entry in offers) {
+            note(entry.category, offerRanks[entry.key]!);
+          }
+          categories = [...categories];
+          mergeSort(categories, compare: (a, b) => best[a]!.compareTo(best[b]!));
+        }
 
         // Which of the offers are worth putting in front of somebody who did
         // not ask. Ninety extensions under five headings would bury what an
@@ -781,33 +814,23 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         }
 
         for (final category in categories) {
-          final inCategory =
-              [
-                for (final info in visible)
-                  if ((info.category ?? 'other') == category) info,
-              ]..sort((a, b) {
-                final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
-                if (byBand != 0) return byBand;
-                return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-              });
-          final offered =
-              [
-                for (final e in offers)
-                  if ((e.category ?? 'other') == category) e,
-              ]..sort((a, b) {
-                final byBand = bandOf(a.relevance).compareTo(bandOf(b.relevance));
-                if (byBand != 0) return byBand;
-                return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-              });
+          final inCategory = ranked([
+            for (final info in visible)
+              if ((info.category ?? 'other') == category) info,
+          ], listedRanks);
+          final offered = ranked([
+            for (final e in offers)
+              if ((e.category ?? 'other') == category) e,
+          ], offerRanks);
           // The head of the offers is what is suggested, and only a few of it:
           // a heading that already carries three of the operator's own
           // extensions is a subject they have settled, and five more offers
           // under it is a sales pitch rather than a panel. Everything else is
           // under More available, shut until asked for. A search is the
-          // operator asking, so it suggests whatever the query matched.
-          final suggestedOffers = query.isNotEmpty
-              ? offered.where(isSuggested).toList()
-              : offered.where(isSuggested).take(inCategory.length >= 3 ? 2 : 5).toList();
+          // operator asking, so it suggests whatever the query matched, in
+          // the order it matched: split in two, an exact match that is not
+          // otherwise a suggestion would sit under every weaker one that is.
+          final suggestedOffers = query.isNotEmpty ? offered : offered.where(isSuggested).take(inCategory.length >= 3 ? 2 : 5).toList();
           if (inCategory.isEmpty && offered.isEmpty) continue;
           final store = extensionService.installed;
           final installedByKey = {for (final info in inCategory) info.key: info};

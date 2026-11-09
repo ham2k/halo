@@ -16,13 +16,14 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:halo_core/halo_core.dart' show matchesWordStart;
+import 'package:halo_core/halo_core.dart' show matchesWordStart, nowUtc;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../services/extensions/catalog_service.dart';
 import '../../services/extensions/extension_info.dart';
+import '../../services/extensions/extension_relevance.dart' show OperatorGeo;
 import '../extensions_panel.dart' show extensionCategoryIcon;
 import 'activities_catalog_tier.dart' show InstallExtensionRow;
 
@@ -188,6 +189,10 @@ class LayoutSheet extends StatefulWidget {
   final List<ExtensionInfo> enableable;
   final List<CatalogEntry> installable;
 
+  /// The operator's geography, which the enable and install rows are ranked
+  /// against ([rankSearchHits]); null when nothing is known yet.
+  final OperatorGeo? operatorGeo;
+
   /// Called on every non-empty search, so the host can fetch the catalog
   /// lazily — a sheet opened only to add a Clock asks the catalog nothing.
   final VoidCallback? onSearch;
@@ -211,6 +216,7 @@ class LayoutSheet extends StatefulWidget {
     this.onManageExtensions,
     this.enableable = const [],
     this.installable = const [],
+    required this.operatorGeo,
     this.onSearch,
     this.onEnableExtension,
     this.onInstallExtension,
@@ -370,18 +376,25 @@ class _LayoutSheetState extends State<LayoutSheet> {
         if (_matches(panel, query)) panel,
     ];
     final locale = LocaleSettings.currentLocale.languageCode;
+    final now = nowUtc();
     final enable = widget.onEnableExtension == null
         ? const <ExtensionInfo>[]
-        : [
-            for (final info in widget.enableable)
-              if (info.matchesSearch(query, locale: locale)) info,
-          ];
+        : rankSearchHits(
+            widget.enableable,
+            (info) => info.searchRank(query, locale: locale),
+            operator: widget.operatorGeo,
+            now: now,
+            locale: locale,
+          );
     final install = widget.onInstallExtension == null
         ? const <CatalogEntry>[]
-        : [
-            for (final entry in widget.installable)
-              if (entry.matchesSearch(query, locale: locale)) entry,
-          ];
+        : rankSearchHits(
+            widget.installable,
+            (entry) => entry.searchRank(query, locale: locale),
+            operator: widget.operatorGeo,
+            now: now,
+            locale: locale,
+          );
     return Material(
       color: haloSheetListBackground(context),
       child: Column(

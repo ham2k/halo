@@ -117,8 +117,17 @@ mixin _ActivitiesExtensions on State<OperationSheet>, _ActivitiesRefs {
     // every extension serving the type, so `pota:` parses as a scope while
     // stock POTA is off and a user-published one serves parks — and stock
     // POTA, declaring `ref:pota`, is offered to switch back on from here.
-    _disabledMatches = notRunningExtensionsMatching(widget.services.extensions, term, keyOnly: query.activityKeys != null);
-    _refreshCatalogMatches();
+    // One clock for both tiers, so the enable rows and the install rows
+    // under them cannot rank a dated extension against two different days.
+    final now = nowUtc();
+    _disabledMatches = notRunningExtensionsMatching(
+      widget.services.extensions,
+      term,
+      keyOnly: query.activityKeys != null,
+      operatorGeo: widget.services.flags.operatorGeo,
+      now: now,
+    );
+    _refreshCatalogMatches(now: now);
     // These rows live in the Activity Types section, which the operator
     // may have collapsed — so a search that finds only an extension that
     // is not running would otherwise answer with nothing at all.
@@ -144,17 +153,17 @@ mixin _ActivitiesExtensions on State<OperationSheet>, _ActivitiesRefs {
   /// Both catalog tiers re-matched against the box as it is NOW: a listing
   /// can land while the operator is still typing, and matching the term they
   /// have moved on from offers rows for a search no longer on screen.
-  void _refreshCatalogMatches() {
+  void _refreshCatalogMatches({DateTime? now}) {
     final term = _searchController.text;
     final query = ActivitySearchQuery.parse(term, _activityScopes);
-    _catalogTier.matches = _catalogTier.matching(widget.services, extensionSearchCandidates(term), keyOnly: query.activityKeys != null);
+    _catalogTier.matches = _catalogTier.matching(widget.services, extensionSearchCandidates(term), keyOnly: query.activityKeys != null, now: now ?? nowUtc());
     _refreshUnhandledRefMatches();
     if (_catalogTier.matches.isNotEmpty || _catalogTier.refMatches.isNotEmpty) _allOptionsExpanded = true;
   }
 
   void _ensureCatalogFetched() {
     _catalogTier.ensureFetched(widget.services, () {
-      if (mounted) setState(_refreshCatalogMatches);
+      if (mounted) setState(() => _refreshCatalogMatches());
     });
   }
 

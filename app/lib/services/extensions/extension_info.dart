@@ -96,20 +96,79 @@ mixin ExtensionSearchable {
   /// crash over. The build index's are validated by the packer anyway.
   List<String> keywordsFor(String locale) => [...keywords, ...((translations[locale]?['keywords'] as List?) ?? const []).whereType<String>()];
 
-  /// Whether a user's search text should surface this extension. Matches the
-  /// key, the name and description in BOTH the given locale and English (so
-  /// either spelling finds it), and the keywords. [query] is expected
-  /// already trimmed; an empty one matches nothing, since "show everything"
-  /// is the caller's decision, not a match.
-  bool matchesSearch(String query, {required String locale}) {
-    if (query.isEmpty) return false;
-    return matchesWordStart(key, query) ||
-        matchesWordStart(name, query) ||
-        matchesWordStart(nameFor(locale), query) ||
-        matchesWordStart(description ?? '', query) ||
-        matchesWordStart(descriptionFor(locale) ?? '', query) ||
-        keywordsFor(locale).any((keyword) => matchesWordStart(keyword, query));
+  /// Where and when the extension matters — [rankSearchHits]'s tiebreak.
+  /// Null is worldwide and undated.
+  ExtensionRelevance? get relevance;
+
+  /// How well a user's search text answers this extension, lower being
+  /// better; null when it does not match. The key, the name and description
+  /// in BOTH the given locale and English (so either spelling finds it), and
+  /// the keywords — each matched at a word start ([matchesWordStart]).
+  /// [query] is expected already trimmed; an empty one matches nothing,
+  /// since "show everything" is the caller's decision, not a match.
+  ///
+  /// 0. **Exact**: the query IS a keyword, the name, or the key.
+  /// 1. **Keyword**: a keyword starts with it.
+  /// 2. **Name**: a word of the name, or of the key, does.
+  /// 3. **Description**: a word of the description does.
+  ///
+  /// Keywords outrank the name because they are what an author lists the
+  /// extension BY — its abbreviations among them — and the description sits
+  /// last because prose mentions everything its subject sits beside: "ss" is
+  /// Sweepstakes' own keyword, and only a word in the blurbs of every SSB
+  /// contest. A word of the key ranks with the name rather than the
+  /// keywords because its author never chose it as a search term: `ham`
+  /// would otherwise lift every `ham2k-` extension above one named "Ham".
+  int? searchRank(String query, {required String locale}) {
+    if (query.isEmpty) return null;
+    final lower = query.toLowerCase();
+    final words = keywordsFor(locale);
+    if (key.toLowerCase() == lower ||
+        name.toLowerCase() == lower ||
+        nameFor(locale).toLowerCase() == lower ||
+        words.any((keyword) => keyword.toLowerCase() == lower)) {
+      return 0;
+    }
+    if (words.any((keyword) => matchesWordStart(keyword, query))) return 1;
+    if (matchesWordStart(key, query) || matchesWordStart(name, query) || matchesWordStart(nameFor(locale), query)) return 2;
+    if (matchesWordStart(description ?? '', query) || matchesWordStart(descriptionFor(locale) ?? '', query)) return 3;
+    return null;
   }
+}
+
+/// What a search finds among [items], best first: by [rankOf] — normally
+/// [ExtensionSearchable.searchRank], null dropping the item — then by
+/// [relevanceOrder] for the operator at [now], then by name.
+///
+/// The one order extensions are listed in, wherever a list ranks them — the
+/// Extensions panel, the operation sheet's activity search, the Add a Panel
+/// sheet: an operator offered the Texas party first in one place and third
+/// in another would be reading two different catalogs. Relevance only breaks
+/// ties: an exact keyword for an event on the far side of the world still
+/// answers the query better than a word in the description of one next door.
+List<T> rankSearchHits<T extends ExtensionSearchable>(
+  Iterable<T> items,
+  int? Function(T item) rankOf, {
+  required OperatorGeo? operator,
+  required DateTime now,
+  required String locale,
+}) {
+  final hits = [
+    for (final item in items)
+      if (rankOf(item) case final rank?)
+        (item: item, rank: rank, relevance: relevanceOrder(item.relevance, operator: operator, now: now), name: item.nameFor(locale).toLowerCase()),
+  ];
+  mergeSort(
+    hits,
+    compare: (a, b) {
+      final byRank = a.rank.compareTo(b.rank);
+      if (byRank != 0) return byRank;
+      final byRelevance = a.relevance.compareTo(b.relevance);
+      if (byRelevance != 0) return byRelevance;
+      return a.name.compareTo(b.name);
+    },
+  );
+  return [for (final hit in hits) hit.item];
 }
 
 /// The reference a manifest `hooks` entry claims, in either of the two forms
@@ -270,6 +329,7 @@ class ExtensionInfo with ExtensionSearchable {
   /// Where, when and for whom this extension is relevant (the manifest's
   /// `relevance`); null is worldwide and undated. Ranks catalog and panel
   /// entries for the operator's own callsign — see [ExtensionRelevance].
+  @override
   final ExtensionRelevance? relevance;
 
   /// Whether this extension may set its own `User-Agent` on host.fetch
