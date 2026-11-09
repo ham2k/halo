@@ -96,13 +96,14 @@ in plain functions you can test with the project's own runner.
 
 | Doing this | Read |
 | --- | --- |
-| Anything, before the reference: a whole worked extension of that shape | `samples/`: `k2hrc-hello-world` (the smallest panel), `k2hrc-hamqth` (lookup + login), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-dxcc` (award checklist), `k2hrc-radio` (HTML panel), `k2hrc-panel-scenes` (every scene control) |
+| Anything, before the reference: a whole worked extension of that shape | `samples/`: `k2hrc-hello-world` (the smallest panel), `k2hrc-hamqth` (lookup + login), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-dxcc` (award checklist), `k2hrc-radio` (HTML panel), `k2hrc-panel-scenes` (every scene control), `k2hrc-coach` (an assistant) |
 | The model: sandbox, activation, hooks, host, budgets, API levels | `docs/concepts.md` |
 | A manifest field, a grant, relevance, what the packer refuses | `docs/manifest.md` |
 | Any `host.*` call, the hook context (`ctx`), calling other extensions | `docs/host.md` |
 | How hooks are registered and invoked, the category list | `docs/hooks.md` |
 | A pane in a view: `getPanels`, `render`, content kinds, triggers | `docs/panels.md` |
 | An interactive panel: layers, bindings, controls, layout, spectrum | `docs/scenes.md` |
+| Reacting to the operator with no pane: QSOs logged, the draft, the radio, spots, ticks | `docs/assistants.md` |
 | Reading or commanding the operator's radio | `docs/radio.md` |
 | Callsign lookups and how answers merge | `docs/lookups.md` |
 | Spot feeds, posting spots, the DX cluster | `docs/spots.md` |
@@ -183,8 +184,8 @@ spots board. `dist/index.d.ts` has the rest.
 - **Declare the lowest `api` that has what you use**, and raise it when you
   reach for something newer: `docs/packaging.md` lists what each level added.
   The packer enforces a few of these (`webSockets` 2, `chasing` 9, the
-  cluster 10, `requiresRadioRaw` 11); the rest install on an older app and
-  fail there. The scaffold's `sharedDependencies` ranges are open-ended;
+  cluster 10, `requiresRadioRaw` 11, `assistant` 21); the rest install on an older app
+  and fail there. The scaffold's `sharedDependencies` ranges are open-ended;
   replace them with the versions the build suggests.
 - **`host.secret()` returns null** for an installed extension. Make public
   values constants; design everything else to degrade.

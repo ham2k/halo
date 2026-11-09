@@ -33,7 +33,6 @@ import 'extensions_panel.dart';
 import 'home_navigation_rail.dart';
 import 'chase_import_flow.dart';
 import 'file_open/file_router.dart';
-import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';

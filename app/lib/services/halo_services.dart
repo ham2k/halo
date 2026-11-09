@@ -87,6 +87,7 @@ import 'location_service.dart';
 import 'lookup_queue_service.dart';
 import 'operation_lifecycle_commands.dart';
 import 'metrics_service.dart';
+import 'assistant_service.dart';
 import 'panel_service.dart';
 import 'purchase_service.dart';
 import 'push_service.dart';
@@ -373,6 +374,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
   /// Lazy like the rest: nothing asks the extensions for panels until a view
   /// that can hold one is actually built.
   late final PanelService panels = PanelService(extensions);
+  late final AssistantService assistants = AssistantService.forApp(extensions, settings: settings, cat: cat);
   late final OperationTitleService operationTitles = OperationTitleService(extensions: extensions, operations: operations);
 
   /// Deletes a Test Operation for real, QSOs included — see
@@ -791,6 +793,7 @@ class HaLoServices with _ExitClosers, _Realtime, _TimeTravel, _SyncIdentity {
     ..register(MapSettingsGroup(settings))
     // Empty until an extension places a panel in one (docs/extensions/settings.md).
     ..registerAll(ExtensionSectionGroup.all())
+    ..register(AssistantsSettingsGroup(assistants, extensions))
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings, extensions))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));

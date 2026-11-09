@@ -20,7 +20,6 @@ import 'home_navigation_rail.dart';
 import 'chase_view.dart';
 import 'logs_view.dart';
 import 'maps_view.dart';
-import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
 import 'file_open/file_destinations.dart' show qsonFileDestination;

@@ -26,6 +26,7 @@ import '../services/cat/vfo_keys.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
+import '../services/assistant_service.dart' show AssistantFeed;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
@@ -42,10 +43,10 @@ import 'file_open/file_kind.dart';
 import 'file_open/file_router.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
-import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
+import 'operation/assistant_feed_port.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
@@ -161,6 +162,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   )..addListener(_onRuntimeChanged);
 
   void _onRuntimeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onAssistantsChanged() {
     if (mounted) setState(() {});
   }
 
@@ -386,6 +391,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     super.initState();
     widget.services.track('screen_viewed', {'screen': 'operation'});
     widget.services.settings.addListener(_onSettingsChanged);
+    // An assistant switched on may want a signal this view only produces on
+    // request: the draft per keystroke, the spots revision.
+    widget.services.assistants.addListener(_onAssistantsChanged);
     // A ref-add's own refresh (`_onOperationChanged` below) can race a
     // runtime restart triggered by enabling the extension in the same
     // gesture — `refreshControls` sees `loadFailed` and, correctly,
@@ -686,6 +694,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // Nothing else says so: a peer learns a position is gone from its session
     // dropping, and this device's session is still up.
     widget.services.peerDrafts.clearLocalFor(widget.operationUuid);
+    _assistantFeed.close();
+    widget.services.assistants.removeListener(_onAssistantsChanged);
     _operationSub?.cancel();
     _rescoreSub?.cancel();
     _runtime.dispose();

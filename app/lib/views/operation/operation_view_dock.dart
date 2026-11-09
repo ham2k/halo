@@ -89,8 +89,12 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// necessarily happens before it: the panel is answered with no draft,
   /// then woken by the next change to one.
   bool _anyPanelWants(String trigger) {
+    if (widget.services.assistants.wants(trigger)) return true;
     return dockSpec?.collectModules().any((id) => widget.services.panels.triggersFor(id).contains(trigger)) ?? false;
   }
+
+  /// This operation, as the extensions' assistants watch it.
+  late final AssistantFeed _assistantFeed = widget.services.assistants.openFeed();
 
   /// Where the Info pane is in the layout, surface it and let it show
   /// whatever it shows. Answers whether it actually did: a custom
@@ -315,7 +319,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
     // A local_data write rebuilds this view, which is the only signal a
     // POSITION or OPER change gives — see [_republishPeerHeaderIfChanged].
     _republishPeerHeaderIfChanged(operation);
-    return buildDock(
+    final dock = buildDock(
       children: {
         // The mobile numbers row is drawn by the app's status-bar overlay,
         // OUTSIDE this tree, so it has to be told when the logging pane is no
@@ -381,6 +385,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         ),
       },
     );
+    return AssistantFeedPort(feed: _assistantFeed, renderContext: panelRenderContext, child: dock);
   }
 
   /// The operation an extension panel renders against, kept as a field because

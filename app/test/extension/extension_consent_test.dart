@@ -171,6 +171,29 @@ void main() {
     expect(find.text(t.extensionsPanel.canReadRadio), findsNothing);
   });
 
+  // An assistant claims no grant to act unasked on every operation: without
+  // the warning, one asking for nothing else reads as harmless as a clock.
+  testWidgets('an assistant is warned about, even claiming nothing else; anything else is not', (tester) async {
+    await show(
+      tester,
+      await inspect(
+        withManifest(
+          (m) => {
+            ...m,
+            'domains': <String>[],
+            'api': 21,
+            'hooks': ['assistant'],
+          },
+        ),
+      ),
+    );
+    expect(find.text(t.extensionsPanel.assistantWarning), findsOneWidget);
+    expect(find.text(t.extensionsPanel.noCapabilities), findsOneWidget);
+
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[]})));
+    expect(find.text(t.extensionsPanel.assistantWarning), findsNothing);
+  });
+
   testWidgets('a claim to read the radio is named, and does not read as control', (tester) async {
     await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresRadioRead': true})));
 

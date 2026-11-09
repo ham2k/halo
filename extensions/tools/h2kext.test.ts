@@ -234,6 +234,14 @@ test("a bundle registering a chasing program must declare the api that calls it"
   assert.equal(validateManifest({ ...chasing, api: 9 }).length, 0)
 })
 
+test("a bundle registering an assistant must declare the api that calls it", () => {
+  // An older app would install it, show nothing, and never call it: an
+  // assistant has no other surface to give itself away.
+  const assistant = { ...validManifest, hooks: ["assistant"] }
+  assert.match(validateManifest({ ...assistant, api: 20 }).join(), /'assistant' needs 'api' 21/)
+  assert.equal(validateManifest({ ...assistant, api: 21 }).length, 0)
+})
+
 test("a bundle declaring requiresRadioRaw must declare the api that answers it", () => {
   // An older app knows no such grant: its install screen would show the
   // bundle as asking for nothing it can name, and refuse every raw command.

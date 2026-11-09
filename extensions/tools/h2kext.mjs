@@ -71,7 +71,7 @@ import yazl from "yazl"
 /// adds spots pushed as they happen — `host.spots.replace`/`put`/`remove`
 /// and a spot's `key` — and `match` on `host.clusterSubscribe` and
 /// `clusterLines`, and the `keyerSets` hook category, CW and voice message
-/// sets an extension offers.
+/// sets an extension offers; and the `assistant` hook category.
 export const H2KEXT_API_VERSION = 21
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -84,6 +84,10 @@ export const WEB_SOCKETS_API_VERSION = 2
 /// program, and for an extension that does nothing else, install a bundle
 /// that silently does nothing.
 export const CHASING_API_VERSION = 9
+
+/// The first API that calls `assistant` hooks. Refused under an older one for
+/// the same reason as `chasing`: the app would install it and never call it.
+export const ASSISTANT_API_VERSION = 21
 
 /// The first API with the DX cluster calls. A manifest declaring a
 /// `requiresCluster*` grant or a `cluster` hook under an older one is
@@ -497,6 +501,10 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 
   if (Array.isArray(manifest.hooks) && manifest.hooks.includes("chasing") && Number.isInteger(manifest.api) && manifest.api < CHASING_API_VERSION) {
     say(`'chasing' needs 'api' ${CHASING_API_VERSION} or later — an app older than that would install this and never ask it what a contact claims`)
+  }
+
+  if (Array.isArray(manifest.hooks) && manifest.hooks.includes("assistant") && Number.isInteger(manifest.api) && manifest.api < ASSISTANT_API_VERSION) {
+    say(`'assistant' needs 'api' ${ASSISTANT_API_VERSION} or later — an app older than that would install this and never call it`)
   }
 
   const clusterGrant = ["requiresClusterRead", "requiresClusterSpot", "requiresClusterCommand"].find((grant) => manifest[grant] === true)

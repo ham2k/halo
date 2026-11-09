@@ -299,6 +299,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String catalogNoRelease({required Object key}) => 'THE CATALOG HAS NO RELEASE OF ${key} ON THAT TRACK.';
 	@override String get installFromLink => 'INSTALL FROM LINK';
 	@override String get unstableReleaseWarning => 'THIS IS AN UNSTABLE RELEASE, WHICH ITS PUBLISHER HAS NOT CALLED FINISHED. IT MAY MISBEHAVE, AND IT WILL KEEP RECEIVING UNSTABLE UPDATES.';
+	@override String get assistantWarning => 'THIS IS AN ASSISTANT: IT WATCHES EVERYTHING YOU DO WHILE OPERATING AND ACTS ON IT WITHOUT BEING ASKED. ASSISTANTS GET DIRECT ACCESS TO THE APP\'S SETTINGS, CAN CONTROL YOUR LAYOUTS AND CAN INTERRUPT YOU DURING AN OPERATION. ONLY INSTALL ONE FROM A SOURCE YOU REALLY TRUST.';
 	@override String get bleedingReleaseWarning => 'THIS IS A BLEEDING-EDGE RELEASE: WORK IN PROGRESS THAT MAY BREAK OR LOSE ITS SETTINGS. IT WILL KEEP RECEIVING BLEEDING-EDGE UPDATES.';
 	@override String get channelUnstable => 'UNSTABLE';
 	@override String get channelBleeding => 'BLEEDING';
@@ -821,6 +822,7 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override late final _Translations$settings$radio$qro radio = _Translations$settings$radio$qro._(_root);
 	@override late final _Translations$settings$help$qro help = _Translations$settings$help$qro._(_root);
 	@override late final _Translations$settings$exports$qro exports = _Translations$settings$exports$qro._(_root);
+	@override late final _Translations$settings$assistants$qro assistants = _Translations$settings$assistants$qro._(_root);
 	@override late final _Translations$settings$extensionSections$qro extensionSections = _Translations$settings$extensionSections$qro._(_root);
 	@override late final _Translations$settings$map$qro map = _Translations$settings$map$qro._(_root);
 	@override late final _Translations$settings$privacy$qro privacy = _Translations$settings$privacy$qro._(_root);
@@ -2555,6 +2557,18 @@ class _Translations$settings$exports$qro extends Translations$settings$exports$e
 
 	// Translations
 	@override String get title => 'EXPORTS';
+}
+
+// Path: settings.assistants
+class _Translations$settings$assistants$qro extends Translations$settings$assistants$en {
+	_Translations$settings$assistants$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'ASSISTANTS';
+	@override String get on => 'WATCHING WHILE AN OPERATION IS OPEN';
+	@override String get off => 'OFF';
 }
 
 // Path: settings.extensionSections
@@ -5118,6 +5132,7 @@ extension on TranslationsQro {
 			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'THE CATALOG HAS NO RELEASE OF ${key} ON THAT TRACK.',
 			'extensionsPanel.installFromLink' => 'INSTALL FROM LINK',
 			'extensionsPanel.unstableReleaseWarning' => 'THIS IS AN UNSTABLE RELEASE, WHICH ITS PUBLISHER HAS NOT CALLED FINISHED. IT MAY MISBEHAVE, AND IT WILL KEEP RECEIVING UNSTABLE UPDATES.',
+			'extensionsPanel.assistantWarning' => 'THIS IS AN ASSISTANT: IT WATCHES EVERYTHING YOU DO WHILE OPERATING AND ACTS ON IT WITHOUT BEING ASKED. ASSISTANTS GET DIRECT ACCESS TO THE APP\'S SETTINGS, CAN CONTROL YOUR LAYOUTS AND CAN INTERRUPT YOU DURING AN OPERATION. ONLY INSTALL ONE FROM A SOURCE YOU REALLY TRUST.',
 			'extensionsPanel.bleedingReleaseWarning' => 'THIS IS A BLEEDING-EDGE RELEASE: WORK IN PROGRESS THAT MAY BREAK OR LOSE ITS SETTINGS. IT WILL KEEP RECEIVING BLEEDING-EDGE UPDATES.',
 			'extensionsPanel.channelUnstable' => 'UNSTABLE',
 			'extensionsPanel.channelBleeding' => 'BLEEDING',
@@ -5460,9 +5475,9 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE LAYOUT FORMAT',
 			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
 			'operation.layout.layouts.importNothing' => 'NO PANEL PICKED, SO NOTHING WAS IMPORTED.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'LEFT OUT: ${panels}',
@@ -5974,9 +5989,9 @@ extension on TranslationsQro {
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
-			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
 			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
@@ -6488,9 +6503,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
 			'settings.radio.voiceMessages.help' => 'HELP',
-			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
 			'settings.radio.voiceMessages.playOnRadio' => 'PLAY ON RADIO',
@@ -6561,6 +6576,9 @@ extension on TranslationsQro {
 			'settings.help.contact' => 'CONTACT US',
 			'settings.help.contactDescription' => 'HELP@HAM2K.COM — BUT TRY THE FORUMS OR CHAT FIRST!',
 			'settings.exports.title' => 'EXPORTS',
+			'settings.assistants.title' => 'ASSISTANTS',
+			'settings.assistants.on' => 'WATCHING WHILE AN OPERATION IS OPEN',
+			'settings.assistants.off' => 'OFF',
 			'settings.extensionSections.activities' => 'ACTIVITIES',
 			'settings.extensionSections.hunting' => 'HUNTING',
 			'settings.extensionSections.contests' => 'CONTESTS',
@@ -6999,12 +7017,12 @@ extension on TranslationsQro {
 			'settings.station.tenTecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.tenTecEagleTroubleshooting' => '- **THE USB-B PORT ON THE BACK IS THE CAT LINK.** THE RADIO SHOWS UP AS A USB SERIAL PORT; ON WINDOWS IT NEEDS TEN-TEC\'S USB TO UART DRIVER, WHICH APPEARS IN DEVICE MANAGER AS "USB TO UART (COMX)".\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN, AND SO DOES TEN-TEC\'S FIRMWARE UPDATER.\n- **SETTING THE FILTER WIDTH FROM THE APP TAKES IT AWAY FROM THE BW KNOB** UNTIL THE RADIO IS SWITCHED OFF AND ON AGAIN. THAT IS HOW THE RADIO WORKS.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **USE A STRAIGHT-THROUGH DB-9 SERIAL CABLE** TO THE SERIAL DATA PORT, NOT A NULL-MODEM ONE.\n- **THIS ENTRY HOLDS RTS HIGH**, BECAUSE THE ORION USES RTS AND CTS AS ITS HANDSHAKE. ON AN INTERFACE THAT KEYS PTT FROM RTS, SUCH AS A DIGIRIG, TURN OFF HOLD RTS HIGH UNDER ADVANCED SETTINGS, OR THE RADIO TRANSMITS AS SOON AS THE APP CONNECTS.\n- **CW FROM THE APP NEEDS THE RADIO\'S INTERNAL KEYER ON.** WITH IT OFF, THE RADIO IGNORES WHAT THE APP SENDS.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE AND HAS NOT BEEN RUN AGAINST AN ORION. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.tenTecNoCw' => 'THIS RADIO\'S FIRMWARE DOES NOT TAKE CW FROM THE APP. TEN-TEC ADDED IT IN ORION FIRMWARE 1.366.',
 			'settings.station.tenTecKeyerOff' => 'THE RADIO\'S INTERNAL KEYER IS OFF, SO IT IGNORES CW SENT FROM THE APP. TURN THE KEYER ON IN THE RADIO\'S MENU.',
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.thetisTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
 			'settings.station.thetisTroubleshooting' => 'THIS CONNECTS TO **THETIS**, THE PROGRAM THAT RUNS THE RADIO, NOT TO THE RADIO ITSELF: AN ANAN HAS NO CAT OF ITS OWN.\n\n- **THETIS\'S CAT SERVER MUST BE RUNNING.** IN THETIS, SETUP → SERIAL/NETWORK/MIDI CAT → NETWORK, CHECK **SERVER RUNNING**. IT IS NOT THE TCI SERVER, WHICH IS A DIFFERENT THING.\n- **PORT** IS 13013 UNLESS YOU CHANGED IT THERE.\n- **FROM ANOTHER COMPUTER**, THETIS\'S SERVER MUST LISTEN ON ITS NETWORK ADDRESS RATHER THAN 127.0.0.1, AND ITS FIREWALL MUST LET THE PORT THROUGH.\n- **RATED POWER** IS WHAT FULL DRIVE PUTS OUT: 100 W ON MOST ANANS, 200 W ON THE 8000DLE, 10 W ON THE 10E. THE APP SETS POWER AS A SHARE OF IT.\n- **CW MESSAGES GO OUT THROUGH THETIS\'S CWX KEYER.** IF ONE DOES NOT, OPEN THE CWX WINDOW IN THETIS AND TRY AGAIN.\n\nTHIS ENTRY WAS WRITTEN FROM THETIS\'S PUBLISHED CAT REFERENCE AND HAS NOT BEEN RUN AGAINST A RADIO. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tciTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
@@ -7513,12 +7531,12 @@ extension on TranslationsQro {
 			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
 			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
 			'commands.swapNotConnected' => ({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE',
 			'commands.swapNoneConnected' => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.hint' => 'SEARCH CALLSIGNS OR TYPE A COMMAND',
 			'commandDialog.noResults' => ({required Object text}) => 'NOTHING MATCHES “${text}”',
 			'commandDialog.sectionCommands' => 'COMMANDS',

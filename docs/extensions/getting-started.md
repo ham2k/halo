@@ -167,7 +167,8 @@ The dev server builds your extension in memory, rebuilds it as you save, and
 hands each build to a running app, which swaps that one extension in place
 with no install. In the app, **Settings → Developer → Extension Dev Server**,
 enter one of the addresses the server prints, connect. The address carries
-the port: `10.0.0.5:8787`, not `10.0.0.5`.
+the port: `10.0.0.5:8787`, not `10.0.0.5`. It is the app's to open: in a
+browser it answers "not found".
 
 | Flag | |
 | --- | --- |

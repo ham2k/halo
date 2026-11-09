@@ -443,6 +443,18 @@ class PreReleaseWarning extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.t.extensionsPanel;
+    return _WarningBox(text: channel == CatalogChannel.bleeding ? t.bleedingReleaseWarning : t.unstableReleaseWarning);
+  }
+}
+
+/// A warning the consent screen leads with, in the error container.
+class _WarningBox extends StatelessWidget {
+  final String text;
+
+  const _WarningBox({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(Space.md),
@@ -453,10 +465,7 @@ class PreReleaseWarning extends StatelessWidget {
           Icon(MdiIcons.alertOutline, size: 18, color: colors.onErrorContainer),
           const SizedBox(width: Space.md),
           Expanded(
-            child: Text(
-              channel == CatalogChannel.bleeding ? t.bleedingReleaseWarning : t.unstableReleaseWarning,
-              style: TextStyle(color: colors.onErrorContainer),
-            ),
+            child: Text(text, style: TextStyle(color: colors.onErrorContainer)),
           ),
         ],
       ),
@@ -503,6 +512,10 @@ class _ConsentDialog extends StatelessWidget {
           // called finished, and every other line on this screen reads the
           // same for a finished release.
           if (channel case final channel? when channel != CatalogChannel.stable) ...[const SizedBox(height: Space.md), PreReleaseWarning(channel: channel)],
+          // Beside the pre-release warning and ahead of the grants: an
+          // assistant acts on the operator's session unasked, which no line
+          // of the capability list below conveys.
+          if (bundle.registersAssistant) ...[const SizedBox(height: Space.md), _WarningBox(text: t.assistantWarning)],
           // Named prominently, not tucked away: a bundle that arrived from a
           // link is one the operator did not choose off their own disk, and
           // where it came from is most of what tells them whether to trust

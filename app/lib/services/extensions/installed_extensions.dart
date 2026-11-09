@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
+import 'package:halo_core/halo_core.dart' show HookCategories;
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
@@ -268,6 +269,11 @@ class InspectedBundle {
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
   bool get requiresSettingsWrite => manifest['requiresSettingsWrite'] == true;
 
+  /// Whether it registers an assistant (docs/extensions/assistants.md): code
+  /// that watches every operation and acts on it unasked, which the consent
+  /// screen warns about apart from any grant.
+  bool get registersAssistant => ((manifest['hooks'] as List?) ?? const []).contains(HookCategories.assistant);
+
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
   bool get claimsCapabilities =>
@@ -280,8 +286,9 @@ class InspectedBundle {
       requiresSettingsWrite;
 
   /// Whether this asks for anything [installed] — the version it would
-  /// replace — was not granted: a host, or a stronger grant.
+  /// replace — was not granted: a host, a stronger grant, or an assistant.
   bool asksMoreThan(InspectedBundle installed) =>
+      (registersAssistant && !installed.registersAssistant) ||
       (requiresSettingsWrite && !installed.requiresSettingsWrite) ||
       !installed.domains.toSet().containsAll(domains) ||
       !installed.webSockets.toSet().containsAll(webSockets) ||

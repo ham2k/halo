@@ -640,6 +640,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.'
 	String get unstableReleaseWarning => 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.';
 
+	/// en: 'This is an assistant: it watches everything you do while operating and acts on it without being asked. Assistants get direct access to the app's settings, can control your layouts and can interrupt you during an operation. Only install one from a source you really trust.'
+	String get assistantWarning => 'This is an assistant: it watches everything you do while operating and acts on it without being asked. Assistants get direct access to the app\'s settings, can control your layouts and can interrupt you during an operation. Only install one from a source you really trust.';
+
 	/// en: 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.'
 	String get bleedingReleaseWarning => 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.';
 
@@ -1841,6 +1844,7 @@ class Translations$settings$en {
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
 	late final Translations$settings$exports$en exports = Translations$settings$exports$en.internal(_root);
+	late final Translations$settings$assistants$en assistants = Translations$settings$assistants$en.internal(_root);
 	late final Translations$settings$extensionSections$en extensionSections = Translations$settings$extensionSections$en.internal(_root);
 	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
@@ -5515,6 +5519,24 @@ class Translations$settings$exports$en {
 
 	/// en: 'Exports'
 	String get title => 'Exports';
+}
+
+// Path: settings.assistants
+class Translations$settings$assistants$en {
+	Translations$settings$assistants$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Assistants'
+	String get title => 'Assistants';
+
+	/// en: 'Watching while an operation is open'
+	String get on => 'Watching while an operation is open';
+
+	/// en: 'Off'
+	String get off => 'Off';
 }
 
 // Path: settings.extensionSections
@@ -11150,6 +11172,7 @@ extension on Translations {
 			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'The catalog has no release of ${key} on that track.',
 			'extensionsPanel.installFromLink' => 'Install from link',
 			'extensionsPanel.unstableReleaseWarning' => 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.',
+			'extensionsPanel.assistantWarning' => 'This is an assistant: it watches everything you do while operating and acts on it without being asked. Assistants get direct access to the app\'s settings, can control your layouts and can interrupt you during an operation. Only install one from a source you really trust.',
 			'extensionsPanel.bleedingReleaseWarning' => 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.',
 			'extensionsPanel.channelUnstable' => 'Unstable',
 			'extensionsPanel.channelBleeding' => 'Bleeding',
@@ -11492,9 +11515,9 @@ extension on Translations {
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
-			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Left out: ${panels}',
@@ -12006,9 +12029,9 @@ extension on Translations {
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
-			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'Tap the trashcan one more time to delete this ${kind}',
 			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'Click the trashcan one more time to delete this ${kind}',
@@ -12520,9 +12543,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
 			'settings.radio.voiceMessages.help' => 'Help',
-			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
 			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'Their call, their report, and your recording of “QSL?”',
 			'settings.radio.voiceMessages.playOnRadio' => 'Play on Radio',
@@ -12593,6 +12616,9 @@ extension on Translations {
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
 			'settings.exports.title' => 'Exports',
+			'settings.assistants.title' => 'Assistants',
+			'settings.assistants.on' => 'Watching while an operation is open',
+			'settings.assistants.off' => 'Off',
 			'settings.extensionSections.activities' => 'Activities',
 			'settings.extensionSections.hunting' => 'Hunting',
 			'settings.extensionSections.contests' => 'Contests',
@@ -13031,12 +13057,12 @@ extension on Translations {
 			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one.\n- **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects.\n- **CW from the app needs the radio\'s internal keyer on.** With it off, the radio ignores what the app sends.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.tenTecNoCw' => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.',
 			'settings.station.tenTecKeyerOff' => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.thetisTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, not to the radio itself: an ANAN has no CAT of its own.\n\n- **Thetis\'s CAT server must be running.** In Thetis, Setup → Serial/Network/Midi CAT → Network, check **Server Running**. It is not the TCI server, which is a different thing.\n- **Port** is 13013 unless you changed it there.\n- **From another computer**, Thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **Rated power** is what full drive puts out: 100 W on most ANANs, 200 W on the 8000DLE, 10 W on the 10E. The app sets power as a share of it.\n- **CW messages go out through Thetis\'s CWX keyer.** If one does not, open the CWX window in Thetis and try again.\n\nThis entry was written from Thetis\'s published CAT reference and has not been run against a radio. If it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
@@ -13545,12 +13571,12 @@ extension on Translations {
 			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapDone' => 'Radios A and B swapped',
 			'commands.swapNotConnected' => ({required Object radio}) => 'Swapped, but Radio ${radio} is not connected and did not move',
 			'commands.swapNoneConnected' => 'Swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',

@@ -17,9 +17,82 @@ import 'dart:async';
 import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:halo_core/halo_core.dart' show Operation, Qso, QsoLog, operatorCallFor;
 import 'package:halo_widgets/halo_widgets.dart' show WallClock;
 
 import 'panel_content_budgets.dart';
+
+/// An operation as a hook sees it — what a panel's `render` and the
+/// `template` hook (a CW message about to be keyed) are handed, so
+/// `{{ op.station }}` means the same on both.
+Map<String, dynamic> operationHookArgs(Operation operation) => {
+  ...operation.data,
+  'uuid': operation.uuid,
+  // RESOLVED, as `operationQsonFor` sends it: with a position set the
+  // operator lives in that position's slot, and only this side knows which
+  // seat this device is in. It replaces whatever `operatorCall` the data holds.
+  'operatorCall': operatorCallFor(operation),
+  // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
+  // and a panel is the surface that most wants to say when the
+  // operation ran. Without them a template naming the operation's
+  // date has nothing to name (see the SDK's `opValues`).
+  if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
+  if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
+};
+
+/// What a panel renders against, gathered by the view — and what an assistant
+/// is fed (`AssistantService`), so the two wake on the same changes. Compared field by
+/// field to decide whether a rebuild is worth a render — the view rebuilds
+/// for reasons no panel cares about.
+@immutable
+class PanelRenderContext {
+  /// Null on a view that has no operation open — Home. A panel whose template
+  /// names the operation renders that part empty there rather than the view
+  /// refusing to place it: the dashboard panels (clock, weather, solar) are
+  /// exactly the ones an operator wants on Home, and none of them ask.
+  final Operation? operation;
+  final Map<String, dynamic>? qso;
+  final int qsoCount;
+
+  /// The log as the view holds it: the list its log stream last emitted.
+  /// Without it a panel hears only changes to [qsoCount], so an edited time
+  /// or operator never reaches one that keeps what it read. See [_logChanged]
+  /// for what counts as a change.
+  final List<Qso>? log;
+
+  /// Bumped by the view when spots refresh or a lookup resolves — signals
+  /// that carry no value of their own into the render args.
+  final int spotsRevision;
+  final int lookupRevision;
+
+  const PanelRenderContext({this.operation, this.qso, this.qsoCount = 0, this.log, this.spotsRevision = 0, this.lookupRevision = 0});
+
+  /// The triggers that fired between [previous] and this — empty means
+  /// nothing this panel could have asked for actually changed.
+  Set<String> changesFrom(PanelRenderContext previous) => {
+    if (operation?.uuid != previous.operation?.uuid || operation?.data != previous.operation?.data) 'operation',
+    if (qso != previous.qso) 'qso',
+    if (qsoCount != previous.qsoCount || _logChanged(log, previous.log)) 'qsoLogged',
+    if (spotsRevision != previous.spotsRevision) 'spots',
+    if (lookupRevision != previous.lookupRevision) 'lookup',
+  };
+
+  /// Whether the log moved between [previous] and [log]. The stream emits a
+  /// new list for every write to the operation's rows — a contact logged,
+  /// edited, deleted or merged in, but also each rescore caching its
+  /// verdicts, which changes nothing a panel reads and would re-render every
+  /// `qsoLogged` panel once more per contact. The digest moves only when a
+  /// contact's stamp moves or a contact comes or goes, so it tells the two
+  /// apart; where it cannot vouch for a row (one with no stamp), any new list
+  /// counts.
+  static bool _logChanged(List<Qso>? log, List<Qso>? previous) {
+    if (identical(log, previous)) return false;
+    if (log is QsoLog && previous is QsoLog && log.unstamped == 0 && previous.unstamped == 0) {
+      return log.length != previous.length || log.digest != previous.digest;
+    }
+    return true;
+  }
+}
 
 /// Where a panel comes from, which decides how the view gets its content.
 enum PanelSource { native, extension }

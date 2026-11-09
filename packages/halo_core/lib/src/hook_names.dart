@@ -18,6 +18,7 @@ abstract final class HookCategories {
   static const activity = 'activity';
   static const adifFields = 'adifFields';
   static const adifImport = 'adifImport';
+  static const assistant = 'assistant';
   static const bandAnnotations = 'bandAnnotations';
   static const callNotes = 'callNotes';
   static const chasing = 'chasing';
@@ -76,6 +77,9 @@ abstract final class Hooks {
   static const adifFieldsFieldCombinationsForOneQso = HookRef(HookCategories.adifFields, 'fieldCombinationsForOneQSO');
 
   static const adifImportRefsForRecords = HookRef(HookCategories.adifImport, 'refsForRecords');
+
+  static const assistantGetAssistants = HookRef(HookCategories.assistant, 'getAssistants');
+  static const assistantObserve = HookRef(HookCategories.assistant, 'observe');
 
   static const chasingProgram = HookRef(HookCategories.chasing, 'program');
   static const chasingClaimsForQsos = HookRef(HookCategories.chasing, 'claimsForQsos');

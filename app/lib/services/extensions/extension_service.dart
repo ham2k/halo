@@ -43,6 +43,7 @@ import 'installed_extensions.dart';
 import 'preloaded_extensions.dart';
 import '../local_spots.dart' show localSpotSource;
 import '../location_service.dart';
+import '../assistant_service.dart';
 import '../panel_service.dart';
 import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
@@ -87,6 +88,7 @@ part 'extension_hook_api.dart';
 part 'extension_activity_calls.dart';
 part 'extension_sync_calls.dart';
 part 'extension_panels.dart';
+part 'extension_assistants.dart';
 part 'extension_accounts.dart';
 part 'extension_installs.dart';
 part 'extension_host_calls.dart';
@@ -117,6 +119,7 @@ class ExtensionService
         _ExtensionResolveCalls,
         _ExtensionSyncCalls,
         _ExtensionPanels,
+        _ExtensionAssistants,
         _ExtensionAccounts,
         _ExtensionInstalls,
         WidgetsBindingObserver {

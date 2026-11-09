@@ -137,6 +137,7 @@ log, and a write throws. Copy what you mean to change.
 | `template` | [Commands & templates](commands.md) | Rendering a template on the app's behalf; the app's core registers it | one hook |
 | `keyerSets` | [Commands & templates](commands.md#keyersets) | CW and voice message sets the operator can pick for the keyer | every hook, as the extensions activate |
 | `panel` | [Panels](panels.md) | A pane in a view | your registration, per panel |
+| `assistant` | [Assistants](assistants.md) | Watching the operator's activity with nothing on screen | your registration, per assistant and open operation |
 | `account` | [Accounts & sync](accounts.md) | A login the operator keeps in the keychain | your registration |
 | `syncTransport` | [Accounts & sync](accounts.md) | Moving a sync payload over the network | one hook |
 | `settingsPanel` | [Settings panels](settings.md) | Your preferences in Settings | your registration |

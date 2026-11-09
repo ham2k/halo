@@ -180,6 +180,7 @@
     "catalogNoRelease": "The catalog has no release of ${key} on that track.",
     "installFromLink": "Install from link",
     "unstableReleaseWarning": "This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.",
+    "assistantWarning": "This is an assistant: it watches everything you do while operating and acts on it without being asked. Assistants get direct access to the app's settings, can control your layouts and can interrupt you during an operation. Only install one from a source you really trust.",
     "bleedingReleaseWarning": "This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.",
     "channelUnstable": "Unstable",
     "channelBleeding": "Bleeding",
@@ -1924,6 +1925,11 @@
     },
     "exports": {
       "title": "Exports"
+    },
+    "assistants": {
+      "title": "Assistants",
+      "on": "Watching while an operation is open",
+      "off": "Off"
     },
     "extensionSections": {
       "activities": "Activities",

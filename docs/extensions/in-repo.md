@@ -97,6 +97,20 @@ It prints the URLs. In the app: **Settings → Developer → Extension Dev
 Server**, enter the URL, connect. It is a server rather than a watched
 folder because the app is usually on a phone.
 
+A debug build can be connected without opening Settings, which is how a
+coding agent points the app at what it is serving. Nothing is saved, and
+Developer Mode need not be on:
+
+- **At launch**: `--dart-define=HALO_EXT_DEV_SERVER=http://localhost:8787`
+  on `flutter run`, or after `--` on `mise run web` or `mise run mac`. On
+  macOS the same name as an environment variable works too; a web build
+  reads only the dart-define.
+- **On a running web build**: `window.__halo.connectDevServer(url)` in the
+  tab's console, and `disconnectDevServer()` to go back.
+
+The server's own address answers "not found" in a browser: the app asks it
+for `/ping`, `/index.json` and each bundle, never for its root.
+
 - On connect, the app fetches the server's index and uses the dev bundle
   **instead of** the one baked in for every extension the server offers,
   which is what lets you iterate on `pota` itself. Anything the server does

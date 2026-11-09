@@ -33,7 +33,6 @@ import 'file_open/file_destinations.dart' show logsAdifDestinationId;
 import 'file_open/file_kind.dart';
 import 'file_open/file_router.dart';
 import 'operation/call_info_panel.dart';
-import 'operation/extension_panel.dart';
 import 'operation/log_find_bar.dart' show isFindChord;
 import 'operation/map_panel.dart';
 import 'operation_view.dart';

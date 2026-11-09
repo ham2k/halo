@@ -26,6 +26,7 @@ the catalog reads before deciding where to list it.
 | A callsign lookup | who a station is, from a service or from local data | [Lookups](lookups.md) |
 | A spot source or destination | spots in, spots out, the DX cluster | [Spots](spots.md) |
 | A dashboard panel | a document the app draws, or a scene it keeps live | [Panels](panels.md), [Panel scenes](scenes.md) |
+| An assistant, a coach | what it notices as the operator logs, tunes and types, said on the FYI line, in a notice or on the band | [Assistants](assistants.md) |
 | A radio panel | reading and commanding the operator's transceiver | [Radio control](radio.md) |
 | A command | text the operator types in the call field | [Commands & templates](commands.md) |
 | An account, a settings panel | credentials in the keychain, preferences in Settings | [Accounts & sync](accounts.md), [Settings panels](settings.md) |
@@ -148,6 +149,7 @@ anything.
 | [Commands & templates](commands.md) | `command`, `template` |
 | [Panels](panels.md) | `panel`: documents, triggers, config, previews, budgets |
 | [Panel scenes](scenes.md) | Scenes: layers, bindings, controls, layout, spectrum, radio values |
+| [Assistants](assistants.md) | `assistant`: watching every open operation, triggers, pacing |
 | [Radio control](radio.md) | Reading, setting, keying and commanding radios |
 | [Accounts & sync](accounts.md) | `account`, `syncTransport` |
 | [Settings panels](settings.md) | `settingsPanel`, placement, field types, reading and writing settings |

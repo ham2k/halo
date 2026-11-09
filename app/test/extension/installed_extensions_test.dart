@@ -419,6 +419,10 @@ void main() {
         {'requiresLocation': true},
         {'requiresClusterRead': true},
         {'allowUserAgentOverride': true},
+        // Update all would otherwise turn a panel into an assistant silently.
+        {
+          'hooks': ['assistant'],
+        },
       ]) {
         expect(bundle({'requiresRadioWrite': true, ...more}).asksMoreThan(installed), isTrue, reason: '$more');
       }

@@ -2664,6 +2664,7 @@ export type Hook =
   | FormHook
   | SettingsPanelHook
   | PanelHook
+  | AssistantHook
   | Record<string, unknown>
 
 export interface RegisterHookParams {
@@ -3981,4 +3982,58 @@ export interface PanelHook {
   getPanels(args: Record<string, never>, ctx: HookContext): Promise<PanelDescriptor[]>
   render(args: PanelRenderArgs, ctx: HookContext): Promise<PanelContent>
   onEvent?(args: PanelRenderArgs & { event: PanelSceneEvent }, ctx: HookContext): Promise<PanelSceneEventResult>
+}
+
+/// What wakes an assistant: a panel's triggers, firing whether or not anything
+/// is on screen. Extension API 21.
+export type AssistantTrigger = PanelTrigger
+
+/// One assistant an extension offers. The operator turns each on or off, and
+/// configures it, under Settings › Assistants; the app keeps both under
+/// `assistant:<hookKey>:<key>`, so renaming `key` loses them.
+export interface AssistantDescriptor {
+  /// Unique within the extension.
+  key: string
+  /// Its name in Settings.
+  title: string
+  /// One line under the name in Settings: what it watches for and what it says.
+  description?: string
+  /// MDI icon name.
+  icon?: string
+  /// What wakes it. Without any, it is called once for each operation as it
+  /// opens, and never again.
+  on?: AssistantTrigger[]
+  /// Its own settings, in the field schema a settings panel uses, handed back
+  /// as `ObserveArgs.config`.
+  form?: (SettingsField | FormHeader)[]
+  /// Whether it starts switched on once installed. Default true.
+  enabledByDefault?: boolean
+}
+
+/// What an assistant is called with: one open operation, and what changed in it.
+export interface ObserveArgs {
+  assistantKey: string
+  /// The operation this call is about, with its `uuid`. With several open,
+  /// each is a call of its own.
+  operation: Record<string, JSONValue>
+  /// The draft being composed in that operation, when the assistant declares
+  /// `qso` or `lookup`; absent before the logging panel has produced one.
+  qso?: Record<string, JSONValue>
+  /// How many real QSOs the operation holds, event markers excluded.
+  qsoCount: number
+  /// The assistant's own settings, keyed by field.
+  config: Record<string, JSONValue>
+  /// Every trigger that fired since the last call, in no order, or `open`
+  /// for the first call about an operation.
+  reasons: string[]
+  clock: { nowMillis: number; realNowMillis: number }
+}
+
+/// Registered under category 'assistant'. Watches what the operator does in
+/// every open operation, with or without a panel on screen, and answers
+/// through the host: `host.fyi`, `host.statusBar`, `host.bandAnnotations`,
+/// the radio calls.
+export interface AssistantHook {
+  getAssistants(args: Record<string, never>, ctx: HookContext): Promise<AssistantDescriptor[]>
+  observe(args: ObserveArgs, ctx: HookContext): Promise<void>
 }

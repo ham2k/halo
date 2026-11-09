@@ -1,0 +1,22 @@
+{
+  "key": "k2hrc-coach",
+  "name": "Rate Coach",
+  "shortName": "Coach",
+  "version": "1.0.0",
+  "description": "An assistant: watches the operator's rate in every open operation and says when it drops",
+  "category": "dashboard",
+  "icon": "speedometer",
+  "api": 21,
+  "keywords": ["sample", "example", "assistant", "coach", "rate"],
+  "hooks": ["assistant"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.2",
+    "@ham2k/lib-country-files": "^1.0.202605301",
+    "@ham2k/lib-dxcc-data": "^1.0.1",
+    "@ham2k/lib-format-tools": "^1.1.3",
+    "@ham2k/lib-geo-tools": "^1.1.1",
+    "@ham2k/lib-operation-data": "^1.1.3",
+    "i18next": "^23.16.8",
+    "liquidjs": "^10.28.0"
+  }
+}
