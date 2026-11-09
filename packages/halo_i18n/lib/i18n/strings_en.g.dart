@@ -2564,6 +2564,12 @@ class Translations$dataFiles$en {
 	/// en: '${end} / ${total} records'
 	String recordsProgress({required Object end, required Object total}) => '${end} / ${total} records';
 
+	/// en: '(one) {${count} record} (other) {${count} records}'
+	String recordsSoFar({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} record',
+		other: '${count} records',
+	);
+
 	/// en: 'The file's source didn't provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.'
 	String get definitionUnavailable => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.';
 }
@@ -13798,6 +13804,7 @@ extension on Translations {
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
+			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} record', other: '${count} records', ), 
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',

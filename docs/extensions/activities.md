@@ -466,12 +466,14 @@ const lakeList: DataFileDefinition = {
 | `key`, `name`, `description` | Identity; `name` and `description` are `Localizable` |
 | `url` | Where to fetch; `Localizable` too. `n1mm-history:<stem>` is a special form, below |
 | `maxAgeInDays` | How often to refresh |
-| `fetchType` | `csv`, `json` or `raw` |
+| `fetchType` | `csv`, `json`, `raw` or `ham2k` |
 | `category` | The lookup category the rows land in |
 | `csvOptions` | `{ hasHeaders?, skipRows?, delimiter? }` |
 | `csvToLookupEntry(row)` | One row to one `LookupEntry` (`{ key, name?, lat?, lon?, flags?, data?, subCategory? }`), or `null` to skip it |
 | `jsonOptions`, `jsonToLookupEntry(entry)` | The same for a JSON array |
 | `rawToJSONData({ body, url, options })`, `onLoadRawData(data)`, `onRemoveRawData()` | For a `raw` file: parse it yourself; the parsed JSON is cached and replayed through `onLoadRawData` at every start |
+| `deltaUrl` | For a `ham2k` file: where its deltas are, with `{since}` standing for the version the device holds; `Localizable` |
+| `fields` | For a `ham2k` file: the record fields that fill a row, `{ key, name?, lat?, lon?, subCategory?, flags? }` |
 
 **How CSV rows reach your mapper.** You write a per-row mapper; the app
 sends rows positionally with the header row once per chunk, and the SDK
@@ -499,6 +501,31 @@ it, with the `n1mm-history:` string as its `url`. A stem nothing matches, a
 refused download, or a page that no longer has the shape the app reads
 fails the download; the operator sees a notice on a refresh they asked for,
 and a background pass fails quietly.
+
+**Ham2K's own datasets** (extension API 22) are `fetchType: 'ham2k'`: a
+dataset a Ham2K service publishes already cleaned up, kept current by
+deltas. The `url` answers a snapshot, one JSON record per line; `deltaUrl`
+answers `{ added, changed, removed }` since the version in its `{since}`,
+with `removed` listing keys, or 410 when it can't; both name the version
+they bring the device to in an `X-Lookups-Version` header. The app keeps
+that version and asks for the delta from then on, taking the snapshot again
+whenever the delta is refused or a refresh is forced. There is no mapper:
+`fields` names which record field is each row's `key`, `name`, `lat`,
+`lon`, `subCategory` and `flags`, and the whole record becomes its `data`.
+
+```ts
+const offlineCalls: DataFileDefinition = {
+  key: "w7abc-calls",
+  name: "Call signs",
+  description: "Licensed amateurs, for lookups offline",
+  url: "https://services.ham2k.net/lookups/calls/download?set=hf",
+  deltaUrl: "https://services.ham2k.net/lookups/calls/delta?set=hf&since={since}",
+  maxAgeInDays: 1,
+  fetchType: "ham2k",
+  category: "w7abc-calls",
+  fields: { key: "call", name: "name" },
+}
+```
 
 The operator can refresh it from the Data Files screen, or by typing
 `UPDATE` and any word of its `category`, `key` or `name` in the call field

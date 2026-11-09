@@ -12,6 +12,11 @@
 // ends up containing: scheduling and max-age, ETag/304 caching (a CLI sync
 // is always an explicit "get it now"), the status bar, and error notices.
 //
+// A `ham2k` data file is the exception to "get it now" meaning the whole
+// file: its version is kept beside the raw cache, and the next sync asks for
+// the delta from it, which IS the whole of what changed. `--force` takes the
+// snapshot.
+//
 // What DOES change what a row contains — charset resolution, CSV field
 // splitting, the rootPath walk, log redaction — is not reimplemented here.
 // It lives in halo_core's data_file_parsing.dart, which both hosts call, so
@@ -110,6 +115,7 @@ class DataFileSync {
   Future<DataFileResult> import(DataFileDef def) async {
     final url = def.url;
     if (url == null) return DataFileResult(key: def.key, error: 'definition has no url');
+    if (def.fetchType == 'ham2k') return _importHam2k(def, url);
     try {
       return await importBody(def, await _download(url, encoding: def.raw['encoding'] as String?));
     } catch (e) {
@@ -208,6 +214,59 @@ class DataFileSync {
       throw const FormatException('resolved rootPath is neither an array nor an object');
     }
     return _mapAndWrite(def, Hooks.dataFileMapJsonBatch, 'entries', entries);
+  }
+
+  /// Where the version a `ham2k` file's category holds is kept, so the next
+  /// sync asks for a delta. `--force` takes the snapshot regardless.
+  File _ham2kVersionFile(DataFileDef def) => File('${rawCacheDir(store)}/${def.key}.version');
+
+  /// The app's `ham2k` import (halo_core's syncHam2kDataFile), with the CLI's
+  /// plain requests and the version in [_ham2kVersionFile].
+  Future<DataFileResult> _importHam2k(DataFileDef def, String url) async {
+    final fields = Ham2kFields.fromDefinition(def.raw['fields']);
+    if (fields == null) return DataFileResult(key: def.key, error: 'a ham2k data file needs fields.key');
+    final versionFile = _ham2kVersionFile(def);
+    final client = http.Client();
+    try {
+      final result = await syncHam2kDataFile(
+        key: def.key,
+        category: def.category,
+        url: url,
+        deltaUrl: def.raw['deltaUrl'] as String?,
+        fields: fields,
+        heldVersion: versionFile.existsSync() ? versionFile.readAsStringSync().trim() : null,
+        snapshot: force,
+        force: force,
+        fetch: (url, {required goneIsAnswer}) async {
+          final response = await client.send(http.Request('GET', Uri.parse(_log('GET', '$url')))..headers['User-Agent'] = userAgent);
+          if (response.statusCode != 200 && !(goneIsAnswer && response.statusCode == 410)) {
+            await response.stream.drain<void>();
+            throw StateError('HTTP ${response.statusCode} from ${redactUrlForLog('$url')}');
+          }
+          return Ham2kResponse(status: response.statusCode, version: response.headers[ham2kVersionHeader], body: response.stream);
+        },
+        lookups: store.repository,
+        onSnapshotWrites: () async {
+          if (versionFile.existsSync()) versionFile.deleteSync();
+        },
+        onRows: verbose ? (rows) => stderr.writeln('[data-file] ${def.key}: $rows rows') : null,
+      );
+      if (result.forcedShrink case final shrank?) stderr.writeln('halo-ext: $shrank');
+      if (result.version != null) {
+        versionFile
+          ..parent.createSync(recursive: true)
+          ..writeAsStringSync(result.version!);
+      } else if (versionFile.existsSync()) {
+        versionFile.deleteSync();
+      }
+      return DataFileResult(key: def.key, category: def.category, rows: result.rows);
+    } on DataFileImportShrank catch (e) {
+      return DataFileResult(key: def.key, category: def.category, rows: e.imported, refused: true, error: '$e (--force accepts it)');
+    } catch (e) {
+      return DataFileResult(key: def.key, error: '$e');
+    } finally {
+      client.close();
+    }
   }
 
   /// Where a raw file's parsed JSON is cached. Keyed by data-file key, which

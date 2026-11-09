@@ -1138,6 +1138,10 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 		other: 'REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS.',
 	);
 	@override String recordsProgress({required Object end, required Object total}) => '${end} / ${total} RECORDS';
+	@override String recordsSoFar({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} RECORD',
+		other: '${count} RECORDS',
+	);
 	@override String get definitionUnavailable => 'THE FILE\'S SOURCE DIDN\'T PROVIDE A DEFINITION — ITS EXTENSION MAY BE MID-RESTART OR MISCONFIGURED. TRY AGAIN IN A MOMENT.';
 }
 
@@ -7746,6 +7750,7 @@ extension on TranslationsQro {
 			'dataFiles.cleanedUpTitle' => 'CLEANED UP EXTENSION DATA',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'REMOVED DATA FOR ${count} DATA FILE FROM DISABLED EXTENSIONS.', other: 'REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS.', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} RECORDS',
+			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} RECORD', other: '${count} RECORDS', ), 
 			'dataFiles.definitionUnavailable' => 'THE FILE\'S SOURCE DIDN\'T PROVIDE A DEFINITION — ITS EXTENSION MAY BE MID-RESTART OR MISCONFIGURED. TRY AGAIN IN A MOMENT.',
 			'updates.updateAvailable' => 'UPDATE AVAILABLE',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A NEW VERSION (${version}) IS AVAILABLE.',

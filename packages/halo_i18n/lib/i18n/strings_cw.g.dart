@@ -1138,6 +1138,10 @@ class _Translations$dataFiles$cw extends Translations$dataFiles$en {
 		other: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · ··· / ··—· ·—· ——— —— / —·· ·· ··· ·— —··· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—',
 	);
 	@override String recordsProgress({required Object end, required Object total}) => '${end} / —··—· / ${total} / ·—· · —·—· ——— ·—· —·· ···';
+	@override String recordsSoFar({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
+		one: '${count} / ·—· · —·—· ——— ·—· —··',
+		other: '${count} / ·—· · —·—· ——— ·—· —·· ···',
+	);
 	@override String get definitionUnavailable => '— ···· · / ··—· ·· ·—·· · ·————· ··· / ··· ——— ··— ·—· —·—· · / —·· ·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / ·— / —·· · ··—· ·· —· ·· — ·· ——— —· / — / ·· — ··· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —··· · / —— ·· —·· —····— ·—· · ··· — ·— ·—· — / ——— ·—· / —— ·· ··· —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· — ·—·—·—';
 }
 
@@ -7746,6 +7750,7 @@ extension on TranslationsCw {
 			'dataFiles.cleanedUpTitle' => '—·—· ·—·· · ·— —· · —·· / ··— ·——· / · —··— — · —· ··· ·· ——— —· / —·· ·— — ·—',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · / ··—· ·—· ——— —— / —·· ·· ··· ·— —··· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—', other: '·—· · —— ——— ···— · —·· / —·· ·— — ·— / ··—· ——— ·—· / ${count} / —·· ·— — ·— / ··—· ·· ·—·· · ··· / ··—· ·—· ——— —— / —·· ·· ··· ·— —··· ·—·· · —·· / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—', ), 
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / —··—· / ${total} / ·—· · —·—· ——— ·—· —·· ···',
+			'dataFiles.recordsSoFar' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ·—· · —·—· ——— ·—· —··', other: '${count} / ·—· · —·—· ——— ·—· —·· ···', ), 
 			'dataFiles.definitionUnavailable' => '— ···· · / ··—· ·· ·—·· · ·————· ··· / ··· ——— ··— ·—· —·—· · / —·· ·· —·· —· ·————· — / ·——· ·—· ——— ···— ·· —·· · / ·— / —·· · ··—· ·· —· ·· — ·· ——— —· / — / ·· — ··· / · —··— — · —· ··· ·· ——— —· / —— ·— —·—— / —··· · / —— ·· —·· —····— ·—· · ··· — ·— ·—· — / ——— ·—· / —— ·· ··· —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· — ·—·—·—',
 			'updates.updateAvailable' => '··— ·——· —·· ·— — · / ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'updates.newVersionAvailable' => ({required Object version}) => '·— / —· · ·—— / ···— · ·—· ··· ·· ——— —· / —·——· ${version} —·——·— / ·· ··· / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · ·—·—·—',

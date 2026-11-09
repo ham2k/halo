@@ -3075,7 +3075,21 @@ export interface JsonOptions {
   rootPath?: string
 }
 
-export type FetchType = "csv" | "json" | "raw"
+/// `ham2k` is a Ham2K service's versioned dataset: an NDJSON snapshot, then
+/// deltas from the version held (extension API 22). See docs/extensions/
+/// activities.md's `dataFile`.
+export type FetchType = "csv" | "json" | "raw" | "ham2k"
+
+/// Which fields of a `ham2k` record fill a lookup row's columns, by name. The
+/// whole record becomes the row's `data`.
+export interface Ham2kFields {
+  key: string
+  name?: string
+  lat?: string
+  lon?: string
+  subCategory?: string
+  flags?: string
+}
 
 export interface DataFileDefinition {
   key: string
@@ -3105,6 +3119,13 @@ export interface DataFileDefinition {
   csvToLookupEntry?: (row: string[] | Record<string, string>) => LookupEntry | null
   jsonOptions?: JsonOptions
   jsonToLookupEntry?: (entry: Record<string, any>) => LookupEntry | null
+
+  /// `fetchType: 'ham2k'`: where the deltas are, `{since}` standing for the
+  /// version the device holds. Extension API 22.
+  deltaUrl?: Localizable<string>
+  /// `fetchType: 'ham2k'`: the record fields that fill a lookup row. Extension
+  /// API 22.
+  fields?: Ham2kFields
 
   rawToJSONData?: (args: { body: string; url: string; options: Record<string, any> }) => Promise<any>
   onLoadRawData?: (data: any) => void

@@ -13,46 +13,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'app_storage.dart';
+import 'data_file_errors.dart';
 import 'error_reporting_service.dart';
 import 'extensions/extension_service.dart';
+import 'ham2k_data_files.dart';
 import 'status_bar_service.dart';
 
-/// The message shown in a download-failure notice. `package:http`'s
-/// BrowserClient wraps every browser-level fetch failure (a cross-origin
-/// download the browser refuses — one that would work from a native build
-/// — but also a plain network outage) in a [http.ClientException]; that
-/// class gets a plain-language hint appended, worded to cover both causes
-/// rather than assuming it's specifically a CORS block. Check the TYPE,
-/// never the message text: `'Failed to fetch'` is Chromium/V8's own wording
-/// for the underlying `fetch()` TypeError, and Firefox and Safari phrase
-/// the identical failure differently — a string match silently never fires
-/// for them. A [DataFileUnavailable] or [N1mmCallHistoryUnavailable] gets its
-/// own translated sentence; every other failure (a malformed URL) is shown
-/// as-is, since guessing at THOSE causes would be more likely to mislead than
-/// help. [isWeb] defaults to
-/// [kIsWeb] but is overridable — the constant itself isn't, so a test can't
-/// flip platforms without this.
-@visibleForTesting
-String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
-  if (error is DataFileUnavailable) {
-    // A 404 or 410 will not fix itself with time — most often a custom file's
-    // address that is mistyped or no longer shared. Every other status is
-    // told to wait: a 429, a 408 or a challenge's 403 clears on its own, and
-    // a built-in source has no address for the operator to check.
-    final status = error.statusCode;
-    if (status == null) return t.dataFiles.downloadTimedOut;
-    if (status == 404 || status == 410) return t.dataFiles.downloadNotAvailable(host: error.host, status: status);
-    return t.dataFiles.downloadServerError(host: error.host, status: status);
-  }
-  if (error is N1mmCallHistoryUnavailable) {
-    return error.noMatch ? t.dataFiles.n1mmHistoryNoMatch(stem: error.stem) : t.dataFiles.n1mmHistoryUnavailable(stem: error.stem);
-  }
-  final message = error.toString();
-  if (isWeb && error is http.ClientException) {
-    return '$message\n\n${t.dataFiles.downloadFailedWebHint}';
-  }
-  return message;
-}
+export 'data_file_errors.dart';
 
 /// One registered data file's definition plus its last-download time, for
 /// the Data Files settings panel. [updatedAt] is null when the file has
@@ -93,33 +60,6 @@ class DataFileRemoveHookFailed implements Exception {
 
   @override
   String toString() => 'onRemoveRawData for $key: $cause';
-}
-
-/// Which of a download's two ceilings ran out: [DataFileManager.headersTimeout]
-/// (the host never answered) or [DataFileManager.bodyTimeout] (it answered,
-/// then the body stalled or crawled).
-enum DataFileWait { headers, body }
-
-/// A data file's server did not deliver it: a [timedOut] wait, or an answer
-/// ([statusCode]) other than 200 or 304 — exactly one of the two is set.
-///
-/// Its own type so the disposition is a rule rather than a catch site (see
-/// `ErrorPolicy`), and so that rule can quieten a download's timeout without
-/// quietening every bare `TimeoutException` in the app. [host] is the server
-/// that failed to answer — on web, for a proxied source, the proxy.
-class DataFileUnavailable implements Exception {
-  const DataFileUnavailable.timedOut(this.key, this.host, DataFileWait this.timedOut) : statusCode = null;
-  const DataFileUnavailable.status(this.key, this.host, int this.statusCode) : timedOut = null;
-
-  final String key;
-  final String host;
-  final DataFileWait? timedOut;
-  final int? statusCode;
-
-  @override
-  String toString() => statusCode != null
-      ? 'DataFileUnavailable: $host answered HTTP $statusCode for $key'
-      : 'DataFileUnavailable: $host timed out waiting for the ${timedOut!.name} of $key';
 }
 
 /// Whether the data file [def] answers to every one of [words]: each is a
@@ -224,6 +164,17 @@ class DataFileManager {
   final ValueNotifier<int> _dataRevision;
 
   bool _syncRunning = false;
+
+  late final _ham2k = Ham2kDataFiles(
+    lookups: lookups,
+    prefs: prefs,
+    statusBar: statusBar,
+    httpClientFactory: httpClientFactory,
+    isWeb: isWeb,
+    headersTimeout: headersTimeout,
+    refusedKey: _refusedKey,
+    onPartialImport: () => _dataRevision.value++,
+  );
 
   /// Non-null while a follow-up pass is queued; the value is the OR of the
   /// queued triggers' notify flags, so a queued attended pass keeps its
@@ -387,7 +338,18 @@ class DataFileManager {
   /// file has that key. Progress and errors surface through the status bar
   /// (see [processDataFile]); the exception is rethrown so the caller can
   /// react too.
-  Future<DateTime?> refreshDataFile(String key) async {
+  ///
+  /// It waits its turn behind any sync pass (see [syncAllDataFiles]): run
+  /// beside one, a forced snapshot's stale sweep deletes the rows a pass's
+  /// delta for the same key has just written, and both then hold the latest
+  /// version, so no later delta brings them back.
+  Future<DateTime?> refreshDataFile(String key) {
+    final refresh = _syncTurn.then((_) => _refreshDataFileLocked(key));
+    _syncTurn = refresh.then((_) {}, onError: (_) {});
+    return refresh;
+  }
+
+  Future<DateTime?> _refreshDataFileLocked(String key) async {
     for (final def in await _fetchDefinitions()) {
       if (def['key'] != key) continue;
       if (await processDataFile(key, def, force: true)) _dataRevision.value++;
@@ -854,6 +816,10 @@ class DataFileManager {
     final statusKey = 'dataFile:$key';
     // A manager with no status bar shows no notices, failures included.
     final bar = statusBar;
+
+    if (def['fetchType'] == 'ham2k') {
+      return _ham2k.process(key, def, label: label, force: force, notifyOnFailure: notifyOnFailure, showProgress: showProgress);
+    }
 
     if (showProgress) statusBar?.setProgress(key: statusKey, title: label, text: t.dataFiles.downloading);
     final String? body;

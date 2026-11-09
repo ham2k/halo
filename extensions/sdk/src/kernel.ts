@@ -1360,6 +1360,8 @@ const kernelEntries = {
                     // a query parameter — supplies a function, and a plain string
                     // still comes back unchanged.
                     url: await callHookMethod(record, "url", {}),
+                    deltaUrl: (await callHookMethod(record, "deltaUrl", {})) ?? null,
+                    fields: record.hook.fields ?? null,
                     maxAgeInDays: record.hook.maxAgeInDays,
                     fetchType: record.hook.fetchType,
                     encoding: record.hook.encoding ?? null,

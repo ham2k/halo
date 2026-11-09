@@ -233,8 +233,13 @@ class LookupQueueService {
   bool _hasOnlineLookup(Qso qso) {
     final lookups = asQsonList(asQsonMap(qso.data['their'])?['lookups'])?.whereType<Map<dynamic, dynamic>>();
     if (lookups == null) return false;
-    return lookups.any((l) => l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
+    return lookups.any(_isOnlineLookup);
   }
+
+  /// Whether one stored or fresh lookup entry took a network fetch; see
+  /// [_hasOnlineLookup].
+  static bool _isOnlineLookup(Map<dynamic, dynamic> l) =>
+      l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source']));
 
   void _ensureProcessing() {
     if (_processing) return;
@@ -461,9 +466,21 @@ class LookupQueueService {
     // guess filed as a lookup (`stored-guess`, the lookups pipeline's
     // `resolveCallInfo`) is no source: no lookup ever answers as one, and
     // requiring it would refuse every lookup the contact gets from then on.
-    Set<String> sourcesOf(dynamic lookups) =>
-        (asQsonList(lookups) ?? const []).whereType<Map<dynamic, dynamic>>().map((l) => l['source']).whereType<String>().toSet();
-    if (!sourcesOf(newLookups).containsAll(sourcesOf(their['lookups']).difference(const {'stored-guess'}))) return;
+    //
+    // A result that brings an online answer need cover only the stored
+    // ONLINE sources. A local one (an offline callsign set, a notes file) can
+    // stop answering for good — the set removed, or swapped for a smaller
+    // one — and required, it would refuse every lookup from then on, the
+    // online answer the contact is queued for included. An online source
+    // that is missing may only be failing for now, so it stays required.
+    Iterable<Map<dynamic, dynamic>> entriesOf(dynamic lookups) => (asQsonList(lookups) ?? const []).whereType<Map<dynamic, dynamic>>();
+    final fresh = entriesOf(newLookups);
+    final freshOnline = fresh.any(_isOnlineLookup);
+    final required = {
+      for (final l in entriesOf(their['lookups']))
+        if (!freshOnline || _isOnlineLookup(l)) l['source'],
+    }.whereType<String>().toSet().difference(const {'stored-guess'});
+    if (!fresh.map((l) => l['source']).whereType<String>().toSet().containsAll(required)) return;
 
     // Identical result — don't dirty the record: an update restamps
     // `updatedAtMillis` and re-syncs the row, and a vacuous newer stamp can

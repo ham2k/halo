@@ -30,6 +30,24 @@ class LookupRepository {
     });
   }
 
+  /// Writes [upserts] and deletes [removedKeys] from [category] in one
+  /// transaction: a delta applied in part would leave the category at no
+  /// version its source ever had.
+  Future<void> applyLookupChanges(String category, List<LookupRow> upserts, List<String> removedKeys) async {
+    await db.transaction(() async {
+      await db.batch((batch) {
+        for (final row in upserts) {
+          batch.insert(db.lookups, row, mode: InsertMode.insertOrReplace);
+        }
+        // Chunked: SQLite caps the parameters one statement may bind.
+        for (var start = 0; start < removedKeys.length; start += 500) {
+          final chunk = removedKeys.sublist(start, start + 500 < removedKeys.length ? start + 500 : removedKeys.length);
+          batch.deleteWhere(db.lookups, (l) => l.category.equals(category) & l.key.isIn(chunk));
+        }
+      });
+    });
+  }
+
   /// Deletes all lookups within a specific category.
   Future<void> deleteCategory(String category) async {
     await (db.delete(db.lookups)..where((l) => l.category.equals(category))).go();

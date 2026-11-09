@@ -3229,6 +3229,10 @@
       "other": "removed data for ${count} data files from disabled extensions."
     },
     "recordsProgress": "${end} / ${total} records",
+    "recordsSoFar": {
+      "one": "${count} record",
+      "other": "${count} records"
+    },
     "definitionUnavailable": "the file's source didn't provide a definition — its extension may be mid-restart or misconfigured. try again in a moment."
   },
   "updates": {

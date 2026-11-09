@@ -491,6 +491,68 @@ void main() {
   // A contact from app-polo or an import gets its guess filed as a
   // `stored-guess` lookup the first time it is settled. No lookup ever answers
   // as that source; counted as one, it would refuse every lookup from then on.
+  test('a local source that stopped answering does not block an online answer; a missing online source, or no online answer, still does', () async {
+    // Answered by an offline callsign set the operator has since removed (or
+    // swapped for a smaller one): required, its source refuses every lookup
+    // from then on, the online one it is queued for included.
+    final fromRemovedSet = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'KE1J',
+        'guess': {'call': 'KE1J', 'name': 'Offline Name'},
+        'lookups': [
+          {'source': 'callsign-annotation', 'entityPrefix': 'K'},
+          {'source': 'services.ham2k.net (offline)', 'name': 'Offline Name'},
+        ],
+      },
+    });
+    // QRZ missing from a result may be QRZ failing for now: its richer
+    // answer must survive one from Ham2K alone.
+    final withQrz = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'W1AW',
+        'guess': {'call': 'W1AW', 'name': 'From QRZ'},
+        'lookups': [
+          {'source': 'qrz.com', 'name': 'From QRZ', 'online': true},
+          {'source': 'services.ham2k.net (offline)', 'name': 'Offline Name'},
+        ],
+      },
+    });
+    // With no online answer either, the local one is all the contact has.
+    final offlineNow = await qsos.add(operation.uuid, {
+      'their': {
+        'call': 'N0NE',
+        'guess': {'call': 'N0NE', 'name': 'Offline Name'},
+        'lookups': [
+          {'source': 'callsign-annotation', 'entityPrefix': 'K'},
+          {'source': 'services.ham2k.net (offline)', 'name': 'Offline Name'},
+        ],
+      },
+    });
+    final queue = service(
+      (call, {required qso, required operation, bool online = true, bool recentContext = false}) async => call == 'N0NE'
+          ? {
+              'guess': {'call': call, 'entityPrefix': 'K'},
+              'lookups': [
+                {'source': 'callsign-annotation', 'entityPrefix': 'K'},
+              ],
+            }
+          : {
+              'guess': {'call': call, 'name': 'Online Name'},
+              'lookups': [
+                {'source': 'callsign-annotation', 'entityPrefix': 'K'},
+                {'source': 'services.ham2k.net', 'name': 'Online Name', 'online': true},
+              ],
+            },
+    );
+
+    queue.enqueueAll([fromRemovedSet, withQrz, offlineNow]);
+    await queue.idle;
+
+    expect((await qsos.get(fromRemovedSet.uuid))!.theirName, 'Online Name');
+    expect((await qsos.get(withQrz.uuid))!.theirName, 'From QRZ');
+    expect((await qsos.get(offlineNow.uuid))!.theirName, 'Offline Name');
+  });
+
   test('a filed stored guess does not block a real lookup from being written', () async {
     final qso = await qsos.add(operation.uuid, {
       'their': {

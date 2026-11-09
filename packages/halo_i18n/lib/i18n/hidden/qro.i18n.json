@@ -3229,6 +3229,10 @@
       "other": "REMOVED DATA FOR ${count} DATA FILES FROM DISABLED EXTENSIONS."
     },
     "recordsProgress": "${end} / ${total} RECORDS",
+    "recordsSoFar": {
+      "one": "${count} RECORD",
+      "other": "${count} RECORDS"
+    },
     "definitionUnavailable": "THE FILE'S SOURCE DIDN'T PROVIDE A DEFINITION — ITS EXTENSION MAY BE MID-RESTART OR MISCONFIGURED. TRY AGAIN IN A MOMENT."
   },
   "updates": {
