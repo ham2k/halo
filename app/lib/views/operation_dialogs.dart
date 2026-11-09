@@ -225,6 +225,7 @@ class _DetailsResult {
   final String userTitle;
   final String notes;
   final String multiIdentifier;
+  final String ownerCall;
   final bool assistance;
   final bool selfSpotting;
 
@@ -246,6 +247,7 @@ class _DetailsResult {
     required this.userTitle,
     required this.notes,
     required this.multiIdentifier,
+    required this.ownerCall,
     required this.assistance,
     required this.selfSpotting,
     this.restampOperator = const [],
@@ -345,12 +347,15 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
     closeLabel: context.t.common.close,
     // The footer stays pinned under a body that scrolls on its own.
     scrollable: false,
+    // Its footer's Cancel is the way out (haloDialogFooterBand).
+    closeButton: false,
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
       operatorCall: operatorCall,
       userTitle: operation.userTitle,
       notes: asQsonString(operation.data['notes']) ?? '',
       multiIdentifier: multiIdentifier,
+      ownerCall: asQsonString(operation.data['ownerCall']) ?? '',
       // The operator's own choices, not the effective values: a switch a ref
       // forces off still shows, and keeps, what the operator chose.
       assistance: operation.data[Operation.assistanceKey] != false,
@@ -403,6 +408,9 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
       'userTitle': result.userTitle.trim(),
       'notes': result.notes.trim(),
       if (writeOperator) operatorCallKeyFor(newMultiIdentifier): newOperatorCall,
+      // Written only when changed, like the switches below; cleared, it stays
+      // as `''` so the clearing reaches every device.
+      if (result.ownerCall != (asQsonString(operation.data['ownerCall']) ?? '')) 'ownerCall': result.ownerCall,
       // Written only when changed, so an operation nobody decided for keeps
       // reading as absent rather than gaining a stored default.
       if (result.assistance != (operation.data[Operation.assistanceKey] != false)) Operation.assistanceKey: result.assistance,
@@ -733,6 +741,11 @@ class _OperationDetailsDialog extends StatefulWidget {
   /// operation and no suffix at all.
   final String multiIdentifier;
 
+  /// Whose station this is, when it belongs to none of the operators: a
+  /// guest operating someone else's station. Exported as ADIF OWNER_CALLSIGN
+  /// and Cabrillo's `@CALL`.
+  final String ownerCall;
+
   /// The operator's own choices — see `Operation.assistance` and
   /// `Operation.selfSpotting`.
   final bool assistance;
@@ -763,6 +776,7 @@ class _OperationDetailsDialog extends StatefulWidget {
     required this.userTitle,
     required this.notes,
     required this.multiIdentifier,
+    required this.ownerCall,
     required this.assistance,
     required this.selfSpotting,
     required this.assistanceRules,
@@ -783,6 +797,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   late final _titleController = TextEditingController(text: widget.userTitle);
   late final _notesController = TextEditingController(text: widget.notes);
   late final _multiIdentifierController = TextEditingController(text: widget.multiIdentifier);
+  late final _ownerCallController = TextEditingController(text: widget.ownerCall);
   late bool _assistance = widget.assistance;
   late bool _selfSpotting = widget.selfSpotting;
 
@@ -790,6 +805,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   /// setting that changes how the operation behaves is never out of sight.
   late bool _advancedOpen =
       widget.multiIdentifier.isNotEmpty ||
+      widget.ownerCall.isNotEmpty ||
       !widget.assistance ||
       !widget.selfSpotting ||
       widget.assistanceRules.isNotEmpty ||
@@ -819,6 +835,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     _stationCallController.addListener(_onStationCallChanged);
     _operatorCallController.addListener(_onOperatorCallChanged);
     _multiIdentifierController.addListener(_onMultiIdentifierChanged);
+    _ownerCallController.addListener(_refresh);
     _suggestOperator();
     unawaited(_loadContacts());
   }
@@ -844,6 +861,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     _titleController.dispose();
     _notesController.dispose();
     _multiIdentifierController.dispose();
+    _ownerCallController.dispose();
     super.dispose();
   }
 
@@ -964,6 +982,8 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
         userTitle: _titleController.text.trim(),
         notes: _notesController.text.trim(),
         multiIdentifier: _multiIdentifierController.text.trim(),
+        // One call: ADIF's OWNER_CALLSIGN and Cabrillo's `@CALL` each name one.
+        ownerCall: _ownerCallController.text.trim().toUpperCase().split(' ').first,
         assistance: _assistance,
         selfSpotting: _selfSpotting,
         restampOperator: _restampTargets(
@@ -975,6 +995,11 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
         ),
       ),
     );
+  }
+
+  List<String> get _invalidOwnerCall {
+    final call = _ownerCallController.text.trim().toUpperCase();
+    return call.isEmpty || looksLikeCallsign(call) ? const [] : [call];
   }
 
   List<String> get _invalidOperatorCall {
@@ -1060,7 +1085,7 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
       children: [
         Flexible(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xxl, Space.xxl, Space.md),
+            padding: EdgeInsets.fromLTRB(haloDialogSideInset(context), Space.xxl, haloDialogSideInset(context), Space.md),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1141,6 +1166,12 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
                         decoration: poloFieldDecoration(context, context.t.dialogs.operatingPosition),
                         onSubmitted: (_) => _save(),
                       ),
+                      const SizedBox(height: Space.lg),
+                      _CallsignField(
+                        controller: _ownerCallController,
+                        decoration: poloFieldDecoration(context, context.t.dialogs.stationOwnerCall, errorText: _invalidCallsignsText(_invalidOwnerCall)),
+                        onSubmitted: (_) => _save(),
+                      ),
                       const SizedBox(height: Space.md),
                       _rulesSwitch(
                         title: context.t.dialogs.assistance,
@@ -1163,23 +1194,21 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-          child: haloDialogFooterRow(
-            cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-            actions: [
-              FilledButton(
-                // An operation with no station callsign is not saveable, and the
-                // caller drops the whole edit when one arrives — title, notes and
-                // any ticked restamp with it. Refusing here says so, instead of
-                // making Save behave like Cancel. `_save` refuses too, because
-                // every field submits on Enter and would otherwise walk straight
-                // past this button.
-                onPressed: _stationCalls.isEmpty ? null : _save,
-                child: Text(context.t.common.save),
-              ),
-            ],
-          ),
+        haloDialogFooterBand(
+          context,
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+          actions: [
+            FilledButton(
+              // An operation with no station callsign is not saveable, and the
+              // caller drops the whole edit when one arrives — title, notes and
+              // any ticked restamp with it. Refusing here says so, instead of
+              // making Save behave like Cancel. `_save` refuses too, because
+              // every field submits on Enter and would otherwise walk straight
+              // past this button.
+              onPressed: _stationCalls.isEmpty ? null : _save,
+              child: Text(context.t.common.save),
+            ),
+          ],
         ),
       ],
     );

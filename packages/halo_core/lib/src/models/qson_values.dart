@@ -265,12 +265,15 @@ const _operationFields = <String, QsonFieldType>{
   'grid': QsonFieldType.string,
   'lat': QsonFieldType.latitude,
   'lon': QsonFieldType.longitude,
-  // No getter for these five — `operation_dialogs.dart`,
+  // No getter for these six — `operation_dialogs.dart`,
   // `activities_view.dart` and `operation_location_screen.dart` read them
   // straight off the blob. Normalized here so what they read is a string by
   // the time they see it.
   'notes': QsonFieldType.string,
   'operatorCall': QsonFieldType.string,
+  // Whose station this is, when it is none of the operators' (ADIF
+  // OWNER_CALLSIGN, Cabrillo's `@CALL` in OPERATORS).
+  'ownerCall': QsonFieldType.string,
   'gridSource': QsonFieldType.string,
   'state': QsonFieldType.string,
   'county': QsonFieldType.string,

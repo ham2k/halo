@@ -99,6 +99,7 @@ mixin _ActivitiesHeader on State<OperationSheet> {
     final operatorCall = operatorCallFor(_operation);
     final operationTitle = _operation.userTitle;
     final notes = asQsonString(_operation.data['notes']) ?? '';
+    final ownerCall = (asQsonString(_operation.data['ownerCall']) ?? '').trim();
     final multiIdentifier = asQsonString(_operation.localData['multiIdentifier']) ?? '';
 
     // Only the station chip carries the full teal; its companions are the
@@ -172,7 +173,9 @@ mixin _ActivitiesHeader on State<OperationSheet> {
     final iconPillWidth = math.max(_pillMinWidth, iconPillNaturalWidth);
 
     const callStyle = TextStyle(fontFamily: 'RobotoMono');
-    final stationSpans = [const TextSpan(text: 'Station: '), TextSpan(text: stationCall, style: callStyle)];
+    // A guest at someone else's station: the owner rides the station pill in
+    // Cabrillo's own `@CALL` form, so it never drops away separately.
+    final stationSpans = [const TextSpan(text: 'Station: '), TextSpan(text: ownerCall.isEmpty ? stationCall : '$stationCall (@$ownerCall)', style: callStyle)];
     final operatorSpans = [const TextSpan(text: 'Op: '), TextSpan(text: operatorCall, style: callStyle)];
     // Shown whenever a position is set: the identifier suffixes this device's
     // spots (`K2SUL/OP2`), and this pill is the only thing on the sheet that

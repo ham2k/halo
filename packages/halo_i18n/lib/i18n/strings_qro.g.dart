@@ -382,6 +382,7 @@ class _Translations$dialogs$qro extends Translations$dialogs$en {
 	@override String get stationCallsign => 'STATION CALLSIGN';
 	@override String get advanced => 'ADVANCED';
 	@override String get operatingPosition => 'OPERATING POSITION (MULTI-STATION)';
+	@override String get stationOwnerCall => 'STATION OWNER CALLSIGN';
 	@override String get assistance => 'ASSISTANCE';
 	@override String get assistanceDescription => 'USE SPOTTING SERVICES AND OTHER SOURCES OF INFORMATION';
 	@override String get selfSpotting => 'SELF-SPOTTING';
@@ -5283,6 +5284,7 @@ extension on TranslationsQro {
 			'dialogs.stationCallsign' => 'STATION CALLSIGN',
 			'dialogs.advanced' => 'ADVANCED',
 			'dialogs.operatingPosition' => 'OPERATING POSITION (MULTI-STATION)',
+			'dialogs.stationOwnerCall' => 'STATION OWNER CALLSIGN',
 			'dialogs.assistance' => 'ASSISTANCE',
 			'dialogs.assistanceDescription' => 'USE SPOTTING SERVICES AND OTHER SOURCES OF INFORMATION',
 			'dialogs.selfSpotting' => 'SELF-SPOTTING',
@@ -5461,9 +5463,9 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
 			'operation.layout.layouts.importNothing' => 'NO PANEL PICKED, SO NOTHING WAS IMPORTED.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'LEFT OUT: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'KEPT ${panels}: THE SMALL-SCREEN ARRANGEMENT CAN’T DO WITHOUT IT.',
@@ -5975,9 +5977,9 @@ extension on TranslationsQro {
 			'loggingControls.undo' => 'UNDO',
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
-			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
 			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'DELETED ${kind}',
@@ -6489,9 +6491,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
 			'settings.radio.voiceMessages.help' => 'HELP',
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
-			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
 			'settings.radio.voiceMessages.playOnRadio' => 'PLAY ON RADIO',
 			'settings.radio.voiceMessages.templateHelpCall' => 'THEIR CALL',
@@ -7003,9 +7005,9 @@ extension on TranslationsQro {
 			'settings.station.tenTecNoCw' => 'THIS RADIO\'S FIRMWARE DOES NOT TAKE CW FROM THE APP. TEN-TEC ADDED IT IN ORION FIRMWARE 1.366.',
 			'settings.station.tenTecKeyerOff' => 'THE RADIO\'S INTERNAL KEYER IS OFF, SO IT IGNORES CW SENT FROM THE APP. TURN THE KEYER ON IN THE RADIO\'S MENU.',
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
-			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.thetisTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
 			'settings.station.thetisTroubleshooting' => 'THIS CONNECTS TO **THETIS**, THE PROGRAM THAT RUNS THE RADIO, NOT TO THE RADIO ITSELF: AN ANAN HAS NO CAT OF ITS OWN.\n\n- **THETIS\'S CAT SERVER MUST BE RUNNING.** IN THETIS, SETUP → SERIAL/NETWORK/MIDI CAT → NETWORK, CHECK **SERVER RUNNING**. IT IS NOT THE TCI SERVER, WHICH IS A DIFFERENT THING.\n- **PORT** IS 13013 UNLESS YOU CHANGED IT THERE.\n- **FROM ANOTHER COMPUTER**, THETIS\'S SERVER MUST LISTEN ON ITS NETWORK ADDRESS RATHER THAN 127.0.0.1, AND ITS FIREWALL MUST LET THE PORT THROUGH.\n- **RATED POWER** IS WHAT FULL DRIVE PUTS OUT: 100 W ON MOST ANANS, 200 W ON THE 8000DLE, 10 W ON THE 10E. THE APP SETS POWER AS A SHARE OF IT.\n- **CW MESSAGES GO OUT THROUGH THETIS\'S CWX KEYER.** IF ONE DOES NOT, OPEN THE CWX WINDOW IN THETIS AND TRY AGAIN.\n\nTHIS ENTRY WAS WRITTEN FROM THETIS\'S PUBLISHED CAT REFERENCE AND HAS NOT BEEN RUN AGAINST A RADIO. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tciTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
@@ -7517,9 +7519,9 @@ extension on TranslationsQro {
 			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
 			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
-			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
 			_ => null,
 		} ?? switch (path) {
+			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
 			'commands.swapNotConnected' => ({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE',
 			'commands.swapNoneConnected' => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE',

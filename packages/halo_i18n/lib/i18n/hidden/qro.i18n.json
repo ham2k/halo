@@ -390,6 +390,7 @@
     "stationCallsign": "STATION CALLSIGN",
     "advanced": "ADVANCED",
     "operatingPosition": "OPERATING POSITION (MULTI-STATION)",
+    "stationOwnerCall": "STATION OWNER CALLSIGN",
     "assistance": "ASSISTANCE",
     "assistanceDescription": "USE SPOTTING SERVICES AND OTHER SOURCES OF INFORMATION",
     "selfSpotting": "SELF-SPOTTING",

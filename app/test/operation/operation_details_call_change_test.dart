@@ -239,6 +239,37 @@ void main() {
     });
   });
 
+  group('station owner', () {
+    Finder ownerField() => find.widgetWithText(TextField, t.dialogs.stationOwnerCall);
+
+    testWidgets('is one call, and an untouched operation never gains the key', (tester) async {
+      // Absent stays absent: a stored '' on every operation anyone opened
+      // would sync a decision nobody made.
+      await openDialog(tester);
+      await save(tester);
+      expect((await operations.get(operation.uuid))!.data.containsKey('ownerCall'), isFalse);
+
+      operation = (await operations.get(operation.uuid))!;
+      await openDialog(tester);
+      // Advanced is closed with no owner set.
+      await tester.tap(find.text(t.dialogs.advanced));
+      await tester.pumpAndSettle();
+      await tester.enterText(ownerField(), 'n2qv w1aw');
+      await save(tester);
+      // ADIF's OWNER_CALLSIGN and Cabrillo's `@CALL` each name one station.
+      expect((await operations.get(operation.uuid))!.data['ownerCall'], 'N2QV');
+    });
+
+    testWidgets('a cleared owner is written, so the clearing reaches every device', (tester) async {
+      await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'ownerCall': 'N2QV'}));
+      operation = (await operations.get(operation.uuid))!;
+      await openDialog(tester);
+      await tester.enterText(ownerField(), '');
+      await save(tester);
+      expect((await operations.get(operation.uuid))!.data['ownerCall'], '');
+    });
+  });
+
   group('callsign validation', () {
     testWidgets('warns about an unparseable call without blocking the save', (tester) async {
       // A special-event or portable form this regex does not know is still a

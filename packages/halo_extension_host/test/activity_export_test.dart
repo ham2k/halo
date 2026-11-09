@@ -959,6 +959,43 @@ void main() {
     expect(uploaded, isNot(contains('<APP_HAM2K_POSITION:')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // A guest at someone else's station: the operation names the owner once,
+  // and every contact carries it, in every file — not only a contest's.
+  test("OWNER_CALLSIGN is the contact's own owner, else the operation's", () async {
+    final host = await startHost();
+
+    Future<String> adifFor({String? ownerCall, Map<String, dynamic> our = const {}}) async {
+      final result =
+          await host.invokeHook(
+                'export',
+                key: 'adif',
+                method: 'generateExport',
+                args: {
+                  'operation': {
+                    ...operation(['US-0001']),
+                    'ownerCall': ?ownerCall,
+                  },
+                  'qsos': [
+                    {
+                      ...qsos.first,
+                      'our': {...qsos.first['our'] as Map<String, dynamic>, ...our},
+                    },
+                  ],
+                  'exportType': 'adif',
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
+      return result['content'] as String;
+    }
+
+    expect(await adifFor(ownerCall: 'N1OWN'), contains('<OWNER_CALLSIGN:5>N1OWN'));
+    // An imported contact keeps the owner its own file named.
+    expect(await adifFor(ownerCall: 'N1OWN', our: {'owner': 'K9IMP'}), contains('<OWNER_CALLSIGN:5>K9IMP'));
+    expect(await adifFor(ownerCall: ''), isNot(contains('<OWNER_CALLSIGN:')));
+    expect(await adifFor(), isNot(contains('<OWNER_CALLSIGN:')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // A program whose uploader credits the operator by OPERATOR asks for it on
   // every record (`ExportRequest.operatorFallback`): the contact's own
   // operator where it has one, even one repeating the station call, and

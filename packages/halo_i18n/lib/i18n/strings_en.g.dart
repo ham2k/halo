@@ -813,6 +813,9 @@ class Translations$dialogs$en {
 	/// en: 'Operating Position (multi-station)'
 	String get operatingPosition => 'Operating Position (multi-station)';
 
+	/// en: 'Station Owner Callsign'
+	String get stationOwnerCall => 'Station Owner Callsign';
+
 	/// en: 'Assistance'
 	String get assistance => 'Assistance';
 
@@ -11317,6 +11320,7 @@ extension on Translations {
 			'dialogs.stationCallsign' => 'Station Callsign',
 			'dialogs.advanced' => 'Advanced',
 			'dialogs.operatingPosition' => 'Operating Position (multi-station)',
+			'dialogs.stationOwnerCall' => 'Station Owner Callsign',
 			'dialogs.assistance' => 'Assistance',
 			'dialogs.assistanceDescription' => 'Use spotting services and other sources of information',
 			'dialogs.selfSpotting' => 'Self-spotting',
@@ -11495,9 +11499,9 @@ extension on Translations {
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
-			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Left out: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Kept ${panels}: the small-screen arrangement can’t do without it.',
@@ -12009,9 +12013,9 @@ extension on Translations {
 			'loggingControls.undo' => 'Undo',
 			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
-			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'Tap the trashcan one more time to delete this ${kind}',
 			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'Click the trashcan one more time to delete this ${kind}',
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
@@ -12523,9 +12527,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
 			'settings.radio.voiceMessages.help' => 'Help',
 			'settings.radio.voiceMessages.helpTitle' => 'Saying Messages with Your Words',
-			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.helpFullExample' => 'A whole message:',
 			'settings.radio.voiceMessages.helpExample' => 'Their call, their report, and your recording of “QSL?”',
 			'settings.radio.voiceMessages.playOnRadio' => 'Play on Radio',
 			'settings.radio.voiceMessages.templateHelpCall' => 'Their call',
@@ -13037,9 +13041,9 @@ extension on Translations {
 			'settings.station.tenTecNoCw' => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.',
 			'settings.station.tenTecKeyerOff' => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.thetisTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
 			'settings.station.thetisTroubleshooting' => 'This connects to **Thetis**, the program that runs the radio, not to the radio itself: an ANAN has no CAT of its own.\n\n- **Thetis\'s CAT server must be running.** In Thetis, Setup → Serial/Network/Midi CAT → Network, check **Server Running**. It is not the TCI server, which is a different thing.\n- **Port** is 13013 unless you changed it there.\n- **From another computer**, Thetis\'s server must listen on its network address rather than 127.0.0.1, and its firewall must let the port through.\n- **Rated power** is what full drive puts out: 100 W on most ANANs, 200 W on the 8000DLE, 10 W on the 10E. The app sets power as a share of it.\n- **CW messages go out through Thetis\'s CWX keyer.** If one does not, open the CWX window in Thetis and try again.\n\nThis entry was written from Thetis\'s published CAT reference and has not been run against a radio. If it half-works, that is worth reporting.',
 			'settings.station.tciTroubleshootingTitle' => 'If the radio does not connect, or connects but does not follow',
@@ -13551,9 +13555,9 @@ extension on Translations {
 			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',
-			'commands.swapDone' => 'Radios A and B swapped',
 			_ => null,
 		} ?? switch (path) {
+			'commands.swapDone' => 'Radios A and B swapped',
 			'commands.swapNotConnected' => ({required Object radio}) => 'Swapped, but Radio ${radio} is not connected and did not move',
 			'commands.swapNoneConnected' => 'Swapped, but neither radio is connected, so neither moved',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',

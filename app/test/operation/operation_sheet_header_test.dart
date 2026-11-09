@@ -47,6 +47,7 @@ void main() {
     String operatorCall = 'VE3ABC/VE2',
     String userTitle = 'A Long Operation Title',
     String multiIdentifier = '',
+    String ownerCall = '',
     double textScaler = 1.0,
   }) async {
     // Otherwise the onboarding flow opens the sheet itself and races the tap.
@@ -61,7 +62,7 @@ void main() {
       // header reads it from — left on `operatorCall`, a positioned operation
       // would show no operator pill and the sweeps below would be measuring a
       // header one pill short.
-      data: {...created.data, operatorCallKeyFor(multiIdentifier): operatorCall, 'notes': 'some notes'},
+      data: {...created.data, operatorCallKeyFor(multiIdentifier): operatorCall, 'notes': 'some notes', if (ownerCall.isNotEmpty) 'ownerCall': ownerCall},
     );
     await services.operations.saveData(operation);
     if (multiIdentifier.isNotEmpty) {
@@ -106,6 +107,20 @@ void main() {
     final operator = find.descendant(of: sheet, matching: find.textContaining('Op: '));
     expect(position, findsOneWidget);
     expect(tester.getTopLeft(position).dx, lessThan(tester.getTopLeft(operator).dx));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets("a station owner rides the station pill, in Cabrillo's @ form", (tester) async {
+    // Its own pill could be shed on a narrow row, hiding that the log is kept
+    // at someone else's station.
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(1400, 900);
+    await openSheet(tester, stationCall: 'KI2D', ownerCall: 'N2QV', textScaler: 0.5);
+
+    expect(find.descendant(of: find.byType(OperationSheet), matching: find.textContaining('Station: KI2D (@N2QV)')), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));

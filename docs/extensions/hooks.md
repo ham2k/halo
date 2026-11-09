@@ -77,8 +77,10 @@ Every method has the shape `async method(args, ctx)`:
 - **`args`** is the object the category's page documents for that method:
   the operation, a QSO, a reference, the text typed. Everything is JSON. An
   `operation` carries its `uuid` and, where the caller knows them, its
-  `startAtMillisMin`/`startAtMillisMax` and `operatorCall`. A `qso` is the
-  contact as it is logged, or the draft being composed, in the QSON shape
+  `startAtMillisMin`/`startAtMillisMax` and `operatorCall`; from extension
+  API 21 its `ownerCall` names the station's owner when that is none of the
+  operators, and is empty or absent otherwise. A `qso` is the contact as it
+  is logged, or the draft being composed, in the QSON shape
   `@ham2k/lib-qson-tools` defines.
 - **`ctx`** is the hook context, the same for every category: `online`,
   `locale`, `developerMode`, the operator's number and date conventions,

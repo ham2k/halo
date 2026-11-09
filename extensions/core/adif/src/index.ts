@@ -388,6 +388,9 @@ function baseFieldsFor(
   } else if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
     add("OPERATOR", operatorCall)
   }
+  // Whose station this is, when it belongs to none of the operators: the
+  // contact's own (an imported OWNER_CALLSIGN), else the operation's.
+  add("OWNER_CALLSIGN", String(our.owner ?? "").trim() || String(operation.ownerCall ?? "").trim() || undefined)
   add("TX_PWR", qso.power)
   add("RX_PWR", their.power ?? theirGuess.power)
   // A split contact's receive side, which QSON records on `their` — the
