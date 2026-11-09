@@ -74,7 +74,6 @@ class SpottingSettingsGroup extends SettingsGroup {
       for (final hookKey in policies.keys)
         if (!listed.containsKey(hookKey)) hookKey: (name: hookKey, icon: null, accentColor: null, postsSelfSpots: true),
     }.entries.toList()..sort((a, b) => a.value.name.toLowerCase().compareTo(b.value.name.toLowerCase()));
-    final localSpots = SpottingSettings.localSpots(settings);
     return [
       {
         'type': 'field',
@@ -115,8 +114,8 @@ class SpottingSettingsGroup extends SettingsGroup {
         'key': SpottingSettings.localSpotsKey,
         'label': labels.localSpots,
         'icon': 'map-marker-radius-outline',
-        'description': localSpots ? labels.localSpotsOn : labels.localSpotsOff,
-        'value': localSpots,
+        'description': labels.localSpotsDescription,
+        'value': SpottingSettings.localSpots(settings),
         'target': 'spotting',
       },
       if (named.isNotEmpty)

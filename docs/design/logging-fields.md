@@ -1047,6 +1047,13 @@ settings ESM always kept it in. Switching ESM off leaves it where it is.
     walked off in steps adds up to one turn of the knob. A radio's readings
     while it transmits are not read: working split, a rig reports where it
     sends.
+  - **A self-spot is Run**, with any comment or none, auto re-spots
+    included: a station spotting itself is calling CQ where it is, and its
+    frequency becomes the run frequency as message 1's does. A VFO already
+    off the spotted frequency (`Vfo.movedOffOf`) leaves the style alone: an
+    auto re-spot follows the dial within 500 Hz, wider than a CW QSY. One
+    whose comment starts with QRT is S&P instead, and forgets the run
+    frequency: the run is over, and tuning back across it is no return.
   - **Picking a spot is S&P** — a tapped row, or an extension's
     `host.suggestQso`; a slid-open row is only a look. A `/qso` link is not
     a pick: it says where the radio already is.
@@ -1287,7 +1294,13 @@ explicit.
 
 The station being worked goes on the operator's own Spots list, so the board
 says who is on each frequency as the operator works the band, not only what
-the networks last heard. **Leaving the call field with a call in it** —
+the networks last heard. It is the operator's choice, off until **Enable
+local spots** in Settings › Spotting turns it on, and a set makes them only
+while a rig reports its frequency (`radio1IsLive`, Radio B's connection
+under SO2R): without CAT the entry's frequency is whatever was last typed
+in, not where the operator is listening. A radio dropping out moves no spot
+and makes none, but takes none down either: the station was there when its
+spot was made. Band tags (below) need only the setting. **Leaving the call field with a call in it** —
 Space, Tab, an arrow, a tap anywhere else — makes the entry a spot
 (`LoggingSession.onDraftSpot`), stamped now, at the entry's frequency, band
 and mode, with its references (a park, a summit) and a contest's received

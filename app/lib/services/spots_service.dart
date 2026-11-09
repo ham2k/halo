@@ -165,6 +165,9 @@ class SpotsService extends ChangeNotifier {
     return const DeepCollectionEquality().equals(unposted(held), unposted(spot));
   }
 
+  /// Whether a local spot stands under [key].
+  bool hasLocalSpot(String key) => _local.containsKey(key);
+
   /// Takes the local spot under [key] off the board, if it is there.
   void removeLocalSpot(String key) {
     if (_disposed || _local.remove(key) == null) return;

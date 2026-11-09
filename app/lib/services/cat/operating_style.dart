@@ -18,8 +18,9 @@ enum OperatingStyle {
 }
 
 /// Moves each set's operating style with what the operator does, the way a
-/// contester's own hands would: message 1 keyed is a CQ, so Run; leaving the
-/// run frequency, or picking a spot, is S&P; coming back to the run
+/// contester's own hands would: message 1 keyed is a CQ, so Run, and so is a
+/// self-spot, unless it says QRT; leaving the run frequency, or picking a
+/// spot, is S&P; coming back to the run
 /// frequency within [returnWindow] is Run again. The style itself is kept by
 /// the caller — [isRunning] and [setRunning] — and every change to it, the
 /// tracker's own and the operator's, reaches [styleChanged].
@@ -121,6 +122,28 @@ class OperatingStyleTracker {
       setRunning(radio, true);
     }
   }
+
+  /// [radio] spotted itself at [freq] (kHz), with [comment] or none: a
+  /// station that spots itself is calling CQ where it is, so Run there, as
+  /// message 1 is — an auto re-spot as much as the first. A VFO already off
+  /// [freq] by [Vfo.movedOffOf] is not there: an auto re-spot follows the dial
+  /// within 500 Hz, wider than a CW QSY, and taken as Run it would pull an
+  /// operator gone S&P back into a run where they now listen.
+  ///
+  /// A spot that says QRT ends the run, and forgets its frequency: tuning
+  /// back across it is no return to a run the operator closed.
+  void selfSpotted(String radio, {String? comment, double? freq}) {
+    if (comment != null && _qrt.hasMatch(comment.trim())) {
+      if (isRunning(radio)) setRunning(radio, false);
+      forget(radio);
+      return;
+    }
+    final vfo = _receiving(radio);
+    if (freq != null && vfo.movedOffOf(Vfo(freq: freq, band: vfo.band, mode: vfo.mode))) return;
+    messageOne(radio);
+  }
+
+  static final _qrt = RegExp(r'^QRT\b', caseSensitive: false);
 
   /// The operator picked a spot to work on [radio]. The tune to it is no
   /// return to the run frequency, even onto it: only a move away after it

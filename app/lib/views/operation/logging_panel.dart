@@ -332,6 +332,10 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
   bool _computeRadioConnected() => widget.services.radio1IsLive;
 
+  /// Whether a rig reports [radio]'s set's frequency, which a local spot is
+  /// made at ([updateLocalSpot]).
+  bool _setIsLive(String radio) => radio == 'B' ? _radioBSignature().connected : widget.services.radio1IsLive;
+
   late bool _radioTransmitting = widget.services.cat.radio1IsTransmitting || widget.services.cat.pttKeys.held.value;
 
   // The main VFO's display name — the Radio control's own reflection of the
@@ -1071,7 +1075,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         onQsoChanged: active ? widget.onQsoChanged : null,
         onPeerDraftChanged: active ? widget.onPeerDraftChanged : null,
         // Every set's: each works its own station.
-        onDraftSpot: (key, qso) => updateLocalSpot(widget.services.spots, key, qso, enabled: SpottingSettings.localSpots(widget.services.settings)),
+        onDraftSpot: (key, qso) =>
+            updateLocalSpot(widget.services.spots, key, qso, enabled: SpottingSettings.localSpots(widget.services.settings), live: _setIsLive(radio)),
         onBandTag: (text, at) => putBandTag(widget.services.spots, text, at, enabled: SpottingSettings.localSpots(widget.services.settings)),
         onClearLocalSpots: (at) => clearLocalSpotsAt(widget.services.spots, at),
       ),
@@ -1196,15 +1201,18 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         suggestSpotSources: widget.services.extensions.suggestSpotSources,
         // The profile's operator as the spotter, for a QSO with no call of
         // its own to spot from (POTA's `our.call ?? spotterCall`).
-        sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) => widget.services.extensions.sendSpot(
-          sources: sources,
-          operation: operation,
-          qso: qso,
-          freq: freq,
-          mode: mode,
-          comment: comment,
-          spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
-        ),
+        sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) {
+          if (qso == null) widget.services.cat.operatingStyle.selfSpotted(radio, comment: comment, freq: freq);
+          return widget.services.extensions.sendSpot(
+            sources: sources,
+            operation: operation,
+            qso: qso,
+            freq: freq,
+            mode: mode,
+            comment: comment,
+            spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
+          );
+        },
         onOpenSettings: () => showSettingsForTarget(context, services: widget.services, target: 'spotting', title: t.settings.spotting.title),
       ),
       prefs: LoggingPreferences(

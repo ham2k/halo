@@ -83,8 +83,9 @@ Extension API 19 adds:
   its own) or `normal` (anything else: search and pounce, which the app
   labels S&P, and the default), `null` where `set` is. It is the style each
   new contact records as `opStyle`, and it moves with the operator: message 1
-  keyed is `run`; leaving the run frequency, or picking a spot, is `normal`;
-  coming back to it within three minutes is `run` again. The `RUN` and
+  keyed is `run`, and so is a self-spot, unless its comment starts with QRT,
+  which is `normal`; leaving the run frequency, or picking a spot, is
+  `normal`; coming back to it within three minutes is `run` again. The `RUN` and
   `SNP` commands set it outright.
 - `reportedFrequencyHz`: the frequency the radio itself last reported.
   It trails `frequencyHz` after a tune until the radio reports it there.

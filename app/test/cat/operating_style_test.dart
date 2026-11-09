@@ -118,6 +118,51 @@ void main() {
       });
     });
 
+    test('a self-spot runs, whatever its comment, and takes the run frequency where it is sent', () {
+      final station = _Station(running: false)..tune(14250.0, mode: 'USB');
+      station.tracker.selfSpotted('A', comment: 'CQ POTA, QRX 5 after this');
+      expect(station.running, isTrue);
+      // An auto re-spot after a nudge re-takes the run frequency, as a CQ does:
+      // 1.2 kHz from the first spot, 0.6 from the second.
+      station.tune(14250.6);
+      station.tracker.selfSpotted('A', freq: 14250.6);
+      station.tune(14251.2);
+      expect(station.running, isTrue);
+    });
+
+    // QRT is the one comment that says the station is leaving: read as any
+    // other, the operator's sign-off would start a run.
+    test('a self-spot saying QRT ends the run', () {
+      final station = _Station()..tune(14250.0, mode: 'USB');
+      station.tracker.selfSpotted('A', comment: ' qrt, 73');
+      expect(station.running, isFalse);
+      station.tracker.selfSpotted('A', comment: 'QRT');
+      expect(station.running, isFalse, reason: 'already S&P, it stays there');
+    });
+
+    // Without forgetting, hunting the band after a QRT would cross the old
+    // run frequency and reopen a run the operator closed.
+    test('after a QRT self-spot, tuning back across the run frequency stays S&P', () {
+      final station = _Station()..tune(14250.0, mode: 'USB');
+      station.tracker.selfSpotted('A', comment: 'QRT');
+      station.tune(14260.0);
+      station.tune(14250.2);
+      expect(station.running, isFalse);
+    });
+
+    // An auto re-spot follows the dial within 500 Hz, wider than a CW QSY:
+    // taken as Run it would pull the operator back from S&P, and take where
+    // they now listen as the run frequency.
+    test('a self-spot of a frequency the VFO has left leaves the style alone', () {
+      final station = _Station()..tune(14062.0);
+      station.tune(14062.3);
+      expect(station.running, isFalse, reason: 'sanity: a CW QSY');
+      station.tracker.selfSpotted('A', freq: 14062.0);
+      expect(station.running, isFalse);
+      station.tracker.selfSpotted('A', freq: 14062.3);
+      expect(station.running, isTrue, reason: 'a spot of where it is now is a CQ there');
+    });
+
     // Without the "been away" rule, the VFO still sitting on the run
     // frequency when the spot is picked would flip straight back to Run.
     test('a spot picked on the run frequency stays S&P until the VFO leaves and comes back', () {

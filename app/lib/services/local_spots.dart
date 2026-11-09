@@ -291,7 +291,13 @@ class _LocalSpotIndex {
 /// A logging panel's draft spot (`LoggingSession.onDraftSpot`) onto [spots]:
 /// put while the draft makes one and [enabled] holds, taken off otherwise.
 /// True when a spot stands under [key] afterwards.
-bool updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled}) {
+///
+/// Without [live] — no rig reporting the set's frequency — the draft's
+/// frequency is whatever was last typed in, so no spot is made or moved;
+/// one already up stays, since the station was there when it was made, and
+/// only a retraction (a null [qso]) takes it down.
+bool updateLocalSpot(SpotsService spots, String key, Map<String, dynamic>? qso, {required bool enabled, required bool live}) {
+  if (qso != null && enabled && !live) return spots.hasLocalSpot(key);
   final spot = qso == null || !enabled ? null : localSpotFromQso(qso, now: nowMillis());
   spot == null ? spots.removeLocalSpot(key) : spots.putLocalSpot(key, spot);
   return spot != null;

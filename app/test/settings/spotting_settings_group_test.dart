@@ -40,12 +40,12 @@ void main() {
     return SettingsService(await SharedPreferences.getInstance());
   }
 
-  test('defaults to every ten minutes, offering rather than starting, pulsing, and spotting what is worked', () async {
+  test('defaults to every ten minutes, offering rather than starting, pulsing, and no local spots', () async {
     final settings = await fresh();
     expect(SpottingSettings.respotInterval(settings), const Duration(minutes: 10));
     expect(SpottingSettings.autoRespotByDefault(settings), isFalse);
     expect(SpottingSettings.pulseBeforeRespot(settings), isTrue);
-    expect(SpottingSettings.localSpots(settings), isTrue);
+    expect(SpottingSettings.localSpots(settings), isFalse, reason: 'local spots are opt-in: calls entered stay off the board until the operator asks');
   });
 
   test('what the section commits is what the panel reads back', () async {
@@ -54,8 +54,8 @@ void main() {
     await group.commit('respotIntervalMinutes', '20');
     await group.commit('autoRespotByDefault', true);
     await group.commit('pulseBeforeRespot', false);
-    await group.commit('localSpots', false);
-    expect(SpottingSettings.localSpots(settings), isFalse);
+    await group.commit('localSpots', true);
+    expect(SpottingSettings.localSpots(settings), isTrue);
     expect(SpottingSettings.respotInterval(settings), const Duration(minutes: 20));
     expect(SpottingSettings.autoRespotByDefault(settings), isTrue);
     expect(SpottingSettings.pulseBeforeRespot(settings), isFalse);

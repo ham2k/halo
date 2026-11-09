@@ -93,9 +93,10 @@ abstract final class SpottingSettings {
   static bool pulseBeforeRespot(SettingsService settings) => read(settings).pulseBeforeRespot;
 
   /// Whether a call entered in the logging panel goes on the board as a local
-  /// spot (docs/design/logging-fields.md § Local spots). Not one of
-  /// [SpottingValues]: it is the board's, not the Spotting control's.
-  static bool localSpots(SettingsService settings) => settings.settingsGroup(group)[localSpotsKey] as bool? ?? true;
+  /// spot (docs/design/logging-fields.md § Local spots). Off until the
+  /// operator turns it on. Not one of [SpottingValues]: it is the board's,
+  /// not the Spotting control's.
+  static bool localSpots(SettingsService settings) => settings.settingsGroup(group)[localSpotsKey] as bool? ?? false;
 
   /// The default is the Spotting control's own, so a host without these
   /// settings re-spots at the same pace.

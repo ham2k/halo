@@ -191,8 +191,8 @@ mixin _So2r on _KeyingSurface {
   /// Run ↔ S&P: ⌥U, and a tap on the FYI area's pill.
   void toggleStyle(String radio) => setStyle(radio, styleOf(radio) == OperatingStyle.run ? OperatingStyle.normal : OperatingStyle.run);
 
-  /// Moves each set's style with what the operator does — message 1, a QSY,
-  /// a spot picked, a return to the run frequency.
+  /// Moves each set's style with what the operator does — message 1, a
+  /// self-spot, a QSY, a spot picked, a return to the run frequency.
   late final operatingStyle = OperatingStyleTracker(
     isRunning: isRunning,
     setRunning: setRunning,

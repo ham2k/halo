@@ -11,6 +11,7 @@
     - "New Station Owner Callsign in Operation Details, for guest operators"
     - "Improved Station settings: connect buttons and live readings on inventory radios"
     - "Icom bandscope auto-adjust moved under the current radio's More details"
+    - "Local spots are now off by default (Settings → Spotting)"
 
 "192":
   changes:
