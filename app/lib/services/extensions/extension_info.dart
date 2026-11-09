@@ -369,6 +369,12 @@ class ExtensionInfo with ExtensionSearchable {
   /// before it runs.
   final bool requiresSettingsWrite;
 
+  /// Whether this extension may change the QSO the operator is composing
+  /// (the manifest's `requiresDraftWrite`): `host.updateDraft`, any field,
+  /// the call included. Off by default; a call from an extension without it
+  /// is refused.
+  final bool requiresDraftWrite;
+
   /// Whether [other] declares the same capabilities the host resolves into
   /// allowlists when the runtime STARTS. A dev reload that changes one cannot
   /// be hot-swapped: the running host would keep enforcing the old answer.
@@ -380,6 +386,7 @@ class ExtensionInfo with ExtensionSearchable {
       requiresClusterRead == other.requiresClusterRead &&
       requiresClusterSpot == other.requiresClusterSpot &&
       requiresClusterCommand == other.requiresClusterCommand &&
+      requiresDraftWrite == other.requiresDraftWrite &&
       allowUserAgentOverride == other.allowUserAgentOverride &&
       const ListEquality<String>().equals(webSockets, other.webSockets);
 
@@ -471,6 +478,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresClusterSpot = false,
     this.requiresClusterCommand = false,
     this.requiresSettingsWrite = false,
+    this.requiresDraftWrite = false,
     required this.core,
     this.api,
     required this.name,
@@ -510,6 +518,7 @@ class ExtensionInfo with ExtensionSearchable {
     requiresClusterSpot: json['requiresClusterSpot'] as bool? ?? false,
     requiresClusterCommand: json['requiresClusterCommand'] as bool? ?? false,
     requiresSettingsWrite: json['requiresSettingsWrite'] as bool? ?? false,
+    requiresDraftWrite: json['requiresDraftWrite'] as bool? ?? false,
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,

@@ -225,6 +225,7 @@ refused at the call where it is missing. Declare the least you need.
 | `requiresClusterSpot` | `host.clusterPostSpot()`: spots in the operator's name | cluster read | 10 |
 | `requiresClusterCommand` | `host.clusterSend()`: any command in the operator's name | cluster spot | 10 |
 | `requiresSettingsWrite` | A `command` hook's `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed` and `showKeyer` actions | | |
+| `requiresDraftWrite` | `host.updateDraft()`: any field of the QSO the operator is composing, the call included; `freq`, `band` and `mode` also need `requiresRadioWrite` | | 22 |
 
 A capability belongs to the bundle that declared it and to the
 sub-extensions that bundle defines under its own key. A separately installed

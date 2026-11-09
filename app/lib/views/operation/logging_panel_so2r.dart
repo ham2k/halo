@@ -41,6 +41,10 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   String _suggestionSet = 'A';
   final _logRequests = <String, ({int serial, Map<String, dynamic> qso})?>{};
 
+  /// Each set's last extension patch to its draft ([LoggingPanel.draftPatch]),
+  /// kept with the set that was active when it came, as a log request is.
+  final _draftPatches = <String, ({int serial, Map<String, dynamic> patch})?>{};
+
   /// Each set's command dispatcher; the active set's is the one published
   /// for the ⌘K dialog.
   final _dispatchers = <String, CommandActionsDispatcher?>{};

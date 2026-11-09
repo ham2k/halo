@@ -951,6 +951,11 @@ class ExtensionService
   /// Panel does. False when no such operation is open to take it.
   bool Function(Map<String, dynamic> qso, String? operationUuid)? onSuggestQso;
 
+  /// Changes the QSO being composed in the operation in front — [operationUuid]'s
+  /// only, when given — by [patch], or with [replace] in place of it
+  /// (`host.updateDraft`). False when no such operation is open to take it.
+  bool Function(Map<String, dynamic> patch, String? operationUuid, {required bool replace})? onUpdateDraft;
+
   /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`

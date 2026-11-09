@@ -397,6 +397,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your settings, to change them through its commands: any setting, developer mode and experiments'
 	String get canChangeSettings => 'Your settings, to change them through its commands: any setting, developer mode and experiments';
 
+	/// en: 'The contact you are logging, to change any of its fields, the call included, as you type'
+	String get canChangeDraft => 'The contact you are logging, to change any of its fields, the call included, as you type';
+
 	/// en: 'It asks for nothing outside the app.'
 	String get noCapabilities => 'It asks for nothing outside the app.';
 
@@ -11104,6 +11107,7 @@ extension on Translations {
 			'extensionsPanel.canCommandCluster' => 'The DX cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.canChangeSettings' => 'Your settings, to change them through its commands: any setting, developer mode and experiments',
+			'extensionsPanel.canChangeDraft' => 'The contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
 			'extensionsPanel.installAction' => 'Install',
@@ -11526,9 +11530,9 @@ extension on Translations {
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
 			'operation.layout.layouts.problemTooLarge' => 'it is too large',
-			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
 			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
@@ -12040,9 +12044,9 @@ extension on Translations {
 			'loggingControls.rcvd' => 'Rcvd',
 			'loggingControls.more' => 'More',
 			'loggingControls.revert' => 'Revert',
-			'loggingControls.undoDelete' => 'Undo delete',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.undoDelete' => 'Undo delete',
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
@@ -12554,9 +12558,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'That message\'s template has a problem: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'Messages said with your words play in an operation, where there is a contact to say them for.',
-			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
 			'settings.radio.voiceMessages.templateHelp' => 'Leave empty to play the recording. Otherwise the message is said with the words you recorded, filled in for each contact, using these values:',
 			'settings.radio.voiceMessages.help' => 'Help',
@@ -13068,9 +13072,9 @@ extension on Translations {
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS off at the radio, or Hold RTS high on.** With **CAT RTS** on (FT-891 menu **05-08**), the radio stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one.\n- **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects.\n- **CW from the app needs the radio\'s internal keyer on.** With it off, the radio ignores what the app sends.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
@@ -13582,9 +13586,9 @@ extension on Translations {
 			'commands.swapExperimentOff' => 'SO2R is off — turn it on with EXP SO2R',
 			'commands.swapNeedsOperation' => 'Open an operation to swap radios',
 			'commands.swapNoRadioB' => 'Nothing swapped: pick a Radio B in Station Configuration',
-			'commands.swapEditing' => 'Nothing swapped: finish editing the contact first',
 			_ => null,
 		} ?? switch (path) {
+			'commands.swapEditing' => 'Nothing swapped: finish editing the contact first',
 			'commands.swapOnAir' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} is on the air',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'Nothing swapped: Radio ${radio} has messages going or waiting',
 			'commands.swapLocked' => 'Nothing swapped: this operation can\'t take changes right now',

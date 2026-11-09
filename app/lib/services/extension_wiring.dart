@@ -55,6 +55,14 @@ void wireExtensions(HaLoServices services) {
     suggest(qso);
     return true;
   };
+  extensions.onUpdateDraft = (patch, operationUuid, {required replace}) {
+    final front = services.frontOperationContext;
+    final update = front?.updateDraft;
+    // The operation the extension was called about, or the one in front: a
+    // draft in an operation the operator is not looking at is not changed.
+    if (update == null || (operationUuid != null && front!.uuid != operationUuid)) return false;
+    return update(patch, replace: replace);
+  };
   // The boot starts the runtime before the services exist, so one quick to
   // come up has already run its catch-up — and stood it down, with no
   // settings to carry choices or record installs in. Without this that

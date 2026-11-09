@@ -190,7 +190,8 @@ operator before they install it: the hosts `host.fetch` may call
 (`domains`), the hosts it may hold a socket to (`webSockets`), and the
 capability grants (`requiresLocation`, `requiresRadioRead`,
 `requiresRadioWrite`, `requiresRadioRaw`, `requiresClusterRead`,
-`requiresClusterSpot`, `requiresClusterCommand`, `requiresSettingsWrite`).
+`requiresClusterSpot`, `requiresClusterCommand`, `requiresSettingsWrite`,
+`requiresDraftWrite`).
 An undeclared call is refused where it is made, not at build time, so an
 extension that reaches for something it did not ask for fails in front of
 the operator. Declare the least you need: the consent screen names every

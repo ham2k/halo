@@ -41,6 +41,7 @@ class _ExtensionHostCalls {
       'markSpots' => _markSpots(params),
       'unmarkSpots' => _unmarkSpots(params),
       'suggestQso' => _suggestQso(params),
+      'updateDraft' => _updateDraft(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
       'dbLookupSelectAll' => _dbLookupSelectAll(params),
@@ -341,6 +342,33 @@ class _ExtensionHostCalls {
     };
     final operationUuid = params['operationUuid'] is String ? params['operationUuid'] as String : null;
     return {'accepted': _service.onSuggestQso?.call(suggestion, operationUuid) ?? false};
+  }
+
+  /// Backs `host.updateDraft`: changes the QSO being composed, any field,
+  /// the call included, at any moment — the operator was told so at install
+  /// (`requiresDraftWrite`). A frequency, band or mode moves the radio with
+  /// the fields, so those take `requiresRadioWrite` as well. `extensionKey`
+  /// is the kernel's stamp, not the caller's.
+  Future<dynamic> _updateDraft(Map<String, dynamic> params) async {
+    final extensionKey = params['extensionKey'] as String?;
+    if (!CapabilityGrant.among(_service.availableExtensions, (info) => info.requiresDraftWrite).allows(extensionKey)) {
+      throw ExtensionHostException("updateDraft blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresDraftWrite");
+    }
+    final patch = params['patch'];
+    if (patch is! Map) throw const FormatException('updateDraft: `patch` must be an object, the fields of a QSO to change');
+    if ((patch.containsKey('freq') || patch.containsKey('band') || patch.containsKey('mode')) && !_service.radioCalls.canWrite(extensionKey)) {
+      throw ExtensionHostException(
+        "updateDraft blocked: a frequency, band or mode moves the radio, and extension '$extensionKey' does not declare requiresRadioWrite",
+      );
+    }
+    final replace = params['replace'] ?? false;
+    if (replace is! bool) throw const FormatException('updateDraft: `replace` must be true or false');
+    if (replace) {
+      final call = patch['their'] is Map ? (patch['their'] as Map)['call'] : null;
+      if (call is! String || call.trim().isEmpty) throw const FormatException('updateDraft: a replacement needs their.call');
+    }
+    final operationUuid = params['operationUuid'] is String ? params['operationUuid'] as String : null;
+    return {'accepted': _service.onUpdateDraft?.call(patch.cast<String, dynamic>(), operationUuid, replace: replace) ?? false};
   }
 
   Future<dynamic> _getSpots(Map<String, dynamic> params) async {

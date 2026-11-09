@@ -562,6 +562,52 @@ extension _WidgetUpdates on _LoggingControlsState {
     }
   }
 
+  /// Lays an extension's patch over the QSO being composed
+  /// ([LoggingSession.draftPatch]). The draft is put back from its own record
+  /// with the patch merged in, as a wipe undone puts it back, so every field
+  /// the patch does not name — refs, exchange, notes — comes back as it was.
+  /// The fields whose text did not change keep their caret and composing
+  /// range: the operator may be typing in one while the patch lands.
+  void _applyDraftPatch(Map<String, dynamic> patch) {
+    final callBefore = _callController.text;
+    final guesses = _refs.takeGuessSnapshot();
+    final typed = {
+      for (final controller in [_callController, _sentController, _rcvdController, _gridController, _stateController, _notesController, _radio.powerController])
+        controller: controller.value,
+    };
+    final merged = mergeDraftPatch(_draft.toData(), patch);
+    _draft.populate(() {
+      _draft.applyData(merged, restoringDraft: true);
+      // The refs a lookup proposed stay marked as its, or a call the patch
+      // changes would leave the old call's park on the contact.
+      _refs.restoreGuesses(guesses);
+      if (patch.containsKey('startAtMillis')) {
+        final start = merged['startAtMillis'];
+        _time.manualStartAtMillis = start is int ? start : null;
+        _reseedOpenTime();
+      }
+      for (final MapEntry(key: controller, value: before) in typed.entries) {
+        if (controller.text == before.text) controller.value = before;
+      }
+      _setStateFromPart(() {});
+    });
+    // The populate bracket kept the call field's own listeners quiet, so a
+    // call the patch changed is looked up here, as a suggested one is.
+    if (_callController.text != callBefore) {
+      _lookup.reset();
+      _command.reset();
+      unawaited(_exchange.refreshSerialPreviews());
+      if (_callInfoActive) _scheduleLookup();
+    }
+    _lookup.scheduleScore();
+    // A patch that moves the frequency, band or mode moves the VFO, which the
+    // app allowed only for an extension that may command the radio.
+    if (patch.containsKey('freq') || patch.containsKey('band') || patch.containsKey('mode')) {
+      _radio.cancelPendingPush();
+      _radio.pushVfoAfterFrame();
+    }
+  }
+
   /// Shared by `_populateFromEditingQso` (loading an existing record for
   /// editing) and `_restoreFromUndoSlot` (undoing a wipe) — both need to
   /// push a `data` map from a `Qso`/[QsoDraft.toData] shape back into the

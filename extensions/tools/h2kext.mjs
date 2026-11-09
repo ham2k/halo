@@ -74,7 +74,8 @@ import yazl from "yazl"
 /// sets an extension offers; and the `assistant` hook category; 22 adds a
 /// band scope's `window`, shown over a blank picture while no sweep comes,
 /// and its `centerHz`, its annotations' `baseline`, `stretch`, `more` and
-/// `badge` among others (docs/extensions/packaging.md lists them).
+/// `badge` among others (docs/extensions/packaging.md lists them), and
+/// `host.updateDraft` with its `requiresDraftWrite` grant.
 export const H2KEXT_API_VERSION = 22
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -91,6 +92,11 @@ export const CHASING_API_VERSION = 9
 /// The first API that calls `assistant` hooks. Refused under an older one for
 /// the same reason as `chasing`: the app would install it and never call it.
 export const ASSISTANT_API_VERSION = 21
+
+/// The first API with `host.updateDraft`. Refused under an older one for the
+/// same reason as `requiresRadioRaw`: the app would install it and refuse
+/// every change it makes to the draft.
+export const DRAFT_WRITE_API_VERSION = 22
 
 /// The first API with the DX cluster calls. A manifest declaring a
 /// `requiresCluster*` grant or a `cluster` hook under an older one is
@@ -518,6 +524,11 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
       `'${clusterGrant ?? "cluster"}' needs 'api' ${CLUSTER_API_VERSION} or later — an app older than that would install this and refuse every cluster call it makes`,
     )
   }
+  if (manifest.requiresDraftWrite === true && Number.isInteger(manifest.api) && manifest.api < DRAFT_WRITE_API_VERSION) {
+    say(
+      `'requiresDraftWrite' needs 'api' ${DRAFT_WRITE_API_VERSION} or later — an app older than that would install this and refuse every change it makes to the draft`,
+    )
+  }
   if (manifest.requiresRadioRaw === true && Number.isInteger(manifest.api) && manifest.api < RADIO_RAW_API_VERSION) {
     say(`'requiresRadioRaw' needs 'api' ${RADIO_RAW_API_VERSION} or later — an app older than that would install this and refuse every raw command it sends`)
   }
@@ -736,6 +747,7 @@ export function indexEntryFor(key, m) {
     ...(m.requiresClusterSpot ? { requiresClusterSpot: true } : {}),
     ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
     ...(m.requiresSettingsWrite ? { requiresSettingsWrite: true } : {}),
+    ...(m.requiresDraftWrite ? { requiresDraftWrite: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     // Read by the host to place the extension's settings panels; without it

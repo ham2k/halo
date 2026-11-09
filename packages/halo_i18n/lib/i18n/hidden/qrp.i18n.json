@@ -97,6 +97,7 @@
     "canCommandCluster": "the dx cluster, logged in as you, to send it any command in your name",
     "canSetUserAgent": "identify itself to servers under its own name",
     "canChangeSettings": "your settings, to change them through its commands: any setting, developer mode and experiments",
+    "canChangeDraft": "the contact you are logging, to change any of its fields, the call included, as you type",
     "noCapabilities": "it asks for nothing outside the app.",
     "sandboxNote": "extensions run sandboxed: no access to your files, and no network beyond what is listed here.",
     "installAction": "install",

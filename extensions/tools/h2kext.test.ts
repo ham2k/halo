@@ -234,6 +234,12 @@ test("a bundle registering a chasing program must declare the api that calls it"
   assert.equal(validateManifest({ ...chasing, api: 9 }).length, 0)
 })
 
+test("a bundle that changes the draft must declare the api that lets it", () => {
+  const drafter = { ...validManifest, requiresDraftWrite: true }
+  assert.match(validateManifest({ ...drafter, api: 21 }).join(), /'requiresDraftWrite' needs 'api' 22/)
+  assert.equal(validateManifest({ ...drafter, api: 22 }).length, 0)
+})
+
 test("a bundle registering an assistant must declare the api that calls it", () => {
   // An older app would install it, show nothing, and never call it: an
   // assistant has no other surface to give itself away.

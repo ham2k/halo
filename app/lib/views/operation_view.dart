@@ -251,6 +251,23 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _revealLoggingPanel();
   }
 
+  /// An extension's change to the QSO being composed — see
+  /// [OperationCommandContext.updateDraft]. A replacement is a new contact,
+  /// as a suggestion is, but where the radio already is: no zero-beat offset
+  /// and no pick of a spot. A patch goes to the logging panel to lay over
+  /// what is typed. Neither reaches a QSO open for editing.
+  bool _updateDraft(Map<String, dynamic> patch, {required bool replace}) {
+    if (!mounted || _selectedQsoUuid != null) return false;
+    if (replace) {
+      _suggestQso(patch, measured: true);
+    } else {
+      setState(() => _draftPatch = (serial: (_draftPatch?.serial ?? 0) + 1, patch: patch));
+    }
+    return true;
+  }
+
+  ({int serial, Map<String, dynamic> patch})? _draftPatch;
+
   /// Takes back a suggestion a slide made — the row that made it has closed.
   /// Only ever a tentative one: a station the operator TAPPED (or typed) is
   /// theirs, and a slide closing somewhere else may not take it away.
@@ -424,6 +441,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // `measured` because only a deep link reaches this callback.
     _commandContext.suggestQso = (qso) => _suggestQso(qso, measured: true);
     _commandContext.suggestSpot = _suggestQso;
+    _commandContext.updateDraft = _updateDraft;
     // Whether the operator can actually SEE this operation — false with
     // Settings, or another operation, pushed over it. A suggestion delivered
     // to a view nobody is looking at is not lost, but it is invisible, and
@@ -940,6 +958,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 ourCountryCode: _runtime.ourCountryCode,
                 suggestedQso: _suggestedQso,
                 suggestedQsoIsTentative: _suggestedQsoIsTentative,
+                draftPatch: _draftPatch,
                 suggestionSettledSerial: _suggestionSettledSerial,
                 onCallEdited: _onCallEdited,
                 onQsoLogged: _wakeHold.touch,

@@ -194,6 +194,15 @@ void main() {
     expect(find.text(t.extensionsPanel.assistantWarning), findsNothing);
   });
 
+  // Nothing else on the screen says an extension may rewrite the call the
+  // operator is typing; the grant line is the whole of the consent to it.
+  testWidgets('a claim to change the draft is named', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'api': 22, 'requiresDraftWrite': true})));
+
+    expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
+    expect(find.text(t.extensionsPanel.canChangeDraft), findsOneWidget);
+  });
+
   testWidgets('a claim to read the radio is named, and does not read as control', (tester) async {
     await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresRadioRead': true})));
 

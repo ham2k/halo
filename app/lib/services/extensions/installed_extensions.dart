@@ -268,6 +268,7 @@ class InspectedBundle {
   bool get requiresClusterRead => requiresClusterSpot || manifest['requiresClusterRead'] == true;
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
   bool get requiresSettingsWrite => manifest['requiresSettingsWrite'] == true;
+  bool get requiresDraftWrite => manifest['requiresDraftWrite'] == true;
 
   /// Whether it registers an assistant (docs/extensions/assistants.md): code
   /// that watches every operation and acts on it unasked, which the consent
@@ -283,13 +284,15 @@ class InspectedBundle {
       requiresRadioRead ||
       requiresClusterRead ||
       allowUserAgentOverride ||
-      requiresSettingsWrite;
+      requiresSettingsWrite ||
+      requiresDraftWrite;
 
   /// Whether this asks for anything [installed] — the version it would
   /// replace — was not granted: a host, a stronger grant, or an assistant.
   bool asksMoreThan(InspectedBundle installed) =>
       (registersAssistant && !installed.registersAssistant) ||
       (requiresSettingsWrite && !installed.requiresSettingsWrite) ||
+      (requiresDraftWrite && !installed.requiresDraftWrite) ||
       !installed.domains.toSet().containsAll(domains) ||
       !installed.webSockets.toSet().containsAll(webSockets) ||
       (requiresLocation && !installed.requiresLocation) ||

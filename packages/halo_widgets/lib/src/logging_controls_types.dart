@@ -285,6 +285,7 @@ class LoggingSession {
     this.confirmLogOverwrite,
     this.onLogRequestHeld,
     this.suggestedQsoIsTentative = false,
+    this.draftPatch,
     this.onCallEdited,
     this.onCallTyped,
     this.suggestionSettledSerial = 0,
@@ -377,6 +378,13 @@ class LoggingSession {
   /// what listens here is the keyer, stopping a CQ, and a field the panel
   /// empties after a log is no call the operator entered.
   final VoidCallback? onCallTyped;
+
+  /// A change to the QSO being composed, from outside the panel (an
+  /// extension's `host.updateDraft`): laid over the fields as they stand
+  /// ([mergeDraftPatch]) when its `serial` moves, leaving everything it does
+  /// not name — and the field the operator is in, caret and all — as it was.
+  /// Ignored while an existing QSO is open for editing.
+  final ({int serial, Map<String, dynamic> patch})? draftPatch;
 
   /// Bumped when the gesture behind a tentative [suggestedQso] comes to rest:
   /// the row is open and the finger is off it. A suggestion held back over

@@ -423,6 +423,7 @@ void main() {
         {
           'hooks': ['assistant'],
         },
+        {'requiresDraftWrite': true},
       ]) {
         expect(bundle({'requiresRadioWrite': true, ...more}).asksMoreThan(installed), isTrue, reason: '$more');
       }

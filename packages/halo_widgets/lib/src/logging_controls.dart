@@ -76,6 +76,7 @@ import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
+import 'draft_patch.dart';
 
 part 'logging_controls_call_info.dart';
 part 'logging_controls_dispatch.dart';
@@ -717,6 +718,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // a refs change must never clobber an in-progress edit.
     if (widget.session.editingQso != null) return;
     _syncComposingInputs(oldWidget);
+    if (widget.session.draftPatch case final patch? when patch.serial != oldWidget.session.draftPatch?.serial) _applyDraftPatch(patch.patch);
   }
 
   /// A tentative suggestion the operator has not been asked about yet — it

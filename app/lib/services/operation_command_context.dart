@@ -38,6 +38,12 @@ class OperationCommandContext {
   /// the radio is, so the zero-beat offset applies as it does to a tap.
   void Function(Map<String, dynamic> qso)? suggestSpot;
 
+  /// An extension's change to the QSO being composed (`host.updateDraft`):
+  /// laid over it, or with [replace] in place of it, as a new contact.
+  /// False when there is no draft to change — an existing QSO is open for
+  /// editing in its place.
+  bool Function(Map<String, dynamic> patch, {required bool replace})? updateDraft;
+
   /// Whether this operation is the route the operator is actually looking at.
   /// False with Settings, or a nested operation, pushed over it — where a
   /// suggestion still lands correctly but nothing on screen shows it.

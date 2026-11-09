@@ -40,6 +40,7 @@ import type {
   ClusterMatch,
   Spot,
   SpotMark,
+  DraftPatch,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -429,6 +430,21 @@ export const host = {
    */
   async suggestQso(args: { qso: SuggestedQso; operationUuid?: string }): Promise<{ accepted: boolean }> {
     return (await hostCallFn()("suggestQso", { ...args })) as { accepted: boolean }
+  },
+
+  /// Changes the QSO the operator is composing in the operation in front —
+  /// `operationUuid`'s only, when given; pass `args.operation.uuid` from an
+  /// assistant's `observe`. The patch is laid over the fields as they stand:
+  /// a map merges key by key (`{ their: { sent: "599" } }` leaves the call),
+  /// `null` clears a field, anything else (a list of `refs` included)
+  /// replaces it whole. With `replace: true` it is a new contact instead, as
+  /// tapping a spot starts one, and needs `their.call`. Any field, the call
+  /// included, whatever the operator is doing: needs `requiresDraftWrite`,
+  /// and `requiresRadioWrite` as well for `freq`, `band` or `mode`, which
+  /// move the radio. `accepted` is false with no such operation open, or an
+  /// existing QSO open for editing in its place. Extension API 22.
+  async updateDraft(patch: DraftPatch, options: { replace?: boolean; operationUuid?: string } = {}): Promise<{ accepted: boolean }> {
+    return (await hostCallFn()("updateDraft", { patch, ...options })) as { accepted: boolean }
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse

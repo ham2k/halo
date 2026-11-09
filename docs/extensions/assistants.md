@@ -65,6 +65,7 @@ Return nothing. Everything an assistant says goes through the host:
 | Mark a stretch of a band | `host.bandAnnotations.put` | [Spots](spots.md#bandannotations) |
 | Mark, pick or hide spots | `host.spots.mark`, `host.spots.unmark` | [Spots](spots.md#spots) |
 | Add spots of its own | `host.spots.put`, with a `spots` hook | [Spots](spots.md#spots) |
+| Fill in or change the contact being logged | `host.updateDraft`, with `requiresDraftWrite` | [The host API](host.md#hostupdatedraftpatch--replace-operationuuid-) |
 | Tune or set the radio | `host.setRadio` | [Radio control](radio.md) |
 | Show a running summary | a `panel` registered beside it | [Panels](panels.md) |
 

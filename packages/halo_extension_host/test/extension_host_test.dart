@@ -1129,6 +1129,57 @@ var boundHostCall = null
     );
   });
 
+  // Marks and draft changes are kept and checked under the caller's name: a
+  // spoofed `ns` would mark spots, or pass a grant check, as another
+  // extension. The kernel has to own that name for these calls too.
+  test("spot marks and draft changes are made under the caller's own name, whatever ns it sends", () async {
+    final seen = <String, Map<String, dynamic>>{};
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: const [
+        ExtensionBundle(
+          key: 'attacker',
+          source: '''
+__halo.defineExtension({
+  key: 'attacker',
+  name: 'Attacker',
+  version: '0.0.1',
+  onActivation: function (api) {
+    boundHostCall = api.hostCall
+    api.registerHook('attack', { key: 'attacker', hook: {
+      viaBound: async function () {
+        await boundHostCall('markSpots', { ns: 'victim', extensionKey: 'victim', ids: ['a'], mark: { hidden: true } })
+        await boundHostCall('unmarkSpots', { ns: 'victim', extensionKey: 'victim' })
+        await boundHostCall('updateDraft', { ns: 'victim', extensionKey: 'victim', patch: {} })
+        return null
+      },
+      viaRaw: async function () { return await __halo.hostCall('markSpots', { ns: 'victim', ids: ['a'], mark: {} }) }
+    } })
+  },
+})
+var boundHostCall = null
+''',
+        ),
+      ],
+      onHostCall: (method, params) async {
+        seen[method] = params;
+        return null;
+      },
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    await host.invokeHook('attack', key: 'attacker', method: 'viaBound');
+    for (final method in ['markSpots', 'unmarkSpots', 'updateDraft']) {
+      expect(seen[method]?['ns'], 'attacker', reason: method);
+      expect(seen[method]?['extensionKey'], 'attacker', reason: method);
+    }
+    await expectLater(
+      host.invokeHook('attack', key: 'attacker', method: 'viaRaw'),
+      throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('SDK host API'))),
+    );
+  });
+
   test('a bundle cannot define an extension key it was not loaded under', () async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),

@@ -498,6 +498,10 @@ export interface SpotDisplayIcon {
   kind: "assistant" | "scoring" | "chasing" | "reference"
 }
 
+/// A change to the QSO being composed (`host.updateDraft`): any of its
+/// fields, as QSON names them, `null` to clear one. Extension API 22.
+export type DraftPatch = { [field: string]: JSONValue | null }
+
 /// What an assistant says about a spot (`host.spots.mark`). Extension API 21.
 export interface SpotMark {
   /// MDI or `fa-` icon name, shown first on the spot's row.
@@ -2912,6 +2916,10 @@ export interface ExtensionManifest {
   /// those from an extension that does not set this, and says so in the
   /// command bar. Shown to the operator at install.
   requiresSettingsWrite?: boolean
+  /// Declares this extension may change the QSO the operator is composing
+  /// with `host.updateDraft`: any field, the call included, while the
+  /// operator types. Shown to the operator at install. Extension API 22.
+  requiresDraftWrite?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable

@@ -86,6 +86,10 @@ class LoggingPanel extends StatefulWidget {
 
   final Map<String, dynamic>? suggestedQso;
 
+  /// An extension's change to the QSO being composed (`host.updateDraft`),
+  /// for the active set; passed through as [LoggingSession.draftPatch].
+  final ({int serial, Map<String, dynamic> patch})? draftPatch;
+
   /// All passed straight through to [LoggingControls]'s groups — see their docs.
   final ({int serial, Map<String, dynamic> qso})? logRequest;
   final Future<bool> Function({required bool editing})? confirmLogOverwrite;
@@ -211,6 +215,7 @@ class LoggingPanel extends StatefulWidget {
     this.confirmLogOverwrite,
     this.onLogRequestHeld,
     this.suggestedQsoIsTentative = false,
+    this.draftPatch,
     this.suggestionSettledSerial = 0,
     this.onCallEdited,
     this.onQsoLogged,
@@ -368,6 +373,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     widget.services.settings.addListener(_onSettingsChanged);
     _suggestions['A'] = (qso: widget.suggestedQso, tentative: widget.suggestedQsoIsTentative, settled: widget.suggestionSettledSerial);
     _logRequests['A'] = widget.logRequest;
+    _draftPatches['A'] = widget.draftPatch;
     _startSo2rLink();
     // The QSO list's empty state warns when the VFO needs attention
     // — rebuild so it clears the moment the operator answers via
@@ -414,6 +420,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     if (!identical(widget.suggestedQso, oldWidget.suggestedQso)) _suggestionSet = _so2r ? _so2rLink.active : 'A';
     _suggestions[_so2r ? _suggestionSet : 'A'] = (qso: widget.suggestedQso, tentative: widget.suggestedQsoIsTentative, settled: widget.suggestionSettledSerial);
     if (widget.logRequest?.serial != oldWidget.logRequest?.serial) _logRequests[_so2r ? _so2rLink.active : 'A'] = widget.logRequest;
+    if (widget.draftPatch?.serial != oldWidget.draftPatch?.serial) _draftPatches[_so2r ? _so2rLink.active : 'A'] = widget.draftPatch;
   }
 
   @override
@@ -1059,6 +1066,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         editingQso: editingHere ? _selectedQso : null,
         suggestedQso: suggestion.qso,
         logRequest: _logRequests[radio],
+        draftPatch: _draftPatches[radio],
         confirmLogOverwrite: widget.confirmLogOverwrite,
         onLogRequestHeld: widget.onLogRequestHeld,
         suggestedQsoIsTentative: suggestion.tentative,

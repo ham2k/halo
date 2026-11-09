@@ -249,6 +249,22 @@ fields. With `operationUuid`, only that operation's. Answers
 tap does, and it is refused except from inside your own panel's `onEvent`:
 it answers the operator clicking something, never a timer or a render.
 
+### `host.updateDraft(patch, { replace?, operationUuid? })`
+
+Extension API 22, `requiresDraftWrite`. Changes the QSO the operator is
+composing in the operation in front, or in `operationUuid`'s only (an
+assistant passes `operation.uuid` from its `observe`). The patch is laid
+over the fields as they stand: a map merges key by key, so
+`{ their: { sent: "599" } }` leaves the call; `null` clears a field;
+anything else, a list of `refs` included, replaces it whole. Every field is
+open to it, the call included, at any moment: the operator may be typing in
+another field, which keeps its caret. With `replace: true` the patch is a new
+contact instead, as tapping a spot starts one, and needs `their.call`.
+`freq`, `band` and `mode` move the radio with the fields, so a patch naming
+any of them also needs `requiresRadioWrite`. Answers `{ accepted }`, false
+when no such operation is open, or an existing QSO is open for editing in
+place of the draft.
+
 ## Reading the app
 
 | Call | Answers |
