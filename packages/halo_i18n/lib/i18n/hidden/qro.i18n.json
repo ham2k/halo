@@ -116,8 +116,6 @@
     "installIncomplete": "INSTALLING ${name} DID NOT FINISH. IT MAY NEED INSTALLING AGAIN.",
     "uninstallFailed": "COULD NOT REMOVE ${name}",
     "installedFrom": "DOWNLOADED FROM ${source}",
-    "dropHint": "DROP A .H2KEXT EXTENSION TO INSTALL IT",
-    "dropOneOnly": "DROP ONE EXTENSION AT A TIME.",
     "downloadFailed": "${source} RETURNED ${status} FOR THAT EXTENSION.",
     "downloadTooLarge": "THAT DOWNLOAD IS FAR TOO LARGE TO BE AN EXTENSION.",
     "downloadNotSecure": "THAT DOWNLOAD REDIRECTED SOMEWHERE INSECURE.",
@@ -378,7 +376,6 @@
     "imports": {
       "importFrom": "IMPORT ${label}",
       "pickTitle": "IMPORT ${file} AS",
-      "dropHint": "DROP A FILE TO IMPORT IT INTO A CHASING PROGRAM",
       "done": "IMPORTED ${count} ${program} ENTRIES FROM ${file}",
       "doneSkipped": "IMPORTED ${count} ${program} ENTRIES FROM ${file}, SKIPPED ${skipped} IT COULD NOT READ",
       "nothing": "${file} HAS NOTHING ${program} CAN IMPORT",
@@ -3378,20 +3375,17 @@
   "qsonImport": {
     "title": "IMPORT QSON OPERATION",
     "description": "CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.",
-    "dropHint": "DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION",
     "importing": "IMPORTING ${filename}…",
     "failed": "COULD NOT IMPORT ${filename}: ${error}",
     "pickerFailed": "COULD NOT OPEN A FILE TO IMPORT: ${error}",
     "notUtf8": "${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE",
     "notJson": "${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE",
     "notOperation": "${filename} DOES NOT HOLD A QSON OPERATION",
-    "busy": "AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.",
-    "oneFileOnly": "DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION."
+    "busy": "AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER."
   },
   "adifImport": {
     "title": "IMPORT QSOS FROM ADIF",
     "reading": "READING ${filename}…",
-    "dropHint": "DROP AN ADIF FILE TO IMPORT",
     "totalInFile": {
       "one": "${count} QSO IN THIS FILE",
       "other": "${formatted} QSOS IN THIS FILE"
@@ -3448,7 +3442,6 @@
     "addActivation": "ADD IT TO THIS OPERATION",
     "shortfall": "ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.",
     "busy": "AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.",
-    "oneFileOnly": "DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.",
     "tooMany": "${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.",
     "tooManyDeveloper": "${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.",
     "importAnyway": "IMPORT ANYWAY"
@@ -3515,5 +3508,20 @@
     "flowControl": "FLOW CONTROL",
     "unavailable": "PREVIEW IS UNAVAILABLE UNTIL EXTENSIONS ARE READY.",
     "empty": "(EMPTY OUTPUT)"
+  },
+  "fileOpen": {
+    "dropHint": "DROP YOUR FILE HERE",
+    "chooseTitle": "OPEN ${filename}",
+    "cannotOpen": "CAN’T OPEN ${filename}",
+    "cannotOpenDetail": "WE DON’T RECOGNIZE THE CONTENTS OF THIS FILE",
+    "installExtension": "INSTALL THE EXTENSION",
+    "importKeyboardShortcuts": "IMPORT AS A KEYBOARD SHORTCUT SET",
+    "importCwMessages": "IMPORT AS A CW MESSAGE SET",
+    "importVoiceMessages": "IMPORT AS A VOICE MESSAGE SET",
+    "importIntoLogs": "IMPORT INTO LOGS",
+    "importInto": "IMPORT INTO ${name}",
+    "importAsOperation": "IMPORT AS A NEW OPERATION",
+    "importLayoutInto": "IMPORT AS A ${view} LAYOUT",
+    "importChaseClaims": "IMPORT INTO CHASING"
   }
 }

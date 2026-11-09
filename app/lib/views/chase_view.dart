@@ -32,6 +32,7 @@ import 'dock_host.dart';
 import 'extensions_panel.dart';
 import 'home_navigation_rail.dart';
 import 'chase_import_flow.dart';
+import 'file_open/file_router.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/log_find_bar.dart';
@@ -731,8 +732,16 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
         child: PaneSafeArea.root(
           context,
           child: withViewOverrides(
-            ChaseImportDropTarget(
-              onFile: (file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
+            FileSuggestions(
+              active: () => widget.visible,
+              suggestions: [
+                FileDestination(
+                  id: 'chase:claims',
+                  label: () => t.fileOpen.importChaseClaims,
+                  accepts: (_, file) => widget.services.chase.programs.values.any((program) => program.imports.any((importer) => importer.takes(file.name))),
+                  open: (context, file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
+                ),
+              ],
               child: buildDock(
                 children: {
                   ChaseView.loggingPanelId: KeyedSubtree(

@@ -45,10 +45,6 @@ mixin _LogsAdifDrop on State<LogsView> {
       await _showAdifNotice(t.busy);
       return;
     }
-    if (!looksLikeAdif(file.name)) {
-      await _showAdifNotice(t.notAdif(filename: file.name));
-      return;
-    }
     // Claimed before the editor is settled, not after: settling can wait on
     // a save in flight with no dialog up to disable the drop target, and a
     // second drop in that gap would pass the check above and race this one.

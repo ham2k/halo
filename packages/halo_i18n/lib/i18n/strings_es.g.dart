@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.';
 	@override String uninstallFailed({required Object name}) => 'No se pudo quitar ${name}';
 	@override String installedFrom({required Object source}) => 'Descargada desde ${source}';
-	@override String get dropHint => 'Suelta una extensión .h2kext para instalarla';
-	@override String get dropOneOnly => 'Suelta una extensión a la vez.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.';
 	@override String get downloadTooLarge => 'Esa descarga es demasiado grande para ser una extensión.';
 	@override String get downloadNotSecure => 'Esa descarga redirigió a un sitio no seguro.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$es extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'Importar operación QSON';
 	@override String get description => 'Crea una nueva operación a partir de un archivo QSON, como los que exporta el Modo Desarrollador aquí o en PoLo.';
-	@override String get dropHint => 'Suelta un archivo QSON para importarlo como una nueva operación';
 	@override String importing({required Object filename}) => 'Importando ${filename}…';
 	@override String failed({required Object filename, required Object error}) => 'No se pudo importar ${filename}: ${error}';
 	@override String pickerFailed({required Object error}) => 'No se pudo abrir un archivo para importar: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$es extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} no es un archivo JSON, así que no es un archivo QSON';
 	@override String notOperation({required Object filename}) => '${filename} no contiene una operación QSON';
 	@override String get busy => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.';
-	@override String get oneFileOnly => 'Suelta un archivo QSON a la vez — cada uno se abre como su propia operación.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'Importar QSOs desde ADIF';
 	@override String reading({required Object filename}) => 'Leyendo ${filename}…';
-	@override String get dropHint => 'Suelta un archivo ADIF para importarlo';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} QSO en este archivo',
 		other: '${formatted} QSOs en este archivo',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String get addActivation => 'Agregarla a esta operación';
 	@override String shortfall({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el log cambió mientras decidías.';
 	@override String get busy => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.';
-	@override String get oneFileOnly => 'Suelta un archivo ADIF a la vez — el orden en que se importan decide qué datos prevalecen.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} tiene más de ${limit} QSOs, el máximo que una operación puede importar a la vez.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} tiene más de ${limit} QSOs. Importar un ADIF en una operación está pensado para agregar unos pocos QSOs, no para traer un log grande — usa la vista de Logs para eso. El modo desarrollador te permite importarlo de todos modos, si estás seguro.';
 	@override String get importAnyway => 'Importar de todos modos';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$es extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'Importar ${label}';
 	@override String pickTitle({required Object file}) => 'Importar ${file} como';
-	@override String get dropHint => 'Suelta un archivo para importarlo en un programa de cacería';
 	@override String done({required Object count, required Object program, required Object file}) => 'Se importaron ${count} entradas de ${program} desde ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Se importaron ${count} entradas de ${program} desde ${file}; se omitieron ${skipped} que no pudo leer';
 	@override String nothing({required Object file, required Object program}) => '${file} no tiene nada que ${program} pueda importar';
@@ -4579,8 +4572,6 @@ extension on TranslationsEs {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'No se pudo quitar ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Descargada desde ${source}',
-			'extensionsPanel.dropHint' => 'Suelta una extensión .h2kext para instalarla',
-			'extensionsPanel.dropOneOnly' => 'Suelta una extensión a la vez.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.',
 			'extensionsPanel.downloadTooLarge' => 'Esa descarga es demasiado grande para ser una extensión.',
 			'extensionsPanel.downloadNotSecure' => 'Esa descarga redirigió a un sitio no seguro.',
@@ -4795,7 +4786,6 @@ extension on TranslationsEs {
 			'chase.checklists' => 'Progreso de cacería',
 			'chase.imports.importFrom' => ({required Object label}) => 'Importar ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'Importar ${file} como',
-			'chase.imports.dropHint' => 'Suelta un archivo para importarlo en un programa de cacería',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Se importaron ${count} entradas de ${program} desde ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Se importaron ${count} entradas de ${program} desde ${file}; se omitieron ${skipped} que no pudo leer',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} no tiene nada que ${program} pueda importar',
@@ -4985,11 +4975,11 @@ extension on TranslationsEs {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => 'No se pudo mostrar ${panel}: su gráfico no es autocontenido',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => 'No se pudo mostrar ${panel}: su escena tiene más de ${max} capas',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => 'No se pudo mostrar ${panel}: su escena tiene más de ${max} controles',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'No se pudo mostrar ${panel}: parte de su escena tiene más de ${max} entradas',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'No se pudo mostrar ${panel}: una cadena de la escena supera los ${max} caracteres',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'No se pudo mostrar ${panel}: su disposición anida más de ${max} niveles',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Reintentar',
 			'operation.layout.panelActionFailed' => 'Esa acción del panel falló. Inténtalo de nuevo.',
 			'operation.layout.panels.loggingDescription' => 'El log y los campos de entrada',
@@ -5499,11 +5489,11 @@ extension on TranslationsEs {
 			'loggingControls.bandOrFreqRequired' => 'Establece una frecuencia o banda antes de registrar',
 			'loggingControls.missingBand' => 'Sin Banda',
 			'loggingControls.missingMode' => 'Sin Modo',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'No se pudo eliminar: ${error}',
 			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡Vamos al aire!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} en ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsEs {
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
 			'settings.sync.title' => 'Sincronización en la nube',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Más opciones de sincronización',
 			'settings.sync.enable' => 'Habilitar sincronización',
 			'settings.sync.deviceKey' => 'Clave del dispositivo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Dispositivos cercanos',
 			'settings.peers.enable' => 'Conectar con otros dispositivos',
 			'settings.peers.enableDescription' => 'Permite compartir operaciones, logging, CAT y GPS con otros dispositivos por la red local',
@@ -6527,11 +6517,11 @@ extension on TranslationsEs {
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el handshake simulado. En blanco o 0 conecta al instante.',
 			'settings.station.placeholderDropAfter' => 'Desconectar tras (segundos)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Cierra la conexión por su cuenta, para probar la reconexión. En blanco o 0 nunca desconecta.',
 			'settings.station.placeholderFailConnect' => 'Fallar siempre al conectar',
 			'settings.station.placeholderConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frecuencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Dónde arranca la radio simulada. Después reporta la frecuencia a la que la app la sintonice.',
 			'settings.station.placeholderMode' => 'Modo',
@@ -7040,20 +7030,17 @@ extension on TranslationsEs {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'qsonImport.title' => 'Importar operación QSON',
 			'qsonImport.description' => 'Crea una nueva operación a partir de un archivo QSON, como los que exporta el Modo Desarrollador aquí o en PoLo.',
-			'qsonImport.dropHint' => 'Suelta un archivo QSON para importarlo como una nueva operación',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importando ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'No se pudo importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'No se pudo abrir un archivo para importar: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} no es texto UTF-8, así que no es un archivo QSON',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} no es un archivo JSON, así que no es un archivo QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} no contiene una operación QSON',
 			'qsonImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
-			'qsonImport.oneFileOnly' => 'Suelta un archivo QSON a la vez — cada uno se abre como su propia operación.',
 			'adifImport.title' => 'Importar QSOs desde ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
-			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu log', other: '${formatted} ya están en tu log', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} se importará', other: '${formatted} se importarán', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsEs {
 			'adifImport.addActivation' => 'Agregarla a esta operación',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el log cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
-			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden en que se importan decide qué datos prevalecen.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} tiene más de ${limit} QSOs, el máximo que una operación puede importar a la vez.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} tiene más de ${limit} QSOs. Importar un ADIF en una operación está pensado para agregar unos pocos QSOs, no para traer un log grande — usa la vista de Logs para eso. El modo desarrollador te permite importarlo de todos modos, si estás seguro.',
 			'adifImport.importAnyway' => 'Importar de todos modos',

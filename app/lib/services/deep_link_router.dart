@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Everything the OS hands the running app — a `com.ham2k*://` link, a
-// `.h2kext` opened from the file manager — dispatched from one place. A link
+// Every `com.ham2k*://` link the OS hands the running app, dispatched from
+// one place (an opened file goes through views/file_open/). A link
 // that cold-launches the app arrives before there is a navigator to open
 // onto; every handler here waits for one instead of dropping it.
 
@@ -38,21 +38,6 @@ import 'halo_services.dart';
 /// happens to be showing, which is rarely Settings. A link arriving before
 /// the first frame has no navigator to open onto and is dropped; the code
 /// entry in the same pane is the way back from that.
-/// A `.h2kext` opened from Finder installs the same way a picked one does.
-///
-/// Anything else the OS hands us is ignored rather than refused: this app is
-/// registered for exactly one document type, so a file arriving here that is
-/// not one is a platform oddity, not something to interrupt the operator about.
-void listenForOpenedExtensionFiles(HaLoServices services) {
-  services.openedFiles.openedFiles.listen((path) {
-    if (!path.toLowerCase().endsWith('.h2kext')) {
-      debugPrint('[open-file] ignoring $path');
-      return;
-    }
-    openInstallExtension(services, Uri.file(path));
-  }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'open-file'));
-}
-
 /// Every incoming `com.ham2k*://` link, dispatched in one place — see
 /// [DeepLinkService] for the catalog. The order below is "during an
 /// activation" before "during setup", which is also roughly how often each

@@ -114,8 +114,6 @@
     "installIncomplete": "L'installation de ${name} n'a pas abouti. Il faudra peut-être la réinstaller.",
     "uninstallFailed": "Impossible de retirer ${name}",
     "installedFrom": "Téléchargée depuis ${source}",
-    "dropHint": "Déposez une extension .h2kext pour l'installer",
-    "dropOneOnly": "Déposez une seule extension à la fois.",
     "downloadFailed": "${source} a renvoyé ${status} pour cette extension.",
     "downloadTooLarge": "Ce téléchargement est bien trop volumineux pour être une extension.",
     "downloadNotSecure": "Ce téléchargement a été redirigé vers une adresse non sécurisée.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importer ${label}",
       "pickTitle": "Importer ${file} comme",
-      "dropHint": "Déposez un fichier pour l'importer dans un programme de chasse",
       "done": "${count} entrées ${program} importées depuis ${file}",
       "doneSkipped": "${count} entrées ${program} importées depuis ${file}, ${skipped} illisibles ignorées",
       "nothing": "${file} ne contient rien que ${program} puisse importer",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importer une opération QSON",
     "description": "Créer une nouvelle opération à partir d'un fichier QSON, tel que le mode développeur en exporte ici ou dans PoLo.",
-    "dropHint": "Déposez un fichier QSON pour l'importer comme nouvelle opération",
     "importing": "Importation de ${filename}…",
     "failed": "Impossible d'importer ${filename} : ${error}",
     "pickerFailed": "Impossible d'ouvrir un fichier à importer : ${error}",
     "notUtf8": "${filename} n'est pas du texte UTF-8, ce n'est donc pas un fichier QSON",
     "notJson": "${filename} n'est pas un fichier JSON, ce n'est donc pas un fichier QSON",
     "notOperation": "${filename} ne contient pas d'opération QSON",
-    "busy": "Une importation est déjà en cours. Attendez qu'elle se termine avant d'en lancer une autre.",
-    "oneFileOnly": "Déposez un seul fichier QSON à la fois — chacun s'ouvre comme une opération distincte."
+    "busy": "Une importation est déjà en cours. Attendez qu'elle se termine avant d'en lancer une autre."
   },
   "adifImport": {
     "title": "Importer des QSOs depuis ADIF",
     "reading": "Lecture de ${filename}…",
-    "dropHint": "Déposez un fichier ADIF à importer",
     "totalInFile": {
       "one": "${count} QSO dans ce fichier",
       "other": "${formatted} QSOs dans ce fichier"
@@ -3075,7 +3069,6 @@
     "addActivation": "L'ajouter à cette opération",
     "shortfall": "Seuls ${written} sur ${planned} ont pu être appliqués — le journal a changé pendant que vous décidiez.",
     "busy": "Une importation est déjà en cours. Attendez qu'elle se termine avant d'en lancer une autre.",
-    "oneFileOnly": "Déposez un seul fichier ADIF à la fois — l'ordre d'importation des fichiers détermine quelles données l'emportent.",
     "tooMany": "${filename} contient plus de ${limit} QSOs, le maximum qu'une opération peut importer à la fois.",
     "tooManyDeveloper": "${filename} contient plus de ${limit} QSOs. Importer un ADIF dans une opération sert à ajouter quelques QSOs, pas à récupérer un gros journal — utilisez la vue Journaux pour cela. Le mode développeur permet de l'importer quand même, si vous êtes sûr.",
     "importAnyway": "Importer quand même"

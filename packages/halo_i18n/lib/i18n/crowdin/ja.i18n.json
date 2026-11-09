@@ -114,8 +114,6 @@
     "installIncomplete": "${name}のインストールが完了しませんでした。再インストールが必要な場合があります。",
     "uninstallFailed": "${name}を削除できませんでした",
     "installedFrom": "${source}からダウンロード",
-    "dropHint": ".h2kext拡張機能をドロップしてインストール",
-    "dropOneOnly": "拡張機能は1つずつドロップしてください。",
     "downloadFailed": "その拡張機能について${source}が${status}を返しました。",
     "downloadTooLarge": "そのダウンロードは拡張機能としては大きすぎます。",
     "downloadNotSecure": "ダウンロードが安全でない場所にリダイレクトされました。",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "${label}をインポート",
       "pickTitle": "${file}のインポート先",
-      "dropHint": "ファイルをドロップしてチェイスプログラムにインポート",
       "done": "${file}から${program}のエントリー${count}件をインポートしました",
       "doneSkipped": "${file}から${program}のエントリー${count}件をインポートしました。読み取れなかった${skipped}件はスキップしました",
       "nothing": "${file}には${program}がインポートできるものがありません",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "QSONオペレーションをインポート",
     "description": "開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。",
-    "dropHint": "QSONファイルをドロップして新しいオペレーションとしてインポート",
     "importing": "${filename}をインポート中…",
     "failed": "${filename}をインポートできませんでした：${error}",
     "pickerFailed": "インポートするファイルを開けませんでした：${error}",
     "notUtf8": "${filename}はUTF-8テキストではないため、QSONファイルではありません",
     "notJson": "${filename}はJSONファイルではないため、QSONファイルではありません",
     "notOperation": "${filename}にはQSONオペレーションが含まれていません",
-    "busy": "すでにインポートを実行中です。完了してから次のインポートを開始してください。",
-    "oneFileOnly": "QSONファイルは1つずつドロップしてください。それぞれが別のオペレーションとして開きます。"
+    "busy": "すでにインポートを実行中です。完了してから次のインポートを開始してください。"
   },
   "adifImport": {
     "title": "ADIFからQSOをインポート",
     "reading": "${filename}を読み込み中…",
-    "dropHint": "ADIFファイルをドロップしてインポート",
     "totalInFile": {
       "one": "このファイルのQSO：${count}件",
       "other": "このファイルのQSO：${formatted}件"
@@ -3075,7 +3069,6 @@
     "addActivation": "このオペレーションに追加",
     "shortfall": "${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。",
     "busy": "すでにインポートを実行中です。完了してから次のインポートを開始してください。",
-    "oneFileOnly": "ADIFファイルは1つずつドロップしてください。インポートの順序によって、どのデータが優先されるかが決まります。",
     "tooMany": "${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。",
     "tooManyDeveloper": "${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。",
     "importAnyway": "それでもインポート"

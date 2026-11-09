@@ -37,6 +37,7 @@ import 'services/error_reporting_backend.dart';
 
 import 'services/error_reporting_service.dart';
 import 'services/metrics_service.dart';
+import 'services/opened_files_service.dart' show openFileChannelName;
 import 'services/purchase_service.dart';
 import 'services/restart_service.dart';
 import 'services/spots_status_reporter.dart';
@@ -54,6 +55,7 @@ import 'services/deep_link_router.dart';
 import 'services/dev_fixture_reset.dart';
 import 'services/dev_bridge_queries.dart';
 import 'views/app_shell/boot_gate.dart';
+import 'views/file_open/file_destinations.dart' show startFileRouting;
 
 export 'config/navigation.dart';
 export 'services/deep_link_router.dart';
@@ -129,6 +131,11 @@ void _mainBody({
   UpdateCheckService? updateCheck,
 }) {
   WidgetsFlutterBinding.ensureInitialized();
+  // A file the OS opens before the services exist waits in the channel's
+  // buffer, which holds one message by default and drops the older one on
+  // overflow: two opens during startup (several files opened at once from
+  // Explorer, two documents on Android) would lose all but the last.
+  ServicesBinding.instance.channelBuffers.resize(openFileChannelName, 32);
   // Native only: on web, the engine's own bootstrap (ui_web.bootstrapEngine
   // → _downloadAssetFonts) already eagerly downloads, registers AND shapes
   // every FontManifest-declared font, including this one, before main() ever
@@ -296,16 +303,7 @@ void _mainBody({
         unawaited(const AutoUpdateService().start(automaticChecks: services.settings.automaticUpdateChecks));
 
         listenForDeepLinks(services);
-        listenForOpenedExtensionFiles(services);
-        // Windows and Linux deliver an opened document as an argument to a FRESH
-        // process, so there is no callback to wait for — it is simply already
-        // here. An instance that is already running gets nothing, which is the
-        // same limitation their deep links have.
-        // The first only. Several would stack consent dialogs on top of each
-        // other, which is exactly what the drop target refuses for the same
-        // reason.
-        final bundleArg = launchArguments.where((a) => a.toLowerCase().endsWith('.h2kext')).firstOrNull;
-        if (bundleArg != null) openInstallExtension(services, Uri.file(bundleArg));
+        startFileRouting(services, launchArguments);
 
         // Wire the bridge's fixture reset and bundle list to services now that they
         // exist — only in dev builds, where the bridge is installed.

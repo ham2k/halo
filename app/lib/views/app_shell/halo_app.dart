@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../command_dialog.dart';
 import '../command_engine.dart' show CommandTextOutcome, runCommandText;
+import '../file_open/file_router.dart' show FileDropRoot;
 import '../home_view.dart';
 import '../tester_overlay.dart';
 import '../../config/dev_bridge.dart';
@@ -392,7 +393,9 @@ class _HaLoAppState extends State<HaLoApp> {
           // already float there; we overlay a same-colored mask beneath them
           // (MacOSTrafficLightMask) so header content animating through the
           // top-left corner doesn't flash out around the buttons.
-          Widget content = child;
+          // Files dropped anywhere on the window go through the one router
+          // (views/file_open/file_router.dart), whichever view is under them.
+          Widget content = FileDropRoot(child: child);
           if (isWindowsChromelessWindow || isLinuxChromelessWindow) {
             content = Stack(
               children: [

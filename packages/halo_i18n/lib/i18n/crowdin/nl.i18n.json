@@ -114,8 +114,6 @@
     "installIncomplete": "De installatie van ${name} is niet voltooid. Mogelijk moet je die opnieuw installeren.",
     "uninstallFailed": "Kon ${name} niet verwijderen",
     "installedFrom": "Gedownload van ${source}",
-    "dropHint": "Sleep een .h2kext-extensie hierheen om te installeren",
-    "dropOneOnly": "Sleep één extensie tegelijk.",
     "downloadFailed": "${source} gaf ${status} terug voor die extensie.",
     "downloadTooLarge": "Die download is veel te groot voor een extensie.",
     "downloadNotSecure": "Die download werd doorgestuurd naar een onveilige locatie.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "${label} importeren",
       "pickTitle": "${file} importeren als",
-      "dropHint": "Sleep een bestand hierheen om het in een jaagprogramma te importeren",
       "done": "${count} ${program}-records geïmporteerd uit ${file}",
       "doneSkipped": "${count} ${program}-records geïmporteerd uit ${file}, ${skipped} onleesbare overgeslagen",
       "nothing": "${file} bevat niets dat ${program} kan importeren",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "QSON-activatie importeren",
     "description": "Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.",
-    "dropHint": "Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren",
     "importing": "${filename} importeren…",
     "failed": "Kon ${filename} niet importeren: ${error}",
     "pickerFailed": "Kon geen bestand openen om te importeren: ${error}",
     "notUtf8": "${filename} is geen UTF-8-tekst, dus geen QSON-bestand",
     "notJson": "${filename} is geen JSON-bestand, dus geen QSON-bestand",
     "notOperation": "${filename} bevat geen QSON-activatie",
-    "busy": "Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.",
-    "oneFileOnly": "Sleep één QSON-bestand tegelijk — elk bestand wordt een eigen activatie."
+    "busy": "Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start."
   },
   "adifImport": {
     "title": "QSO's importeren uit ADIF",
     "reading": "${filename} lezen…",
-    "dropHint": "Sleep een ADIF-bestand hierheen om te importeren",
     "totalInFile": {
       "one": "${count} QSO in dit bestand",
       "other": "${formatted} QSO's in dit bestand"
@@ -3075,7 +3069,6 @@
     "addActivation": "Toevoegen aan deze activatie",
     "shortfall": "Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.",
     "busy": "Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.",
-    "oneFileOnly": "Sleep één ADIF-bestand tegelijk — de volgorde waarin bestanden worden geïmporteerd bepaalt welke gegevens winnen.",
     "tooMany": "${filename} heeft meer dan ${limit} QSO's, het maximum dat een activatie in één keer kan importeren.",
     "tooManyDeveloper": "${filename} heeft meer dan ${limit} QSO's. Een ADIF in een activatie importeren is bedoeld om een paar QSO's toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.",
     "importAnyway": "Toch importeren"

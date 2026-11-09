@@ -163,11 +163,11 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/app_icon-${HALO_EDIT
   RENAME "${APPLICATION_ID}.png"
   COMPONENT Runtime)
 
-# The .h2kext type itself (HALO-422). The MimeType line in the .desktop entry
-# above names this type; without the definition installed AND
-# `update-mime-database` run over the data dir, it names something the desktop
+# The types of the files the app reads. The MimeType line in the .desktop
+# entry above names these types; without the definitions installed AND
+# `update-mime-database` run over the data dir, it names things the desktop
 # has never heard of and a bundle stays an unrecognised zip. Shipped alongside
 # the .desktop for whatever packages this to place and register.
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/ham2k-extension.xml"
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/ham2k-files.xml"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/share/mime/packages"
   COMPONENT Runtime)

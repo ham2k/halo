@@ -5,6 +5,23 @@ class SceneDelegate: FlutterSceneDelegate {
   override func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     super.scene(scene, willConnectTo: session, options: connectionOptions)
     if let view = window?.rootViewController?.view { DisplayRegions.shared.watch(view) }
+    // A document that cold-launches the app arrives here, not through
+    // scene(_:openURLContexts:).
+    openDocuments(connectionOptions.urlContexts)
+  }
+
+  // Documents opened from Files, a share sheet or a browser download go to
+  // the scene; FlutterSceneDelegate passes them on to plugins only, so the
+  // file ones are handed to AppDelegate here. Links go on to app_links.
+  override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    super.scene(scene, openURLContexts: URLContexts)
+    openDocuments(URLContexts)
+  }
+
+  private func openDocuments(_ contexts: Set<UIOpenURLContext>) {
+    guard let appDelegate = UIApplication.shared.delegate as? AppDelegate else { return }
+    let files = contexts.map(\.url).filter(\.isFileURL)
+    if !files.isEmpty { appDelegate.openDocuments(files) }
   }
 
   override func sceneWillEnterForeground(_ scene: UIScene) {

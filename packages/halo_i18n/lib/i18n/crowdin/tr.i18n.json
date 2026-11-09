@@ -114,8 +114,6 @@
     "installIncomplete": "${name} yüklemesi tamamlanmadı. Yeniden yüklenmesi gerekebilir.",
     "uninstallFailed": "${name} kaldırılamadı",
     "installedFrom": "${source} kaynağından indirildi",
-    "dropHint": "Yüklemek için bir .h2kext uzantısı bırakın",
-    "dropOneOnly": "Her seferinde bir uzantı bırakın.",
     "downloadFailed": "${source} bu uzantı için ${status} döndürdü.",
     "downloadTooLarge": "Bu indirme bir uzantı olamayacak kadar büyük.",
     "downloadNotSecure": "Bu indirme güvenli olmayan bir yere yönlendirildi.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "${label} içe aktar",
       "pickTitle": "${file} dosyasını şu şekilde içe aktar",
-      "dropHint": "Bir avlama programına aktarmak için bir dosya bırakın",
       "done": "${file} dosyasından ${count} ${program} kaydı içe aktarıldı",
       "doneSkipped": "${file} dosyasından ${count} ${program} kaydı içe aktarıldı, okunamayan ${skipped} kayıt atlandı",
       "nothing": "${file} dosyasında ${program} için içe aktarılabilecek bir şey yok",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "QSON Operasyonu İçe Aktar",
     "description": "Geliştirici Modu'nun burada veya PoLo'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.",
-    "dropHint": "Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın",
     "importing": "${filename} içe aktarılıyor…",
     "failed": "${filename} içe aktarılamadı: ${error}",
     "pickerFailed": "İçe aktarılacak dosya açılamadı: ${error}",
     "notUtf8": "${filename} UTF-8 metin değil, dolayısıyla bir QSON dosyası değil",
     "notJson": "${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil",
     "notOperation": "${filename} bir QSON operasyonu içermiyor",
-    "busy": "Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.",
-    "oneFileOnly": "Her seferinde bir QSON dosyası bırakın — her biri ayrı bir operasyon olarak açılır."
+    "busy": "Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin."
   },
   "adifImport": {
     "title": "ADIF'ten QSO İçe Aktar",
     "reading": "${filename} okunuyor…",
-    "dropHint": "İçe aktarmak için bir ADIF dosyası bırakın",
     "totalInFile": {
       "one": "Bu dosyada ${count} QSO",
       "other": "Bu dosyada ${formatted} QSO"
@@ -3075,7 +3069,6 @@
     "addActivation": "Bu operasyona ekle",
     "shortfall": "${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.",
     "busy": "Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.",
-    "oneFileOnly": "Her seferinde bir ADIF dosyası bırakın — dosyaların içe aktarılma sırası hangi verinin geçerli olacağını belirler.",
     "tooMany": "${filename} dosyasında ${limit} QSO'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.",
     "tooManyDeveloper": "${filename} dosyasında ${limit} QSO'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.",
     "importAnyway": "Yine de içe aktar"

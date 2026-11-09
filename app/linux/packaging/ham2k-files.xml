@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The shared-mime-info definitions for the files the app reads
+  (views/file_open/file_kind.dart names the same extensions).
+
+  Installed to /usr/share/mime/packages (or ~/.local/share/mime/packages) and
+  followed by `update-mime-database`, this is what teaches the desktop that the
+  types exist. Without it the MimeType line in the .desktop file names types
+  nothing has ever heard of, and a .h2kext is just an unrecognised zip.
+
+  Globs only, no magic: a .h2kext and a .h2kvoice ARE zips and the YAML ones
+  are text, so matching on content would claim every archive or text file on
+  the system. The filename is what distinguishes them, and the app checks the
+  bytes itself regardless.
+
+  ADIF has no type of its own in shared-mime-info, so it is defined here too,
+  under the x- name a format nobody registered takes.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.ham2k.extension">
+    <comment>Ham2K Extension</comment>
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.h2kext"/>
+  </mime-type>
+  <mime-type type="application/vnd.ham2k.key-bindings">
+    <comment>Ham2K Keyboard Shortcuts</comment>
+    <sub-class-of type="application/yaml"/>
+    <glob pattern="*.h2kkey"/>
+  </mime-type>
+  <mime-type type="application/vnd.ham2k.layout">
+    <comment>Ham2K Layout</comment>
+    <sub-class-of type="application/yaml"/>
+    <glob pattern="*.h2klyt"/>
+  </mime-type>
+  <mime-type type="application/vnd.ham2k.cw-messages">
+    <comment>Ham2K CW Messages</comment>
+    <sub-class-of type="application/yaml"/>
+    <glob pattern="*.h2kset"/>
+  </mime-type>
+  <mime-type type="application/vnd.ham2k.voice-messages">
+    <comment>Ham2K Voice Messages</comment>
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.h2kvoice"/>
+  </mime-type>
+  <mime-type type="application/vnd.ham2k.qson">
+    <comment>QSON Operation</comment>
+    <sub-class-of type="application/json"/>
+    <glob pattern="*.qson"/>
+  </mime-type>
+  <mime-type type="application/x-adif">
+    <comment>ADIF Log</comment>
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.adi"/>
+    <glob pattern="*.adif"/>
+  </mime-type>
+</mime-info>

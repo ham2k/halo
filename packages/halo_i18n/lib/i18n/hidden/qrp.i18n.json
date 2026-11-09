@@ -116,8 +116,6 @@
     "installIncomplete": "installing ${name} did not finish. it may need installing again.",
     "uninstallFailed": "could not remove ${name}",
     "installedFrom": "downloaded from ${source}",
-    "dropHint": "drop a .h2kext extension to install it",
-    "dropOneOnly": "drop one extension at a time.",
     "downloadFailed": "${source} returned ${status} for that extension.",
     "downloadTooLarge": "that download is far too large to be an extension.",
     "downloadNotSecure": "that download redirected somewhere insecure.",
@@ -378,7 +376,6 @@
     "imports": {
       "importFrom": "import ${label}",
       "pickTitle": "import ${file} as",
-      "dropHint": "drop a file to import it into a chasing program",
       "done": "imported ${count} ${program} entries from ${file}",
       "doneSkipped": "imported ${count} ${program} entries from ${file}, skipped ${skipped} it could not read",
       "nothing": "${file} has nothing ${program} can import",
@@ -3378,20 +3375,17 @@
   "qsonImport": {
     "title": "import qson operation",
     "description": "create a new operation from a qson file, as developer mode exports one here or in polo.",
-    "dropHint": "drop a qson file to import it as a new operation",
     "importing": "importing ${filename}…",
     "failed": "could not import ${filename}: ${error}",
     "pickerFailed": "could not open a file to import: ${error}",
     "notUtf8": "${filename} is not utf-8 text, so it is not a qson file",
     "notJson": "${filename} is not a json file, so it is not a qson file",
     "notOperation": "${filename} does not hold a qson operation",
-    "busy": "an import is already running. wait for it to finish before starting another.",
-    "oneFileOnly": "drop one qson file at a time — each one opens as its own operation."
+    "busy": "an import is already running. wait for it to finish before starting another."
   },
   "adifImport": {
     "title": "import qsos from adif",
     "reading": "reading ${filename}…",
-    "dropHint": "drop an adif file to import",
     "totalInFile": {
       "one": "${count} qso in this file",
       "other": "${formatted} qsos in this file"
@@ -3448,7 +3442,6 @@
     "addActivation": "add it to this operation",
     "shortfall": "only ${written} of ${planned} could be applied — the log changed while you were deciding.",
     "busy": "an import is already running. wait for it to finish before starting another.",
-    "oneFileOnly": "drop one adif file at a time — the order files are imported in decides which data wins.",
     "tooMany": "${filename} has more than ${limit} qsos, the most an operation can import at a time.",
     "tooManyDeveloper": "${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.",
     "importAnyway": "import anyway"
@@ -3515,5 +3508,20 @@
     "flowControl": "flow control",
     "unavailable": "preview is unavailable until extensions are ready.",
     "empty": "(empty output)"
+  },
+  "fileOpen": {
+    "dropHint": "drop your file here",
+    "chooseTitle": "open ${filename}",
+    "cannotOpen": "can’t open ${filename}",
+    "cannotOpenDetail": "we don’t recognize the contents of this file",
+    "installExtension": "install the extension",
+    "importKeyboardShortcuts": "import as a keyboard shortcut set",
+    "importCwMessages": "import as a cw message set",
+    "importVoiceMessages": "import as a voice message set",
+    "importIntoLogs": "import into logs",
+    "importInto": "import into ${name}",
+    "importAsOperation": "import as a new operation",
+    "importLayoutInto": "import as a ${view} layout",
+    "importChaseClaims": "import into chasing"
   }
 }

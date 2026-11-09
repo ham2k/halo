@@ -114,8 +114,6 @@
     "installIncomplete": "${name} 설치가 완료되지 않았습니다. 다시 설치해야 할 수 있습니다.",
     "uninstallFailed": "${name}을(를) 제거할 수 없습니다",
     "installedFrom": "${source}에서 다운로드됨",
-    "dropHint": ".h2kext 확장 파일을 끌어다 놓아 설치하세요",
-    "dropOneOnly": "확장 기능은 한 번에 하나씩 끌어다 놓으세요.",
     "downloadFailed": "${source}이(가) 해당 확장 기능에 대해 ${status}을(를) 반환했습니다.",
     "downloadTooLarge": "다운로드 크기가 확장 기능이라기엔 너무 큽니다.",
     "downloadNotSecure": "다운로드가 안전하지 않은 곳으로 리디렉션되었습니다.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "${label} 가져오기",
       "pickTitle": "${file}을(를) 다음으로 가져오기",
-      "dropHint": "파일을 끌어다 놓아 추적 프로그램으로 가져오세요",
       "done": "${file}에서 ${program} 항목 ${count}개를 가져왔습니다",
       "doneSkipped": "${file}에서 ${program} 항목 ${count}개를 가져왔고, 읽을 수 없는 ${skipped}개는 건너뛰었습니다",
       "nothing": "${file}에는 ${program}이(가) 가져올 수 있는 항목이 없습니다",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "QSON 운용 가져오기",
     "description": "이 앱이나 PoLo의 개발자 모드에서 내보낸 QSON 파일로 새 운용을 만듭니다.",
-    "dropHint": "QSON 파일을 끌어다 놓아 새 운용으로 가져오세요",
     "importing": "${filename} 가져오는 중…",
     "failed": "${filename}을(를) 가져올 수 없습니다: ${error}",
     "pickerFailed": "가져올 파일을 열 수 없습니다: ${error}",
     "notUtf8": "${filename}은(는) UTF-8 텍스트가 아니므로 QSON 파일이 아닙니다",
     "notJson": "${filename}은(는) JSON 파일이 아니므로 QSON 파일이 아닙니다",
     "notOperation": "${filename}에는 QSON 운용이 들어 있지 않습니다",
-    "busy": "이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.",
-    "oneFileOnly": "QSON 파일은 한 번에 하나씩 끌어다 놓으세요. 파일마다 별도의 운용으로 열립니다."
+    "busy": "이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요."
   },
   "adifImport": {
     "title": "ADIF에서 QSO 가져오기",
     "reading": "${filename} 읽는 중…",
-    "dropHint": "가져올 ADIF 파일을 끌어다 놓으세요",
     "totalInFile": {
       "one": "이 파일의 QSO ${count}개",
       "other": "이 파일의 QSO ${formatted}개"
@@ -3075,7 +3069,6 @@
     "addActivation": "이 운용에 추가",
     "shortfall": "${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.",
     "busy": "이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.",
-    "oneFileOnly": "ADIF 파일은 한 번에 하나씩 끌어다 놓으세요. 파일을 가져오는 순서에 따라 어떤 데이터가 우선할지 결정됩니다.",
     "tooMany": "${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용 하나에 한 번에 가져올 수 있는 최대치입니다.",
     "tooManyDeveloper": "${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용에 ADIF를 가져오는 기능은 QSO 몇 개를 추가하기 위한 것이지 큰 로그를 들여오기 위한 것이 아닙니다. 큰 로그는 로그 화면에서 가져오세요. 확실하다면 개발자 모드에서는 그래도 가져올 수 있습니다.",
     "importAnyway": "어쨌든 가져오기"

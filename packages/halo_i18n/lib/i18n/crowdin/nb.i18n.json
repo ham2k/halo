@@ -114,8 +114,6 @@
     "installIncomplete": "Installasjonen av ${name} ble ikke fullført. Den må kanskje installeres på nytt.",
     "uninstallFailed": "Kunne ikke fjerne ${name}",
     "installedFrom": "Lastet ned fra ${source}",
-    "dropHint": "Slipp en .h2kext-utvidelse her for å installere den",
-    "dropOneOnly": "Slipp én utvidelse om gangen.",
     "downloadFailed": "${source} svarte med ${status} for den utvidelsen.",
     "downloadTooLarge": "Den nedlastingen er altfor stor til å være en utvidelse.",
     "downloadNotSecure": "Den nedlastingen ble omdirigert til et usikkert sted.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importer ${label}",
       "pickTitle": "Importer ${file} som",
-      "dropHint": "Slipp en fil her for å importere den til et jaktprogram",
       "done": "Importerte ${count} ${program}-oppføringer fra ${file}",
       "doneSkipped": "Importerte ${count} ${program}-oppføringer fra ${file}, hoppet over ${skipped} som ikke kunne leses",
       "nothing": "${file} har ingenting ${program} kan importere",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importer QSON-operasjon",
     "description": "Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.",
-    "dropHint": "Slipp en QSON-fil her for å importere den som en ny operasjon",
     "importing": "Importerer ${filename}…",
     "failed": "Kunne ikke importere ${filename}: ${error}",
     "pickerFailed": "Kunne ikke åpne en fil å importere: ${error}",
     "notUtf8": "${filename} er ikke UTF-8-tekst, så det er ikke en QSON-fil",
     "notJson": "${filename} er ikke en JSON-fil, så det er ikke en QSON-fil",
     "notOperation": "${filename} inneholder ingen QSON-operasjon",
-    "busy": "En import pågår allerede. Vent til den er ferdig før du starter en ny.",
-    "oneFileOnly": "Slipp én QSON-fil om gangen — hver av dem åpnes som sin egen operasjon."
+    "busy": "En import pågår allerede. Vent til den er ferdig før du starter en ny."
   },
   "adifImport": {
     "title": "Importer QSOer fra ADIF",
     "reading": "Leser ${filename}…",
-    "dropHint": "Slipp en ADIF-fil her for å importere",
     "totalInFile": {
       "one": "${count} QSO i denne filen",
       "other": "${formatted} QSOer i denne filen"
@@ -3075,7 +3069,6 @@
     "addActivation": "Legg den til i denne operasjonen",
     "shortfall": "Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.",
     "busy": "En import pågår allerede. Vent til den er ferdig før du starter en ny.",
-    "oneFileOnly": "Slipp én ADIF-fil om gangen — rekkefølgen filene importeres i, avgjør hvilke data som vinner.",
     "tooMany": "${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.",
     "tooManyDeveloper": "${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.",
     "importAnyway": "Importer likevel"

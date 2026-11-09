@@ -23,7 +23,8 @@ import 'maps_view.dart';
 import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
 import 'operation_view.dart';
-import 'qson_import_flow.dart';
+import 'file_open/file_destinations.dart' show qsonFileDestination;
+import 'file_open/file_router.dart';
 import 'settings_view.dart';
 import 'ham2k_logo.dart';
 import 'panel_use_tracker.dart';
@@ -1095,22 +1096,15 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     HomeView.versionPanelId: const BrandingPane(),
   };
 
-  /// [_operationsList], taking a dropped QSON file while Developer Mode is on.
-  ///
-  /// Only while the list is what shows: Logs, Chasing and the rest slide over
-  /// this pane rather than replacing it, and a drop reaches every target
-  /// under the point.
+  /// [_operationsList], suggesting a QSON file as a new operation.
   Widget _operationsPane(BuildContext context, ThemeData theme) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([widget.services.settings, homeRail]),
-      builder: (context, child) => QsonDropTarget(
-        services: widget.services,
-        enabled: widget.services.settings.developerMode && homeRail.destination == HomeDestination.operations,
-        child: child!,
-      ),
-      child: _operationsList(context, theme),
-    );
+    return FileSuggestions(active: () => dockSuggestsFiles, suggestions: [qsonFileDestination(widget.services)], child: _operationsList(context, theme));
   }
+
+  /// Only while the list is what shows: Logs, Chasing and the rest slide over
+  /// Home rather than replacing it, and leave it mounted underneath.
+  @override
+  bool get dockSuggestsFiles => homeRail.destination == HomeDestination.operations;
 
   /// The operation list with the New Operation FAB over it — one pane, because
   /// the button creates what the list holds and an operator who moved the list

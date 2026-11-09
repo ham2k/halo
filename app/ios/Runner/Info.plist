@@ -8,11 +8,15 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>$(HALO_DISPLAY_NAME)</string>
-	<!-- Ham2K extension bundles (HALO-422). The exported type declaration is
-	     what teaches the OS the extension exists at all; the document type is
-	     what makes Finder offer this app for one. Both are needed, and a
-	     double-clicked file still only reaches Flutter because AppDelegate
-	     implements application(_:open:) — app_links handles URL schemes only. -->
+	<!-- Files the app reads (views/file_open/file_kind.dart names the same
+	     extensions). The exported declarations teach the OS the Ham2K types
+	     exist at all; ADIF is imported, since the format is not ours; the
+	     document types are what make Files and Finder offer this app. A file
+	     opened that way still only reaches Flutter because AppDelegate
+	     implements application(_:open:) — app_links handles URL schemes only.
+	     The Ham2K types take HALO_DOC_RANK (AppInfo.xcconfig: Owner, but only
+	     an alternative in Dev); ADIF and QSON are only ever an alternative,
+	     since other loggers open them too. -->
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -22,7 +26,6 @@
 			<string>Ham2K Extension</string>
 			<key>UTTypeConformsTo</key>
 			<array>
-				<!-- It IS a zip, so anything that reads one can still open it. -->
 				<string>public.zip-archive</string>
 			</array>
 			<key>UTTypeTagSpecification</key>
@@ -37,7 +40,142 @@
 				</array>
 			</dict>
 		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.key-bindings</string>
+			<key>UTTypeDescription</key>
+			<string>Ham2K Keyboard Shortcuts</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.yaml</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>h2kkey</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.key-bindings</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.layout</string>
+			<key>UTTypeDescription</key>
+			<string>Ham2K Layout</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.yaml</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>h2klyt</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.layout</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.cw-message-set</string>
+			<key>UTTypeDescription</key>
+			<string>Ham2K CW Messages</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.yaml</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>h2kset</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.cw-messages</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.voice-message-set</string>
+			<key>UTTypeDescription</key>
+			<string>Ham2K Voice Messages</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>h2kvoice</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.voice-messages</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.ham2k.qson</string>
+			<key>UTTypeDescription</key>
+			<string>QSON Operation</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>qson</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.ham2k.qson</string>
+				</array>
+			</dict>
+		</dict>
 	</array>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>org.adif.adif</string>
+			<key>UTTypeDescription</key>
+			<string>ADIF Log</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>adi</string>
+					<string>adif</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x-adif</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<!-- Viewer, not Editor: the app imports these files, it never writes
+	     one back to where it was opened from. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -47,14 +185,89 @@
 			<array>
 				<string>com.ham2k.extension-bundle</string>
 			</array>
-			<!-- Viewer, not Editor: the app installs a bundle, it does not
-			     write one back. -->
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>$(HALO_DOC_RANK)</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ham2K Keyboard Shortcuts</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.key-bindings</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>$(HALO_DOC_RANK)</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ham2K Layout</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.layout</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>$(HALO_DOC_RANK)</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ham2K CW Messages</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.cw-message-set</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>$(HALO_DOC_RANK)</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Ham2K Voice Messages</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.voice-message-set</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>$(HALO_DOC_RANK)</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>QSON Operation</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.ham2k.qson</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>ADIF Log</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.adif.adif</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
 		</dict>
 	</array>
+	<!-- iOS hands the app a copy of an opened document rather than the
+	     original: an import reads it once and never writes it back.
+	     AppDelegate removes the copy once it has taken its own. -->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$ca extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'La instal·lació de ${name} no ha acabat. Potser cal tornar-la a instal·lar.';
 	@override String uninstallFailed({required Object name}) => 'No s\'ha pogut eliminar ${name}';
 	@override String installedFrom({required Object source}) => 'Descarregada de ${source}';
-	@override String get dropHint => 'Deixa anar una extensió .h2kext per instal·lar-la';
-	@override String get dropOneOnly => 'Deixa anar les extensions d\'una en una.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} ha retornat ${status} per a aquesta extensió.';
 	@override String get downloadTooLarge => 'Aquesta descàrrega és massa gran per ser una extensió.';
 	@override String get downloadNotSecure => 'Aquesta descàrrega ha redirigit a un lloc insegur.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$ca extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'Importa una operació QSON';
 	@override String get description => 'Crea una operació nova a partir d\'un fitxer QSON, com el que exporta el Mode de desenvolupador aquí o a PoLo.';
-	@override String get dropHint => 'Deixa anar un fitxer QSON per importar-lo com a operació nova';
 	@override String importing({required Object filename}) => 'Important ${filename}…';
 	@override String failed({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}';
 	@override String pickerFailed({required Object error}) => 'No s\'ha pogut obrir cap fitxer per importar: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$ca extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} no és un fitxer JSON, així que no és un fitxer QSON';
 	@override String notOperation({required Object filename}) => '${filename} no conté cap operació QSON';
 	@override String get busy => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.';
-	@override String get oneFileOnly => 'Deixa anar els fitxers QSON d\'un en un — cadascun s\'obre com una operació pròpia.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$ca extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'Importa QSOs des d\'ADIF';
 	@override String reading({required Object filename}) => 'Llegint ${filename}…';
-	@override String get dropHint => 'Deixa anar un fitxer ADIF per importar-lo';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
 		one: '${count} QSO en aquest fitxer',
 		other: '${formatted} QSOs en aquest fitxer',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$ca extends Translations$adifImport$en {
 	@override String get addActivation => 'Afegeix-la a aquesta operació';
 	@override String shortfall({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.';
 	@override String get busy => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.';
-	@override String get oneFileOnly => 'Deixa anar els fitxers ADIF d\'un en un — l\'ordre en què s\'importen decideix quines dades prevalen.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs, el màxim que una operació pot importar alhora.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs. Importar un ADIF a una operació serveix per afegir uns quants QSOs, no per carregar un registre gran — per a això, fes servir la vista Registres. El mode de desenvolupador et permet importar-lo igualment, si n\'estàs segur.';
 	@override String get importAnyway => 'Importa igualment';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$ca extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'Importa ${label}';
 	@override String pickTitle({required Object file}) => 'Importa ${file} com a';
-	@override String get dropHint => 'Deixa anar un fitxer per importar-lo a un programa de caça';
 	@override String done({required Object count, required Object program, required Object file}) => 'S\'han importat ${count} entrades de ${program} des de ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'S\'han importat ${count} entrades de ${program} des de ${file}; se n\'han omès ${skipped} que no s\'han pogut llegir';
 	@override String nothing({required Object file, required Object program}) => '${file} no té res que ${program} pugui importar';
@@ -4579,8 +4572,6 @@ extension on TranslationsCa {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'La instal·lació de ${name} no ha acabat. Potser cal tornar-la a instal·lar.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'No s\'ha pogut eliminar ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Descarregada de ${source}',
-			'extensionsPanel.dropHint' => 'Deixa anar una extensió .h2kext per instal·lar-la',
-			'extensionsPanel.dropOneOnly' => 'Deixa anar les extensions d\'una en una.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} ha retornat ${status} per a aquesta extensió.',
 			'extensionsPanel.downloadTooLarge' => 'Aquesta descàrrega és massa gran per ser una extensió.',
 			'extensionsPanel.downloadNotSecure' => 'Aquesta descàrrega ha redirigit a un lloc insegur.',
@@ -4795,7 +4786,6 @@ extension on TranslationsCa {
 			'chase.checklists' => 'Progrés de la caça',
 			'chase.imports.importFrom' => ({required Object label}) => 'Importa ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'Importa ${file} com a',
-			'chase.imports.dropHint' => 'Deixa anar un fitxer per importar-lo a un programa de caça',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'S\'han importat ${count} entrades de ${program} des de ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'S\'han importat ${count} entrades de ${program} des de ${file}; se n\'han omès ${skipped} que no s\'han pogut llegir',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} no té res que ${program} pugui importar',
@@ -4985,11 +4975,11 @@ extension on TranslationsCa {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => 'No s\'ha pogut mostrar ${panel}: el seu dibuix no és autocontingut',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva escena té més de ${max} capes',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva escena té més de ${max} controls',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una part de la seva escena té més de ${max} entrades',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: una cadena de l\'escena té més de ${max} caràcters',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => 'No s\'ha pogut mostrar ${panel}: la seva disposició té més de ${max} nivells d\'imbricació',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Torna-ho a provar',
 			'operation.layout.panelActionFailed' => 'L\'acció del panell ha fallat. Torna-ho a provar.',
 			'operation.layout.panels.loggingDescription' => 'El registre i els camps d\'entrada',
@@ -5499,11 +5489,11 @@ extension on TranslationsCa {
 			'loggingControls.bandOrFreqRequired' => 'Defineix una freqüència o banda abans de registrar',
 			'loggingControls.missingBand' => 'Sense banda',
 			'loggingControls.missingMode' => 'Sense mode',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'No s\'ha pogut desar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'No s\'ha pogut esborrar: ${error}',
 			'loggingControls.info.noQsos' => 'Cap QSO encara… Som-hi, sortim a l\'aire!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} en ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsCa {
 			'settings.privacy.termsOfService' => 'Condicions de servei',
 			'settings.operatorCall' => 'Indicatiu de l\'operador',
 			'settings.sync.title' => 'Sincronització al núvol',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Més opcions de sincronització',
 			'settings.sync.enable' => 'Activa la sincronització',
 			'settings.sync.deviceKey' => 'Clau del dispositiu',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Dispositius associats',
 			'settings.peers.enable' => 'Connecta amb altres dispositius',
 			'settings.peers.enableDescription' => 'Permet compartir operacions, registre, CAT i GPS amb altres dispositius per la xarxa local',
@@ -6527,11 +6517,11 @@ extension on TranslationsCa {
 			'settings.station.placeholderConnectDelay' => 'Retard de connexió (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Quant de temps triga la negociació simulada. En blanc o 0 connecta a l\'instant.',
 			'settings.station.placeholderDropAfter' => 'Desconnecta al cap de (segons)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Tanca la connexió per si sola, per provar el camí de reconnexió. En blanc o 0 no es desconnecta mai.',
 			'settings.station.placeholderFailConnect' => 'Falla sempre en connectar',
 			'settings.station.placeholderConnectFailure' => 'S\'ha indicat a la ràdio provisional que rebutgi aquesta connexió',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Freqüència (kHz)',
 			'settings.station.placeholderFreqDescription' => 'On comença la ràdio provisional. Després informa de qualsevol freqüència a la qual la sintonitzi l\'aplicació.',
 			'settings.station.placeholderMode' => 'Mode',
@@ -7040,20 +7030,17 @@ extension on TranslationsCa {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} operació', other: '${count} operacions', ), 
 			'qsonImport.title' => 'Importa una operació QSON',
 			'qsonImport.description' => 'Crea una operació nova a partir d\'un fitxer QSON, com el que exporta el Mode de desenvolupador aquí o a PoLo.',
-			'qsonImport.dropHint' => 'Deixa anar un fitxer QSON per importar-lo com a operació nova',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Important ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'No s\'ha pogut importar ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'No s\'ha pogut obrir cap fitxer per importar: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} no és text UTF-8, així que no és un fitxer QSON',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} no és un fitxer JSON, així que no és un fitxer QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} no conté cap operació QSON',
 			'qsonImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
-			'qsonImport.oneFileOnly' => 'Deixa anar els fitxers QSON d\'un en un — cadascun s\'obre com una operació pròpia.',
 			'adifImport.title' => 'Importa QSOs des d\'ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Llegint ${filename}…',
-			'adifImport.dropHint' => 'Deixa anar un fitxer ADIF per importar-lo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} QSO en aquest fitxer', other: '${formatted} QSOs en aquest fitxer', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} ja és al teu registre', other: '${formatted} ja són al teu registre', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Se n\'importarà ${count}', other: 'Se n\'importaran ${formatted}', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsCa {
 			'adifImport.addActivation' => 'Afegeix-la a aquesta operació',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Només s\'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.',
 			'adifImport.busy' => 'Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.',
-			'adifImport.oneFileOnly' => 'Deixa anar els fitxers ADIF d\'un en un — l\'ordre en què s\'importen decideix quines dades prevalen.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs, el màxim que una operació pot importar alhora.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} té més de ${limit} QSOs. Importar un ADIF a una operació serveix per afegir uns quants QSOs, no per carregar un registre gran — per a això, fes servir la vista Registres. El mode de desenvolupador et permet importar-lo igualment, si n\'estàs segur.',
 			'adifImport.importAnyway' => 'Importa igualment',

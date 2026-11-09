@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$nl extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'De installatie van ${name} is niet voltooid. Mogelijk moet je die opnieuw installeren.';
 	@override String uninstallFailed({required Object name}) => 'Kon ${name} niet verwijderen';
 	@override String installedFrom({required Object source}) => 'Gedownload van ${source}';
-	@override String get dropHint => 'Sleep een .h2kext-extensie hierheen om te installeren';
-	@override String get dropOneOnly => 'Sleep één extensie tegelijk.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} gaf ${status} terug voor die extensie.';
 	@override String get downloadTooLarge => 'Die download is veel te groot voor een extensie.';
 	@override String get downloadNotSecure => 'Die download werd doorgestuurd naar een onveilige locatie.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$nl extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'QSON-activatie importeren';
 	@override String get description => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.';
-	@override String get dropHint => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren';
 	@override String importing({required Object filename}) => '${filename} importeren…';
 	@override String failed({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}';
 	@override String pickerFailed({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$nl extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand';
 	@override String notOperation({required Object filename}) => '${filename} bevat geen QSON-activatie';
 	@override String get busy => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.';
-	@override String get oneFileOnly => 'Sleep één QSON-bestand tegelijk — elk bestand wordt een eigen activatie.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$nl extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'QSO\'s importeren uit ADIF';
 	@override String reading({required Object filename}) => '${filename} lezen…';
-	@override String get dropHint => 'Sleep een ADIF-bestand hierheen om te importeren';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
 		one: '${count} QSO in dit bestand',
 		other: '${formatted} QSO\'s in dit bestand',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$nl extends Translations$adifImport$en {
 	@override String get addActivation => 'Toevoegen aan deze activatie';
 	@override String shortfall({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.';
 	@override String get busy => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.';
-	@override String get oneFileOnly => 'Sleep één ADIF-bestand tegelijk — de volgorde waarin bestanden worden geïmporteerd bepaalt welke gegevens winnen.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s. Een ADIF in een activatie importeren is bedoeld om een paar QSO\'s toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.';
 	@override String get importAnyway => 'Toch importeren';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$nl extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => '${label} importeren';
 	@override String pickTitle({required Object file}) => '${file} importeren als';
-	@override String get dropHint => 'Sleep een bestand hierheen om het in een jaagprogramma te importeren';
 	@override String done({required Object count, required Object program, required Object file}) => '${count} ${program}-records geïmporteerd uit ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => '${count} ${program}-records geïmporteerd uit ${file}, ${skipped} onleesbare overgeslagen';
 	@override String nothing({required Object file, required Object program}) => '${file} bevat niets dat ${program} kan importeren';
@@ -4579,8 +4572,6 @@ extension on TranslationsNl {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'De installatie van ${name} is niet voltooid. Mogelijk moet je die opnieuw installeren.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Kon ${name} niet verwijderen',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Gedownload van ${source}',
-			'extensionsPanel.dropHint' => 'Sleep een .h2kext-extensie hierheen om te installeren',
-			'extensionsPanel.dropOneOnly' => 'Sleep één extensie tegelijk.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} gaf ${status} terug voor die extensie.',
 			'extensionsPanel.downloadTooLarge' => 'Die download is veel te groot voor een extensie.',
 			'extensionsPanel.downloadNotSecure' => 'Die download werd doorgestuurd naar een onveilige locatie.',
@@ -4795,7 +4786,6 @@ extension on TranslationsNl {
 			'chase.checklists' => 'Voortgang jagen',
 			'chase.imports.importFrom' => ({required Object label}) => '${label} importeren',
 			'chase.imports.pickTitle' => ({required Object file}) => '${file} importeren als',
-			'chase.imports.dropHint' => 'Sleep een bestand hierheen om het in een jaagprogramma te importeren',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => '${count} ${program}-records geïmporteerd uit ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => '${count} ${program}-records geïmporteerd uit ${file}, ${skipped} onleesbare overgeslagen',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} bevat niets dat ${program} kan importeren',
@@ -4985,11 +4975,11 @@ extension on TranslationsNl {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kon niet worden weergegeven: de afbeelding staat niet op zichzelf',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} lagen',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de scène heeft meer dan ${max} bedieningselementen',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een deel van de scène heeft meer dan ${max} items',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: een tekst in de scène is langer dan ${max} tekens',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kon niet worden weergegeven: de indeling is meer dan ${max} niveaus diep genest',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Opnieuw proberen',
 			'operation.layout.panelActionFailed' => 'Die paneelactie is mislukt. Probeer het opnieuw.',
 			'operation.layout.panels.loggingDescription' => 'Het logboek en de invoervelden',
@@ -5499,11 +5489,11 @@ extension on TranslationsNl {
 			'loggingControls.bandOrFreqRequired' => 'Stel een frequentie of band in voordat je logt',
 			'loggingControls.missingBand' => 'Geen band',
 			'loggingControls.missingMode' => 'Geen mode',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kon niet opslaan: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kon niet verwijderen: ${error}',
 			'loggingControls.info.noQsos' => 'Nog geen QSO\'s… Laten we starten!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO\'s',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} in ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsNl {
 			'settings.privacy.termsOfService' => 'Algemene Voorwaarden',
 			'settings.operatorCall' => 'Roepnaam van de operator',
 			'settings.sync.title' => 'Cloudsynchronisatie',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Meer synchronisatie-instellingen',
 			'settings.sync.enable' => 'Synchronisatie inschakelen',
 			'settings.sync.deviceKey' => 'Apparaatsleutel',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Peer-apparaten',
 			'settings.peers.enable' => 'Verbinden met andere apparaten',
 			'settings.peers.enableDescription' => 'Activaties, loggen, CAT en GPS delen met andere apparaten via het lokale netwerk',
@@ -6527,11 +6517,11 @@ extension on TranslationsNl {
 			'settings.station.placeholderConnectDelay' => 'Verbindingsvertraging (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hoe lang de gesimuleerde handshake duurt. Leeg of 0 verbindt meteen.',
 			'settings.station.placeholderDropAfter' => 'Verbreken na (seconden)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Verbreekt de verbinding vanzelf, om het opnieuw verbinden te testen. Leeg of 0 verbreekt nooit.',
 			'settings.station.placeholderFailConnect' => 'Verbinden altijd laten mislukken',
 			'settings.station.placeholderConnectFailure' => 'De tijdelijke radio is opgedragen deze verbinding te weigeren',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frequentie (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Waar de tijdelijke radio begint. Daarna meldt hij terug waarop de app hem ook afstemt.',
 			'settings.station.placeholderMode' => 'Mode',
@@ -7040,20 +7030,17 @@ extension on TranslationsNl {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} activatie', other: '${count} activaties', ), 
 			'qsonImport.title' => 'QSON-activatie importeren',
 			'qsonImport.description' => 'Maak een nieuwe activatie van een QSON-bestand, zoals Ontwikkelaarsmodus er hier of in PoLo een exporteert.',
-			'qsonImport.dropHint' => 'Sleep een QSON-bestand hierheen om het als nieuwe activatie te importeren',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} importeren…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kon ${filename} niet importeren: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kon geen bestand openen om te importeren: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is geen UTF-8-tekst, dus geen QSON-bestand',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} is geen JSON-bestand, dus geen QSON-bestand',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bevat geen QSON-activatie',
 			'qsonImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
-			'qsonImport.oneFileOnly' => 'Sleep één QSON-bestand tegelijk — elk bestand wordt een eigen activatie.',
 			'adifImport.title' => 'QSO\'s importeren uit ADIF',
 			'adifImport.reading' => ({required Object filename}) => '${filename} lezen…',
-			'adifImport.dropHint' => 'Sleep een ADIF-bestand hierheen om te importeren',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} QSO in dit bestand', other: '${formatted} QSO\'s in dit bestand', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} staat al in je logboek', other: '${formatted} staan al in je logboek', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} wordt geïmporteerd', other: '${formatted} worden geïmporteerd', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsNl {
 			'adifImport.addActivation' => 'Toevoegen aan deze activatie',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Slechts ${written} van ${planned} konden worden toegepast — het logboek veranderde terwijl je besliste.',
 			'adifImport.busy' => 'Er loopt al een import. Wacht tot die klaar is voordat je een nieuwe start.',
-			'adifImport.oneFileOnly' => 'Sleep één ADIF-bestand tegelijk — de volgorde waarin bestanden worden geïmporteerd bepaalt welke gegevens winnen.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s, het maximum dat een activatie in één keer kan importeren.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} heeft meer dan ${limit} QSO\'s. Een ADIF in een activatie importeren is bedoeld om een paar QSO\'s toe te voegen, niet om een groot logboek binnen te halen — gebruik daarvoor de weergave Logboeken. In ontwikkelaarsmodus kun je het toch importeren, als je het zeker weet.',
 			'adifImport.importAnyway' => 'Toch importeren',

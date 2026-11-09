@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$ro extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'Instalarea ${name} nu s-a finalizat. Poate fi necesară reinstalarea.';
 	@override String uninstallFailed({required Object name}) => '${name} nu a putut fi eliminată';
 	@override String installedFrom({required Object source}) => 'Descărcată de la ${source}';
-	@override String get dropHint => 'Plasați aici o extensie .h2kext pentru a o instala';
-	@override String get dropOneOnly => 'Plasați câte o singură extensie.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} a returnat ${status} pentru această extensie.';
 	@override String get downloadTooLarge => 'Descărcarea este mult prea mare pentru a fi o extensie.';
 	@override String get downloadNotSecure => 'Descărcarea a fost redirecționată către o adresă nesigură.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$ro extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'Importă operațiune QSON';
 	@override String get description => 'Creează o operațiune nouă dintr-un fișier QSON, așa cum exportă Modul dezvoltator aici sau în PoLo.';
-	@override String get dropHint => 'Plasați aici un fișier QSON pentru a-l importa ca operațiune nouă';
 	@override String importing({required Object filename}) => 'Se importă ${filename}…';
 	@override String failed({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}';
 	@override String pickerFailed({required Object error}) => 'Nu s-a putut deschide un fișier pentru import: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$ro extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} nu este un fișier JSON, deci nu este un fișier QSON';
 	@override String notOperation({required Object filename}) => '${filename} nu conține o operațiune QSON';
 	@override String get busy => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.';
-	@override String get oneFileOnly => 'Plasați câte un singur fișier QSON — fiecare se deschide ca operațiune separată.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$ro extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'Importă QSO-uri din ADIF';
 	@override String reading({required Object filename}) => 'Se citește ${filename}…';
-	@override String get dropHint => 'Plasați aici un fișier ADIF pentru import';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
 		one: '${count} QSO în acest fișier',
 		other: '${formatted} QSO-uri în acest fișier',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$ro extends Translations$adifImport$en {
 	@override String get addActivation => 'Adaugă la această operațiune';
 	@override String shortfall({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.';
 	@override String get busy => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.';
-	@override String get oneFileOnly => 'Plasați câte un singur fișier ADIF — ordinea în care se importă fișierele decide ce date câștigă.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri, maximul pe care o operațiune îl poate importa deodată.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri. Importul unui ADIF într-o operațiune este menit să adauge câteva QSO-uri, nu să aducă un jurnal mare — folosiți pentru asta vizualizarea Jurnale. Modul dezvoltator vă permite totuși să îl importați, dacă sunteți sigur.';
 	@override String get importAnyway => 'Importă oricum';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$ro extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'Importă ${label}';
 	@override String pickTitle({required Object file}) => 'Importă ${file} ca';
-	@override String get dropHint => 'Plasați aici un fișier pentru a-l importa într-un program de vânătoare';
 	@override String done({required Object count, required Object program, required Object file}) => 'S-au importat ${count} intrări ${program} din ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'S-au importat ${count} intrări ${program} din ${file}; ${skipped} nu au putut fi citite și au fost omise';
 	@override String nothing({required Object file, required Object program}) => '${file} nu conține nimic ce ${program} poate importa';
@@ -4579,8 +4572,6 @@ extension on TranslationsRo {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Instalarea ${name} nu s-a finalizat. Poate fi necesară reinstalarea.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '${name} nu a putut fi eliminată',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Descărcată de la ${source}',
-			'extensionsPanel.dropHint' => 'Plasați aici o extensie .h2kext pentru a o instala',
-			'extensionsPanel.dropOneOnly' => 'Plasați câte o singură extensie.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} a returnat ${status} pentru această extensie.',
 			'extensionsPanel.downloadTooLarge' => 'Descărcarea este mult prea mare pentru a fi o extensie.',
 			'extensionsPanel.downloadNotSecure' => 'Descărcarea a fost redirecționată către o adresă nesigură.',
@@ -4795,7 +4786,6 @@ extension on TranslationsRo {
 			'chase.checklists' => 'Progres vânătoare',
 			'chase.imports.importFrom' => ({required Object label}) => 'Importă ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'Importă ${file} ca',
-			'chase.imports.dropHint' => 'Plasați aici un fișier pentru a-l importa într-un program de vânătoare',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'S-au importat ${count} intrări ${program} din ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'S-au importat ${count} intrări ${program} din ${file}; ${skipped} nu au putut fi citite și au fost omise',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} nu conține nimic ce ${program} poate importa',
@@ -4985,11 +4975,11 @@ extension on TranslationsRo {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} nu a putut fi afișat: grafica lui nu este de sine stătătoare',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: scena lui are mai mult de ${max} straturi',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: scena lui are mai mult de ${max} controale',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: o parte a scenei lui are mai mult de ${max} intrări',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: un text din scenă depășește ${max} caractere',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} nu a putut fi afișat: aranjamentul lui are mai mult de ${max} niveluri de imbricare',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Încercați din nou',
 			'operation.layout.panelActionFailed' => 'Acțiunea panoului a eșuat. Încercați din nou.',
 			'operation.layout.panels.loggingDescription' => 'Jurnalul și câmpurile de introducere',
@@ -5499,11 +5489,11 @@ extension on TranslationsRo {
 			'loggingControls.bandOrFreqRequired' => 'Setați o frecvență sau o bandă înainte de înregistrare',
 			'loggingControls.missingBand' => 'Fără bandă',
 			'loggingControls.missingMode' => 'Fără mod',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Nu s-a putut salva: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nu s-a putut șterge: ${error}',
 			'loggingControls.info.noQsos' => 'Niciun QSO încă... hai să operăm!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO-uri',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} în ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsRo {
 			'settings.privacy.termsOfService' => 'Termeni și condiții',
 			'settings.operatorCall' => 'Indicativul operatorului',
 			'settings.sync.title' => 'Sincronizare în cloud',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Mai multe setări de sincronizare',
 			'settings.sync.enable' => 'Activează sincronizarea',
 			'settings.sync.deviceKey' => 'Cheia dispozitivului',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Dispozitive pereche',
 			'settings.peers.enable' => 'Conectare la alte dispozitive',
 			'settings.peers.enableDescription' => 'Permite partajarea operațiunilor, înregistrării, CAT și GPS cu alte dispozitive prin rețeaua locală',
@@ -6527,11 +6517,11 @@ extension on TranslationsRo {
 			'settings.station.placeholderConnectDelay' => 'Întârziere la conectare (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cât durează handshake-ul simulat. Gol sau 0 se conectează instantaneu.',
 			'settings.station.placeholderDropAfter' => 'Deconectare după (secunde)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Închide conexiunea singură, pentru a testa reconectarea. Gol sau 0 nu deconectează niciodată.',
 			'settings.station.placeholderFailConnect' => 'Eșuează mereu la conectare',
 			'settings.station.placeholderConnectFailure' => 'Stația substituent a fost instruită să refuze această conexiune',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frecvență (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Unde pornește stația substituent. Ulterior raportează orice frecvență setează aplicația.',
 			'settings.station.placeholderMode' => 'Mod',
@@ -7040,20 +7030,17 @@ extension on TranslationsRo {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} operațiune', other: '${count} operațiuni', ), 
 			'qsonImport.title' => 'Importă operațiune QSON',
 			'qsonImport.description' => 'Creează o operațiune nouă dintr-un fișier QSON, așa cum exportă Modul dezvoltator aici sau în PoLo.',
-			'qsonImport.dropHint' => 'Plasați aici un fișier QSON pentru a-l importa ca operațiune nouă',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Se importă ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} nu a putut fi importat: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nu s-a putut deschide un fișier pentru import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} nu este text UTF-8, deci nu este un fișier QSON',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} nu este un fișier JSON, deci nu este un fișier QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} nu conține o operațiune QSON',
 			'qsonImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
-			'qsonImport.oneFileOnly' => 'Plasați câte un singur fișier QSON — fiecare se deschide ca operațiune separată.',
 			'adifImport.title' => 'Importă QSO-uri din ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Se citește ${filename}…',
-			'adifImport.dropHint' => 'Plasați aici un fișier ADIF pentru import',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} QSO în acest fișier', other: '${formatted} QSO-uri în acest fișier', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} se află deja în jurnal', other: '${formatted} se află deja în jurnal', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} va fi importat', other: '${formatted} vor fi importate', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsRo {
 			'adifImport.addActivation' => 'Adaugă la această operațiune',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.',
 			'adifImport.busy' => 'Un import rulează deja. Așteptați să se termine înainte de a porni altul.',
-			'adifImport.oneFileOnly' => 'Plasați câte un singur fișier ADIF — ordinea în care se importă fișierele decide ce date câștigă.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri, maximul pe care o operațiune îl poate importa deodată.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} are mai mult de ${limit} QSO-uri. Importul unui ADIF într-o operațiune este menit să adauge câteva QSO-uri, nu să aducă un jurnal mare — folosiți pentru asta vizualizarea Jurnale. Modul dezvoltator vă permite totuși să îl importați, dacă sunteți sigur.',
 			'adifImport.importAnyway' => 'Importă oricum',

@@ -51,7 +51,9 @@ import 'operation/rotator/rotator_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
 import 'dock_layouts/layout_file.dart';
-import 'dock_layouts/layout_menu.dart' show LayoutSwitcherButton, showLayoutsSheet;
+import 'dock_layouts/layout_menu.dart' show LayoutSwitcherButton, importLayoutFile, layoutViewName, showLayoutsSheet;
+import 'file_open/file_kind.dart';
+import 'file_open/file_router.dart';
 import 'dock_layouts/view_layouts.dart';
 
 part 'dock_layouts/add_panel_sheet.dart';
@@ -228,6 +230,11 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// A DEFAULT, not a rule — [PaneLayoutOptions.showHeader] still wins for any
   /// pane the operator has an opinion about, in either direction.
   Set<String> get defaultHeaderlessModules => const {};
+
+  /// Whether this view's dock suggests itself for a layout file — false for
+  /// a view still mounted under another one, where the operator is looking at
+  /// the other view's layouts.
+  bool get dockSuggestsFiles => true;
 
   /// Whether the dock would actually drop [id] — ASKED of the dock, never a
   /// second copy of its rule here. This decides whether the keyboard route
@@ -1114,7 +1121,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     ensureDockSpec();
     final inLayout = dockSpec!.collectModules();
     final extras = extraChildren?.call(inLayout) ?? const <String, Widget>{};
-    return DockLayoutView(
+    final dock = DockLayoutView(
       key: dockKey,
       initialSpec: dockSpec!,
       titles: dockTitles(),
@@ -1235,6 +1242,21 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         // The layout sheet, if it is open, is listing this very tree.
         bumpSheet();
       },
+    );
+    // A layout file, dropped or opened from the OS while this view is on
+    // screen, goes into this view's layouts. One from another view still
+    // imports: the dialog says so and brings across the panels the two share.
+    return FileSuggestions(
+      active: () => dockSuggestsFiles,
+      suggestions: [
+        FileDestination(
+          id: 'layout:$dockView',
+          kind: HaloFileKind.layout,
+          label: () => t.fileOpen.importLayoutInto(view: layoutViewName(dockView)),
+          open: (context, file) => importLayoutFile(context, this, file),
+        ),
+      ],
+      child: dock,
     );
   }
 }

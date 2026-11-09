@@ -69,6 +69,11 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Copies from earlier launches: kept forever, a tmp directory only grows.
+    // At launch and never per open, because several documents opened at once
+    // wait their turn in Dart, and a sweep per open would delete the ones
+    // still waiting.
+    sweepOpenedCopies()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -82,26 +87,48 @@ import UIKit
       // swallowing it here would break every deep link the app has.
       return super.application(app, open: url, options: options)
     }
+    return openDocuments([url])
+  }
+
+  /// Hands opened documents to Dart, in one message. Reached from here and
+  /// from SceneDelegate: under the scene lifecycle iOS delivers a document to
+  /// the scene, and never calls application(_:open:) at all.
+  @discardableResult
+  func openDocuments(_ urls: [URL]) -> Bool {
+    var copied = false
+    for url in urls where copyOpenedDocument(url) { copied = true }
+    flushPendingOpenFiles()
+    return copied
+  }
+
+  private func copyOpenedDocument(_ url: URL) -> Bool {
     // A document from another app's container is security-scoped: readable
     // only between these two calls, and the copy has to happen inside them.
     let scoped = url.startAccessingSecurityScopedResource()
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
     // Copied into our own tmp because the original may be gone — or
     // unreadable — by the time Dart asks for it.
-    // Previous copies first: one bundle per open, kept forever, is a tmp
-    // directory that only grows.
-    sweepOpenedCopies()
-    let destination = FileManager.default.temporaryDirectory
-      .appendingPathComponent("opened-" + UUID().uuidString + "-" + url.lastPathComponent)
+    // A folder of its own, so the copy keeps the file's own name: the Dart
+    // side shows it to the operator.
+    let folder = FileManager.default.temporaryDirectory
+      .appendingPathComponent("opened-" + UUID().uuidString, isDirectory: true)
+    let destination = folder.appendingPathComponent(url.lastPathComponent)
     do {
-      try? FileManager.default.removeItem(at: destination)
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
       try FileManager.default.copyItem(at: url, to: destination)
     } catch {
       NSLog("[open-file] could not copy \(url.lastPathComponent): \(error)")
       return false
     }
+    // LSSupportsOpeningDocumentsInPlace is off, so iOS has already copied the
+    // file into Documents/Inbox, and that copy is ours to remove: left there,
+    // every document ever opened stays on the device.
+    let inbox = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+      .appendingPathComponent("Inbox", isDirectory: true).standardizedFileURL.path
+    if let inbox, url.standardizedFileURL.path.hasPrefix(inbox + "/") {
+      try? FileManager.default.removeItem(at: url)
+    }
     pendingOpenFiles.append(destination.path)
-    flushPendingOpenFiles()
     return true
   }
 

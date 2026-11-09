@@ -29,6 +29,9 @@ import '../tools/operation_title.dart';
 import 'dock_host.dart';
 import 'home_navigation_rail.dart';
 import 'operation/adif_import_flow.dart';
+import 'file_open/file_destinations.dart' show logsAdifDestinationId;
+import 'file_open/file_kind.dart';
+import 'file_open/file_router.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/log_find_bar.dart' show isFindChord;
@@ -1131,11 +1134,16 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         // Row two, narrow only: the search field the title row dropped.
         bottom: isTwoPane ? null : _narrowSearchRow(context),
       ),
-      // AdifDropTarget over the whole body: a drop anywhere on the Logs view
-      // imports, not just over the QSO table.
       body: BesideRail(
-        child: AdifDropTarget(
-          onFile: _handleAdifDrop,
+        child: FileSuggestions(
+          suggestions: [
+            FileDestination(
+              id: logsAdifDestinationId,
+              kind: HaloFileKind.adif,
+              label: () => t.fileOpen.importIntoLogs,
+              open: (_, file) => _handleAdifDrop(file),
+            ),
+          ],
           child: withViewOverrides(
             buildDock(
               children: {

@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$ko extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => '${name} 설치가 완료되지 않았습니다. 다시 설치해야 할 수 있습니다.';
 	@override String uninstallFailed({required Object name}) => '${name}을(를) 제거할 수 없습니다';
 	@override String installedFrom({required Object source}) => '${source}에서 다운로드됨';
-	@override String get dropHint => '.h2kext 확장 파일을 끌어다 놓아 설치하세요';
-	@override String get dropOneOnly => '확장 기능은 한 번에 하나씩 끌어다 놓으세요.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source}이(가) 해당 확장 기능에 대해 ${status}을(를) 반환했습니다.';
 	@override String get downloadTooLarge => '다운로드 크기가 확장 기능이라기엔 너무 큽니다.';
 	@override String get downloadNotSecure => '다운로드가 안전하지 않은 곳으로 리디렉션되었습니다.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$ko extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'QSON 운용 가져오기';
 	@override String get description => '이 앱이나 PoLo의 개발자 모드에서 내보낸 QSON 파일로 새 운용을 만듭니다.';
-	@override String get dropHint => 'QSON 파일을 끌어다 놓아 새 운용으로 가져오세요';
 	@override String importing({required Object filename}) => '${filename} 가져오는 중…';
 	@override String failed({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}';
 	@override String pickerFailed({required Object error}) => '가져올 파일을 열 수 없습니다: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$ko extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename}은(는) JSON 파일이 아니므로 QSON 파일이 아닙니다';
 	@override String notOperation({required Object filename}) => '${filename}에는 QSON 운용이 들어 있지 않습니다';
 	@override String get busy => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.';
-	@override String get oneFileOnly => 'QSON 파일은 한 번에 하나씩 끌어다 놓으세요. 파일마다 별도의 운용으로 열립니다.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$ko extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'ADIF에서 QSO 가져오기';
 	@override String reading({required Object filename}) => '${filename} 읽는 중…';
-	@override String get dropHint => '가져올 ADIF 파일을 끌어다 놓으세요';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
 		one: '이 파일의 QSO ${count}개',
 		other: '이 파일의 QSO ${formatted}개',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$ko extends Translations$adifImport$en {
 	@override String get addActivation => '이 운용에 추가';
 	@override String shortfall({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.';
 	@override String get busy => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.';
-	@override String get oneFileOnly => 'ADIF 파일은 한 번에 하나씩 끌어다 놓으세요. 파일을 가져오는 순서에 따라 어떤 데이터가 우선할지 결정됩니다.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용 하나에 한 번에 가져올 수 있는 최대치입니다.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용에 ADIF를 가져오는 기능은 QSO 몇 개를 추가하기 위한 것이지 큰 로그를 들여오기 위한 것이 아닙니다. 큰 로그는 로그 화면에서 가져오세요. 확실하다면 개발자 모드에서는 그래도 가져올 수 있습니다.';
 	@override String get importAnyway => '어쨌든 가져오기';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$ko extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => '${label} 가져오기';
 	@override String pickTitle({required Object file}) => '${file}을(를) 다음으로 가져오기';
-	@override String get dropHint => '파일을 끌어다 놓아 추적 프로그램으로 가져오세요';
 	@override String done({required Object file, required Object program, required Object count}) => '${file}에서 ${program} 항목 ${count}개를 가져왔습니다';
 	@override String doneSkipped({required Object file, required Object program, required Object count, required Object skipped}) => '${file}에서 ${program} 항목 ${count}개를 가져왔고, 읽을 수 없는 ${skipped}개는 건너뛰었습니다';
 	@override String nothing({required Object file, required Object program}) => '${file}에는 ${program}이(가) 가져올 수 있는 항목이 없습니다';
@@ -4579,8 +4572,6 @@ extension on TranslationsKo {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => '${name} 설치가 완료되지 않았습니다. 다시 설치해야 할 수 있습니다.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '${name}을(를) 제거할 수 없습니다',
 			'extensionsPanel.installedFrom' => ({required Object source}) => '${source}에서 다운로드됨',
-			'extensionsPanel.dropHint' => '.h2kext 확장 파일을 끌어다 놓아 설치하세요',
-			'extensionsPanel.dropOneOnly' => '확장 기능은 한 번에 하나씩 끌어다 놓으세요.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source}이(가) 해당 확장 기능에 대해 ${status}을(를) 반환했습니다.',
 			'extensionsPanel.downloadTooLarge' => '다운로드 크기가 확장 기능이라기엔 너무 큽니다.',
 			'extensionsPanel.downloadNotSecure' => '다운로드가 안전하지 않은 곳으로 리디렉션되었습니다.',
@@ -4795,7 +4786,6 @@ extension on TranslationsKo {
 			'chase.checklists' => '추적 진행 상황',
 			'chase.imports.importFrom' => ({required Object label}) => '${label} 가져오기',
 			'chase.imports.pickTitle' => ({required Object file}) => '${file}을(를) 다음으로 가져오기',
-			'chase.imports.dropHint' => '파일을 끌어다 놓아 추적 프로그램으로 가져오세요',
 			'chase.imports.done' => ({required Object file, required Object program, required Object count}) => '${file}에서 ${program} 항목 ${count}개를 가져왔습니다',
 			'chase.imports.doneSkipped' => ({required Object file, required Object program, required Object count, required Object skipped}) => '${file}에서 ${program} 항목 ${count}개를 가져왔고, 읽을 수 없는 ${skipped}개는 건너뛰었습니다',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file}에는 ${program}이(가) 가져올 수 있는 항목이 없습니다',
@@ -4985,11 +4975,11 @@ extension on TranslationsKo {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel}을(를) 표시할 수 없습니다: 아트워크가 자체 완결형이 아닙니다',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 레이어가 ${max}개를 초과합니다',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 컨트롤이 ${max}개를 초과합니다',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬의 일부에 항목이 ${max}개를 초과합니다',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 씬 문자열이 ${max}자를 초과합니다',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}을(를) 표시할 수 없습니다: 레이아웃의 중첩 깊이가 ${max}단계를 초과합니다',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => '다시 시도',
 			'operation.layout.panelActionFailed' => '패널 작업에 실패했습니다. 다시 시도하세요.',
 			'operation.layout.panels.loggingDescription' => '로그와 입력 필드',
@@ -5499,11 +5489,11 @@ extension on TranslationsKo {
 			'loggingControls.bandOrFreqRequired' => '로깅 전에 주파수나 밴드를 지정하세요',
 			'loggingControls.missingBand' => '밴드 없음',
 			'loggingControls.missingMode' => '모드 없음',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => '저장할 수 없습니다: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '삭제할 수 없습니다: ${error}',
 			'loggingControls.info.noQsos' => '아직 QSO가 없습니다... 운용을 시작하세요!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 동안 ${count}',
@@ -6013,11 +6003,11 @@ extension on TranslationsKo {
 			'settings.privacy.termsOfService' => '서비스 약관',
 			'settings.operatorCall' => '오퍼레이터 콜사인',
 			'settings.sync.title' => '클라우드 동기화',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => '추가 동기화 설정',
 			'settings.sync.enable' => '동기화 활성화',
 			'settings.sync.deviceKey' => '기기 키',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => '피어 기기',
 			'settings.peers.enable' => '다른 기기와 연결',
 			'settings.peers.enableDescription' => '로컬 네트워크를 통해 다른 기기와 운용, 로깅, CAT 및 GPS 공유 허용',
@@ -6527,11 +6517,11 @@ extension on TranslationsKo {
 			'settings.station.placeholderConnectDelay' => '연결 지연 (ms)',
 			'settings.station.placeholderConnectDelayDescription' => '시뮬레이션된 핸드셰이크에 걸리는 시간. 비워 두거나 0이면 즉시 연결됩니다.',
 			'settings.station.placeholderDropAfter' => '연결 끊기 (초)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '재연결 경로를 시험하기 위해 스스로 연결을 끊습니다. 비워 두거나 0이면 끊지 않습니다.',
 			'settings.station.placeholderFailConnect' => '항상 연결 실패',
 			'settings.station.placeholderConnectFailure' => '임시 무전기가 이 연결을 거부하도록 설정되었습니다',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '주파수 (kHz)',
 			'settings.station.placeholderFreqDescription' => '임시 무전기의 시작 주파수. 이후에는 앱이 튜닝한 값을 그대로 보고합니다.',
 			'settings.station.placeholderMode' => '모드',
@@ -7040,20 +7030,17 @@ extension on TranslationsKo {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '운용 ${count}개', other: '운용 ${count}개', ), 
 			'qsonImport.title' => 'QSON 운용 가져오기',
 			'qsonImport.description' => '이 앱이나 PoLo의 개발자 모드에서 내보낸 QSON 파일로 새 운용을 만듭니다.',
-			'qsonImport.dropHint' => 'QSON 파일을 끌어다 놓아 새 운용으로 가져오세요',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} 가져오는 중…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}을(를) 가져올 수 없습니다: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '가져올 파일을 열 수 없습니다: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename}은(는) UTF-8 텍스트가 아니므로 QSON 파일이 아닙니다',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename}은(는) JSON 파일이 아니므로 QSON 파일이 아닙니다',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename}에는 QSON 운용이 들어 있지 않습니다',
 			'qsonImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
-			'qsonImport.oneFileOnly' => 'QSON 파일은 한 번에 하나씩 끌어다 놓으세요. 파일마다 별도의 운용으로 열립니다.',
 			'adifImport.title' => 'ADIF에서 QSO 가져오기',
 			'adifImport.reading' => ({required Object filename}) => '${filename} 읽는 중…',
-			'adifImport.dropHint' => '가져올 ADIF 파일을 끌어다 놓으세요',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '이 파일의 QSO ${count}개', other: '이 파일의 QSO ${formatted}개', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개는 이미 로그에 있음', other: '${formatted}개는 이미 로그에 있음', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${count}개를 가져옵니다', other: '${formatted}개를 가져옵니다', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsKo {
 			'adifImport.addActivation' => '이 운용에 추가',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}개 중 ${written}개만 적용할 수 있었습니다. 결정하는 동안 로그가 변경되었습니다.',
 			'adifImport.busy' => '이미 가져오기가 진행 중입니다. 완료될 때까지 기다린 후 시작하세요.',
-			'adifImport.oneFileOnly' => 'ADIF 파일은 한 번에 하나씩 끌어다 놓으세요. 파일을 가져오는 순서에 따라 어떤 데이터가 우선할지 결정됩니다.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용 하나에 한 번에 가져올 수 있는 최대치입니다.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename}에 QSO가 ${limit}개를 넘게 있습니다. 운용에 ADIF를 가져오는 기능은 QSO 몇 개를 추가하기 위한 것이지 큰 로그를 들여오기 위한 것이 아닙니다. 큰 로그는 로그 화면에서 가져오세요. 확실하다면 개발자 모드에서는 그래도 가져올 수 있습니다.',
 			'adifImport.importAnyway' => '어쨌든 가져오기',

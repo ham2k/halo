@@ -114,8 +114,6 @@
     "installIncomplete": "La instal·lació de ${name} no ha acabat. Potser cal tornar-la a instal·lar.",
     "uninstallFailed": "No s'ha pogut eliminar ${name}",
     "installedFrom": "Descarregada de ${source}",
-    "dropHint": "Deixa anar una extensió .h2kext per instal·lar-la",
-    "dropOneOnly": "Deixa anar les extensions d'una en una.",
     "downloadFailed": "${source} ha retornat ${status} per a aquesta extensió.",
     "downloadTooLarge": "Aquesta descàrrega és massa gran per ser una extensió.",
     "downloadNotSecure": "Aquesta descàrrega ha redirigit a un lloc insegur.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importa ${label}",
       "pickTitle": "Importa ${file} com a",
-      "dropHint": "Deixa anar un fitxer per importar-lo a un programa de caça",
       "done": "S'han importat ${count} entrades de ${program} des de ${file}",
       "doneSkipped": "S'han importat ${count} entrades de ${program} des de ${file}; se n'han omès ${skipped} que no s'han pogut llegir",
       "nothing": "${file} no té res que ${program} pugui importar",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importa una operació QSON",
     "description": "Crea una operació nova a partir d'un fitxer QSON, com el que exporta el Mode de desenvolupador aquí o a PoLo.",
-    "dropHint": "Deixa anar un fitxer QSON per importar-lo com a operació nova",
     "importing": "Important ${filename}…",
     "failed": "No s'ha pogut importar ${filename}: ${error}",
     "pickerFailed": "No s'ha pogut obrir cap fitxer per importar: ${error}",
     "notUtf8": "${filename} no és text UTF-8, així que no és un fitxer QSON",
     "notJson": "${filename} no és un fitxer JSON, així que no és un fitxer QSON",
     "notOperation": "${filename} no conté cap operació QSON",
-    "busy": "Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.",
-    "oneFileOnly": "Deixa anar els fitxers QSON d'un en un — cadascun s'obre com una operació pròpia."
+    "busy": "Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra."
   },
   "adifImport": {
     "title": "Importa QSOs des d'ADIF",
     "reading": "Llegint ${filename}…",
-    "dropHint": "Deixa anar un fitxer ADIF per importar-lo",
     "totalInFile": {
       "one": "${count} QSO en aquest fitxer",
       "other": "${formatted} QSOs en aquest fitxer"
@@ -3075,7 +3069,6 @@
     "addActivation": "Afegeix-la a aquesta operació",
     "shortfall": "Només s'han pogut aplicar ${written} de ${planned} — el registre ha canviat mentre decidies.",
     "busy": "Ja hi ha una importació en curs. Espera que acabi abans de començar-ne una altra.",
-    "oneFileOnly": "Deixa anar els fitxers ADIF d'un en un — l'ordre en què s'importen decideix quines dades prevalen.",
     "tooMany": "${filename} té més de ${limit} QSOs, el màxim que una operació pot importar alhora.",
     "tooManyDeveloper": "${filename} té més de ${limit} QSOs. Importar un ADIF a una operació serveix per afegir uns quants QSOs, no per carregar un registre gran — per a això, fes servir la vista Registres. El mode de desenvolupador et permet importar-lo igualment, si n'estàs segur.",
     "importAnyway": "Importa igualment"

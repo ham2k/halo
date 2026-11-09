@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$nb extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'Installasjonen av ${name} ble ikke fullført. Den må kanskje installeres på nytt.';
 	@override String uninstallFailed({required Object name}) => 'Kunne ikke fjerne ${name}';
 	@override String installedFrom({required Object source}) => 'Lastet ned fra ${source}';
-	@override String get dropHint => 'Slipp en .h2kext-utvidelse her for å installere den';
-	@override String get dropOneOnly => 'Slipp én utvidelse om gangen.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} svarte med ${status} for den utvidelsen.';
 	@override String get downloadTooLarge => 'Den nedlastingen er altfor stor til å være en utvidelse.';
 	@override String get downloadNotSecure => 'Den nedlastingen ble omdirigert til et usikkert sted.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$nb extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'Importer QSON-operasjon';
 	@override String get description => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.';
-	@override String get dropHint => 'Slipp en QSON-fil her for å importere den som en ny operasjon';
 	@override String importing({required Object filename}) => 'Importerer ${filename}…';
 	@override String failed({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}';
 	@override String pickerFailed({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$nb extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil';
 	@override String notOperation({required Object filename}) => '${filename} inneholder ingen QSON-operasjon';
 	@override String get busy => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.';
-	@override String get oneFileOnly => 'Slipp én QSON-fil om gangen — hver av dem åpnes som sin egen operasjon.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$nb extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'Importer QSOer fra ADIF';
 	@override String reading({required Object filename}) => 'Leser ${filename}…';
-	@override String get dropHint => 'Slipp en ADIF-fil her for å importere';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
 		one: '${count} QSO i denne filen',
 		other: '${formatted} QSOer i denne filen',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$nb extends Translations$adifImport$en {
 	@override String get addActivation => 'Legg den til i denne operasjonen';
 	@override String shortfall({required Object written, required Object planned}) => 'Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.';
 	@override String get busy => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.';
-	@override String get oneFileOnly => 'Slipp én ADIF-fil om gangen — rekkefølgen filene importeres i, avgjør hvilke data som vinner.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.';
 	@override String get importAnyway => 'Importer likevel';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$nb extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'Importer ${label}';
 	@override String pickTitle({required Object file}) => 'Importer ${file} som';
-	@override String get dropHint => 'Slipp en fil her for å importere den til et jaktprogram';
 	@override String done({required Object count, required Object program, required Object file}) => 'Importerte ${count} ${program}-oppføringer fra ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Importerte ${count} ${program}-oppføringer fra ${file}, hoppet over ${skipped} som ikke kunne leses';
 	@override String nothing({required Object file, required Object program}) => '${file} har ingenting ${program} kan importere';
@@ -4579,8 +4572,6 @@ extension on TranslationsNb {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installasjonen av ${name} ble ikke fullført. Den må kanskje installeres på nytt.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Kunne ikke fjerne ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Lastet ned fra ${source}',
-			'extensionsPanel.dropHint' => 'Slipp en .h2kext-utvidelse her for å installere den',
-			'extensionsPanel.dropOneOnly' => 'Slipp én utvidelse om gangen.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} svarte med ${status} for den utvidelsen.',
 			'extensionsPanel.downloadTooLarge' => 'Den nedlastingen er altfor stor til å være en utvidelse.',
 			'extensionsPanel.downloadNotSecure' => 'Den nedlastingen ble omdirigert til et usikkert sted.',
@@ -4795,7 +4786,6 @@ extension on TranslationsNb {
 			'chase.checklists' => 'Jaktfremdrift',
 			'chase.imports.importFrom' => ({required Object label}) => 'Importer ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'Importer ${file} som',
-			'chase.imports.dropHint' => 'Slipp en fil her for å importere den til et jaktprogram',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Importerte ${count} ${program}-oppføringer fra ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Importerte ${count} ${program}-oppføringer fra ${file}, hoppet over ${skipped} som ikke kunne leses',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} har ingenting ${program} kan importere',
@@ -4985,11 +4975,11 @@ extension on TranslationsNb {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} kunne ikke vises: grafikken er ikke selvstendig',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} lag',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: scenen har mer enn ${max} kontroller',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en del av scenen har mer enn ${max} oppføringer',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: en scenestreng er lengre enn ${max} tegn',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} kunne ikke vises: oppsettet er nøstet mer enn ${max} nivåer dypt',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Prøv igjen',
 			'operation.layout.panelActionFailed' => 'Panelhandlingen mislyktes. Prøv igjen.',
 			'operation.layout.panels.loggingDescription' => 'Loggen og registreringsfeltene',
@@ -5499,11 +5489,11 @@ extension on TranslationsNb {
 			'loggingControls.bandOrFreqRequired' => 'Angi frekvens eller bånd før du logger',
 			'loggingControls.missingBand' => 'Ingen bånd',
 			'loggingControls.missingMode' => 'Ingen modus',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kunne ikke lagre: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Kunne ikke slette: ${error}',
 			'loggingControls.info.noQsos' => 'Ingen QSOer ennå... la oss gå på lufta!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOer',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} på ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsNb {
 			'settings.privacy.termsOfService' => 'Tjenestevilkår',
 			'settings.operatorCall' => 'Operatørkallesignal',
 			'settings.sync.title' => 'Skysynkronisering',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Flere synkroniseringsinnstillinger',
 			'settings.sync.enable' => 'Aktiver synkronisering',
 			'settings.sync.deviceKey' => 'Enhetsnøkkel',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Andre enheter',
 			'settings.peers.enable' => 'Koble til andre enheter',
 			'settings.peers.enableDescription' => 'Tillat deling av operasjoner, logging, CAT og GPS med andre enheter over det lokale nettverket',
@@ -6527,11 +6517,11 @@ extension on TranslationsNb {
 			'settings.station.placeholderConnectDelay' => 'Tilkoblingsforsinkelse (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Hvor lang tid det simulerte handshaket tar. Tomt eller 0 kobler til umiddelbart.',
 			'settings.station.placeholderDropAfter' => 'Bryt etter (sekunder)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Lukk tilkoblingen av seg selv, for å teste gjenoppkoblingen. Tomt eller 0 bryter aldri.',
 			'settings.station.placeholderFailConnect' => 'Mislykkes alltid med å koble til',
 			'settings.station.placeholderConnectFailure' => 'Plassholderradioen ble bedt om å avvise denne tilkoblingen',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekvens (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Hvor plassholderradioen starter. Etterpå rapporterer den tilbake det appen stiller den inn på.',
 			'settings.station.placeholderMode' => 'Modus',
@@ -7040,20 +7030,17 @@ extension on TranslationsNb {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} operasjon', other: '${count} operasjoner', ), 
 			'qsonImport.title' => 'Importer QSON-operasjon',
 			'qsonImport.description' => 'Opprett en ny operasjon fra en QSON-fil, slik utviklermodus eksporterer den her eller i PoLo.',
-			'qsonImport.dropHint' => 'Slipp en QSON-fil her for å importere den som en ny operasjon',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importerer ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Kunne ikke importere ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Kunne ikke åpne en fil å importere: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} er ikke UTF-8-tekst, så det er ikke en QSON-fil',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} er ikke en JSON-fil, så det er ikke en QSON-fil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} inneholder ingen QSON-operasjon',
 			'qsonImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
-			'qsonImport.oneFileOnly' => 'Slipp én QSON-fil om gangen — hver av dem åpnes som sin egen operasjon.',
 			'adifImport.title' => 'Importer QSOer fra ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leser ${filename}…',
-			'adifImport.dropHint' => 'Slipp en ADIF-fil her for å importere',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} QSO i denne filen', other: '${formatted} QSOer i denne filen', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} finnes allerede i loggen din', other: '${formatted} finnes allerede i loggen din', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} blir importert', other: '${formatted} blir importert', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsNb {
 			'adifImport.addActivation' => 'Legg den til i denne operasjonen',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Bare ${written} av ${planned} kunne tas i bruk — loggen ble endret mens du bestemte deg.',
 			'adifImport.busy' => 'En import pågår allerede. Vent til den er ferdig før du starter en ny.',
-			'adifImport.oneFileOnly' => 'Slipp én ADIF-fil om gangen — rekkefølgen filene importeres i, avgjør hvilke data som vinner.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer, som er det meste en operasjon kan importere om gangen.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} har mer enn ${limit} QSOer. Import av en ADIF til en operasjon er ment for å legge til noen få QSOer, ikke for å hente inn en stor logg — bruk Logger-visningen til det. Utviklermodus lar deg importere den likevel, hvis du er sikker.',
 			'adifImport.importAnyway' => 'Importer likevel',

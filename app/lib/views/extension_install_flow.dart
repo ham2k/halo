@@ -12,7 +12,6 @@
 
 import 'dart:async';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart' show HookCategories, Hooks;
@@ -664,76 +663,6 @@ Future<bool> _confirmUpdateAll(BuildContext context, {required List<({String nam
         ),
       ) ??
       false;
-}
-
-/// Accepts a `.h2kext` dropped anywhere on its [child].
-///
-/// Modelled on `AdifDropTarget`, and inert on iOS and Android for the same
-/// reason: `desktop_drop` is a no-op where there is no file-drag gesture, and
-/// those platforms reach the same install through the button.
-class ExtensionDropTarget extends StatefulWidget {
-  final Widget child;
-  final Future<void> Function(XFile file) onFile;
-
-  const ExtensionDropTarget({super.key, required this.child, required this.onFile});
-
-  @override
-  State<ExtensionDropTarget> createState() => _ExtensionDropTargetState();
-}
-
-class _ExtensionDropTargetState extends State<ExtensionDropTarget> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DropTarget(
-      // `desktop_drop` dispatches to EVERY listener whose box contains the
-      // point — there is no topmost-wins hit test — so a target under a pushed
-      // route still fires. Without this a drop while the consent dialog is
-      // open starts a second install behind it.
-      enable: ModalRoute.of(context)?.isCurrent ?? true,
-      // Highlights for any drag, not only a bundle: what a drag carries is not
-      // reliably known until it lands, so promising nothing until then would
-      // mean no feedback at all on the common case. What was actually dropped
-      // is decided by its magic bytes, same as the picker.
-      onDragEntered: (_) => setState(() => _hovering = true),
-      onDragExited: (_) => setState(() => _hovering = false),
-      onDragDone: (details) async {
-        setState(() => _hovering = false);
-        // One at a time. Installing several would mean several consent
-        // screens in a row, which is the shape people click through — and
-        // picking one silently is worse.
-        if (details.files.length > 1) {
-          if (mounted) await showInstallRefusal(context, context.t.extensionsPanel.dropOneOnly);
-          return;
-        }
-        final file = details.files.firstOrNull;
-        if (file != null) await widget.onFile(file);
-      },
-      child: Stack(
-        children: [
-          widget.child,
-          if (_hovering)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ColoredBox(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  child: Center(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(Space.lg),
-                        child: Text(context.t.extensionsPanel.dropHint, style: theme.textTheme.titleMedium),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 /// What the operator chose in the details dialog, or null if they closed it.

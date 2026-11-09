@@ -169,13 +169,7 @@ class _KeyboardShortcutsPanelState extends State<KeyboardShortcutsPanel> {
 
   KeyBindingsService get _service => widget.services.keyBindingsService;
 
-  late final _sets = KeyboardShortcutSetCategory(
-    _service,
-    translate: (file) => showHaloDialog<KeyBindingOverrides>(
-      context: context,
-      builder: (_) => _ImportDialog(file: file),
-    ),
-  );
+  late final _sets = keyboardShortcutSets(context, widget.services);
 
   @override
   void initState() {
@@ -865,6 +859,16 @@ class _CommandTextDialogState extends State<_CommandTextDialog> {
     );
   }
 }
+
+/// The operator's key sets, an import asking on [context] how the file's
+/// modifiers read on this keyboard.
+KeyboardShortcutSetCategory keyboardShortcutSets(BuildContext context, HaLoServices services) => KeyboardShortcutSetCategory(
+  services.keyBindingsService,
+  translate: (file) => showHaloDialog<KeyBindingOverrides>(
+    context: context,
+    builder: (_) => _ImportDialog(file: file),
+  ),
+);
 
 /// Asks how a file's `cmd`, `ctrl` and `meta` read on this keyboard;
 /// returns the keys the new set holds.

@@ -114,8 +114,6 @@
     "installIncomplete": "${name} 未完成安装，可能需要重新安装。",
     "uninstallFailed": "无法移除 ${name}",
     "installedFrom": "下载自 ${source}",
-    "dropHint": "拖放 .h2kext 扩展文件以安装",
-    "dropOneOnly": "一次只能拖放一个扩展。",
     "downloadFailed": "${source} 对该扩展返回了 ${status}。",
     "downloadTooLarge": "该下载文件太大，不可能是扩展。",
     "downloadNotSecure": "该下载被重定向到了不安全的位置。",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "导入 ${label}",
       "pickTitle": "将 ${file} 导入为",
-      "dropHint": "拖放文件以导入到追逐项目",
       "done": "已从 ${file} 导入 ${count} 条 ${program} 记录",
       "doneSkipped": "已从 ${file} 导入 ${count} 条 ${program} 记录，跳过了 ${skipped} 条无法读取的记录",
       "nothing": "${file} 中没有 ${program} 可导入的内容",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "导入 QSON 操作",
     "description": "从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。",
-    "dropHint": "拖放 QSON 文件以导入为新操作",
     "importing": "正在导入 ${filename}…",
     "failed": "无法导入 ${filename}：${error}",
     "pickerFailed": "无法打开要导入的文件：${error}",
     "notUtf8": "${filename} 不是 UTF-8 文本，因此不是 QSON 文件",
     "notJson": "${filename} 不是 JSON 文件，因此不是 QSON 文件",
     "notOperation": "${filename} 不包含 QSON 操作",
-    "busy": "已有导入正在进行。请等待其完成后再开始新的导入。",
-    "oneFileOnly": "一次只能拖放一个 QSON 文件——每个文件会作为单独的操作打开。"
+    "busy": "已有导入正在进行。请等待其完成后再开始新的导入。"
   },
   "adifImport": {
     "title": "从 ADIF 导入 QSO",
     "reading": "正在读取 ${filename}…",
-    "dropHint": "拖放 ADIF 文件以导入",
     "totalInFile": {
       "one": "此文件中有 ${count} 个 QSO",
       "other": "此文件中有 ${formatted} 个 QSO"
@@ -3075,7 +3069,6 @@
     "addActivation": "将其添加到此操作",
     "shortfall": "只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。",
     "busy": "已有导入正在进行。请等待其完成后再开始新的导入。",
-    "oneFileOnly": "一次只能拖放一个 ADIF 文件——文件的导入顺序决定了哪些数据优先。",
     "tooMany": "${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。",
     "tooManyDeveloper": "${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。",
     "importAnyway": "仍然导入"

@@ -114,8 +114,6 @@
     "installIncomplete": "Inštalácia ${name} sa nedokončila. Možno bude potrebné nainštalovať ho znova.",
     "uninstallFailed": "${name} sa nepodarilo odstrániť",
     "installedFrom": "Stiahnuté z ${source}",
-    "dropHint": "Pustite sem rozšírenie .h2kext a nainštaluje sa",
-    "dropOneOnly": "Pustite naraz iba jedno rozšírenie.",
     "downloadFailed": "${source} pre toto rozšírenie vrátil ${status}.",
     "downloadTooLarge": "Toto sťahovanie je príliš veľké na to, aby to bolo rozšírenie.",
     "downloadNotSecure": "Toto sťahovanie bolo presmerované na nezabezpečené miesto.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importovať ${label}",
       "pickTitle": "Importovať ${file} ako",
-      "dropHint": "Pustite sem súbor a importuje sa do programu pre lov",
       "done": "Importovaných ${count} záznamov ${program} z ${file}",
       "doneSkipped": "Importovaných ${count} záznamov ${program} z ${file}, preskočených ${skipped}, ktoré sa nedali prečítať",
       "nothing": "${file} neobsahuje nič, čo by sa dalo importovať do ${program}",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importovať prevádzku QSON",
     "description": "Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.",
-    "dropHint": "Pustite sem súbor QSON a importuje sa ako nová prevádzka",
     "importing": "Importuje sa ${filename}…",
     "failed": "${filename} sa nepodarilo importovať: ${error}",
     "pickerFailed": "Nepodarilo sa otvoriť súbor na import: ${error}",
     "notUtf8": "${filename} nie je text v UTF-8, takže to nie je súbor QSON",
     "notJson": "${filename} nie je súbor JSON, takže to nie je súbor QSON",
     "notOperation": "${filename} neobsahuje prevádzku QSON",
-    "busy": "Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.",
-    "oneFileOnly": "Pustite naraz iba jeden súbor QSON — každý sa otvorí ako samostatná prevádzka."
+    "busy": "Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí."
   },
   "adifImport": {
     "title": "Importovať QSO z ADIF",
     "reading": "Číta sa ${filename}…",
-    "dropHint": "Pustite sem súbor ADIF a importuje sa",
     "totalInFile": {
       "one": "${count} QSO v tomto súbore",
       "other": "${formatted} QSO v tomto súbore"
@@ -3075,7 +3069,6 @@
     "addActivation": "Pridať ju do tejto prevádzky",
     "shortfall": "Uplatniť sa dalo iba ${written} z ${planned} — denník sa zmenil, kým ste sa rozhodovali.",
     "busy": "Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.",
-    "oneFileOnly": "Pustite naraz iba jeden súbor ADIF — poradie importu súborov rozhoduje, ktoré údaje majú prednosť.",
     "tooMany": "${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.",
     "tooManyDeveloper": "${filename} má viac ako ${limit} QSO. Import ADIF do prevádzky má pridať pár QSO, nie priniesť veľký denník — na to použite zobrazenie Denníky. Ak ste si istí, Režim vývojára vám ho dovolí importovať aj tak.",
     "importAnyway": "Napriek tomu importovať"

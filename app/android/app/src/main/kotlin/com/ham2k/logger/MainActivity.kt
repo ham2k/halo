@@ -13,6 +13,10 @@ import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
+/// The extensions the manifest's VIEW filters claim — the same list
+/// views/file_open/file_kind.dart reads a kind from.
+private val openedExtensions = listOf("h2kext", "h2kkey", "h2klyt", "h2kset", "h2kvoice", "qson", "adi", "adif")
+
 class MainActivity : FlutterActivity() {
   // Physical-keyboard presence for the logging fields' focus rules
   // (docs/design/logging-fields.md): Flutter has no keyboard-presence API, so
@@ -118,7 +122,12 @@ class MainActivity : FlutterActivity() {
     // rotation or a process-death restore, so handling it unconditionally
     // re-copies the file and puts the consent dialog up again every time the
     // activity is recreated.
-    if (savedInstanceState == null) handleOpenIntent(intent)
+    if (savedInstanceState == null) {
+      // At launch and never per open: a file opened while the app runs waits
+      // its turn in Dart, and a sweep then would delete it before it is read.
+      sweepOldCopies()
+      handleOpenIntent(intent)
+    }
   }
 
   // The activity is singleTop-ish in practice: opening a second document while
@@ -131,7 +140,7 @@ class MainActivity : FlutterActivity() {
   private fun handleOpenIntent(intent: Intent?) {
     if (intent?.action != Intent.ACTION_VIEW) return
     val uri = intent.data ?: return
-    val path = copyToCache(uri) ?: return
+    val path = copyToCache(uri, intent.type) ?: return
     pendingOpenFiles.add(path)
     flushPendingOpenFiles()
   }
@@ -142,17 +151,28 @@ class MainActivity : FlutterActivity() {
   /// A content:// URI is a handle the granting app can revoke, and it is not
   /// a filesystem path at any point — reading it here is the only way its
   /// bytes reach Dart at all.
-  private fun copyToCache(uri: Uri): String? {
-    // ALWAYS suffixed .h2kext. A Downloads or MediaStore URI's last path
-    // segment is a row id ("msf:1234"), not a filename — a copy named after it
-    // carries no extension, and the Dart side drops anything that does not end
-    // in one. That is the browser-download path, which is the likeliest way a
-    // bundle arrives at all.
-    val name = queryDisplayName(contentResolver, uri) ?: "extension"
-    val stem = if (name.endsWith(".h2kext", ignoreCase = true)) name else "$name.h2kext"
-    sweepOldCopies()
-    val target = java.io.File(cacheDir, "opened-" + System.currentTimeMillis() + "-" + stem)
+  private fun copyToCache(uri: Uri, type: String?): String? {
+    // Named after the file, because the name is what the Dart side reads the
+    // kind from (views/file_open/file_kind.dart). A Downloads or MediaStore
+    // URI's last path segment is a row id ("msf:1234"), not a filename, so
+    // the provider's display name comes first; a name that still carries no
+    // extension the app reads takes one from the extension's MIME type, or
+    // from the path the intent filter matched. Anything else keeps its name,
+    // and the Dart side looks at its bytes.
+    val name = queryDisplayName(contentResolver, uri) ?: uri.lastPathSegment ?: "opened"
+    val path = uri.path ?: ""
+    val suffix = when {
+      openedExtensions.any { name.endsWith(".$it", ignoreCase = true) } -> ""
+      type == "application/vnd.ham2k.extension" -> ".h2kext"
+      else -> openedExtensions.firstOrNull { path.endsWith(".$it", ignoreCase = true) }?.let { ".$it" } ?: ""
+    }
+    val stem = name + suffix
+    // A folder of its own, so the copy keeps the file's own name: the Dart
+    // side shows it to the operator.
+    val folder = java.io.File(cacheDir, "opened-" + System.currentTimeMillis())
+    val target = java.io.File(folder, stem.replace('/', '_'))
     return try {
+      folder.mkdirs()
       contentResolver.openInputStream(uri).use { input ->
         if (input == null) return null
         target.outputStream().use { output -> input.copyTo(output) }
@@ -167,10 +187,10 @@ class MainActivity : FlutterActivity() {
   }
 
   /// Drops copies from previous opens. One file per open, kept forever,
-  /// is a cache that only grows — and each one is a whole extension bundle.
+  /// is a cache that only grows.
   private fun sweepOldCopies() {
     try {
-      cacheDir.listFiles { f -> f.name.startsWith("opened-") }?.forEach { it.delete() }
+      cacheDir.listFiles { f -> f.name.startsWith("opened-") }?.forEach { it.deleteRecursively() }
     } catch (e: Exception) {
       // A cache we could not tidy is not a reason to refuse the install.
       android.util.Log.w("ham2k", "could not sweep opened-file cache: " + e.message)

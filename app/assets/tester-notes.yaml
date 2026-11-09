@@ -7,6 +7,7 @@
 "upcoming":
   changes:
     - "New UPDATE (or UPD) command: DATA, POTA, NOTES, APP or EXT"
+    - "New file opening: ADIF, QSON, layouts, shortcut and message sets, from Files or by drop"
 
 "192":
   changes:

@@ -38,6 +38,8 @@ import 'dock_layouts/layout_menu.dart' show showLayoutsSheet;
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
 import 'operation/adif_import_flow.dart';
+import 'file_open/file_kind.dart';
+import 'file_open/file_router.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
@@ -1076,15 +1078,16 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             // Quick Lookup / branding panes do the same on Home.
             resizeToAvoidBottomInset: false,
             appBar: _headerAppBar(context, operation: operation, isTwoPane: isTwoPane, editingHeader: editingHeader, headerLines: headerLines),
-            body: AdifDropTarget(
-              // Wraps the whole body so a log file can be dropped anywhere on
-              // the operation, not onto some particular panel — the operator is
-              // dropping it "into this operation", and which pane happened to be
-              // under the cursor is not a distinction they are making.
-              onFile: (file) async {
-                if (operation.deleted) return;
-                await importAdifFile(context, services: widget.services, operation: operation, file: file);
-              },
+            body: FileSuggestions(
+              suggestions: [
+                FileDestination(
+                  id: 'adif:operation:${operation.uuid}',
+                  kind: HaloFileKind.adif,
+                  label: () => t.fileOpen.importInto(name: displayTitleFor(context, operation)),
+                  accepts: (kind, _) => kind == HaloFileKind.adif && !operation.deleted,
+                  open: (context, file) => importAdifFile(context, services: widget.services, operation: operation, file: file),
+                ),
+              ],
               child: PaneSafeArea.root(
                 context,
                 // Real device safe-area insets (notch, home indicator) bubble

@@ -8,7 +8,6 @@
 
 import 'dart:convert';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -113,61 +112,4 @@ Future<void> importDroppedChaseFile(BuildContext context, HaLoServices services,
         );
   if (chosen == null || !context.mounted) return;
   await runChaseImport(context, services, chosen.program, chosen.importer, station: station, file: file);
-}
-
-/// Takes a file dropped anywhere on its [child]. Inert on iOS and Android,
-/// where there is no file drag; those import through the sheet's button.
-class ChaseImportDropTarget extends StatefulWidget {
-  final Widget child;
-  final Future<void> Function(XFile file) onFile;
-
-  const ChaseImportDropTarget({super.key, required this.child, required this.onFile});
-
-  @override
-  State<ChaseImportDropTarget> createState() => _ChaseImportDropTargetState();
-}
-
-class _ChaseImportDropTargetState extends State<ChaseImportDropTarget> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DropTarget(
-      // `desktop_drop` reaches every target under the point, routes beneath
-      // a dialog included: without this a drop on an open dialog imports
-      // behind it.
-      enable: ModalRoute.of(context)?.isCurrent ?? true,
-      onDragEntered: (_) => setState(() => _hovering = true),
-      onDragExited: (_) => setState(() => _hovering = false),
-      onDragDone: (details) async {
-        setState(() => _hovering = false);
-        for (final file in details.files) {
-          if (!mounted) return;
-          await widget.onFile(file);
-        }
-      },
-      child: Stack(
-        children: [
-          widget.child,
-          if (_hovering)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ColoredBox(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  child: Center(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(Space.lg),
-                        child: Text(context.t.chase.imports.dropHint, style: theme.textTheme.titleMedium),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }

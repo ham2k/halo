@@ -35,6 +35,16 @@ PRODUCT_NAME = $(HALO_PRODUCT_NAME_$(HALO_EDITION))
 // build is `com.ham2k.logger.dev`.
 PRODUCT_BUNDLE_IDENTIFIER = com.ham2k.logger.$(HALO_EDITION)
 
+// How strongly this edition claims the Ham2K file types (Info.plist's
+// LSHandlerRank). Dev only joins "Open with": every dev build shares one
+// bundle id, and an Owner claim lets whichever copy Launch Services settles on
+// take a double-clicked file from an installed Prod or Next. With no other
+// edition installed, Dev still opens them.
+HALO_DOC_RANK_dev = Alternate
+HALO_DOC_RANK_next = Owner
+HALO_DOC_RANK_prod = Owner
+HALO_DOC_RANK = $(HALO_DOC_RANK_$(HALO_EDITION))
+
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.ham2k. All rights reserved.
 

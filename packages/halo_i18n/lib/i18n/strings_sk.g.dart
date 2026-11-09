@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$sk extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => 'Inštalácia ${name} sa nedokončila. Možno bude potrebné nainštalovať ho znova.';
 	@override String uninstallFailed({required Object name}) => '${name} sa nepodarilo odstrániť';
 	@override String installedFrom({required Object source}) => 'Stiahnuté z ${source}';
-	@override String get dropHint => 'Pustite sem rozšírenie .h2kext a nainštaluje sa';
-	@override String get dropOneOnly => 'Pustite naraz iba jedno rozšírenie.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} pre toto rozšírenie vrátil ${status}.';
 	@override String get downloadTooLarge => 'Toto sťahovanie je príliš veľké na to, aby to bolo rozšírenie.';
 	@override String get downloadNotSecure => 'Toto sťahovanie bolo presmerované na nezabezpečené miesto.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$sk extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'Importovať prevádzku QSON';
 	@override String get description => 'Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.';
-	@override String get dropHint => 'Pustite sem súbor QSON a importuje sa ako nová prevádzka';
 	@override String importing({required Object filename}) => 'Importuje sa ${filename}…';
 	@override String failed({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}';
 	@override String pickerFailed({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$sk extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} nie je súbor JSON, takže to nie je súbor QSON';
 	@override String notOperation({required Object filename}) => '${filename} neobsahuje prevádzku QSON';
 	@override String get busy => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.';
-	@override String get oneFileOnly => 'Pustite naraz iba jeden súbor QSON — každý sa otvorí ako samostatná prevádzka.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$sk extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'Importovať QSO z ADIF';
 	@override String reading({required Object filename}) => 'Číta sa ${filename}…';
-	@override String get dropHint => 'Pustite sem súbor ADIF a importuje sa';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
 		one: '${count} QSO v tomto súbore',
 		other: '${formatted} QSO v tomto súbore',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$sk extends Translations$adifImport$en {
 	@override String get addActivation => 'Pridať ju do tejto prevádzky';
 	@override String shortfall({required Object written, required Object planned}) => 'Uplatniť sa dalo iba ${written} z ${planned} — denník sa zmenil, kým ste sa rozhodovali.';
 	@override String get busy => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.';
-	@override String get oneFileOnly => 'Pustite naraz iba jeden súbor ADIF — poradie importu súborov rozhoduje, ktoré údaje majú prednosť.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO. Import ADIF do prevádzky má pridať pár QSO, nie priniesť veľký denník — na to použite zobrazenie Denníky. Ak ste si istí, Režim vývojára vám ho dovolí importovať aj tak.';
 	@override String get importAnyway => 'Napriek tomu importovať';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$sk extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'Importovať ${label}';
 	@override String pickTitle({required Object file}) => 'Importovať ${file} ako';
-	@override String get dropHint => 'Pustite sem súbor a importuje sa do programu pre lov';
 	@override String done({required Object count, required Object program, required Object file}) => 'Importovaných ${count} záznamov ${program} z ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Importovaných ${count} záznamov ${program} z ${file}, preskočených ${skipped}, ktoré sa nedali prečítať';
 	@override String nothing({required Object file, required Object program}) => '${file} neobsahuje nič, čo by sa dalo importovať do ${program}';
@@ -4579,8 +4572,6 @@ extension on TranslationsSk {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Inštalácia ${name} sa nedokončila. Možno bude potrebné nainštalovať ho znova.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '${name} sa nepodarilo odstrániť',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Stiahnuté z ${source}',
-			'extensionsPanel.dropHint' => 'Pustite sem rozšírenie .h2kext a nainštaluje sa',
-			'extensionsPanel.dropOneOnly' => 'Pustite naraz iba jedno rozšírenie.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} pre toto rozšírenie vrátil ${status}.',
 			'extensionsPanel.downloadTooLarge' => 'Toto sťahovanie je príliš veľké na to, aby to bolo rozšírenie.',
 			'extensionsPanel.downloadNotSecure' => 'Toto sťahovanie bolo presmerované na nezabezpečené miesto.',
@@ -4795,7 +4786,6 @@ extension on TranslationsSk {
 			'chase.checklists' => 'Postup lovu',
 			'chase.imports.importFrom' => ({required Object label}) => 'Importovať ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'Importovať ${file} ako',
-			'chase.imports.dropHint' => 'Pustite sem súbor a importuje sa do programu pre lov',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Importovaných ${count} záznamov ${program} z ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Importovaných ${count} záznamov ${program} z ${file}, preskočených ${skipped}, ktoré sa nedali prečítať',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} neobsahuje nič, čo by sa dalo importovať do ${program}',
@@ -4985,11 +4975,11 @@ extension on TranslationsSk {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} sa nepodarilo zobraziť: jeho grafika nie je samostatná',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} vrstiev',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho scéna má viac ako ${max} ovládacích prvkov',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: časť jeho scény má viac ako ${max} položiek',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: reťazec scény je dlhší ako ${max} znakov',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} sa nepodarilo zobraziť: jeho rozloženie je vnorené hlbšie ako ${max} úrovní',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Skúsiť znova',
 			'operation.layout.panelActionFailed' => 'Akcia panelu zlyhala. Skúste to znova.',
 			'operation.layout.panels.loggingDescription' => 'Denník a vstupné polia',
@@ -5499,11 +5489,11 @@ extension on TranslationsSk {
 			'loggingControls.bandOrFreqRequired' => 'Pred zápisom nastavte frekvenciu alebo pásmo',
 			'loggingControls.missingBand' => 'Bez pásma',
 			'loggingControls.missingMode' => 'Bez módu',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Nepodarilo sa uložiť: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Nepodarilo sa vymazať: ${error}',
 			'loggingControls.info.noQsos' => 'Zatiaľ žiadne QSO... poďme do éteru!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object count, required Object time}) => '${count} za ${time}',
@@ -6013,11 +6003,11 @@ extension on TranslationsSk {
 			'settings.privacy.termsOfService' => 'Podmienky služby',
 			'settings.operatorCall' => 'Volací znak operátora',
 			'settings.sync.title' => 'Cloudová synchronizácia',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Ďalšie nastavenia synchronizácie',
 			'settings.sync.enable' => 'Zapnúť synchronizáciu',
 			'settings.sync.deviceKey' => 'Kľúč zariadenia',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Partnerské zariadenia',
 			'settings.peers.enable' => 'Pripájať sa k iným zariadeniam',
 			'settings.peers.enableDescription' => 'Povoliť zdieľanie prevádzok, logovania, CAT a GPS s inými zariadeniami cez lokálnu sieť',
@@ -6527,11 +6517,11 @@ extension on TranslationsSk {
 			'settings.station.placeholderConnectDelay' => 'Oneskorenie pripojenia (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Ako dlho trvá simulovaný handshake. Prázdne alebo 0 sa pripojí okamžite.',
 			'settings.station.placeholderDropAfter' => 'Odpojiť po (sekundy)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Samo zatvorí pripojenie, aby sa vyskúšalo opätovné pripojenie. Prázdne alebo 0 sa nikdy neodpojí.',
 			'settings.station.placeholderFailConnect' => 'Vždy zlyhať pri pripájaní',
 			'settings.station.placeholderConnectFailure' => 'Zástupná rádiostanica má nastavené toto pripojenie odmietnuť',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekvencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Kde zástupná rádiostanica začína. Potom hlási to, na čo ju aplikácia naladí.',
 			'settings.station.placeholderMode' => 'Mód',
@@ -7040,20 +7030,17 @@ extension on TranslationsSk {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} prevádzka', other: '${count} prevádzok', ), 
 			'qsonImport.title' => 'Importovať prevádzku QSON',
 			'qsonImport.description' => 'Vytvoriť novú prevádzku zo súboru QSON, ako ho exportuje Režim vývojára tu alebo v PoLo.',
-			'qsonImport.dropHint' => 'Pustite sem súbor QSON a importuje sa ako nová prevádzka',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => 'Importuje sa ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} sa nepodarilo importovať: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'Nepodarilo sa otvoriť súbor na import: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} nie je text v UTF-8, takže to nie je súbor QSON',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} nie je súbor JSON, takže to nie je súbor QSON',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} neobsahuje prevádzku QSON',
 			'qsonImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
-			'qsonImport.oneFileOnly' => 'Pustite naraz iba jeden súbor QSON — každý sa otvorí ako samostatná prevádzka.',
 			'adifImport.title' => 'Importovať QSO z ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Číta sa ${filename}…',
-			'adifImport.dropHint' => 'Pustite sem súbor ADIF a importuje sa',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} QSO v tomto súbore', other: '${formatted} QSO v tomto súbore', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} už je vo vašom denníku', other: '${formatted} už je vo vašom denníku', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} sa importuje', other: '${formatted} sa importuje', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsSk {
 			'adifImport.addActivation' => 'Pridať ju do tejto prevádzky',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Uplatniť sa dalo iba ${written} z ${planned} — denník sa zmenil, kým ste sa rozhodovali.',
 			'adifImport.busy' => 'Import už prebieha. Pred spustením ďalšieho počkajte, kým sa dokončí.',
-			'adifImport.oneFileOnly' => 'Pustite naraz iba jeden súbor ADIF — poradie importu súborov rozhoduje, ktoré údaje majú prednosť.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO, čo je maximum, ktoré prevádzka dokáže naraz importovať.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} má viac ako ${limit} QSO. Import ADIF do prevádzky má pridať pár QSO, nie priniesť veľký denník — na to použite zobrazenie Denníky. Ak ste si istí, Režim vývojára vám ho dovolí importovať aj tak.',
 			'adifImport.importAnyway' => 'Napriek tomu importovať',

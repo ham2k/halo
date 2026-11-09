@@ -515,6 +515,18 @@ List<XTypeGroup> layoutFileTypeGroups() => [
   ),
 ];
 
+/// What a layout file calls [view] — a [PanelViews] value.
+String layoutViewName(String view) {
+  final names = t.operation.layout.layouts;
+  return switch (view) {
+    PanelViews.home => names.viewHome,
+    PanelViews.operation => names.viewOperation,
+    PanelViews.logs => names.viewLogs,
+    PanelViews.chase => names.viewChase,
+    _ => view,
+  };
+}
+
 /// Picks a layout file and brings it in the way the operator chooses.
 Future<void> runLayoutImport(BuildContext context, DockHost host) async {
   final t = context.t.operation.layout.layouts;
@@ -527,7 +539,16 @@ Future<void> runLayoutImport(BuildContext context, DockHost host) async {
     messenger?.showSnackBar(haloSnackBar(t.importPickerFailed(error: ErrorReportingService.messageOf(e))));
     return;
   }
-  if (chosen == null) return;
+  if (chosen == null || !context.mounted) return;
+  await importLayoutFile(context, host, chosen);
+}
+
+/// Brings the layout in [chosen] into [host]'s view the way the operator
+/// chooses — from the layout menu's Import, or a file opened from the OS or
+/// dropped on the view.
+Future<void> importLayoutFile(BuildContext context, DockHost host, XFile chosen) async {
+  final t = context.t.operation.layout.layouts;
+  final messenger = ScaffoldMessenger.maybeOf(context);
   final LayoutFile file;
   try {
     file = LayoutFile.parse(utf8.decode(await chosen.readAsBytes(), allowMalformed: true));
@@ -695,18 +716,6 @@ class _ImportDialogState extends State<_ImportDialog> {
     return widget.file.extensions.where((e) => e.key == key).firstOrNull?.name ?? _installed(key)?.nameFor(locale) ?? key;
   }
 
-  /// The view [view] names on screen — a [PanelViews] value.
-  String _viewName(String view) {
-    final t = context.t.operation.layout.layouts;
-    return switch (view) {
-      PanelViews.home => t.viewHome,
-      PanelViews.operation => t.viewOperation,
-      PanelViews.logs => t.viewLogs,
-      PanelViews.chase => t.viewChase,
-      _ => view,
-    };
-  }
-
   /// Whether the file carries settings for a panel placed once, which would
   /// replace the ones this device already keeps for it.
   bool get _hasSharedSettings {
@@ -774,7 +783,7 @@ class _ImportDialogState extends State<_ImportDialog> {
           if (fromView != null && fromView != _host.dockView)
             Padding(
               padding: const EdgeInsets.only(bottom: Space.md),
-              child: Text(t.importFromOtherView(view: _viewName(fromView)), style: theme.textTheme.bodySmall),
+              child: Text(t.importFromOtherView(view: layoutViewName(fromView)), style: theme.textTheme.bodySmall),
             ),
           modeRow(LayoutImportMode.newLayout, t.importAsNew),
           if (_mode == LayoutImportMode.newLayout)

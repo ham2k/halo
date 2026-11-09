@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$zh extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => '${name} 未完成安装，可能需要重新安装。';
 	@override String uninstallFailed({required Object name}) => '无法移除 ${name}';
 	@override String installedFrom({required Object source}) => '下载自 ${source}';
-	@override String get dropHint => '拖放 .h2kext 扩展文件以安装';
-	@override String get dropOneOnly => '一次只能拖放一个扩展。';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} 对该扩展返回了 ${status}。';
 	@override String get downloadTooLarge => '该下载文件太大，不可能是扩展。';
 	@override String get downloadNotSecure => '该下载被重定向到了不安全的位置。';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$zh extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => '导入 QSON 操作';
 	@override String get description => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。';
-	@override String get dropHint => '拖放 QSON 文件以导入为新操作';
 	@override String importing({required Object filename}) => '正在导入 ${filename}…';
 	@override String failed({required Object filename, required Object error}) => '无法导入 ${filename}：${error}';
 	@override String pickerFailed({required Object error}) => '无法打开要导入的文件：${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$zh extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件';
 	@override String notOperation({required Object filename}) => '${filename} 不包含 QSON 操作';
 	@override String get busy => '已有导入正在进行。请等待其完成后再开始新的导入。';
-	@override String get oneFileOnly => '一次只能拖放一个 QSON 文件——每个文件会作为单独的操作打开。';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$zh extends Translations$adifImport$en {
 	// Translations
 	@override String get title => '从 ADIF 导入 QSO';
 	@override String reading({required Object filename}) => '正在读取 ${filename}…';
-	@override String get dropHint => '拖放 ADIF 文件以导入';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
 		one: '此文件中有 ${count} 个 QSO',
 		other: '此文件中有 ${formatted} 个 QSO',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$zh extends Translations$adifImport$en {
 	@override String get addActivation => '将其添加到此操作';
 	@override String shortfall({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。';
 	@override String get busy => '已有导入正在进行。请等待其完成后再开始新的导入。';
-	@override String get oneFileOnly => '一次只能拖放一个 ADIF 文件——文件的导入顺序决定了哪些数据优先。';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。';
 	@override String get importAnyway => '仍然导入';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$zh extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => '导入 ${label}';
 	@override String pickTitle({required Object file}) => '将 ${file} 导入为';
-	@override String get dropHint => '拖放文件以导入到追逐项目';
 	@override String done({required Object file, required Object count, required Object program}) => '已从 ${file} 导入 ${count} 条 ${program} 记录';
 	@override String doneSkipped({required Object file, required Object count, required Object program, required Object skipped}) => '已从 ${file} 导入 ${count} 条 ${program} 记录，跳过了 ${skipped} 条无法读取的记录';
 	@override String nothing({required Object file, required Object program}) => '${file} 中没有 ${program} 可导入的内容';
@@ -4579,8 +4572,6 @@ extension on TranslationsZh {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => '${name} 未完成安装，可能需要重新安装。',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '无法移除 ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => '下载自 ${source}',
-			'extensionsPanel.dropHint' => '拖放 .h2kext 扩展文件以安装',
-			'extensionsPanel.dropOneOnly' => '一次只能拖放一个扩展。',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} 对该扩展返回了 ${status}。',
 			'extensionsPanel.downloadTooLarge' => '该下载文件太大，不可能是扩展。',
 			'extensionsPanel.downloadNotSecure' => '该下载被重定向到了不安全的位置。',
@@ -4795,7 +4786,6 @@ extension on TranslationsZh {
 			'chase.checklists' => '追逐进度',
 			'chase.imports.importFrom' => ({required Object label}) => '导入 ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => '将 ${file} 导入为',
-			'chase.imports.dropHint' => '拖放文件以导入到追逐项目',
 			'chase.imports.done' => ({required Object file, required Object count, required Object program}) => '已从 ${file} 导入 ${count} 条 ${program} 记录',
 			'chase.imports.doneSkipped' => ({required Object file, required Object count, required Object program, required Object skipped}) => '已从 ${file} 导入 ${count} 条 ${program} 记录，跳过了 ${skipped} 条无法读取的记录',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} 中没有 ${program} 可导入的内容',
@@ -4985,11 +4975,11 @@ extension on TranslationsZh {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} 无法显示：其图形不是自包含的',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个图层',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景包含超过 ${max} 个控件',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} 无法显示：其场景的某部分包含超过 ${max} 个条目',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} 无法显示：某个场景字符串长度超过 ${max} 个字符',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} 无法显示：其布局嵌套超过 ${max} 层',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => '重试',
 			'operation.layout.panelActionFailed' => '该面板操作失败，请重试。',
 			'operation.layout.panels.loggingDescription' => '日志和输入字段',
@@ -5499,11 +5489,11 @@ extension on TranslationsZh {
 			'loggingControls.bandOrFreqRequired' => '记录前请设置频率或频段',
 			'loggingControls.missingBand' => '无频段',
 			'loggingControls.missingMode' => '无模式',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => '无法保存：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '无法删除：${error}',
 			'loggingControls.info.noQsos' => '还没有 QSO…开始通联吧！',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 个 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} 个 QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} 内 ${count}',
@@ -6013,11 +6003,11 @@ extension on TranslationsZh {
 			'settings.privacy.termsOfService' => '服务条款',
 			'settings.operatorCall' => '操作员呼号',
 			'settings.sync.title' => '云同步',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => '更多同步设置',
 			'settings.sync.enable' => '启用同步',
 			'settings.sync.deviceKey' => '设备密钥',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => '对等设备',
 			'settings.peers.enable' => '连接到其他设备',
 			'settings.peers.enableDescription' => '允许通过本地网络与其他设备共享操作、记录、CAT 和 GPS',
@@ -6527,11 +6517,11 @@ extension on TranslationsZh {
 			'settings.station.placeholderConnectDelay' => '连接延迟（ms）',
 			'settings.station.placeholderConnectDelayDescription' => '模拟握手所需的时间。留空或 0 表示立即连接。',
 			'settings.station.placeholderDropAfter' => '多久后断开（秒）',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '自行关闭连接，以测试重连流程。留空或 0 表示从不断开。',
 			'settings.station.placeholderFailConnect' => '总是连接失败',
 			'settings.station.placeholderConnectFailure' => '占位电台被设置为拒绝此连接',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '频率（kHz）',
 			'settings.station.placeholderFreqDescription' => '占位电台的起始频率。之后应用调谐到哪里，它就报告哪里。',
 			'settings.station.placeholderMode' => '模式',
@@ -7040,20 +7030,17 @@ extension on TranslationsZh {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个操作', other: '${count} 个操作', ), 
 			'qsonImport.title' => '导入 QSON 操作',
 			'qsonImport.description' => '从 QSON 文件创建新操作，即开发者模式在此处或 PoLo 中导出的文件。',
-			'qsonImport.dropHint' => '拖放 QSON 文件以导入为新操作',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '正在导入 ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '无法导入 ${filename}：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => '无法打开要导入的文件：${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} 不是 UTF-8 文本，因此不是 QSON 文件',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} 不是 JSON 文件，因此不是 QSON 文件',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} 不包含 QSON 操作',
 			'qsonImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
-			'qsonImport.oneFileOnly' => '一次只能拖放一个 QSON 文件——每个文件会作为单独的操作打开。',
 			'adifImport.title' => '从 ADIF 导入 QSO',
 			'adifImport.reading' => ({required Object filename}) => '正在读取 ${filename}…',
-			'adifImport.dropHint' => '拖放 ADIF 文件以导入',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '此文件中有 ${count} 个 QSO', other: '此文件中有 ${formatted} 个 QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 个已在您的日志中', other: '${formatted} 个已在您的日志中', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '将导入 ${count} 个', other: '将导入 ${formatted} 个', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsZh {
 			'adifImport.addActivation' => '将其添加到此操作',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '只有 ${written} / ${planned} 个得以应用——在您决定期间日志发生了变化。',
 			'adifImport.busy' => '已有导入正在进行。请等待其完成后再开始新的导入。',
-			'adifImport.oneFileOnly' => '一次只能拖放一个 ADIF 文件——文件的导入顺序决定了哪些数据优先。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个，这是一个操作一次能导入的上限。',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} 中的 QSO 超过 ${limit} 个。向操作中导入 ADIF 是为了添加少量 QSO，而不是导入大型日志——后者请使用日志视图。如果您确定，开发者模式允许您仍然导入。',
 			'adifImport.importAnyway' => '仍然导入',

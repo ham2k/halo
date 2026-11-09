@@ -22,7 +22,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/logs_view.dart';
-import 'package:ham2k_logger/views/operation/adif_import_flow.dart';
+import 'package:ham2k_logger/views/file_open/file_destinations.dart' show logsAdifDestinationId;
+import 'package:ham2k_logger/views/file_open/file_router.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -799,11 +800,7 @@ void main() {
       await tester.enterText(_field('Name'), 'Hiram');
       // The import takes the table — and the editor in it — down while it
       // writes, so it asks first like everything else that would close it.
-      unawaited(
-        tester
-            .widget<AdifDropTarget>(find.byType(AdifDropTarget))
-            .onFile(XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi')),
-      );
+      unawaited(_logsDrop(tester)(XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi')));
       await settleFrames(tester, frames: 4);
       expect(find.text('Unsaved changes'), findsOneWidget);
 
@@ -836,11 +833,7 @@ void main() {
       final (_, qsos) = await _seed(h.services);
       await _pumpLogs(tester, h);
       Future<void> drop() async {
-        unawaited(
-          tester
-              .widget<AdifDropTarget>(find.byType(AdifDropTarget))
-              .onFile(XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi')),
-        );
+        unawaited(_logsDrop(tester)(XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi')));
         await settleFrames(tester, frames: 4);
       }
 
@@ -879,7 +872,7 @@ void main() {
       final h = await _harness();
       await _seed(h.services);
       await _pumpLogs(tester, h);
-      final onFile = tester.widget<AdifDropTarget>(find.byType(AdifDropTarget)).onFile;
+      final onFile = _logsDrop(tester);
       XFile file() => XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi');
 
       await _tapRow(tester, 'W1AW');
@@ -1288,4 +1281,13 @@ void main() {
       semantics.dispose();
     });
   });
+}
+
+/// What the Logs view does with an ADIF file dropped on it — its own
+/// suggestion, the one the file router sends the file to.
+Future<void> Function(XFile file) _logsDrop(WidgetTester tester) {
+  final zone = find.byWidgetPredicate((widget) => widget is FileSuggestions && widget.suggestions.any((d) => d.id == logsAdifDestinationId));
+  final destination = tester.widget<FileSuggestions>(zone).suggestions.firstWhere((d) => d.id == logsAdifDestinationId);
+  final context = tester.element(zone);
+  return (file) => destination.open(context, file);
 }

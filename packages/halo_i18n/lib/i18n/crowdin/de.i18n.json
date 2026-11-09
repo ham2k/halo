@@ -114,8 +114,6 @@
     "installIncomplete": "Die Installation von ${name} wurde nicht abgeschlossen. Sie muss eventuell wiederholt werden.",
     "uninstallFailed": "${name} konnte nicht entfernt werden",
     "installedFrom": "Heruntergeladen von ${source}",
-    "dropHint": "Lege eine .h2kext-Erweiterung hier ab, um sie zu installieren",
-    "dropOneOnly": "Lege immer nur eine Erweiterung ab.",
     "downloadFailed": "${source} lieferte ${status} für diese Erweiterung.",
     "downloadTooLarge": "Dieser Download ist viel zu groß für eine Erweiterung.",
     "downloadNotSecure": "Dieser Download wurde an eine unsichere Adresse umgeleitet.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "${label} importieren",
       "pickTitle": "${file} importieren als",
-      "dropHint": "Lege eine Datei hier ab, um sie in ein Jagdprogramm zu importieren",
       "done": "${count} ${program}-Einträge aus ${file} importiert",
       "doneSkipped": "${count} ${program}-Einträge aus ${file} importiert, ${skipped} unlesbare übersprungen",
       "nothing": "${file} enthält nichts, was ${program} importieren kann",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "QSON-Betrieb importieren",
     "description": "Einen neuen Betrieb aus einer QSON-Datei erstellen, wie sie der Entwicklermodus hier oder in PoLo exportiert.",
-    "dropHint": "Lege eine QSON-Datei hier ab, um sie als neuen Betrieb zu importieren",
     "importing": "Importiere ${filename}…",
     "failed": "${filename} konnte nicht importiert werden: ${error}",
     "pickerFailed": "Es konnte keine Datei zum Importieren geöffnet werden: ${error}",
     "notUtf8": "${filename} ist kein UTF-8-Text, also keine QSON-Datei",
     "notJson": "${filename} ist keine JSON-Datei, also keine QSON-Datei",
     "notOperation": "${filename} enthält keinen QSON-Betrieb",
-    "busy": "Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.",
-    "oneFileOnly": "Lege immer nur eine QSON-Datei ab — jede wird als eigener Betrieb geöffnet."
+    "busy": "Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest."
   },
   "adifImport": {
     "title": "QSOs aus ADIF importieren",
     "reading": "Lese ${filename}…",
-    "dropHint": "ADIF-Datei zum Importieren hier ablegen",
     "totalInFile": {
       "one": "${count} QSO in dieser Datei",
       "other": "${formatted} QSOs in dieser Datei"
@@ -3075,7 +3069,6 @@
     "addActivation": "Zu diesem Betrieb hinzufügen",
     "shortfall": "Nur ${written} von ${planned} konnten übernommen werden — das Log hat sich geändert, während du entschieden hast.",
     "busy": "Ein Import läuft bereits. Warte, bis er fertig ist, bevor du einen weiteren startest.",
-    "oneFileOnly": "Lege immer nur eine ADIF-Datei ab — die Reihenfolge des Imports entscheidet, welche Daten gewinnen.",
     "tooMany": "${filename} hat mehr als ${limit} QSOs, das Maximum, das ein Betrieb auf einmal importieren kann.",
     "tooManyDeveloper": "${filename} hat mehr als ${limit} QSOs. Der ADIF-Import in einen Betrieb ist dafür gedacht, ein paar QSOs hinzuzufügen, nicht ein großes Log einzulesen — nutze dafür die Logs-Ansicht. Im Entwicklermodus kannst du es trotzdem importieren, wenn du sicher bist.",
     "importAnyway": "Trotzdem importieren"

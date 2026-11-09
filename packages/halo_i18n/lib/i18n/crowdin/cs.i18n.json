@@ -114,8 +114,6 @@
     "installIncomplete": "Instalace ${name} nebyla dokončena. Možná bude nutné ji zopakovat.",
     "uninstallFailed": "${name} se nepodařilo odebrat",
     "installedFrom": "Staženo z ${source}",
-    "dropHint": "Přetáhněte sem rozšíření .h2kext a nainstalujte ho",
-    "dropOneOnly": "Přetahujte vždy jen jedno rozšíření.",
     "downloadFailed": "${source} vrátil pro toto rozšíření ${status}.",
     "downloadTooLarge": "Stažený soubor je příliš velký na to, aby byl rozšířením.",
     "downloadNotSecure": "Stahování bylo přesměrováno na nezabezpečené místo.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importovat ${label}",
       "pickTitle": "Importovat ${file} jako",
-      "dropHint": "Přetáhněte sem soubor a importujte ho do programu k lovení",
       "done": "Importováno ${count} položek ${program} ze souboru ${file}",
       "doneSkipped": "Importováno ${count} položek ${program} ze souboru ${file}, přeskočeno ${skipped} nečitelných",
       "nothing": "${file} neobsahuje nic, co by šlo importovat do ${program}",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importovat aktivitu QSON",
     "description": "Vytvořte novou aktivitu ze souboru QSON, jaký exportuje Režim vývojáře zde nebo v PoLo.",
-    "dropHint": "Přetáhněte sem soubor QSON a importujte ho jako novou aktivitu",
     "importing": "Importování ${filename}…",
     "failed": "${filename} nelze importovat: ${error}",
     "pickerFailed": "Soubor k importu nelze otevřít: ${error}",
     "notUtf8": "${filename} není text v UTF-8, takže to není soubor QSON",
     "notJson": "${filename} není soubor JSON, takže to není soubor QSON",
     "notOperation": "${filename} neobsahuje aktivitu QSON",
-    "busy": "Import už probíhá. Než spustíte další, počkejte, až skončí.",
-    "oneFileOnly": "Přetahujte vždy jen jeden soubor QSON — každý se otevře jako samostatná aktivita."
+    "busy": "Import už probíhá. Než spustíte další, počkejte, až skončí."
   },
   "adifImport": {
     "title": "Importovat QSO z ADIF",
     "reading": "Čtení ${filename}…",
-    "dropHint": "Přetáhněte sem soubor ADIF k importu",
     "totalInFile": {
       "one": "${count} QSO v tomto souboru",
       "other": "${formatted} QSO v tomto souboru"
@@ -3075,7 +3069,6 @@
     "addActivation": "Přidat ji do této aktivity",
     "shortfall": "Použít se podařilo jen ${written} z ${planned} — log se změnil, zatímco jste se rozhodovali.",
     "busy": "Import už probíhá. Než spustíte další, počkejte, až skončí.",
-    "oneFileOnly": "Přetahujte vždy jen jeden soubor ADIF — pořadí importu souborů rozhoduje, která data mají přednost.",
     "tooMany": "${filename} má více než ${limit} QSO, což je maximum, které aktivita může importovat najednou.",
     "tooManyDeveloper": "${filename} má více než ${limit} QSO. Import ADIF do aktivity je určen k přidání několika QSO, ne k nahrání velkého logu — na to použijte zobrazení Logy. Režim vývojáře vám ho přesto dovolí importovat, pokud jste si jistí.",
     "importAnyway": "Přesto importovat"

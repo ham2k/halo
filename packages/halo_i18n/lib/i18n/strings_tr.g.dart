@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$tr extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => '${name} yüklemesi tamamlanmadı. Yeniden yüklenmesi gerekebilir.';
 	@override String uninstallFailed({required Object name}) => '${name} kaldırılamadı';
 	@override String installedFrom({required Object source}) => '${source} kaynağından indirildi';
-	@override String get dropHint => 'Yüklemek için bir .h2kext uzantısı bırakın';
-	@override String get dropOneOnly => 'Her seferinde bir uzantı bırakın.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} bu uzantı için ${status} döndürdü.';
 	@override String get downloadTooLarge => 'Bu indirme bir uzantı olamayacak kadar büyük.';
 	@override String get downloadNotSecure => 'Bu indirme güvenli olmayan bir yere yönlendirildi.';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$tr extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'QSON Operasyonu İçe Aktar';
 	@override String get description => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.';
-	@override String get dropHint => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın';
 	@override String importing({required Object filename}) => '${filename} içe aktarılıyor…';
 	@override String failed({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}';
 	@override String pickerFailed({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$tr extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil';
 	@override String notOperation({required Object filename}) => '${filename} bir QSON operasyonu içermiyor';
 	@override String get busy => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.';
-	@override String get oneFileOnly => 'Her seferinde bir QSON dosyası bırakın — her biri ayrı bir operasyon olarak açılır.';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$tr extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'ADIF\'ten QSO İçe Aktar';
 	@override String reading({required Object filename}) => '${filename} okunuyor…';
-	@override String get dropHint => 'İçe aktarmak için bir ADIF dosyası bırakın';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		one: 'Bu dosyada ${count} QSO',
 		other: 'Bu dosyada ${formatted} QSO',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$tr extends Translations$adifImport$en {
 	@override String get addActivation => 'Bu operasyona ekle';
 	@override String shortfall({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.';
 	@override String get busy => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.';
-	@override String get oneFileOnly => 'Her seferinde bir ADIF dosyası bırakın — dosyaların içe aktarılma sırası hangi verinin geçerli olacağını belirler.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.';
 	@override String get importAnyway => 'Yine de içe aktar';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$tr extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => '${label} içe aktar';
 	@override String pickTitle({required Object file}) => '${file} dosyasını şu şekilde içe aktar';
-	@override String get dropHint => 'Bir avlama programına aktarmak için bir dosya bırakın';
 	@override String done({required Object file, required Object count, required Object program}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı';
 	@override String doneSkipped({required Object file, required Object count, required Object program, required Object skipped}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı, okunamayan ${skipped} kayıt atlandı';
 	@override String nothing({required Object file, required Object program}) => '${file} dosyasında ${program} için içe aktarılabilecek bir şey yok';
@@ -4579,8 +4572,6 @@ extension on TranslationsTr {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => '${name} yüklemesi tamamlanmadı. Yeniden yüklenmesi gerekebilir.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '${name} kaldırılamadı',
 			'extensionsPanel.installedFrom' => ({required Object source}) => '${source} kaynağından indirildi',
-			'extensionsPanel.dropHint' => 'Yüklemek için bir .h2kext uzantısı bırakın',
-			'extensionsPanel.dropOneOnly' => 'Her seferinde bir uzantı bırakın.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} bu uzantı için ${status} döndürdü.',
 			'extensionsPanel.downloadTooLarge' => 'Bu indirme bir uzantı olamayacak kadar büyük.',
 			'extensionsPanel.downloadNotSecure' => 'Bu indirme güvenli olmayan bir yere yönlendirildi.',
@@ -4795,7 +4786,6 @@ extension on TranslationsTr {
 			'chase.checklists' => 'Avlama İlerlemesi',
 			'chase.imports.importFrom' => ({required Object label}) => '${label} içe aktar',
 			'chase.imports.pickTitle' => ({required Object file}) => '${file} dosyasını şu şekilde içe aktar',
-			'chase.imports.dropHint' => 'Bir avlama programına aktarmak için bir dosya bırakın',
 			'chase.imports.done' => ({required Object file, required Object count, required Object program}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı',
 			'chase.imports.doneSkipped' => ({required Object file, required Object count, required Object program, required Object skipped}) => '${file} dosyasından ${count} ${program} kaydı içe aktarıldı, okunamayan ${skipped} kayıt atlandı',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} dosyasında ${program} için içe aktarılabilecek bir şey yok',
@@ -4985,11 +4975,11 @@ extension on TranslationsTr {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel} görüntülenemedi: çizimi kendi başına bütün değil',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} katmandan fazla içeriyor',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesi ${max} kontrolden fazla içeriyor',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: sahnesinin bir kısmı ${max} girdiden fazla içeriyor',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: bir sahne metni ${max} karakterden uzun',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel} görüntülenemedi: düzeni ${max} seviyeden derin iç içe geçiyor',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => 'Tekrar dene',
 			'operation.layout.panelActionFailed' => 'Bu panel eylemi başarısız oldu. Tekrar deneyin.',
 			'operation.layout.panels.loggingDescription' => 'Günlük ve giriş alanları',
@@ -5499,11 +5489,11 @@ extension on TranslationsTr {
 			'loggingControls.bandOrFreqRequired' => 'Kaydetmeden önce bir frekans veya bant ayarlayın',
 			'loggingControls.missingBand' => 'Bant Yok',
 			'loggingControls.missingMode' => 'Mod Yok',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => 'Kaydedilemedi: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Silinemedi: ${error}',
 			'loggingControls.info.noQsos' => 'Henüz QSO yok... hadi havaya çıkalım!',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time} içinde ${count}',
@@ -6013,11 +6003,11 @@ extension on TranslationsTr {
 			'settings.privacy.termsOfService' => 'Hizmet Şartları',
 			'settings.operatorCall' => 'Operatör Çağrı İşareti',
 			'settings.sync.title' => 'Bulut Senkronizasyonu',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'Diğer senkronizasyon ayarları',
 			'settings.sync.enable' => 'Senkronizasyonu Etkinleştir',
 			'settings.sync.deviceKey' => 'Cihaz Anahtarı',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'Eş Cihazlar',
 			'settings.peers.enable' => 'Diğer cihazlara bağlan',
 			'settings.peers.enableDescription' => 'Yerel ağ üzerinden diğer cihazlarla operasyon, kayıt, CAT ve GPS paylaşımına izin ver',
@@ -6527,11 +6517,11 @@ extension on TranslationsTr {
 			'settings.station.placeholderConnectDelay' => 'Bağlantı gecikmesi (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Simüle edilen el sıkışmanın ne kadar sürdüğü. Boş veya 0 anında bağlanır.',
 			'settings.station.placeholderDropAfter' => 'Şu süre sonra kes (saniye)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => 'Yeniden bağlanma yolunu denemek için bağlantıyı kendiliğinden kapatır. Boş veya 0 hiç kesmez.',
 			'settings.station.placeholderFailConnect' => 'Bağlantı her zaman başarısız olsun',
 			'settings.station.placeholderConnectFailure' => 'Yer tutucu radyoya bu bağlantıyı reddetmesi söylendi',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => 'Frekans (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Yer tutucu radyonun başladığı frekans. Ardından uygulama onu nereye ayarlarsa onu bildirir.',
 			'settings.station.placeholderMode' => 'Mod',
@@ -7040,20 +7030,17 @@ extension on TranslationsTr {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} operasyon', other: '${count} operasyon', ), 
 			'qsonImport.title' => 'QSON Operasyonu İçe Aktar',
 			'qsonImport.description' => 'Geliştirici Modu\'nun burada veya PoLo\'da dışa aktardığı türden bir QSON dosyasından yeni bir operasyon oluşturun.',
-			'qsonImport.dropHint' => 'Yeni bir operasyon olarak içe aktarmak için bir QSON dosyası bırakın',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename} içe aktarılıyor…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename} içe aktarılamadı: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'İçe aktarılacak dosya açılamadı: ${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} UTF-8 metin değil, dolayısıyla bir QSON dosyası değil',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} bir JSON dosyası değil, dolayısıyla bir QSON dosyası değil',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} bir QSON operasyonu içermiyor',
 			'qsonImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
-			'qsonImport.oneFileOnly' => 'Her seferinde bir QSON dosyası bırakın — her biri ayrı bir operasyon olarak açılır.',
 			'adifImport.title' => 'ADIF\'ten QSO İçe Aktar',
 			'adifImport.reading' => ({required Object filename}) => '${filename} okunuyor…',
-			'adifImport.dropHint' => 'İçe aktarmak için bir ADIF dosyası bırakın',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Bu dosyada ${count} QSO', other: 'Bu dosyada ${formatted} QSO', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi zaten günlüğünüzde', other: '${formatted} tanesi zaten günlüğünüzde', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} tanesi içe aktarılacak', other: '${formatted} tanesi içe aktarılacak', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsTr {
 			'adifImport.addActivation' => 'Bu operasyona ekle',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned} kayıttan yalnızca ${written} tanesi uygulanabildi — siz karar verirken günlük değişti.',
 			'adifImport.busy' => 'Zaten bir içe aktarma çalışıyor. Başka birini başlatmadan önce bitmesini bekleyin.',
-			'adifImport.oneFileOnly' => 'Her seferinde bir ADIF dosyası bırakın — dosyaların içe aktarılma sırası hangi verinin geçerli olacağını belirler.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var; bir operasyon tek seferde en fazla bu kadarını içe aktarabilir.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} dosyasında ${limit} QSO\'dan fazla var. Bir operasyona ADIF içe aktarmak, büyük bir günlüğü getirmek için değil, birkaç QSO eklemek içindir — bunun için Günlükler görünümünü kullanın. Eminseniz, geliştirici modu yine de içe aktarmanıza izin verir.',
 			'adifImport.importAnyway' => 'Yine de içe aktar',

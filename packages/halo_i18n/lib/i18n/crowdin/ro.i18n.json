@@ -114,8 +114,6 @@
     "installIncomplete": "Instalarea ${name} nu s-a finalizat. Poate fi necesară reinstalarea.",
     "uninstallFailed": "${name} nu a putut fi eliminată",
     "installedFrom": "Descărcată de la ${source}",
-    "dropHint": "Plasați aici o extensie .h2kext pentru a o instala",
-    "dropOneOnly": "Plasați câte o singură extensie.",
     "downloadFailed": "${source} a returnat ${status} pentru această extensie.",
     "downloadTooLarge": "Descărcarea este mult prea mare pentru a fi o extensie.",
     "downloadNotSecure": "Descărcarea a fost redirecționată către o adresă nesigură.",
@@ -376,7 +374,6 @@
     "imports": {
       "importFrom": "Importă ${label}",
       "pickTitle": "Importă ${file} ca",
-      "dropHint": "Plasați aici un fișier pentru a-l importa într-un program de vânătoare",
       "done": "S-au importat ${count} intrări ${program} din ${file}",
       "doneSkipped": "S-au importat ${count} intrări ${program} din ${file}; ${skipped} nu au putut fi citite și au fost omise",
       "nothing": "${file} nu conține nimic ce ${program} poate importa",
@@ -3005,20 +3002,17 @@
   "qsonImport": {
     "title": "Importă operațiune QSON",
     "description": "Creează o operațiune nouă dintr-un fișier QSON, așa cum exportă Modul dezvoltator aici sau în PoLo.",
-    "dropHint": "Plasați aici un fișier QSON pentru a-l importa ca operațiune nouă",
     "importing": "Se importă ${filename}…",
     "failed": "${filename} nu a putut fi importat: ${error}",
     "pickerFailed": "Nu s-a putut deschide un fișier pentru import: ${error}",
     "notUtf8": "${filename} nu este text UTF-8, deci nu este un fișier QSON",
     "notJson": "${filename} nu este un fișier JSON, deci nu este un fișier QSON",
     "notOperation": "${filename} nu conține o operațiune QSON",
-    "busy": "Un import rulează deja. Așteptați să se termine înainte de a porni altul.",
-    "oneFileOnly": "Plasați câte un singur fișier QSON — fiecare se deschide ca operațiune separată."
+    "busy": "Un import rulează deja. Așteptați să se termine înainte de a porni altul."
   },
   "adifImport": {
     "title": "Importă QSO-uri din ADIF",
     "reading": "Se citește ${filename}…",
-    "dropHint": "Plasați aici un fișier ADIF pentru import",
     "totalInFile": {
       "one": "${count} QSO în acest fișier",
       "other": "${formatted} QSO-uri în acest fișier"
@@ -3075,7 +3069,6 @@
     "addActivation": "Adaugă la această operațiune",
     "shortfall": "Doar ${written} din ${planned} au putut fi aplicate — jurnalul s-a schimbat cât timp decideați.",
     "busy": "Un import rulează deja. Așteptați să se termine înainte de a porni altul.",
-    "oneFileOnly": "Plasați câte un singur fișier ADIF — ordinea în care se importă fișierele decide ce date câștigă.",
     "tooMany": "${filename} are mai mult de ${limit} QSO-uri, maximul pe care o operațiune îl poate importa deodată.",
     "tooManyDeveloper": "${filename} are mai mult de ${limit} QSO-uri. Importul unui ADIF într-o operațiune este menit să adauge câteva QSO-uri, nu să aducă un jurnal mare — folosiți pentru asta vizualizarea Jurnale. Modul dezvoltator vă permite totuși să îl importați, dacă sunteți sigur.",
     "importAnyway": "Importă oricum"

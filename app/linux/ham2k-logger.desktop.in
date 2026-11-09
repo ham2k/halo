@@ -4,12 +4,12 @@ Name=@HALO_PRODUCT_NAME@
 GenericName=Amateur Radio Logger
 Comment=Ham2K Logger — a modern amateur radio logging app.
 # %f, not a bare command: the file manager substitutes the path of a document
-# opened with this app, and without it a double-clicked .h2kext launches the
+# opened with this app, and without it a double-clicked file launches the
 # app with no argument at all. The Linux runner already forwards argv to the
 # Dart entrypoint, which is where main() picks it up (HALO-422).
 Exec=@BINARY_NAME@ %f
 Icon=@APPLICATION_ID@
 Terminal=false
 Categories=Utility;
-MimeType=application/vnd.ham2k.extension;
+MimeType=application/vnd.ham2k.extension;application/vnd.ham2k.key-bindings;application/vnd.ham2k.layout;application/vnd.ham2k.cw-messages;application/vnd.ham2k.voice-messages;application/vnd.ham2k.qson;application/x-adif;
 StartupWMClass=@APPLICATION_ID@

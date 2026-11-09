@@ -67,6 +67,8 @@
 #define ExeName "ham2k_logger.exe"
 ; Per-edition, so side-by-side installs never fight over the file type.
 #define ProgId "Ham2K.Logger." + HaloEdition + ".h2kext"
+; The other files the app reads (views/file_open/file_kind.dart).
+#define DocProgId "Ham2K.Logger." + HaloEdition + ".document"
 #define AppPublisher "Ham2K"
 #define AppUrl "https://ham2k.com"
 #define IconFile IconDir + "\app_icon-" + HaloEdition + ".ico"
@@ -160,13 +162,43 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; Tasks: desktopic
 ;
 ; uninsdeletevalue/uninsdeletekey throughout: an association pointing at a
 ; removed install is a double-click that fails with nothing to explain it.
-Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: ""; ValueData: "{#ProgId}"; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: "Content Type"; ValueData: "application/vnd.ham2k.extension"; Flags: uninsdeletevalue
+; The ProgIDs, which every edition registers. Which extensions point at
+; them, and how, is below.
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "Ham2K Extension"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
 ; %1 quoted: a bundle sitting in a path with a space would otherwise reach the
 ; app as two arguments, neither of them a file.
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+; The other files the app reads, under one ProgID.
+Root: HKA; Subkey: "Software\Classes\{#DocProgId}"; ValueType: string; ValueName: ""; ValueData: "Ham2K Logger File"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\{#DocProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\{#DocProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+; The Ham2K types are Prod's and Next's to open by default. Dev only joins
+; each extension's "Open with" list (OpenWithProgids): a tester's Dev install
+; must not take a double-clicked file from the Prod or Next beside it. With no
+; other edition installed, Windows asks once which app to use.
+#if HaloEdition == "dev"
+Root: HKA; Subkey: "Software\Classes\.h2kext\OpenWithProgids"; ValueType: string; ValueName: "{#ProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kkey\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2klyt\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kset\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kvoice\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+#else
+Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: ""; ValueData: "{#ProgId}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kext"; ValueType: string; ValueName: "Content Type"; ValueData: "application/vnd.ham2k.extension"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kkey"; ValueType: string; ValueName: ""; ValueData: "{#DocProgId}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2klyt"; ValueType: string; ValueName: ""; ValueData: "{#DocProgId}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kset"; ValueType: string; ValueName: ""; ValueData: "{#DocProgId}"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.h2kvoice"; ValueType: string; ValueName: ""; ValueData: "{#DocProgId}"; Flags: uninsdeletevalue
+#endif
+
+; ADIF and QSON are formats other loggers open too, so every edition only
+; joins "Open with" and never takes the default from whatever the operator
+; already uses.
+Root: HKA; Subkey: "Software\Classes\.adi\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.adif\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.qson\OpenWithProgids"; ValueType: string; ValueName: "{#DocProgId}"; ValueData: ""; Flags: uninsdeletevalue
 
 ; --- URL schemes (HALO-178) ------------------------------------------------
 ; The `com.ham2k*://` catalog `deep_link_service.dart` documents, and the same
@@ -315,6 +347,35 @@ begin
   UnregisterSharedScheme('com.ham2k.polo');
   UnregisterSharedScheme('com.ham2k.polo.auth');
 end;
+
+#if HaloEdition == "dev"
+// A Dev install can still hold .h2kext's default from a build that claimed
+// it, and an upgrade writes over what it still claims and leaves the rest:
+// without this, that default outlives every upgrade. Removed only while it still names this edition's
+// ProgID, so a Prod or Next default stays. Both roots, for the reason
+// UnregisterSharedScheme gives.
+procedure ReleaseDefaultIn(RootKey: Integer; Extension: String);
+var
+  Key, Current: String;
+begin
+  Key := 'Software\Classes\' + Extension;
+  if RegQueryStringValue(RootKey, Key, '', Current) then
+  begin
+    if CompareText(Current, '{#ProgId}') = 0 then
+      RegDeleteValue(RootKey, Key, '');
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ReleaseDefaultIn(HKCU, '.h2kext');
+    if IsAdminInstallMode() then
+      ReleaseDefaultIn(HKLM, '.h2kext');
+  end;
+end;
+#endif
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var

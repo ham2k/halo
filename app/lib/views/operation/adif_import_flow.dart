@@ -15,7 +15,6 @@ import 'dart:convert';
 import 'dart:math' show min;
 import 'dart:typed_data';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -109,7 +108,6 @@ bool bytesLookLikeAdif(Uint8List head) => _adifMarker.hasMatch(latin1.decode(hea
 /// file: one backed by disk stops at its end, but one held in memory
 /// (`XFile.fromData`) throws a `RangeError` for an end past its length, which
 /// would fail every such file under 64 KiB.
-@visibleForTesting
 Future<Uint8List> readAdifHead(XFile file) async {
   final end = min(_sniffBytes, await file.length());
   final builder = BytesBuilder(copy: false);
@@ -472,76 +470,6 @@ Future<({Set<String> types, bool unknown})> _stackingRefTypes(HaLoServices servi
         if (control['allowsMultiple'] == true && (control['input'] as Map?)?['refType'] is String) (control['input'] as Map)['refType'] as String,
     },
   );
-}
-
-/// Accepts a log file dropped anywhere on its [child].
-///
-/// `desktop_drop` is a no-op on iOS and Android — there is no file-drag
-/// gesture there — so this is inert on mobile rather than conditional, and
-/// those platforms reach the same import through the Options menu.
-class AdifDropTarget extends StatefulWidget {
-  final Widget child;
-  final Future<void> Function(XFile file) onFile;
-
-  const AdifDropTarget({super.key, required this.child, required this.onFile});
-
-  @override
-  State<AdifDropTarget> createState() => _AdifDropTargetState();
-}
-
-class _AdifDropTargetState extends State<AdifDropTarget> {
-  bool _hovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return DropTarget(
-      // `desktop_drop` dispatches to EVERY listener whose box contains the
-      // point — there is no topmost-wins hit test — so a target under a pushed
-      // route still fires. Without this a drop while the summary dialog is
-      // open starts a second import, and with two operation views open one
-      // file imports into both.
-      enable: ModalRoute.of(context)?.isCurrent ?? true,
-      // Highlights for any drag, not only an ADIF one: what a drag actually
-      // carries is not reliably known until it lands, so promising nothing
-      // until then would mean no feedback at all on the common case.
-      onDragEntered: (details) => setState(() => _hovering = true),
-      onDragExited: (details) => setState(() => _hovering = false),
-      onDragDone: (details) async {
-        setState(() => _hovering = false);
-        // Order decides precedence when two records merge, and a multi-file
-        // drop has no meaningful order — so refuse rather than pick one and
-        // drop the rest on the floor without saying so.
-        if (details.files.length > 1) {
-          if (mounted) await _showNotice(context, context.t.adifImport.oneFileOnly);
-          return;
-        }
-        final file = details.files.firstOrNull;
-        if (file != null) await widget.onFile(file);
-      },
-      child: Stack(
-        children: [
-          widget.child,
-          if (_hovering)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ColoredBox(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  child: Center(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(Space.lg),
-                        child: Text(context.t.adifImport.dropHint, style: theme.textTheme.titleMedium),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 /// What the operator agreed to. Null when they cancelled.

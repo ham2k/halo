@@ -16,10 +16,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 
 /// The channel `AppDelegate.openFileChannel` invokes.
-const _channelName = 'ham2k/open_file';
+const openFileChannelName = 'ham2k/open_file';
 
 class OpenedFilesService {
-  OpenedFilesService({MethodChannel? channel}) : _channel = channel ?? const MethodChannel(_channelName) {
+  OpenedFilesService({MethodChannel? channel}) : _channel = channel ?? const MethodChannel(openFileChannelName) {
     // Web has no such thing, and no channel behind the name either.
     if (kIsWeb) return;
     _channel.setMethodCallHandler((call) async {

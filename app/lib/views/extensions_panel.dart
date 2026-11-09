@@ -26,6 +26,9 @@ import '../services/extensions/extension_service.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 import '../services/extensions/installed_extensions.dart';
 import '../services/deep_link_router.dart' show openInstallExtension;
+import 'file_open/file_destinations.dart' show extensionInstallDestinationId;
+import 'file_open/file_kind.dart';
+import 'file_open/file_router.dart';
 import '../services/deep_link_service.dart';
 import 'extension_install_flow.dart';
 import 'settings/settings_category.dart' show settingsCategorySliver;
@@ -1193,7 +1196,17 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // a store to install into, and only in the full panel: the hook-
         // filtered one is asking a narrower question.
         if (widget.onlyHook != null || extensionService.installed == null) return body;
-        return ExtensionDropTarget(onFile: _installDropped, child: body);
+        return FileSuggestions(
+          suggestions: [
+            FileDestination(
+              id: extensionInstallDestinationId,
+              kind: HaloFileKind.extension,
+              label: () => t.fileOpen.installExtension,
+              open: (_, file) => _installDropped(file),
+            ),
+          ],
+          child: body,
+        );
       },
     );
   }

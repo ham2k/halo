@@ -61,9 +61,17 @@ Future<void> _import(BuildContext context, SetCategory category) async {
     messenger?.showSnackBar(haloSnackBar(m.importPickerFailed(error: ErrorReportingService.messageOf(e))));
     return;
   }
-  if (chosen == null) return;
+  if (chosen == null || !context.mounted) return;
+  await importSetFile(context, category, chosen);
+}
+
+/// Imports [file] into [category] and says how it went — from the pane's
+/// Import, or a file opened from the OS or dropped on the window.
+Future<void> importSetFile(BuildContext context, SetCategory category, XFile file) async {
+  final m = context.t.sets;
+  final messenger = ScaffoldMessenger.maybeOf(context);
   try {
-    final id = await category.import(await chosen.readAsBytes(), chosen.name);
+    final id = await category.import(await file.readAsBytes(), file.name);
     if (id != null) messenger?.showSnackBar(haloSnackBar(m.imported(name: category.nameOf(id))));
   } on SetFileException catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'sets:import', told: messenger != null);
@@ -73,12 +81,12 @@ Future<void> _import(BuildContext context, SetCategory category) async {
       SetFileProblem.newerVersion => m.problemNewerVersion,
       SetFileProblem.malformed => m.problemMalformed,
     };
-    messenger?.showSnackBar(haloSnackBar(m.importUnreadable(filename: chosen.name, problem: problem)));
+    messenger?.showSnackBar(haloSnackBar(m.importUnreadable(filename: file.name, problem: problem)));
   } catch (e, stack) {
     // The file could not be read off the disk, or the set not stored: the
     // app's failure, not the file's.
     ErrorReportingService.report(e, stack, context: 'sets:import', told: messenger != null);
-    messenger?.showSnackBar(haloSnackBar(m.importFailed(filename: chosen.name, error: ErrorReportingService.messageOf(e))));
+    messenger?.showSnackBar(haloSnackBar(m.importFailed(filename: file.name, error: ErrorReportingService.messageOf(e))));
   }
 }
 

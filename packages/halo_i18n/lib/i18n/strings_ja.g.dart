@@ -230,8 +230,6 @@ class _Translations$extensionsPanel$ja extends Translations$extensionsPanel$en {
 	@override String installIncomplete({required Object name}) => '${name}のインストールが完了しませんでした。再インストールが必要な場合があります。';
 	@override String uninstallFailed({required Object name}) => '${name}を削除できませんでした';
 	@override String installedFrom({required Object source}) => '${source}からダウンロード';
-	@override String get dropHint => '.h2kext拡張機能をドロップしてインストール';
-	@override String get dropOneOnly => '拡張機能は1つずつドロップしてください。';
 	@override String downloadFailed({required Object source, required Object status}) => 'その拡張機能について${source}が${status}を返しました。';
 	@override String get downloadTooLarge => 'そのダウンロードは拡張機能としては大きすぎます。';
 	@override String get downloadNotSecure => 'ダウンロードが安全でない場所にリダイレクトされました。';
@@ -1232,7 +1230,6 @@ class _Translations$qsonImport$ja extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'QSONオペレーションをインポート';
 	@override String get description => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。';
-	@override String get dropHint => 'QSONファイルをドロップして新しいオペレーションとしてインポート';
 	@override String importing({required Object filename}) => '${filename}をインポート中…';
 	@override String failed({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}';
 	@override String pickerFailed({required Object error}) => 'インポートするファイルを開けませんでした：${error}';
@@ -1240,7 +1237,6 @@ class _Translations$qsonImport$ja extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません';
 	@override String notOperation({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません';
 	@override String get busy => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。';
-	@override String get oneFileOnly => 'QSONファイルは1つずつドロップしてください。それぞれが別のオペレーションとして開きます。';
 }
 
 // Path: adifImport
@@ -1252,7 +1248,6 @@ class _Translations$adifImport$ja extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'ADIFからQSOをインポート';
 	@override String reading({required Object filename}) => '${filename}を読み込み中…';
-	@override String get dropHint => 'ADIFファイルをドロップしてインポート';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		one: 'このファイルのQSO：${count}件',
 		other: 'このファイルのQSO：${formatted}件',
@@ -1309,7 +1304,6 @@ class _Translations$adifImport$ja extends Translations$adifImport$en {
 	@override String get addActivation => 'このオペレーションに追加';
 	@override String shortfall({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。';
 	@override String get busy => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。';
-	@override String get oneFileOnly => 'ADIFファイルは1つずつドロップしてください。インポートの順序によって、どのデータが優先されるかが決まります。';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。';
 	@override String get importAnyway => 'それでもインポート';
@@ -1590,7 +1584,6 @@ class _Translations$chase$imports$ja extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => '${label}をインポート';
 	@override String pickTitle({required Object file}) => '${file}のインポート先';
-	@override String get dropHint => 'ファイルをドロップしてチェイスプログラムにインポート';
 	@override String done({required Object file, required Object program, required Object count}) => '${file}から${program}のエントリー${count}件をインポートしました';
 	@override String doneSkipped({required Object file, required Object program, required Object count, required Object skipped}) => '${file}から${program}のエントリー${count}件をインポートしました。読み取れなかった${skipped}件はスキップしました';
 	@override String nothing({required Object file, required Object program}) => '${file}には${program}がインポートできるものがありません';
@@ -4579,8 +4572,6 @@ extension on TranslationsJa {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => '${name}のインストールが完了しませんでした。再インストールが必要な場合があります。',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => '${name}を削除できませんでした',
 			'extensionsPanel.installedFrom' => ({required Object source}) => '${source}からダウンロード',
-			'extensionsPanel.dropHint' => '.h2kext拡張機能をドロップしてインストール',
-			'extensionsPanel.dropOneOnly' => '拡張機能は1つずつドロップしてください。',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => 'その拡張機能について${source}が${status}を返しました。',
 			'extensionsPanel.downloadTooLarge' => 'そのダウンロードは拡張機能としては大きすぎます。',
 			'extensionsPanel.downloadNotSecure' => 'ダウンロードが安全でない場所にリダイレクトされました。',
@@ -4795,7 +4786,6 @@ extension on TranslationsJa {
 			'chase.checklists' => 'チェイスの進捗',
 			'chase.imports.importFrom' => ({required Object label}) => '${label}をインポート',
 			'chase.imports.pickTitle' => ({required Object file}) => '${file}のインポート先',
-			'chase.imports.dropHint' => 'ファイルをドロップしてチェイスプログラムにインポート',
 			'chase.imports.done' => ({required Object file, required Object program, required Object count}) => '${file}から${program}のエントリー${count}件をインポートしました',
 			'chase.imports.doneSkipped' => ({required Object file, required Object program, required Object count, required Object skipped}) => '${file}から${program}のエントリー${count}件をインポートしました。読み取れなかった${skipped}件はスキップしました',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file}には${program}がインポートできるものがありません',
@@ -4985,11 +4975,11 @@ extension on TranslationsJa {
 			'operation.layout.panelNotArtwork' => ({required Object panel}) => '${panel}を表示できませんでした：アートワークが自己完結していません',
 			'operation.layout.panelOverLayers' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのレイヤーが${max}個を超えています',
 			'operation.layout.panelOverControls' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンのコントロールが${max}個を超えています',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panelOverItems' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの一部のエントリーが${max}個を超えています',
 			'operation.layout.panelOverStringLength' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：シーンの文字列が${max}文字を超えています',
 			'operation.layout.panelOverLayoutDepth' => ({required Object panel, required Object max}) => '${panel}を表示できませんでした：レイアウトのネストが${max}階層を超えています',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panelRenderRetry' => '再試行',
 			'operation.layout.panelActionFailed' => 'パネルの操作に失敗しました。再試行してください。',
 			'operation.layout.panels.loggingDescription' => 'ログと入力フィールド',
@@ -5499,11 +5489,11 @@ extension on TranslationsJa {
 			'loggingControls.bandOrFreqRequired' => '記録する前に周波数またはバンドを設定してください',
 			'loggingControls.missingBand' => 'バンドなし',
 			'loggingControls.missingMode' => 'モードなし',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.saveFailed' => ({required Object error}) => '保存できませんでした：${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => '削除できませんでした：${error}',
 			'loggingControls.info.noQsos' => 'まだQSOがありません... オンエアしましょう！',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSO',
 			'loggingControls.info.qsosInTime' => ({required Object time, required Object count}) => '${time}で${count}',
@@ -6013,11 +6003,11 @@ extension on TranslationsJa {
 			'settings.privacy.termsOfService' => '利用規約',
 			'settings.operatorCall' => 'オペレーターのコールサイン',
 			'settings.sync.title' => 'クラウド同期',
-			_ => null,
-		} ?? switch (path) {
 			'settings.sync.moreSettings' => 'その他の同期設定',
 			'settings.sync.enable' => '同期を有効化',
 			'settings.sync.deviceKey' => 'デバイスキー',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.title' => 'ピアデバイス',
 			'settings.peers.enable' => '他のデバイスに接続',
 			'settings.peers.enableDescription' => 'ローカルネットワーク経由で、他のデバイスとオペレーション、ロギング、CAT、GPSを共有できるようにします',
@@ -6527,11 +6517,11 @@ extension on TranslationsJa {
 			'settings.station.placeholderConnectDelay' => '接続遅延（ms）',
 			'settings.station.placeholderConnectDelayDescription' => 'シミュレートしたハンドシェイクにかかる時間。空欄または0で即座に接続します。',
 			'settings.station.placeholderDropAfter' => '切断までの時間（秒）',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderDropAfterDescription' => '再接続の処理を試すため、接続を自動的に閉じます。空欄または0で切断しません。',
 			'settings.station.placeholderFailConnect' => '常に接続に失敗する',
 			'settings.station.placeholderConnectFailure' => 'プレースホルダー無線機はこの接続を拒否するよう設定されています',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderFreq' => '周波数（kHz）',
 			'settings.station.placeholderFreqDescription' => 'プレースホルダー無線機の初期周波数。その後はアプリがチューニングした値を報告します。',
 			'settings.station.placeholderMode' => 'モード',
@@ -7040,20 +7030,17 @@ extension on TranslationsJa {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件のオペレーション', other: '${count}件のオペレーション', ), 
 			'qsonImport.title' => 'QSONオペレーションをインポート',
 			'qsonImport.description' => '開発者モードでここやPoLoから書き出したQSONファイルから、新しいオペレーションを作成します。',
-			'qsonImport.dropHint' => 'QSONファイルをドロップして新しいオペレーションとしてインポート',
-			_ => null,
-		} ?? switch (path) {
 			'qsonImport.importing' => ({required Object filename}) => '${filename}をインポート中…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => '${filename}をインポートできませんでした：${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'インポートするファイルを開けませんでした：${error}',
 			'qsonImport.notUtf8' => ({required Object filename}) => '${filename}はUTF-8テキストではないため、QSONファイルではありません',
+			_ => null,
+		} ?? switch (path) {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename}はJSONファイルではないため、QSONファイルではありません',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename}にはQSONオペレーションが含まれていません',
 			'qsonImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
-			'qsonImport.oneFileOnly' => 'QSONファイルは1つずつドロップしてください。それぞれが別のオペレーションとして開きます。',
 			'adifImport.title' => 'ADIFからQSOをインポート',
 			'adifImport.reading' => ({required Object filename}) => '${filename}を読み込み中…',
-			'adifImport.dropHint' => 'ADIFファイルをドロップしてインポート',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'このファイルのQSO：${count}件', other: 'このファイルのQSO：${formatted}件', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件はすでにログにあります', other: '${formatted}件はすでにログにあります', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件をインポートします', other: '${formatted}件をインポートします', ), 
@@ -7077,7 +7064,6 @@ extension on TranslationsJa {
 			'adifImport.addActivation' => 'このオペレーションに追加',
 			'adifImport.shortfall' => ({required Object planned, required Object written}) => '${planned}件中${written}件しか適用できませんでした。判断している間にログが変更されました。',
 			'adifImport.busy' => 'すでにインポートを実行中です。完了してから次のインポートを開始してください。',
-			'adifImport.oneFileOnly' => 'ADIFファイルは1つずつドロップしてください。インポートの順序によって、どのデータが優先されるかが決まります。',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。これは1つのオペレーションで一度にインポートできる上限です。',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename}のQSOは${limit}件を超えています。オペレーションへのADIFインポートは少数のQSOを追加するためのもので、大きなログを取り込むためのものではありません。それにはログビューを使ってください。確信がある場合は、開発者モードでそのままインポートできます。',
 			'adifImport.importAnyway' => 'それでもインポート',

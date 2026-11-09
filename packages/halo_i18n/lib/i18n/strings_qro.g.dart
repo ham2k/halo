@@ -81,6 +81,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$offline$qro offline = _Translations$offline$qro._(_root);
 	@override late final _Translations$exportSettings$qro exportSettings = _Translations$exportSettings$qro._(_root);
 	@override late final _Translations$templateEditor$qro templateEditor = _Translations$templateEditor$qro._(_root);
+	@override late final _Translations$fileOpen$qro fileOpen = _Translations$fileOpen$qro._(_root);
 }
 
 // Path: common
@@ -234,8 +235,6 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String installIncomplete({required Object name}) => 'INSTALLING ${name} DID NOT FINISH. IT MAY NEED INSTALLING AGAIN.';
 	@override String uninstallFailed({required Object name}) => 'COULD NOT REMOVE ${name}';
 	@override String installedFrom({required Object source}) => 'DOWNLOADED FROM ${source}';
-	@override String get dropHint => 'DROP A .H2KEXT EXTENSION TO INSTALL IT';
-	@override String get dropOneOnly => 'DROP ONE EXTENSION AT A TIME.';
 	@override String downloadFailed({required Object source, required Object status}) => '${source} RETURNED ${status} FOR THAT EXTENSION.';
 	@override String get downloadTooLarge => 'THAT DOWNLOAD IS FAR TOO LARGE TO BE AN EXTENSION.';
 	@override String get downloadNotSecure => 'THAT DOWNLOAD REDIRECTED SOMEWHERE INSECURE.';
@@ -1363,7 +1362,6 @@ class _Translations$qsonImport$qro extends Translations$qsonImport$en {
 	// Translations
 	@override String get title => 'IMPORT QSON OPERATION';
 	@override String get description => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.';
-	@override String get dropHint => 'DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION';
 	@override String importing({required Object filename}) => 'IMPORTING ${filename}…';
 	@override String failed({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}';
 	@override String pickerFailed({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}';
@@ -1371,7 +1369,6 @@ class _Translations$qsonImport$qro extends Translations$qsonImport$en {
 	@override String notJson({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE';
 	@override String notOperation({required Object filename}) => '${filename} DOES NOT HOLD A QSON OPERATION';
 	@override String get busy => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.';
-	@override String get oneFileOnly => 'DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION.';
 }
 
 // Path: adifImport
@@ -1383,7 +1380,6 @@ class _Translations$adifImport$qro extends Translations$adifImport$en {
 	// Translations
 	@override String get title => 'IMPORT QSOS FROM ADIF';
 	@override String reading({required Object filename}) => 'READING ${filename}…';
-	@override String get dropHint => 'DROP AN ADIF FILE TO IMPORT';
 	@override String totalInFile({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: '${count} QSO IN THIS FILE',
 		other: '${formatted} QSOS IN THIS FILE',
@@ -1440,7 +1436,6 @@ class _Translations$adifImport$qro extends Translations$adifImport$en {
 	@override String get addActivation => 'ADD IT TO THIS OPERATION';
 	@override String shortfall({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.';
 	@override String get busy => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.';
-	@override String get oneFileOnly => 'DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.';
 	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.';
 	@override String get importAnyway => 'IMPORT ANYWAY';
@@ -1528,6 +1523,28 @@ class _Translations$templateEditor$qro extends Translations$templateEditor$en {
 	@override String get flowControl => 'FLOW CONTROL';
 	@override String get unavailable => 'PREVIEW IS UNAVAILABLE UNTIL EXTENSIONS ARE READY.';
 	@override String get empty => '(EMPTY OUTPUT)';
+}
+
+// Path: fileOpen
+class _Translations$fileOpen$qro extends Translations$fileOpen$en {
+	_Translations$fileOpen$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get dropHint => 'DROP YOUR FILE HERE';
+	@override String chooseTitle({required Object filename}) => 'OPEN ${filename}';
+	@override String cannotOpen({required Object filename}) => 'CAN’T OPEN ${filename}';
+	@override String get cannotOpenDetail => 'WE DON’T RECOGNIZE THE CONTENTS OF THIS FILE';
+	@override String get installExtension => 'INSTALL THE EXTENSION';
+	@override String get importKeyboardShortcuts => 'IMPORT AS A KEYBOARD SHORTCUT SET';
+	@override String get importCwMessages => 'IMPORT AS A CW MESSAGE SET';
+	@override String get importVoiceMessages => 'IMPORT AS A VOICE MESSAGE SET';
+	@override String get importIntoLogs => 'IMPORT INTO LOGS';
+	@override String importInto({required Object name}) => 'IMPORT INTO ${name}';
+	@override String get importAsOperation => 'IMPORT AS A NEW OPERATION';
+	@override String importLayoutInto({required Object view}) => 'IMPORT AS A ${view} LAYOUT';
+	@override String get importChaseClaims => 'IMPORT INTO CHASING';
 }
 
 // Path: home.nav
@@ -1721,7 +1738,6 @@ class _Translations$chase$imports$qro extends Translations$chase$imports$en {
 	// Translations
 	@override String importFrom({required Object label}) => 'IMPORT ${label}';
 	@override String pickTitle({required Object file}) => 'IMPORT ${file} AS';
-	@override String get dropHint => 'DROP A FILE TO IMPORT IT INTO A CHASING PROGRAM';
 	@override String done({required Object count, required Object program, required Object file}) => 'IMPORTED ${count} ${program} ENTRIES FROM ${file}';
 	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'IMPORTED ${count} ${program} ENTRIES FROM ${file}, SKIPPED ${skipped} IT COULD NOT READ';
 	@override String nothing({required Object file, required Object program}) => '${file} HAS NOTHING ${program} CAN IMPORT';
@@ -5042,8 +5058,6 @@ extension on TranslationsQro {
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'INSTALLING ${name} DID NOT FINISH. IT MAY NEED INSTALLING AGAIN.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'COULD NOT REMOVE ${name}',
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'DOWNLOADED FROM ${source}',
-			'extensionsPanel.dropHint' => 'DROP A .H2KEXT EXTENSION TO INSTALL IT',
-			'extensionsPanel.dropOneOnly' => 'DROP ONE EXTENSION AT A TIME.',
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} RETURNED ${status} FOR THAT EXTENSION.',
 			'extensionsPanel.downloadTooLarge' => 'THAT DOWNLOAD IS FAR TOO LARGE TO BE AN EXTENSION.',
 			'extensionsPanel.downloadNotSecure' => 'THAT DOWNLOAD REDIRECTED SOMEWHERE INSECURE.',
@@ -5258,7 +5272,6 @@ extension on TranslationsQro {
 			'chase.checklists' => 'CHASING PROGRESS',
 			'chase.imports.importFrom' => ({required Object label}) => 'IMPORT ${label}',
 			'chase.imports.pickTitle' => ({required Object file}) => 'IMPORT ${file} AS',
-			'chase.imports.dropHint' => 'DROP A FILE TO IMPORT IT INTO A CHASING PROGRAM',
 			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'IMPORTED ${count} ${program} ENTRIES FROM ${file}',
 			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'IMPORTED ${count} ${program} ENTRIES FROM ${file}, SKIPPED ${skipped} IT COULD NOT READ',
 			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} HAS NOTHING ${program} CAN IMPORT',
@@ -5446,11 +5459,11 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemNoArrangement' => 'IT HOLDS NO ARRANGEMENT',
 			'operation.layout.layouts.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE LAYOUT FORMAT',
 			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.layouts.importNothing' => 'NO PANEL PICKED, SO NOTHING WAS IMPORTED.',
 			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'LEFT OUT: ${panels}',
 			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'KEPT ${panels}: THE SMALL-SCREEN ARRANGEMENT CAN’T DO WITHOUT IT.',
@@ -5960,11 +5973,11 @@ extension on TranslationsQro {
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
 			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'DELETED ${kind}',
@@ -6474,11 +6487,11 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.help' => 'HELP',
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
 			'settings.radio.voiceMessages.playOnRadio' => 'PLAY ON RADIO',
 			'settings.radio.voiceMessages.templateHelpCall' => 'THEIR CALL',
@@ -6988,11 +7001,11 @@ extension on TranslationsQro {
 			'settings.station.tenTecEagleTroubleshooting' => '- **THE USB-B PORT ON THE BACK IS THE CAT LINK.** THE RADIO SHOWS UP AS A USB SERIAL PORT; ON WINDOWS IT NEEDS TEN-TEC\'S USB TO UART DRIVER, WHICH APPEARS IN DEVICE MANAGER AS "USB TO UART (COMX)".\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN, AND SO DOES TEN-TEC\'S FIRMWARE UPDATER.\n- **SETTING THE FILTER WIDTH FROM THE APP TAKES IT AWAY FROM THE BW KNOB** UNTIL THE RADIO IS SWITCHED OFF AND ON AGAIN. THAT IS HOW THE RADIO WORKS.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **USE A STRAIGHT-THROUGH DB-9 SERIAL CABLE** TO THE SERIAL DATA PORT, NOT A NULL-MODEM ONE.\n- **THIS ENTRY HOLDS RTS HIGH**, BECAUSE THE ORION USES RTS AND CTS AS ITS HANDSHAKE. ON AN INTERFACE THAT KEYS PTT FROM RTS, SUCH AS A DIGIRIG, TURN OFF HOLD RTS HIGH UNDER ADVANCED SETTINGS, OR THE RADIO TRANSMITS AS SOON AS THE APP CONNECTS.\n- **CW FROM THE APP NEEDS THE RADIO\'S INTERNAL KEYER ON.** WITH IT OFF, THE RADIO IGNORES WHAT THE APP SENDS.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE AND HAS NOT BEEN RUN AGAINST AN ORION. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
 			'settings.station.tenTecNoCw' => 'THIS RADIO\'S FIRMWARE DOES NOT TAKE CW FROM THE APP. TEN-TEC ADDED IT IN ORION FIRMWARE 1.366.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.tenTecKeyerOff' => 'THE RADIO\'S INTERNAL KEYER IS OFF, SO IT IGNORES CW SENT FROM THE APP. TURN THE KEYER ON IN THE RADIO\'S MENU.',
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.thetisTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
 			'settings.station.thetisTroubleshooting' => 'THIS CONNECTS TO **THETIS**, THE PROGRAM THAT RUNS THE RADIO, NOT TO THE RADIO ITSELF: AN ANAN HAS NO CAT OF ITS OWN.\n\n- **THETIS\'S CAT SERVER MUST BE RUNNING.** IN THETIS, SETUP → SERIAL/NETWORK/MIDI CAT → NETWORK, CHECK **SERVER RUNNING**. IT IS NOT THE TCI SERVER, WHICH IS A DIFFERENT THING.\n- **PORT** IS 13013 UNLESS YOU CHANGED IT THERE.\n- **FROM ANOTHER COMPUTER**, THETIS\'S SERVER MUST LISTEN ON ITS NETWORK ADDRESS RATHER THAN 127.0.0.1, AND ITS FIREWALL MUST LET THE PORT THROUGH.\n- **RATED POWER** IS WHAT FULL DRIVE PUTS OUT: 100 W ON MOST ANANS, 200 W ON THE 8000DLE, 10 W ON THE 10E. THE APP SETS POWER AS A SHARE OF IT.\n- **CW MESSAGES GO OUT THROUGH THETIS\'S CWX KEYER.** IF ONE DOES NOT, OPEN THE CWX WINDOW IN THETIS AND TRY AGAIN.\n\nTHIS ENTRY WAS WRITTEN FROM THETIS\'S PUBLISHED CAT REFERENCE AND HAS NOT BEEN RUN AGAINST A RADIO. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tciTroubleshootingTitle' => 'IF THE RADIO DOES NOT CONNECT, OR CONNECTS BUT DOES NOT FOLLOW',
@@ -7502,11 +7515,11 @@ extension on TranslationsQro {
 			'commands.swapNoRadioB' => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION',
 			'commands.swapEditing' => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST',
 			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
 			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
 			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapNotConnected' => ({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE',
 			'commands.swapNoneConnected' => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE',
@@ -7836,7 +7849,6 @@ extension on TranslationsQro {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} OPERATION', other: '${count} OPERATIONS', ), 
 			'qsonImport.title' => 'IMPORT QSON OPERATION',
 			'qsonImport.description' => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.',
-			'qsonImport.dropHint' => 'DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION',
 			'qsonImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
 			'qsonImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
 			'qsonImport.pickerFailed' => ({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}',
@@ -7844,10 +7856,8 @@ extension on TranslationsQro {
 			'qsonImport.notJson' => ({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE',
 			'qsonImport.notOperation' => ({required Object filename}) => '${filename} DOES NOT HOLD A QSON OPERATION',
 			'qsonImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
-			'qsonImport.oneFileOnly' => 'DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION.',
 			'adifImport.title' => 'IMPORT QSOS FROM ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'READING ${filename}…',
-			'adifImport.dropHint' => 'DROP AN ADIF FILE TO IMPORT',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO IN THIS FILE', other: '${formatted} QSOS IN THIS FILE', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} ALREADY IN YOUR LOG', other: '${formatted} ALREADY IN YOUR LOG', ), 
 			'adifImport.willImport' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} WILL BE IMPORTED', other: '${formatted} WILL BE IMPORTED', ), 
@@ -7871,7 +7881,6 @@ extension on TranslationsQro {
 			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
-			'adifImport.oneFileOnly' => 'DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
 			'adifImport.importAnyway' => 'IMPORT ANYWAY',
@@ -7932,6 +7941,19 @@ extension on TranslationsQro {
 			'templateEditor.flowControl' => 'FLOW CONTROL',
 			'templateEditor.unavailable' => 'PREVIEW IS UNAVAILABLE UNTIL EXTENSIONS ARE READY.',
 			'templateEditor.empty' => '(EMPTY OUTPUT)',
+			'fileOpen.dropHint' => 'DROP YOUR FILE HERE',
+			'fileOpen.chooseTitle' => ({required Object filename}) => 'OPEN ${filename}',
+			'fileOpen.cannotOpen' => ({required Object filename}) => 'CAN’T OPEN ${filename}',
+			'fileOpen.cannotOpenDetail' => 'WE DON’T RECOGNIZE THE CONTENTS OF THIS FILE',
+			'fileOpen.installExtension' => 'INSTALL THE EXTENSION',
+			'fileOpen.importKeyboardShortcuts' => 'IMPORT AS A KEYBOARD SHORTCUT SET',
+			'fileOpen.importCwMessages' => 'IMPORT AS A CW MESSAGE SET',
+			'fileOpen.importVoiceMessages' => 'IMPORT AS A VOICE MESSAGE SET',
+			'fileOpen.importIntoLogs' => 'IMPORT INTO LOGS',
+			'fileOpen.importInto' => ({required Object name}) => 'IMPORT INTO ${name}',
+			'fileOpen.importAsOperation' => 'IMPORT AS A NEW OPERATION',
+			'fileOpen.importLayoutInto' => ({required Object view}) => 'IMPORT AS A ${view} LAYOUT',
+			'fileOpen.importChaseClaims' => 'IMPORT INTO CHASING',
 			_ => null,
 		};
 	}

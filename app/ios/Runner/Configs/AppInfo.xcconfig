@@ -28,6 +28,16 @@ HALO_FULL_NAME_prod = Ham2K Portable Logger
 HALO_DISPLAY_NAME = $(HALO_PRODUCT_NAME_$(HALO_EDITION))
 HALO_BUNDLE_NAME = $(HALO_FULL_NAME_$(HALO_EDITION))
 
+// How strongly this edition claims the Ham2K file types (Info.plist's
+// LSHandlerRank). Dev only joins "Open with": every dev build shares one
+// bundle id, and an Owner claim lets whichever copy Launch Services settles on
+// take a double-clicked file from an installed Prod or Next. With no other
+// edition installed, Dev still opens them.
+HALO_DOC_RANK_dev = Alternate
+HALO_DOC_RANK_next = Owner
+HALO_DOC_RANK_prod = Owner
+HALO_DOC_RANK = $(HALO_DOC_RANK_$(HALO_EDITION))
+
 // Distribution signing team, committed under app_dist/ — absent from public
 // checkouts, which build with no team (unsigned compile checks). A fixed
 // filename because xcconfig does NOT substitute variables in #include paths;

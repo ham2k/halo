@@ -1,18 +1,14 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The operations list takes a dropped QSON file as a new operation — a
-// Developer Mode tool. The traps: an operator who is not a developer gets a
-// drop target that imports whatever lands on the list; and because Logs,
-// Chasing and Maps slide OVER the list rather than replacing it, and
-// `desktop_drop` hands a drop to every target under the point, an ADIF file
-// dropped on the Logs view would also be imported here as a broken operation.
+// The operations list takes a QSON file as a new operation. The trap:
+// because Logs, Chasing and Maps slide OVER the list rather than replacing
+// it, a list still counted as on screen there would be offered a file opened
+// while the operator is looking at Logs.
 
-import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +18,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
+import 'package:ham2k_logger/views/file_open/file_destinations.dart';
+import 'package:ham2k_logger/views/file_open/file_kind.dart';
+import 'package:ham2k_logger/views/file_open/file_router.dart';
 import 'package:ham2k_logger/views/qson_import_flow.dart';
 
 import '../support/halo_test_support.dart';
@@ -51,51 +50,46 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   }
 
-  // Offstage included: Home is hidden, not torn down, while another
-  // destination is up, and its drop target is still laid out under the one on
-  // screen — `enable` is all that keeps it from taking that view's drops.
-  bool dropEnabled(WidgetTester tester) => tester
-      .widget<DropTarget>(
-        find.descendant(of: find.byType(QsonDropTarget, skipOffstage: false), matching: find.byType(DropTarget, skipOffstage: false), skipOffstage: false),
-      )
-      .enable;
+  final aQson = XFile.fromData(Uint8List(0), name: 'a.qson', path: 'a.qson');
 
-  testWidgets('takes a drop only in Developer Mode, and only while the list is what shows', (tester) async {
-    final services = await pumpHome(tester);
+  /// The destinations on screen that would take a QSON file.
+  List<FileDestination> takingQson() => [
+    for (final destination in FileSuggestions.onScreen())
+      if (destination.takes(HaloFileKind.qson, aQson)) destination,
+  ];
+
+  testWidgets('takes a QSON file only while the list is what shows', (tester) async {
+    await pumpHome(tester);
     addTearDown(() => homeRail.destination = HomeDestination.operations);
 
-    expect(dropEnabled(tester), isFalse);
-
-    await tester.runAsync(() => services.settings.setDeveloperMode(true));
-    await tester.pumpAndSettle();
-    expect(dropEnabled(tester), isTrue);
+    expect(takingQson().map((d) => d.id), ['qson:operation']);
 
     homeRail.destination = HomeDestination.logs;
     await tester.pumpAndSettle();
-    expect(dropEnabled(tester), isFalse);
+    expect(takingQson(), isEmpty);
 
     await unmount(tester);
   });
 
-  testWidgets('takes no drop while its dock tab is behind another', (tester) async {
-    // A dock group is an IndexedStack: the pane behind keeps its rect, and
-    // would import a file dropped on the tab in front of it.
+  testWidgets('takes no file while its dock tab is behind another', (tester) async {
+    // A dock group is an IndexedStack: the pane behind keeps its rect and
+    // stays mounted, and would be offered a file meant for the tab in front.
     final services = (await makeHaLoServices()).services;
     Future<void> pumpAt({required bool visible}) => tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
           home: DockPaneVisibility(
             visible: visible,
-            child: QsonDropTarget(services: services, enabled: true, child: const SizedBox()),
+            child: FileSuggestions(suggestions: [qsonFileDestination(services)], child: const SizedBox()),
           ),
         ),
       ),
     );
 
     await pumpAt(visible: true);
-    expect(dropEnabled(tester), isTrue);
+    expect(takingQson(), hasLength(1));
     await pumpAt(visible: false);
-    expect(dropEnabled(tester), isFalse);
+    expect(takingQson(), isEmpty);
 
     await unmount(tester);
   });
@@ -105,7 +99,7 @@ void main() {
     // import after the first with "busy".
     final pushes = _PushCounter();
     final services = await pumpHome(tester, observers: [pushes]);
-    final context = tester.element(find.byType(QsonDropTarget));
+    final context = tester.element(find.byType(HomeView));
     XFile qson(String title) => XFile.fromData(
       Uint8List.fromList(
         utf8.encode(
@@ -126,18 +120,14 @@ void main() {
       path: '$title.qson',
     );
 
-    // The import awaits the route it pushes, so it is started rather than
-    // awaited, and the push is waited for. Not through a drift stream: one
-    // subscribed in a widget test never fires.
+    // The import must complete with its operation still open: the file
+    // router waits on it before the next file, and an import that waited
+    // for the operation to be left would hold every file after it, a log
+    // dropped on that operation included.
     Future<void> importAndWait(String title) async {
       final before = pushes.count;
-      await tester.runAsync(() async {
-        unawaited(runQsonImport(context, services, file: qson(title)));
-        for (var tries = 0; pushes.count == before; tries++) {
-          if (tries > 500) throw StateError('$title never opened');
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-        }
-      });
+      await tester.runAsync(() => runQsonImport(context, services, file: qson(title)).timeout(const Duration(seconds: 5)));
+      expect(pushes.count, before + 1, reason: '$title opens');
       await tester.pumpAndSettle();
     }
 
@@ -156,7 +146,7 @@ void main() {
 
   testWidgets('a file that is not QSON says so and creates nothing', (tester) async {
     final services = await pumpHome(tester);
-    final context = tester.element(find.byType(QsonDropTarget));
+    final context = tester.element(find.byType(HomeView));
     final file = XFile.fromData(Uint8List.fromList(utf8.encode('<eoh>')), name: 'log.adi', path: 'log.adi');
 
     await tester.runAsync(() => runQsonImport(context, services, file: file));
