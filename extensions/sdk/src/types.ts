@@ -453,6 +453,13 @@ export interface SuggestedQso {
 /// them comma-joined (`'K1ABC,W2XYZ'`). Split it before looking a call up.
 export interface BoardSpot extends Spot {
   hookKey?: string
+  /// The spot's id, the board's own: its source, call, band and mode, so the
+  /// same station reported again by the same source keeps it from one
+  /// refresh to the next. What `host.spots.mark` names. Extension API 21.
+  id?: string
+  /// On a merged spot, the `id` of every report it stands for; marking any
+  /// one marks the row. Extension API 21.
+  ids?: string[]
   /// What the Spots Panel's row shows beside the call: `icons`, every icon
   /// the row may show — the scorers', the alerting chasing programs' (both
   /// only with `annotations`), then one for each kind of reference the spot
@@ -463,7 +470,20 @@ export interface BoardSpot extends Spot {
   /// you have room for. Absent with `annotate: false`, and on hosts before
   /// extension API 12; `icons` is absent on hosts from before it was added,
   /// so fall back to `icon`.
-  display?: { icon: string; iconColor?: string; icons?: SpotDisplayIcon[]; emoji?: string }
+  ///
+  /// What assistants marked (`host.spots.mark`, extension API 21): their
+  /// icons among `icons` as `kind: "assistant"`, first; their `notes`; the
+  /// strongest `boost`; and `hidden`, on a spot an assistant hid, which only
+  /// `filter: 'all'` answers with.
+  display?: {
+    icon: string
+    iconColor?: string
+    icons?: SpotDisplayIcon[]
+    emoji?: string
+    notes?: string[]
+    boost?: number
+    hidden?: boolean
+  }
   /// Present when the spots were judged against an operation.
   annotations?: SpotAnnotations
 }
@@ -471,11 +491,30 @@ export interface BoardSpot extends Spot {
 /// One of the icons a spot's `display` lists: an MDI or `fa-` name, the tint
 /// (`#RRGGBB`) its extension declares, and what put it there — a scorer's
 /// `scoreCandidates` answer, a chasing program's alerting verdict, or one of
-/// the spot's references.
+/// the spot's references — or an assistant's mark.
 export interface SpotDisplayIcon {
   icon: string
   iconColor?: string
-  kind: "scoring" | "chasing" | "reference"
+  kind: "assistant" | "scoring" | "chasing" | "reference"
+}
+
+/// What an assistant says about a spot (`host.spots.mark`). Extension API 21.
+export interface SpotMark {
+  /// MDI or `fa-` icon name, shown first on the spot's row.
+  icon?: string
+  /// `#RRGGBB`: tints the icon, and the row of a boosted spot. Any other
+  /// form is refused.
+  color?: string
+  /// After the spot's label, on its second line, at most 200 characters.
+  /// The line is cut short where it runs out of room.
+  note?: string
+  /// Above 0, the spot is one of the picks: listed at the top of the Spots
+  /// Panel, strongest first, and highlighted where it stands. Default 0.
+  boost?: number
+  /// Takes the spot off the Spots Panel and the operator's board
+  /// (`getSpots` with `filter: 'user'` or `'sources'`); the panel says how
+  /// many are hidden, and by whom, and shows them on a tap.
+  hidden?: boolean
 }
 
 /// What the Spots Panel shows about a spot, judged against an operation.

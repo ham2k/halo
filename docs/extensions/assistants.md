@@ -63,6 +63,8 @@ Return nothing. Everything an assistant says goes through the host:
 | Put a line under the call info | `host.fyi.post`, `host.fyi.clear` | [The host API](host.md#hostfyi) |
 | Raise a notice | `host.statusBar.showNotice` | [The host API](host.md#hoststatusbar) |
 | Mark a stretch of a band | `host.bandAnnotations.put` | [Spots](spots.md#bandannotations) |
+| Mark, pick or hide spots | `host.spots.mark`, `host.spots.unmark` | [Spots](spots.md#spots) |
+| Add spots of its own | `host.spots.put`, with a `spots` hook | [Spots](spots.md#spots) |
 | Tune or set the radio | `host.setRadio` | [Radio control](radio.md) |
 | Show a running summary | a `panel` registered beside it | [Panels](panels.md) |
 

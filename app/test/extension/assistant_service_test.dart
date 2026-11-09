@@ -60,6 +60,13 @@ class _FakeAssistantExtensions implements AssistantExtensionSource {
 
   @override
   bool canReadRadio(String? hookKey) => radioReaders.contains(hookKey);
+
+  /// Each release asked for, as `offered/on`.
+  final released = <String>[];
+
+  @override
+  void releaseSpotMarks({required Set<String> offered, required Set<String> on}) =>
+      released.add('${(offered.toList()..sort()).join(',')}/${(on.toList()..sort()).join(',')}');
 }
 
 class _MemorySwitches implements AssistantSwitches {
@@ -202,6 +209,7 @@ void main() {
       feed.update(const PanelRenderContext(operation: _op1, qsoCount: 2));
       async.elapse(_pastGap);
       expect(extensions.calls, hasLength(1));
+      expect(extensions.released.last, 'k1abc-coach/', reason: 'switched off, nothing of it is on: what it marked has to go');
       service.dispose();
     });
   });

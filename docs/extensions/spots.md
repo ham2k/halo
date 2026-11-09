@@ -65,6 +65,38 @@ source more than 5,000 spots is refused, a removal never is, and a
 malformed spot rejects the call and pushes none. Before the app has a
 spots board (early in its start) a push is refused rather than lost.
 
+**Marking** (extension API 21) is for an [assistant](assistants.md): it
+says something about spots any source offered, without pushing spots of
+its own. `ctx.getSpots` hands every spot an `id` that is the board's own,
+built from the source, the call, the band and the mode, so the same
+station reported again by the same source keeps it from one refresh to the
+next; a merged spot also lists its reports' `ids`. Two rows of one station
+from one source on one band and mode (two frequencies, or reports far apart
+in time) share an id, and a mark reaches both. A mark names spots by those
+ids:
+
+```ts
+host.spots.mark(ids, { icon?, color?, note?, boost?, hidden? })
+host.spots.unmark(ids?)                  // by id, or every mark you put
+```
+
+`icon` leads the spot's row and `note` follows its label on the row's
+second line, cut short where the line runs out. A `boost` above 0 makes
+the spot one of the picks: listed at the top of the Spots Panel, strongest
+first, and highlighted where it stands in its band, in the `color`
+(`#RRGGBB`) of the strongest boost's mark where it gives one. `hidden` takes it off the panel and off the operator's
+board as `getSpots` reads it with `filter: 'user'` or `'sources'`; the
+panel says how many are hidden and by whom, and shows them at a tap. Marks
+from several assistants on one spot all show, the strongest boost wins,
+and any one hiding it hides it. Marking again replaces what you said about
+those ids; marking them again with the same mark changes nothing, so a
+`spots` trigger fired by your own marks does not call you again. Marks are
+the board's, not an operation's: every open operation's Spots Panel shows
+them. They stand until you take them, the operator switches off every
+assistant you offer, or the runtime restarts; mark again from
+`onActivation` or your next `observe`. You hold at most 1,000. Only an extension whose manifest lists `assistant` in its `hooks`
+may mark; any other is refused.
+
 **Posting** is optional method by method. A source that omits the posting
 methods never appears in the Spotting control's icon row. The eligibility
 methods decide whether to show the source's icon at all, for instance only

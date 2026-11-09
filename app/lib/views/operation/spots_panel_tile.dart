@@ -110,6 +110,14 @@ class _SpotTile extends StatelessWidget {
   /// shows one.
   final Set<String> newRefs;
 
+  /// What assistants noted about this spot (`host.spots.mark`), after the
+  /// reference label on its second line.
+  final List<String> notes;
+
+  /// Whether the row draws its second line, the icons and label: the panel
+  /// decides ([_SpotsList._hasLabelLine]), as it sums the row's height by it.
+  final bool labelLine;
+
   /// Fill for the row of the QSO being logged right now
   /// ([currentQsoHighlight]), null for every other row. Painted behind the
   /// content rather than folded into the text styles like [worked] and
@@ -131,6 +139,8 @@ class _SpotTile extends StatelessWidget {
     this.isSelf = false,
     this.notices = const {},
     this.newRefs = const {},
+    this.notes = const [],
+    this.labelLine = false,
     this.highlight,
   });
 
@@ -291,7 +301,9 @@ class _SpotTile extends StatelessWidget {
       ],
     );
 
-    final labelLine = _labelOf(spot) == null
+    final label = _labelOf(spot) ?? '';
+    final note = notes.join(' · ');
+    final secondLine = !labelLine
         ? const SizedBox.shrink()
         : Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -308,13 +320,27 @@ class _SpotTile extends StatelessWidget {
                 ),
                 const SizedBox(width: Space.xs),
               ],
-              Expanded(
-                child: condenseToFit(
-                  text: _labelOf(spot)!,
-                  style: (accented(proportional, refAccent) ?? proportional)?.copyWith(fontSize: mono.fontSize),
-                  builder: (style) => Text(_labelOf(spot)!, style: style, overflow: TextOverflow.ellipsis, maxLines: 1),
+              // The reference label first, condensed to fit as it always was;
+              // an assistant's note after it, in its own plain style, so it
+              // never wears an accent the app gives a new reference, and a
+              // long one is cut short rather than squeezing the park's name.
+              if (label.isNotEmpty)
+                Flexible(
+                  child: condenseToFit(
+                    text: label,
+                    style: (accented(proportional, refAccent) ?? proportional)?.copyWith(fontSize: mono.fontSize),
+                    builder: (style) => Text(label, style: style, overflow: TextOverflow.ellipsis, maxLines: 1),
+                  ),
                 ),
-              ),
+              if (note.isNotEmpty)
+                Flexible(
+                  child: Text(
+                    label.isEmpty ? note : ' · $note',
+                    style: proportional?.copyWith(fontSize: mono.fontSize, fontStyle: FontStyle.italic),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ),
             ],
           );
 
@@ -337,7 +363,7 @@ class _SpotTile extends StatelessWidget {
               // mode is a reason to.
               style: accented(proportional, modeUnexpected ? faded(theme.colorScheme.error) : modeAccent) ?? proportional,
             ),
-            labelLine,
+            secondLine,
           ),
         ],
       ),

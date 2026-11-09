@@ -39,6 +39,7 @@ import type {
   ClusterLine,
   ClusterMatch,
   Spot,
+  SpotMark,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -692,6 +693,21 @@ export const host = {
     /// Takes the spots held under [keys], or every one of `source`'s.
     async remove(keys?: string[], options: { source?: string } = {}): Promise<void> {
       await hostCallFn()("removeSpots", { keys, ...options, ns: currentExtensionKey })
+    },
+
+    /// Puts [mark] on the spots under [ids] — any source's, by the `id` (or a
+    /// merged spot's `ids`) `ctx.getSpots` hands them with — replacing what
+    /// you said about them before. Only for an extension whose manifest
+    /// declares `assistant`; refused for any other. Your marks stand through
+    /// refreshes, since an id outlives the spot it was read from, until you
+    /// take them or the runtime restarts. You hold at most 1,000.
+    async mark(ids: string | string[], mark: SpotMark): Promise<void> {
+      await hostCallFn()("markSpots", { ids: typeof ids === "string" ? [ids] : ids, mark, ns: currentExtensionKey })
+    },
+
+    /// Takes your marks off the spots under [ids], or every mark you put.
+    async unmark(ids?: string | string[]): Promise<void> {
+      await hostCallFn()("unmarkSpots", { ids: typeof ids === "string" ? [ids] : ids, ns: currentExtensionKey })
     },
   },
 

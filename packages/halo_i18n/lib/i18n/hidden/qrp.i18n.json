@@ -943,6 +943,13 @@
       "ageMinutes": "${minutes} minutes",
       "callsOfNote": "calls of note",
       "yourSpots": "your spots",
+      "picks": "assistant picks",
+      "hiddenByAssistants": {
+        "one": "${count} spot hidden by ${names}",
+        "other": "${count} spots hidden by ${names}"
+      },
+      "showHidden": "show",
+      "hideHidden": "hide",
       "allSpots": "all spots",
       "continents": {
         "af": "africa",

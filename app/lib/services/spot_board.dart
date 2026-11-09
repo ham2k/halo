@@ -142,6 +142,7 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
       merged.add({
         ...spot,
         'refs': [..._refsOf(spot)],
+        'ids': spotIdsOf(spot),
       });
       continue;
     }
@@ -158,11 +159,13 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
       final copy = {
         ...spot,
         'refs': [..._refsOf(spot)],
+        'ids': spotIdsOf(spot),
       };
       byCall[call] = copy;
       merged.add(copy);
     } else {
       addRefsOfSpot(existing['refs'] as List<Map<String, dynamic>>, spot);
+      _addIdsOf(existing, spot);
     }
   }
   return merged;
@@ -224,11 +227,21 @@ List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> sp
       final existingCall = _callOf(match) ?? '';
       final newCall = _callOf(spot) ?? '';
       match['their'] = {...?asSpotMap(match['their']), 'call': '$existingCall,$newCall'};
+      _addIdsOf(match, spot);
     } else {
       merged.add(spot);
     }
   }
   return merged;
+}
+
+/// Takes [spot]'s ids into [merged]'s, a copy the merge pass owns.
+void _addIdsOf(Map<String, dynamic> merged, Map<String, dynamic> spot) {
+  final ids = [...spotIdsOf(merged)];
+  for (final id in spotIdsOf(spot)) {
+    if (!ids.contains(id)) ids.add(id);
+  }
+  merged['ids'] = ids;
 }
 
 typedef _Wanted = ({Map<String, dynamic> spot, bool worked, ({int rank, int goal})? rank});
@@ -540,11 +553,11 @@ SpotIcon? spotIconFrom(dynamic value) => switch (value) {
   _ => null,
 };
 
-/// The icons a spot row shows, by what put them there: the scorers'
-/// ([spotScoreIcons]), the chasing programs' ([spotJudgementIcons]) and the
-/// references' ([spotRefIcons]). No icon name appears twice, the earlier
-/// kind keeping it.
-typedef SpotIcons = ({List<SpotIcon> scores, List<SpotIcon> judgements, List<SpotIcon> refs});
+/// The icons a spot row shows, by what put them there: the assistants'
+/// marks (`host.spots.mark`), the scorers' ([spotScoreIcons]), the chasing
+/// programs' ([spotJudgementIcons]) and the references' ([spotRefIcons]). No
+/// icon name appears twice, the earlier kind keeping it.
+typedef SpotIcons = ({List<SpotIcon> marks, List<SpotIcon> scores, List<SpotIcon> judgements, List<SpotIcon> refs});
 
 /// Every icon [spot]'s row may show ([SpotIcons]). [scoreIcons] and
 /// [judgements] are keyed by [spotCandidateKey]; [notices] are the spot's
@@ -558,6 +571,7 @@ SpotIcons spotIcons(
   Map<String, List<ChaseJudgement>> judgements = const {},
   Map<String, ChasingProgram> programs = const {},
   List<SpotIcon>? refIcons,
+  List<SpotIcon> markIcons = const [],
 }) {
   final seen = <String>{};
   List<SpotIcon> unseen(Iterable<SpotIcon> icons) => [
@@ -565,18 +579,20 @@ SpotIcons spotIcons(
       if (seen.add(icon.icon)) icon,
   ];
   return (
+    marks: unseen(markIcons),
     scores: unseen(spotScoreIcons(spot, scoreIcons)),
     judgements: unseen(spotJudgementIcons(spot, notices: notices, judgements: judgements, programs: programs)),
     refs: unseen(refIcons ?? spotRefIcons(spot, controls)),
   );
 }
 
-/// At most [max] of [icons], in their order — scores, then judgements, then
-/// references — with at least one of each kind there is, so a row full of
-/// references still says why it matters, and one full of alerts still says
-/// what it is. The slots left over go to the earlier kinds first.
+/// At most [max] of [icons], in their order — marks, scores, judgements,
+/// then references — with at least one of each kind there is while [max]
+/// allows, the later kinds giving way first, so a row full of references
+/// still says why it matters, and one full of alerts still says what it is.
+/// The slots left over go to the earlier kinds first.
 List<SpotIcon> spotIconsWithin(SpotIcons icons, int max) {
-  final groups = [icons.scores, icons.judgements, icons.refs];
+  final groups = [icons.marks, icons.scores, icons.judgements, icons.refs];
   final counts = [for (final group in groups) group.isEmpty ? 0 : 1];
   var left = max - counts.fold<int>(0, (sum, count) => sum + count);
   for (var i = 0; i < groups.length && left > 0; i++) {

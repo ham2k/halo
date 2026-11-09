@@ -233,6 +233,16 @@ void main() {
   group('withLocalSpots', () {
     List<String> calls(List<Map<String, dynamic>> spots) => [for (final spot in spots) callOfSpot(spot)!];
 
+    // An assistant marks the network's report by its id; once the operator's
+    // own spot takes that report in, the row is the local one, and a mark
+    // that no longer reached it would leave the board without a word.
+    test("the row a local spot takes a report into carries both reports' ids", () {
+      final network = withSpotId('pota', fetched('W1AW', mode: 'SSB', ageMinutes: 1));
+      final mine = withSpotId(localSpotSource, local('W1AW'));
+      final row = withLocalSpots([network, mine]).single;
+      expect(spotIdsOf(row), unorderedEquals([network['id'], mine['id']]));
+    });
+
     test('a newer local spot hides an older one on its frequency, and the older one is still held', () {
       final older = {
         ...local('W1AW'),

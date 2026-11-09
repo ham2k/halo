@@ -188,17 +188,25 @@ SpotIcon _i(String icon) => (icon: icon, color: null);
 
 void _within() {
   test('references alone fill every slot', () {
-    final icons = (scores: <SpotIcon>[], judgements: <SpotIcon>[], refs: [_i('a'), _i('b'), _i('c'), _i('d')]);
+    final icons = (marks: <SpotIcon>[], scores: <SpotIcon>[], judgements: <SpotIcon>[], refs: [_i('a'), _i('b'), _i('c'), _i('d')]);
     expect(spotIconsWithin(icons, 3), [_i('a'), _i('b'), _i('c')]);
   });
 
   test('every kind there is keeps a slot, however many the others carry', () {
-    final icons = (scores: [_i('s1'), _i('s2'), _i('s3')], judgements: [_i('j1')], refs: [_i('r1'), _i('r2')]);
+    final icons = (marks: <SpotIcon>[], scores: [_i('s1'), _i('s2'), _i('s3')], judgements: [_i('j1')], refs: [_i('r1'), _i('r2')]);
     expect(spotIconsWithin(icons, 3), [_i('s1'), _i('j1'), _i('r1')]);
   });
 
   test('the slots left over go to the earlier kinds, in order', () {
-    final icons = (scores: [_i('s1'), _i('s2')], judgements: <SpotIcon>[], refs: [_i('r1'), _i('r2')]);
+    final icons = (marks: <SpotIcon>[], scores: [_i('s1'), _i('s2')], judgements: <SpotIcon>[], refs: [_i('r1'), _i('r2')]);
     expect(spotIconsWithin(icons, 3), [_i('s1'), _i('s2'), _i('r1')]);
+  });
+
+  // An assistant's mark is why the row is worth a look, so it leads; with
+  // every kind present, the references, which the label names anyway, are
+  // the ones to give way.
+  test("an assistant's mark leads, and with every kind there the references give way", () {
+    final icons = (marks: [_i('m1')], scores: [_i('s1')], judgements: [_i('j1')], refs: [_i('r1')]);
+    expect(spotIconsWithin(icons, 3), [_i('m1'), _i('s1'), _i('j1')]);
   });
 }

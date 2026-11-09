@@ -149,6 +149,7 @@ class SpotsService extends ChangeNotifier {
   /// says what it said.
   void putLocalSpot(String key, Map<String, dynamic> spot) {
     if (_disposed) return;
+    spot = withSpotId(localSpotSource, spot);
     final unchanged = _sameButPosted(_local[key], spot);
     _local[key] = spot;
     _rebuildBoard();
@@ -236,8 +237,9 @@ class SpotsService extends ChangeNotifier {
     _pushers.removeWhere((source) => keys.contains(source) || keys.any((key) => source.startsWith('${key}_')));
   }
 
-  /// [spot] as [source]'s, with a mode as a fetched one has ([withBandPlanMode]).
-  static Map<String, dynamic> _fromSource(String source, Map<String, dynamic> spot) => withBandPlanMode({...spot, 'hookKey': source});
+  /// [spot] as [source]'s, with a mode and an id as a fetched one has
+  /// ([withBandPlanMode], [withSpotId]).
+  static Map<String, dynamic> _fromSource(String source, Map<String, dynamic> spot) => withSpotId(source, withBandPlanMode({...spot, 'hookKey': source}));
 
   static List<Map<String, dynamic>> _withPut(List<Map<String, dynamic>> held, List<Map<String, dynamic>> spots) {
     final result = [...held];
@@ -421,7 +423,8 @@ class SpotsService extends ChangeNotifier {
       final answered = <String, List<Map<String, dynamic>>>{};
       final guesses = <double, String?>{};
       for (final spot in spots) {
-        answered.putIfAbsent(spot['hookKey'] as String? ?? 'unknown', () => []).add(withBandPlanMode(spot, guesses));
+        final source = spot['hookKey'] as String? ?? 'unknown';
+        answered.putIfAbsent(source, () => []).add(withSpotId(source, withBandPlanMode(spot, guesses)));
       }
       // A source that pushed while the fan-out waited on the others (a slow
       // feed holds it for seconds) answered with what it held before those
@@ -577,6 +580,33 @@ Map<String, dynamic> withBandPlanMode(Map<String, dynamic> spot, [Map<double, St
   final guess = freq == null ? null : (guesses ?? {}).putIfAbsent(freq, () => modeForFrequency(freq));
   return guess == null ? spot : {...spot, 'mode': guess};
 }
+
+/// The id a spot keeps from one refresh to the next, as `host.spots.mark`
+/// names it: its source, call, band and mode, so the same station reported
+/// again by the same source is the same spot, whatever its frequency or time.
+/// A part the spot does not carry is left empty; the band is read off the
+/// frequency where the spot names none.
+String spotIdFor(String source, Map<String, dynamic> spot) {
+  final freq = asSpotNum(spot['freq'])?.toDouble();
+  final band = asSpotString(spot['band'])?.trim().toLowerCase() ?? (freq == null ? null : bandForFrequency(freq));
+  final mode = asSpotString(spot['mode'])?.trim().toUpperCase();
+  return '$source|${callOfSpot(spot) ?? ''}|${band ?? ''}|${mode ?? ''}';
+}
+
+/// [spot] with its [spotIdFor] under `id`. Whatever id a source sent is
+/// replaced: the id is the board's, and one a source chose could name
+/// another source's spot.
+Map<String, dynamic> withSpotId(String source, Map<String, dynamic> spot) {
+  final id = spotIdFor(source, spot);
+  return spot['id'] == id ? spot : {...spot, 'id': id};
+}
+
+/// Every id a board row stands for: the several a merged row took in
+/// (`ids`), else the spot's own.
+List<String> spotIdsOf(Map<String, dynamic> spot) => switch (spot['ids']) {
+  final List<dynamic> ids => ids.whereType<String>().toList(),
+  _ => [?asSpotString(spot['id'])],
+};
 
 /// The spotted callsign, uppercased, or null when the spot has none.
 String? callOfSpot(Map<String, dynamic> spot) {

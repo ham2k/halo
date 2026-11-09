@@ -98,6 +98,11 @@ abstract interface class AssistantExtensionSource {
   /// Whether [hookKey]'s extension may read the radio (`requiresRadioRead`):
   /// the `radio` trigger fires for no one else.
   bool canReadRadio(String? hookKey);
+
+  /// Takes the spot marks off every extension that offers assistants
+  /// ([offered], by hook key) and has none of them on ([on]): one switched
+  /// off is never called again to take back what it hid or picked.
+  void releaseSpotMarks({required Set<String> offered, required Set<String> on});
 }
 
 /// Where the operator's on/off switch for each assistant is kept.
@@ -336,6 +341,10 @@ class AssistantService extends ChangeNotifier {
     }
     _restartTicks();
     _dialSeen = radio?.state();
+    extensions.releaseSpotMarks(
+      offered: {for (final assistant in _catalog) assistant.hookKey},
+      on: {for (final assistant in enabled.values) assistant.hookKey},
+    );
   }
 
   void _fire(AssistantDefinition assistant, AssistantFeed feed, String reason) {

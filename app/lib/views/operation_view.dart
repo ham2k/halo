@@ -464,6 +464,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // The band annotations ride the same trigger: what draws a band's spots
     // draws what is said about it.
     widget.services.spots.bandAnnotations.addListener(_onSpotsChanged);
+    // And the assistants' marks: they change what `getSpots` answers.
+    widget.services.extensions.spotMarks.addListener(_onSpotsChanged);
   }
 
   /// This view's hold on the spot board, and how it says what it shows.
@@ -706,6 +708,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _spotBoardView.cancel();
     widget.services.spotBoard.removeListener(_onSpotsChanged);
     widget.services.spots.bandAnnotations.removeListener(_onSpotsChanged);
+    widget.services.extensions.spotMarks.removeListener(_onSpotsChanged);
     // "Listen for other apps" stops routing captures here once this view
     // closes — but only if THIS operation is still the one receiving; a
     // second OperationView may have taken over already. Unconditional,

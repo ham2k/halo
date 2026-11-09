@@ -38,6 +38,8 @@ class _ExtensionHostCalls {
       'replaceSpots' => _replaceSpots(params),
       'putSpots' => _putSpots(params),
       'removeSpots' => _removeSpots(params),
+      'markSpots' => _markSpots(params),
+      'unmarkSpots' => _unmarkSpots(params),
       'suggestQso' => _suggestQso(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
@@ -460,6 +462,64 @@ class _ExtensionHostCalls {
       throw const FormatException('removeSpots: `keys` must be a list of strings');
     }
     _pushSpots('removeSpots', (board) => board.removeSpots(source, keys: (keys as List?)?.cast<String>()));
+    return null;
+  }
+
+  /// The caller, when it may mark spots: only an extension whose manifest
+  /// declares `assistant`, the hook its operator was warned about at
+  /// install (docs/extensions/assistants.md), or one the app ships.
+  String _spotMarker(String method, Map<String, dynamic> params) {
+    final ns = params['ns'] as String;
+    final owner = owningExtension(ns, _service.availableExtensions, (ExtensionInfo info) => info.key);
+    if (owner == null || (owner.source != ExtensionSource.asset && !owner.hooks.contains(HookCategories.assistant))) {
+      throw ExtensionHostException("$method refused: '$ns' does not declare \"${HookCategories.assistant}\" in its manifest hooks");
+    }
+    return ns;
+  }
+
+  /// [params]' `ids`: the spot ids a mark is about, as `getSpots` hands them.
+  static List<String> _spotIds(String method, Object? ids) {
+    if (ids is! List || ids.any((id) => id is! String)) throw FormatException('$method: `ids` must be a list of spot ids');
+    return ids.cast<String>();
+  }
+
+  /// The longest note a mark carries: it shares the spot's label line.
+  static const _maxSpotNote = 200;
+
+  Future<dynamic> _markSpots(Map<String, dynamic> params) async {
+    final source = _spotMarker('markSpots', params);
+    final ids = _spotIds('markSpots', params['ids']);
+    final mark = params['mark'];
+    if (mark is! Map) throw const FormatException('markSpots: `mark` must be an object');
+    final icon = mark['icon'], color = mark['color'], note = mark['note'], boost = mark['boost'] ?? 0, hidden = mark['hidden'] ?? false;
+    if (icon != null && (icon is! String || icon.isEmpty)) throw const FormatException('markSpots: `icon` must be an icon name');
+    if (color != null && (color is! String || resolveExtensionColor(color) == null)) {
+      throw const FormatException('markSpots: `color` must be a #RRGGBB color');
+    }
+    if (note != null && (note is! String || note.length > _maxSpotNote)) {
+      throw const FormatException('markSpots: `note` must be a string of at most $_maxSpotNote characters');
+    }
+    if (boost is! num || !boost.isFinite || boost < 0) throw const FormatException('markSpots: `boost` must be a number, 0 or more');
+    if (hidden is! bool) throw const FormatException('markSpots: `hidden` must be true or false');
+    final said = (note as String?)?.trim();
+    try {
+      _service.spotMarks.mark(source, ids, (
+        icon: icon as String?,
+        color: color as String?,
+        note: said == null || said.isEmpty ? null : said,
+        boost: boost.toDouble(),
+        hidden: hidden,
+      ));
+    } on SpotsPushRefused catch (e) {
+      throw ExtensionHostException('markSpots refused: ${e.message}');
+    }
+    return null;
+  }
+
+  Future<dynamic> _unmarkSpots(Map<String, dynamic> params) async {
+    final source = _spotMarker('unmarkSpots', params);
+    final ids = params['ids'] == null ? null : _spotIds('unmarkSpots', params['ids']);
+    _service.spotMarks.unmark(source, ids);
     return null;
   }
 

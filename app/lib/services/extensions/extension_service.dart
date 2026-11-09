@@ -52,6 +52,7 @@ import 'spot_command_sources.dart';
 import '../settings_service.dart';
 import '../sets/offered_keyer_sets.dart';
 import '../band_annotations_service.dart';
+import '../spot_marks_service.dart';
 import '../spots_service.dart';
 import '../status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -212,6 +213,12 @@ class ExtensionService
   /// services exist: an extension putting its annotations as it activates
   /// would otherwise find nowhere to put them, and be told it had.
   late final bandAnnotations = BandAnnotationsService(fetch: getBandAnnotations, hooksSettled: runtimeGeneration);
+
+  /// What assistants say about the spots on the board (`host.spots.mark`).
+  /// Here for the same reason as [bandAnnotations]: an assistant marks as it
+  /// activates.
+  @override
+  final spotMarks = SpotMarksService();
 
   /// Where a withdrawn built-in's twin is fetched from. Null before
   /// HaLoServices wires it, which simply means nothing is adopted.
@@ -848,6 +855,7 @@ class ExtensionService
         // activates: its extensions put theirs again, and one taken out of
         // the set leaves nothing behind.
         bandAnnotations.forgetExtensions();
+        spotMarks.forget();
         // And every source's having pushed spots: one whose extension comes
         // back pushes again, and the next fetch takes the rest's away.
         spots?.forgetPushers();
@@ -897,6 +905,7 @@ class ExtensionService
     // old code's annotations stay beside what the new code puts, and its
     // hook's old answers stand for the new one's.
     bandAnnotations.forgetExtensions(keys);
+    spotMarks.forget(keys);
     spots?.forgetPushers(keys);
   }
 

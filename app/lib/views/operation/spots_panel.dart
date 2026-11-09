@@ -27,6 +27,7 @@ import '../../services/settings_service.dart';
 import '../../services/halo_services.dart';
 import '../../services/spot_board.dart';
 import '../../services/spot_board_service.dart';
+import '../../services/spot_marks_service.dart';
 import '../../services/spots_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -73,7 +74,9 @@ String? _labelOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['spot
 /// app-polo's SpotsPanel.jsx: [selfSpots] — the operator's own station's
 /// spots, which the caller supplies UNfiltered so a self-spot stays reachable
 /// after the operator wanders to another band — get a `'self'`-keyed section
-/// pinned above everything else. Then `callsWithNotes` spots get a leading
+/// pinned above everything else. Then [picks] — the spots assistants boosted,
+/// strongest first — get a `'picks'`-keyed section, a pinned DUPLICATE like
+/// the notes below. Then `callsWithNotes` spots get a leading
 /// `'notes'`-keyed section (a pinned DUPLICATE — those spots still appear
 /// again in their normal section below, never removed from it). Then, when
 /// `groupByBand` is false, one flat `'spots'`-keyed section holding `spots`
@@ -88,12 +91,14 @@ String? _labelOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['spot
 List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
   List<Map<String, dynamic>> spots, {
   List<Map<String, dynamic>> selfSpots = const [],
+  List<Map<String, dynamic>> picks = const [],
   required Set<String> callsWithNotes,
   bool groupByBand = true,
 }) {
   final sections = <({String key, List<Map<String, dynamic>> spots})>[];
 
   if (selfSpots.isNotEmpty) sections.add((key: 'self', spots: selfSpots));
+  if (picks.isNotEmpty) sections.add((key: 'picks', spots: picks));
 
   if (callsWithNotes.isNotEmpty) {
     // Pin a multi-op spot when ANY of its operators has a note — a
@@ -493,6 +498,10 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   late final SpotBoardSubscription _boardView;
   bool _refreshing = false;
 
+  /// Whether the spots assistants hid are shown anyway, at the operator's
+  /// word from the bar that counts them.
+  bool _showHidden = false;
+
   @override
   SpotsService get _spots => widget.services.spots;
   Map<String, List<Map<String, dynamic>>> get _spotsBySource => _spots.spotsBySource;
@@ -594,6 +603,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     // board from the view in front.
     _boardView = _board.subscribe(follower: true);
     _board.addListener(_onBoardChanged);
+    widget.services.extensions.spotMarks.addListener(_onBoardChanged);
     _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision, chasing: widget.chasing);
     // Not on the 2-min spots refresh timer — a hook's `sourceName` is static —
     // but on every runtime start: these keys decide which sources the filter
@@ -641,6 +651,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     widget.services.extensions.runtimeGeneration.removeListener(_loadSourceNames);
     _filterState.dispose();
     _board.removeListener(_onBoardChanged);
+    widget.services.extensions.spotMarks.removeListener(_onBoardChanged);
     widget.visible.removeListener(_onVisibilityChanged);
     _boardView.cancel();
     _scrollController.dispose();
@@ -733,10 +744,20 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   /// fixed width the label gives up.
   static const _maxSpotIcons = 3;
 
+  /// Each row's marks, worked out once per build: the hiding, the picks, the
+  /// icons, the label line and the reveal's row heights all ask, and a
+  /// contest board is thousands of rows. By identity, as the merge makes the
+  /// row maps afresh on every build.
+  final _markings = Map<Map<String, dynamic>, SpotMarking?>.identity();
+
+  @override
+  SpotMarking? _markingFor(Map<String, dynamic> spot) => _markings.putIfAbsent(spot, () => widget.services.extensions.spotMarks.markingFor(spotIdsOf(spot)));
+
   @override
   List<SpotIcon> _iconsFor(Map<String, dynamic> spot, Set<String> notices) => spotIconsWithin(
     spotIcons(
       spot,
+      markIcons: _markingFor(spot)?.icons ?? const [],
       controls: _activityControls,
       scoreIcons: _board.scoreIconsFor(widget.operation.uuid) ?? const {},
       notices: notices,
@@ -865,6 +886,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     final t = context.t;
     final theme = Theme.of(context);
     final vfo = widget.services.radio.vfoA;
+    _markings.clear();
 
     // The board asks no spot source for this operation (see
     // `SpotBoardService.spotsAllowed`), and what it still holds came from
@@ -903,7 +925,24 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
       ourBaseCalls: _ourBaseCalls,
       continentOf: (c) => _callNotes[c]?.continent,
     );
-    final filtered = _chaseOrder(summary.filtered);
+    // What an assistant hid leaves the list, but not without a word: the
+    // bar under the filter says how many, and by whom, and shows them.
+    final ordered = _chaseOrder(summary.filtered);
+    final hiddenBy = <String>{};
+    final unhidden = <Map<String, dynamic>>[];
+    for (final spot in ordered) {
+      final by = _markingFor(spot)?.hiddenBy ?? const {};
+      if (by.isEmpty) {
+        unhidden.add(spot);
+      } else {
+        hiddenBy.addAll(by);
+      }
+    }
+    final hiddenCount = ordered.length - unhidden.length;
+    // Showing them is an answer to the bar, which goes with the last of them:
+    // spots hidden after that are hidden until the operator asks again.
+    if (hiddenCount == 0) _showHidden = false;
+    final filtered = _showHidden ? ordered : unhidden;
 
     return Column(
       children: [
@@ -918,6 +957,13 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
           refreshing: _refreshing,
           loading: _loading,
         ),
+        if (hiddenCount > 0)
+          _HiddenSpotsBar(
+            count: hiddenCount,
+            by: [for (final key in hiddenBy) widget.services.extensions.extensionInfo(key)?.nameFor(LocaleSettings.currentLocale.languageCode) ?? key]..sort(),
+            showing: _showHidden,
+            onToggle: () => setState(() => _showHidden = !_showHidden),
+          ),
         // Clears the bottom safe area (home indicator) itself — the status
         // footer doesn't reserve it globally; the panel fills behind.
         Expanded(child: SafeArea(top: false, left: false, right: false, child: _buildSpotsList(context, filtered, summary.selfSpots))),

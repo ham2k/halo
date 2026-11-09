@@ -195,8 +195,14 @@ Map<String, dynamic> _mergedStation(Map<String, dynamic> local, List<Map<String,
   final label = group.map((spot) => asSpotString(asSpotMap(spot['spot'])?['label'])).firstWhere((l) => l != null && l.isNotEmpty, orElse: () => null);
   final icon = group.map((spot) => spot['icon']).firstWhere((i) => i != null, orElse: () => null);
   final codes = [for (final ref in refs) ?asSpotString(ref['ref'])];
+  final ids = <String>[for (final spot in group) ...spotIdsOf(spot)];
   return {
     ...newest,
+    // Every report's, as a merged row carries them: a mark on the network's
+    // report has to stay on the row the operator's own spot now stands for.
+    'ids': [
+      ...{...ids},
+    ],
     if (refs.isNotEmpty) 'refs': refs,
     'icon': ?icon,
     'spot': {...?asSpotMap(newest['spot']), 'label': ?(label ?? (codes.isEmpty ? null : codes.join(', ')))},

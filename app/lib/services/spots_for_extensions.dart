@@ -19,6 +19,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'halo_services.dart';
 import 'spot_board.dart';
 import 'spot_board_service.dart';
+import 'spot_marks_service.dart' show SpotMarking;
+import 'spots_service.dart' show spotIdsOf;
 
 class ExtensionSpotsReader {
   ExtensionSpotsReader(this._services);
@@ -63,14 +65,26 @@ class ExtensionSpotsReader {
       ], 'time');
     }
 
-    final narrowed = query.narrow(spots);
+    // What an assistant hid is off the operator's board, as it is off the
+    // Spots Panel; `all` is everything held, and says which are.
+    // Asked once per spot, for the hiding here and the display below.
+    final marks = _services.extensions.spotMarks;
+    final markings = Map<Map<String, dynamic>, SpotMarking?>.identity();
+    SpotMarking? markingOf(Map<String, dynamic> spot) => markings.putIfAbsent(spot, () => marks.markingFor(spotIdsOf(spot)));
+    final shown = query.base == SpotsBase.all || marks.isEmpty
+        ? spots
+        : [
+            for (final spot in spots)
+              if (markingOf(spot)?.hiddenBy.isEmpty ?? true) spot,
+          ];
+    final narrowed = query.narrow(shown);
     if (!query.annotate) return narrowed;
     final operation = board.operation;
     // Unannotated rather than "nothing worked" until the board has judged
     // this operation: a lookup reading once has no repaint to correct it.
     final scores = query.operationUuid == null ? null : board.scoresFor(query.operationUuid!);
-    if (scores == null || operation == null) return _display(narrowed);
-    return _display(narrowed, judged: (operation: operation, scores: scores, scoreIcons: board.scoreIconsFor(query.operationUuid!) ?? const {}));
+    if (scores == null || operation == null) return _display(narrowed, markingOf);
+    return _display(narrowed, markingOf, judged: (operation: operation, scores: scores, scoreIcons: board.scoreIconsFor(query.operationUuid!) ?? const {}));
   }
 
   /// Copies of [spots], each with `display` — what the Spots Panel's row
@@ -87,7 +101,8 @@ class ExtensionSpotsReader {
   /// `annotations` is `worked`, `isSelf` and `notices`, as [spotDisplayFlags]
   /// reads them for the Spots Panel's rows.
   List<Map<String, dynamic>> _display(
-    List<Map<String, dynamic>> spots, {
+    List<Map<String, dynamic>> spots,
+    SpotMarking? Function(Map<String, dynamic> spot) markingOf, {
     ({Operation operation, Map<String, SpotScore> scores, Map<String, List<SpotIcon>> scoreIcons})? judged,
   }) {
     final board = _services.spotBoard;
@@ -108,6 +123,7 @@ class ExtensionSpotsReader {
       // scorer's icon can be the one a reference would show.
       final refIcons = spotRefIcons(spot, controls);
       final first = refIcons.first;
+      final marking = markingOf(spot);
       final icons = spotIcons(
         spot,
         controls: controls,
@@ -116,6 +132,7 @@ class ExtensionSpotsReader {
         judgements: judged == null ? const {} : board.judgements,
         programs: board.chase?.programs ?? const {},
         refIcons: refIcons,
+        markIcons: marking?.icons ?? const [],
       );
       return {
         ...spot,
@@ -123,11 +140,15 @@ class ExtensionSpotsReader {
           'icon': first.icon,
           'iconColor': ?hex(first.color),
           'icons': [
+            for (final icon in icons.marks) entry(icon, 'assistant'),
             for (final icon in icons.scores) entry(icon, 'scoring'),
             for (final icon in icons.judgements) entry(icon, 'chasing'),
             for (final icon in icons.refs) entry(icon, 'reference'),
           ],
           'emoji': ?spotOperatorCalls(spot).map((call) => callInfo[call]?.emoji).nonNulls.firstOrNull,
+          if (marking != null && marking.notes.isNotEmpty) 'notes': marking.notes,
+          if (marking != null && marking.boost > 0) 'boost': marking.boost,
+          if (marking != null && marking.hiddenBy.isNotEmpty) 'hidden': true,
         },
         if (flags != null) 'annotations': {'worked': flags.worked, 'isSelf': flags.isSelf, 'notices': flags.notices.toList()..sort()},
       };

@@ -13,6 +13,7 @@ mixin _SpotsList on State<SpotsPanel> {
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot);
   Set<String> _newRefsFor(Map<String, dynamic> spot, Set<String> notices);
   List<SpotIcon> _iconsFor(Map<String, dynamic> spot, Set<String> notices);
+  SpotMarking? _markingFor(Map<String, dynamic> spot);
   String? _noteEmojiOf(Map<String, dynamic> spot);
   ScrollController get _scrollController;
   GlobalKey get _currentRowKey;
@@ -45,7 +46,20 @@ mixin _SpotsList on State<SpotsPanel> {
               if (entry.value.hasNote) entry.key,
           }
         : const <String>{};
-    final rawSections = sectionSpots(filtered, selfSpots: selfSpots, callsWithNotes: callsWithNotes, groupByBand: _filterState.groupByBand);
+    // The assistants' picks, strongest boost first and the list's own order
+    // among equals.
+    final boosted = [
+      for (final spot in filtered)
+        if (_markingFor(spot) case final marking? when marking.boost > 0) (spot: spot, boost: marking.boost),
+    ];
+    mergeSort(boosted, compare: (a, b) => b.boost.compareTo(a.boost));
+    final rawSections = sectionSpots(
+      filtered,
+      selfSpots: selfSpots,
+      picks: [for (final pick in boosted) pick.spot],
+      callsWithNotes: callsWithNotes,
+      groupByBand: _filterState.groupByBand,
+    );
     final sections = [
       for (final section in rawSections)
         (key: section.key, label: '${_sectionLabel(t, section.key)} - ${t.operation.spots.spotsCount(count: section.spots.length)}', spots: section.spots),
@@ -241,7 +255,9 @@ mixin _SpotsList on State<SpotsPanel> {
                                       isSelf: flags.isSelf,
                                       notices: flags.notices,
                                       newRefs: _newRefsFor(spot, flags.notices),
-                                      highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
+                                      notes: _markingFor(spot)?.notes ?? const [],
+                                      labelLine: _hasLabelLine(spot),
+                                      highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : _pickHighlightFor(theme, spot),
                                       // A spot that is ours alone suggests no QSO — there
                                       // is no one to work. Tapping it re-tunes instead:
                                       // the VFO goes back to the spotted state, which is
@@ -274,7 +290,25 @@ mixin _SpotsList on State<SpotsPanel> {
   /// per noted row — which is what [SpotRevealState]'s measured correction is
   /// left to close.
   double _spotRowHeightOf(Map<String, dynamic> spot) =>
-      spotRowHeightFor(metrics: _metrics, hasLabel: _labelOf(spot) != null, hasEmoji: _noteEmojiOf(spot) != null);
+      spotRowHeightFor(metrics: _metrics, hasLabel: _hasLabelLine(spot), hasEmoji: _noteEmojiOf(spot) != null);
+
+  /// Whether [spot]'s row draws its second line: it has a label, or an
+  /// assistant's note or icon to put there. The one test the tile draws by
+  /// and the reveal sums heights by.
+  bool _hasLabelLine(Map<String, dynamic> spot) {
+    if (_labelOf(spot) != null) return true;
+    final marking = _markingFor(spot);
+    return marking != null && (marking.notes.isNotEmpty || marking.icons.isNotEmpty);
+  }
+
+  /// The fill under a spot an assistant boosted: its mark's colour, faint, or
+  /// the theme's primary where it names none; null for any other spot. Faint
+  /// enough that the current QSO's own fill, which replaces it, still reads
+  /// as the stronger.
+  Color? _pickHighlightFor(ThemeData theme, Map<String, dynamic> spot) => switch (_markingFor(spot)) {
+    final marking? when marking.boost > 0 => (resolveExtensionColor(marking.color) ?? theme.colorScheme.primary).withValues(alpha: 0.14),
+    _ => null,
+  };
 
   /// Slid right past the commit point, or its button pressed: hand the spot
   /// to the logging panel as the QSO to log. The panel does the logging —
@@ -330,6 +364,7 @@ mixin _SpotsList on State<SpotsPanel> {
   /// misleadingly suggest the filter had no effect.
   String _sectionLabel(Translations t, String key) => switch (key) {
     'self' => t.operation.spots.yourSpots,
+    'picks' => t.operation.spots.picks,
     'notes' => t.operation.spots.callsOfNote,
     'spots' => _filterState.isSingleBandFilter ? _filterState.bandFilter : t.operation.spots.allSpots,
     '?' => t.operation.spots.unknownBand,
@@ -505,4 +540,52 @@ class _SpotsListView implements SpotListView {
 
   @override
   void afterFrame(VoidCallback callback) => WidgetsBinding.instance.addPostFrameCallback((_) => callback());
+}
+
+/// Under the filter pill while assistants hide spots the filters would show:
+/// how many, by whom, and a tap that shows them anyway. A spot leaving the
+/// list without a word is one the operator never learns was there.
+class _HiddenSpotsBar extends StatelessWidget {
+  final int count;
+
+  /// The names of the extensions that hid them.
+  final List<String> by;
+  final bool showing;
+  final VoidCallback onToggle;
+
+  const _HiddenSpotsBar({required this.count, required this.by, required this.showing, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.operation.spots;
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      child: InkWell(
+        onTap: onToggle,
+        child: Padding(
+          padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: Space.sm),
+          child: Row(
+            children: [
+              Icon(showing ? MdiIcons.eyeOutline : MdiIcons.eyeOffOutline, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: Space.md),
+              Expanded(
+                child: Text(
+                  t.hiddenByAssistants(count: count, names: by.join(', ')),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+              const SizedBox(width: Space.md),
+              Text(
+                showing ? t.hideHidden : t.showHidden,
+                style: theme.textTheme.bodySmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

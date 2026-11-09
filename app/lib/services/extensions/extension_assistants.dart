@@ -10,6 +10,7 @@ mixin _ExtensionAssistants implements AssistantExtensionSource {
   ExtensionHost? get host;
   RadioHostCalls get radioCalls;
   List<ExtensionInfo> get availableExtensions;
+  SpotMarksService get spotMarks;
 
   /// Every assistant every `assistant` hook offers, tagged with its `hookKey`.
   /// Null means "could not ask", so a failed call never reads as every
@@ -73,4 +74,16 @@ mixin _ExtensionAssistants implements AssistantExtensionSource {
 
   @override
   bool canReadRadio(String? hookKey) => radioCalls.canRead(hookKey);
+
+  @override
+  void releaseSpotMarks({required Set<String> offered, required Set<String> on}) {
+    // Marks are held under the extension's own key; its assistants under
+    // that key or a sub-key of it.
+    bool owns(String source, Set<String> hookKeys) => hookKeys.any((key) => key == source || key.startsWith('${source}_'));
+    final released = [
+      for (final source in spotMarks.sources)
+        if (owns(source, offered) && !owns(source, on)) source,
+    ];
+    if (released.isNotEmpty) spotMarks.forget(released);
+  }
 }

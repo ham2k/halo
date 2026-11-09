@@ -2065,6 +2065,13 @@ class _Translations$operation$spots$qro extends Translations$operation$spots$en 
 	@override String ageMinutes({required Object minutes}) => '${minutes} MINUTES';
 	@override String get callsOfNote => 'CALLS OF NOTE';
 	@override String get yourSpots => 'YOUR SPOTS';
+	@override String get picks => 'ASSISTANT PICKS';
+	@override String hiddenByAssistants({required num count, required Object names}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} SPOT HIDDEN BY ${names}',
+		other: '${count} SPOTS HIDDEN BY ${names}',
+	);
+	@override String get showHidden => 'SHOW';
+	@override String get hideHidden => 'HIDE';
 	@override String get allSpots => 'ALL SPOTS';
 	@override late final _Translations$operation$spots$continents$qro continents = _Translations$operation$spots$continents$qro._(_root);
 	@override late final _Translations$operation$spots$filters$qro filters = _Translations$operation$spots$filters$qro._(_root);
@@ -5742,6 +5749,10 @@ extension on TranslationsQro {
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} MINUTES',
 			'operation.spots.callsOfNote' => 'CALLS OF NOTE',
 			'operation.spots.yourSpots' => 'YOUR SPOTS',
+			'operation.spots.picks' => 'ASSISTANT PICKS',
+			'operation.spots.hiddenByAssistants' => ({required num count, required Object names}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} SPOT HIDDEN BY ${names}', other: '${count} SPOTS HIDDEN BY ${names}', ), 
+			'operation.spots.showHidden' => 'SHOW',
+			'operation.spots.hideHidden' => 'HIDE',
 			'operation.spots.allSpots' => 'ALL SPOTS',
 			'operation.spots.continents.af' => 'AFRICA',
 			'operation.spots.continents.as' => 'ASIA',
@@ -5985,12 +5996,12 @@ extension on TranslationsQro {
 			'loggingControls.more' => 'MORE',
 			'loggingControls.revert' => 'REVERT',
 			'loggingControls.undoDelete' => 'UNDO DELETE',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.restore' => 'RESTORE',
 			'loggingControls.wipe' => 'WIPE',
 			'loggingControls.undo' => 'UNDO',
 			'loggingControls.pendingDeleteTapWarning' => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
-			_ => null,
-		} ?? switch (path) {
 			'loggingControls.pendingDeleteClickWarning' => 'CLICK THE TRASHCAN ONE MORE TIME TO DELETE THIS QSO',
 			'loggingControls.deletedQsoWarning' => 'DELETED QSO',
 			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'TAP THE TRASHCAN ONE MORE TIME TO DELETE THIS ${kind}',
@@ -6499,12 +6510,12 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'THAT MESSAGE NEEDS WORDS YOU HAVEN\'T RECORDED: ${words}.',
 			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'THAT MESSAGE\'S TEMPLATE HAS A PROBLEM: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'MESSAGES SAID WITH YOUR WORDS PLAY IN AN OPERATION, WHERE THERE IS A CONTACT TO SAY THEM FOR.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
 			'settings.radio.voiceMessages.templateHelp' => 'LEAVE EMPTY TO PLAY THE RECORDING. OTHERWISE THE MESSAGE IS SAID WITH THE WORDS YOU RECORDED, FILLED IN FOR EACH CONTACT, USING THESE VALUES:',
 			'settings.radio.voiceMessages.help' => 'HELP',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.helpTitle' => 'SAYING MESSAGES WITH YOUR WORDS',
 			'settings.radio.voiceMessages.helpFullExample' => 'A WHOLE MESSAGE:',
 			'settings.radio.voiceMessages.helpExample' => 'THEIR CALL, THEIR REPORT, AND YOUR RECORDING OF “QSL?”',
@@ -7013,12 +7024,12 @@ extension on TranslationsQro {
 			'settings.station.troubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.ft891Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **CAT RTS OFF AT THE RADIO, OR HOLD RTS HIGH ON.** WITH **CAT RTS** ON (FT-891 MENU **05-08**), THE RADIO STAYS SILENT WHILE RTS IS LOW — IT MAY ANSWER ONCE AS THE PORT OPENS, THEN NOTHING. PICKING THE RADIO\'S OWN USB PORT TURNS ON **HOLD RTS HIGH** UNDER ADVANCED SETTINGS. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES RTS IS PTT, AND HOLDING IT HIGH KEYS YOUR TRANSMITTER: TURN CAT RTS OFF AT THE RADIO INSTEAD.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE (MENU **05-06**). WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuBinaryTroubleshooting' => 'THIS RADIO SPEAKS YAESU\'S OLDER FIVE-BYTE CAT, AND IT DOES NOT RESPOND AT ALL WHEN SOMETHING IS OFF. ALMOST ALWAYS ONE OF:\n\n- **THE CABLE MUST CONVERT LEVELS.** THE CAT JACK ON THE BACK IS NOT RS-232 AND NOT USB; IT NEEDS A CT-62 OR AN EQUIVALENT ADAPTER. A PLAIN AUDIO OR DATA CABLE WON\'T WORK FOR CAT.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU (**#14** ON AN FT-817, **#19** ON AN FT-857 OR FT-897). WITH A MISMATCH, THE RADIO SENDS NOTHING BACK, AND NEVER AN ERROR.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON MOST CABLES FOR THESE RADIOS THOSE LINES ARE PTT AND KEYING. AN OLDER INTERFACE POWERED FROM DTR IS THE EXCEPTION: TURN ON **HOLD DTR HIGH** UNDER ADVANCED SETTINGS FOR THAT ONE.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM YAESU\'S PUBLISHED CAT CHART AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.tenTecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.tenTecEagleTroubleshooting' => '- **THE USB-B PORT ON THE BACK IS THE CAT LINK.** THE RADIO SHOWS UP AS A USB SERIAL PORT; ON WINDOWS IT NEEDS TEN-TEC\'S USB TO UART DRIVER, WHICH APPEARS IN DEVICE MANAGER AS "USB TO UART (COMX)".\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN, AND SO DOES TEN-TEC\'S FIRMWARE UPDATER.\n- **SETTING THE FILTER WIDTH FROM THE APP TAKES IT AWAY FROM THE BW KNOB** UNTIL THE RADIO IS SWITCHED OFF AND ON AGAIN. THAT IS HOW THE RADIO WORKS.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
 			'settings.station.tenTecOrionTroubleshooting' => '- **USE A STRAIGHT-THROUGH DB-9 SERIAL CABLE** TO THE SERIAL DATA PORT, NOT A NULL-MODEM ONE.\n- **THIS ENTRY HOLDS RTS HIGH**, BECAUSE THE ORION USES RTS AND CTS AS ITS HANDSHAKE. ON AN INTERFACE THAT KEYS PTT FROM RTS, SUCH AS A DIGIRIG, TURN OFF HOLD RTS HIGH UNDER ADVANCED SETTINGS, OR THE RADIO TRANSMITS AS SOON AS THE APP CONNECTS.\n- **CW FROM THE APP NEEDS THE RADIO\'S INTERNAL KEYER ON.** WITH IT OFF, THE RADIO IGNORES WHAT THE APP SENDS.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS DRIVER WAS WRITTEN FROM TEN-TEC\'S PROGRAMMER\'S REFERENCE GUIDE AND HAS NOT BEEN RUN AGAINST AN ORION. IF IT HALF-WORKS, THAT IS WORTH REPORTING, WITH THE FIRMWARE VERSION FROM THE RADIO\'S MENU.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.tenTecNoCw' => 'THIS RADIO\'S FIRMWARE DOES NOT TAKE CW FROM THE APP. TEN-TEC ADDED IT IN ORION FIRMWARE 1.366.',
 			'settings.station.tenTecKeyerOff' => 'THE RADIO\'S INTERNAL KEYER IS OFF, SO IT IGNORES CW SENT FROM THE APP. TURN THE KEYER ON IN THE RADIO\'S MENU.',
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
@@ -7527,12 +7538,12 @@ extension on TranslationsQro {
 			'commands.swapExperimentOff' => 'SO2R IS OFF — TURN IT ON WITH EXP SO2R',
 			'commands.swapNeedsOperation' => 'OPEN AN OPERATION TO SWAP RADIOS',
 			'commands.swapNoRadioB' => 'NOTHING SWAPPED: PICK A RADIO B IN STATION CONFIGURATION',
+			_ => null,
+		} ?? switch (path) {
 			'commands.swapEditing' => 'NOTHING SWAPPED: FINISH EDITING THE CONTACT FIRST',
 			'commands.swapOnAir' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} IS ON THE AIR',
 			'commands.swapKeyerBusy' => ({required Object radio}) => 'NOTHING SWAPPED: RADIO ${radio} HAS MESSAGES GOING OR WAITING',
 			'commands.swapLocked' => 'NOTHING SWAPPED: THIS OPERATION CAN\'T TAKE CHANGES RIGHT NOW',
-			_ => null,
-		} ?? switch (path) {
 			'commands.swapDone' => 'RADIOS A AND B SWAPPED',
 			'commands.swapNotConnected' => ({required Object radio}) => 'SWAPPED, BUT RADIO ${radio} IS NOT CONNECTED AND DID NOT MOVE',
 			'commands.swapNoneConnected' => 'SWAPPED, BUT NEITHER RADIO IS CONNECTED, SO NEITHER MOVED',
