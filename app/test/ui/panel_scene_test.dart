@@ -86,6 +86,12 @@ Future<void> show(
   await tester.pump();
 }
 
+/// Focuses the drawn control labelled [label] as Tab would: a click no longer gives it the focus.
+Future<void> focusFromKeys(WidgetTester tester, String label) async {
+  Focus.of(tester.element(find.descendant(of: find.bySemanticsLabel(label), matching: find.byType(MouseRegion)).first)).requestFocus();
+  await tester.pump();
+}
+
 void main() {
   Future<FocusNode> showBesideCallsign(WidgetTester tester) async {
     final call = FocusNode(debugLabel: 'call');
@@ -127,30 +133,25 @@ void main() {
     expect(call.hasFocus, isTrue);
   });
 
-  testWidgets('a clicked slider keeps focus while it is being adjusted, then hands it back', (tester) async {
-    // Kept for good, the operator's next callsign would be typed into a slider.
-    // Dropped at once, the arrow keys could not fine-tune what was just clicked.
+  testWidgets('a clicked or dragged slider leaves focus where the operator had it, and Tab reaches it for the keys', (tester) async {
+    // Taken by a click, even for a moment, the operator's next keystrokes would land in a slider
+    // nudged mid-QSO instead of the callsign.
     final call = await showBesideCallsign(tester);
-    await tester.tapAt(tester.getRect(find.bySemanticsLabel('Test slider')).center);
-    await tester.pump();
-    expect(call.hasFocus, isFalse);
-    await tester.pump(const Duration(seconds: 2));
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    // The hold runs from the last adjustment, not the click.
-    await tester.pump(const Duration(seconds: 2));
-    expect(call.hasFocus, isFalse);
-    await tester.pump(const Duration(milliseconds: 1100));
-    expect(call.hasFocus, isTrue);
-
-    // A drag holds from its release: a long one must not lose focus mid-drag.
     final slider = tester.getRect(find.bySemanticsLabel('Test slider')).center;
-    final gesture = await tester.startGesture(slider);
-    await gesture.moveBy(const Offset(40, 0));
-    await tester.pump(const Duration(seconds: 4));
-    expect(call.hasFocus, isFalse);
-    await gesture.up();
-    await tester.pump(const Duration(seconds: 3));
+    await tester.tapAt(slider);
+    await tester.pump();
     expect(call.hasFocus, isTrue);
+    await tester.dragFrom(slider, const Offset(40, 0));
+    await tester.pump();
+    expect(call.hasFocus, isTrue);
+    expect(find.text('Value: 60'), findsOneWidget, reason: 'the drag still set it');
+
+    // Reached by the keyboard, it is the operator's choice: the arrow keys adjust it.
+    await focusFromKeys(tester, 'Test slider');
+    expect(call.hasFocus, isFalse);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(find.text('Value: 61'), findsOneWidget);
   });
 
   testWidgets('a knob with a second axis takes sideways and up-and-down motion as two values', (tester) async {
@@ -1367,6 +1368,7 @@ void main() {
     await show(tester, document(local: true, value: 2), onEvent: handler);
     expect(find.text('Value: 50'), findsOneWidget);
     expect(calls, 0);
+    await focusFromKeys(tester, 'Test slider');
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(find.text('Value: 51'), findsOneWidget);
@@ -1459,6 +1461,7 @@ void main() {
     expect(find.text('Value: 10'), findsOneWidget);
     expect(find.text(t.operation.layout.panelActionFailed), findsOneWidget);
     fail = false;
+    await focusFromKeys(tester, 'Test slider');
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     expect(find.text('Value: 11'), findsOneWidget);

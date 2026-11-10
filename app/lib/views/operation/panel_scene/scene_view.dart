@@ -956,51 +956,6 @@ class _ControlViewState extends State<_ControlView> {
   /// would never be released.
   bool _dragging = false;
 
-  /// A slider or knob clicked into holds focus only briefly — long enough for
-  /// the arrow keys to adjust what was just clicked — then hands it back to
-  /// where the operator was typing. Focus that arrived by Tab stays.
-  static const _pointerFocusHold = Duration(seconds: 3);
-  Timer? _releaseFocus;
-  FocusNode? _returnFocusTo;
-
-  /// Whether the focus this control holds came from a pointer, and so is
-  /// handed back once [_pointerFocusHold] passes without use.
-  bool _pointerFocus = false;
-
-  /// [hold] is false at the start of a drag: the hold runs from the release,
-  /// or a long drag would lose focus under the operator's hand.
-  void _focusFromPointer(FocusNode node, {bool hold = true}) {
-    if (!node.hasFocus) {
-      _returnFocusTo = FocusManager.instance.primaryFocus;
-      _pointerFocus = true;
-    }
-    node.requestFocus();
-    _releaseFocus?.cancel();
-    if (hold) _holdPointerFocus(node);
-  }
-
-  void _holdPointerFocus(FocusNode node) {
-    if (!_pointerFocus) return;
-    _releaseFocus?.cancel();
-    _releaseFocus = Timer(_pointerFocusHold, () {
-      final back = _returnFocusTo;
-      _returnFocusTo = null;
-      _pointerFocus = false;
-      if (!mounted || !node.hasFocus) return;
-      if (back != null && back.context != null && back.canRequestFocus) {
-        back.requestFocus();
-      } else {
-        node.unfocus();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _releaseFocus?.cancel();
-    super.dispose();
-  }
-
   void _adjust(double delta) {
     if (widget.disabled) return;
     widget.onChange(widget.value + delta);
@@ -1057,15 +1012,7 @@ class _ControlViewState extends State<_ControlView> {
       onIncrease: button || widget.disabled ? null : () => _adjust(c.step),
       onDecrease: button || widget.disabled ? null : () => _adjust(-c.step),
       child: Focus(
-        onFocusChange: (v) {
-          // Gone elsewhere — by Tab or a click — before the hold ran out.
-          if (!v) {
-            _releaseFocus?.cancel();
-            _returnFocusTo = null;
-            _pointerFocus = false;
-          }
-          setState(() => _focused = v);
-        },
+        onFocusChange: (v) => setState(() => _focused = v),
         onKeyEvent: (node, event) {
           if (widget.disabled || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
             return KeyEventResult.ignored;
@@ -1081,7 +1028,6 @@ class _ControlViewState extends State<_ControlView> {
             // With a second axis, up and down are its own.
             if (y != null && (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown)) {
               _adjustY(y.step * (key == LogicalKeyboardKey.arrowUp ? 1 : -1) * times);
-              _holdPointerFocus(node);
               return KeyEventResult.handled;
             }
             final direction = [LogicalKeyboardKey.arrowRight, LogicalKeyboardKey.arrowUp].contains(key)
@@ -1091,8 +1037,6 @@ class _ControlViewState extends State<_ControlView> {
                 : 0;
             if (direction != 0) {
               _adjust(c.step * direction * times);
-              // Still being adjusted: the hold runs from the last key.
-              _holdPointerFocus(node);
               return KeyEventResult.handled;
             }
           }
@@ -1132,16 +1076,13 @@ class _ControlViewState extends State<_ControlView> {
                   onTap: widget.disabled
                       ? null
                       : () {
-                          // A button takes no focus from a click: it has nothing to
-                          // do with keys afterwards, and the operator's typing stays
-                          // where it was. Tab still reaches it. A slider or knob
-                          // takes it for [_pointerFocusHold], except in a cell: see
-                          // [_focusesFromPointer].
+                          // A click takes no focus, whatever the control: a scene is worked
+                          // mid-QSO, and the operator's next keystroke belongs where they were
+                          // typing. Tab still reaches it, for the arrow keys.
                           if (c.kind == 'knob' && c.menu != null) {
                             unawaited(_openMenu(context));
                             return;
                           }
-                          if (!button && _focusesFromPointer) _focusFromPointer(Focus.of(context));
                           if (widget.onTapAt case final tapAt? when button) {
                             final size = context.size ?? Size.zero;
                             final along = size.height > size.width ? _tapPosition.dy / size.height : _tapPosition.dx / size.width;
@@ -1153,10 +1094,10 @@ class _ControlViewState extends State<_ControlView> {
                           }
                           if (button || c.kind == 'slider') widget.onCommit();
                         },
-                  onPanStart: button || ownsDrag ? null : (d) => _panStart(context, d),
+                  onPanStart: button || ownsDrag ? null : _panStart,
                   onPanUpdate: button || ownsDrag ? null : _panUpdate,
-                  onPanEnd: button || ownsDrag ? null : (_) => _panEnd(context),
-                  onPanCancel: button || ownsDrag ? null : () => _panCancel(context),
+                  onPanEnd: button || ownsDrag ? null : (_) => _panEnd(),
+                  onPanCancel: button || ownsDrag ? null : _panCancel,
                   child: DecoratedBox(
                     decoration: BoxDecoration(border: _focused ? Border.all(color: Theme.of(context).colorScheme.primary, width: 2) : null),
                   ),

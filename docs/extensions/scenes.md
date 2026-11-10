@@ -171,12 +171,10 @@ of `value`. A text field commits on Enter or on leaving it, and a render
 that lands while the operator is typing does not overwrite the typing.
 
 **Focus.** A text field or dropdown keeps keyboard focus; clicking any other
-native control hands focus back to the callsign field. A drawn `button`
-never takes focus from a click. A drawn `slider` or `knob` holds focus for
-three seconds after its last use, long enough for the arrow keys, then hands
-it back; in a [cell](#layers-and-bindings) it takes none from a click or a
-drag, as a button does, since a board is worked while the operator types.
-Focus that arrives by Tab stays. A scroll steps a slider or knob by
+native control hands focus back to the callsign field. A drawn `button`,
+`slider` or `knob` takes no focus from a click or a drag, so the operator's
+typing stays where it was; Tab reaches it, and the arrow keys then adjust a
+slider or knob. A scroll steps a slider or knob by
 its `step`, down and left lowering it, and a one-axis control takes a
 sideways scroll by its own direction. `scrollThrough` (API 12) lets a slider
 or knob also take the scrolls landing on drawn buttons over it, so labels

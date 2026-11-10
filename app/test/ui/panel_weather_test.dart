@@ -205,6 +205,9 @@ void main() {
       await tester.tapAt(Offset(box.left + box.width * 6.5 / 8, box.center.dy));
       await tester.pump();
       expect(find.text(caption(6)), findsOneWidget);
+      // A click takes no focus from the logging fields; the arrow keys step a chart reached by Tab.
+      Focus.of(tester.element(find.descendant(of: find.byKey(const ValueKey('forecast-hour')), matching: find.byType(MouseRegion)).first)).requestFocus();
+      await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
       expect(find.text(caption(7)), findsOneWidget);

@@ -197,15 +197,11 @@ The public contract is in [panel scenes](../extensions/scenes.md) and
 - **Focus follows the Operation view's contract**
   ([logging-fields.md](logging-fields.md)): a text field or dropdown keeps what
   it is given, and a clicked button hands focus back to the callsign field. A
-  drawn button takes no focus from a click at all — it has nothing to do with
-  keys afterwards. A drawn slider or knob does, because the arrow keys adjust
-  it, but only for three seconds after its last click, drag or key; then focus
-  goes back where it came from, so a knob nudged with the mouse mid-QSO does not
-  catch the operator's next keystrokes. Focus that arrived by Tab is the
-  operator's choice and stays. A slider or knob in a cell takes no focus from
-  the pointer at all, as a button does: a control board is worked mid-QSO,
-  where even three seconds of the arrow keys belonging to a knob would catch
-  the operator's typing. Tab reaches it, and the wheel adjusts it unfocused.
+  drawn control, button, slider or knob, takes no focus from a click or a drag
+  at all. A scene is worked mid-QSO, and a control holding the focus even
+  briefly catches the operator's next keystrokes, meant for the callsign. The
+  arrow keys adjust a slider or knob reached by Tab, which is the operator's
+  choice and stays; the wheel adjusts one with no focus.
 - **In a grid that scrolls, a drag begun on a cell's slider or knob is the
   control's.** A plain pan claims a drag only past twice the distance a
   scroll view's drag needs, so the grid would win every one. The cell's pan

@@ -92,13 +92,12 @@ extension _SceneGrids on _PanelSceneViewState {
   }
 }
 
-/// How a drawn slider or knob takes a drag, and, in a cell, the pointer.
+/// How a drawn slider or knob takes a drag.
 extension _ControlDrag on _ControlViewState {
-  void _panStart(BuildContext context, DragStartDetails d) {
+  void _panStart(DragStartDetails d) {
     final c = widget.control;
     if (widget.disabled) return;
     _dragging = true;
-    if (_focusesFromPointer) _focusFromPointer(Focus.of(context), hold: false);
     widget.onStart();
     _dragValue = widget.value;
     _dragValueY = widget.valueY ?? 0;
@@ -139,27 +138,19 @@ extension _ControlDrag on _ControlViewState {
     }
   }
 
-  void _panEnd(BuildContext context) {
+  void _panEnd() {
     final c = widget.control;
     if (!_dragging) return;
     _dragging = false;
-    _holdPointerFocus(Focus.of(context));
     if (c.yAxis == null || _movedX) widget.onCommit();
     if (_movedY) widget.onCommitY?.call();
   }
 
-  void _panCancel(BuildContext context) {
+  void _panCancel() {
     if (!_dragging) return;
     _dragging = false;
-    _holdPointerFocus(Focus.of(context));
     widget.onCancel();
   }
-
-  /// Whether a click or drag gives this control the focus. Not in a cell: a board's controls are
-  /// worked mid-QSO, and the operator's next keystroke belongs in the logging fields, so a board
-  /// slider or knob takes none, as a drawn button never does; Tab still reaches it, and the wheel
-  /// adjusts it without focus.
-  bool get _focusesFromPointer => widget.control.cell == null;
 
   /// A slider or knob in a cell keeps a drag begun on it from the grid scrolling around it; see
   /// [_CellPan]. Elsewhere a scene's `scroll` takes a drag along it, as the scene contract says.
@@ -174,10 +165,10 @@ extension _ControlDrag on _ControlViewState {
                 // The device's own slop, as the scroll view around it uses: with the default one in
                 // its place, a phone whose slop is smaller would give the scroll every drag.
                 ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context)
-                ..onStart = ((d) => _panStart(context, d))
+                ..onStart = _panStart
                 ..onUpdate = _panUpdate
-                ..onEnd = ((_) => _panEnd(context))
-                ..onCancel = (() => _panCancel(context)),
+                ..onEnd = ((_) => _panEnd())
+                ..onCancel = _panCancel,
             ),
           },
           child: child,
