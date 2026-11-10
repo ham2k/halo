@@ -47,6 +47,7 @@ import '../assistant_service.dart';
 import '../panel_service.dart';
 import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
+import 'app_control_host_calls.dart';
 import 'settings_placement.dart';
 import 'spot_command_sources.dart';
 import '../settings_service.dart';
@@ -197,6 +198,10 @@ class ExtensionService
 
   /// The DX cluster host calls, behind their manifest capabilities.
   final clusterCalls = ClusterHostCalls();
+
+  /// The host calls that change a setting or a layout, behind their
+  /// manifest capabilities.
+  final appCalls = AppControlHostCalls();
 
   /// The one dialog surface `showForm` and `showMessage` open on, one
   /// extension at a time — see [ExtensionDialogGate].

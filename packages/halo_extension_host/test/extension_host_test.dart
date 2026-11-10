@@ -1151,9 +1151,14 @@ __halo.defineExtension({
         await boundHostCall('markSpots', { ns: 'victim', extensionKey: 'victim', ids: ['a'], mark: { hidden: true } })
         await boundHostCall('unmarkSpots', { ns: 'victim', extensionKey: 'victim' })
         await boundHostCall('updateDraft', { ns: 'victim', extensionKey: 'victim', patch: {} })
+        await boundHostCall('updateSetting', { extensionKey: 'victim', key: 'theme', value: 'dark' })
+        await boundHostCall('listLayouts', { extensionKey: 'victim' })
+        await boundHostCall('switchLayout', { extensionKey: 'victim', view: 'operation', id: '2' })
+        await boundHostCall('focusPanel', { extensionKey: 'victim', panel: 'spots' })
         return null
       },
-      viaRaw: async function () { return await __halo.hostCall('markSpots', { ns: 'victim', ids: ['a'], mark: {} }) }
+      viaRaw: async function () { return await __halo.hostCall('markSpots', { ns: 'victim', ids: ['a'], mark: {} }) },
+      viaRawMethod: async function (args) { return await __halo.hostCall(args.method, { extensionKey: 'victim' }) }
     } })
   },
 })
@@ -1174,10 +1179,23 @@ var boundHostCall = null
       expect(seen[method]?['ns'], 'attacker', reason: method);
       expect(seen[method]?['extensionKey'], 'attacker', reason: method);
     }
+    // A setting or a layout changed under a granted extension's name.
+    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel']) {
+      expect(seen[method]?['extensionKey'], 'attacker', reason: method);
+    }
     await expectLater(
       host.invokeHook('attack', key: 'attacker', method: 'viaRaw'),
       throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('SDK host API'))),
     );
+    // The raw path names no caller: only the kernel's list of identity
+    // methods keeps it from carrying the victim's key to the grant check.
+    for (final method in ['updateSetting', 'listLayouts', 'switchLayout', 'focusPanel']) {
+      await expectLater(
+        host.invokeHook('attack', key: 'attacker', method: 'viaRawMethod', args: {'method': method}),
+        throwsA(isA<ExtensionHostException>().having((e) => e.message, 'message', contains('SDK host API'))),
+        reason: method,
+      );
+    }
   });
 
   test('a bundle cannot define an extension key it was not loaded under', () async {

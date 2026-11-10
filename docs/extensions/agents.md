@@ -185,7 +185,7 @@ spots board. `dist/index.d.ts` has the rest.
   reach for something newer: `docs/packaging.md` lists what each level added.
   The packer enforces a few of these (`webSockets` 2, `chasing` 9, the
   cluster 10, `requiresRadioRaw` 11, `assistant` 21, `requiresDraftWrite`
-  22); the rest install on an older app and fail there. The scaffold's
+  and `requiresLayoutControl` 22); the rest install on an older app and fail there. The scaffold's
   `sharedDependencies` ranges are open-ended; replace them with the versions
   the build suggests.
 - **`host.secret()` returns null** for an installed extension. Make public

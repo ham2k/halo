@@ -2909,17 +2909,21 @@ export interface ExtensionManifest {
   /// Also `host.clusterSend()`: any command, in the operator's name.
   /// Implies `requiresClusterSpot`.
   requiresClusterCommand?: boolean
-  /// Declares this extension's `command` hooks may change the app's own
-  /// settings: the `updateSetting`, `updateSettings` and `toggleExperiment`
-  /// actions, which set any catalogued setting, developer mode and the
-  /// experiments. Off by default; the host refuses a command carrying one of
-  /// those from an extension that does not set this, and says so in the
-  /// command bar. Shown to the operator at install.
+  /// Declares this extension may change the app's own settings: from its
+  /// `command` hooks, the `updateSetting`, `updateSettings` and
+  /// `toggleExperiment` actions, which set any catalogued setting, developer
+  /// mode and the experiments; and on its own, `host.updateSetting` (API 22).
+  /// Off by default; the host refuses either from an extension that does not
+  /// set this. Shown to the operator at install.
   requiresSettingsWrite?: boolean
   /// Declares this extension may change the QSO the operator is composing
   /// with `host.updateDraft`: any field, the call included, while the
   /// operator types. Shown to the operator at install. Extension API 22.
   requiresDraftWrite?: boolean
+  /// Declares this extension may switch the layouts the app's views draw
+  /// and bring a panel to the front, with `host.layouts`. Shown to the
+  /// operator at install. Extension API 22.
+  requiresLayoutControl?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable
@@ -3990,6 +3994,51 @@ export interface StationEquipmentResult {
    */
   reason?: "invalid" | "disconnected" | "transmitting" | "failed" | "busy" | "expired"
   state: StationEquipment | null
+}
+
+/// What `host.updateSetting` answers. Extension API 22.
+export interface UpdateSettingResult {
+  /** Written; the operator is told on the status bar which extension set what. */
+  accepted: boolean
+  /** It already held that value: nothing was written, and nothing said. */
+  unchanged?: boolean
+  /**
+   * `invalid`: no setting by that key shows in Settings now; or it is edited in a form of its own
+   * (a list, a choice of several, an account, a secret); or it restarts the extensions when it
+   * changes; or it is another extension's assistant, or its settings; or the value is not one it
+   * takes.
+   * `rejected`: the setting refused the value or could not store it; `message` says so.
+   */
+  reason?: "invalid" | "rejected"
+  message?: string
+}
+
+/// A view the operator arranges, as `host.layouts.list` answers it. Extension API 22.
+export interface ViewLayoutList {
+  view: "operation" | "logs" | "chase" | "home"
+  /** The id of the layout the view draws. */
+  active: string
+  /** Every layout the view keeps, in the operator's order, by the names the operator sees. */
+  layouts: { id: string; name: string; description?: string }[]
+  /** Whether a view of this kind is open now. */
+  open: boolean
+  /** Whether the operator is editing its layout; every change is refused meanwhile. */
+  editing: boolean
+  /** While one is open: the panel ids its arrangement holds, which `focus` takes. */
+  panels?: string[]
+}
+
+/// What `host.layouts.switch` and `focus` answer. Extension API 22.
+export interface LayoutControlResult {
+  accepted: boolean
+  /**
+   * `invalid`: no such view, or no such layout in it.
+   * `unavailable`: this device does not offer named layouts, so the operator could not switch back;
+   * or no view of that kind is open and its list of layouts has lost their names.
+   * `editing`: the operator is editing that view's layout.
+   * `missing`: no open view of that kind holds the panel.
+   */
+  reason?: "invalid" | "unavailable" | "editing" | "missing"
 }
 
 export interface PanelRadioResult {

@@ -215,7 +215,8 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get canSpotCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME';
 	@override String get canCommandCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME';
 	@override String get canSetUserAgent => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME';
-	@override String get canChangeSettings => 'YOUR SETTINGS, TO CHANGE THEM THROUGH ITS COMMANDS: ANY SETTING, DEVELOPER MODE AND EXPERIMENTS';
+	@override String get canChangeSettings => 'YOUR SETTINGS, TO CHANGE ANY OF THEM, THROUGH ITS COMMANDS OR ON ITS OWN; THROUGH ITS COMMANDS, DEVELOPER MODE AND EXPERIMENTS TOO';
+	@override String get canControlLayouts => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM AND BRING A PANEL TO THE FRONT';
 	@override String get canChangeDraft => 'THE CONTACT YOU ARE LOGGING, TO CHANGE ANY OF ITS FIELDS, THE CALL INCLUDED, AS YOU TYPE';
 	@override String get noCapabilities => 'IT ASKS FOR NOTHING OUTSIDE THE APP.';
 	@override String get sandboxNote => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.';
@@ -1188,6 +1189,8 @@ class _Translations$extensionService$qro extends Translations$extensionService$e
 	@override String commandMayNotChangeSettings({required Object name}) => '${name} CAN’T CHANGE SETTINGS: IT DIDN’T ASK TO AT INSTALL';
 	@override String commandMayNotControlRadio({required Object name}) => '${name} CAN’T CONTROL THE RADIO: IT DIDN’T ASK TO AT INSTALL';
 	@override String commandDeveloperOnly({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS';
+	@override String changedSetting({required Object name, required Object setting, required Object value}) => '${name} SET ${setting} TO ${value}';
+	@override String switchedLayout({required Object name, required Object layout}) => '${name} SWITCHED TO THE ${layout} LAYOUT';
 	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'REPORTS CAN\'T BE SENT RIGHT NOW';
 	@override String get stashUnavailable => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW';
@@ -5111,7 +5114,8 @@ extension on TranslationsQro {
 			'extensionsPanel.canSpotCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME',
 			'extensionsPanel.canCommandCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME',
 			'extensionsPanel.canSetUserAgent' => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME',
-			'extensionsPanel.canChangeSettings' => 'YOUR SETTINGS, TO CHANGE THEM THROUGH ITS COMMANDS: ANY SETTING, DEVELOPER MODE AND EXPERIMENTS',
+			'extensionsPanel.canChangeSettings' => 'YOUR SETTINGS, TO CHANGE ANY OF THEM, THROUGH ITS COMMANDS OR ON ITS OWN; THROUGH ITS COMMANDS, DEVELOPER MODE AND EXPERIMENTS TOO',
+			'extensionsPanel.canControlLayouts' => 'YOUR LAYOUTS, TO SWITCH BETWEEN THEM AND BRING A PANEL TO THE FRONT',
 			'extensionsPanel.canChangeDraft' => 'THE CONTACT YOU ARE LOGGING, TO CHANGE ANY OF ITS FIELDS, THE CALL INCLUDED, AS YOU TYPE',
 			'extensionsPanel.noCapabilities' => 'IT ASKS FOR NOTHING OUTSIDE THE APP.',
 			'extensionsPanel.sandboxNote' => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.',
@@ -5534,9 +5538,9 @@ extension on TranslationsQro {
 			'operation.layout.layouts.problemNewerVersion' => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP',
 			'operation.layout.layouts.problemNoArrangement' => 'IT HOLDS NO ARRANGEMENT',
 			'operation.layout.layouts.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE LAYOUT FORMAT',
-			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.problemTooLarge' => 'IT IS TOO LARGE',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'COULDN\'T OPEN THE FILE: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'COULDN\'T IMPORT THE LAYOUT: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'COULDN\'T COPY THE LAYOUT: ${error}',
@@ -6048,9 +6052,9 @@ extension on TranslationsQro {
 			'loggingControls.todoField' => 'TODO',
 			'loggingControls.sent' => 'SENT',
 			'loggingControls.rcvd' => 'RCVD',
-			'loggingControls.more' => 'MORE',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.more' => 'MORE',
 			'loggingControls.revert' => 'REVERT',
 			'loggingControls.undoDelete' => 'UNDO DELETE',
 			'loggingControls.restore' => 'RESTORE',
@@ -6562,9 +6566,9 @@ extension on TranslationsQro {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'THE RECORDING WAS CUT SHORT, SO THE MESSAGE WAS LEFT AS IT WAS. CHECK THAT THE RECORDING DEVICE IS STILL CONNECTED AND THAT THERE IS ROOM ON THE DISK.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'THE RECORDING COULDN\'T BE SAVED IN THE MESSAGE\'S PLACE, SO THE MESSAGE WAS LEFT AS IT WAS.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'THAT MESSAGE NEEDS WORDS YOU HAVEN\'T RECORDED: ${words}.',
-			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'THAT MESSAGE\'S TEMPLATE HAS A PROBLEM: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'THAT MESSAGE\'S TEMPLATE HAS A PROBLEM: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'MESSAGES SAID WITH YOUR WORDS PLAY IN AN OPERATION, WHERE THERE IS A CONTACT TO SAY THEM FOR.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'THAT MESSAGE SAYS NOTHING FOR THIS CONTACT.',
 			'settings.radio.voiceMessages.templateField' => 'SAY WITH MY WORDS',
@@ -7076,9 +7080,9 @@ extension on TranslationsQro {
 			'settings.station.models.airspy' => 'AIRSPY R2 / MINI',
 			'settings.station.models.airspyHf' => 'AIRSPY HF+',
 			'settings.station.models.spyServer' => 'SPYSERVER (ANY RECEIVER)',
-			'settings.station.transports.network' => 'NETWORK/WIFI',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transports.network' => 'NETWORK/WIFI',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
@@ -7590,9 +7594,9 @@ extension on TranslationsQro {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',
 			'commands.idleMetricsEnabled' => 'IDLE METRICS ENABLED IN THE STATUS BAR',
-			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
 			_ => null,
 		} ?? switch (path) {
+			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
@@ -7870,6 +7874,8 @@ extension on TranslationsQro {
 			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} CAN’T CHANGE SETTINGS: IT DIDN’T ASK TO AT INSTALL',
 			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} CAN’T CONTROL THE RADIO: IT DIDN’T ASK TO AT INSTALL',
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS',
+			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} SET ${setting} TO ${value}',
+			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} SWITCHED TO THE ${layout} LAYOUT',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'REPORTS CAN\'T BE SENT RIGHT NOW',
 			'extensionService.stashUnavailable' => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW',

@@ -362,11 +362,11 @@ class ExtensionInfo with ExtensionSearchable {
   final bool requiresClusterSpot;
   final bool requiresClusterCommand;
 
-  /// Whether this extension's `command` hooks may change the app's own
-  /// settings (the manifest's `requiresSettingsWrite`): the `updateSetting`,
-  /// `updateSettings` and `toggleExperiment` actions. Off by default; a
-  /// command carrying one of them from an extension without it is refused
-  /// before it runs.
+  /// Whether this extension may change the app's own settings (the
+  /// manifest's `requiresSettingsWrite`): from its `command` hooks, the
+  /// `updateSetting`, `updateSettings` and `toggleExperiment` actions; and on
+  /// its own, unasked, `host.updateSetting`, from extension API 22. Off by
+  /// default; a command or a call from an extension without it is refused.
   final bool requiresSettingsWrite;
 
   /// Whether this extension may change the QSO the operator is composing
@@ -374,6 +374,12 @@ class ExtensionInfo with ExtensionSearchable {
   /// the call included. Off by default; a call from an extension without it
   /// is refused.
   final bool requiresDraftWrite;
+
+  /// Whether this extension may switch the layouts the app's views draw and
+  /// bring a panel to the front (the manifest's `requiresLayoutControl`):
+  /// `host.layouts`. Off by default; a call from an extension without it is
+  /// refused.
+  final bool requiresLayoutControl;
 
   /// Whether [other] declares the same capabilities the host resolves into
   /// allowlists when the runtime STARTS. A dev reload that changes one cannot
@@ -479,6 +485,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresClusterCommand = false,
     this.requiresSettingsWrite = false,
     this.requiresDraftWrite = false,
+    this.requiresLayoutControl = false,
     required this.core,
     this.api,
     required this.name,
@@ -519,6 +526,7 @@ class ExtensionInfo with ExtensionSearchable {
     requiresClusterCommand: json['requiresClusterCommand'] as bool? ?? false,
     requiresSettingsWrite: json['requiresSettingsWrite'] as bool? ?? false,
     requiresDraftWrite: json['requiresDraftWrite'] as bool? ?? false,
+    requiresLayoutControl: json['requiresLayoutControl'] as bool? ?? false,
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,

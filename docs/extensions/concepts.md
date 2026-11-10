@@ -191,7 +191,7 @@ operator before they install it: the hosts `host.fetch` may call
 capability grants (`requiresLocation`, `requiresRadioRead`,
 `requiresRadioWrite`, `requiresRadioRaw`, `requiresClusterRead`,
 `requiresClusterSpot`, `requiresClusterCommand`, `requiresSettingsWrite`,
-`requiresDraftWrite`).
+`requiresDraftWrite`, `requiresLayoutControl`).
 An undeclared call is refused where it is made, not at build time, so an
 extension that reaches for something it did not ask for fails in front of
 the operator. Declare the least you need: the consent screen names every

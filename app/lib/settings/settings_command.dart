@@ -23,6 +23,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../services/extensions/app_control_host_calls.dart' show SettingWrite;
+import '../services/extensions/extension_info.dart' show CapabilityGrant;
 import '../services/halo_services.dart';
 import 'settings_catalog.dart';
 import 'settings_registry.dart';
@@ -298,7 +300,12 @@ Future<String?> applySettingCommand(HaLoServices services, {required String key,
     debugPrint('[settings-commands] no setting named "$key" to write');
     return t.commands.settingVanished(label: key);
   }
+  return _commitScanned(services, target, key: key, value: value);
+}
 
+/// Writes [value] through the commit path [target] was declared with: null
+/// when it took, or the message saying it did not.
+Future<String?> _commitScanned(HaLoServices services, ScannedSetting target, {required String key, required dynamic value}) async {
   final group = target.group;
   if (group != null) {
     await group.commit(key, value);
@@ -348,7 +355,7 @@ Future<String?> applySettingCommand(HaLoServices services, {required String key,
       ? await services.extensions.transformSettingsField(hookKey: route.hookKey, panelKey: route.panelKey, fieldKey: route.fieldKey, value: value, state: state)
       : value;
 
-  await services.extensions.commitSettingsFieldValue(
+  final stored = await services.extensions.commitSettingsFieldValue(
     kind: route.kind,
     hookKey: route.hookKey,
     panelKey: route.panelKey,
@@ -358,5 +365,53 @@ Future<String?> applySettingCommand(HaLoServices services, {required String key,
     isSecret: route.field['fieldType'] == 'secret',
     restartOnChange: route.field['restartOnChange'] == true,
   );
-  return null;
+  // The extension that keeps the value could not take it; answering null
+  // would leave the hook's confirm, or an extension's status line, telling
+  // the operator about a write that never happened.
+  return stored ? null : t.commands.settingNotStored(label: target.element['label'] as String? ?? key);
 }
+
+/// Writes [value] to the setting [key] names for [callerKey], an extension
+/// acting on its own (`host.updateSetting`), where no command bar previewed
+/// it: the value arrives typed, not typed in, so it is checked against the
+/// setting here rather than parsed. One scan resolves the setting, and the
+/// value is checked against the very field it is written to.
+///
+/// Refused `invalid`: a key Settings does not show now; a setting edited in
+/// a form of its own ([SettingsCatalogEntry.isSimple]); a value it does not
+/// take; a field that restarts the extensions when it changes, whose restart
+/// would end the very runtime waiting on this answer; and another
+/// extension's assistant, or its settings, which the operator turns on
+/// themselves, knowing it then watches every operation.
+Future<SettingWrite> writeSettingForExtension(HaLoServices services, {required String key, required Object? value, required String? callerKey}) async {
+  const invalid = (reason: 'invalid', message: null, unchanged: false, label: null, valueLabel: null);
+  final target = (await scanSettings(services)).where((scanned) => scanned.isField && scanned.key == key).firstOrNull;
+  final entry = target == null ? null : catalogEntryOf(target, developerMode: services.settings.developerMode);
+  if (target == null || entry == null || !entry.isSimple || entry.restartsExtensions || !_takes(entry, value)) return invalid;
+  if (target.group?.key == 'assistants' && !_ownAssistantRow(services, key, callerKey)) return invalid;
+  // Exact, unlike [_isUnchanged]: an extension's own text field keeps its
+  // case, and a URL differing in it is a different URL.
+  if (entry.value == value) return (reason: null, message: null, unchanged: true, label: null, valueLabel: null);
+  if (await _commitScanned(services, target, key: key, value: value) case final rejected?) {
+    return (reason: 'rejected', message: rejected, unchanged: false, label: null, valueLabel: null);
+  }
+  return (reason: null, message: null, unchanged: false, label: entry.label, valueLabel: settingValueLabel(entry, value));
+}
+
+/// Whether the Settings › Assistants row [key] — an assistant's switch, or
+/// one of its settings — belongs to an assistant [callerKey]'s bundle offers.
+bool _ownAssistantRow(HaLoServices services, String key, String? callerKey) {
+  final owners = CapabilityGrant.among(services.extensions.availableExtensions, (_) => false);
+  final caller = owners.ownerOf(callerKey);
+  for (final assistant in services.assistants.catalog) {
+    if (key == assistant.id || key.startsWith('${assistant.id}/')) return caller != null && owners.ownerOf(assistant.hookKey) == caller;
+  }
+  return false;
+}
+
+bool _takes(SettingsCatalogEntry entry, Object? value) => switch (entry.fieldType) {
+  'checkbox' => value is bool,
+  'select' => entry.options.any((option) => option['value'] == value),
+  'number' => value is num && value.isFinite,
+  _ => value is String,
+};

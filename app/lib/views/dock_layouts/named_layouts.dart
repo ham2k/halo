@@ -8,17 +8,21 @@
 
 part of '../dock_host.dart';
 
-extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
-  /// Whether the named-layout controls are offered. The stored list is read
-  /// either way: with the experiment off the view goes on drawing whichever
-  /// layout was last chosen, rather than swapping the operator's arrangement
-  /// for another one under them.
-  bool get namedLayoutsOffered => dockServices.settings.experimentEnabled('layouts') /* stored key, see experiments.yaml */;
+/// Whether the named-layout controls are offered. The stored list is read
+/// either way: with the experiment off the view goes on drawing whichever
+/// layout was last chosen, rather than swapping the operator's arrangement
+/// for another one under them.
+bool _namedLayoutsOffered(SettingsService settings) => settings.experimentEnabled('layouts') /* stored key, see experiments.yaml */;
 
-  /// What [layout] is called on screen. Only a list that could not be read
-  /// leaves a layout other than the first one without a name.
-  String layoutName(ViewLayout layout) =>
-      layout.name ?? (layout.id == ViewLayouts.defaultId ? _t.layouts.defaultName : _t.layouts.untitledName(number: layout.id));
+/// What [layout] is called on screen, in [words]. Only a list that could not
+/// be read leaves a layout other than the first one without a name.
+String _layoutName(ViewLayout layout, Translations$operation$layout$en words) =>
+    layout.name ?? (layout.id == ViewLayouts.defaultId ? words.layouts.defaultName : words.layouts.untitledName(number: layout.id));
+
+extension NamedLayouts<T extends StatefulWidget> on DockHost<T> {
+  bool get namedLayoutsOffered => _namedLayoutsOffered(dockServices.settings);
+
+  String layoutName(ViewLayout layout) => _layoutName(layout, _t);
 
   /// The stored list, as [ViewLayouts.read] makes it out. One it had to
   /// recover is written back at once, so the operator is told once, not on

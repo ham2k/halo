@@ -75,7 +75,8 @@ import yazl from "yazl"
 /// band scope's `window`, shown over a blank picture while no sweep comes,
 /// and its `centerHz`, its annotations' `baseline`, `stretch`, `more` and
 /// `badge` among others (docs/extensions/packaging.md lists them), and
-/// `host.updateDraft` with its `requiresDraftWrite` grant.
+/// `host.updateDraft` with its `requiresDraftWrite` grant, `host.updateSetting`,
+/// and `host.layouts` with its `requiresLayoutControl` grant.
 export const H2KEXT_API_VERSION = 22
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -97,6 +98,10 @@ export const ASSISTANT_API_VERSION = 21
 /// same reason as `requiresRadioRaw`: the app would install it and refuse
 /// every change it makes to the draft.
 export const DRAFT_WRITE_API_VERSION = 22
+
+/// The first API with `host.layouts`, refused under an older one for the same
+/// reason.
+export const LAYOUT_CONTROL_API_VERSION = 22
 
 /// The first API with the DX cluster calls. A manifest declaring a
 /// `requiresCluster*` grant or a `cluster` hook under an older one is
@@ -529,6 +534,11 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
       `'requiresDraftWrite' needs 'api' ${DRAFT_WRITE_API_VERSION} or later — an app older than that would install this and refuse every change it makes to the draft`,
     )
   }
+  if (manifest.requiresLayoutControl === true && Number.isInteger(manifest.api) && manifest.api < LAYOUT_CONTROL_API_VERSION) {
+    say(
+      `'requiresLayoutControl' needs 'api' ${LAYOUT_CONTROL_API_VERSION} or later — an app older than that would install this and refuse every change it makes to a layout`,
+    )
+  }
   if (manifest.requiresRadioRaw === true && Number.isInteger(manifest.api) && manifest.api < RADIO_RAW_API_VERSION) {
     say(`'requiresRadioRaw' needs 'api' ${RADIO_RAW_API_VERSION} or later — an app older than that would install this and refuse every raw command it sends`)
   }
@@ -748,6 +758,7 @@ export function indexEntryFor(key, m) {
     ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
     ...(m.requiresSettingsWrite ? { requiresSettingsWrite: true } : {}),
     ...(m.requiresDraftWrite ? { requiresDraftWrite: true } : {}),
+    ...(m.requiresLayoutControl ? { requiresLayoutControl: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     // Read by the host to place the extension's settings panels; without it

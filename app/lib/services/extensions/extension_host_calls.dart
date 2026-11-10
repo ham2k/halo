@@ -19,6 +19,9 @@ class _ExtensionHostCalls {
   Future<dynamic> handle(String method, Map<String, dynamic> params) async {
     if (RadioHostCalls.handles(method)) return _service.radioCalls.handle(method, params);
     if (ClusterHostCalls.handles(method)) return _service.clusterCalls.handle(method, params);
+    if (AppControlHostCalls.handles(method)) {
+      return _service.appCalls.handle(method, params, _service.availableExtensions, nameOf: (key) => _service._commandSource(key).$2);
+    }
     return switch (method) {
       'getAccount' => _getAccount(params),
       'setAccountSession' => _setAccountSession(params),

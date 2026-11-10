@@ -394,8 +394,11 @@ class Translations$extensionsPanel$en {
 	/// en: 'Identify itself to servers under its own name'
 	String get canSetUserAgent => 'Identify itself to servers under its own name';
 
-	/// en: 'Your settings, to change them through its commands: any setting, developer mode and experiments'
-	String get canChangeSettings => 'Your settings, to change them through its commands: any setting, developer mode and experiments';
+	/// en: 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too'
+	String get canChangeSettings => 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too';
+
+	/// en: 'Your layouts, to switch between them and bring a panel to the front'
+	String get canControlLayouts => 'Your layouts, to switch between them and bring a panel to the front';
 
 	/// en: 'The contact you are logging, to change any of its fields, the call included, as you type'
 	String get canChangeDraft => 'The contact you are logging, to change any of its fields, the call included, as you type';
@@ -2671,6 +2674,12 @@ class Translations$extensionService$en {
 
 	/// en: '${name} can’t run that: it’s one of the app’s own developer commands'
 	String commandDeveloperOnly({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands';
+
+	/// en: '${name} set ${setting} to ${value}'
+	String changedSetting({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}';
+
+	/// en: '${name} switched to the ${layout} layout'
+	String switchedLayout({required Object name, required Object layout}) => '${name} switched to the ${layout} layout';
 
 	/// en: '${describe} · ${extension}'
 	String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
@@ -11253,7 +11262,8 @@ extension on Translations {
 			'extensionsPanel.canSpotCluster' => 'The DX cluster, logged in as you, to post spots in your name',
 			'extensionsPanel.canCommandCluster' => 'The DX cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
-			'extensionsPanel.canChangeSettings' => 'Your settings, to change them through its commands: any setting, developer mode and experiments',
+			'extensionsPanel.canChangeSettings' => 'Your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
+			'extensionsPanel.canControlLayouts' => 'Your layouts, to switch between them and bring a panel to the front',
 			'extensionsPanel.canChangeDraft' => 'The contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -11676,9 +11686,9 @@ extension on Translations {
 			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
-			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
@@ -12190,9 +12200,9 @@ extension on Translations {
 			'loggingControls.todoField' => 'Todo',
 			'loggingControls.sent' => 'Sent',
 			'loggingControls.rcvd' => 'Rcvd',
-			'loggingControls.more' => 'More',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.more' => 'More',
 			'loggingControls.revert' => 'Revert',
 			'loggingControls.undoDelete' => 'Undo delete',
 			'loggingControls.restore' => 'Restore',
@@ -12704,9 +12714,9 @@ extension on Translations {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'The recording was cut short, so the message was left as it was. Check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'The recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'That message needs words you haven\'t recorded: ${words}.',
-			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'That message\'s template has a problem: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'That message\'s template has a problem: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'Messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'That message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'Say with my words',
@@ -13218,9 +13228,9 @@ extension on Translations {
 			'settings.station.models.airspy' => 'Airspy R2 / Mini',
 			'settings.station.models.airspyHf' => 'Airspy HF+',
 			'settings.station.models.spyServer' => 'SpyServer (any receiver)',
-			'settings.station.transports.network' => 'Network/WiFi',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transports.network' => 'Network/WiFi',
 			'settings.station.transports.tci' => 'TCI',
 			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
@@ -13732,9 +13742,9 @@ extension on Translations {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.idleMetricsEnabled' => 'Idle metrics enabled in the status bar',
-			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
 			_ => null,
 		} ?? switch (path) {
+			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
@@ -14012,6 +14022,8 @@ extension on Translations {
 			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} can’t change settings: it didn’t ask to at install',
 			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install',
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
+			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
+			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',

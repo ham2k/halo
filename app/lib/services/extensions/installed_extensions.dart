@@ -23,6 +23,7 @@ import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
 import '../error_reporting_service.dart';
+import 'app_control_host_calls.dart' show AppControlHostCalls;
 import 'bundle_storage.dart';
 import 'extension_relevance.dart';
 import 'extension_service.dart';
@@ -269,6 +270,10 @@ class InspectedBundle {
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
   bool get requiresSettingsWrite => manifest['requiresSettingsWrite'] == true;
   bool get requiresDraftWrite => manifest['requiresDraftWrite'] == true;
+  bool get requiresLayoutControl => manifest['requiresLayoutControl'] == true;
+
+  /// The extension API the manifest declares, 0 for none.
+  int get _api => manifest['api'] is int ? manifest['api'] as int : 0;
 
   /// Whether it registers an assistant (docs/extensions/assistants.md): code
   /// that watches every operation and acts on it unasked, which the consent
@@ -285,14 +290,17 @@ class InspectedBundle {
       requiresClusterRead ||
       allowUserAgentOverride ||
       requiresSettingsWrite ||
-      requiresDraftWrite;
+      requiresDraftWrite ||
+      requiresLayoutControl;
 
   /// Whether this asks for anything [installed] — the version it would
   /// replace — was not granted: a host, a stronger grant, or an assistant.
   bool asksMoreThan(InspectedBundle installed) =>
       (registersAssistant && !installed.registersAssistant) ||
-      (requiresSettingsWrite && !installed.requiresSettingsWrite) ||
+      (requiresSettingsWrite &&
+          (!installed.requiresSettingsWrite || (_api >= AppControlHostCalls.unaskedSettingsApi && installed._api < AppControlHostCalls.unaskedSettingsApi))) ||
       (requiresDraftWrite && !installed.requiresDraftWrite) ||
+      (requiresLayoutControl && !installed.requiresLayoutControl) ||
       !installed.domains.toSet().containsAll(domains) ||
       !installed.webSockets.toSet().containsAll(webSockets) ||
       (requiresLocation && !installed.requiresLocation) ||

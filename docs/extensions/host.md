@@ -164,8 +164,28 @@ give; a `secret` field's value is never included. `ambiguous` with
 setting wants its own form: both are cases for the `openSettings` action
 rather than `updateSetting`
 ([Commands & templates](commands.md#reaching-the-apps-settings)). This call
-re-enters the runtime while your hook awaits it, which is safe, and the only
-host call that does.
+re-enters the runtime while your hook awaits it, which is safe; so does
+`updateSetting`, and no other host call does.
+
+### `host.updateSetting({ key, value })`
+
+Extension API 22, `requiresSettingsWrite`. Changes a setting on your own
+initiative, with nothing typed: an assistant turning on the RST fields as a
+contest starts. `key` is the one `searchSettings` answers with, and only a
+setting Settings shows right now has one. `value` is what the setting
+holds: `true` or `false` for a switch, one option's `value` for a choice, a
+number, or text. The operator is told on the status bar which extension set
+what, so a change they did not make never comes from nowhere. Answers
+`{ accepted }`, with `unchanged: true` when the setting already held the
+value, which writes nothing and says nothing. Refusals carry a `reason`:
+`invalid` for a key with no setting behind it, a value the setting does not
+take, a setting edited in a form of its own (a list, a choice of several,
+an account, a secret), one that restarts the extensions when it changes, or
+another extension's assistant or its settings, which only the operator
+turns on;
+`rejected` when the setting refused the value or could not store it, with a
+`message` saying so.
+Like `searchSettings`, it re-enters the runtime while you await it.
 
 ### `host.secret(name)`
 
@@ -264,6 +284,27 @@ contact instead, as tapping a spot starts one, and needs `their.call`.
 any of them also needs `requiresRadioWrite`. Answers `{ accepted }`, false
 when no such operation is open, or an existing QSO is open for editing in
 place of the draft.
+
+### `host.layouts`
+
+Extension API 22, `requiresLayoutControl`. The layouts the operator's views
+draw: Operation, Logs, Chase and Home each keep a list, and draw one of them.
+
+| Call | Does |
+| --- | --- |
+| `list()` | Every view: its `view` name, the `active` layout's id, its `layouts` (`id`, `name` as the operator sees it, `description`), whether one is `open` now and whether the operator is `editing` its layout; while one is open, the `panels` its arrangement holds |
+| `switch({ view, id })` | Draws `id` in every open view of that kind, and in the next one opened. The operator is told on the status bar |
+| `focus({ panel, view? })` | Brings `panel`'s tab to the front wherever an open `view` (`operation` unless given) holds it, as a tapped spot brings up the log. Nothing is said: what comes to the front is the change |
+
+`switch` and `focus` answer `{ accepted }`, and a refusal carries a
+`reason`: `invalid` for a view or layout id there is no such thing as;
+`editing` while the operator is editing that view's layout, which an
+extension never changes under them; `missing` from `focus` when no open view
+of that kind holds the panel; and `unavailable` from `switch` on a device
+that does not offer named layouts, where the operator would have no way to
+switch back, or while no view of that kind is open and its list of layouts
+has lost their names, which the operator is told when they next open one.
+Switching to the layout already drawn is accepted and says nothing.
 
 ## Reading the app
 

@@ -215,7 +215,8 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get canSpotCluster => 'the dx cluster, logged in as you, to post spots in your name';
 	@override String get canCommandCluster => 'the dx cluster, logged in as you, to send it any command in your name';
 	@override String get canSetUserAgent => 'identify itself to servers under its own name';
-	@override String get canChangeSettings => 'your settings, to change them through its commands: any setting, developer mode and experiments';
+	@override String get canChangeSettings => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too';
+	@override String get canControlLayouts => 'your layouts, to switch between them and bring a panel to the front';
 	@override String get canChangeDraft => 'the contact you are logging, to change any of its fields, the call included, as you type';
 	@override String get noCapabilities => 'it asks for nothing outside the app.';
 	@override String get sandboxNote => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.';
@@ -1188,6 +1189,8 @@ class _Translations$extensionService$qrp extends Translations$extensionService$e
 	@override String commandMayNotChangeSettings({required Object name}) => '${name} can’t change settings: it didn’t ask to at install';
 	@override String commandMayNotControlRadio({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install';
 	@override String commandDeveloperOnly({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands';
+	@override String changedSetting({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}';
+	@override String switchedLayout({required Object name, required Object layout}) => '${name} switched to the ${layout} layout';
 	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'reports can\'t be sent right now';
 	@override String get stashUnavailable => 'ham2k’s file stash can’t be reached right now';
@@ -5111,7 +5114,8 @@ extension on TranslationsQrp {
 			'extensionsPanel.canSpotCluster' => 'the dx cluster, logged in as you, to post spots in your name',
 			'extensionsPanel.canCommandCluster' => 'the dx cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'identify itself to servers under its own name',
-			'extensionsPanel.canChangeSettings' => 'your settings, to change them through its commands: any setting, developer mode and experiments',
+			'extensionsPanel.canChangeSettings' => 'your settings, to change any of them, through its commands or on its own; through its commands, developer mode and experiments too',
+			'extensionsPanel.canControlLayouts' => 'your layouts, to switch between them and bring a panel to the front',
 			'extensionsPanel.canChangeDraft' => 'the contact you are logging, to change any of its fields, the call included, as you type',
 			'extensionsPanel.noCapabilities' => 'it asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -5534,9 +5538,9 @@ extension on TranslationsQrp {
 			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
 			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
 			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
-			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
 			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
 			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
 			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
@@ -6048,9 +6052,9 @@ extension on TranslationsQrp {
 			'loggingControls.todoField' => 'todo',
 			'loggingControls.sent' => 'sent',
 			'loggingControls.rcvd' => 'rcvd',
-			'loggingControls.more' => 'more',
 			_ => null,
 		} ?? switch (path) {
+			'loggingControls.more' => 'more',
 			'loggingControls.revert' => 'revert',
 			'loggingControls.undoDelete' => 'undo delete',
 			'loggingControls.restore' => 'restore',
@@ -6562,9 +6566,9 @@ extension on TranslationsQrp {
 			'settings.radio.voiceMessages.problemRecordingFailed' => 'the recording was cut short, so the message was left as it was. check that the recording device is still connected and that there is room on the disk.',
 			'settings.radio.voiceMessages.problemFileFailed' => 'the recording couldn\'t be saved in the message\'s place, so the message was left as it was.',
 			'settings.radio.voiceMessages.problemWordsMissing' => ({required Object words}) => 'that message needs words you haven\'t recorded: ${words}.',
-			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'that message\'s template has a problem: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.voiceMessages.problemTemplateFailed' => ({required Object error}) => 'that message\'s template has a problem: ${error}',
 			'settings.radio.voiceMessages.problemNoOperation' => 'messages said with your words play in an operation, where there is a contact to say them for.',
 			'settings.radio.voiceMessages.problemNothingSaid' => 'that message says nothing for this contact.',
 			'settings.radio.voiceMessages.templateField' => 'say with my words',
@@ -7076,9 +7080,9 @@ extension on TranslationsQrp {
 			'settings.station.models.airspy' => 'airspy r2 / mini',
 			'settings.station.models.airspyHf' => 'airspy hf+',
 			'settings.station.models.spyServer' => 'spyserver (any receiver)',
-			'settings.station.transports.network' => 'network/wifi',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.transports.network' => 'network/wifi',
 			'settings.station.transports.tci' => 'tci',
 			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
@@ -7590,9 +7594,9 @@ extension on TranslationsQrp {
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',
 			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
-			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			_ => null,
 		} ?? switch (path) {
+			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
@@ -7870,6 +7874,8 @@ extension on TranslationsQrp {
 			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} can’t change settings: it didn’t ask to at install',
 			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install',
 			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
+			'extensionService.changedSetting' => ({required Object name, required Object setting, required Object value}) => '${name} set ${setting} to ${value}',
+			'extensionService.switchedLayout' => ({required Object name, required Object layout}) => '${name} switched to the ${layout} layout',
 			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',

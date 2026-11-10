@@ -424,9 +424,20 @@ void main() {
           'hooks': ['assistant'],
         },
         {'requiresDraftWrite': true},
+        {'requiresLayoutControl': true},
       ]) {
         expect(bundle({'requiresRadioWrite': true, ...more}).asksMoreThan(installed), isTrue, reason: '$more');
       }
+    });
+
+    test('is the settings grant reaching settings changed unasked, from API 22', () {
+      // The grant's name stays; what it allows grew. An update crossing into
+      // API 22 asks again, or an extension the operator let run SET commands
+      // would start changing settings on its own without them hearing of it.
+      final commandsOnly = bundle({'api': 21, 'requiresSettingsWrite': true});
+      expect(bundle({'api': 22, 'requiresSettingsWrite': true}).asksMoreThan(commandsOnly), isTrue);
+      expect(bundle({'api': 21, 'requiresSettingsWrite': true}).asksMoreThan(commandsOnly), isFalse);
+      expect(bundle({'api': 23, 'requiresSettingsWrite': true}).asksMoreThan(bundle({'api': 22, 'requiresSettingsWrite': true})), isFalse);
     });
 
     test('is read from what is installed', () async {

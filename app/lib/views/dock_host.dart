@@ -27,6 +27,7 @@ import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
 import 'operation/panel_scene/cat_spectrum_source.dart';
 import '../services/error_reporting_service.dart';
+import '../services/extensions/app_control_host_calls.dart' show LayoutControl;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
@@ -56,6 +57,7 @@ import 'file_open/file_router.dart';
 import 'dock_layouts/view_layouts.dart';
 
 part 'dock_layouts/add_panel_sheet.dart';
+part 'dock_layouts/extension_layouts.dart';
 part 'dock_layouts/layout_controls.dart';
 part 'dock_layouts/named_layouts.dart';
 part 'dock_layouts/shared_panels.dart';

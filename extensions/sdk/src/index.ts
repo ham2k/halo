@@ -43,6 +43,9 @@ import type {
   DraftPatch,
   StationEquipment,
   StationEquipmentResult,
+  UpdateSettingResult,
+  ViewLayoutList,
+  LayoutControlResult,
   ClusterPostSpotRequest,
   ClusterReply,
   SuggestedQso,
@@ -528,6 +531,14 @@ export const host = {
     return (await hostCallFn()("searchSettings", { ...params })) as SettingsSearchResult
   },
 
+  /// Sets the setting `key` names — the key `searchSettings` answers with —
+  /// to `value`, on the extension's own initiative: `true`/`false` for a
+  /// switch, an option's value for a choice, a number, or text. The operator
+  /// is told on the status bar. Needs `requiresSettingsWrite`. Extension API 22.
+  async updateSetting(args: { key: string; value: JSONValue }): Promise<UpdateSettingResult> {
+    return (await hostCallFn()("updateSetting", { ...args })) as UpdateSettingResult
+  },
+
   async kvSet(key: string, value: JSONValue): Promise<void> {
     await hostCallFn()("kvSet", { ns: currentExtensionKey, key, value })
   },
@@ -699,6 +710,26 @@ export const host = {
     /// the operator takes down on your panel; only by key. Extension API 22.
     async remove(keys?: string[], options?: { source?: "user" }): Promise<void> {
       await hostCallFn()("removeBandAnnotations", { keys, ns: currentExtensionKey, ...(options?.source ? { source: options.source } : {}) })
+    },
+  },
+
+  /// The layouts the app's views draw: which one each draws, switching it,
+  /// and bringing a panel to the front. Needs `requiresLayoutControl`.
+  /// Extension API 22.
+  layouts: {
+    /// Every view the operator arranges, with its layouts.
+    async list(): Promise<ViewLayoutList[]> {
+      return (await hostCallFn()("listLayouts", {})) as ViewLayoutList[]
+    },
+    /// Draws `view`'s layout `id`, in every open view of that kind and the
+    /// next one opened. The operator is told on the status bar.
+    async switch(args: { view: ViewLayoutList["view"]; id: string }): Promise<LayoutControlResult> {
+      return (await hostCallFn()("switchLayout", { ...args })) as LayoutControlResult
+    },
+    /// Brings `panel`'s tab to the front in every open `view` (`operation`
+    /// unless given) whose arrangement holds it.
+    async focus(args: { panel: string; view?: ViewLayoutList["view"] }): Promise<LayoutControlResult> {
+      return (await hostCallFn()("focusPanel", { ...args })) as LayoutControlResult
     },
   },
 

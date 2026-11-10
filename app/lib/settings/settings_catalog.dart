@@ -73,6 +73,10 @@ class SettingsCatalogEntry {
   /// `select`/`multiselect` options as declared: `{label, value}` maps.
   final List<Map<String, dynamic>> options;
 
+  /// Whether committing it restarts the extension runtime (a field's
+  /// `restartOnChange`, docs/extensions/settings.md).
+  final bool restartsExtensions;
+
   const SettingsCatalogEntry({
     required this.key,
     required this.bareKey,
@@ -83,6 +87,7 @@ class SettingsCatalogEntry {
     this.description,
     this.aliases = const [],
     this.options = const [],
+    this.restartsExtensions = false,
   });
 
   /// Whether a value typed on the command line can set this. False sends the
@@ -143,36 +148,40 @@ String normalizeSettingTerm(String text) => normalizeFuzzyQuery(text);
 /// [developerMode] gates `devMode: true` elements exactly as FormRenderer
 /// does — passed in rather than read here so a test can build both views of
 /// the catalog without mutating app state.
-Future<List<SettingsCatalogEntry>> buildSettingsCatalog(HaLoServices services, {required bool developerMode}) async {
-  final entries = <SettingsCatalogEntry>[];
-  for (final scanned in await scanSettings(services)) {
-    final el = scanned.element;
-    if (!scanned.isField) continue;
-    if (el['devMode'] == true && !developerMode) continue;
-    if (!elementIsVisibleWhen(el, scanned.siblingValues)) continue;
-    final label = el['label'];
-    final fieldType = el['fieldType'];
-    if (label is! String || fieldType is! String || scanned.key.isEmpty) continue;
-    final rawAliases = el['aliases'];
-    entries.add(
-      SettingsCatalogEntry(
-        key: scanned.key,
-        bareKey: scanned.fieldRoute?.fieldKey ?? scanned.key,
-        label: label,
-        description: el['description'] is String ? el['description'] as String : null,
-        aliases: switch (rawAliases) {
-          String s => [s],
-          List<dynamic> l => l.whereType<String>().toList(),
-          _ => const <String>[],
-        },
-        section: scanned.sectionTitle,
-        fieldType: fieldType,
-        value: declaredSettingValue(el),
-        options: (el['options'] as List?)?.whereType<Map<dynamic, dynamic>>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
-      ),
-    );
-  }
-  return entries;
+Future<List<SettingsCatalogEntry>> buildSettingsCatalog(HaLoServices services, {required bool developerMode}) async => [
+  for (final scanned in await scanSettings(services)) ?catalogEntryOf(scanned, developerMode: developerMode),
+];
+
+/// [scanned] as the catalog lists it, or null when the catalog leaves it out:
+/// chrome rather than a field, a developer's setting outside developer mode,
+/// one its `visibleWhen` hides now, or one without a label or a type.
+SettingsCatalogEntry? catalogEntryOf(ScannedSetting scanned, {required bool developerMode}) {
+  final el = scanned.element;
+  if (!scanned.isField) return null;
+  if (el['devMode'] == true && !developerMode) return null;
+  if (!elementIsVisibleWhen(el, scanned.siblingValues)) return null;
+  final label = el['label'];
+  final fieldType = el['fieldType'];
+  if (label is! String || fieldType is! String || scanned.key.isEmpty) return null;
+  final rawAliases = el['aliases'];
+  return SettingsCatalogEntry(
+    key: scanned.key,
+    bareKey: scanned.fieldRoute?.fieldKey ?? scanned.key,
+    label: label,
+    description: el['description'] is String ? el['description'] as String : null,
+    aliases: switch (rawAliases) {
+      String s => [s],
+      List<dynamic> l => l.whereType<String>().toList(),
+      _ => const <String>[],
+    },
+    section: scanned.sectionTitle,
+    fieldType: fieldType,
+    value: declaredSettingValue(el),
+    options: (el['options'] as List?)?.whereType<Map<dynamic, dynamic>>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
+    // An extension field's element is its declaration with the key renamed,
+    // so this is the field's own attribute either way.
+    restartsExtensions: el['restartOnChange'] == true,
+  );
 }
 
 /// The names a settings element answers to: its key, its label, and any

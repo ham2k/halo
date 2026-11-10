@@ -272,7 +272,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
   /// field commits") restarts the extension runtime once the commit above
   /// finishes, so `onActivation` re-runs and can pick up the new value via
   /// `getSettings()` — for a value nothing else re-reads on its own.
-  Future<void> commitSettingsFieldValue({
+  Future<bool> commitSettingsFieldValue({
     required String kind,
     required String hookKey,
     required String panelKey,
@@ -285,7 +285,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     if (kind == 'simple') {
       await _writeSettingsValue(panelKey: panelKey, fieldKey: fieldKey, value: value, isSecret: isSecret);
       settingsGeneration.value++;
-      return;
+      return true;
     }
     // Wait out any in-flight restart before touching `host` — it's briefly
     // null while `_replaceRuntime` tears down and reboots. Without this, a
@@ -295,7 +295,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final inFlightRestart = _restartFuture;
     if (inFlightRestart != null) await inFlightRestart;
     final host = this.host;
-    if (host == null) return;
+    if (host == null) return false;
     // Counted so a pending debounce timer cannot restart the runtime UNDER
     // this commit's bridge call — disposing the host completes the pending
     // invokeHook with an exception and the edit would be silently dropped.
@@ -309,7 +309,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
       // call (e.g. host.setSettings) — if IT failed, the value never
       // actually saved, so restarting anyway would just re-run onActivation
       // against the same stale settings for no benefit.
-      return;
+      return false;
     } finally {
       _inFlightFieldCommits--;
       if (_inFlightFieldCommits == 0) {
@@ -319,6 +319,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     }
     settingsGeneration.value++;
     if (restartOnChange) await _debouncedRestartRuntime();
+    return true;
   }
 
   /// Bumped whenever an extension's own settings value is committed —

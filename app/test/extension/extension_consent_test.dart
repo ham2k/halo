@@ -203,6 +203,15 @@ void main() {
     expect(find.text(t.extensionsPanel.canChangeDraft), findsOneWidget);
   });
 
+  // A layout switched under the operator is named on the status bar as it
+  // happens; this line is where they agreed to it.
+  testWidgets('a claim to control layouts is named', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'api': 22, 'requiresLayoutControl': true})));
+
+    expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
+    expect(find.text(t.extensionsPanel.canControlLayouts), findsOneWidget);
+  });
+
   testWidgets('a claim to read the radio is named, and does not read as control', (tester) async {
     await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresRadioRead': true})));
 

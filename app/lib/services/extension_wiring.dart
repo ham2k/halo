@@ -10,6 +10,7 @@ import 'dart:async';
 import '../settings/cluster_settings_group.dart';
 import '../settings/settings_command.dart';
 import '../settings/spotting_settings_group.dart';
+import '../views/dock_host.dart' show DockLayoutControl;
 import '../views/settings/accounts_panel.dart';
 import 'cluster/cluster_service.dart';
 import 'cluster/cluster_settings.dart';
@@ -47,6 +48,10 @@ void wireExtensions(HaLoServices services) {
   extensions.catalog = services.catalog;
   extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(services, key, subkey: subkey));
   extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(services, args: args, kind: kind);
+  extensions.appCalls
+    ..settings = ((key, value, callerKey) => writeSettingForExtension(services, key: key, value: value, callerKey: callerKey))
+    ..layouts = DockLayoutControl(services)
+    ..statusBar = services.statusBar;
   extensions.onGetSpots = ExtensionSpotsReader(services).read;
   extensions.onSuggestQso = (qso, operationUuid) {
     final front = services.frontOperationContext;

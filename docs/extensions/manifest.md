@@ -224,8 +224,9 @@ refused at the call where it is missing. Declare the least you need.
 | `requiresClusterRead` | `host.clusterStatus()`, `host.clusterLines()`, `host.clusterSubscribe()` and the `cluster` hook's `onLines` | | 10 |
 | `requiresClusterSpot` | `host.clusterPostSpot()`: spots in the operator's name | cluster read | 10 |
 | `requiresClusterCommand` | `host.clusterSend()`: any command in the operator's name | cluster spot | 10 |
-| `requiresSettingsWrite` | A `command` hook's `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed` and `showKeyer` actions | | |
+| `requiresSettingsWrite` | A `command` hook's `updateSetting`, `updateSettings`, `toggleExperiment`, `setEnterSends`, `setOpStyle`, `setKeyerSpeed` and `showKeyer` actions; `host.updateSetting()` (API 22): any setting Settings shows, unasked | | |
 | `requiresDraftWrite` | `host.updateDraft()`: any field of the QSO the operator is composing, the call included; `freq`, `band` and `mode` also need `requiresRadioWrite` | | 22 |
+| `requiresLayoutControl` | `host.layouts`: switching the layout a view draws and bringing a panel to the front | | 22 |
 
 A capability belongs to the bundle that declared it and to the
 sub-extensions that bundle defines under its own key. A separately installed
