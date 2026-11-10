@@ -11,6 +11,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -1643,6 +1644,81 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(told(), {'floor': 0, 'range': 0, 'speed': 0});
     expect(radio.tunes, isEmpty, reason: 'the strip lies over the picture, but its clicks are its own');
+    await tester.pump(const Duration(seconds: 2));
+  });
+
+  testWidgets('an Alt-drag along the waterfall\'s levels moves its floor in fine steps, the whole history redrawn', (tester) async {
+    final radio = _Radio();
+    // 300 high: the waterfall 168 below the panadapter's 112 and the axis's 20; a gray ramp 30 dB tall.
+    final events = await _show(
+      tester,
+      radio,
+      spectrum: const {
+        'levelScale': true,
+        'waterfallFloor': 8,
+        'waterfallRange': 30,
+        'waterfallColors': ['#000000', '#FFFFFF'],
+      },
+    );
+    final box = _box(tester), x = box.right - 20;
+    Map<String, double> told() => {for (final e in events.where((e) => e['gesture'] != null)) e['gesture'] as String: (e['value'] as num).toDouble()};
+    final rows =
+        (tester.widgetList<CustomPaint>(find.byType(CustomPaint)).map((w) => w.painter).singleWhere((p) => p.runtimeType.toString() == '_WaterfallPainter')
+                    as dynamic)
+                .rows
+            as List;
+    Future<int> shade() async {
+      final count = rows.length;
+      radio.controller.add(
+        SpectrumFrame(lowHz: 14000000, highHz: 14100000, levels: Float32List.fromList(List.filled(1000, 20)), floorDb: 0, ceilingDb: 80, atMillis: 0),
+      );
+      await tester.pump();
+      final bytes = await tester.runAsync(() async {
+        while (rows.length == count) {
+          await Future<void>.delayed(const Duration(milliseconds: 1));
+        }
+        return ((rows.first as dynamic).image as ui.Image).toByteData();
+      });
+      return bytes!.getUint8(0);
+    }
+
+    // The blank row of the sweep the control opened on, landed first: a busy machine decodes it
+    // late, and a shade read before it would read that row instead of its own.
+    await tester.runAsync(() async {
+      while (rows.isEmpty) {
+        await Future<void>.delayed(const Duration(milliseconds: 1));
+      }
+    });
+    // 20 dB on 8–38 dB: 40% up the ramp.
+    expect(await shade(), closeTo(102, 1));
+    // A quarter of the waterfall's length toward the spectrum: a quarter of 12 dB off the floor — not
+    // the waterfall's speed, which a drag there without Alt changes.
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.dragFrom(Offset(x, box.top + 132 + 100), const Offset(0, -42));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pump();
+    expect(told(), {'waterfallFloor': closeTo(5, .01)});
+    // Drawn by the component at once, before the scene has given anything back, down the whole
+    // history: the row taken before the drag is redrawn too. 20 dB on 5–35 is half way.
+    // Each decoded row lands through the test's zone, so it is pumped in between waits.
+    var before = -1;
+    for (var i = 0; i < 400 && (before - 128).abs() > 1; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+      await tester.pump();
+      before = (await tester.runAsync(() => ((rows.first as dynamic).image as ui.Image).toByteData()))!.getUint8(0);
+    }
+    expect(before, closeTo(128, 1), reason: 'a row drawn before the drag keeps its old colors');
+    expect(await shade(), closeTo(128, 1));
+    // A double click hands back the panadapter's levels and the speed, not the waterfall's floor: a
+    // scene keeps that as a setting, not as a drag of the moment. The scene's own floor draws again,
+    // so a scene that kept nothing still has a way back.
+    events.clear();
+    await tester.tapAt(Offset(x, box.top + 60));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tapAt(Offset(x, box.top + 60));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(told().keys, unorderedEquals(['floor', 'range', 'speed']));
+    expect(await shade(), closeTo(102, 1));
     await tester.pump(const Duration(seconds: 2));
   });
 

@@ -428,7 +428,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
   /// Tells the scene, as a `commit` naming the gesture, where a native zoom,
   /// pan, split or level drag left things, so it can keep them: the width
   /// shown, the window's middle, the panadapter's share, its floor offset and
-  /// range in dB, the waterfall's rows a second. Not to a bundle before API 17,
+  /// range in dB, the waterfall's rows a second and its floor offset in dB. Not to a bundle before API 17,
   /// whose commits are its clicks.
   void _report() {
     // A zoom moves the window's middle too, which a panel keeping it hears as a pan.
@@ -443,6 +443,7 @@ extension _SpectrumGestures on _SceneSpectrumViewState {
         'split' => _split,
         'floor' => _floorHeld?.value,
         'range' => _rangeHeld?.value,
+        'waterfallFloor' => _waterfallFloorHeld?.value,
         _ => _speedHeld?.value,
       };
       if (value != null) widget.onGesture?.call(gesture, 'commit', value);

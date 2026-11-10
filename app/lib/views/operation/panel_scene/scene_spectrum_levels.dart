@@ -3,7 +3,7 @@
 //
 // The strip beside a spectrum: the panadapter's levels and the waterfall's
 // age, each a handle — the panadapter's floor and range, the waterfall's
-// speed — the host's to move unless the scene's `gestures` say otherwise
+// speed and, with Alt held, its floor — the host's to move unless the scene's `gestures` say otherwise
 // (docs/design/panel-scenes.md § Spectrum).
 
 part of 'scene_spectrum.dart';
@@ -13,8 +13,8 @@ part of 'scene_spectrum.dart';
 typedef _Held = ({double value, double? over});
 
 /// A drag on the level strip: what it moves, where it took hold, and the
-/// floor offset, range and rows a second then.
-typedef _LevelGrip = ({String what, double y, double floor, double range, double rows});
+/// floor offset, range, rows a second and waterfall floor offset then.
+typedef _LevelGrip = ({String what, double y, double floor, double range, double rows, double fall});
 
 /// The host's strip, where a scene names none.
 final _defaultLevelScale = SceneSpectrumLevelScale(const {});
@@ -22,6 +22,10 @@ final _defaultLevelScale = SceneSpectrumLevelScale(const {});
 /// A drag this far, in pixels, changes the range by e, as one along the
 /// frequency axis changes the width.
 const _rangePixels = 150.0;
+
+/// The dB an Alt-drag the waterfall's whole length moves its floor: fine
+/// steps, for matching a radio's own waterfall by eye.
+const _waterfallFloorDbPerLength = 12.0;
 
 /// The dB between level labels, at [pixelsPerDb]: the finest of 1, 2, 5, 10,
 /// 20 or 50 that keeps labels [apart] pixels from each other.
@@ -55,6 +59,7 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
   double? get _floorNow => _heldOr(_floorHeld, _spec.floor);
   double? get _rangeNow => _heldOr(_rangeHeld, _spec.range);
   double? get _speedNow => _heldOr(_speedHeld, _spec.waterfallSpeed);
+  double? get _waterfallFloorNow => _heldOr(_waterfallFloorHeld, _spec.waterfallFloor);
 
   /// Whether levels rise, and ages grow, toward the screen's top or left —
   /// a waterfall flowing up or left — rather than its bottom or right.
@@ -139,23 +144,26 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
   (double, double) _alongFlow(Rect band) => _turned(_way) ? (band.left, band.right) : (band.top, band.bottom);
 
   /// What a drag at [y], along the flow, takes hold of: on the waterfall
-  /// its speed; on the panadapter its floor in the third by its base, its
-  /// range beyond.
+  /// its speed, or with Alt held its floor; on the panadapter its floor in
+  /// the third by its base, its range beyond.
   _LevelGrip? _levelGripAt(double y) {
     final frame = _frame;
     if (frame == null) return null;
     final (floor, range) = _panScale(frame);
-    final offset = floor - frame.floorDb, rows = _rowsPerSecond ?? 0;
+    final offset = floor - frame.floorDb, rows = _rowsPerSecond ?? 0, fallFloor = _waterfallFloorNow ?? 0;
     if (_fallBand case final fall?) {
       final (top, bottom) = _alongFlow(fall);
-      if (y >= top && y <= bottom) return rows > 0 ? (what: 'speed', y: y, floor: offset, range: range, rows: rows) : null;
+      if (y >= top && y <= bottom) {
+        if (HardwareKeyboard.instance.isAltPressed) return (what: 'waterfallFloor', y: y, floor: offset, range: range, rows: rows, fall: fallFloor);
+        return rows > 0 ? (what: 'speed', y: y, floor: offset, range: range, rows: rows, fall: fallFloor) : null;
+      }
     }
     if (_panBand case final pan?) {
       final (top, bottom) = _alongFlow(pan);
       if (y < top || y > bottom) return null;
       final third = (bottom - top) / 3;
       final low = _mirrored(_way) ? y < top + third : y > bottom - third;
-      return (what: low ? 'floor' : 'range', y: y, floor: offset, range: range, rows: rows);
+      return (what: low ? 'floor' : 'range', y: y, floor: offset, range: range, rows: rows, fall: fallFloor);
     }
     return null;
   }
@@ -170,6 +178,11 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
         final (top, bottom) = _alongFlow(_fallBand!);
         double depth(double at) => math.max(8.0, mirrored ? bottom - at : at - top);
         _setLevel('speed', (grip.rows * depth(y) / depth(grip.y)).clamp(.1, 60));
+      case 'waterfallFloor':
+        // Toward the spectrum lowers the floor and brightens the waterfall, as a floor drag lifts the trace.
+        final (top, bottom) = _alongFlow(_fallBand!);
+        final dy = (y - grip.y) * (mirrored ? -1 : 1);
+        _setLevel('waterfallFloor', (grip.fall + dy * _waterfallFloorDbPerLength / math.max(1.0, bottom - top)).clamp(-200, 200));
       case 'floor':
         // The trace follows the pointer along the flow.
         final (top, bottom) = _alongFlow(_panBand!);
@@ -201,12 +214,15 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
           over: _number(switch (what) {
             'speed' => _spec.waterfallSpeed,
             'floor' => _spec.floor,
+            'waterfallFloor' => _spec.waterfallFloor,
             _ => _spec.range,
           }),
         );
         switch (what) {
           case 'speed':
             _speedHeld = held;
+          case 'waterfallFloor':
+            _waterfallFloorHeld = held;
           case 'floor':
             _floorHeld = held;
           default:
@@ -221,7 +237,9 @@ extension _SpectrumLevels on _SceneSpectrumViewState {
   /// again, and the scene told so as each at 0 — a scene keeping the
   /// operator's in its own numbers puts its defaults back.
   void _resetLevels() {
-    _floorHeld = _rangeHeld = _speedHeld = null;
+    // The waterfall's floor goes back to the scene's too, unannounced: a scene keeps it as a
+    // setting, which a reset of the strip's drags is not.
+    _floorHeld = _rangeHeld = _speedHeld = _waterfallFloorHeld = null;
     _toReport.removeAll(const ['floor', 'range', 'speed']);
     if (widget.source?.nativeGestures ?? true) {
       for (final what in const ['floor', 'range', 'speed']) {

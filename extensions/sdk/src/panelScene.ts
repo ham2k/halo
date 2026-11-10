@@ -325,7 +325,7 @@ export interface PanelSceneSpectrum {
   fps?: PanelSceneSpectrumNumber
   /** Waterfall rows a second, 0.1–60; each row keeps the loudest reading since the last. Omitted, one per sweep. */
   waterfallSpeed?: PanelSceneSpectrumNumber
-  /** The waterfall's own dB window, like `floor` and `range`. Omitted, the spectrum's. */
+  /** The waterfall's own dB window, measured on the spectrum's as `floor` and `range` (and the level strip) leave it. Omitted, the spectrum's. */
   waterfallFloor?: PanelSceneSpectrumNumber
   waterfallRange?: PanelSceneSpectrumNumber
   /** Default `classic`. */
@@ -1183,10 +1183,12 @@ export interface PanelSceneEvent {
    * A band scope's zoom (`value` the width in Hz), pan (`value` its middle), split (`value` the
    * spectrum's share of the height), or a drag on its level strip: `floor` (dB added to the radio's
    * floor), `range` (the spectrum's height in dB) or `speed` (waterfall rows a second). API 17.
+   * `waterfallFloor`, an Alt-drag along the waterfall's part of the strip (`value` the scene's
+   * `waterfallFloor`, the whole length moving it 12 dB). API 23.
    * A rotator map's zoom (`value` the zoom, 0 for the whole map again) or pan (`at.x` and `at.y`
    * where the station is, in pixels from the pane's middle). API 23.
    */
-  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed"
+  gesture?: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor"
   /** Where a band scope annotation or layer (extension API 17), or a rotator map decoration (extension API 23), was clicked. */
   at?: PanelSceneSpectrumClick
 }

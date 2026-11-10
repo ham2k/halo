@@ -31,6 +31,7 @@ part 'scene_spectrum_layers.dart';
 part 'scene_spectrum_levels.dart';
 part 'scene_spectrum_text.dart';
 part 'scene_spectrum_trace.dart';
+part 'scene_spectrum_waterfall.dart';
 part 'scene_spectrum_window.dart';
 
 /// Where a scene's spectrum controls get their sweeps, and its `radio.` values
@@ -307,9 +308,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// A drag of the tuned frequency's line.
   _Dial? _dial;
 
-  /// The panadapter's floor offset and range and the waterfall's speed, as
-  /// the operator dragged them on the level strip.
-  _Held? _floorHeld, _rangeHeld, _speedHeld;
+  /// The panadapter's floor offset and range and the waterfall's speed and
+  /// floor offset, as the operator dragged them on the level strip.
+  _Held? _floorHeld, _rangeHeld, _speedHeld, _waterfallFloorHeld;
   _LevelGrip? _levelGrip;
 
   /// Sweeps a second as they arrive, averaged, and the same held still until
@@ -513,10 +514,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     if (was.centerHz != _spec.centerHz) _viewCenter = null;
     // A dial held for one radio is not another's.
     if (old.source != widget.source || old.radio != widget.radio) _heldVfo = null;
-    if (was.palette != _spec.palette || !listEquals(was.waterfallColors, _spec.waterfallColors)) {
-      _palette = _paletteFor(_spec);
-      _clearRows();
-    }
+    if (was.palette != _spec.palette || !listEquals(was.waterfallColors, _spec.waterfallColors)) _palette = _paletteFor(_spec);
+    _recolorRows();
     // Artwork a scene no longer draws is let go: a scene that changes its layers' svg as it updates
     // would otherwise keep every picture it ever drew.
     final drawn = {for (final layer in _spec.layers) ?layer.svg};
@@ -592,6 +591,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
   /// Redraws the window shown now, between sweeps: a gesture moves it at the pointer's pace.
   void _reframe() {
     if (_sweep case final sweep?) _frame = _window(sweep);
+    _recolorRows();
     _tellReadouts();
     _panRepaint.value++;
     _waterfallRepaint.value++;
@@ -702,39 +702,101 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
     return 1 / (rows * math.max(1.0, fall.height / _waterfallRows));
   }
 
-  (double, double) _panScale(SpectrumFrame frame) {
-    final floor = frame.floorDb + (_floorNow ?? 0);
-    return (floor, _rangeNow ?? frame.ceilingDb - frame.floorDb);
-  }
+  (double, double) _panScale(SpectrumFrame frame) => _panScaleOn(frame.floorDb, frame.ceilingDb);
 
-  (double, double) _waterfallScale(SpectrumFrame frame) {
-    final (floor, range) = _panScale(frame);
+  (double, double) _panScaleOn(double floorDb, double ceilingDb) => (floorDb + (_floorNow ?? 0), _rangeNow ?? ceilingDb - floorDb);
+
+  /// The scene's waterfall window is measured on the spectrum's as the level strip leaves it, so a
+  /// drag that lifts the noise or stretches the contrast does the same down the waterfall: a window
+  /// fixed to the radio's scale would leave the operator no way to brighten it.
+  (double, double) _waterfallScale(SpectrumFrame frame) => _waterfallScaleOn(frame.floorDb, frame.ceilingDb);
+
+  (double, double) _waterfallScaleOn(double floorDb, double ceilingDb) {
+    final (floor, range) = _panScaleOn(floorDb, ceilingDb);
+    final full = ceilingDb - floorDb;
+    final stretch = full > 0 ? range / full : 1.0;
     return (
-      switch (_number(_spec.waterfallFloor)) {
-        final offset? => frame.floorDb + offset,
-        null => floor,
+      floor + (_waterfallFloorNow ?? 0) * stretch,
+      switch (_number(_spec.waterfallRange)) {
+        final own? => own * stretch,
+        null => range,
       },
-      _number(_spec.waterfallRange) ?? range,
     );
   }
 
-  void _addRow(Float32List levels, SpectrumFrame frame) {
-    final (floor, range) = _waterfallScale(frame);
+  /// [levels] as a row of the palette's colors, [floor] black and [range] over it the palette's top.
+  Uint32List _rowPixels(Float32List levels, double floor, double range) {
     final pixels = Uint32List(levels.length);
     for (var i = 0; i < levels.length; i++) {
       final t = (levels[i] - floor) / range;
       // NaN passes clamp; its round() throws.
       pixels[i] = _palette[t.isFinite ? (t.clamp(0.0, 1.0) * 255).round() : 0];
     }
+    return pixels;
+  }
+
+  /// What the waterfall's colors are drawn on: its window as the level strip and the scene leave
+  /// it, and the palette. Each row keeps its own sweep's floor and ceiling, so a radio's noise
+  /// floor moving on stays where it was down the history.
+  Object _rowsKey() => (_floorNow, _rangeNow, _waterfallFloorNow, _number(_spec.waterfallRange), _palette);
+
+  /// A recoloring of the history in flight, which, and since when (real millis): one runs at a
+  /// time, and the one that ends starts another if the window moved meanwhile, so a drag redraws
+  /// as fast as rows decode. A row whose decode fails never answers, so a run older than
+  /// [_recolorGiveUpMillis] is let go — held, the history would keep its old colors for good.
+  bool _recoloring = false;
+  int _recolorRun = 0, _recolorStartedMillis = 0;
+  static const _recolorGiveUpMillis = 2000;
+
+  /// Redraws every row of the history drawn on another window or palette than the one in force:
+  /// a level drag, the scene's own numbers, a new palette reach the whole waterfall at once, not
+  /// only the rows still to come. By each row's own [_Row.drawnOn], so a row still decoding when a
+  /// redraw starts is caught by the next one rather than kept in the old colors.
+  void _recolorRows() {
+    final now = realNowMillis();
+    if (_recoloring && now - _recolorStartedMillis < _recolorGiveUpMillis) return;
+    final key = _rowsKey();
+    final stale = [
+      for (final row in _rows)
+        if (row.drawnOn != key) row,
+    ];
+    if (stale.isEmpty) return;
+    _recoloring = true;
+    _recolorStartedMillis = now;
+    final (run, epoch) = (++_recolorRun, _rowEpoch);
+    var left = stale.length;
+    for (final row in stale) {
+      final (floor, range) = _waterfallScaleOn(row.floorDb, row.ceilingDb);
+      ui.decodeImageFromPixels(_rowPixels(row.levels, floor, range).buffer.asUint8List(), row.levels.length, 1, ui.PixelFormat.rgba8888, (image) {
+        if (mounted && epoch == _rowEpoch && _rows.contains(row)) {
+          row.image.dispose();
+          row.image = image;
+          row.drawnOn = key;
+        } else {
+          image.dispose();
+        }
+        if (--left > 0 || run != _recolorRun) return;
+        _recoloring = false;
+        if (!mounted) return;
+        _waterfallRepaint.value++;
+        _recolorRows();
+      });
+    }
+  }
+
+  void _addRow(Float32List levels, SpectrumFrame frame) {
+    _recolorRows();
+    final (floor, range) = _waterfallScale(frame);
+    final (pixels, key) = (_rowPixels(levels, floor, range), _rowsKey());
     // When it was taken, which places it down the waterfall: a change of speed re-spaces the history at once.
-    final (lowHz, highHz, at) = (frame.lowHz, frame.highHz, realNowMillis());
+    final (lowHz, highHz, at, floorDb, ceilingDb) = (frame.lowHz, frame.highHz, realNowMillis(), frame.floorDb, frame.ceilingDb);
     final epoch = _rowEpoch;
     ui.decodeImageFromPixels(pixels.buffer.asUint8List(), levels.length, 1, ui.PixelFormat.rgba8888, (image) {
       if (!mounted || epoch != _rowEpoch) {
         image.dispose();
         return;
       }
-      _rows.insert(0, (image: image, lowHz: lowHz, highHz: highHz, atMillis: at));
+      _rows.insert(0, _Row(image, levels, floorDb, ceilingDb, lowHz, highHz, at, drawnOn: key));
       while (_rows.length > _waterfallRows) {
         _rows.removeLast().image.dispose();
       }
@@ -744,6 +806,8 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> with TickerProvid
 
   void _clearRows() {
     _rowEpoch++;
+    _recolorRun++;
+    _recoloring = false;
     for (final row in _rows) {
       row.image.dispose();
     }
@@ -1370,107 +1434,4 @@ class _PanPainter extends CustomPainter {
     center = width <= span ? center.clamp(sweep.lowHz.toDouble(), sweep.highHz.toDouble()) : center.clamp(sweep.highHz - width / 2, sweep.lowHz + width / 2);
   }
   return (center - width / 2, center + width / 2);
-}
-
-/// Where a row taken over [rowLowHz]–[rowHighHz] lies across a display
-/// [width] wide that now shows [lowHz]–[highHz]: its left and right edges,
-/// either of which may fall off the display.
-@visibleForTesting
-(double, double) waterfallRowExtent(int rowLowHz, int rowHighHz, int lowHz, int highHz, double width) {
-  if (highHz <= lowHz) return (0, width);
-  final span = (highHz - lowHz).toDouble();
-  return ((rowLowHz - lowHz) / span * width, (rowHighHz - lowHz) / span * width);
-}
-
-/// One waterfall row, and the frequencies it was taken over.
-typedef _Row = ({ui.Image image, int lowHz, int highHz, int atMillis});
-
-/// Where a row taken at [atMillis] lies down a waterfall moving
-/// [pixelsPerSecond], the newest taken at [newestMillis]: from its age to the
-/// age of the row before it, [olderMillis], so irregular sweeps leave no
-/// gaps; the oldest, with none before it, a [rowHeight] deep.
-@visibleForTesting
-(double, double) waterfallRowSpan(int newestMillis, int atMillis, int? olderMillis, double pixelsPerSecond, double rowHeight) {
-  final top = (newestMillis - atMillis) / 1000 * pixelsPerSecond;
-  final bottom = olderMillis == null ? top + rowHeight : (newestMillis - olderMillis) / 1000 * pixelsPerSecond;
-  return (top, math.max(bottom, top + 1));
-}
-
-class _WaterfallPainter extends CustomPainter {
-  final _Way way;
-  final List<_Row> rows;
-
-  /// Rows a second as they arrive now, which spaces them by when they were
-  /// taken; null, one row deep each.
-  final double? Function() rowsPerSecond;
-
-  /// For the frequency lines and the marks, which follow the latest sweep.
-  final SpectrumFrame? Function() frame;
-  final _Marks marks;
-  final _Style style;
-
-  _WaterfallPainter({
-    required Listenable repaint,
-    required this.way,
-    required this.rows,
-    required this.rowsPerSecond,
-    required this.frame,
-    required this.marks,
-    required this.style,
-  }) : super(repaint: repaint);
-
-  @override
-  void paint(Canvas canvas, Size screen) => _inFlow(canvas, screen, way, (size) => _paint(canvas, size));
-
-  void _paint(Canvas canvas, Size size) {
-    if (size.height <= 0) return;
-    final rowHeight = math.max(1.0, size.height / _waterfallRows);
-    final paint = Paint()..filterQuality = FilterQuality.low;
-    final current = frame();
-    // Each row where its frequencies are NOW: a retune slides the history
-    // sideways and a width change stretches it, rather than redrawing old
-    // signals at frequencies they were never on. Off the window, clipped.
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-    final perSecond = rowsPerSecond();
-    for (var i = 0; i < rows.length; i++) {
-      final row = rows[i];
-      final (top, bottom) = perSecond == null || perSecond <= 0
-          ? (i * rowHeight, (i + 1) * rowHeight)
-          : waterfallRowSpan(rows.first.atMillis, row.atMillis, i + 1 < rows.length ? rows[i + 1].atMillis : null, perSecond * rowHeight, rowHeight);
-      if (top >= size.height) break;
-      final (left, right) = current == null ? (0.0, size.width) : waterfallRowExtent(row.lowHz, row.highHz, current.lowHz, current.highHz, size.width);
-      if (right <= 0 || left >= size.width) continue;
-      canvas.drawImageRect(row.image, Rect.fromLTWH(0, 0, row.image.width.toDouble(), 1), Rect.fromLTRB(left, top, right, bottom + .5), paint);
-    }
-    canvas.restore();
-    if (style.waterfallGrid case final grid? when current != null) _paintFrequencyLines(canvas, size, current, grid, dashed: style.gridDashed);
-    // Both passes over the rows: under them, nothing would show.
-    _paintMarks(canvas, size, current, marks, style, pan: false, front: false);
-    _paintMarks(canvas, size, current, marks, style, pan: false, front: true);
-  }
-
-  @override
-  bool shouldRepaint(_WaterfallPainter old) => true;
-}
-
-/// 256 RGBA colors, packed for a little-endian `rgba8888` row.
-List<int> _paletteFor(SceneSpectrumSpec spec) {
-  final stops =
-      spec.waterfallColors ??
-      switch (spec.palette) {
-        'gray' => const [Color(0xFF000000), Color(0xFFFFFFFF)],
-        'heat' => const [Color(0xFF000000), Color(0xFF7F0000), Color(0xFFFF4000), Color(0xFFFFFF00), Color(0xFFFFFFFF)],
-        _ => const [Color(0xFF000010), Color(0xFF0000A0), Color(0xFF00C0FF), Color(0xFFFFFF00), Color(0xFFFF0000)],
-      };
-  return [
-    for (var i = 0; i < 256; i++)
-      () {
-        final t = i / 255 * (stops.length - 1);
-        final index = t.floor().clamp(0, stops.length - 2);
-        final c = Color.lerp(stops[index], stops[index + 1], t - index)!;
-        int byte(double v) => (v * 255).round() & 0xFF;
-        return byte(c.a) << 24 | byte(c.b) << 16 | byte(c.g) << 8 | byte(c.r);
-      }(),
-  ];
 }

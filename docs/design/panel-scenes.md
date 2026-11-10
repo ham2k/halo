@@ -640,10 +640,18 @@ published panels name them; what API 17 added has the new names only.
   more room between them, and the strip is only as deep as a label. Its drags work as the frequency axis's do — what is
   taken hold of stays under the pointer: the age on the waterfall, which
   sets the speed; the trace on the spectrum's bottom third, which sets the
-  floor; a level above that, with the range zooming away from the middle.
-  Each is held over the scene's number, given back when the scene changes
-  it, and reported, like a zoom; a double click hands all three back, each
-  reported as 0, as the axis's reports a zoom of 0.
+  floor; a level above that, with the range zooming away from the middle;
+  and, with Alt held, the waterfall's floor (`waterfallFloor`), in fine
+  steps — the waterfall's whole length is 12 dB — for matching a radio's own
+  waterfall by eye. Each is held over the scene's number, given back when
+  the scene changes it, and reported, like a zoom; a double click hands the
+  first three back, each reported as 0, as the axis's reports a zoom of 0,
+  and drops a held waterfall floor unreported: a scene keeps that one as a
+  setting, not a drag of the moment. The waterfall's window is measured on
+  the spectrum's as the strip leaves it, so a drag that lifts the noise or
+  stretches the contrast does the same down the waterfall, and any change of
+  that window or the palette redraws the whole history, each row from the
+  levels it keeps, not only the rows still to come.
 - **Waterfall rows lie at their age.** Each row is drawn from when it was
   taken down to the row before it, at the speed now: a change of speed
   re-spaces the whole history at once, so a drag on the strip moves the

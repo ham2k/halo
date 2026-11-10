@@ -470,7 +470,12 @@ a scope, the control says why instead. Placed like a native control, it takes:
   measured as if frequency rose to the right.
 - `floor`, `range`, `average` (0 to 99, default 40), `fps` (default 15),
   `waterfallSpeed`, `waterfallFloor`, `waterfallRange`: numbers, or the names
-  of scene values read on every sweep.
+  of scene values read on every sweep. `waterfallFloor` and `waterfallRange`
+  are measured on the spectrum's window as `floor`, `range` and the level
+  strip leave it: dB over its floor, both stretched as `range` stretches the
+  radio's scale, so a level drag that brightens the spectrum brightens the
+  waterfall too. A change of the waterfall's window or colors redraws its
+  whole history, not only the rows still to come.
 - Colors (`#RRGGBB` or `#AARRGGBB`): `palette` or `waterfallColors`,
   `traceColor`/`traceWidth`, `fillColor`/`fillColorBottom`,
   `backgroundColor`, `gridColor`/`gridDashed`, `waterfallGridColor`.
@@ -741,7 +746,9 @@ a scope, the control says why instead. Placed like a native control, it takes:
     the waterfall, and the one along it elsewhere. Natively the operator's share holds until the scene changes its
     own `split`.
   - `levels` is a drag along the level strip. On the waterfall it changes
-    the speed, the age taken hold of staying under the pointer. On the
+    the speed, the age taken hold of staying under the pointer; with Alt
+    held it moves `waterfallFloor` instead, in fine steps, the waterfall's
+    whole length 12 dB, toward the spectrum brightening it (API 23). On the
     third of the spectrum by its base it moves `floor`, the trace following
     the pointer; above it, it changes `range` as a drag along the axis changes
     the width — away from the middle narrows — the level taken hold of
@@ -750,12 +757,13 @@ a scope, the control says why instead. Placed like a native control, it takes:
 
   As events, a zoom, pan, split or level drag sends `change` while it moves
   and `commit` when it ends, with `gesture` naming it — `zoom`, `pan`,
-  `split`, `floor`, `range` or `speed` — and `value` the width or the
-  middle in Hz, the spectrum's share, the floor offset or range in dB, or
-  waterfall rows a second; what is drawn stays the scene's. Native, the app
-  still sends that `commit` once the gesture ends, where the control has an
-  `event`, so a panel can keep the operator's choice: give each back as
-  `span`, `split`, `floor`, `range` or `waterfallSpeed`. A double click on
+  `split`, `floor`, `range`, `speed` or `waterfallFloor` — and `value` the
+  width or the middle in Hz, the spectrum's share, the floor offset or range
+  in dB, waterfall rows a second, or the waterfall's floor offset in dB; what
+  is drawn stays the scene's. Native, the app still sends that `commit` once
+  the gesture ends, where the control has an `event`, so a panel can keep
+  the operator's choice: give each back as `span`, `split`, `floor`, `range`,
+  `waterfallSpeed` or `waterfallFloor`. A double click on
   the axis sends a zoom of `0`, the scene's own width again, and one on the
   level strip a `floor`, `range` and `speed` of `0`. A drag across
   the frequency anywhere but the axis is left to a scene that scrolls. A bundle declaring an API before 17 keeps its clicks

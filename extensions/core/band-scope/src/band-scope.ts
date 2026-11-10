@@ -50,8 +50,9 @@ export interface Settings {
   average: number
   fps: number
   rows: number
-  /** The radio's reference level and sweep speed; absent, left as the radio has them. */
-  ref?: number
+  /** How far the waterfall's baseline is lowered, in dB: higher brightens it, as a radio's REF does. */
+  waterfallRef: number
+  /** The radio's sweep speed; absent, left as the radio has it. */
   speed?: Speed
   /** The spots on the band, no older than `age` minutes. */
   spots: boolean
@@ -79,8 +80,8 @@ interface PanelView {
   defaultId?: string | null
   endpoints: Set<string>
   views: Record<string, RadioView>
-  /** The reference level and speed last sent to each receiver, so each is sent once per change of the form. */
-  sent: Record<string, { ref?: number; speed?: Speed }>
+  /** The speed last sent to each receiver, so it is sent once per change of the form. */
+  sent: Record<string, { speed?: Speed }>
   /** The spots each receiver's scope last marked, by annotation id, for a click to find. */
   spots: Record<string, Map<string, ScopeSpot>>
 }
@@ -101,6 +102,7 @@ const defaultSettings: Settings = {
   average: 40,
   fps: 15,
   rows: 10,
+  waterfallRef: 0,
   spots: true,
   notes: true,
   age: 30,
@@ -178,10 +180,10 @@ const form: (SettingsField | FormHeader)[] = [
   {
     type: "field",
     fieldType: "number",
-    key: "ref",
-    label: "Reference level (dB)",
-    placeholder: "The radio's",
-    description: "Sent to the radio when changed here; blank leaves the radio's own.",
+    key: "waterfallRef",
+    label: "Waterfall reference level (dB)",
+    value: 0,
+    description: "Higher brightens the waterfall, lower darkens it; Alt-drag the waterfall's levels to set it by eye. The radio's own screen is left as it is.",
   },
   {
     type: "field",
@@ -211,14 +213,13 @@ function numberIn(value: JSONValue | undefined): number | undefined {
 export function settingsFrom(config: Record<string, JSONValue>): Settings {
   const display = config.display === "spectrum" || config.display === "waterfall" ? config.display : "both"
   const speed = config.speed === "slow" || config.speed === "mid" || config.speed === "fast" ? config.speed : undefined
-  const ref = numberIn(config.ref)
   return {
     display,
     floor: clamp(numberIn(config.floor) ?? defaultSettings.floor, -60, 60),
     average: clamp(numberIn(config.average) ?? defaultSettings.average, 0, 95),
     fps: clamp(numberIn(config.fps) ?? defaultSettings.fps, 1, 30),
     rows: clamp(numberIn(config.rows) ?? defaultSettings.rows, 1, 30),
-    ...(ref != null ? { ref } : {}),
+    waterfallRef: clamp(numberIn(config.waterfallRef) ?? defaultSettings.waterfallRef, -30, 30),
     ...(speed ? { speed } : {}),
     // A checkbox may have been stored as text.
     spots: config.spots !== false && config.spots !== "false",
@@ -296,9 +297,10 @@ function radioScene(
       ticks: { color: "#8FA3B8", width: 1, offset: 0, length: 5 },
     },
     levelScale: { over: true, side: "end" },
-    // The waterfall's window sits above the spectrum's to keep noise black.
-    waterfallFloor: 12,
-    waterfallRange: 50,
+    // 30 dB from the waterfall's floor: the noise a navy speckle, a signal 10 dB over it blue to cyan,
+    // 20 dB over it green.
+    waterfallFloor: waterfallFloorDb - settings.waterfallRef,
+    waterfallRange: 30,
     waterfallColors: ["#000000", "#00004A", "#0000FF", "#00C8FF", "#00FF60", "#FFFF00", "#FF2000"],
     center: hasFrequency
       ? {
@@ -405,28 +407,23 @@ export function scene(radio: PanelRadioState | null, options: SceneOptions = {},
 }
 
 /**
- * The reference level and speed the form names, sent to [radio] where they differ from what this
- * pane last sent it: once when it first shows, then once per change of the form, so the radio's
- * own knob is not fought on every render.
+ * The sweep speed the form names, sent to [radio] where it differs from what this pane last sent
+ * it: once when it first shows, then once per change of the form, so the radio's own knob is not
+ * fought on every render.
  */
 async function sendSettings(host: BandScopeHost, view: PanelView, radio: PanelRadioState | null, settings: Settings) {
   const spectrum = radio?.spectrum
   if (!radio?.id || !spectrum || spectrum.problem) return
   const sent = (view.sent[radio.id] ??= {})
   const change: Omit<PanelRadioSpectrumSet, "id"> = {}
-  if (settings.ref != null && settings.ref !== sent.ref && spectrum.refMinDb < spectrum.refMaxDb && spectrum.refStepDb > 0) {
-    const stepped = Math.round((settings.ref - spectrum.refMinDb) / spectrum.refStepDb) * spectrum.refStepDb + spectrum.refMinDb
-    change.refLevelDb = clamp(stepped, spectrum.refMinDb, spectrum.refMaxDb)
-  }
   if (settings.speed && settings.speed !== sent.speed && spectrum.speeds.includes(settings.speed)) change.speed = settings.speed
-  if (change.refLevelDb != null || change.speed) {
+  if (change.speed) {
     // Recorded only once the radio has it, or never will: a pane's first render comes before its
     // scope runs, answered `stopped`, and recorded then it would never be sent at all. One that
     // throws fails this render; either way the next render sends it again.
     const result = await host.setRadioSpectrum({ ...change, id: radio.id, selection: radio.id })
     if (!result.accepted && result.reason !== "invalid" && result.reason !== "unsupported") return
   }
-  sent.ref = settings.ref
   sent.speed = settings.speed
 }
 
@@ -450,6 +447,12 @@ const dialLabel = 26
  */
 const noiseOverFloorDb = 10,
   displayRangeDb = 80
+
+/**
+ * The waterfall's floor over the spectrum's at a waterfall reference of 0: 5 dB under the noise,
+ * matched by eye to an IC-705's own waterfall. The reference lowers it, never the radio's REF.
+ */
+const waterfallFloorDb = 5
 
 /** Rows of the band plan's labels at the picture's top: the modes', then the windows' and the markers'. */
 const planRows: Record<PlanDetail, number> = { none: 0, edges: 0, modes: 2, all: 3 }
@@ -648,6 +651,11 @@ export function createBandScope(host: BandScopeHost): PanelHook {
         } else if (gesture === "speed") {
           if (value > 0) preferences.rows = clamp(value, 0.1, 60)
           else delete preferences.rows
+        } else if (gesture === "waterfallFloor") {
+          // An Alt-drag of the waterfall's levels is the form's reference, kept with the pane rather
+          // than for the session; written once, where the drag ends.
+          if (args.event.phase !== "commit") return { values: {} }
+          return { values: {}, config: { waterfallRef: clamp(Math.round((waterfallFloorDb - value) * 10) / 10, -30, 30) } }
         }
         return { values: {} }
       }

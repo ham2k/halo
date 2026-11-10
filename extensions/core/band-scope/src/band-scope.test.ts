@@ -104,7 +104,7 @@ test("the scope is all the pane shows: its settings are behind the gear, with no
   assert.deepEqual(
     descriptor.form!.map((field) => ("key" in field ? field.key : "title" in field ? field.title : field.type)),
     // The view and the spots up front; what the scope draws and asks of the radio folded under a heading.
-    ["display", "spots", "notes", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "ref", "speed"],
+    ["display", "spots", "notes", "age", "spotLevel", "plan", "Band Scope Settings", "floor", "average", "fps", "rows", "waterfallRef", "speed"],
   )
   // Each select's default must be one of its choices, or the form opens on a blank.
   for (const field of descriptor.form!) {
@@ -121,8 +121,9 @@ test("the form values a pane holds draw its scope, brought into range, with blan
   assert.deepEqual([scope.display, scope.floor, scope.average, scope.fps, scope.waterfallSpeed], ["waterfall", 12, 80, 20, 5])
   const wild = drawn({ display: "sideways", floor: 900, average: -4, fps: "fast", rows: "" })
   assert.deepEqual([wild.display, wild.floor, wild.average, wild.fps, wild.waterfallSpeed], ["both", 60, 0, 15, 10])
-  assert.deepEqual(settingsFrom({ ref: "", speed: "radio" }), settingsFrom({}), "blank and the radio's own leave the radio alone")
-  assert.equal(settingsFrom({ ref: "-5" }).ref, -5)
+  assert.deepEqual(settingsFrom({ speed: "radio" }), settingsFrom({}), "the radio's own speed leaves the radio alone")
+  // The waterfall reference lowers the waterfall's baseline: higher brightens, as a radio's REF does.
+  assert.deepEqual([drawn({}).waterfallFloor, drawn({ waterfallRef: "6" }).waterfallFloor, drawn({ waterfallRef: 99 }).waterfallFloor], [5, -1, -25])
 })
 
 function dualRadios(deviceId = "k4-device", mainId = "k4", subId = "k4/sub"): [PanelRadioState, PanelRadioState] {
@@ -271,12 +272,17 @@ test("the zoom, the split and the levels the operator left are kept per radio an
   }
   let panel = await render()
   const scope = key("k4", "spectrum")
-  const told = async (gesture: "zoom" | "pan" | "split" | "floor" | "range" | "speed", value: number) => {
-    await hook.onEvent!(
-      { ...args("one", config), event: { controlId: scope, action: byId(panel, scope).event!, phase: "commit", sequence: 1, gesture, value } },
+  const told = async (
+    gesture: "zoom" | "pan" | "split" | "floor" | "range" | "speed" | "waterfallFloor",
+    value: number,
+    phase: "change" | "commit" = "commit",
+  ) => {
+    const answer = await hook.onEvent!(
+      { ...args("one", config), event: { controlId: scope, action: byId(panel, scope).event!, phase, sequence: 1, gesture, value } },
       context,
     )
     panel = await render()
+    return answer
   }
   await told("zoom", 36787.9)
   await told("split", 0.62)
@@ -291,6 +297,12 @@ test("the zoom, the split and the levels the operator left are kept per radio an
   )
   await told("speed", 0.5)
   assert.equal(byId(panel, scope).waterfallSpeed, 0.5)
+  // An Alt-drag of the waterfall's levels is the form's reference, kept with the pane: written once,
+  // where it ends, as the reference that draws the waterfall's floor where the drag left it.
+  assert.equal((await told("waterfallFloor", 2.84, "change")).config, undefined)
+  const kept = (await told("waterfallFloor", 2.84)).config
+  assert.deepEqual(kept, { waterfallRef: 2.2 })
+  assert.equal(byId(scene(radio(), { settings: settingsFrom(kept!) }), "spectrum").waterfallFloor, 2.8)
   assert.equal(byId(panel, key("k4/sub", "spectrum")).span, undefined, "each receiver keeps its own")
   assert.equal(byId(panel, key("k4/sub", "spectrum")).floor, 6, "one receiver's drag is not the other's")
   assert.equal(byId(await render("two"), scope).floor, 6, "one pane's drag is not another's")
@@ -313,7 +325,7 @@ test("the zoom, the split and the levels the operator left are kept per radio an
   assert.equal(scopeWrite.mock.callCount(), 0)
 })
 
-test("the form's reference level and speed reach each receiver once per change, so the radio's own knob is not fought", async (t) => {
+test("the form's speed reaches each receiver once per change, so the radio's own knob is not fought", async (t) => {
   let radios = dualRadios(),
     designated = radios[0]
   const host = fakeHost(
@@ -325,22 +337,23 @@ test("the form's reference level and speed reach each receiver once per change, 
   const render = (config: PanelRenderArgs["config"]) => hook.render(args("one", config), context)
   const sent = () => scopeWrite.mock.calls.map((call) => call.arguments[0])
   await render({})
-  await render({ speed: "radio", ref: "" })
-  assert.deepEqual(sent(), [], "blank and the radio's own send nothing")
-  // On the radio's step, within its range; Medium is one of its speeds.
-  await render({ ref: "7.6", speed: "mid" })
+  // A reference level an older form stored never reaches the radio: its screen is its own.
+  await render({ speed: "radio", ref: 8 })
+  assert.deepEqual(sent(), [], "the radio's own speed and a stored reference send nothing")
+  // Medium is one of its speeds.
+  await render({ speed: "mid" })
   assert.deepEqual(sent(), [
-    { id: "k4", selection: "k4", refLevelDb: 8, speed: "mid" },
-    { id: "k4/sub", selection: "k4/sub", refLevelDb: 8, speed: "mid" },
+    { id: "k4", selection: "k4", speed: "mid" },
+    { id: "k4/sub", selection: "k4/sub", speed: "mid" },
   ])
   // Every render after holds the same form: the knob turned on the radio meanwhile stays where it was turned.
-  await render({ ref: "7.6", speed: "mid" })
-  await render({ ref: "7.6", speed: "mid" })
+  await render({ speed: "mid" })
+  await render({ speed: "mid" })
   assert.equal(sent().length, 2)
-  await render({ ref: 99, speed: "mid" })
+  await render({ speed: "slow" })
   assert.deepEqual(sent().slice(2), [
-    { id: "k4", selection: "k4", refLevelDb: 30 },
-    { id: "k4/sub", selection: "k4/sub", refLevelDb: 30 },
+    { id: "k4", selection: "k4", speed: "slow" },
+    { id: "k4/sub", selection: "k4/sub", speed: "slow" },
   ])
   // A radio without the speed, or whose scope is down, is not asked for it.
   radios = [
@@ -348,11 +361,11 @@ test("the form's reference level and speed reach each receiver once per change, 
     { ...radios[1], spectrum: { ...spectrum, problem: "Spectrum disconnected" } },
   ]
   designated = radios[0]
-  await render({ ref: 99, speed: "fast" })
+  await render({ speed: "fast" })
   assert.equal(sent().length, 4)
 })
 
-test("a reference level sent before the pane's scope runs goes out again once it does", async (t) => {
+test("a speed sent before the pane's scope runs goes out again once it does", async (t) => {
   const radios = [radio()]
   const host = fakeHost(
     () => radios,
@@ -364,15 +377,15 @@ test("a reference level sent before the pane's scope runs goes out again once it
   )
   const hook = createBandScope(host)
   // The first render comes before the scope control has mounted and started the scope.
-  await hook.render(args("one", { ref: -10, speed: "fast" }), context)
+  await hook.render(args("one", { speed: "fast" }), context)
   running = true
-  await hook.render(args("one", { ref: -10, speed: "fast" }), context)
-  await hook.render(args("one", { ref: -10, speed: "fast" }), context)
+  await hook.render(args("one", { speed: "fast" }), context)
+  await hook.render(args("one", { speed: "fast" }), context)
   assert.equal(scopeWrite.mock.callCount(), 2, "sent again once running, then not again")
-  assert.deepEqual(scopeWrite.mock.calls[1].arguments[0], { id: "k4", selection: "k4", refLevelDb: -10, speed: "fast" })
+  assert.deepEqual(scopeWrite.mock.calls[1].arguments[0], { id: "k4", selection: "k4", speed: "fast" })
 })
 
-test("a reference level the radio could not be sent goes out again on the next render", async (t) => {
+test("a speed the radio could not be sent goes out again on the next render", async (t) => {
   const radios = [radio()]
   const host = fakeHost(
     () => radios,
@@ -385,15 +398,15 @@ test("a reference level the radio could not be sent goes out again on the next r
   })
   const hook = createBandScope(host)
   // Recorded as sent before the call, a send that failed would never be tried again.
-  await assert.rejects(hook.render(args("one", { ref: -10 }), context))
+  await assert.rejects(hook.render(args("one", { speed: "fast" }), context))
   down = false
-  await hook.render(args("one", { ref: -10 }), context)
-  await hook.render(args("one", { ref: -10 }), context)
+  await hook.render(args("one", { speed: "fast" }), context)
+  await hook.render(args("one", { speed: "fast" }), context)
   assert.deepEqual(
     scopeWrite.mock.calls.map((call) => call.arguments[0]),
     [
-      { id: "k4", selection: "k4", refLevelDb: -10 },
-      { id: "k4", selection: "k4", refLevelDb: -10 },
+      { id: "k4", selection: "k4", speed: "fast" },
+      { id: "k4", selection: "k4", speed: "fast" },
     ],
   )
 })

@@ -5,6 +5,7 @@
 // radio's scope runs only while a pane that shows one is on screen.
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -1192,6 +1193,36 @@ void main() {
     source.controller.add(_frame(20, 13985000));
     await tester.pump();
     expect(source.recentered.last, 14039000);
+  });
+
+  testWidgets('the level strip brightens the waterfall along with the spectrum', (tester) async {
+    // A gray ramp, so a row's red byte is how far up the waterfall's window the level sits.
+    Future<int> shade(Map<String, dynamic> levels, double level) async {
+      final source = _Source();
+      await _show(
+        tester,
+        source: source,
+        spectrum: {
+          'waterfallFloor': 8,
+          'waterfallRange': 30,
+          'waterfallColors': ['#000000', '#FFFFFF'],
+          ...levels,
+        },
+      );
+      source.controller.add(_frame(level));
+      await tester.pump();
+      await _waitForRows(tester, 'pan', 1);
+      final image = ((_waterfall(tester, 'pan').rows as List).first as dynamic).image as ui.Image;
+      final bytes = (await tester.runAsync(() => image.toByteData()))!;
+      await tester.pumpWidget(const SizedBox());
+      return bytes.getUint8(0);
+    }
+
+    // Untouched, the window is 8–38 dB of the radio's 0–80.
+    expect(await shade(const {}, 23), closeTo(128, 1));
+    // The strip's floor at 20 and range at 40 (half the radio's): the window is the same part of
+    // the spectrum's, 24–39 dB. Held to the radio's scale, 31.5 dB would read 78% up, not half.
+    expect(await shade(const {'floor': 20, 'range': 40}, 31.5), closeTo(128, 1));
   });
 
   testWidgets('without follow the window is the radio\'s', (tester) async {

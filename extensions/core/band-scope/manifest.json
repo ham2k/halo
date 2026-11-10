@@ -2,7 +2,7 @@
   "key": "band-scope",
   "name": "Band Scope",
   "version": "0.1.0",
-  "api": 20,
+  "api": 23,
   "description": "A radio's band scope, its spectrum and waterfall with the band plan, what is marked on the band and the spots on it: click or turn the wheel to tune, drag the scale to zoom, drag the picture to pan",
   "category": "dashboard",
   "icon": "waveform",
