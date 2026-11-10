@@ -414,6 +414,32 @@ void main() {
       expect(find.text('B 45'), findsOneWidget);
     });
 
+    // A scene that names its rotator once in `sources`, for its own readouts,
+    // names it the same way on the map rather than repeating the id.
+    testWidgets("a map's rotator may be the name of a rotator source", (tester) async {
+      final source = _Source();
+      final doc = _doc(map: {'rotator': 'tower'});
+      doc['sources'] = {
+        'tower': {'rotator': _uuid},
+      };
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 300,
+                height: 320,
+                child: PanelSceneView(scene: PanelScene(doc), rotator: source),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('45'), findsOneWidget);
+    });
+
     // A readout that blanked whenever the connection dropped would hide the
     // one fact the operator still has: where the antenna was left pointing.
     testWidgets('the heading written is the last one the rotator gave, and the status says whether it is current', (tester) async {

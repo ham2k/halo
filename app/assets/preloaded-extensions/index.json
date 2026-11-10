@@ -110,9 +110,9 @@
     },
     {
       "key": "ham2k-lookup",
-      "version": "0.2.4",
-      "file": "ham2k-lookup-0.2.4.h2kext",
-      "sha256": "3911100c18241250ab01045680cf97ed44d1b3df093b9fa0209c8992c461912d"
+      "version": "0.2.5",
+      "file": "ham2k-lookup-0.2.5.h2kext",
+      "sha256": "8e931e4c84c68afced0830356ca0635d6dbc961342348d1301dbabdd98b349dd"
     },
     {
       "key": "ham2k-mota",
@@ -167,6 +167,12 @@
       "version": "0.3.2",
       "file": "ham2k-r1-vhf-tests-0.3.2.h2kext",
       "sha256": "5d4695d33fb7517e64483ad9ac7c751670287c972bfc3bb814137882300c8e6b"
+    },
+    {
+      "key": "ham2k-rotator",
+      "version": "0.1.0",
+      "file": "ham2k-rotator-0.1.0.h2kext",
+      "sha256": "8730aa918005c88f5ca6ef4ba581a0acd10aa8dd41980dd093d828372daff804"
     },
     {
       "key": "ham2k-rsgb-vhf-tests",

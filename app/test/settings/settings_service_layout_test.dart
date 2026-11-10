@@ -7,7 +7,10 @@
 // "no preference" (null), never throw — a bad value would otherwise take
 // down every root view at boot.
 
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/rotator_panel_migration.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -58,6 +61,64 @@ void main() {
 
       final wrongType = await makeSettings(initial: {'layout': '{"home.leftColumn": "wide"}'});
       expect(wrongType.layoutDimension('home.leftColumn'), isNull);
+    });
+  });
+
+  // The native Rotator panel is gone; a saved arrangement still naming it
+  // would show the missing-panel tab where the operator's map was, and its
+  // settings would start over.
+  group('moveNativeRotatorPanels', () {
+    test("moves every placement of the native Rotator panel, and its settings, onto ham2k-rotator's", () async {
+      final settings = await makeSettings(
+        initial: {
+          'layout': jsonEncode({
+            'operation.dock': {
+              'tabs': ['logging', 'rotator#1', 'rotator#2', 'rotatorish'],
+              'active': 'rotator#2',
+            },
+          }),
+          'settingsPanel.rotator#1.rotator': jsonEncode('tower-uuid'),
+          'settingsPanel.rotator#1.beamWidth': '45',
+          'settingsPanel.rotator#1.theme': jsonEncode('gray'),
+          'settingsPanel.rotator#2.rotator': jsonEncode('auto'),
+          'settingsPanel.rotator#2.theme': jsonEncode('muted'),
+        },
+      );
+      await moveNativeRotatorPanels(settings);
+
+      expect(settings.layoutData('operation.dock'), {
+        'tabs': ['logging', 'ext:ham2k-rotator:rotator#1', 'ext:ham2k-rotator:rotator#2', 'rotatorish'],
+        'active': 'ext:ham2k-rotator:rotator#2',
+      });
+      final prefs = settings.prefs;
+      expect(prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#1.rotator'), jsonEncode('tower-uuid'));
+      // The extension keeps a width per antenna type, the native panel's being a beam's.
+      expect(prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#1.beamWidth.beam'), '45');
+      expect(prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#1.theme'), jsonEncode('gray'));
+      // Automatic is the extension's own default.
+      expect(prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#2.rotator'), isNull);
+      expect(prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#2.theme'), jsonEncode('muted'));
+    });
+
+    test("a native placement whose number the extension's panel already holds takes the next free one", () async {
+      final settings = await makeSettings(
+        initial: {
+          'layout': jsonEncode({
+            'operation.dock': {
+              'modules': ['rotator#1', 'ext:ham2k-rotator:rotator#1'],
+            },
+          }),
+          'settingsPanel.rotator#1.theme': jsonEncode('gray'),
+          'settingsPanel.ext:ham2k-rotator:rotator#1.theme': jsonEncode('teal'),
+        },
+      );
+      await moveNativeRotatorPanels(settings);
+
+      expect(settings.layoutData('operation.dock'), {
+        'modules': ['ext:ham2k-rotator:rotator#2', 'ext:ham2k-rotator:rotator#1'],
+      });
+      expect(settings.prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#2.theme'), jsonEncode('gray'));
+      expect(settings.prefs.getString('settingsPanel.ext:ham2k-rotator:rotator#1.theme'), jsonEncode('teal'));
     });
   });
 }

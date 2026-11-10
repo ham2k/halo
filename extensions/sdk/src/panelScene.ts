@@ -885,7 +885,7 @@ export interface PanelSceneRotatorLayer {
   az2?: PanelSceneRotatorAngle
   r?: PanelSceneRotatorRadius
   r2?: PanelSceneRotatorRadius
-  /** The rotator its `heading` and `target` are; omitted, the control's. */
+  /** The rotator its `heading` and `target` are, an id or a rotator source's name; omitted, the control's. */
   rotator?: string
   color?: string
   fill?: string
@@ -959,7 +959,7 @@ export interface PanelSceneRotatorRimMarks {
 
 /** A `rotatorMap` control (extension API 23). */
 export interface PanelSceneRotatorMap {
-  /** A rotator's id from `listEquipment`; omitted, the station's first. */
+  /** A rotator's id from `listEquipment`, or the name of a rotator in the scene's `sources`; omitted, the station's first. */
   rotator?: string
   /** The map's centre; omitted, the operation's location. */
   home?: { lat: number; lon: number }

@@ -337,6 +337,11 @@ class SceneRotatorView extends StatefulWidget {
   final Map<String, double> values;
   final bool disabled;
 
+  /// The rotator a control's or a decoration's `rotator` names: the id its
+  /// scene's rotator source of that name gives (`PanelScene.rotatorNodeFor`),
+  /// or the name as given.
+  final String? Function(String? rotator) rotatorNode;
+
   /// A click or a drag's turn, where the scene hears its turns.
   final ValueChanged<double>? onTurn;
 
@@ -358,12 +363,15 @@ class SceneRotatorView extends StatefulWidget {
     required this.source,
     required this.values,
     this.disabled = false,
+    this.rotatorNode = _asGiven,
     this.onTurn,
     this.onLayer,
     this.onGesture,
     this.onReadout,
     this.onReadoutString,
   });
+
+  static String? _asGiven(String? rotator) => rotator;
 
   @override
   State<SceneRotatorView> createState() => _SceneRotatorViewState();
@@ -632,7 +640,7 @@ class _SceneRotatorViewState extends State<SceneRotatorView> {
 
   // ------------------------------------------------------------- rotators
 
-  String? _uuidFor(String? rotator) => widget.source?.resolve(rotator ?? _spec.rotator);
+  String? _uuidFor(String? rotator) => widget.source?.resolve(widget.rotatorNode(rotator ?? _spec.rotator));
 
   /// A rotator's reading, its target drawn ahead where a turn was just sent.
   _Rotator? _rotator(String? rotator) {

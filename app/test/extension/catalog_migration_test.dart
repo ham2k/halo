@@ -250,6 +250,8 @@ void main() {
           'ham2k-lookup',
           // In place of the core `dxcc`, which no operator could switch off.
           'ham2k-dxcc',
+          // In place of the native Rotator panel, which every install had.
+          'ham2k-rotator',
         },
       );
       expect(settings.extensionsMigrated, isTrue);

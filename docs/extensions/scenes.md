@@ -776,7 +776,8 @@ so instead. Turning the rotator from the map needs `requiresRadioWrite`;
 without it a click or a drag is the scene's event, where the control has
 one. Placed like a native control, it takes:
 
-- `rotator`, a rotator's id from `listEquipment`; omitted, the station's first.
+- `rotator`, a rotator's id from `listEquipment`, or the name of a rotator
+  in the scene's `sources`; omitted, the station's first.
 - `home`, `{ lat, lon }`, the map's center; omitted, the operation's
   location. With neither, the map says it has no place to center on and
   draws a bare compass, still true and still clickable.
@@ -885,8 +886,8 @@ the rim along that bearing), `±<n>km`, `±<n>mi` and `±<n>px`: `rim-8px`,
 the rotator has not given, or the call field's station when there is none,
 is not drawn.
 
-`rotator` names the rotator a decoration's `heading` and `target` are;
-omitted, the control's. `turningColor` and `turningFill` replace `color`
+`rotator` names the rotator a decoration's `heading` and `target` are, by
+id or a rotator source's name; omitted, the control's. `turningColor` and `turningFill` replace `color`
 and `fill` while that rotator turns to a target. `width`, `radius`,
 `size`, `weight` and `padding`, and an `az:` bearing, may name a scene
 value.

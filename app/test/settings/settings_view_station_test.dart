@@ -725,22 +725,11 @@ void main() {
     expect(find.text('Icom IC-7300'), findsOneWidget);
   });
 
-  testWidgets('the GS-232A waits for EXP ROTATOR, and then sits under Other Equipment, not on the Yaesu shelf', (tester) async {
-    // No rotator has met hardware, so it is not offered before the
-    // experiment. Once it is, it is station plumbing like a switch: filed
-    // under its maker, an operator browsing Yaesu for their radio would
-    // find a rotator interface between the transceivers.
-    final services = await pumpSettings(tester);
-    await openAddDialog(tester);
-    final search = find.widgetWithText(TextField, 'Search equipment');
-    await tester.enterText(search, 'gs-232');
-    await tester.pump();
-    expect(find.text('Yaesu GS-232A Rotator Interface'), findsNothing);
-
-    Navigator.of(tester.element(search)).pop();
-    await tester.pumpAndSettle();
-    await services.settings.setExperimentEnabled('rotator', true);
-    await tester.pumpAndSettle();
+  testWidgets('the GS-232A sits under Other Equipment, not on the Yaesu shelf', (tester) async {
+    // A rotator is station plumbing like a switch: filed under its maker, an
+    // operator browsing Yaesu for their radio would find a rotator interface
+    // between the transceivers.
+    await pumpSettings(tester);
     await openAddDialog(tester);
 
     // Only Other Equipment open: a row filed on the Yaesu shelf would stay
@@ -765,7 +754,6 @@ void main() {
           },
         },
       );
-      await services.settings.setExperimentEnabled('rotator', true);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Station Configuration'));
       await tester.pumpAndSettle();
@@ -843,7 +831,7 @@ void main() {
     Future<void> openConnectedTower(WidgetTester tester, {Map<String, dynamic> config = const {}}) async {
       line = FakeGs232Line();
       late final CatService built;
-      final services = await pumpSettings(
+      await pumpSettings(
         tester,
         equipment: {
           'version': 1,
@@ -853,7 +841,6 @@ void main() {
         },
         cat: (settings) => cat = built = line.catService(settings),
       );
-      await services.settings.setExperimentEnabled('rotator', true);
       unawaited(built.connect('tower'));
       await tester.pumpAndSettle();
       expect(built.stateFor('tower').status, EquipmentStatus.connected);

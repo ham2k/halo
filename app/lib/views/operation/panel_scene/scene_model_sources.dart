@@ -86,4 +86,11 @@ extension SceneSourceNames on PanelScene {
     SceneSource(kind: 'radio', :final id) => id,
     _ => radio,
   };
+
+  /// A rotator map's `rotator`, or a decoration's, which may name a rotator source: the rotator's
+  /// id, or the name as given.
+  String? rotatorNodeFor(String? rotator) => switch (sources[rotator]) {
+    SceneSource(kind: 'rotator', :final id) => id,
+    _ => rotator,
+  };
 }

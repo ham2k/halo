@@ -199,7 +199,6 @@ class StationPanel extends StatelessWidget {
         showAntennaAndKey: services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
         showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
-        showRotator: services.settings.experimentEnabled('rotator') /* stored key, see experiments.yaml */,
         showSo2rSwitch: services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */,
         showMidi: services.settings.experimentEnabled('midi') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,

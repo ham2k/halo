@@ -3402,7 +3402,7 @@ that is not turning answers every poll with the same azimuth and says nothing
 else, so a watch fed only by changes would mark an idle rotator Not
 Responding — the switch's lesson, learned before it could happen here.
 
-**The controls live in the editor, behind `EXP ROTATOR`.** The equipment row
+**The controls live in the editor.** The equipment row
 stays the same shape as every other node's, as with a switch: a saved
 rotator's editor grows a Current State section whose band carries the
 heading ("Current State: 45° azimuth, 30° elevation", "az"/"el" on a phone;
@@ -3467,8 +3467,9 @@ until Stop is pressed in the app. Counted in readings, not seconds, so a slow
 poll interval is not taken for a stall. A heading changed at the controller's
 own knob sets none, and is not drawn as a turn.
 
-**The Rotator panel** (also behind the experiment) is the core extension
-`extensions/core/rotator`, drawing a `rotatorMap` scene control
+**The Rotator panel** is `ham2k-rotator`, a catalog extension the app
+pre-loads ([extension-install.md](extension-install.md)), drawing a
+`rotatorMap` scene control
 ([panel-scenes.md § Rotator map](panel-scenes.md#rotator-map)). Its map is
 azimuthal equidistant and centred on the station — the one projection on
 which every great circle from the centre is a straight radius, so the beam is
@@ -3609,8 +3610,7 @@ same protocol with its Gpredict tracker selected.
 
 `everyware_codec.dart`, `everyware_server.dart` and `everyware_devices.dart`
 in `drivers/`, `transports/everyware_transport.dart`, `cat_everyware.dart`,
-and the models in `equipment_models_green_heron.dart`. Behind `EXP ROTATOR`,
-with the rotators. From a capture of WU2X's server (three rotors, seven
+and the models in `equipment_models_green_heron.dart`. From a capture of WU2X's server (three rotors, seven
 switches) and from GHMac's [protocol notes](https://github.com/mikeg-dal/GHMac/blob/main/docs/PROTOCOL.md)
 (MIT) for what an open server cannot show: the login, and the commands no
 one was asked to send.

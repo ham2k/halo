@@ -667,7 +667,8 @@ contract is in [panel scenes](../extensions/scenes.md#rotator-map) and
 `PanelSceneRotatorMap`. It is the station's equipment under the radio's
 grants ([radio.md § Antenna switches and rotators](../extensions/radio.md#antenna-switches-and-rotators)):
 `requiresRadioRead` shows it and `requiresRadioWrite` turns it. The app's own
-Rotator panel (`extensions/core/rotator`) is the reference panel: one
+Rotator panel (`ham2k-rotator`, in ham2k/extensions, pre-loaded) is the
+reference panel: one
 rotator or several in their own colours, a beam's width or a switched
 array's fixed bearings, its readouts and buttons at the pane's corners, and
 the operator's zoom and pan kept per placement in the key-value store.

@@ -48,9 +48,6 @@ class AddEquipmentDialog extends StatefulWidget {
   /// Whether "Other Equipment" offers the SDR receivers — behind `EXP SDR`.
   final bool showSdr;
 
-  /// Whether "Other Equipment" offers the rotators — behind `EXP ROTATOR`.
-  final bool showRotator;
-
   /// Whether "Other Equipment" offers the SO2R switchers — behind `EXP SO2R`.
   final bool showSo2rSwitch;
 
@@ -66,7 +63,6 @@ class AddEquipmentDialog extends StatefulWidget {
     required this.showAntennaAndKey,
     required this.showKeyer,
     this.showSdr = false,
-    this.showRotator = false,
     this.showSo2rSwitch = false,
     this.showMidi = false,
     required this.supportedVariants,
@@ -270,9 +266,8 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
         switches.add(row);
       } else if (model.category == kCategoryRotator || model.category == kCategoryStationController) {
         // Station plumbing, for the switches' reason. A station controller
-        // rides with the rotators, under their experiment: its devices are
-        // rotators and switches.
-        if (widget.showRotator) rotators.add(row);
+        // rides with the rotators: its devices are rotators and switches.
+        rotators.add(row);
       } else if (model.category == kCategorySo2rSwitch) {
         // Station plumbing, for the switches' reason.
         if (widget.showSo2rSwitch) so2rSwitches.add(row);

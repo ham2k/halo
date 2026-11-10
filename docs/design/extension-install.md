@@ -22,11 +22,14 @@ same Update and uninstall.
 Which ones ship is staged. Today it is the catalog twin of every extension
 the app used to build in, so an install moving off them has every one to
 hand with no network, plus `ham2k-dxcc`, on for everyone as the core `dxcc`
-chasing program was. Once installs still on a build with the built-ins are
-few enough, it shrinks to the nine a new install needs (`ham2k-pota`,
-`ham2k-sota`, `ham2k-wwff`, `ham2k-dxcc` and the five lookups), the rest
-fetched from the catalog when switched on. The app's tests rely on only
-those nine, the core and the never-shipped samples.
+chasing program was, and `ham2k-rotator`, the Rotator panel, which the app
+once drew natively; a saved arrangement holding that native panel is moved
+onto the extension's at boot (`moveNativeRotatorPanels`).
+Once installs still on a build with the built-ins are few enough, it shrinks
+to the ten a new install needs (`ham2k-pota`, `ham2k-sota`, `ham2k-wwff`,
+`ham2k-dxcc`, `ham2k-rotator` and the five lookups), the rest fetched from
+the catalog when switched on. The app's tests rely on only those ten, the
+core and the never-shipped samples.
 
 **Pre-loads are kept current.** `node scripts/preloaded-extensions.mjs check`
 compares them with what the catalog serves, byte for byte and at the app's

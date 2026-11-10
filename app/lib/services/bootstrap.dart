@@ -54,6 +54,7 @@ import '../config/navigation.dart';
 import 'app_exit.dart';
 import 'halo_services.dart';
 import 'peer/peer_pairing_prompt.dart';
+import 'rotator_panel_migration.dart';
 
 /// Forces the bundled color-emoji font's glyph data to load AND shape now,
 /// instead of on whichever `Text` — or text *measurement* — happens to need
@@ -176,6 +177,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // onboarding gets a chance to write a callsign.
   await settings.seedSyncEnabledDefault();
   await settings.seedExtensionsMigratedDefault();
+  await moveNativeRotatorPanels(settings);
   unawaited(applyLocaleSetting(settings.locale));
   await deviceIdentityResolved;
   final services = HaLoServices(

@@ -84,6 +84,8 @@ void main() {
           'ham2k-lookup',
           // In place of the core `dxcc` chasing program.
           'ham2k-dxcc',
+          // In place of the Rotator panel the app drew natively.
+          'ham2k-rotator',
         },
       );
     });

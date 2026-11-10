@@ -425,6 +425,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     source: widget.rotator,
     values: _values,
     disabled: control.disabled,
+    rotatorNode: widget.scene.rotatorNodeFor,
     onTurn: control.event == null || control.disabled ? null : (bearing) => _sendControl(control, 'commit', value: bearing),
     onLayer: control.disabled
         ? null
